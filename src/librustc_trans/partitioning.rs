@@ -362,8 +362,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if codegen_units.is_empty() {
         let codegen_unit_name = InternedString::new(FALLBACK_CODEGEN_UNIT);
         codegen_units.entry(codegen_unit_name.clone())
-                     .or_insert_with(|| CodegenUnit::new(codegen_unit_name.clone(),
-                                                         FnvHashMap()));
+                     .or_insert_with(|| CodegenUnit::empty(codegen_unit_name.clone()));
     }
 
     PreInliningPartitioning {

@@ -25,17 +25,17 @@ pub struct DepGraph {
 }
 
 struct DepGraphData {
-    /// we send messages to the thread to let it build up the dep-graph
-    /// from the current run
+    /// We send messages to the thread to let it build up the dep-graph
+    /// from the current run.
     thread: DepGraphThreadData,
 
-    /// when we load, there may be `.o` files, cached mir, or other such
+    /// When we load, there may be `.o` files, cached mir, or other such
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
     previous_work_products: RefCell<FnvHashMap<Arc<WorkProductId>, WorkProduct>>,
 
-    /// work-products that we generate in this run
+    /// Work-products that we generate in this run.
     work_products: RefCell<FnvHashMap<Arc<WorkProductId>, WorkProduct>>,
 }
 
@@ -132,7 +132,7 @@ impl DepGraph {
 /// Each work product is associated with a dep-node, representing the
 /// process that produced the work-product. If that dep-node is found
 /// to be dirty when we load up, then we will delete the work-product
-/// at load time. If the work-product is found to be clean, the we
+/// at load time. If the work-product is found to be clean, then we
 /// will keep a record in the `previous_work_products` list.
 ///
 /// In addition, work products have an associated hash. This hash is

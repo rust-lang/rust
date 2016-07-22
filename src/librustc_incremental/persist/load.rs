@@ -63,10 +63,13 @@ fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     match decode_dep_graph(tcx, &dep_graph_data, &work_products_data) {
         Ok(()) => return,
-        Err(err) => bug!("decoding error in dep-graph from `{}` and `{}`: {}",
+        Err(err) => {
+            tcx.sess.warn(
+                &format!("decoding error in dep-graph from `{}` and `{}`: {}",
                          dep_graph_path.display(),
                          work_products_path.display(),
-                         err),
+                         err));
+        }
     }
 }
 
@@ -94,9 +97,7 @@ fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
 }
 
 /// Decode the dep graph and load the edges/nodes that are still clean
-/// into `tcx.dep_graph`. On success, returns a hashset containing all
-/// the paths of work-products from clean nodes (any work-products not
-/// in this set can be deleted).
+/// into `tcx.dep_graph`.
 pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   dep_graph_data: &[u8],
                                   work_products_data: &[u8])
