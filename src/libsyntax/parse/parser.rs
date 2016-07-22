@@ -1332,11 +1332,7 @@ impl<'a> Parser<'a> {
     /// Parse optional return type [ -> TY ] in function decl
     pub fn parse_ret_ty(&mut self) -> PResult<'a, FunctionRetTy> {
         if self.eat(&token::RArrow) {
-            if self.eat(&token::Not) {
-                Ok(FunctionRetTy::None(self.last_span))
-            } else {
-                Ok(FunctionRetTy::Ty(self.parse_ty()?))
-            }
+            Ok(FunctionRetTy::Ty(self.parse_ty()?))
         } else {
             let pos = self.span.lo;
             Ok(FunctionRetTy::Default(mk_sp(pos, pos)))

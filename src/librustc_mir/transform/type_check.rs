@@ -504,9 +504,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             (&None, ty::FnDiverging) => {}
-            (&None, ty::FnConverging(..)) => {
-                span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
-             }
+            (&None, ty::FnConverging(ref ty)) => {
+                if !ty.is_empty(tcx) {
+                    span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
+                }
+            }
         }
     }
 
