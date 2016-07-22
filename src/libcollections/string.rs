@@ -1132,18 +1132,62 @@ impl String {
         assert!(idx <= len);
         assert!(self.is_char_boundary(idx));
         let bits = ch.encode_utf8();
-        let bits = bits.as_slice();
-        let amt = bits.len();
-        self.vec.reserve(amt);
 
         unsafe {
-            ptr::copy(self.vec.as_ptr().offset(idx as isize),
-                      self.vec.as_mut_ptr().offset((idx + amt) as isize),
-                      len - idx);
-            ptr::copy(bits.as_ptr(),
-                      self.vec.as_mut_ptr().offset(idx as isize),
-                      amt);
-            self.vec.set_len(len + amt);
+            self.insert_bytes(idx, bits.as_slice());
+        }
+    }
+
+    unsafe fn insert_bytes(&mut self, idx: usize, bytes: &[u8]) {
+        let len = self.len();
+        let amt = bytes.len();
+        self.vec.reserve(amt);
+
+        ptr::copy(self.vec.as_ptr().offset(idx as isize),
+                  self.vec.as_mut_ptr().offset((idx + amt) as isize),
+                  len - idx);
+        ptr::copy(bytes.as_ptr(),
+                  self.vec.as_mut_ptr().offset(idx as isize),
+                  amt);
+        self.vec.set_len(len + amt);
+    }
+
+    /// Inserts a string into this `String` at a byte position.
+    ///
+    /// This is an `O(n)` operation as it requires copying every element in the
+    /// buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than the `String`'s length, or if it does not
+    /// lie on a [`char`] boundary.
+    ///
+    /// [`char`]: ../../std/primitive.char.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(insert_str)]
+    ///
+    /// let mut s = String::from("bar");
+    ///
+    /// s.insert_str(0, "foo");
+    ///
+    /// assert_eq!("foobar", s);
+    /// ```
+    #[inline]
+    #[unstable(feature = "insert_str",
+               reason = "recent addition",
+               issue = "0")]
+    pub fn insert_str(&mut self, idx: usize, string: &str) {
+        let len = self.len();
+        assert!(idx <= len);
+        assert!(self.is_char_boundary(idx));
+
+        unsafe {
+            self.insert_bytes(idx, string.as_bytes());
         }
     }
 
