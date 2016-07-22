@@ -175,6 +175,12 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // any obligations set during the current snapshot. In that case, the
     // snapshot can't be rolled back.
     pub obligations_in_snapshot: Cell<bool>,
+
+    // This is false except during closure kind inference. It is used
+    // by the mem-categorization code to be able to have stricter
+    // assertions (which are always true except during upvar
+    // inference).
+    during_closure_kind_inference: Cell<bool>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -491,6 +497,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
             obligations_in_snapshot: Cell::new(false),
+            during_closure_kind_inference: Cell::new(false),
         }
     }
 }
@@ -532,6 +539,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
             obligations_in_snapshot: Cell::new(false),
+            during_closure_kind_inference: Cell::new(false),
         }))
     }
 }
@@ -1292,6 +1300,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         .method_map
                                         .get(&method_call)
                                         .map(|method| resolve_ty(method.ty)))
+    }
+
+    pub fn set_during_closure_kind_inference(&self, value: bool) {
+        self.during_closure_kind_inference.set(value);
+    }
+
+    pub fn during_closure_kind_inference(&self) -> bool {
+        self.during_closure_kind_inference.get()
     }
 
     /// True if errors have been reported since this infcx was
