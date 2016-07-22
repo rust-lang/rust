@@ -94,8 +94,6 @@ well, and you link to them the same way.
 E0466: r##"
 Invalid macro import declarations.
 
-This is a syntax error at the level of attribute declarations.
-
 Causes of this error:
 
 ```ignore
@@ -106,42 +104,36 @@ extern crate some_crate;
 extern crate another_crate;
 ```
 
-Macro imports are properly declared as:
+This is a syntax error at the level of attribute declarations.
+
+The proper syntax for macro imports is the following:
 
 ```ignore
+// // some_crate contains:
+// #[macro_export]
+// macro_rules! get_tacos {
+//     ...
+// }
+// 
+// #[macro_export]
+// macro_rules! bring_beer {
+//     ...
+// }
 #[macro_use(get_tacos, bring_beer)]     // imports macros get_tacos and
 extern crate some_crate;                // bring_beer from some_crate
 ```
 
-Declaring `macro_use` with no arguments will import all available macros from
-the given crate.
-
-Exported macros must be declared as such with `macro_export`. In the above
-example, some_crate would contain:
-
-```ignore
-#[macro_export]
-macro_rules! get_tacos {
-    ...
-}
-
-#[macro_export]
-macro_rules! bring_beer {
-    ...
-}
-```
-
+If you would like to import all exported macros, write `macro_use` with no
+arguments.
 "##,
 
 E0467: r##"
 Invalid or no macros listed for reexport.
 
-This is a syntax error at the level of attribute declarations.
-
 Causes of this error:
 
 ```ignore
-#[macro_reexport] // error: no macros listed for export
+#[macro_reexport]                   // error: no macros listed for export
 extern crate macros_for_good;
 ```
 ```ignore
@@ -149,15 +141,26 @@ extern crate macros_for_good;
 extern crate macros_for_good;
 ```
 
+This is a syntax error at the level of attribute declarations.
+
 Currently, `macro_reexport` requires at least one macro name to be listed.
 Unlike `macro_use`, listing no names does not reexport all macros from the
 given crate.
 
 Decide which macros you would like to export and list them properly.
+
+These are proper reexport declarations:
+
+```ignore
+#[macro_reexport(some_macro, another_macro)]
+extern crate macros_for_good;
+```
 "##,
 
 E0468: r##"
 A non-root module attempts to import macros from another crate.
+
+Example of erroneous code:
 
 ```ignore
 mod foo {
@@ -195,8 +198,7 @@ fn main() {
 E0469: r##"
 A macro listed for import was not found.
 
-Either the listed macro is not contained in the imported crate, or it is not
-exported from the given crate.
+Example of erroneous code:
 
 ```ignore
 /// // crate some_crate contains:
@@ -213,6 +215,9 @@ exported from the given crate.
 #[macro_use(drink, be_merry)]
 extern crate some_crate;
 ```
+
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
 
 This could be caused by a typo. Did you misspell the macro's name?
 
@@ -240,8 +245,7 @@ extern crate some_crate;
 E0470: r##"
 A macro listed for reexport was not found.
 
-Either the listed macro is not contained in the imported crate, or it is not
-exported from the given crate.
+Example of erroneous code:
 
 ```ignore
 /// // crate some_crate contains:
@@ -258,6 +262,9 @@ exported from the given crate.
 #[macro_reexport(drink, be_merry)]
 extern crate some_crate;
 ```
+
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
 
 This could be caused by a typo. Did you misspell the macro's name?
 
