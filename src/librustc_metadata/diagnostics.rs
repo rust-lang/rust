@@ -109,14 +109,14 @@ extern crate another_crate;
 Macro imports are properly declared as:
 
 ```ignore
-#[macro_use(get_tacos, bring_beer)]     // imports macros get_tacos and 
+#[macro_use(get_tacos, bring_beer)]     // imports macros get_tacos and
 extern crate some_crate;                // bring_beer from some_crate
 ```
 
-Declaring `macro_use` with no arguments will import all available macros from 
+Declaring `macro_use` with no arguments will import all available macros from
 the given crate.
 
-Exported macros must be declared as such with `macro_export`. In the above 
+Exported macros must be declared as such with `macro_export`. In the above
 example, some_crate would contain:
 
 ```ignore
@@ -149,8 +149,8 @@ extern crate macros_for_good;
 extern crate macros_for_good;
 ```
 
-Currently, `macro_reexport` requires at least one macro name to be listed. 
-Unlike `macro_use`, listing no names does not reexport all macros from the 
+Currently, `macro_reexport` requires at least one macro name to be listed.
+Unlike `macro_use`, listing no names does not reexport all macros from the
 given crate.
 
 Decide which macros you would like to export and list them properly.
@@ -171,12 +171,12 @@ fn main() {
 }
 ```
 
-Only `extern crate` imports at the crate root level (i.e., in lib.rs) are 
+Only `extern crate` imports at the crate root level (i.e., in lib.rs) are
 allowed to import macros.
 
 Either move the macro import to crate root or do without the foreign macros.
 
-This will work: 
+This will work:
 
 ```ignore
 #[macro_use(helpful_macro)]
@@ -216,7 +216,7 @@ extern crate some_crate;
 
 This could be caused by a typo. Did you misspell the macro's name?
 
-Double-check the names of the macros listed for import, and that the crate 
+Double-check the names of the macros listed for import, and that the crate
 in question exports them.
 
 A working version of the above:
@@ -261,7 +261,7 @@ extern crate some_crate;
 
 This could be caused by a typo. Did you misspell the macro's name?
 
-Double-check the names of the macros listed for reexport, and that the crate 
+Double-check the names of the macros listed for reexport, and that the crate
 in question exports them.
 
 A working version of the above:
