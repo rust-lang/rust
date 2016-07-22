@@ -362,7 +362,9 @@ impl MutabilityCategory {
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext { infcx: infcx }
+        MemCategorizationContext {
+            infcx: infcx,
+        }
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -584,10 +586,20 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                               self.cat_upvar(id, span, var_id, fn_node_id, kind)
                           }
                           None => {
-                              span_bug!(
-                                  span,
-                                  "No closure kind for {:?}",
-                                  closure_id);
+                              if !self.infcx.during_closure_kind_inference() {
+                                  span_bug!(
+                                      span,
+                                      "No closure kind for {:?}",
+                                      closure_id);
+                              }
+
+                              // during closure kind inference, we
+                              // don't know the closure kind yet, but
+                              // it's ok because we detect that we are
+                              // accessing an upvar and handle that
+                              // case specially anyhow. Use Fn
+                              // arbitrarily.
+                              self.cat_upvar(id, span, var_id, fn_node_id, ty::ClosureKind::Fn)
                           }
                       }
                   }
