@@ -1,7 +1,7 @@
 - Feature Name: attributes_with_literals
 - Start Date: 2016-03-28
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1559
+- Rust Issue: https://github.com/rust-lang/rust/issues/34981
 
 # Summary
 [summary]: #summary
