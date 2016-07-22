@@ -1112,7 +1112,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprCall(ref f, ref args) => {
             let diverges = !self.ir.tcx.is_method_call(expr.id) &&
-                self.ir.tcx.expr_ty_adjusted(&f).fn_ret().diverges();
+                self.ir.tcx.expr_ty_adjusted(&f).fn_ret().diverges(self.ir.tcx);
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1125,7 +1125,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprMethodCall(_, _, ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.tables.borrow().method_map[&method_call].ty;
-            let succ = if method_ty.fn_ret().diverges() {
+            let succ = if method_ty.fn_ret().diverges(self.ir.tcx) {
                 self.s.exit_ln
             } else {
                 succ

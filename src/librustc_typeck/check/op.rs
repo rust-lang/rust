@@ -36,7 +36,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
             self.write_nil(expr.id);
         } else {
-            self.write_ty(expr.id, return_ty);
+            self.write_ty_expr(expr.id, return_ty);
         }
 
         let tcx = self.tcx;
@@ -69,7 +69,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // && and || are a simple case.
                 self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
                 self.check_expr_coercable_to_type(rhs_expr, tcx.mk_bool());
-                self.write_ty(expr.id, tcx.mk_bool());
+                self.write_ty_expr(expr.id, tcx.mk_bool());
             }
             _ => {
                 // Otherwise, we always treat operators as if they are
@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.demand_suptype(expr.span, builtin_return_ty, return_ty);
                 }
 
-                self.write_ty(expr.id, return_ty);
+                self.write_ty_expr(expr.id, return_ty);
             }
         }
     }
