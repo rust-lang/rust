@@ -73,8 +73,8 @@ use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ops;
 use core::ptr;
+use core::ptr::Shared;
 use core::slice;
-use super::vec_deque::VecDeque;
 
 use super::SpecExtend;
 use super::range::RangeArgument;
@@ -844,20 +844,20 @@ impl<T> Vec<T> {
         let end = *range.end().unwrap_or(&len);
         assert!(start <= end);
         assert!(end <= len);
-        let mut drain_vec = VecDeque::new();
 
         unsafe {
-            for i in start..end {
-                    let p = self.as_ptr().offset(i as isize);
-                    drain_vec.push_back(ptr::read(p));
+            // set self.vec length's to start, to be safe in case Drain is leaked
+            self.set_len(start);
+            // Use the borrow in the IterMut to indicate borrowing behavior of the
+            // whole Drain iterator (like &mut T).
+            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().offset(start as isize),
+                                                        end - start);
+            Drain {
+                tail_start: end,
+                tail_len: len - end,
+                iter: range_slice.iter(),
+                vec: Shared::new(self as *mut _),
             }
-            let src = self.as_ptr().offset(end as isize);
-            let dst = self.as_mut_ptr().offset(start as isize);
-            ptr::copy(src, dst, len - end);
-            self.set_len(len - (end - start));
-        }
-        Drain {
-            deque: drain_vec
         }
     }
 
@@ -1756,43 +1756,64 @@ impl<T> Drop for IntoIter<T> {
 /// [`drain`]: struct.Vec.html#method.drain
 /// [`Vec`]: struct.Vec.html
 #[stable(feature = "drain", since = "1.6.0")]
-pub struct Drain<T> {
+pub struct Drain<'a, T: 'a> {
+    /// Index of tail to preserve
+    tail_start: usize,
+    /// Length of tail
+    tail_len: usize,
     /// Current remaining range to remove
-    deque: VecDeque<T>
+    iter: slice::Iter<'a, T>,
+    vec: Shared<Vec<T>>,
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Sync> Sync for Drain<T> {}
+unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Send> Send for Drain<T> {}
+unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Iterator for Drain<T> {
+impl<'a, T> Iterator for Drain<'a, T> {
     type Item = T;
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        self.deque.pop_front()
+        self.iter.next().map(|elt| unsafe { ptr::read(elt as *const _) })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.deque.len(), Some(self.deque.len()))
+        self.iter.size_hint()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> DoubleEndedIterator for Drain<T> {
+impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        self.deque.pop_back()
+        self.iter.next_back().map(|elt| unsafe { ptr::read(elt as *const _) })
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for Drain<T> {
+impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
+        // exhaust self first
+        while let Some(_) = self.next() {}
+
+        if self.tail_len > 0 {
+            unsafe {
+                let source_vec = &mut **self.vec;
+                // memmove back untouched tail, update to new length
+                let start = source_vec.len();
+                let tail = self.tail_start;
+                let src = source_vec.as_ptr().offset(tail as isize);
+                let dst = source_vec.as_mut_ptr().offset(start as isize);
+                ptr::copy(src, dst, self.tail_len);
+                source_vec.set_len(start + self.tail_len);
+            }
+        }
     }
 }
 
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for Drain<T> {}
+impl<'a, T> ExactSizeIterator for Drain<'a, T> {}

@@ -513,7 +513,7 @@ fn test_cow_from() {
 
 #[allow(dead_code)]
 fn assert_covariance() {
-    fn drain<'new>(d: Drain<&'static str>) -> Drain<&'new str> { d }
+    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
 }
 
 #[bench]
