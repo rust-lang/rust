@@ -1158,20 +1158,17 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // before we go into the whole skolemization thing, just
         // quickly check if the self-type is a projection at all.
-        let trait_def_id = match obligation.predicate.0.trait_ref.self_ty().sty {
-            ty::TyProjection(ref data) => data.trait_ref.def_id,
+        match obligation.predicate.0.trait_ref.self_ty().sty {
+            ty::TyProjection(_) | ty::TyAnon(..) => {}
             ty::TyInfer(ty::TyVar(_)) => {
                 span_bug!(obligation.cause.span,
                     "Self=_ should have been handled by assemble_candidates");
             }
-            _ => { return; }
-        };
-
-        debug!("assemble_candidates_for_projected_tys: trait_def_id={:?}",
-               trait_def_id);
+            _ => return
+        }
 
         let result = self.probe(|this, snapshot| {
-            this.match_projection_obligation_against_bounds_from_trait(obligation,
+            this.match_projection_obligation_against_definition_bounds(obligation,
                                                                        snapshot)
         });
 
@@ -1180,7 +1177,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn match_projection_obligation_against_bounds_from_trait(
+    fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         snapshot: &infer::CombinedSnapshot)
@@ -1190,28 +1187,29 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             self.infcx().resolve_type_vars_if_possible(&obligation.predicate);
         let (skol_trait_predicate, skol_map) =
             self.infcx().skolemize_late_bound_regions(&poly_trait_predicate, snapshot);
-        debug!("match_projection_obligation_against_bounds_from_trait: \
+        debug!("match_projection_obligation_against_definition_bounds: \
                 skol_trait_predicate={:?} skol_map={:?}",
                skol_trait_predicate,
                skol_map);
 
-        let projection_trait_ref = match skol_trait_predicate.trait_ref.self_ty().sty {
-            ty::TyProjection(ref data) => &data.trait_ref,
+        let (def_id, substs) = match skol_trait_predicate.trait_ref.self_ty().sty {
+            ty::TyProjection(ref data) => (data.trait_ref.def_id, data.trait_ref.substs),
+            ty::TyAnon(def_id, substs) => (def_id, substs),
             _ => {
                 span_bug!(
                     obligation.cause.span,
-                    "match_projection_obligation_against_bounds_from_trait() called \
+                    "match_projection_obligation_against_definition_bounds() called \
                      but self-ty not a projection: {:?}",
                     skol_trait_predicate.trait_ref.self_ty());
             }
         };
-        debug!("match_projection_obligation_against_bounds_from_trait: \
-                projection_trait_ref={:?}",
-               projection_trait_ref);
+        debug!("match_projection_obligation_against_definition_bounds: \
+                def_id={:?}, substs={:?}",
+               def_id, substs);
 
-        let trait_predicates = self.tcx().lookup_predicates(projection_trait_ref.def_id);
-        let bounds = trait_predicates.instantiate(self.tcx(), projection_trait_ref.substs);
-        debug!("match_projection_obligation_against_bounds_from_trait: \
+        let item_predicates = self.tcx().lookup_predicates(def_id);
+        let bounds = item_predicates.instantiate(self.tcx(), substs);
+        debug!("match_projection_obligation_against_definition_bounds: \
                 bounds={:?}",
                bounds);
 
@@ -1226,7 +1224,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                                     &skol_map,
                                                     snapshot)));
 
-        debug!("match_projection_obligation_against_bounds_from_trait: \
+        debug!("match_projection_obligation_against_definition_bounds: \
                 matching_bound={:?}",
                matching_bound);
         match matching_bound {
@@ -1472,7 +1470,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     }
                 }
                 ty::TyParam(..) |
-                ty::TyProjection(..) => {
+                ty::TyProjection(..) |
+                ty::TyAnon(..) => {
                     // In these cases, we don't know what the actual
                     // type is.  Therefore, we cannot break it down
                     // into its constituent types. So we don't
@@ -1796,7 +1795,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }))
             }
 
-            ty::TyProjection(_) | ty::TyParam(_) => None,
+            ty::TyProjection(_) | ty::TyParam(_) | ty::TyAnon(..) => None,
             ty::TyInfer(ty::TyVar(_)) => Ambiguous,
 
             ty::TyInfer(ty::FreshTy(_))
@@ -1842,7 +1841,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(tys.to_vec()))
             }
 
-            ty::TyStruct(..) | ty::TyEnum(..) | ty::TyProjection(..) | ty::TyParam(..) => {
+            ty::TyStruct(..) | ty::TyEnum(..) |
+            ty::TyProjection(..) | ty::TyParam(..) | ty::TyAnon(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
@@ -1893,6 +1893,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyTrait(..) |
             ty::TyParam(..) |
             ty::TyProjection(..) |
+            ty::TyAnon(..) |
             ty::TyInfer(ty::TyVar(_)) |
             ty::TyInfer(ty::FreshTy(_)) |
             ty::TyInfer(ty::FreshIntTy(_)) |
@@ -2073,7 +2074,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         self.in_snapshot(|this, snapshot| {
             let result =
-                this.match_projection_obligation_against_bounds_from_trait(obligation,
+                this.match_projection_obligation_against_definition_bounds(obligation,
                                                                            snapshot);
             assert!(result);
         })

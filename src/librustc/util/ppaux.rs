@@ -907,6 +907,37 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             }
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
+            ty::TyAnon(def_id, substs) => {
+                ty::tls::with(|tcx| {
+                    // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
+                    // by looking up the projections associated with the def_id.
+                    let item_predicates = tcx.lookup_predicates(def_id);
+                    let substs = tcx.lift(&substs).unwrap_or_else(|| {
+                        tcx.mk_substs(subst::Substs::empty())
+                    });
+                    let bounds = item_predicates.instantiate(tcx, substs);
+
+                    let mut first = true;
+                    let mut is_sized = false;
+                    write!(f, "impl")?;
+                    for predicate in bounds.predicates.into_vec() {
+                        if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
+                            // Don't print +Sized, but rather +?Sized if absent.
+                            if Some(trait_ref.def_id()) == tcx.lang_items.sized_trait() {
+                                is_sized = true;
+                                continue;
+                            }
+
+                            write!(f, "{}{}", if first { " " } else { "+" }, trait_ref)?;
+                            first = false;
+                        }
+                    }
+                    if !is_sized {
+                        write!(f, "{}?Sized", if first { " " } else { "+" })?;
+                    }
+                    Ok(())
+                })
+            }
             TyStr => write!(f, "str"),
             TyClosure(did, substs) => ty::tls::with(|tcx| {
                 write!(f, "[closure")?;

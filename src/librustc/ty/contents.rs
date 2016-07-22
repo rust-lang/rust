@@ -240,7 +240,8 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 }
 
                 ty::TyProjection(..) |
-                ty::TyParam(_) => {
+                ty::TyParam(_) |
+                ty::TyAnon(..) => {
                     TC::All
                 }
 

@@ -1867,6 +1867,18 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
 
             ty::TyParam(ref p) => Generic(p.name.to_string()),
 
+            ty::TyAnon(def_id, substs) => {
+                // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
+                // by looking up the projections associated with the def_id.
+                let item_predicates = cx.tcx().lookup_predicates(def_id);
+                let substs = cx.tcx().lift(&substs).unwrap();
+                let bounds = item_predicates.instantiate(cx.tcx(), substs);
+                let predicates = bounds.predicates.into_vec();
+                ImplTrait(predicates.into_iter().filter_map(|predicate| {
+                    predicate.to_opt_poly_trait_ref().clean(cx)
+                }).collect())
+            }
+
             ty::TyClosure(..) => Tuple(vec![]), // FIXME(pcwalton)
 
             ty::TyInfer(..) => panic!("TyInfer"),

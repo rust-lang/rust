@@ -94,6 +94,16 @@ pub enum Reveal {
     NotSpecializable,
 
     /// At trans time, all monomorphic projections will succeed.
+    /// Also, `impl Trait` is normalized to the concrete type,
+    /// which has to be already collected by type-checking.
+    ///
+    /// NOTE: As `impl Trait`'s concrete type should *never*
+    /// be observable directly by the user, `Reveal::All`
+    /// should not be used by checks which may expose
+    /// type equality or type contents to the user.
+    /// There are some exceptions, e.g. around OIBITS and
+    /// transmute-checking, which expose some details, but
+    /// not the whole concrete type of the `impl Trait`.
     All,
 }
 
@@ -298,6 +308,17 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
 
         let ty = ty.super_fold_with(self);
         match ty.sty {
+            ty::TyAnon(def_id, substs) if !substs.has_escaping_regions() => { // (*)
+                // Only normalize `impl Trait` after type-checking, usually in trans.
+                if self.selcx.projection_mode() == Reveal::All {
+                    let generic_ty = self.tcx().lookup_item_type(def_id).ty;
+                    let concrete_ty = generic_ty.subst(self.tcx(), substs);
+                    self.fold_ty(concrete_ty)
+                } else {
+                    ty
+                }
+            }
+
             ty::TyProjection(ref data) if !data.has_escaping_regions() => { // (*)
 
                 // (*) This is kind of hacky -- we need to be able to
@@ -773,8 +794,11 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     debug!("assemble_candidates_from_trait_def(..)");
 
     // Check whether the self-type is itself a projection.
-    let trait_ref = match obligation_trait_ref.self_ty().sty {
-        ty::TyProjection(ref data) => data.trait_ref.clone(),
+    let (def_id, substs) = match obligation_trait_ref.self_ty().sty {
+        ty::TyProjection(ref data) => {
+            (data.trait_ref.def_id, data.trait_ref.substs)
+        }
+        ty::TyAnon(def_id, substs) => (def_id, substs),
         ty::TyInfer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.
@@ -785,8 +809,8 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_predicates = selcx.tcx().lookup_predicates(trait_ref.def_id);
-    let bounds = trait_predicates.instantiate(selcx.tcx(), trait_ref.substs);
+    let trait_predicates = selcx.tcx().lookup_predicates(def_id);
+    let bounds = trait_predicates.instantiate(selcx.tcx(), substs);
     let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates.into_vec());
     assemble_candidates_from_predicates(selcx,
                                         obligation,

@@ -1694,10 +1694,10 @@ fn ty_generic_predicates_for_fn<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 }
 
 // Add the Sized bound, unless the type parameter is marked as `?Sized`.
-fn add_unsized_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
-                           bounds: &mut ty::BuiltinBounds,
-                           ast_bounds: &[hir::TyParamBound],
-                           span: Span)
+fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                       bounds: &mut ty::BuiltinBounds,
+                                       ast_bounds: &[hir::TyParamBound],
+                                       span: Span)
 {
     let tcx = astconv.tcx();
 
@@ -2038,17 +2038,17 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     }
 }
 
-enum SizedByDefault { Yes, No, }
+pub enum SizedByDefault { Yes, No, }
 
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
-fn compute_bounds<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
-                        param_ty: ty::Ty<'tcx>,
-                        ast_bounds: &[hir::TyParamBound],
-                        sized_by_default: SizedByDefault,
-                        span: Span)
-                        -> Bounds<'tcx>
+pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                        param_ty: ty::Ty<'tcx>,
+                                        ast_bounds: &[hir::TyParamBound],
+                                        sized_by_default: SizedByDefault,
+                                        span: Span)
+                                        -> Bounds<'tcx>
 {
     let mut bounds =
         conv_param_bounds(astconv,
@@ -2098,11 +2098,11 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
     }
 }
 
-fn conv_poly_trait_ref<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
-                             param_ty: Ty<'tcx>,
-                             trait_ref: &hir::PolyTraitRef,
-                             projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
-                             -> ty::PolyTraitRef<'tcx>
+fn conv_poly_trait_ref<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                         param_ty: Ty<'tcx>,
+                                         trait_ref: &hir::PolyTraitRef,
+                                         projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
+                                         -> ty::PolyTraitRef<'tcx>
 {
     AstConv::instantiate_poly_trait_ref(astconv,
                                         &ExplicitRscope,
@@ -2111,11 +2111,11 @@ fn conv_poly_trait_ref<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                                         projections)
 }
 
-fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx, 'tcx>,
-                              span: Span,
-                              param_ty: ty::Ty<'tcx>,
-                              ast_bounds: &[hir::TyParamBound])
-                              -> Bounds<'tcx>
+fn conv_param_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                       span: Span,
+                                       param_ty: ty::Ty<'tcx>,
+                                       ast_bounds: &[hir::TyParamBound])
+                                       -> Bounds<'tcx>
 {
     let tcx = astconv.tcx();
     let PartitionedBounds {

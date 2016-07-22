@@ -594,7 +594,7 @@ impl<'a, 'gcx, 'tcx> Struct {
                 Struct::non_zero_field_path(infcx, Some(ety).into_iter())
             }
 
-            (_, &ty::TyProjection(_)) => {
+            (_, &ty::TyProjection(_)) | (_, &ty::TyAnon(..)) => {
                 let normalized = normalize_associated_type(infcx, ty);
                 if ty == normalized {
                     return Ok(None);
@@ -1108,7 +1108,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             // Types with no meaningful known layout.
-            ty::TyProjection(_) => {
+            ty::TyProjection(_) | ty::TyAnon(..) => {
                 let normalized = normalize_associated_type(infcx, ty);
                 if ty == normalized {
                     return Err(LayoutError::Unknown(ty));
@@ -1332,7 +1332,7 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
                 }
             }
 
-            ty::TyProjection(_) => {
+            ty::TyProjection(_) | ty::TyAnon(..) => {
                 let normalized = normalize_associated_type(infcx, ty);
                 if ty == normalized {
                     Err(err)

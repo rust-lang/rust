@@ -268,6 +268,9 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
         if let TyKind::FixedLengthVec(_, ref length) = ty.node {
             self.visit_ast_const_integer(length);
         }
+        if let TyKind::ImplTrait(..) = ty.node {
+            self.create_def(ty.id, DefPathData::ImplTrait);
+        }
         visit::walk_ty(self, ty);
     }
 
@@ -427,6 +430,9 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_ty(&mut self, ty: &'ast hir::Ty) {
         if let hir::TyFixedLengthVec(_, ref length) = ty.node {
             self.visit_hir_const_integer(length);
+        }
+        if let hir::TyImplTrait(..) = ty.node {
+            self.create_def(ty.id, DefPathData::ImplTrait);
         }
         intravisit::walk_ty(self, ty);
     }

@@ -499,7 +499,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
         }
 
         // these are always dtorck
-        ty::TyTrait(..) | ty::TyProjection(_) => bug!(),
+        ty::TyTrait(..) | ty::TyProjection(_) | ty::TyAnon(..) => bug!(),
     }
 }
 
@@ -509,7 +509,7 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyEnum(def, _) | ty::TyStruct(def, _) => {
             def.is_dtorck(tcx)
         }
-        ty::TyTrait(..) | ty::TyProjection(..) => {
+        ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);
             true
         },

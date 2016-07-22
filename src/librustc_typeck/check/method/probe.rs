@@ -786,16 +786,19 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             debug!("assemble_projection_candidates: step={:?}",
                    step);
 
-            let projection_trait_ref = match step.self_ty.sty {
-                ty::TyProjection(ref data) => &data.trait_ref,
+            let (def_id, substs) = match step.self_ty.sty {
+                ty::TyProjection(ref data) => {
+                    (data.trait_ref.def_id, data.trait_ref.substs)
+                }
+                ty::TyAnon(def_id, substs) => (def_id, substs),
                 _ => continue,
             };
 
-            debug!("assemble_projection_candidates: projection_trait_ref={:?}",
-                   projection_trait_ref);
+            debug!("assemble_projection_candidates: def_id={:?} substs={:?}",
+                   def_id, substs);
 
-            let trait_predicates = self.tcx.lookup_predicates(projection_trait_ref.def_id);
-            let bounds = trait_predicates.instantiate(self.tcx, projection_trait_ref.substs);
+            let trait_predicates = self.tcx.lookup_predicates(def_id);
+            let bounds = trait_predicates.instantiate(self.tcx, substs);
             let predicates = bounds.predicates.into_vec();
             debug!("assemble_projection_candidates: predicates={:?}",
                    predicates);
@@ -806,9 +809,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             {
                 let bound = self.erase_late_bound_regions(&poly_bound);
 
-                debug!("assemble_projection_candidates: projection_trait_ref={:?} bound={:?}",
-                       projection_trait_ref,
-                       bound);
+                debug!("assemble_projection_candidates: def_id={:?} substs={:?} bound={:?}",
+                       def_id, substs, bound);
 
                 if self.can_equate(&step.self_ty, &bound.self_ty()).is_ok() {
                     let xform_self_ty = self.xform_self_ty(&item,

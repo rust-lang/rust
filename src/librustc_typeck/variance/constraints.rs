@@ -326,7 +326,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 /* leaf type -- noop */
             }
 
-            ty::TyClosure(..) => {
+            ty::TyClosure(..) | ty::TyAnon(..) => {
                 bug!("Unexpected closure type in variance computation");
             }
 

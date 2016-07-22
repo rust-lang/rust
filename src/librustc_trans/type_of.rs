@@ -112,7 +112,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             }
         }
 
-        ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) | ty::TyError => {
+        ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) |
+        ty::TyAnon(..) | ty::TyError => {
             bug!("fictitious type {:?} in sizing_type_of()", t)
         }
         ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => bug!()
@@ -339,10 +340,11 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           }
       }
 
-      ty::TyInfer(..) => bug!("type_of with TyInfer"),
-      ty::TyProjection(..) => bug!("type_of with TyProjection"),
-      ty::TyParam(..) => bug!("type_of with ty_param"),
-      ty::TyError => bug!("type_of with TyError"),
+      ty::TyInfer(..) |
+      ty::TyProjection(..) |
+      ty::TyParam(..) |
+      ty::TyAnon(..) |
+      ty::TyError => bug!("type_of with {:?}", t),
     };
 
     debug!("--> mapped t={:?} to llty={:?}", t, llty);

@@ -1885,7 +1885,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                 }
             }
 
-            TyProjection(..) => {
+            TyProjection(..) | TyAnon(..) => {
                 // must calculate explicitly.
                 // FIXME: consider special-casing always-Sized projections
                 vec![ty]
