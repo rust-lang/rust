@@ -14,14 +14,14 @@ register_long_diagnostics! {
 E0454: r##"
 A link name was given with an empty name. Erroneous code example:
 
-```
+```ignore
 #[link(name = "")] extern {} // error: #[link(name = "")] given with empty name
 ```
 
 The rust compiler cannot link to an external library if you don't give it its
 name. Example:
 
-```
+```ignore
 #[link(name = "some_lib")] extern {} // ok!
 ```
 "##,
@@ -50,7 +50,7 @@ See more: https://doc.rust-lang.org/book/conditional-compilation.html
 E0458: r##"
 An unknown "kind" was specified for a link attribute. Erroneous code example:
 
-```
+```ignore
 #[link(kind = "wonderful_unicorn")] extern {}
 // error: unknown kind: `wonderful_unicorn`
 ```
@@ -64,7 +64,7 @@ Please specify a valid "kind" value, from one of the following:
 E0459: r##"
 A link was used without a name parameter. Erroneous code example:
 
-```
+```ignore
 #[link(kind = "dylib")] extern {}
 // error: #[link(...)] specified without `name = "foo"`
 ```
@@ -72,7 +72,7 @@ A link was used without a name parameter. Erroneous code example:
 Please add the name parameter to allow the rust compiler to find the library
 you want. Example:
 
-```
+```ignore
 #[link(kind = "dylib", name = "some_lib")] extern {} // ok!
 ```
 "##,
@@ -80,7 +80,7 @@ you want. Example:
 E0463: r##"
 A plugin/crate was declared but cannot be found. Erroneous code example:
 
-```
+```ignore
 #![feature(plugin)]
 #![plugin(cookie_monster)] // error: can't find crate for `cookie_monster`
 extern crate cake_is_a_lie; // error: can't find crate for `cake_is_a_lie`
