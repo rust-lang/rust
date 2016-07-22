@@ -196,12 +196,6 @@ pub enum TypeOrigin {
     // FIXME(eddyb) #11161 is the original Expr required?
     ExprAssignable(Span),
 
-    // Relating trait refs when resolving vtables
-    RelateTraitRefs(Span),
-
-    // Relating self types when resolving vtables
-    RelateSelfType(Span),
-
     // Relating trait type parameters to those found in impl etc
     RelateOutputImplTypes(Span),
 
@@ -228,16 +222,17 @@ pub enum TypeOrigin {
 
     // intrinsic has wrong type
     IntrinsicType(Span),
+
+    // method receiver
+    MethodReceiver(Span),
 }
 
 impl TypeOrigin {
     fn as_failure_str(&self) -> &'static str {
         match self {
             &TypeOrigin::Misc(_) |
-            &TypeOrigin::RelateSelfType(_) |
             &TypeOrigin::RelateOutputImplTypes(_) |
             &TypeOrigin::ExprAssignable(_) => "mismatched types",
-            &TypeOrigin::RelateTraitRefs(_) => "mismatched traits",
             &TypeOrigin::MethodCompatCheck(_) => "method not compatible with trait",
             &TypeOrigin::MatchExpressionArm(_, _, source) => match source {
                 hir::MatchSource::IfLetDesugar{..} => "`if let` arms have incompatible types",
@@ -250,6 +245,7 @@ impl TypeOrigin {
             &TypeOrigin::MainFunctionType(_) => "main function has wrong type",
             &TypeOrigin::StartFunctionType(_) => "start function has wrong type",
             &TypeOrigin::IntrinsicType(_) => "intrinsic has wrong type",
+            &TypeOrigin::MethodReceiver(_) => "mismatched method receiver",
         }
     }
 
@@ -258,8 +254,6 @@ impl TypeOrigin {
             &TypeOrigin::Misc(_) => "types are compatible",
             &TypeOrigin::MethodCompatCheck(_) => "method type is compatible with trait",
             &TypeOrigin::ExprAssignable(_) => "expression is assignable",
-            &TypeOrigin::RelateTraitRefs(_) => "traits are compatible",
-            &TypeOrigin::RelateSelfType(_) => "self type matches impl self type",
             &TypeOrigin::RelateOutputImplTypes(_) => {
                 "trait type parameters matches those specified on the impl"
             }
@@ -271,6 +265,7 @@ impl TypeOrigin {
             &TypeOrigin::MainFunctionType(_) => "`main` function has the correct type",
             &TypeOrigin::StartFunctionType(_) => "`start` function has the correct type",
             &TypeOrigin::IntrinsicType(_) => "intrinsic has the correct type",
+            &TypeOrigin::MethodReceiver(_) => "method receiver has the correct type",
         }
     }
 }
@@ -1806,8 +1801,6 @@ impl TypeOrigin {
             TypeOrigin::MethodCompatCheck(span) => span,
             TypeOrigin::ExprAssignable(span) => span,
             TypeOrigin::Misc(span) => span,
-            TypeOrigin::RelateTraitRefs(span) => span,
-            TypeOrigin::RelateSelfType(span) => span,
             TypeOrigin::RelateOutputImplTypes(span) => span,
             TypeOrigin::MatchExpressionArm(match_span, _, _) => match_span,
             TypeOrigin::IfExpression(span) => span,
@@ -1817,6 +1810,7 @@ impl TypeOrigin {
             TypeOrigin::MainFunctionType(span) => span,
             TypeOrigin::StartFunctionType(span) => span,
             TypeOrigin::IntrinsicType(span) => span,
+            TypeOrigin::MethodReceiver(span) => span,
         }
     }
 }

@@ -21,9 +21,7 @@ use std::{u8, u16, u32, u64, usize};
 const A_I8_T
     : [u32; (i8::MAX as i8 + 1u8) as usize]
     //~^ ERROR constant evaluation error [E0080]
-    //~| mismatched types
-    //~| expected `i8`
-    //~| found `u8`
+    //~| expected i8, found u8
     = [0; (i8::MAX as usize) + 1];
 
 

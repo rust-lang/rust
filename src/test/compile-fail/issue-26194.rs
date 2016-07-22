@@ -12,7 +12,7 @@ struct S(String);
 
 impl S {
     fn f(self: *mut S) -> String { self.0 }
-    //~^ ERROR mismatched types
+    //~^ ERROR mismatched method receiver
 }
 
 fn main() { S("".to_owned()).f(); }

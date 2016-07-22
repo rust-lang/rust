@@ -33,7 +33,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        let origin = TypeOrigin::Misc(sp);
+        self.demand_eqtype_with_origin(TypeOrigin::Misc(sp), expected, actual);
+    }
+
+    pub fn demand_eqtype_with_origin(&self,
+                                     origin: TypeOrigin,
+                                     expected: Ty<'tcx>,
+                                     actual: Ty<'tcx>)
+    {
         match self.eq_types(false, origin, actual, expected) {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations
