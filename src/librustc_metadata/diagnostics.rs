@@ -91,15 +91,59 @@ You need to link your code to the relevant crate in order to be able to use it
 well, and you link to them the same way.
 "##,
 
+E0466: r##"
+Invalid macro import declarations.
+
+This is a syntax error at the level of attribute declarations.
+
+Causes of this error:
+
+```ignore
+#[macro_use(a_macro(another_macro))]    // error: invalid import declaration
+extern crate some_crate;
+
+#[macro_use(i_want = "some_macros")]    // error: invalid import declaration
+extern crate another_crate;
+```
+
+Macro imports are properly declared as:
+
+```ignore
+#[macro_use(get_tacos, bring_beer)]     // imports macros get_tacos and 
+extern crate some_crate;                // bring_beer from some_crate
+```
+
+Declaring `macro_use` with no arguments will import all available macros from 
+the given crate.
+
+Exported macros must be declared as such with `macro_export`. In the above 
+example, some_crate would contain:
+
+```ignore
+#[macro_export]
+macro_rules! get_tacos {
+    ...
+}
+
+#[macro_export]
+macro_rules! bring_beer {
+    ...
+}
+```
+
+"##,
+
 E0467: r##"
 Invalid or no macros listed for reexport.
 
+This is a syntax error at the level of attribute declarations.
+
 Causes of this error:
+
 ```ignore
 #[macro_reexport] // error: no macros listed for export
 extern crate macros_for_good;
 ```
-
 ```ignore
 #[macro_reexport(fun_macro = "foo")] // error: not a macro identifier
 extern crate macros_for_good;
@@ -110,7 +154,6 @@ Unlike `macro_use`, listing no names does not reexport all macros from the
 given crate.
 
 Decide which macros you would like to export and list them properly.
-
 "##,
 
 E0468: r##"
@@ -152,44 +195,93 @@ fn main() {
 E0469: r##"
 A macro listed for import was not found.
 
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
+
 ```ignore
 /// // crate some_crate contains:
+/// #[macro_export]
 /// macro_rules! eat {
 ///     ...
 /// }
 /// macro_rules! drink {
 ///     ...
 /// }
-#[macro_use(be_merry)]      // error: be_merry is not
-extern crate some_crate;    // a macro in some_crate!
+
+// error: drink is a private macro of some_crate
+// error: be_merry does not exist in some_crate
+#[macro_use(drink, be_merry)]
+extern crate some_crate;
 ```
 
-This is likely caused by a typo. Did you misspell the macro's name?
+This could be caused by a typo. Did you misspell the macro's name?
 
 Double-check the names of the macros listed for import, and that the crate 
 in question exports them.
+
+A working version of the above:
+
+```ignore
+/// // crate some_crate contains:
+/// #[macro_export]
+/// macro_rules! eat {
+///     ...
+/// }
+/// #[macro_export]
+/// macro_rules! drink {
+///     ...
+/// }
+
+#[macro_use(eat, drink)]
+extern crate some_crate;
+```
 "##,
 
 E0470: r##"
 A macro listed for reexport was not found.
 
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
+
 ```ignore
 /// // crate some_crate contains:
+/// #[macro_export]
 /// macro_rules! eat {
 ///     ...
 /// }
 /// macro_rules! drink {
 ///     ...
 /// }
-#[macro_reexport(be_merry)] // error: be_merry is not
-extern crate some_crate;    // a macro in some_crate!
+
+// error: drink is a private macro of some_crate
+// error: be_merry does not exist in some_crate
+#[macro_reexport(drink, be_merry)]
+extern crate some_crate;
 ```
 
-This is likely caused by a typo. Did you misspell the macro's name?
+This could be caused by a typo. Did you misspell the macro's name?
 
 Double-check the names of the macros listed for reexport, and that the crate 
 in question exports them.
-"##
+
+A working version of the above:
+
+```ignore
+/// // crate some_crate contains:
+/// #[macro_export]
+/// macro_rules! eat {
+///     ...
+/// }
+/// #[macro_export]
+/// macro_rules! drink {
+///     ...
+/// }
+
+#[macro_reexport(eat, drink)]
+extern crate some_crate;
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -201,7 +293,6 @@ register_diagnostics! {
     E0462, // found staticlib `..` instead of rlib or dylib
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
-    E0466, // bad macro import
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 }
