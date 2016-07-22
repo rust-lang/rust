@@ -1016,12 +1016,12 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
 #[stable(feature = "drain", since = "1.6.0")]
-pub struct Drain<T> {
-    iter: vec::Drain<T>,
+pub struct Drain<'a, T: 'a> {
+    iter: vec::Drain<'a, T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Iterator for Drain<T> {
+impl<'a, T: 'a> Iterator for Drain<'a, T> {
     type Item = T;
 
     #[inline]
@@ -1036,7 +1036,7 @@ impl<T> Iterator for Drain<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> DoubleEndedIterator for Drain<T> {
+impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back()
@@ -1044,7 +1044,7 @@ impl<T> DoubleEndedIterator for Drain<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for Drain<T> {}
+impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
