@@ -11,12 +11,10 @@
 enum Foo {
     A = 1i64,
     //~^ ERROR constant evaluation error
-    //~| expected `isize`
-    //~| found `i64`
+    //~| expected isize, found i64
     B = 2u8
     //~^ ERROR constant evaluation error
-    //~| expected `isize`
-    //~| found `u8`
+    //~| expected isize, found u8
 }
 
 fn main() {}

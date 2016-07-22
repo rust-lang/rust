@@ -384,15 +384,6 @@ pub fn note_const_eval_err<'a, 'tcx>(
                 diag.span_label(err.span, &message);
             }
         }
-        ConstEvalErrDescription::ExpectedFound { error, expected, found } => {
-            if check_old_school() {
-                diag.note(&error);
-            } else {
-                diag.span_label(err.span, &error);
-            }
-            diag.note(&format!("expected `{}`", expected));
-            diag.note(&format!("found `{}`", found));
-        }
     }
 
     if !primary_span.contains(err.span) {
@@ -477,11 +468,6 @@ impl From<ConstMathErr> for ErrKind {
 #[derive(Clone, Debug)]
 pub enum ConstEvalErrDescription<'a> {
     Simple(Cow<'a, str>),
-    ExpectedFound {
-        error: Cow<'a, str>,
-        expected: Cow<'a, str>,
-        found: Cow<'a, str>
-    }
 }
 
 impl<'a> ConstEvalErrDescription<'a> {
@@ -489,14 +475,6 @@ impl<'a> ConstEvalErrDescription<'a> {
     pub fn into_oneline(self) -> Cow<'a, str> {
         match self {
             ConstEvalErrDescription::Simple(simple) => simple,
-            ConstEvalErrDescription::ExpectedFound {
-                error,
-                expected,
-                found
-            } => {
-                format!("{}: expected `{}`, found `{}`", error, expected, found)
-                    .into_cow()
-            }
         }
     }
 }
@@ -554,11 +532,7 @@ impl ConstEvalErr {
                  the constant evaluator"),
 
             TypeMismatch(ref expected, ref got) => {
-                ExpectedFound {
-                    error: "mismatched types".into_cow(),
-                    expected: <&str>::into_cow(expected),
-                    found: got.description().into_cow()
-                }
+                simple!("expected {}, found {}", expected, got.description())
             },
             BadType(ref i) => simple!("value of wrong type: {:?}", i),
             ErroneousReferencedConstant(_) => simple!("could not evaluate referenced constant"),

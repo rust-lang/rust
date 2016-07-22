@@ -39,14 +39,12 @@ fn main() {
     //~| ERROR expected usize for repeat count, found string literal [E0306]
     let f = [0; -4_isize];
     //~^ ERROR constant evaluation error
-    //~| expected `usize`
-    //~| found `isize`
+    //~| expected usize, found isize
     //~| ERROR mismatched types
     //~| expected usize, found isize
     let f = [0_usize; -1_isize];
     //~^ ERROR constant evaluation error
-    //~| expected `usize`
-    //~| found `isize`
+    //~| expected usize, found isize
     //~| ERROR mismatched types
     //~| expected usize, found isize
     struct G {
