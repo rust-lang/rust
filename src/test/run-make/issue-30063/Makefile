@@ -29,6 +29,10 @@ all:
 	$(RUSTC) -C codegen-units=4 --emit=dep-info -o $(TMPDIR)/dep-output foo.rs
 	rm $(TMPDIR)/dep-output
 
+	rm -f $(TMPDIR)/metadata-output
+	$(RUSTC) -C codegen-units=4 --emit=metadata -o $(TMPDIR)/metadata-output foo.rs
+	rm $(TMPDIR)/metadata-output
+
 #	# (This case doesn't work yet, and may be fundamentally wrong-headed anyway.)
 #	rm -f $(TMPDIR)/multi-output
 #	$(RUSTC) -C codegen-units=4 --emit=asm,obj -o $(TMPDIR)/multi-output foo.rs

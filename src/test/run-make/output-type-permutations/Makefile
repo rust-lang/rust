@@ -14,10 +14,11 @@ all:
 	rm -f $(TMPDIR)/bar.pdb
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --emit=asm,llvm-ir,llvm-bc,obj,link
+	$(RUSTC) foo.rs --emit=asm,llvm-ir,llvm-bc,metadata,obj,link
 	rm $(TMPDIR)/bar.ll
 	rm $(TMPDIR)/bar.bc
 	rm $(TMPDIR)/bar.s
+	rm $(TMPDIR)/bar.metadata.o
 	rm $(TMPDIR)/bar.o
 	rm $(TMPDIR)/$(call BIN,bar)
 	rm -f $(TMPDIR)/bar.pdb
@@ -44,6 +45,14 @@ all:
 	$(RUSTC) foo.rs --emit llvm-ir=$(TMPDIR)/foo
 	rm $(TMPDIR)/foo
 	$(RUSTC) foo.rs --emit=llvm-ir=$(TMPDIR)/foo
+	rm $(TMPDIR)/foo
+	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
+
+	$(RUSTC) foo.rs --emit metadata -o $(TMPDIR)/foo
+	rm $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit metadata=$(TMPDIR)/foo
+	rm $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit=metadata=$(TMPDIR)/foo
 	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
@@ -108,30 +117,35 @@ all:
 	$(RUSTC) foo.rs --emit asm=$(TMPDIR)/asm \
 			--emit llvm-ir=$(TMPDIR)/ir \
 			--emit llvm-bc=$(TMPDIR)/bc \
+		        --emit metadata=$(TMPDIR)/metadata \
 		        --emit obj=$(TMPDIR)/obj \
 			--emit link=$(TMPDIR)/link \
 			--crate-type=staticlib
 	rm $(TMPDIR)/asm
 	rm $(TMPDIR)/ir
 	rm $(TMPDIR)/bc
+	rm $(TMPDIR)/metadata
 	rm $(TMPDIR)/obj
 	rm $(TMPDIR)/link
 	$(RUSTC) foo.rs --emit=asm=$(TMPDIR)/asm \
 			--emit llvm-ir=$(TMPDIR)/ir \
 			--emit=llvm-bc=$(TMPDIR)/bc \
-		        --emit obj=$(TMPDIR)/obj \
-			--emit=link=$(TMPDIR)/link \
+		        --emit metadata=$(TMPDIR)/metadata \
+		        --emit=obj=$(TMPDIR)/obj \
+			--emit link=$(TMPDIR)/link \
 			--crate-type=staticlib
 	rm $(TMPDIR)/asm
 	rm $(TMPDIR)/ir
 	rm $(TMPDIR)/bc
+	rm $(TMPDIR)/metadata
 	rm $(TMPDIR)/obj
 	rm $(TMPDIR)/link
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --emit=asm,llvm-ir,llvm-bc,obj,link --crate-type=staticlib
+	$(RUSTC) foo.rs --emit=asm,llvm-ir,llvm-bc,metadata,obj,link --crate-type=staticlib
 	rm $(TMPDIR)/bar.ll
 	rm $(TMPDIR)/bar.s
+	rm $(TMPDIR)/bar.metadata.o
 	rm $(TMPDIR)/bar.o
 	rm $(call STATICLIB,bar)
 	mv $(TMPDIR)/bar.bc $(TMPDIR)/foo.bc
