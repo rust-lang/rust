@@ -56,6 +56,7 @@ use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
 use rustc::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
+use rustc::ty::subst::VecPerParamSpace;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -1744,6 +1745,24 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyPolyTraitRef(ref bounds) => {
                 self.conv_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
+            }
+            hir::TyImplTrait(ref bounds) => {
+                use collect::{compute_bounds, SizedByDefault};
+
+                // Create the anonymized type.
+                let def_id = tcx.map.local_def_id(ast_ty.id);
+                let substs = tcx.mk_substs(Substs::empty());
+                let ty = tcx.mk_anon(tcx.map.local_def_id(ast_ty.id), substs);
+
+                // Collect the bounds, i.e. the `Trait` in `impl Trait`.
+                let bounds = compute_bounds(self, ty, bounds, SizedByDefault::Yes, ast_ty.span);
+                let predicates = tcx.lift_to_global(&bounds.predicates(tcx, ty)).unwrap();
+                let predicates = ty::GenericPredicates {
+                    predicates: VecPerParamSpace::new(vec![], vec![], predicates)
+                };
+                tcx.predicates.borrow_mut().insert(def_id, predicates);
+
+                ty
             }
             hir::TyPath(ref maybe_qself, ref path) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);

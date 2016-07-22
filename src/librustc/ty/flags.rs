@@ -110,6 +110,11 @@ impl FlagComputation {
                 self.add_projection_ty(data);
             }
 
+            &ty::TyAnon(_, substs) => {
+                self.add_flags(TypeFlags::HAS_PROJECTION);
+                self.add_substs(substs);
+            }
+
             &ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
                 let mut computation = FlagComputation::new();
                 computation.add_substs(principal.0.substs);

@@ -211,6 +211,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyTuple(..) => Some(12),
                 ty::TyProjection(..) => Some(13),
                 ty::TyParam(..) => Some(14),
+                ty::TyAnon(..) => Some(15),
                 ty::TyInfer(..) | ty::TyError => None
             }
         }

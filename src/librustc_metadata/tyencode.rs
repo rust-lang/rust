@@ -170,6 +170,11 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
             enc_trait_ref(w, cx, data.trait_ref);
             write!(w, "{}]", data.item_name);
         }
+        ty::TyAnon(def_id, substs) => {
+            write!(w, "A[{}|", (cx.ds)(cx.tcx, def_id));
+            enc_substs(w, cx, substs);
+            write!(w, "]");
+        }
         ty::TyError => {
             write!(w, "e");
         }

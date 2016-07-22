@@ -215,6 +215,8 @@ pub enum DefPathData {
     Initializer,
     /// Pattern binding
     Binding(InternedString),
+    /// An `impl Trait` type node.
+    ImplTrait
 }
 
 impl Definitions {
@@ -368,6 +370,10 @@ impl DefPathData {
 
             Initializer => {
                 InternedString::new("{{initializer}}")
+            }
+
+            ImplTrait => {
+                InternedString::new("{{impl-Trait}}")
             }
         }
     }

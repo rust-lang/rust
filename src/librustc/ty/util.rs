@@ -437,6 +437,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
+            TyAnon(def_id, _) |
             TyFnDef(def_id, _, _) => self.def_id(def_id),
             TyFnPtr(f) => {
                 self.hash(f.unsafety);
@@ -559,7 +560,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }) => Some(true),
 
             TyArray(..) | TySlice(_) | TyTrait(..) | TyTuple(..) |
-            TyClosure(..) | TyEnum(..) | TyStruct(..) |
+            TyClosure(..) | TyEnum(..) | TyStruct(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| !self.impls_bound(tcx, param_env, ty::BoundCopy, span));
 
@@ -600,7 +601,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyStr | TyTrait(..) | TySlice(_) => Some(false),
 
             TyEnum(..) | TyStruct(..) | TyProjection(..) | TyParam(..) |
-            TyInfer(..) | TyError => None
+            TyInfer(..) | TyAnon(..) | TyError => None
         }.unwrap_or_else(|| self.impls_bound(tcx, param_env, ty::BoundSized, span));
 
         if !self.has_param_types() && !self.has_self_ty() {

@@ -27,7 +27,7 @@ use rustc::ty::{TyParam, TyRawPtr};
 use rustc::ty::{TyRef, TyStruct, TyTrait, TyTuple};
 use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use rustc::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
-use rustc::ty::TyProjection;
+use rustc::ty::{TyProjection, TyAnon};
 use rustc::ty::util::CopyImplementationError;
 use middle::free_region::FreeRegionMap;
 use CrateCtxt;
@@ -89,7 +89,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 None
             }
 
-            TyInfer(..) | TyClosure(..) => {
+            TyInfer(..) | TyClosure(..) | TyAnon(..) => {
                 // `ty` comes from a user declaration so we should only expect types
                 // that the user can type
                 span_bug!(
