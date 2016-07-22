@@ -2262,11 +2262,19 @@ fn write_metadata(cx: &SharedCrateContext,
 
 /// Find any symbols that are defined in one compilation unit, but not declared
 /// in any other compilation unit.  Give these symbols internal linkage.
-fn internalize_symbols<'a, 'tcx>(ccxs: &CrateContextList<'a, 'tcx>,
+fn internalize_symbols<'a, 'tcx>(sess: &Session,
+                                 ccxs: &CrateContextList<'a, 'tcx>,
                                  symbol_map: &SymbolMap<'tcx>,
                                  reachable: &FnvHashSet<&str>) {
     let scx = ccxs.shared();
     let tcx = scx.tcx();
+
+    // In incr. comp. mode, we can't necessarily see all refs since we
+    // don't generate LLVM IR for reused modules, so skip this
+    // step. Later we should get smarter.
+    if sess.opts.debugging_opts.incremental.is_some() {
+        return;
+    }
 
     // 'unsafe' because we are holding on to CStr's from the LLVM module within
     // this block.
@@ -2682,7 +2690,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     time(shared_ccx.sess().time_passes(), "internalize symbols", || {
-        internalize_symbols(&crate_context_list,
+        internalize_symbols(sess,
+                            &crate_context_list,
                             &symbol_map,
                             &reachable_symbols.iter()
                                               .map(|s| &s[..])

@@ -104,12 +104,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 }
             }
             TransItem::Fn(instance) => {
-                let _task;
-
-                if instance.def.is_local() {
-                    _task = ccx.tcx().dep_graph.in_task(
-                        DepNode::TransCrateItem(instance.def)); // (*)
-                }
+                let _task = ccx.tcx().dep_graph.in_task(
+                    DepNode::TransCrateItem(instance.def)); // (*)
 
                 base::trans_instance(&ccx, instance);
             }

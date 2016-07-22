@@ -13,6 +13,7 @@
 use persist::util::*;
 use rustc::dep_graph::{WorkProduct, WorkProductId};
 use rustc::session::Session;
+use rustc::util::fs::link_or_copy;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -39,10 +40,7 @@ pub fn save_trans_partition(sess: &Session,
         let _ = fs::remove_file(&path_in_incr_dir);
     }
 
-    match
-        fs::hard_link(path_to_obj_file, &path_in_incr_dir)
-        .or_else(|_| fs::copy(path_to_obj_file, &path_in_incr_dir).map(|_| ()))
-    {
+    match link_or_copy(path_to_obj_file, &path_in_incr_dir) {
         Ok(_) => {
             let work_product = WorkProduct {
                 input_hash: partition_hash,

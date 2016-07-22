@@ -20,6 +20,7 @@ use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
+use util::fs::link_or_copy;
 use errors::{self, Handler, Level, DiagnosticBuilder};
 use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
@@ -27,7 +28,6 @@ use syntax_pos::MultiSpan;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::{Arc, Mutex};
@@ -927,16 +927,6 @@ fn build_work_item(sess: &Session,
         config: config,
         output_names: output_names
     }
-}
-
-fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<()> {
-    let p = p.as_ref();
-    let q = q.as_ref();
-    if q.exists() {
-        try!(fs::remove_file(&q));
-    }
-    fs::hard_link(p, q)
-        .or_else(|_| fs::copy(p, q).map(|_| ()))
 }
 
 fn execute_work_item(cgcx: &CodegenContext,

@@ -10,6 +10,8 @@
 
 use std::path::{self, Path, PathBuf};
 use std::ffi::OsString;
+use std::fs;
+use std::io;
 
 // Unfortunately, on windows, it looks like msvcrt.dll is silently translating
 // verbatim paths under the hood to non-verbatim paths! This manifests itself as
@@ -52,4 +54,16 @@ pub fn fix_windows_verbatim_for_gcc(p: &Path) -> PathBuf {
         }
         _ => p.to_path_buf(),
     }
+}
+
+/// Copy `p` into `q`, preferring to use hard-linking if possible. If
+/// `q` already exists, it is removed first.
+pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<()> {
+    let p = p.as_ref();
+    let q = q.as_ref();
+    if q.exists() {
+        try!(fs::remove_file(&q));
+    }
+    fs::hard_link(p, q)
+        .or_else(|_| fs::copy(p, q).map(|_| ()))
 }
