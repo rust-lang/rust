@@ -19,6 +19,7 @@ use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
 use syntax::ast::NodeId;
+use std::path::{PathBuf, Path};
 
 const INDENT: &'static str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -66,9 +67,15 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _ => String::new()
     };
 
+    let mut file_path = PathBuf::new();
+    if let Some(ref file_dir) = tcx.sess.opts.debugging_opts.dump_mir_dir {
+        let p = Path::new(file_dir);
+        file_path.push(p);
+    };
     let file_name = format!("rustc.node{}{}.{}.{}.mir",
                             node_id, promotion_id, pass_name, disambiguator);
-    let _ = fs::File::create(&file_name).and_then(|mut file| {
+    file_path.push(&file_name);
+    let _ = fs::File::create(&file_path).and_then(|mut file| {
         try!(writeln!(file, "// MIR for `{}`", node_path));
         try!(writeln!(file, "// node_id = {}", node_id));
         try!(writeln!(file, "// pass_name = {}", pass_name));
