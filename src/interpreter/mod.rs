@@ -535,11 +535,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
 
                 let src = self.eval_operand(operand)?;
-                src.check_align(elem_align)?;
-                dest.check_align(elem_align)?;
                 for i in 0..length {
                     let elem_dest = dest.offset((i * elem_size) as isize);
-                    self.memory.copy(src, elem_dest, elem_size)?;
+                    self.memory.copy(src, elem_dest, elem_size, elem_align)?;
                 }
             }
 
@@ -603,17 +601,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
                         // FIXME(solson): Wrong for almost everything.
-                        // FIXME: check alignment
                         warn!("misc cast from {:?} to {:?}", src_ty, dest_ty);
                         let dest_size = self.type_size(dest_ty);
                         let src_size = self.type_size(src_ty);
+                        let dest_align = self.type_align(dest_ty);
 
                         // Hack to support fat pointer -> thin pointer casts to keep tests for
                         // other things passing for now.
                         let is_fat_ptr_cast = pointee_type(src_ty).map_or(false, |ty| !self.type_is_sized(ty));
 
                         if dest_size == src_size || is_fat_ptr_cast {
-                            self.memory.copy(src, dest, dest_size)?;
+                            self.memory.copy(src, dest, dest_size, dest_align)?;
                         } else {
                             return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue)));
                         }
@@ -858,9 +856,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
         let size = self.type_size(ty);
         let align = self.type_align(ty);
-        src.check_align(align)?;
-        dest.check_align(align)?;
-        self.memory.copy(src, dest, size)?;
+        self.memory.copy(src, dest, size, align)?;
         Ok(())
     }
 

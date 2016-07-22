@@ -291,11 +291,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let elem_size = self.type_size(elem_ty);
                 let elem_align = self.type_align(elem_ty);
                 let src = self.memory.read_ptr(args_ptrs[0])?;
-                src.check_align(elem_align)?;
                 let dest = self.memory.read_ptr(args_ptrs[1])?;
-                dest.check_align(elem_align)?;
                 let count = self.memory.read_isize(args_ptrs[2])?;
-                self.memory.copy(src, dest, count as usize * elem_size)?;
+                self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
             }
 
             "discriminant_value" => {
