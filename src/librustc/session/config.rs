@@ -747,6 +747,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "set the MIR optimization level (0-3)"),
     dump_mir: Option<String> = (None, parse_opt_string,
           "dump MIR state at various points in translation"),
+    dump_mir_dir: Option<String> = (None, parse_opt_string,
+          "the directory the MIR is dumped into"),
     orbit: bool = (false, parse_bool,
           "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }

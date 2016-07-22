@@ -277,7 +277,8 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-ui-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-error-index-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-mir-opt-exec
 
 ifndef CFG_DISABLE_CODEGEN_TESTS
 check-stage$(1)-T-$(2)-H-$(3)-exec: \
@@ -458,6 +459,7 @@ UI_RS := $(call rwildcard,$(S)src/test/ui/,*.rs) \
          $(call rwildcard,$(S)src/test/ui/,*.stdout) \
          $(call rwildcard,$(S)src/test/ui/,*.stderr)
 RUSTDOCCK_RS := $(call rwildcard,$(S)src/test/rustdoc/,*.rs)
+MIR_OPT_RS := $(call rwildcard,$(S)src/test/mir-opt/,*.rs)
 
 RPASS_TESTS := $(RPASS_RS)
 RPASS_VALGRIND_TESTS := $(RPASS_VALGRIND_RS)
@@ -475,6 +477,7 @@ CODEGEN_UNITS_TESTS := $(CODEGEN_UNITS_RS)
 INCREMENTAL_TESTS := $(INCREMENTAL_RS)
 RMAKE_TESTS := $(RMAKE_RS)
 UI_TESTS := $(UI_RS)
+MIR_OPT_TESTS := $(MIR_OPT_RS)
 RUSTDOCCK_TESTS := $(RUSTDOCCK_RS)
 
 CTEST_SRC_BASE_rpass = run-pass
@@ -551,6 +554,11 @@ CTEST_SRC_BASE_ui = ui
 CTEST_BUILD_BASE_ui = ui
 CTEST_MODE_ui = ui
 CTEST_RUNTOOL_ui = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_mir-opt = mir-opt
+CTEST_BUILD_BASE_mir-opt = mir-opt
+CTEST_MODE_mir-opt = mir-opt
+CTEST_RUNTOOL_mir-opt = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_rustdocck = rustdoc
 CTEST_BUILD_BASE_rustdocck = rustdoc
@@ -684,6 +692,7 @@ CTEST_DEPS_incremental_$(1)-T-$(2)-H-$(3) = $$(INCREMENTAL_TESTS)
 CTEST_DEPS_rmake_$(1)-T-$(2)-H-$(3) = $$(RMAKE_TESTS) \
 	$$(CSREQ$(1)_T_$(3)_H_$(3)) $$(SREQ$(1)_T_$(2)_H_$(3))
 CTEST_DEPS_ui_$(1)-T-$(2)-H-$(3) = $$(UI_TESTS)
+CTEST_DEPS_mir-opt_$(1)-T-$(2)-H-$(3) = $$(MIR_OPT_TESTS)
 CTEST_DEPS_rustdocck_$(1)-T-$(2)-H-$(3) = $$(RUSTDOCCK_TESTS) \
 		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 		$(S)src/etc/htmldocck.py
@@ -755,7 +764,7 @@ endef
 
 CTEST_NAMES = rpass rpass-valgrind rpass-full rfail-full cfail-full rfail cfail pfail \
 	debuginfo-gdb debuginfo-lldb codegen codegen-units rustdocck incremental \
-	rmake ui
+	rmake ui mir-opt
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -964,6 +973,7 @@ TEST_GROUPS = \
 	pretty-rfail-full \
 	pretty-rfail \
 	pretty-pretty \
+	mir-opt \
 	$(NULL)
 
 define DEF_CHECK_FOR_STAGE_AND_TARGET_AND_HOST

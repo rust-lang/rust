@@ -388,6 +388,10 @@ impl Build {
                     check::compiletest(self, &compiler, target.target,
                                        "pretty", "run-pass-valgrind");
                 }
+                CheckMirOpt { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "mir-opt", "mir-opt");
+                }
                 CheckCodegen { compiler } => {
                     check::compiletest(self, &compiler, target.target,
                                        "codegen", "codegen");

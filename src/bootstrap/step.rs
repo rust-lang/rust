@@ -124,6 +124,7 @@ macro_rules! targets {
             (check_codegen_units, CheckCodegenUnits { compiler: Compiler<'a> }),
             (check_incremental, CheckIncremental { compiler: Compiler<'a> }),
             (check_ui, CheckUi { compiler: Compiler<'a> }),
+            (check_mir_opt, CheckMirOpt { compiler: Compiler<'a> }),
             (check_debuginfo, CheckDebuginfo { compiler: Compiler<'a> }),
             (check_rustdoc, CheckRustdoc { compiler: Compiler<'a> }),
             (check_docs, CheckDocs { compiler: Compiler<'a> }),
@@ -450,6 +451,7 @@ impl<'a> Step<'a> {
                         self.check_pretty_rfail_full(compiler),
                         self.check_rpass_valgrind(compiler),
                         self.check_rmake(compiler),
+                        self.check_mir_opt(compiler),
 
                         // crates
                         self.check_crate_rustc(compiler),
@@ -477,6 +479,7 @@ impl<'a> Step<'a> {
             Source::CheckTidy { stage } => {
                 vec![self.tool_tidy(stage)]
             }
+            Source::CheckMirOpt { compiler} |
             Source::CheckPrettyRPass { compiler } |
             Source::CheckPrettyRFail { compiler } |
             Source::CheckRFail { compiler } |
