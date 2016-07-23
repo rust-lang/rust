@@ -258,6 +258,7 @@ pub struct Parser<'a> {
     pub tokens_consumed: usize,
     pub restrictions: Restrictions,
     pub quote_depth: usize, // not (yet) related to the quasiquoter
+    parsing_token_tree: bool,
     pub reader: Box<Reader+'a>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
@@ -374,6 +375,7 @@ impl<'a> Parser<'a> {
             tokens_consumed: 0,
             restrictions: Restrictions::empty(),
             quote_depth: 0,
+            parsing_token_tree: false,
             obsolete_set: HashSet::new(),
             mod_path_stack: Vec::new(),
             filename: filename,
@@ -2663,7 +2665,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn check_unknown_macro_variable(&mut self) {
-        if self.quote_depth == 0 {
+        if self.quote_depth == 0 && !self.parsing_token_tree {
             match self.token {
                 token::SubstNt(name) =>
                     self.fatal(&format!("unknown macro variable `{}`", name)).emit(),
@@ -2723,6 +2725,7 @@ impl<'a> Parser<'a> {
                 Err(err)
             },
             token::OpenDelim(delim) => {
+                let parsing_token_tree = ::std::mem::replace(&mut self.parsing_token_tree, true);
                 // The span for beginning of the delimited section
                 let pre_span = self.span;
 
@@ -2787,6 +2790,7 @@ impl<'a> Parser<'a> {
                     _ => {}
                 }
 
+                self.parsing_token_tree = parsing_token_tree;
                 Ok(TokenTree::Delimited(span, Rc::new(Delimited {
                     delim: delim,
                     open_span: open_span,
