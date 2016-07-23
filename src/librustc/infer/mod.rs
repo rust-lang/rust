@@ -1538,6 +1538,36 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn build_type_error_struct_str_with_expected<M>(&self,
+                                                        sp: Span,
+                                                        mk_err: M,
+                                                        expected_ty: Option<Ty<'tcx>>,
+                                                        actual_ty: String,
+                                                        err: Option<&TypeError<'tcx>>)
+                                                        -> DiagnosticBuilder<'tcx>
+        where M: FnOnce(Option<String>, String, String) -> DiagnosticBuilder<'tcx>,
+    {
+        debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
+
+        let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
+
+        if !resolved_expected.references_error() {
+            let error_str = err.map_or("".to_string(), |t_err| {
+                format!(" ({})", t_err)
+            });
+
+            let mut db = mk_err(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty,
+                                error_str);
+
+            if let Some(err) = err {
+                self.tcx.note_and_explain_type_err(&mut db, err, sp);
+            }
+            db
+        } else {
+            self.tcx.sess.diagnostic().struct_dummy()
+        }
+    }
+
     pub fn type_error_message<M>(&self,
                                  sp: Span,
                                  mk_msg: M,
@@ -1566,6 +1596,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.type_error_struct_str(sp,
             move |_e, a| { mk_msg(a) },
             self.ty_to_string(actual_ty), err)
+    }
+
+    pub fn build_type_error_struct<M>(&self,
+                                      sp: Span,
+                                      mk_err: M,
+                                      actual_ty: Ty<'tcx>,
+                                      err: Option<&TypeError<'tcx>>)
+                                      -> DiagnosticBuilder<'tcx>
+        where M: FnOnce(String, String) -> DiagnosticBuilder<'tcx>,
+    {
+        let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
+
+        // Don't report an error if actual type is TyError.
+        if actual_ty.references_error() {
+            return self.tcx.sess.diagnostic().struct_dummy();
+        }
+
+        self.build_type_error_struct_str_with_expected(sp,
+            move |_e, a, s| { mk_err(a, s) },
+            None,
+            self.ty_to_string(actual_ty),
+            err)
     }
 
     pub fn report_mismatched_types(&self,

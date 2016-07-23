@@ -3029,14 +3029,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             variant: ty::VariantDef<'tcx>,
                             field: &hir::Field,
                             skip_fields: &[hir::Field]) {
-        let mut err = self.type_error_struct(
+        let mut err = self.build_type_error_struct(
             field.name.span,
-            |actual| if let ty::TyEnum(..) = ty.sty {
-                format!("struct variant `{}::{}` has no field named `{}`",
-                        actual, variant.name.as_str(), field.name.node)
+            |actual, err_str| if let ty::TyEnum(..) = ty.sty {
+                struct_span_err!(self.tcx.sess, field.name.span, E0559,
+                                 "struct variant `{}::{}` has no field named `{}`{}",
+                                 actual, variant.name.as_str(), field.name.node, err_str)
             } else {
-                format!("structure `{}` has no field named `{}`",
-                        actual, field.name.node)
+                struct_span_err!(self.tcx.sess, field.name.span, E0560,
+                                 "structure `{}` has no field named `{}`{}",
+                                 actual, field.name.node, err_str)
             },
             ty,
             None);
