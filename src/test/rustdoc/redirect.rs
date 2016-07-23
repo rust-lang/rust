@@ -19,9 +19,9 @@ pub trait Foo {}
 // @has redirect/index.html
 // @has - '//code' 'pub use reexp_stripped::Bar'
 // @has - '//code/a' 'Bar'
-// @has reexp_stripped/hidden/struct.Bar.html
-// @has - '//p/a' '../../reexp_stripped/struct.Bar.html'
-// @has 'reexp_stripped/struct.Bar.html'
+// @has reexp_stripped/hidden/Bar.t.html
+// @has - '//p/a' '../../reexp_stripped/Bar.t.html'
+// @has 'reexp_stripped/Bar.t.html'
 #[doc(no_inline)]
 pub use reexp_stripped::Bar;
 impl Foo for Bar {}
@@ -29,9 +29,9 @@ impl Foo for Bar {}
 // @has redirect/index.html
 // @has - '//code' 'pub use reexp_stripped::Quz'
 // @has - '//code/a' 'Quz'
-// @has reexp_stripped/private/struct.Quz.html
-// @has - '//p/a' '../../reexp_stripped/struct.Quz.html'
-// @has 'reexp_stripped/struct.Quz.html'
+// @has reexp_stripped/private/Quz.t.html
+// @has - '//p/a' '../../reexp_stripped/Quz.t.html'
+// @has 'reexp_stripped/Quz.t.html'
 #[doc(no_inline)]
 pub use reexp_stripped::Quz;
 impl Foo for Quz {}

@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has issue_15169/struct.Foo.html '//*[@id="method.eq"]' 'fn eq'
+// @has issue_15169/Foo.t.html '//*[@id="eq.v"]' 'fn eq'
 #[derive(PartialEq)]
 pub struct Foo;

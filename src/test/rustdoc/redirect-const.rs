@@ -14,10 +14,10 @@ pub use hidden::STATIC_FOO;
 pub use hidden::CONST_FOO;
 
 mod hidden {
-    // @has foo/hidden/static.STATIC_FOO.html
-    // @has - '//p/a' '../../foo/static.STATIC_FOO.html'
+    // @has foo/hidden/STATIC_FOO.v.html
+    // @has - '//p/a' '../../foo/STATIC_FOO.v.html'
     pub static STATIC_FOO: u64 = 0;
-    // @has foo/hidden/constant.CONST_FOO.html
-    // @has - '//p/a' '../../foo/constant.CONST_FOO.html'
+    // @has foo/hidden/CONST_FOO.v.html
+    // @has - '//p/a' '../../foo/CONST_FOO.v.html'
     pub const CONST_FOO: u64 = 0;
 }

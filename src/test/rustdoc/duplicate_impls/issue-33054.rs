@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has issue_33054/impls/struct.Foo.html
+// @has issue_33054/impls/Foo.t.html
 // @has - '//code' 'impl Foo'
 // @has - '//code' 'impl Bar for Foo'
 // @count - '//*[@class="impl"]' 2
-// @has issue_33054/impls/bar/trait.Bar.html
+// @has issue_33054/impls/bar/Bar.t.html
 // @has - '//code' 'impl Bar for Foo'
 // @count - '//*[@class="struct"]' 1
 pub mod impls;

@@ -12,10 +12,10 @@
 // ignore-cross-compile
 // build-aux-docs
 
-// @has issue_26606_macro/macro.make_item!.html
+// @has issue_26606_macro/make_item.m.html
 #[macro_use]
 extern crate issue_26606_macro;
 
-// @has issue_26606/constant.FOO.html
+// @has issue_26606/FOO.v.html
 // @!has - '//a/@href' '../src/'
 make_item!(FOO);

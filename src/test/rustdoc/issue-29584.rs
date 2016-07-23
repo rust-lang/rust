@@ -13,6 +13,6 @@
 
 extern crate issue_29584;
 
-// @has issue_29584/struct.Foo.html
+// @has issue_29584/Foo.t.html
 // @!has - 'impl Bar for'
 pub use issue_29584::Foo;

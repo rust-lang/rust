@@ -12,7 +12,7 @@
 // rustdoc to fail, while still rendering the code-block (without highlighting).
 
 
-// @has issue_12834/fn.foo.html
+// @has issue_12834/foo.v.html
 // @has - //pre 'a + b '
 
 /// ```

@@ -9,21 +9,21 @@
 // except according to those terms.
 
 extern {
-    // @has issue_22038/fn.foo1.html \
+    // @has issue_22038/foo1.v.html \
     //      '//*[@class="rust fn"]' 'pub unsafe extern fn foo1()'
     pub fn foo1();
 }
 
 extern "system" {
-    // @has issue_22038/fn.foo2.html \
+    // @has issue_22038/foo2.v.html \
     //      '//*[@class="rust fn"]' 'pub unsafe extern "system" fn foo2()'
     pub fn foo2();
 }
 
-// @has issue_22038/fn.bar.html \
+// @has issue_22038/bar.v.html \
 //      '//*[@class="rust fn"]' 'pub extern fn bar()'
 pub extern fn bar() {}
 
-// @has issue_22038/fn.baz.html \
+// @has issue_22038/baz.v.html \
 //      '//*[@class="rust fn"]' 'pub extern "system" fn baz()'
 pub extern "system" fn baz() {}

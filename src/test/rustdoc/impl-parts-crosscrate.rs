@@ -22,7 +22,7 @@ pub struct Bar<T> { t: T }
 // full impl string.  Instead, just make sure something from each part
 // is mentioned.
 
-// @has implementors/rustdoc_impl_parts_crosscrate/trait.AnOibit.js Bar
+// @has implementors/rustdoc_impl_parts_crosscrate/AnOibit.t.js Bar
 // @has - Send
 // @has - !AnOibit
 // @has - Copy

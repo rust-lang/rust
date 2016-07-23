@@ -39,6 +39,39 @@
     // used for special search precedence
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
 
+    // Which namespace the various item types belong to.
+    var NS_TYPE = ["mod",
+                   "struct",
+                   "enum",
+                   "type",
+                   "trait",
+                   "primitive",
+                   "associatedtype"];
+    var NS_VALUE = ["externcrate",
+                    "import",
+                    "fn",
+                    "static",
+                    "impl",
+                    "tymethod",
+                    "method",
+                    "structfield",
+                    "variant",
+                    "constant",
+                    "associatedconstant"];
+    var NS_MACRO = ["macro"];
+    function nsForType(type) {
+        if (NS_TYPE.indexOf(type) >= 0) {
+            return "t";
+        } else if (NS_VALUE.indexOf(type) >= 0) {
+            return "v";
+        } else if (NS_MACRO.indexOf(type) >= 0) {
+            return "m";
+        } else {
+            // bug
+            return "";
+        }
+    }
+
     $('.js-only').removeClass('js-only');
 
     function getQueryStringParams() {
@@ -563,50 +596,35 @@
                 shown = [];
 
                 results.forEach(function(item) {
-                    var name, type, href, displayPath;
-
                     if (shown.indexOf(item) !== -1) {
                         return;
                     }
 
                     shown.push(item);
-                    name = item.name;
-                    type = itemTypes[item.ty];
+                    var type = itemTypes[item.ty];
 
+                    var displayPath;
                     if (type === 'mod') {
                         displayPath = item.path + '::';
-                        href = rootPath + item.path.replace(/::/g, '/') + '/' +
-                               name + '/index.html';
-                    } else if (type === 'static' || type === 'reexport') {
+                    } else if (type === 'static') {
                         displayPath = item.path + '::';
-                        href = rootPath + item.path.replace(/::/g, '/') +
-                               '/index.html';
                     } else if (type === "primitive") {
                         displayPath = "";
-                        href = rootPath + item.path.replace(/::/g, '/') +
-                               '/' + type + '.' + name + '.html';
                     } else if (type === "externcrate") {
                         displayPath = "";
-                        href = rootPath + name + '/index.html';
                     } else if (item.parent !== undefined) {
                         var myparent = item.parent;
-                        var anchor = '#' + type + '.' + name;
                         displayPath = item.path + '::' + myparent.name + '::';
-                        href = rootPath + item.path.replace(/::/g, '/') +
-                               '/' + itemTypes[myparent.ty] +
-                               '.' + myparent.name +
-                               '.html' + anchor;
                     } else {
                         displayPath = item.path + '::';
-                        href = rootPath + item.path.replace(/::/g, '/') +
-                               '/' + type + '.' + name + '.html';
                     }
 
+                    var name = item.name;
                     output += '<tr class="' + type + ' result"><td>' +
-                              '<a href="' + href + '">' +
+                              '<a href="' + rootPath + item.href + '">' +
                               displayPath + '<span class="' + type + '">' +
                               name + '</span></a></td><td>' +
-                              '<a href="' + href + '">' +
+                              '<a href="' + rootPath + item.href + '">' +
                               '<span class="desc">' + item.desc +
                               '&nbsp;</span></a></td></tr>';
                 });
@@ -700,8 +718,9 @@
                 //              (String) name,
                 //              (String) full path or empty string for previous path,
                 //              (String) description,
-                //              (Number | null) the parent path index to `paths`]
-                //              (Object | null) the type of the function (if any)
+                //              (Number | null) the parent path index to `paths`],
+                //              (Object | null) the type of the function (if any),
+                //              (String) href for the item.
                 var items = rawSearchIndex[crate].items;
                 // an array of [(Number) item type,
                 //              (String) name]
@@ -726,7 +745,7 @@
                     var rawRow = items[i];
                     var row = {crate: crate, ty: rawRow[0], name: rawRow[1],
                                path: rawRow[2] || lastPath, desc: rawRow[3],
-                               parent: paths[rawRow[4]], type: rawRow[5]};
+                               parent: paths[rawRow[4]], type: rawRow[5], href: rawRow[6]};
                     searchIndex.push(row);
                     if (typeof row.name === "string") {
                         var word = row.name.toLowerCase();
@@ -867,16 +886,11 @@
                 var desc = item[1]; // can be null
 
                 var klass = shortty;
-                if (name === current.name && shortty === current.ty) {
+                if (name === current.name && shortty === current.cssClass) {
                     klass += ' current';
                 }
-                var path;
-                if (shortty === 'mod') {
-                    path = name + '/index.html';
-                } else {
-                    path = shortty + '.' + name + '.html';
-                }
-                var link = $('<a>', {'href': current.relpath + path,
+                console.log(item);
+                var link = $('<a>', {'href': current.relpath + item[2],
                                      'title': desc,
                                      'class': klass}).text(name);
                 ul.append($('<li>').append(link));

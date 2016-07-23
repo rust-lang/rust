@@ -14,7 +14,7 @@
 
 extern crate rustdoc_trait_object_impl;
 
-// @has issue_32881/trait.Bar.html
+// @has issue_32881/Bar.t.html
 // @has - '//code' "impl<'a> Bar"
 // @has - '//code' "impl<'a> Debug for Bar"
 

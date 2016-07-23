@@ -14,7 +14,7 @@
 
 extern crate bar;
 
-// @has issue_33113/trait.Bar.html
+// @has issue_33113/Bar.t.html
 // @has - '//code' "for &'a char"
 // @has - '//code' "for Foo"
 pub use bar::Bar;

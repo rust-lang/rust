@@ -11,22 +11,22 @@
 #![crate_name = "foo"]
 
 mod hidden {
-    // @has foo/hidden/struct.Foo.html
-    // @has - '//p/a' '../../foo/struct.FooBar.html'
+    // @has foo/hidden/Foo.t.html
+    // @has - '//p/a' '../../foo/FooBar.t.html'
     pub struct Foo {}
 
     // @has foo/hidden/bar/index.html
     // @has - '//p/a' '../../foo/baz/index.html'
     pub mod bar {
-        // @has foo/hidden/bar/struct.Thing.html
-        // @has - '//p/a' '../../foo/baz/struct.Thing.html'
+        // @has foo/hidden/bar/Thing.t.html
+        // @has - '//p/a' '../../foo/baz/Thing.t.html'
         pub struct Thing {}
     }
 }
 
-// @has foo/struct.FooBar.html
+// @has foo/FooBar.t.html
 pub use hidden::Foo as FooBar;
 
 // @has foo/baz/index.html
-// @has foo/baz/struct.Thing.html
+// @has foo/baz/Thing.t.html
 pub use hidden::bar as baz;

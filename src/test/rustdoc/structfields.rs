@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has structfields/struct.Foo.html
+// @has structfields/Foo.t.html
 pub struct Foo {
     // @has - //pre "pub a: ()"
     pub a: (),
@@ -22,14 +22,14 @@ pub struct Foo {
     pub d: usize,
 }
 
-// @has structfields/struct.Bar.html
+// @has structfields/Bar.t.html
 pub struct Bar {
     // @has - //pre "pub a: ()"
     pub a: (),
     // @!has - //pre "// some fields omitted"
 }
 
-// @has structfields/enum.Qux.html
+// @has structfields/Qux.t.html
 pub enum Qux {
     Quz {
         // @has - //pre "a: ()"

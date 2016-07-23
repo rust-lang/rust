@@ -14,7 +14,7 @@
 extern crate issue_13698;
 
 pub struct Foo;
-// @!has issue_13698/struct.Foo.html '//*[@id="method.foo"]' 'fn foo'
+// @!has issue_13698/Foo.t.html '//*[@id="foo.v"]' 'fn foo'
 impl issue_13698::Foo for Foo {}
 
 pub trait Bar {
@@ -22,5 +22,5 @@ pub trait Bar {
     fn bar(&self) {}
 }
 
-// @!has issue_13698/struct.Foo.html '//*[@id="method.foo"]' 'fn bar'
+// @!has issue_13698/Foo.t.html '//*[@id="foo.v"]' 'fn bar'
 impl Bar for Foo {}

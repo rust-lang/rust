@@ -20,8 +20,8 @@ mod bar {
     }
 }
 
-// @has issue_28537/struct.Foo.html
+// @has issue_28537/Foo.t.html
 pub use foo::Foo;
 
-// @has issue_28537/struct.Bar.html
+// @has issue_28537/Bar.t.html
 pub use self::bar::Bar;

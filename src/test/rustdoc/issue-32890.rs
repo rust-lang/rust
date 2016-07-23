@@ -1,3 +1,4 @@
+
 // Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -8,20 +9,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has issue_32890/struct.Foo.html
+// @has issue_32890/Foo.t.html
 pub struct Foo<T>(T);
 
 impl Foo<u8> {
-    // @has - '//a[@href="#method.pass"]' 'pass'
+    // @has - '//a[@href="#pass.v"]' 'pass'
     pub fn pass() {}
 }
 
 impl Foo<u16> {
-    // @has - '//a[@href="#method.pass-1"]' 'pass'
+    // @has - '//a[@href="#pass.v-1"]' 'pass'
     pub fn pass() {}
 }
 
 impl Foo<u32> {
-    // @has - '//a[@href="#method.pass-2"]' 'pass'
+    // @has - '//a[@href="#pass.v-2"]' 'pass'
     pub fn pass() {}
 }

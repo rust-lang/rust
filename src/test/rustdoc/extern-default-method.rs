@@ -13,5 +13,5 @@
 
 extern crate rustdoc_extern_default_method as ext;
 
-// @count extern_default_method/struct.Struct.html '//*[@id="method.provided"]' 1
+// @count extern_default_method/Struct.t.html '//*[@id="provided.v"]' 1
 pub use ext::Struct;

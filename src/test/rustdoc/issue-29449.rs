@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has issue_29449/struct.Foo.html
+// @has issue_29449/Foo.t.html
 pub struct Foo;
 
 impl Foo {
