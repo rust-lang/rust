@@ -68,6 +68,16 @@ In the initializer for a `struct` with named fields, a `union` with named
 fields, or an enum variant with named fields, accept an identifier `field` as a
 shorthand for `field: field`.
 
+With reference to the grammar in `parser-lalr.y`, this proposal would
+expand the `field_init`
+[rule](https://github.com/rust-lang/rust/blob/master/src/grammar/parser-lalr.y#L1663-L1665)
+to the following:
+
+    field_init
+    : ident
+    | ident ':' expr
+    ;
+
 ## Interpretation
 
 The shorthand initializer `field` always behaves in every possible way like the
