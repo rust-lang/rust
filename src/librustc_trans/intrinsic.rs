@@ -1193,11 +1193,17 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // managed by the standard library.
 
         attributes::emit_uwtable(bcx.fcx.llfn, true);
-        let catch_pers = match tcx.lang_items.eh_personality_catch() {
-            Some(did) => {
-                Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
+        let target = &bcx.sess().target.target;
+        let catch_pers = if target.arch == "arm" && target.target_os != "ios" {
+            // Only ARM still uses a separate catch personality (for now)
+            match tcx.lang_items.eh_personality_catch() {
+                Some(did) => {
+                    Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
+                }
+                None => bug!("eh_personality_catch not defined"),
             }
-            None => bug!("eh_personality_catch not defined"),
+        } else {
+            bcx.fcx.eh_personality()
         };
 
         let then = bcx.fcx.new_temp_block("then");

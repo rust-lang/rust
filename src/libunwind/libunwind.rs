@@ -58,6 +58,7 @@ pub enum _Unwind_Reason_Code {
 pub type _Unwind_Exception_Class = u64;
 
 pub type _Unwind_Word = libc::uintptr_t;
+pub type _Unwind_Ptr = libc::uintptr_t;
 
 pub type _Unwind_Trace_Fn = extern "C" fn(ctx: *mut _Unwind_Context, arg: *mut libc::c_void)
                                           -> _Unwind_Reason_Code;
@@ -155,6 +156,13 @@ extern "C" {
     pub fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
                              ip_before_insn: *mut libc::c_int)
                              -> libc::uintptr_t;
+
+    pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub fn _Unwind_GetTextRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: libc::c_int, value: _Unwind_Ptr);
+    pub fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Ptr);
 
     #[cfg(all(not(target_os = "android"),
               not(all(target_os = "linux", target_arch = "arm"))))]
