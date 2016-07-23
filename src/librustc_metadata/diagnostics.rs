@@ -14,7 +14,7 @@ register_long_diagnostics! {
 E0454: r##"
 A link name was given with an empty name. Erroneous code example:
 
-```ignore
+```compile_fail,E0454
 #[link(name = "")] extern {} // error: #[link(name = "")] given with empty name
 ```
 
@@ -50,7 +50,7 @@ See more: https://doc.rust-lang.org/book/conditional-compilation.html
 E0458: r##"
 An unknown "kind" was specified for a link attribute. Erroneous code example:
 
-```ignore
+```compile_fail,E0458
 #[link(kind = "wonderful_unicorn")] extern {}
 // error: unknown kind: `wonderful_unicorn`
 ```
@@ -64,7 +64,7 @@ Please specify a valid "kind" value, from one of the following:
 E0459: r##"
 A link was used without a name parameter. Erroneous code example:
 
-```ignore
+```compile_fail,E0458
 #[link(kind = "dylib")] extern {}
 // error: #[link(...)] specified without `name = "foo"`
 ```
@@ -92,15 +92,15 @@ well, and you link to them the same way.
 "##,
 
 E0466: r##"
-Invalid macro import declarations.
+Macro import declarations were malformed.
 
 Causes of this error:
 
-```ignore
-#[macro_use(a_macro(another_macro))]    // error: invalid import declaration
+```compile_fail
+#[macro_use(a_macro(another_macro))] // error: invalid import declaration
 extern crate some_crate;
 
-#[macro_use(i_want = "some_macros")]    // error: invalid import declaration
+#[macro_use(i_want = "some_macros")] // error: invalid import declaration
 extern crate another_crate;
 ```
 
@@ -109,16 +109,18 @@ This is a syntax error at the level of attribute declarations.
 The proper syntax for macro imports is the following:
 
 ```ignore
-// // some_crate contains:
-// #[macro_export]
-// macro_rules! get_tacos {
-//     ...
-// }
-//
-// #[macro_export]
-// macro_rules! bring_beer {
-//     ...
-// }
+// in some_crate:
+#[macro_export]
+macro_rules! get_tacos {
+    ...
+}
+
+#[macro_export]
+macro_rules! bring_beer {
+    ...
+}
+
+// in your crate:
 #[macro_use(get_tacos, bring_beer)]     // imports macros get_tacos and
 extern crate some_crate;                // bring_beer from some_crate
 ```
@@ -128,15 +130,15 @@ arguments.
 "##,
 
 E0467: r##"
-Invalid or no macros listed for reexport.
+Macro reexport declarations were empty or malformed.
 
 Causes of this error:
 
-```ignore
-#[macro_reexport]                   // error: no macros listed for export
+```compile_fail,E0467
+#[macro_reexport]                    // error: no macros listed for export
 extern crate macros_for_good;
 ```
-```ignore
+```compile_fail,E0467
 #[macro_reexport(fun_macro = "foo")] // error: not a macro identifier
 extern crate macros_for_good;
 ```
@@ -162,7 +164,7 @@ A non-root module attempts to import macros from another crate.
 
 Example of erroneous code:
 
-```ignore
+```compile_fail,E0468
 mod foo {
     #[macro_use(helpful_macro)] // error: must be at crate root to import
     extern crate some_crate;    //        macros from another crate
@@ -184,6 +186,7 @@ This will work:
 ```ignore
 #[macro_use(helpful_macro)]
 extern crate some_crate;
+
 mod foo {
     helpful_macro!(...)
 }
@@ -201,15 +204,16 @@ A macro listed for import was not found.
 Example of erroneous code:
 
 ```ignore
-/// // crate some_crate contains:
-/// #[macro_export]
-/// macro_rules! eat {
-///     ...
-/// }
-/// macro_rules! drink {
-///     ...
-/// }
+// in some_crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+macro_rules! drink {
+    ...
+}
 
+// In your crate:
 // error: drink is a private macro of some_crate
 // error: be_merry does not exist in some_crate
 #[macro_use(drink, be_merry)]
@@ -227,16 +231,17 @@ in question exports them.
 A working version of the above:
 
 ```ignore
-/// // crate some_crate contains:
-/// #[macro_export]
-/// macro_rules! eat {
-///     ...
-/// }
-/// #[macro_export]
-/// macro_rules! drink {
-///     ...
-/// }
+// In some_crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+#[macro_export]
+macro_rules! drink {
+    ...
+}
 
+// In your crate:
 #[macro_use(eat, drink)]
 extern crate some_crate;
 ```
@@ -248,15 +253,16 @@ A macro listed for reexport was not found.
 Example of erroneous code:
 
 ```ignore
-/// // crate some_crate contains:
-/// #[macro_export]
-/// macro_rules! eat {
-///     ...
-/// }
-/// macro_rules! drink {
-///     ...
-/// }
+// In some_crate
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+macro_rules! drink {
+    ...
+}
 
+// In your crate:
 // error: drink is a private macro of some_crate
 // error: be_merry does not exist in some_crate
 #[macro_reexport(drink, be_merry)]
@@ -274,16 +280,17 @@ in question exports them.
 A working version of the above:
 
 ```ignore
-/// // crate some_crate contains:
-/// #[macro_export]
-/// macro_rules! eat {
-///     ...
-/// }
-/// #[macro_export]
-/// macro_rules! drink {
-///     ...
-/// }
+// In some_crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+#[macro_export]
+macro_rules! drink {
+    ...
+}
 
+// In your_crate:
 #[macro_reexport(eat, drink)]
 extern crate some_crate;
 ```
