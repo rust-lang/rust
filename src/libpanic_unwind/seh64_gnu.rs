@@ -19,7 +19,7 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::intrinsics;
 use core::ptr;
-use dwarf::eh;
+use dwarf::eh::{EHContext, EHAction, find_eh_action};
 use windows as c;
 
 // Define our exception codes:
@@ -81,6 +81,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send> {
 // This is considered acceptable, because the behavior of throwing exceptions
 // through a C ABI boundary is undefined.
 
+#[cfg(stage0)]
 #[lang = "eh_personality_catch"]
 #[cfg(not(test))]
 unsafe extern "C" fn rust_eh_personality_catch(exceptionRecord: *mut c::EXCEPTION_RECORD,
@@ -132,11 +133,17 @@ unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: c::LPVOID) -> ! {
 }
 
 unsafe fn find_landing_pad(dc: &c::DISPATCHER_CONTEXT) -> Option<usize> {
-    let eh_ctx = eh::EHContext {
-        ip: dc.ControlPc as usize,
+    let eh_ctx = EHContext {
+        // The return address points 1 byte past the call instruction,
+        // which could be in the next IP range in LSDA range table.
+        ip: dc.ControlPc as usize - 1,
         func_start: dc.ImageBase as usize + (*dc.FunctionEntry).BeginAddress as usize,
-        text_start: dc.ImageBase as usize,
-        data_start: 0,
+        get_text_start: &|| dc.ImageBase as usize,
+        get_data_start: &|| unimplemented!(),
     };
-    eh::find_landing_pad(dc.HandlerData, &eh_ctx)
+    match find_eh_action(dc.HandlerData, &eh_ctx) {
+        EHAction::None => None,
+        EHAction::Cleanup(lpad) | EHAction::Catch(lpad) => Some(lpad),
+        EHAction::Terminate => intrinsics::abort(),
+    }
 }

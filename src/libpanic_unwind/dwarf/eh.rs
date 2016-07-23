@@ -45,16 +45,25 @@ pub const DW_EH_PE_aligned: u8 = 0x50;
 pub const DW_EH_PE_indirect: u8 = 0x80;
 
 #[derive(Copy, Clone)]
-pub struct EHContext {
+pub struct EHContext<'a> {
     pub ip: usize, // Current instruction pointer
     pub func_start: usize, // Address of the current function
-    pub text_start: usize, // Address of the code section
-    pub data_start: usize, // Address of the data section
+    pub get_text_start: &'a Fn() -> usize, // Get address of the code section
+    pub get_data_start: &'a Fn() -> usize, // Get address of the data section
 }
 
-pub unsafe fn find_landing_pad(lsda: *const u8, context: &EHContext) -> Option<usize> {
+pub enum EHAction {
+    None,
+    Cleanup(usize),
+    Catch(usize),
+    Terminate,
+}
+
+pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
+
+pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
     if lsda.is_null() {
-        return None;
+        return EHAction::None;
     }
 
     let func_start = context.func_start;
@@ -77,32 +86,62 @@ pub unsafe fn find_landing_pad(lsda: *const u8, context: &EHContext) -> Option<u
     let call_site_encoding = reader.read::<u8>();
     let call_site_table_length = reader.read_uleb128();
     let action_table = reader.ptr.offset(call_site_table_length as isize);
-    // Return addresses point 1 byte past the call instruction, which could
-    // be in the next IP range.
-    let ip = context.ip - 1;
+    let ip = context.ip;
 
-    while reader.ptr < action_table {
-        let cs_start = read_encoded_pointer(&mut reader, context, call_site_encoding);
-        let cs_len = read_encoded_pointer(&mut reader, context, call_site_encoding);
-        let cs_lpad = read_encoded_pointer(&mut reader, context, call_site_encoding);
-        let cs_action = reader.read_uleb128();
-        // Callsite table is sorted by cs_start, so if we've passed the ip, we
-        // may stop searching.
-        if ip < func_start + cs_start {
-            break;
+    if !USING_SJLJ_EXCEPTIONS {
+        while reader.ptr < action_table {
+            let cs_start = read_encoded_pointer(&mut reader, context, call_site_encoding);
+            let cs_len = read_encoded_pointer(&mut reader, context, call_site_encoding);
+            let cs_lpad = read_encoded_pointer(&mut reader, context, call_site_encoding);
+            let cs_action = reader.read_uleb128();
+            // Callsite table is sorted by cs_start, so if we've passed the ip, we
+            // may stop searching.
+            if ip < func_start + cs_start {
+                break;
+            }
+            if ip < func_start + cs_start + cs_len {
+                if cs_lpad == 0 {
+                    return EHAction::None;
+                } else {
+                    let lpad = lpad_base + cs_lpad;
+                    return interpret_cs_action(cs_action, lpad);
+                }
+            }
         }
-        if ip < func_start + cs_start + cs_len {
-            if cs_lpad != 0 {
-                return Some(lpad_base + cs_lpad);
-            } else {
-                return None;
+        // If ip is not present in the table, call terminate.  This is for
+        // a destructor inside a cleanup, or a library routine the compiler
+        // was not expecting to throw
+        EHAction::Terminate
+    } else {
+        // SjLj version:
+        // The "IP" is an index into the call-site table, with two exceptions:
+        // -1 means 'no-action', and 0 means 'terminate'.
+        match ip as isize {
+           -1 => return EHAction::None,
+            0 => return EHAction::Terminate,
+            _ => (),
+        }
+        let mut idx = ip;
+        loop {
+            let cs_lpad = reader.read_uleb128();
+            let cs_action = reader.read_uleb128();
+            idx -= 1;
+            if idx == 0 {
+                // Can never have null landing pad for sjlj -- that would have
+                // been indicated by a -1 call site index.
+                let lpad = (cs_lpad + 1) as usize;
+                return interpret_cs_action(cs_action, lpad);
             }
         }
     }
-    // IP range not found: gcc's C++ personality calls terminate() here,
-    // however the rest of the languages treat this the same as cs_lpad == 0.
-    // We follow this suit.
-    None
+}
+
+fn interpret_cs_action(cs_action: u64, lpad: usize) -> EHAction {
+    if cs_action == 0 {
+        EHAction::Cleanup(lpad)
+    } else {
+        EHAction::Catch(lpad)
+    }
 }
 
 #[inline]
@@ -140,17 +179,15 @@ unsafe fn read_encoded_pointer(reader: &mut DwarfReader,
         DW_EH_PE_absptr => 0,
         // relative to address of the encoded value, despite the name
         DW_EH_PE_pcrel => reader.ptr as usize,
-        DW_EH_PE_textrel => {
-            assert!(context.text_start != 0);
-            context.text_start
-        }
-        DW_EH_PE_datarel => {
-            assert!(context.data_start != 0);
-            context.data_start
-        }
         DW_EH_PE_funcrel => {
             assert!(context.func_start != 0);
             context.func_start
+        }
+        DW_EH_PE_textrel => {
+            (*context.get_text_start)()
+        }
+        DW_EH_PE_datarel => {
+            (*context.get_data_start)()
         }
         _ => panic!(),
     };
