@@ -94,7 +94,7 @@ well, and you link to them the same way.
 E0466: r##"
 Macro import declarations were malformed.
 
-Causes of this error:
+Erroneous code xamples:
 
 ```compile_fail
 #[macro_use(a_macro(another_macro))] // error: invalid import declaration
@@ -132,7 +132,7 @@ arguments.
 E0467: r##"
 Macro reexport declarations were empty or malformed.
 
-Causes of this error:
+Erroneous code examples:
 
 ```compile_fail,E0467
 #[macro_reexport]                    // error: no macros listed for export
@@ -201,7 +201,7 @@ fn main() {
 E0469: r##"
 A macro listed for import was not found.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```ignore
 // in some_crate:
@@ -250,7 +250,7 @@ extern crate some_crate;
 E0470: r##"
 A macro listed for reexport was not found.
 
-Example of erroneous code:
+Erroneous code example:
 
 ```ignore
 // In some_crate
