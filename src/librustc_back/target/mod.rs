@@ -79,12 +79,38 @@ macro_rules! supported_targets {
                     $triple => {
                         let mut t = try!($module::target());
                         t.options.is_builtin = true;
+
+                        // round-trip through the JSON parser to ensure at
+                        // run-time that the parser works correctly
+                        t = try!(Target::from_json(t.to_json()));
                         debug!("Got builtin target: {:?}", t);
                         Ok(t)
                     },
                 )+
                 _ => Err(format!("Unable to find target: {}", target))
             }
+        }
+
+        #[cfg(test)]
+        mod test_json_encode_decode {
+            use serialize::json::ToJson;
+            use super::Target;
+            $(use super::$module;)*
+
+            $(
+                #[test]
+                fn $module() {
+                    // Grab the TargetResult struct. If we successfully retrieved
+                    // a Target, then the test JSON encoding/decoding can run for this
+                    // Target on this testing platform (i.e., checking the iOS targets
+                    // only on a Mac test platform).
+                    let _ = $module::target().map(|original| {
+                        let as_json = original.to_json();
+                        let parsed = Target::from_json(as_json).unwrap();
+                        assert_eq!(original, parsed);
+                    });
+                }
+            )*
         }
     )
 }
@@ -148,7 +174,7 @@ supported_targets! {
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Target {
     /// Target triple to pass to LLVM.
     pub llvm_target: String,
@@ -175,7 +201,7 @@ pub struct Target {
 ///
 /// This has an implementation of `Default`, see each field for what the default is. In general,
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
