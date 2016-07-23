@@ -20,11 +20,11 @@ skipped=0
 check() {
     grep --silent "// ignore-lexer-test" "$1";
 
-    # if it's *not* found...
+    # if it is *not* found...
     if [ $? -eq 1 ]; then
-        cd $2 # This `cd` is so java will pick up RustLexer.class. I couldn't
+        cd $2 # This `cd` is so java will pick up RustLexer.class. I could not
         # figure out how to wrangle the CLASSPATH, just adding build/grammar
-        # didn't seem to have any effect.
+        # did not seem to have any effect.
         if $3 RustLexer tokens -tokens < $1 | $4 $1 $5; then
             echo "pass: $1"
             passed=`expr $passed + 1`
