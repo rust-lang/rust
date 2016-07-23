@@ -62,15 +62,21 @@ and from ES6
 # Detailed design
 [design]: #detailed-design
 
+## Grammar
+
 In the initializer for a `struct` with named fields, a `union` with named
 fields, or an enum variant with named fields, accept an identifier `field` as a
 shorthand for `field: field`.
+
+## Interpretation
 
 The shorthand initializer `field` always behaves in every possible way like the
 longhand initializer `field: field`. This RFC introduces no new behavior or
 semantics, only a purely syntactic shorthand. The rest of this section only
 provides further examples to explicitly clarify that this new syntax remains
 entirely orthogonal to other initializer behavior and semantics.
+
+## Examples
 
 If the struct `SomeStruct` has fields `field1` and `field2`, the initializer
 `SomeStruct { field1, field2 }` behaves in every way like the initializer
@@ -89,6 +95,8 @@ An initializer may use shorthand field initializers together with
     let a = SomeStruct { field1, .. someStructInstance };
     let b = SomeStruct { field1: field1, .. someStructInstance };
     assert_eq!(a, b);
+
+## Compilation errors
 
 This shorthand initializer syntax does not introduce any new compiler errors
 that cannot also occur with the longhand initializer syntax `field: field`.
