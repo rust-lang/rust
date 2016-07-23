@@ -19,6 +19,6 @@ pub fn opts() -> TargetOptions {
         is_like_solaris: true,
         exe_allocation_crate: super::maybe_jemalloc(),
 
-        .. Default::default()
+        ..Default::default()
     }
 }

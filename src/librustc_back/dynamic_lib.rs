@@ -17,14 +17,12 @@ use std::ffi::{CString, OsString};
 use std::path::{Path, PathBuf};
 
 pub struct DynamicLibrary {
-    handle: *mut u8
+    handle: *mut u8,
 }
 
 impl Drop for DynamicLibrary {
     fn drop(&mut self) {
-        unsafe {
-            dl::close(self.handle)
-        }
+        unsafe { dl::close(self.handle) }
     }
 }
 
@@ -39,7 +37,7 @@ impl DynamicLibrary {
         // run.
         match maybe_library {
             Err(err) => Err(err),
-            Ok(handle) => Ok(DynamicLibrary { handle: handle })
+            Ok(handle) => Ok(DynamicLibrary { handle: handle }),
         }
     }
 
@@ -47,7 +45,8 @@ impl DynamicLibrary {
     pub fn prepend_search_path(path: &Path) {
         let mut search_path = DynamicLibrary::search_path();
         search_path.insert(0, path.to_path_buf());
-        env::set_var(DynamicLibrary::envvar(), &DynamicLibrary::create_path(&search_path));
+        env::set_var(DynamicLibrary::envvar(),
+                     &DynamicLibrary::create_path(&search_path));
     }
 
     /// From a slice of paths, create a new vector which is suitable to be an
@@ -55,7 +54,9 @@ impl DynamicLibrary {
     pub fn create_path(path: &[PathBuf]) -> OsString {
         let mut newvar = OsString::new();
         for (i, path) in path.iter().enumerate() {
-            if i > 0 { newvar.push(DynamicLibrary::separator()); }
+            if i > 0 {
+                newvar.push(DynamicLibrary::separator());
+            }
             newvar.push(path);
         }
         return newvar;
@@ -74,7 +75,11 @@ impl DynamicLibrary {
     }
 
     fn separator() -> &'static str {
-        if cfg!(windows) { ";" } else { ":" }
+        if cfg!(windows) {
+            ";"
+        } else {
+            ":"
+        }
     }
 
     /// Returns the current search path for dynamic libraries being used by this
@@ -98,7 +103,7 @@ impl DynamicLibrary {
         // the destructor does not run.
         match maybe_symbol_value {
             Err(err) => Err(err),
-            Ok(symbol_value) => Ok(symbol_value as *mut T)
+            Ok(symbol_value) => Ok(symbol_value as *mut T),
         }
     }
 }
@@ -112,20 +117,20 @@ mod tests {
     #[test]
     fn test_loading_cosine() {
         if cfg!(windows) {
-            return
+            return;
         }
 
         // The math library does not need to be loaded since it is already
         // statically linked in
         let libm = match DynamicLibrary::open(None) {
             Err(error) => panic!("Could not load self as module: {}", error),
-            Ok(libm) => libm
+            Ok(libm) => libm,
         };
 
-        let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
+        let cosine: extern "C" fn(libc::c_double) -> libc::c_double = unsafe {
             match libm.symbol("cos") {
                 Err(error) => panic!("Could not load function cos: {}", error),
-                Ok(cosine) => mem::transmute::<*mut u8, _>(cosine)
+                Ok(cosine) => mem::transmute::<*mut u8, _>(cosine),
             }
         };
 
@@ -133,8 +138,10 @@ mod tests {
         let expected_result = 1.0;
         let result = cosine(argument);
         if result != expected_result {
-            panic!("cos({}) != {} but equaled {} instead", argument,
-                   expected_result, result)
+            panic!("cos({}) != {} but equaled {} instead",
+                   argument,
+                   expected_result,
+                   result)
         }
     }
 
@@ -143,7 +150,7 @@ mod tests {
         use std::path::Path;
 
         if !cfg!(unix) {
-            return
+            return;
         }
 
         // Open /dev/null as a library to get an error, and make sure
@@ -151,7 +158,7 @@ mod tests {
         let path = Path::new("/dev/null");
         match DynamicLibrary::open(Some(&path)) {
             Err(_) => {}
-            Ok(_) => panic!("Successfully opened the empty library.")
+            Ok(_) => panic!("Successfully opened the empty library."),
         }
     }
 }
@@ -159,7 +166,7 @@ mod tests {
 #[cfg(unix)]
 mod dl {
     use libc;
-    use std::ffi::{CStr, OsStr, CString};
+    use std::ffi::{CStr, CString, OsStr};
     use std::os::unix::prelude::*;
     use std::ptr;
     use std::str;
@@ -186,10 +193,10 @@ mod dl {
         libc::dlopen(ptr::null(), LAZY) as *mut u8
     }
 
-    pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
-        F: FnOnce() -> T,
+    pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String>
+        where F: FnOnce() -> T
     {
-        use std::sync::{Mutex, Once, ONCE_INIT};
+        use std::sync::{Mutex, ONCE_INIT, Once};
         static INIT: Once = ONCE_INIT;
         static mut LOCK: *mut Mutex<()> = 0 as *mut _;
         unsafe {
@@ -215,15 +222,12 @@ mod dl {
         }
     }
 
-    pub unsafe fn symbol(handle: *mut u8,
-                         symbol: *const libc::c_char)
-                         -> Result<*mut u8, String> {
-        check_for_errors_in(|| {
-            libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8
-        })
+    pub unsafe fn symbol(handle: *mut u8, symbol: *const libc::c_char) -> Result<*mut u8, String> {
+        check_for_errors_in(|| libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8)
     }
     pub unsafe fn close(handle: *mut u8) {
-        libc::dlclose(handle as *mut libc::c_void); ()
+        libc::dlclose(handle as *mut libc::c_void);
+        ()
     }
 }
 
@@ -234,7 +238,7 @@ mod dl {
     use std::os::windows::prelude::*;
     use std::ptr;
 
-    use libc::{c_uint, c_void, c_char};
+    use libc::{c_char, c_uint, c_void};
 
     type DWORD = u32;
     type HMODULE = *mut u8;
@@ -243,14 +247,10 @@ mod dl {
     type LPCSTR = *const i8;
 
     extern "system" {
-        fn SetThreadErrorMode(dwNewMode: DWORD,
-                              lpOldMode: *mut DWORD) -> c_uint;
+        fn SetThreadErrorMode(dwNewMode: DWORD, lpOldMode: *mut DWORD) -> c_uint;
         fn LoadLibraryW(name: LPCWSTR) -> HMODULE;
-        fn GetModuleHandleExW(dwFlags: DWORD,
-                              name: LPCWSTR,
-                              handle: *mut HMODULE) -> BOOL;
-        fn GetProcAddress(handle: HMODULE,
-                          name: LPCSTR) -> *mut c_void;
+        fn GetModuleHandleExW(dwFlags: DWORD, name: LPCWSTR, handle: *mut HMODULE) -> BOOL;
+        fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
         fn FreeLibrary(handle: HMODULE) -> BOOL;
     }
 
@@ -260,28 +260,22 @@ mod dl {
             // SEM_FAILCRITICALERRORS 0x01
             let new_error_mode = 1;
             let mut prev_error_mode = 0;
-            let result = SetThreadErrorMode(new_error_mode,
-                                            &mut prev_error_mode);
+            let result = SetThreadErrorMode(new_error_mode, &mut prev_error_mode);
             if result == 0 {
-                return Err(io::Error::last_os_error().to_string())
+                return Err(io::Error::last_os_error().to_string());
             }
             prev_error_mode
         };
 
         let result = match filename {
             Some(filename) => {
-                let filename_str: Vec<_> =
-                    filename.encode_wide().chain(Some(0)).collect();
-                let result = unsafe {
-                    LoadLibraryW(filename_str.as_ptr())
-                };
+                let filename_str: Vec<_> = filename.encode_wide().chain(Some(0)).collect();
+                let result = unsafe { LoadLibraryW(filename_str.as_ptr()) };
                 ptr_result(result)
             }
             None => {
                 let mut handle = ptr::null_mut();
-                let succeeded = unsafe {
-                    GetModuleHandleExW(0 as DWORD, ptr::null(), &mut handle)
-                };
+                let succeeded = unsafe { GetModuleHandleExW(0 as DWORD, ptr::null(), &mut handle) };
                 if succeeded == 0 {
                     Err(io::Error::last_os_error().to_string())
                 } else {
@@ -297,9 +291,7 @@ mod dl {
         result
     }
 
-    pub unsafe fn symbol(handle: *mut u8,
-                         symbol: *const c_char)
-                         -> Result<*mut u8, String> {
+    pub unsafe fn symbol(handle: *mut u8, symbol: *const c_char) -> Result<*mut u8, String> {
         let ptr = GetProcAddress(handle as HMODULE, symbol) as *mut u8;
         ptr_result(ptr)
     }

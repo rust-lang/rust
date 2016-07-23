@@ -15,10 +15,10 @@ pub fn target() -> Target {
         linker: "pnacl-clang".to_string(),
         ar: "pnacl-ar".to_string(),
 
-        pre_link_args: vec!("--pnacl-exceptions=sjlj".to_string(),
+        pre_link_args: vec!["--pnacl-exceptions=sjlj".to_string(),
                             "--target=le32-unknown-nacl".to_string(),
-                            "-Wl,--start-group".to_string()),
-        post_link_args: vec!("-Wl,--end-group".to_string()),
+                            "-Wl,--start-group".to_string()],
+        post_link_args: vec!["-Wl,--end-group".to_string()],
         dynamic_linking: false,
         executables: true,
         exe_suffix: ".pexe".to_string(),
@@ -26,7 +26,7 @@ pub fn target() -> Target {
         linker_is_gnu: true,
         allow_asm: false,
         max_atomic_width: 32,
-        .. Default::default()
+        ..Default::default()
     };
     Target {
         llvm_target: "le32-unknown-nacl".to_string(),

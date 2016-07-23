@@ -23,7 +23,7 @@ pub fn target() -> Target {
         allow_asm: false,
         obj_is_bitcode: true,
         max_atomic_width: 32,
-        .. Default::default()
+        ..Default::default()
     };
     Target {
         llvm_target: "asmjs-unknown-emscripten".to_string(),

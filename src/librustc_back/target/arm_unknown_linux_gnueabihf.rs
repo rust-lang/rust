@@ -23,9 +23,6 @@ pub fn target() -> Target {
         target_env: "gnu".to_string(),
         target_vendor: "unknown".to_string(),
 
-        options: TargetOptions {
-            features: "+v6,+vfp2".to_string(),
-            .. base
-        }
+        options: TargetOptions { features: "+v6,+vfp2".to_string(), ..base },
     }
 }

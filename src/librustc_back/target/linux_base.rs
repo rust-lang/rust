@@ -33,6 +33,6 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: true,
-        .. Default::default()
+        ..Default::default()
     }
 }

@@ -26,8 +26,7 @@ pub fn target() -> Target {
             features: "+v7,+vfp3,+neon".to_string(),
             cpu: "cortex-a8".to_string(),
             max_atomic_width: 64,
-            .. base
-        }
+            ..base
+        },
     }
 }
-

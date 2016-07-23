@@ -25,6 +25,6 @@ pub fn target() -> Target {
             features: "+mips32".to_string(),
             max_atomic_width: 32,
             ..super::linux_base::opts()
-        }
+        },
     }
 }
