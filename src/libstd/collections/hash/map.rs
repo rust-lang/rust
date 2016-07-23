@@ -877,7 +877,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// }
     ///
     /// for val in map.values() {
-    ///     print!("{}", val);
+    ///     println!("{}", val);
     /// }
     /// ```
     #[stable(feature = "map_values_mut", since = "1.10.0")]
