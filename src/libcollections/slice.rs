@@ -544,14 +544,21 @@ impl<T> [T] {
     ///
     /// # Example
     ///
-    /// Print the adjacent pairs of a slice (i.e. `[1,2]`, `[2,3]`,
-    /// `[3,4]`):
+    /// ```
+    /// let slice = ['r', 'u', 's', 't'];
+    /// let mut iter = slice.windows(2);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'u']);
+    /// assert_eq!(iter.next().unwrap(), &['u', 's']);
+    /// assert_eq!(iter.next().unwrap(), &['s', 't']);
+    /// assert!(iter.next().is_none());
+    /// ```
     ///
-    /// ```rust
-    /// let v = &[1, 2, 3, 4];
-    /// for win in v.windows(2) {
-    ///     println!("{:?}", win);
-    /// }
+    /// If the slice is shorter than `size`:
+    ///
+    /// ```
+    /// let slice = ['f', 'o', 'o'];
+    /// let mut iter = slice.windows(4);
+    /// assert!(iter.next().is_none());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
