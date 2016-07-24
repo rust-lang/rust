@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{Target, TargetOptions};
+use super::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let opts = TargetOptions {
         linker: "pnacl-clang".to_string(),
         ar: "pnacl-ar".to_string(),
@@ -28,7 +28,7 @@ pub fn target() -> Target {
         max_atomic_width: 32,
         .. Default::default()
     };
-    Target {
+    Ok(Target {
         llvm_target: "le32-unknown-nacl".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -38,5 +38,5 @@ pub fn target() -> Target {
         data_layout: "e-i64:64:64-p:32:32:32-v128:32:32".to_string(),
         arch: "le32".to_string(),
         options: opts,
-    }
+    })
 }

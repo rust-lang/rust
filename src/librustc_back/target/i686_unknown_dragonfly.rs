@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::dragonfly_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = 64;
     base.pre_link_args.push("-m32".to_string());
 
-    Target {
+    Ok(Target {
         llvm_target: "i686-unknown-dragonfly".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -26,5 +26,5 @@ pub fn target() -> Target {
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
-    }
+    })
 }
