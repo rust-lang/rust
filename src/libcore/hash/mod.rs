@@ -234,6 +234,16 @@ pub trait BuildHasher {
     type Hasher: Hasher;
 
     /// Creates a new hasher.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::hash_map::RandomState;
+    /// use std::hash::BuildHasher;
+    ///
+    /// let s = RandomState::new();
+    /// let new_s = s.build_hasher();
+    /// ```
     #[stable(since = "1.7.0", feature = "build_hasher")]
     fn build_hasher(&self) -> Self::Hasher;
 }
