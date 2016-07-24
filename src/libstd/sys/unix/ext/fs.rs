@@ -196,6 +196,22 @@ impl FileTypeExt for fs::FileType {
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
     /// structure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::DirEntryExt;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             println!("{:?}: {}", entry.file_name(), entry.ino());
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     fn ino(&self) -> u64;
 }

@@ -846,6 +846,26 @@ impl DirEntry {
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
     /// calling `symlink_metadata` on the path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             if let Ok(metadata) = entry.metadata() {
+    ///                 // Now let's show our entry's permissions!
+    ///                 println!("{:?}: {:?}", entry.path(), metadata.permissions());
+    ///             } else {
+    ///                 println!("Couldn't get metadata for {:?}", entry.path());
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
         self.0.metadata().map(Metadata)
@@ -861,6 +881,26 @@ impl DirEntry {
     /// On Windows and most Unix platforms this function is free (no extra
     /// system calls needed), but some Unix platforms may require the equivalent
     /// call to `symlink_metadata` to learn about the target file type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             if let Ok(file_type) = entry.file_type() {
+    ///                 // Now let's show our entry's file type!
+    ///                 println!("{:?}: {:?}", entry.path(), file_type);
+    ///             } else {
+    ///                 println!("Couldn't get file type for {:?}", entry.path());
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_type(&self) -> io::Result<FileType> {
         self.0.file_type().map(FileType)
@@ -868,6 +908,21 @@ impl DirEntry {
 
     /// Returns the bare file name of this directory entry without any other
     /// leading path component.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             println!("{:?}", entry.file_name());
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_name(&self) -> OsString {
         self.0.file_name()
