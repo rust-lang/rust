@@ -193,20 +193,6 @@ impl MultiSpan {
         }
     }
 
-    pub fn from_span(primary_span: Span) -> MultiSpan {
-        MultiSpan {
-            primary_spans: vec![primary_span],
-            span_labels: vec![]
-        }
-    }
-
-    pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
-        MultiSpan {
-            primary_spans: vec,
-            span_labels: vec![]
-        }
-    }
-
     pub fn push_span_label(&mut self, span: Span, label: String) {
         self.span_labels.push((span, label));
     }
@@ -254,7 +240,10 @@ impl MultiSpan {
 
 impl From<Span> for MultiSpan {
     fn from(span: Span) -> MultiSpan {
-        MultiSpan::from_span(span)
+        MultiSpan {
+            primary_spans: vec![span],
+            span_labels: vec![]
+        }
     }
 }
 
