@@ -69,7 +69,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_trans::back::link;
-use rustc_trans::back::write::create_target_machine;
+use rustc_trans::back::write::{create_target_machine, RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
@@ -676,19 +676,18 @@ impl RustcDefaultCalls {
                     unsafe { llvm::LLVMRustPrintTargetFeatures(tm); }
                 }
                 PrintRequest::RelocationModels => {
-                    println!("Available relocation models:\n");
-                    println!("    pic");
-                    println!("    static");
-                    println!("    default");
-                    println!("    dynamic-no-pic\n");
+                    println!("Available relocation models:");
+                    for &(name, _) in RELOC_MODEL_ARGS.iter() {
+                        println!("    {}", name);
+                    }
+                    println!("");
                 }
                 PrintRequest::CodeModels => {
-                    println!("Available code models:\n");
-                    println!("    default");
-                    println!("    small");
-                    println!("    kernel");
-                    println!("    medium");
-                    println!("    large\n");
+                    println!("Available code models:");
+                    for &(name, _) in CODE_GEN_MODEL_ARGS.iter(){
+                        println!("    {}", name);
+                    }
+                    println!("");
                 }
             }
         }
