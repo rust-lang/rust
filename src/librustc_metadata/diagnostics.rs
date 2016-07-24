@@ -64,7 +64,7 @@ Please specify a valid "kind" value, from one of the following:
 E0459: r##"
 A link was used without a name parameter. Erroneous code example:
 
-```compile_fail,E0458
+```compile_fail,E0459
 #[link(kind = "dylib")] extern {}
 // error: #[link(...)] specified without `name = "foo"`
 ```
@@ -153,7 +153,7 @@ Decide which macros you would like to export and list them properly.
 
 These are proper reexport declarations:
 
-```ignore
+```compile_fail,E0463
 #[macro_reexport(some_macro, another_macro)]
 extern crate macros_for_good;
 ```
