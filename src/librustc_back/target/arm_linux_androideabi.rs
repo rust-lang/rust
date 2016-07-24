@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     base.features = "+v7,+vfp3,+d16".to_string();
     base.max_atomic_width = 64;
 
-    Target {
+    Ok(Target {
         llvm_target: "arm-linux-androideabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -25,5 +25,5 @@ pub fn target() -> Target {
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
-    }
+    })
 }

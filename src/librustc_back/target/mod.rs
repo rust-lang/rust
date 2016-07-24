@@ -64,6 +64,8 @@ mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
 
+pub type TargetResult = Result<Target, String>;
+
 macro_rules! supported_targets {
     ( $(($triple:expr, $module:ident)),+ ) => (
         $(mod $module;)*
@@ -71,17 +73,17 @@ macro_rules! supported_targets {
         /// List of supported targets
         pub const TARGETS: &'static [&'static str] = &[$($triple),*];
 
-        fn load_specific(target: &str) -> Option<Target> {
+        fn load_specific(target: &str) -> TargetResult {
             match target {
                 $(
                     $triple => {
-                        let mut t = $module::target();
+                        let mut t = try!($module::target());
                         t.options.is_builtin = true;
                         debug!("Got builtin target: {:?}", t);
-                        Some(t)
+                        Ok(t)
                     },
                 )+
-                _ => None
+                _ => Err(format!("Unable to find target: {}", target))
             }
         }
     )
@@ -364,7 +366,7 @@ impl Target {
     }
 
     /// Load a target descriptor from a JSON object.
-    pub fn from_json(obj: Json) -> Target {
+    pub fn from_json(obj: Json) -> TargetResult {
         // While ugly, this code must remain this way to retain
         // compatibility with existing JSON fields and the internal
         // expected naming of the Target and TargetOptions structs.
@@ -376,9 +378,9 @@ impl Target {
             match obj.find(name)
                      .map(|s| s.as_string())
                      .and_then(|os| os.map(|s| s.to_string())) {
-                Some(val) => val,
+                Some(val) => Ok(val),
                 None => {
-                    panic!("Field {} in target specification is required", name)
+                    return Err(format!("Field {} in target specification is required", name))
                 }
             }
         };
@@ -390,12 +392,12 @@ impl Target {
         };
 
         let mut base = Target {
-            llvm_target: get_req_field("llvm-target"),
-            target_endian: get_req_field("target-endian"),
-            target_pointer_width: get_req_field("target-pointer-width"),
-            data_layout: get_req_field("data-layout"),
-            arch: get_req_field("arch"),
-            target_os: get_req_field("os"),
+            llvm_target: try!(get_req_field("llvm-target")),
+            target_endian: try!(get_req_field("target-endian")),
+            target_pointer_width: try!(get_req_field("target-pointer-width")),
+            data_layout: try!(get_req_field("data-layout")),
+            arch: try!(get_req_field("arch")),
+            target_os: try!(get_req_field("os")),
             target_env: get_opt_field("env", ""),
             target_vendor: get_opt_field("vendor", "unknown"),
             options: Default::default(),
@@ -483,7 +485,7 @@ impl Target {
         key!(obj_is_bitcode, bool);
         key!(max_atomic_width, u64);
 
-        base
+        Ok(base)
     }
 
     /// Search RUST_TARGET_PATH for a JSON file specifying the given target
@@ -506,10 +508,10 @@ impl Target {
             f.read_to_end(&mut contents).map_err(|e| e.to_string())?;
             let obj = json::from_reader(&mut &contents[..])
                            .map_err(|e| e.to_string())?;
-            Ok(Target::from_json(obj))
+            Target::from_json(obj)
         }
 
-        if let Some(t) = load_specific(target) {
+        if let Ok(t) = load_specific(target) {
             return Ok(t)
         }
 

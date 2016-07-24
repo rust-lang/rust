@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::{Target, TargetOptions};
+use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> Target {
-    Target {
+pub fn target() -> TargetResult {
+    Ok(Target {
         llvm_target: "mips-unknown-linux-musl".to_string(),
         target_endian: "big".to_string(),
         target_pointer_width: "32".to_string(),
@@ -26,5 +26,5 @@ pub fn target() -> Target {
             max_atomic_width: 32,
             ..super::linux_base::opts()
         }
-    }
+    })
 }

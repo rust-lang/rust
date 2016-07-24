@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::windows_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = 64;
@@ -19,7 +19,7 @@ pub fn target() -> Target {
     // space available to x86 Windows binaries on x86_64.
     base.pre_link_args.push("-Wl,--large-address-aware".to_string());
 
-    Target {
+    Ok(Target {
         llvm_target: "i686-pc-windows-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -29,5 +29,5 @@ pub fn target() -> Target {
         target_env: "gnu".to_string(),
         target_vendor: "pc".to_string(),
         options: base,
-    }
+    })
 }

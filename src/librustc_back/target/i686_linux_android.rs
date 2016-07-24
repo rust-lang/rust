@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
 
     base.max_atomic_width = 64;
@@ -19,7 +19,7 @@ pub fn target() -> Target {
     base.cpu = "pentiumpro".to_string();
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3".to_string();
 
-    Target {
+    Ok(Target {
         llvm_target: "i686-linux-android".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -29,5 +29,5 @@ pub fn target() -> Target {
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
-    }
+    })
 }

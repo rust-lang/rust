@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::{Target, TargetOptions};
+use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
     base.max_atomic_width = 64;
-    Target {
+    Ok(Target {
         llvm_target: "arm-unknown-linux-gnueabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -27,5 +27,5 @@ pub fn target() -> Target {
             features: "+v6".to_string(),
             .. base
         },
-    }
+    })
 }
