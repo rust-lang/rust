@@ -73,6 +73,9 @@ LLVMRustDestroyArchive(RustArchive *ar) {
 struct RustArchiveIterator {
     Archive::child_iterator cur;
     Archive::child_iterator end;
+#if LLVM_VERSION_MINOR >= 9
+    Error err;
+#endif
 };
 
 extern "C" RustArchiveIterator*
@@ -82,8 +85,11 @@ LLVMRustArchiveIteratorNew(RustArchive *ra) {
 #if LLVM_VERSION_MINOR <= 8
     rai->cur = ar->child_begin();
 #else
-    Error err;
-    rai->cur = ar->child_begin(err);
+    rai->cur = ar->child_begin(rai->err);
+    if (rai->err) {
+        LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
+        return NULL;
+    }
 #endif
     rai->end = ar->child_end();
     return rai;
@@ -91,6 +97,12 @@ LLVMRustArchiveIteratorNew(RustArchive *ra) {
 
 extern "C" const Archive::Child*
 LLVMRustArchiveIteratorNext(RustArchiveIterator *rai) {
+#if LLVM_VERSION_MINOR >= 9
+    if (rai->err) {
+        LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
+        return NULL;
+    }
+#endif
     if (rai->cur == rai->end)
         return NULL;
 #if LLVM_VERSION_MINOR == 8
