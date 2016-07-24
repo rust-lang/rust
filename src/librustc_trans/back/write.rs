@@ -33,6 +33,21 @@ use std::sync::mpsc::channel;
 use std::thread;
 use libc::{c_uint, c_void};
 
+pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 4] = [
+    ("pic", llvm::RelocPIC),
+    ("static", llvm::RelocStatic),
+    ("default", llvm::RelocDefault),
+    ("dynamic-no-pic", llvm::RelocDynamicNoPic),
+];
+
+pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeGenModel); 5] = [
+    ("default", llvm::CodeModelDefault),
+    ("small", llvm::CodeModelSmall),
+    ("kernel", llvm::CodeModelKernel),
+    ("medium", llvm::CodeModelMedium),
+    ("large", llvm::CodeModelLarge),
+];
+
 pub fn llvm_err(handler: &errors::Handler, msg: String) -> ! {
     match llvm::last_error() {
         Some(err) => panic!(handler.fatal(&format!("{}: {}", msg, err))),
@@ -156,11 +171,9 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
         Some(ref s) => &s[..],
         None => &sess.target.target.options.relocation_model[..],
     };
-    let reloc_model = match reloc_model_arg {
-        "pic" => llvm::RelocPIC,
-        "static" => llvm::RelocStatic,
-        "default" => llvm::RelocDefault,
-        "dynamic-no-pic" => llvm::RelocDynamicNoPic,
+    let reloc_model = match RELOC_MODEL_ARGS.iter().find(
+        |&&arg| arg.0 == reloc_model_arg) {
+        Some(x) => x.1,
         _ => {
             sess.err(&format!("{:?} is not a valid relocation mode",
                              sess.opts
@@ -186,12 +199,9 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
         None => &sess.target.target.options.code_model[..],
     };
 
-    let code_model = match code_model_arg {
-        "default" => llvm::CodeModelDefault,
-        "small" => llvm::CodeModelSmall,
-        "kernel" => llvm::CodeModelKernel,
-        "medium" => llvm::CodeModelMedium,
-        "large" => llvm::CodeModelLarge,
+    let code_model = match CODE_GEN_MODEL_ARGS.iter().find(
+        |&&arg| arg.0 == code_model_arg) {
+        Some(x) => x.1,
         _ => {
             sess.err(&format!("{:?} is not a valid code model",
                              sess.opts
