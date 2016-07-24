@@ -162,6 +162,7 @@ LLVMRustHasFeature(LLVMTargetMachineRef TM,
     return (Bits & FeatureEntry->Value) == FeatureEntry->Value;
 }
 
+#if LLVM_RUSTLLVM
 /// getLongestEntryLength - Return the length of the longest entry in the table.
 ///
 static size_t getLongestEntryLength(ArrayRef<SubtargetFeatureKV> Table) {
@@ -178,7 +179,7 @@ LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
     const ArrayRef<SubtargetFeatureKV> CPUTable = MCInfo->getCPUTable();
     unsigned MaxCPULen = getLongestEntryLength(CPUTable);
 
-    printf("Available CPUs for this target:\n\n");
+    printf("Available CPUs for this target:\n");
     for (auto &CPU : CPUTable)
         printf("    %-*s - %s.\n", MaxCPULen, CPU.Key, CPU.Desc);
     printf("\n");
@@ -191,14 +192,27 @@ LLVMRustPrintTargetFeatures(LLVMTargetMachineRef TM) {
     const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
     unsigned MaxFeatLen = getLongestEntryLength(FeatTable);
 
-    printf("Available features for this target:\n\n");
+    printf("Available features for this target:\n");
     for (auto &Feature : FeatTable)
         printf("    %-*s - %s.\n", MaxFeatLen, Feature.Key, Feature.Desc);
     printf("\n");
 
     printf("Use +feature to enable a feature, or -feature to disable it.\n"
-            "For example, rustc -C -target-cpu=mycpu -C target-feature=+feature1,-feature2\n");
+            "For example, rustc -C -target-cpu=mycpu -C target-feature=+feature1,-feature2\n\n");
 }
+
+#else
+
+extern "C" void
+LLVMRustPrintTargetCPUs(LLVMTargetMachineRef) {
+    printf("Target CPU help is not supported by this LLVM version.\n\n");
+}
+
+extern "C" void
+LLVMRustPrintTargetFeatures(LLVMTargetMachineRef) {
+    printf("Target features help is not supported by this LLVM version.\n\n");
+}
+#endif
 
 extern "C" LLVMTargetMachineRef
 LLVMRustCreateTargetMachine(const char *triple,
