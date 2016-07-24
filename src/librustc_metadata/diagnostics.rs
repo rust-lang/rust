@@ -180,7 +180,6 @@ Only `extern crate` imports at the crate root level (i.e., in lib.rs) are
 allowed to import macros.
 
 Either move the macro import to crate root or do without the foreign macros.
-
 This will work:
 
 ```ignore
