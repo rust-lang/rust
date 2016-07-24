@@ -593,11 +593,12 @@ impl<T> Vec<T> {
     /// ```
     ///
     /// In this example, there is a memory leak since the memory locations
-    /// owned by the vector were not freed prior to the `set_len` call:
+    /// owned by the inner vectors were not freed prior to the `set_len` call:
     ///
     /// ```
-    /// let mut vec = vec!['r', 'u', 's', 't'];
-    ///
+    /// let mut vec = vec![vec![1, 0, 0],
+    ///                    vec![0, 1, 0],
+    ///                    vec![0, 0, 1]];
     /// unsafe {
     ///     vec.set_len(0);
     /// }

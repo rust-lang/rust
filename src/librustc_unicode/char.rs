@@ -392,7 +392,7 @@ impl char {
         C::len_utf16(self)
     }
 
-    /// Returns an interator over the bytes of this character as UTF-8.
+    /// Returns an iterator over the bytes of this character as UTF-8.
     ///
     /// The returned iterator also has an `as_slice()` method to view the
     /// encoded bytes as a byte slice.
@@ -415,7 +415,7 @@ impl char {
         C::encode_utf8(self)
     }
 
-    /// Returns an interator over the `u16` entries of this character as UTF-16.
+    /// Returns an iterator over the `u16` entries of this character as UTF-16.
     ///
     /// The returned iterator also has an `as_slice()` method to view the
     /// encoded form as a slice.

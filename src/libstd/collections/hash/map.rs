@@ -1699,6 +1699,17 @@ impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 /// A particular instance `RandomState` will create the same instances of
 /// `Hasher`, but the hashers created by two different `RandomState`
 /// instances are unlikely to produce the same result for the same values.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::HashMap;
+/// use std::collections::hash_map::RandomState;
+///
+/// let s = RandomState::new();
+/// let mut map = HashMap::with_hasher(s);
+/// map.insert(1, 2);
+/// ```
 #[derive(Clone)]
 #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
 pub struct RandomState {
@@ -1708,6 +1719,14 @@ pub struct RandomState {
 
 impl RandomState {
     /// Constructs a new `RandomState` that is initialized with random keys.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// ```
     #[inline]
     #[allow(deprecated)] // rand
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
