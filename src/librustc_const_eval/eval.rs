@@ -1105,11 +1105,25 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstVal, ty: ty::Ty) 
         Float(f) => cast_const_float(tcx, f, ty),
         Char(c) => cast_const_int(tcx, Infer(c as u64), ty),
         Function(_) => Err(UnimplementedConstVal("casting fn pointers")),
-        ByteStr(_) => match ty.sty {
+        ByteStr(b) => match ty.sty {
             ty::TyRawPtr(_) => {
                 Err(ErrKind::UnimplementedConstVal("casting a bytestr to a raw ptr"))
             },
-            ty::TyRef(..) => Err(ErrKind::UnimplementedConstVal("casting a bytestr to slice")),
+            ty::TyRef(_, ty::TypeAndMut { ref ty, mutbl: hir::MutImmutable }) => match ty.sty {
+                ty::TyArray(ty, n) if ty == tcx.types.u8 && n == b.len() => Ok(ByteStr(b)),
+                ty::TySlice(_) => {
+                    Err(ErrKind::UnimplementedConstVal("casting a bytestr to slice"))
+                },
+                _ => Err(CannotCast),
+            },
+            _ => Err(CannotCast),
+        },
+        Str(s) => match ty.sty {
+            ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting a str to a raw ptr")),
+            ty::TyRef(_, ty::TypeAndMut { ref ty, mutbl: hir::MutImmutable }) => match ty.sty {
+                ty::TyStr => Ok(Str(s)),
+                _ => Err(CannotCast),
+            },
             _ => Err(CannotCast),
         },
         _ => Err(CannotCast),
