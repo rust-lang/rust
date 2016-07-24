@@ -16,7 +16,6 @@ use rustc::ty;
 use syntax::ast;
 use syntax_pos;
 use errors::DiagnosticBuilder;
-use rustc::hir;
 
 pub struct MoveErrorCollector<'tcx> {
     errors: Vec<MoveError<'tcx>>
@@ -131,17 +130,20 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             err
         }
 
-        Categorization::Interior(ref b, mc::InteriorElement(Kind::Index, _)) => {
-            let expr = bccx.tcx.map.expect_expr(move_from.id);
-            if let hir::ExprIndex(..) = expr.node {
-                let mut err = struct_span_err!(bccx, move_from.span, E0508,
-                                               "cannot move out of type `{}`, \
-                                               a non-copy fixed-size array",
-                                               b.ty);
-                err.span_label(move_from.span, &format!("cannot move out of here"));
-                err
-            } else {
-                span_bug!(move_from.span, "this path should not cause illegal move");
+        Categorization::Interior(ref b, mc::InteriorElement(ik, _)) => {
+            match (&b.ty.sty, ik) {
+                (&ty::TySlice(..), _) |
+                (_, Kind::Index) => {
+                    let mut err = struct_span_err!(bccx, move_from.span, E0508,
+                                                   "cannot move out of type `{}`, \
+                                                    a non-copy array",
+                                                   b.ty);
+                    err.span_label(move_from.span, &format!("cannot move out of here"));
+                    err
+                }
+                (_, Kind::Pattern) => {
+                    span_bug!(move_from.span, "this path should not cause illegal move");
+                }
             }
         }
 
