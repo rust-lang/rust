@@ -167,12 +167,35 @@ LLVMRustCreateTargetMachine(const char *triple,
                             const char *cpu,
                             const char *feature,
                             CodeModel::Model CM,
-                            Reloc::Model RM,
+                            LLVMRelocMode Reloc,
                             CodeGenOpt::Level OptLevel,
                             bool UseSoftFloat,
                             bool PositionIndependentExecutable,
                             bool FunctionSections,
                             bool DataSections) {
+
+#if LLVM_VERSION_MINOR <= 8
+    Reloc::Model RM;
+#else
+    Optional<Reloc::Model> RM;
+#endif
+    switch (Reloc){
+        case LLVMRelocStatic:
+            RM = Reloc::Static;
+            break;
+        case LLVMRelocPIC:
+            RM = Reloc::PIC_;
+            break;
+        case LLVMRelocDynamicNoPic:
+            RM = Reloc::DynamicNoPIC;
+            break;
+        default:
+#if LLVM_VERSION_MINOR <= 8
+            RM = Reloc::Default;
+#endif
+            break;
+    }
+
     std::string Error;
     Triple Trip(Triple::normalize(triple));
     const llvm::Target *TheTarget = TargetRegistry::lookupTarget(Trip.getTriple(),
