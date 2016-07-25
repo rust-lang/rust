@@ -1,3 +1,6 @@
+#![allow(unknown_lints)]
+#![allow(float_cmp)]
+
 use rustc::mir::repr as mir;
 
 use error::{EvalError, EvalResult};

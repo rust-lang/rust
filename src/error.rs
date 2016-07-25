@@ -36,6 +36,10 @@ pub enum EvalError<'tcx> {
     },
     ExecutionTimeLimitReached,
     StackFrameLimitReached,
+    AlignmentCheckFailed {
+        required: usize,
+        has: usize,
+    },
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -82,6 +86,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "reached the configured maximum execution time",
             EvalError::StackFrameLimitReached =>
                 "reached the configured maximum number of stack frames",
+            EvalError::AlignmentCheckFailed{..} =>
+                "tried to execute a misaligned read or write",
         }
     }
 
@@ -106,6 +112,9 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             EvalError::OutOfMemory { allocation_size, memory_size, memory_usage } =>
                 write!(f, "tried to allocate {} more bytes, but only {} bytes are free of the {} byte memory",
                        allocation_size, memory_size - memory_usage, memory_size),
+            EvalError::AlignmentCheckFailed { required, has } =>
+               write!(f, "tried to access memory with alignment {}, but alignment {} is required",
+                      has, required),
             _ => write!(f, "{}", self.description()),
         }
     }

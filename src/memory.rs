@@ -29,6 +29,7 @@ pub struct Allocation {
     pub bytes: Vec<u8>,
     pub relocations: BTreeMap<usize, AllocId>,
     pub undef_mask: UndefMask,
+    pub align: usize,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -98,15 +99,16 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             bytes: Vec::new(),
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(0),
+            align: 1,
         };
         mem.alloc_map.insert(ZST_ALLOC_ID, alloc);
         // check that additional zst allocs work
-        debug_assert!(mem.allocate(0).unwrap().points_to_zst());
+        debug_assert!(mem.allocate(0, 1).unwrap().points_to_zst());
         debug_assert!(mem.get(ZST_ALLOC_ID).is_ok());
         mem
     }
 
-    pub fn allocations<'b>(&'b self) -> ::std::collections::hash_map::Iter<'b, AllocId, Allocation> {
+    pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation> {
         self.alloc_map.iter()
     }
 
@@ -133,7 +135,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn allocate(&mut self, size: usize) -> EvalResult<'tcx, Pointer> {
+    pub fn allocate(&mut self, size: usize, align: usize) -> EvalResult<'tcx, Pointer> {
+        assert!(align != 0);
         if size == 0 {
             return Ok(Pointer::zst_ptr());
         }
@@ -149,6 +152,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             bytes: vec![0; size],
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
+            align: align,
         };
         let id = self.next_id;
         self.next_id.0 += 1;
@@ -161,16 +165,16 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
     // when reallocating/deallocating any others.
-    pub fn reallocate(&mut self, ptr: Pointer, new_size: usize) -> EvalResult<'tcx, Pointer> {
+    pub fn reallocate(&mut self, ptr: Pointer, new_size: usize, align: usize) -> EvalResult<'tcx, Pointer> {
+        // TODO(solson): Report error about non-__rust_allocate'd pointer.
         if ptr.offset != 0 {
-            // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
         if ptr.points_to_zst() {
-            return self.allocate(new_size);
+            return self.allocate(new_size, align);
         }
 
-        let size = self.get_mut(ptr.alloc_id)?.bytes.len();
+        let size = self.get(ptr.alloc_id)?.bytes.len();
 
         if new_size > size {
             let amount = new_size - size;
@@ -187,7 +191,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             alloc.undef_mask.truncate(new_size);
         }
 
-        Ok(ptr)
+        Ok(Pointer {
+            alloc_id: ptr.alloc_id,
+            offset: 0,
+        })
     }
 
     // TODO(solson): See comment on `reallocate`.
@@ -219,6 +226,24 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn endianess(&self) -> layout::Endian {
         self.layout.endian
+    }
+
+    pub fn check_align(&self, ptr: Pointer, align: usize) -> EvalResult<'tcx, ()> {
+        let alloc = self.get(ptr.alloc_id)?;
+        if alloc.align < align {
+            return Err(EvalError::AlignmentCheckFailed {
+                has: alloc.align,
+                required: align,
+            });
+        }
+        if ptr.offset % align == 0 {
+            Ok(())
+        } else {
+            Err(EvalError::AlignmentCheckFailed {
+                has: ptr.offset % align,
+                required: align,
+            })
+        }
     }
 }
 
@@ -337,7 +362,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
     }
 
-    fn get_bytes(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, &[u8]> {
+    fn get_bytes(&self, ptr: Pointer, size: usize, align: usize) -> EvalResult<'tcx, &[u8]> {
+        self.check_align(ptr, align)?;
         if self.relocations(ptr, size)?.count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
@@ -345,7 +371,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.get_bytes_unchecked(ptr, size)
     }
 
-    fn get_bytes_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<'tcx, &mut [u8]> {
+    fn get_bytes_mut(&mut self, ptr: Pointer, size: usize, align: usize) -> EvalResult<'tcx, &mut [u8]> {
+        self.check_align(ptr, align)?;
         self.clear_relocations(ptr, size)?;
         self.mark_definedness(ptr, size, true)?;
         self.get_bytes_unchecked_mut(ptr, size)
@@ -354,11 +381,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<'tcx, ()> {
+    pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize, align: usize) -> EvalResult<'tcx, ()> {
         self.check_relocation_edges(src, size)?;
 
         let src_bytes = self.get_bytes_unchecked_mut(src, size)?.as_mut_ptr();
-        let dest_bytes = self.get_bytes_mut(dest, size)?.as_mut_ptr();
+        let dest_bytes = self.get_bytes_mut(dest, size, align)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -378,17 +405,17 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn read_bytes(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, &[u8]> {
-        self.get_bytes(ptr, size)
+        self.get_bytes(ptr, size, 1)
     }
 
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx, ()> {
-        let bytes = self.get_bytes_mut(ptr, src.len())?;
+        let bytes = self.get_bytes_mut(ptr, src.len(), 1)?;
         bytes.clone_from_slice(src);
         Ok(())
     }
 
     pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: usize) -> EvalResult<'tcx, ()> {
-        let bytes = self.get_bytes_mut(ptr, count)?;
+        let bytes = self.get_bytes_mut(ptr, count, 1)?;
         for b in bytes { *b = val; }
         Ok(())
     }
@@ -434,7 +461,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn read_bool(&self, ptr: Pointer) -> EvalResult<'tcx, bool> {
-        let bytes = self.get_bytes(ptr, 1)?;
+        let bytes = self.get_bytes(ptr, 1, self.layout.i1_align.abi() as usize)?;
         match bytes[0] {
             0 => Ok(false),
             1 => Ok(true),
@@ -443,27 +470,43 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_bool(&mut self, ptr: Pointer, b: bool) -> EvalResult<'tcx, ()> {
-        self.get_bytes_mut(ptr, 1).map(|bytes| bytes[0] = b as u8)
+        let align = self.layout.i1_align.abi() as usize;
+        self.get_bytes_mut(ptr, 1, align)
+            .map(|bytes| bytes[0] = b as u8)
+    }
+
+    fn int_align(&self, size: usize) -> EvalResult<'tcx, usize> {
+        match size {
+            1 => Ok(self.layout.i8_align.abi() as usize),
+            2 => Ok(self.layout.i16_align.abi() as usize),
+            4 => Ok(self.layout.i32_align.abi() as usize),
+            8 => Ok(self.layout.i64_align.abi() as usize),
+            _ => panic!("bad integer size"),
+        }
     }
 
     pub fn read_int(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, i64> {
-        self.get_bytes(ptr, size).map(|b| read_target_int(self.endianess(), b).unwrap())
+        let align = self.int_align(size)?;
+        self.get_bytes(ptr, size, align).map(|b| read_target_int(self.endianess(), b).unwrap())
     }
 
     pub fn write_int(&mut self, ptr: Pointer, n: i64, size: usize) -> EvalResult<'tcx, ()> {
+        let align = self.int_align(size)?;
         let endianess = self.endianess();
-        let b = self.get_bytes_mut(ptr, size)?;
+        let b = self.get_bytes_mut(ptr, size, align)?;
         write_target_int(endianess, b, n).unwrap();
         Ok(())
     }
 
     pub fn read_uint(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, u64> {
-        self.get_bytes(ptr, size).map(|b| read_target_uint(self.endianess(), b).unwrap())
+        let align = self.int_align(size)?;
+        self.get_bytes(ptr, size, align).map(|b| read_target_uint(self.endianess(), b).unwrap())
     }
 
     pub fn write_uint(&mut self, ptr: Pointer, n: u64, size: usize) -> EvalResult<'tcx, ()> {
+        let align = self.int_align(size)?;
         let endianess = self.endianess();
-        let b = self.get_bytes_mut(ptr, size)?;
+        let b = self.get_bytes_mut(ptr, size, align)?;
         write_target_uint(endianess, b, n).unwrap();
         Ok(())
     }
@@ -488,24 +531,28 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn write_f32(&mut self, ptr: Pointer, f: f32) -> EvalResult<'tcx, ()> {
         let endianess = self.endianess();
-        let b = self.get_bytes_mut(ptr, 4)?;
+        let align = self.layout.f32_align.abi() as usize;
+        let b = self.get_bytes_mut(ptr, 4, align)?;
         write_target_f32(endianess, b, f).unwrap();
         Ok(())
     }
 
     pub fn write_f64(&mut self, ptr: Pointer, f: f64) -> EvalResult<'tcx, ()> {
         let endianess = self.endianess();
-        let b = self.get_bytes_mut(ptr, 8)?;
+        let align = self.layout.f64_align.abi() as usize;
+        let b = self.get_bytes_mut(ptr, 8, align)?;
         write_target_f64(endianess, b, f).unwrap();
         Ok(())
     }
 
     pub fn read_f32(&self, ptr: Pointer) -> EvalResult<'tcx, f32> {
-        self.get_bytes(ptr, 4).map(|b| read_target_f32(self.endianess(), b).unwrap())
+        self.get_bytes(ptr, 4, self.layout.f32_align.abi() as usize)
+            .map(|b| read_target_f32(self.endianess(), b).unwrap())
     }
 
     pub fn read_f64(&self, ptr: Pointer) -> EvalResult<'tcx, f64> {
-        self.get_bytes(ptr, 8).map(|b| read_target_f64(self.endianess(), b).unwrap())
+        self.get_bytes(ptr, 8, self.layout.f64_align.abi() as usize)
+            .map(|b| read_target_f64(self.endianess(), b).unwrap())
     }
 }
 

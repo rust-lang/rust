@@ -88,7 +88,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
                         let ptr = self.eval_operand(func)?;
-                        assert_eq!(ptr.offset, 0);
                         let fn_ptr = self.memory.read_ptr(ptr)?;
                         let FunctionDefinition { def_id, substs, fn_ty } = self.memory.get_fn(fn_ptr.alloc_id)?;
                         if fn_ty != bare_fn_ty {
@@ -290,10 +289,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
                 let elem_size = self.type_size(elem_ty);
+                let elem_align = self.type_align(elem_ty);
                 let src = self.memory.read_ptr(args_ptrs[0])?;
                 let dest = self.memory.read_ptr(args_ptrs[1])?;
                 let count = self.memory.read_isize(args_ptrs[2])?;
-                self.memory.copy(src, dest, count as usize * elem_size)?;
+                self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
             }
 
             "discriminant_value" => {
@@ -308,8 +308,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "init" => self.memory.write_repeat(dest, 0, dest_layout.size(&self.tcx.data_layout).bytes() as usize)?,
 
             "min_align_of" => {
-                // FIXME: use correct value
-                self.memory.write_int(dest, 1, pointer_size)?;
+                let elem_ty = *substs.types.get(subst::FnSpace, 0);
+                let elem_align = self.type_align(elem_ty);
+                self.memory.write_uint(dest, elem_align as u64, pointer_size)?;
             }
 
             "move_val_init" => {
@@ -416,14 +417,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match &link_name[..] {
             "__rust_allocate" => {
                 let size = self.memory.read_usize(args[0])?;
-                let ptr = self.memory.allocate(size as usize)?;
+                let align = self.memory.read_usize(args[1])?;
+                let ptr = self.memory.allocate(size as usize, align as usize)?;
                 self.memory.write_ptr(dest, ptr)?;
             }
 
             "__rust_reallocate" => {
                 let ptr = self.memory.read_ptr(args[0])?;
                 let size = self.memory.read_usize(args[2])?;
-                let new_ptr = self.memory.reallocate(ptr, size as usize)?;
+                let align = self.memory.read_usize(args[3])?;
+                let new_ptr = self.memory.reallocate(ptr, size as usize, align as usize)?;
                 self.memory.write_ptr(dest, new_ptr)?;
             }
 
