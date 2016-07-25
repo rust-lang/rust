@@ -837,10 +837,13 @@ fn check_matcher_firsts(cx: &ExtCtxt, ma: &[TokenTree], mb: &[TokenTree],
     }
 }
 
-// checks that a matcher does not contain any NT except ident
+// checks that a matcher does not contain any NT except ident or TT.
+// that is, that it will never start matching new input
 fn only_simple_tokens(m: &[TokenTree]) -> bool {
     m.iter().all(|tt| match *tt {
-        TokenTree::Token(_, MatchNt(_, nt)) => nt.name.as_str() == "ident",
+        TokenTree::Token(_, MatchNt(_, nt)) =>
+            nt.name.as_str() == "ident" ||
+            nt.name.as_str() == "tt",
         TokenTree::Token(..) => true,
         TokenTree::Delimited(_, ref delim) => only_simple_tokens(&delim.tts),
         TokenTree::Sequence(_, ref seq) => only_simple_tokens(&seq.tts)
