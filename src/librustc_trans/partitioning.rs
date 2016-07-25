@@ -143,7 +143,12 @@ pub enum PartitioningStrategy {
 }
 
 pub struct CodegenUnit<'tcx> {
+    /// A name for this CGU. Incremental compilation requires that
+    /// name be unique amongst **all** crates.  Therefore, it should
+    /// contain something unique to this crate (e.g., a module path)
+    /// as well as the crate name and disambiguator.
     name: InternedString,
+
     items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>,
 }
 
@@ -174,7 +179,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn work_product_id(&self) -> Arc<WorkProductId> {
-        Arc::new(WorkProductId::PartitionObjectFile(self.name().to_string()))
+        Arc::new(WorkProductId(self.name().to_string()))
     }
 
     pub fn work_product_dep_node(&self) -> DepNode<DefId> {

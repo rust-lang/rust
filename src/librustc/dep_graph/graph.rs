@@ -10,6 +10,7 @@
 
 use hir::def_id::DefId;
 use rustc_data_structures::fnv::FnvHashMap;
+use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -157,11 +158,11 @@ impl DepGraph {
 /// previous hash. If it matches up, we can reuse the object file.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct WorkProduct {
-    /// extra hash used to decide if work-product is still suitable;
+    /// Extra hash used to decide if work-product is still suitable;
     /// note that this is *not* a hash of the work-product itself.
     /// See documentation on `WorkProduct` type for an example.
     pub input_hash: u64,
 
-    /// filename storing this work-product (found in the incr. comp. directory)
-    pub file_name: String,
+    /// Saved files associated with this CGU
+    pub saved_files: Vec<(OutputType, String)>,
 }

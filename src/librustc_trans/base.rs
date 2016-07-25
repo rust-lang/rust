@@ -43,10 +43,9 @@ use rustc::ty::subst::{self, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
-use rustc_incremental::in_incr_comp_dir;
 use rustc::mir::mir_map::MirMap;
 use rustc_data_structures::graph::OUTGOING;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
@@ -103,7 +102,6 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::ptr;
 use std::rc::Rc;
-use std::path::PathBuf;
 use std::str;
 use std::{i8, i16, i32, i64};
 use syntax_pos::{Span, DUMMY_SP};
@@ -2721,7 +2719,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn trans_reuse_previous_work_products(tcx: TyCtxt,
                                       codegen_units: &[CodegenUnit],
                                       symbol_map: &SymbolMap)
-                                      -> Vec<Option<PathBuf>> {
+                                      -> Vec<Option<WorkProduct>> {
     debug!("trans_reuse_previous_work_products()");
     codegen_units
         .iter()
@@ -2735,7 +2733,7 @@ fn trans_reuse_previous_work_products(tcx: TyCtxt,
             if let Some(work_product) = tcx.dep_graph.previous_work_product(&id) {
                 if work_product.input_hash == hash {
                     debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
-                    return Some(in_incr_comp_dir(tcx.sess, &work_product.file_name).unwrap());
+                    return Some(work_product);
                 } else {
                     debug!("trans_reuse_previous_work_products: \
                             not reusing {:?} because hash changed to {:?}",
