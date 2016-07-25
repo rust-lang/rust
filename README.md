@@ -243,10 +243,10 @@ cargo install clippy
 ```
 
 Now you can run clippy by invoking `cargo clippy`, or
-`multirust run nightly cargo clippy` directly from a directory that is usually
+`rustup run nightly cargo clippy` directly from a directory that is usually
 compiled with stable.
 
-In case you are not using multirust, you need to set the environment flag
+In case you are not using rustup, you need to set the environment flag
 `SYSROOT` during installation so clippy knows where to find `librustc` and
 similar crates.
 
