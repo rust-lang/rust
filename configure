@@ -1021,7 +1021,8 @@ then
             ;;
     esac
 
-    if "$CFG_LLVM_ROOT/bin/llvm-mc" -help | grep "-relocation-model"; then
+    if "$CFG_LLVM_ROOT/bin/llvm-mc" -help | grep -- "-relocation-model"; then
+        msg "found older llvm-mc"
         CFG_LLVM_MC_HAS_RELOCATION_MODEL=1
         putvar CFG_LLVM_MC_HAS_RELOCATION_MODEL
     fi
