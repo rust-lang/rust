@@ -1697,6 +1697,14 @@ impl str {
         return s;
     }
 
+    /// Escapes each char in `s` with `char::escape`.
+    #[unstable(feature = "str_escape",
+               reason = "return type may change to be an iterator",
+               issue = "27791")]
+    pub fn escape(&self) -> String {
+        self.chars().flat_map(|c| c.escape()).collect()
+    }
+
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
