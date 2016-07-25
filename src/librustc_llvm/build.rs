@@ -13,7 +13,7 @@ extern crate build_helper;
 
 use std::process::Command;
 use std::env;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use build_helper::output;
 
@@ -135,8 +135,17 @@ fn main() {
             &lib[2..]
         } else if lib.starts_with("-") {
             &lib[1..]
+        } else if Path::new(lib).exists() {
+            // On MSVC llvm-config will print the full name to libraries, but
+            // we're only interested in the name part
+            let name = Path::new(lib).file_name().unwrap().to_str().unwrap();
+            name.trim_right_matches(".lib")
+        } else if lib.ends_with(".lib") {
+            // Some MSVC libraries just come up with `.lib` tacked on, so chop
+            // that off
+            lib.trim_right_matches(".lib")
         } else {
-            continue;
+            continue
         };
 
         // Don't need or want this library, but LLVM's CMake build system
@@ -145,7 +154,7 @@ fn main() {
         // library and it otherwise may just pull in extra dependencies on
         // libedit which we don't want
         if name == "LLVMLineEditor" {
-            continue;
+            continue
         }
 
         let kind = if name.starts_with("LLVM") {
@@ -165,7 +174,9 @@ fn main() {
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
-        if is_crossed {
+        if lib.starts_with("-LIBPATH:") {
+                println!("cargo:rustc-link-search=native={}", &lib[9..]);
+        } else if is_crossed {
             if lib.starts_with("-L") {
                 println!("cargo:rustc-link-search=native={}",
                          lib[2..].replace(&host, &target));
