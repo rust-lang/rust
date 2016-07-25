@@ -35,13 +35,23 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
 
-    // Move compiler-rt into place as it'll be required by the compiler when
-    // building the standard library to link the dylib of libstd
     let libdir = build.sysroot_libdir(compiler, target);
     let _ = fs::remove_dir_all(&libdir);
     t!(fs::create_dir_all(&libdir));
-    copy(&build.compiler_rt_built.borrow()[target],
-         &libdir.join(staticlib("compiler-rt", target)));
+    // FIXME(stage0) remove this `if` after the next snapshot
+    // The stage0 compiler still passes the `-lcompiler-rt` flag to the linker but now `bootstrap`
+    // never builds a `libcopmiler-rt.a`! We'll fill the hole by simply copying stage0's
+    // `libcompiler-rt.a` to where the stage1's one is expected (though we could as well just use
+    // an empty `.a` archive). Note that the symbols of that stage0 `libcompiler-rt.a` won't make
+    // it to the final binary because now `libcore.rlib` also contains the symbols that
+    // `libcompiler-rt.a` provides. Since that rlib appears first in the linker arguments, its
+    // symbols are used instead of `libcompiler-rt.a`'s.
+    if compiler.stage == 0 {
+        let rtlib = &staticlib("compiler-rt", target);
+        let src = build.rustc.parent().unwrap().parent().unwrap().join("lib").join("rustlib")
+            .join(target).join("lib").join(rtlib);
+        copy(&src, &libdir.join(rtlib));
+    }
 
     // Some platforms have startup objects that may be required to produce the
     // libstd dynamic library, for example.
@@ -83,12 +93,10 @@ pub fn std_link(build: &Build,
 
     // If we're linking one compiler host's output into another, then we weren't
     // called from the `std` method above. In that case we clean out what's
-    // already there and then also link compiler-rt into place.
+    // already there.
     if host != compiler.host {
         let _ = fs::remove_dir_all(&libdir);
         t!(fs::create_dir_all(&libdir));
-        copy(&build.compiler_rt_built.borrow()[target],
-             &libdir.join(staticlib("compiler-rt", target)));
     }
     add_to_sysroot(&out_dir, &libdir);
 

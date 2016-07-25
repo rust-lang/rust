@@ -28,7 +28,6 @@ pub fn clean(build: &Build) {
 
         let out = build.out.join(host);
 
-        rm_rf(build, &out.join("compiler-rt"));
         rm_rf(build, &out.join("doc"));
 
         for stage in 0..4 {

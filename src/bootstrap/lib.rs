@@ -28,7 +28,6 @@ extern crate rustc_serialize;
 extern crate toml;
 extern crate regex;
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File};
@@ -131,7 +130,6 @@ pub struct Build {
     // Runtime state filled in later on
     cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
     cxx: HashMap<String, gcc::Tool>,
-    compiler_rt_built: RefCell<HashMap<String, PathBuf>>,
 }
 
 /// The various "modes" of invoking Cargo.
@@ -198,7 +196,6 @@ impl Build {
             package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
-            compiler_rt_built: RefCell::new(HashMap::new()),
             gdb_version: None,
             lldb_version: None,
             lldb_python_dir: None,
@@ -251,9 +248,6 @@ impl Build {
             match target.src {
                 Llvm { _dummy } => {
                     native::llvm(self, target.target);
-                }
-                CompilerRt { _dummy } => {
-                    native::compiler_rt(self, target.target);
                 }
                 TestHelpers { _dummy } => {
                     native::test_helpers(self, target.target);
@@ -837,11 +831,6 @@ impl Build {
                 base.join("bin").join(exe)
             }
         }
-    }
-
-    /// Root output directory for compiler-rt compiled for `target`
-    fn compiler_rt_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("compiler-rt")
     }
 
     /// Root output directory for rust_test_helpers library compiled for

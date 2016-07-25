@@ -340,6 +340,11 @@ impl CrateMetadata {
         attr::contains_name(&attrs, "needs_panic_runtime")
     }
 
+    pub fn is_compiler_builtins(&self) -> bool {
+        let attrs = decoder::get_crate_attributes(self.data());
+        attr::contains_name(&attrs, "compiler_builtins")
+    }
+
     pub fn panic_strategy(&self) -> PanicStrategy {
         decoder::get_panic_strategy(self.data())
     }
