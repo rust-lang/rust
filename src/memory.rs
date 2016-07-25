@@ -168,7 +168,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn reallocate(&mut self, ptr: Pointer, new_size: usize, align: usize) -> EvalResult<'tcx, Pointer> {
         // TODO(solson): Report error about non-__rust_allocate'd pointer.
         if ptr.offset != 0 {
-            // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
         }
         if ptr.points_to_zst() {
@@ -184,12 +183,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             alloc.bytes.extend(iter::repeat(0).take(amount));
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
-            // it's possible to cause miri to use arbitrary amounts of memory that aren't detectable
-            // through the memory_usage value, by allocating a lot and reallocating to zero
             self.memory_usage -= size - new_size;
             self.clear_relocations(ptr.offset(new_size as isize), size - new_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
             alloc.bytes.truncate(new_size);
+            alloc.bytes.shrink_to_fit();
             alloc.undef_mask.truncate(new_size);
         }
 
