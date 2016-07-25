@@ -33,12 +33,13 @@ use ty::TyVar;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 
 pub struct Bivariate<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: CombineFields<'infcx, 'gcx, 'tcx>
+    fields: CombineFields<'infcx, 'gcx, 'tcx>,
+    a_is_expected: bool,
 }
 
 impl<'infcx, 'gcx, 'tcx> Bivariate<'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>) -> Bivariate<'infcx, 'gcx, 'tcx> {
-        Bivariate { fields: fields }
+    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Bivariate<'infcx, 'gcx, 'tcx> {
+        Bivariate { fields: fields, a_is_expected: a_is_expected }
     }
 }
 
@@ -47,7 +48,7 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Bivariate<'infcx, 
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
-    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+    fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,
                                              variance: ty::Variance,
@@ -86,12 +87,12 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Bivariate<'infcx, 
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, BiTo, a_id)?;
+                self.fields.instantiate(b, BiTo, a_id, self.a_is_expected)?;
                 Ok(a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, BiTo, b_id)?;
+                self.fields.instantiate(a, BiTo, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 

@@ -54,7 +54,6 @@ use syntax_pos::Span;
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
     pub infcx: &'infcx InferCtxt<'infcx, 'gcx, 'tcx>,
-    pub a_is_expected: bool,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
     pub obligations: PredicateObligations<'tcx>,
@@ -155,37 +154,31 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn switch_expected(&self) -> CombineFields<'infcx, 'gcx, 'tcx> {
-        CombineFields {
-            a_is_expected: !self.a_is_expected,
-            ..(*self).clone()
-        }
+    pub fn equate(&self, a_is_expected: bool) -> Equate<'infcx, 'gcx, 'tcx> {
+        Equate::new(self.clone(), a_is_expected)
     }
 
-    pub fn equate(&self) -> Equate<'infcx, 'gcx, 'tcx> {
-        Equate::new(self.clone())
+    pub fn bivariate(&self, a_is_expected: bool) -> Bivariate<'infcx, 'gcx, 'tcx> {
+        Bivariate::new(self.clone(), a_is_expected)
     }
 
-    pub fn bivariate(&self) -> Bivariate<'infcx, 'gcx, 'tcx> {
-        Bivariate::new(self.clone())
+    pub fn sub(&self, a_is_expected: bool) -> Sub<'infcx, 'gcx, 'tcx> {
+        Sub::new(self.clone(), a_is_expected)
     }
 
-    pub fn sub(&self) -> Sub<'infcx, 'gcx, 'tcx> {
-        Sub::new(self.clone())
+    pub fn lub(&self, a_is_expected: bool) -> Lub<'infcx, 'gcx, 'tcx> {
+        Lub::new(self.clone(), a_is_expected)
     }
 
-    pub fn lub(&self) -> Lub<'infcx, 'gcx, 'tcx> {
-        Lub::new(self.clone())
-    }
-
-    pub fn glb(&self) -> Glb<'infcx, 'gcx, 'tcx> {
-        Glb::new(self.clone())
+    pub fn glb(&self, a_is_expected: bool) -> Glb<'infcx, 'gcx, 'tcx> {
+        Glb::new(self.clone(), a_is_expected)
     }
 
     pub fn instantiate(&self,
                        a_ty: Ty<'tcx>,
                        dir: RelationDir,
-                       b_vid: ty::TyVid)
+                       b_vid: ty::TyVid,
+                       a_is_expected: bool)
                        -> RelateResult<'tcx, ()>
     {
         let mut stack = Vec::new();
@@ -255,10 +248,10 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
             match dir {
-                BiTo => self.bivariate().relate(&a_ty, &b_ty),
-                EqTo => self.equate().relate(&a_ty, &b_ty),
-                SubtypeOf => self.sub().relate(&a_ty, &b_ty),
-                SupertypeOf => self.sub().relate_with_variance(ty::Contravariant, &a_ty, &b_ty),
+                BiTo => self.bivariate(a_is_expected).relate(&a_ty, &b_ty),
+                EqTo => self.equate(a_is_expected).relate(&a_ty, &b_ty),
+                SubtypeOf => self.sub(a_is_expected).relate(&a_ty, &b_ty),
+                SupertypeOf => self.sub(a_is_expected).relate_with_variance(ty::Contravariant, &a_ty, &b_ty),
             }?;
         }
 

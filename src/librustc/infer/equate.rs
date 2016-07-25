@@ -19,12 +19,13 @@ use traits::PredicateObligations;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: CombineFields<'infcx, 'gcx, 'tcx>
+    fields: CombineFields<'infcx, 'gcx, 'tcx>,
+    a_is_expected: bool,
 }
 
 impl<'infcx, 'gcx, 'tcx> Equate<'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>) -> Equate<'infcx, 'gcx, 'tcx> {
-        Equate { fields: fields }
+    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Equate<'infcx, 'gcx, 'tcx> {
+        Equate { fields: fields, a_is_expected: a_is_expected }
     }
 
     pub fn obligations(self) -> PredicateObligations<'tcx> {
@@ -37,7 +38,7 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Equate<'infcx, 'gc
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
-    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+    fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,
                                              _: ty::Variance,
@@ -63,12 +64,12 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Equate<'infcx, 'gc
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, EqTo, a_id)?;
+                self.fields.instantiate(b, EqTo, a_id, self.a_is_expected)?;
                 Ok(a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, EqTo, b_id)?;
+                self.fields.instantiate(a, EqTo, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 
@@ -93,7 +94,7 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Equate<'infcx, 'gc
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        self.fields.higher_ranked_sub(a, b)?;
-        self.fields.higher_ranked_sub(b, a)
+        self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
+        self.fields.higher_ranked_sub(b, a, self.a_is_expected)
     }
 }

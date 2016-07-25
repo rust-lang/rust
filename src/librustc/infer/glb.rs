@@ -19,12 +19,13 @@ use traits::PredicateObligations;
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: CombineFields<'infcx, 'gcx, 'tcx>
+    fields: CombineFields<'infcx, 'gcx, 'tcx>,
+    a_is_expected: bool,
 }
 
 impl<'infcx, 'gcx, 'tcx> Glb<'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>) -> Glb<'infcx, 'gcx, 'tcx> {
-        Glb { fields: fields }
+    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Glb<'infcx, 'gcx, 'tcx> {
+        Glb { fields: fields, a_is_expected: a_is_expected }
     }
 
     pub fn obligations(self) -> PredicateObligations<'tcx> {
@@ -37,7 +38,7 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Glb<'infcx, 'gcx, 
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
-    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+    fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,
                                              variance: ty::Variance,
@@ -46,10 +47,10 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Glb<'infcx, 'gcx, 
                                              -> RelateResult<'tcx, T>
     {
         match variance {
-            ty::Invariant => self.fields.equate().relate(a, b),
+            ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
-            ty::Bivariant => self.fields.bivariate().relate(a, b),
-            ty::Contravariant => self.fields.lub().relate(a, b),
+            ty::Bivariant => self.fields.bivariate(self.a_is_expected).relate(a, b),
+            ty::Contravariant => self.fields.lub(self.a_is_expected).relate(a, b),
         }
     }
 
@@ -71,7 +72,7 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Glb<'infcx, 'gcx, 
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        self.fields.higher_ranked_glb(a, b)
+        self.fields.higher_ranked_glb(a, b, self.a_is_expected)
     }
 }
 
@@ -81,7 +82,7 @@ impl<'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx> for Glb<'infcx, 'gcx, 't
     }
 
     fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
-        let mut sub = self.fields.sub();
+        let mut sub = self.fields.sub(self.a_is_expected);
         sub.relate(&v, &a)?;
         sub.relate(&v, &b)?;
         Ok(())
