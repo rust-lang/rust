@@ -1397,6 +1397,14 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions)
 impl DirBuilder {
     /// Creates a new set of options with default mode/security settings for all
     /// platforms and also non-recursive.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs::DirBuilder;
+    ///
+    /// let builder = DirBuilder::new();
+    /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
     pub fn new() -> DirBuilder {
         DirBuilder {
@@ -1409,7 +1417,16 @@ impl DirBuilder {
     /// all parent directories if they do not exist with the same security and
     /// permissions settings.
     ///
-    /// This option defaults to `false`
+    /// This option defaults to `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs::DirBuilder;
+    ///
+    /// let mut builder = DirBuilder::new();
+    /// builder.recursive(true);
+    /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
     pub fn recursive(&mut self, recursive: bool) -> &mut Self {
         self.recursive = recursive;
