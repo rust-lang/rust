@@ -370,7 +370,25 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
         let data_layout = str::from_utf8(CStr::from_ptr(data_layout).to_bytes())
             .ok().expect("got a non-UTF8 data-layout from LLVM");
 
-        if sess.target.target.data_layout != data_layout {
+        // Unfortunately LLVM target specs change over time, and right now we
+        // don't have proper support to work with any more than one
+        // `data_layout` than the one that is in the rust-lang/rust repo. If
+        // this compiler is configured against a custom LLVM, we may have a
+        // differing data layout, even though we should update our own to use
+        // that one.
+        //
+        // As an interim hack, if CFG_LLVM_ROOT is not an empty string then we
+        // disable this check entirely as we may be configured with something
+        // that has a different target layout.
+        //
+        // Unsure if this will actually cause breakage when rustc is configured
+        // as such.
+        //
+        // FIXME(#34960)
+        let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
+        let custom_llvm_used = cfg_llvm_root.trim() != "";
+
+        if !custom_llvm_used && sess.target.target.data_layout != data_layout {
             bug!("data-layout for builtin `{}` target, `{}`, \
                   differs from LLVM default, `{}`",
                  sess.target.target.llvm_target,
