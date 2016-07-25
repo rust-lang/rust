@@ -259,6 +259,18 @@ impl ast_node for hir::Pat {
 #[derive(Copy, Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    options: MemCategorizationOptions,
+}
+
+#[derive(Copy, Clone, Default)]
+pub struct MemCategorizationOptions {
+    // If true, then when analyzing a closure upvar, if the closure
+    // has a missing kind, we treat it like a Fn closure. When false,
+    // we ICE if the closure has a missing kind. Should be false
+    // except during closure kind inference. It is used by the
+    // mem-categorization code to be able to have stricter assertions
+    // (which are always true except during upvar inference).
+    pub during_closure_kind_inference: bool,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -362,8 +374,15 @@ impl MutabilityCategory {
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
+        MemCategorizationContext::with_options(infcx, MemCategorizationOptions::default())
+    }
+
+    pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                        options: MemCategorizationOptions)
+                        -> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext {
             infcx: infcx,
+            options: options,
         }
     }
 
@@ -586,7 +605,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                               self.cat_upvar(id, span, var_id, fn_node_id, kind)
                           }
                           None => {
-                              if !self.infcx.during_closure_kind_inference() {
+                              if !self.options.during_closure_kind_inference {
                                   span_bug!(
                                       span,
                                       "No closure kind for {:?}",
