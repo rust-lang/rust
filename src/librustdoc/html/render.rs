@@ -2409,10 +2409,13 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
            if structhead {"struct "} else {""},
            it.name.as_ref().unwrap())?;
     if let Some(g) = g {
-        write!(w, "{}{}", *g, WhereClause(g))?
+        write!(w, "{}", g)?
     }
     match ty {
         doctree::Plain => {
+            if let Some(g) = g {
+                write!(w, "{}", WhereClause(g))?
+            }
             write!(w, " {{\n{}", tab)?;
             for field in fields {
                 if let clean::StructFieldItem(ref ty) = field.inner {
@@ -2445,9 +2448,17 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                     _ => unreachable!()
                 }
             }
-            write!(w, ");")?;
+            write!(w, ")")?;
+            if let Some(g) = g {
+                write!(w, "{}", WhereClause(g))?
+            }
+            write!(w, ";")?;
         }
         doctree::Unit => {
+            // Needed for PhantomData.
+            if let Some(g) = g {
+                write!(w, "{}", WhereClause(g))?
+            }
             write!(w, ";")?;
         }
     }
