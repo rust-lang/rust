@@ -264,6 +264,8 @@ pub trait CharExt {
     fn escape_unicode(self) -> EscapeUnicode;
     #[stable(feature = "core", since = "1.6.0")]
     fn escape_default(self) -> EscapeDefault;
+    #[unstable(feature = "char_escape", issue = "0")]
+    fn escape(self) -> Escape;
     #[stable(feature = "core", since = "1.6.0")]
     fn len_utf8(self) -> usize;
     #[stable(feature = "core", since = "1.6.0")]
@@ -321,10 +323,23 @@ impl CharExt for char {
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
             '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
+            '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
+            _ => EscapeDefaultState::Unicode(self.escape_unicode())
+        };
+        EscapeDefault { state: init_state }
+    }
+
+    #[inline]
+    fn escape(self) -> Escape {
+        let init_state = match self {
+            '\t' => EscapeDefaultState::Backslash('t'),
+            '\r' => EscapeDefaultState::Backslash('r'),
+            '\n' => EscapeDefaultState::Backslash('n'),
+            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
             c if is_printable(c) => EscapeDefaultState::Char(c),
             c => EscapeDefaultState::Unicode(c.escape_unicode()),
         };
-        EscapeDefault { state: init_state }
+        Escape(EscapeDefault { state: init_state })
     }
 
     #[inline]
@@ -600,6 +615,27 @@ impl ExactSizeIterator for EscapeDefault {
         }
     }
 }
+
+/// An iterator that yields the literal escape code of a `char`.
+///
+/// This `struct` is created by the [`escape()`] method on [`char`]. See its
+/// documentation for more.
+///
+/// [`escape()`]: ../../std/primitive.char.html#method.escape
+/// [`char`]: ../../std/primitive.char.html
+#[unstable(feature = "char_escape", issue = "0")]
+#[derive(Clone, Debug)]
+pub struct Escape(EscapeDefault);
+
+#[unstable(feature = "char_escape", issue = "0")]
+impl Iterator for Escape {
+    type Item = char;
+    fn next(&mut self) -> Option<char> { self.0.next() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.0.size_hint() }
+}
+
+#[unstable(feature = "char_escape", issue = "0")]
+impl ExactSizeIterator for Escape { }
 
 /// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
 /// value.
