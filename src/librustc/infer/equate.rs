@@ -15,25 +15,20 @@ use super::type_variable::{EqTo};
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Relate, RelateResult, TypeRelation};
-use traits::PredicateObligations;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
-pub struct Equate<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: CombineFields<'infcx, 'gcx, 'tcx>,
+pub struct Equate<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'infcx, 'gcx, 'tcx> Equate<'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Equate<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> Equate<'combine, 'infcx, 'gcx, 'tcx> {
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Equate<'combine, 'infcx, 'gcx, 'tcx> {
         Equate { fields: fields, a_is_expected: a_is_expected }
-    }
-
-    pub fn obligations(self) -> PredicateObligations<'tcx> {
-        self.fields.obligations
     }
 }
 
-impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Equate<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Equate<'combine, 'infcx, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Equate" }
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }

@@ -15,22 +15,17 @@ use super::type_variable::{SubtypeOf, SupertypeOf};
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Cause, Relate, RelateResult, TypeRelation};
-use traits::PredicateObligations;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: CombineFields<'infcx, 'gcx, 'tcx>,
+pub struct Sub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'infcx, 'gcx, 'tcx> Sub<'infcx, 'gcx, 'tcx> {
-    pub fn new(f: CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Sub<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> Sub<'combine, 'infcx, 'gcx, 'tcx> {
+    pub fn new(f: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Sub<'combine, 'infcx, 'gcx, 'tcx> {
         Sub { fields: f, a_is_expected: a_is_expected }
-    }
-
-    pub fn obligations(self) -> PredicateObligations<'tcx> {
-        self.fields.obligations
     }
 
     fn with_expected_switched<R, F: FnOnce(&mut Self) -> R>(&mut self, f: F) -> R {
@@ -41,7 +36,7 @@ impl<'infcx, 'gcx, 'tcx> Sub<'infcx, 'gcx, 'tcx> {
     }
 }
 
-impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Sub<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Sub<'combine, 'infcx, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.a_is_expected }

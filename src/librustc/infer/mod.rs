@@ -813,36 +813,36 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut equate = self.combine_fields(trace).equate(a_is_expected);
-        let result = equate.relate(a, b);
-        result.map(|t| InferOk { value: t, obligations: equate.obligations() })
+        let mut fields = self.combine_fields(trace);
+        let result = fields.equate(a_is_expected).relate(a, b);
+        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     pub fn sub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut sub = self.combine_fields(trace).sub(a_is_expected);
-        let result = sub.relate(a, b);
-        result.map(|t| InferOk { value: t, obligations: sub.obligations() })
+        let mut fields = self.combine_fields(trace);
+        let result = fields.sub(a_is_expected).relate(a, b);
+        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     pub fn lub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut lub = self.combine_fields(trace).lub(a_is_expected);
-        let result = lub.relate(a, b);
-        result.map(|t| InferOk { value: t, obligations: lub.obligations() })
+        let mut fields = self.combine_fields(trace);
+        let result = fields.lub(a_is_expected).relate(a, b);
+        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     pub fn glb<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut glb = self.combine_fields(trace).glb(a_is_expected);
-        let result = glb.relate(a, b);
-        result.map(|t| InferOk { value: t, obligations: glb.obligations() })
+        let mut fields = self.combine_fields(trace);
+        let result = fields.glb(a_is_expected).relate(a, b);
+        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
@@ -1645,7 +1645,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref, p.ty));
-        let combine = self.combine_fields(trace);
+        let mut combine = self.combine_fields(trace);
         let result = combine.higher_ranked_match(span, &match_pair, &match_b, true)?;
         Ok(InferOk { value: result, obligations: combine.obligations })
     }
