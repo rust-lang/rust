@@ -52,21 +52,21 @@ use syntax::ast;
 use syntax_pos::Span;
 
 #[derive(Clone)]
-pub struct CombineFields<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    pub infcx: &'infcx InferCtxt<'infcx, 'gcx, 'tcx>,
     pub a_is_expected: bool,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
     pub obligations: PredicateObligations<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
     pub fn super_combine_tys<R>(&self,
                                 relation: &mut R,
                                 a: Ty<'tcx>,
                                 b: Ty<'tcx>)
                                 -> RelateResult<'tcx, Ty<'tcx>>
-        where R: TypeRelation<'a, 'gcx, 'tcx>
+        where R: TypeRelation<'infcx, 'gcx, 'tcx>
     {
         let a_is_expected = relation.a_is_expected();
 
@@ -150,35 +150,35 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn switch_expected(&self) -> CombineFields<'a, 'gcx, 'tcx> {
+    pub fn switch_expected(&self) -> CombineFields<'infcx, 'gcx, 'tcx> {
         CombineFields {
             a_is_expected: !self.a_is_expected,
             ..(*self).clone()
         }
     }
 
-    pub fn equate(&self) -> Equate<'a, 'gcx, 'tcx> {
+    pub fn equate(&self) -> Equate<'infcx, 'gcx, 'tcx> {
         Equate::new(self.clone())
     }
 
-    pub fn bivariate(&self) -> Bivariate<'a, 'gcx, 'tcx> {
+    pub fn bivariate(&self) -> Bivariate<'infcx, 'gcx, 'tcx> {
         Bivariate::new(self.clone())
     }
 
-    pub fn sub(&self) -> Sub<'a, 'gcx, 'tcx> {
+    pub fn sub(&self) -> Sub<'infcx, 'gcx, 'tcx> {
         Sub::new(self.clone())
     }
 
-    pub fn lub(&self) -> Lub<'a, 'gcx, 'tcx> {
+    pub fn lub(&self) -> Lub<'infcx, 'gcx, 'tcx> {
         Lub::new(self.clone())
     }
 
-    pub fn glb(&self) -> Glb<'a, 'gcx, 'tcx> {
+    pub fn glb(&self) -> Glb<'infcx, 'gcx, 'tcx> {
         Glb::new(self.clone())
     }
 

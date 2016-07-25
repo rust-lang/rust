@@ -18,12 +18,12 @@ use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 /// "Greatest lower bound" (common subtype)
-pub struct Glb<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    fields: CombineFields<'a, 'gcx, 'tcx>
+pub struct Glb<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: CombineFields<'infcx, 'gcx, 'tcx>
 }
 
-impl<'a, 'gcx, 'tcx> Glb<'a, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'gcx, 'tcx>) -> Glb<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> Glb<'infcx, 'gcx, 'tcx> {
+    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>) -> Glb<'infcx, 'gcx, 'tcx> {
         Glb { fields: fields }
     }
 
@@ -32,10 +32,10 @@ impl<'a, 'gcx, 'tcx> Glb<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Glb<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Glb<'infcx, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Glb" }
 
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
@@ -75,8 +75,8 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Glb<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> LatticeDir<'a, 'gcx, 'tcx> for Glb<'a, 'gcx, 'tcx> {
-    fn infcx(&self) -> &'a InferCtxt<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx> for Glb<'infcx, 'gcx, 'tcx> {
+    fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'gcx, 'tcx> {
         self.fields.infcx
     }
 

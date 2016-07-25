@@ -32,20 +32,20 @@ use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 
-pub struct Bivariate<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    fields: CombineFields<'a, 'gcx, 'tcx>
+pub struct Bivariate<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: CombineFields<'infcx, 'gcx, 'tcx>
 }
 
-impl<'a, 'gcx, 'tcx> Bivariate<'a, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'gcx, 'tcx>) -> Bivariate<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> Bivariate<'infcx, 'gcx, 'tcx> {
+    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>) -> Bivariate<'infcx, 'gcx, 'tcx> {
         Bivariate { fields: fields }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Bivariate<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Bivariate<'infcx, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Bivariate" }
 
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

@@ -19,12 +19,12 @@ use traits::PredicateObligations;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    fields: CombineFields<'a, 'gcx, 'tcx>,
+pub struct Sub<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: CombineFields<'infcx, 'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> Sub<'a, 'gcx, 'tcx> {
-    pub fn new(f: CombineFields<'a, 'gcx, 'tcx>) -> Sub<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> Sub<'infcx, 'gcx, 'tcx> {
+    pub fn new(f: CombineFields<'infcx, 'gcx, 'tcx>) -> Sub<'infcx, 'gcx, 'tcx> {
         Sub { fields: f }
     }
 
@@ -33,9 +33,9 @@ impl<'a, 'gcx, 'tcx> Sub<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Sub<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Sub<'infcx, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.infcx.tcx }
+    fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R
