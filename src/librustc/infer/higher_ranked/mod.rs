@@ -40,7 +40,7 @@ pub struct HrMatchResult<U> {
 }
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
-    pub fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
+    pub fn higher_ranked_sub<T>(&mut self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
                                 -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'tcx>
     {
@@ -106,7 +106,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     /// NB. It should not happen that there are LBR appearing in `U`
     /// that do not appear in `T`. If that happens, those regions are
     /// unconstrained, and this routine replaces them with `'static`.
-    pub fn higher_ranked_match<T, U>(&self,
+    pub fn higher_ranked_match<T, U>(&mut self,
                                      span: Span,
                                      a_pair: &Binder<(T, U)>,
                                      b_match: &T,
@@ -222,7 +222,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         });
     }
 
-    pub fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
+    pub fn higher_ranked_lub<T>(&mut self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
                                 -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'tcx>
     {
@@ -312,7 +312,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
+    pub fn higher_ranked_glb<T>(&mut self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
                                 -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'tcx>
     {

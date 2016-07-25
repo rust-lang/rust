@@ -32,18 +32,18 @@ use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 
-pub struct Bivariate<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: CombineFields<'infcx, 'gcx, 'tcx>,
+pub struct Bivariate<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'infcx, 'gcx, 'tcx> Bivariate<'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Bivariate<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> Bivariate<'combine, 'infcx, 'gcx, 'tcx> {
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Bivariate<'combine, 'infcx, 'gcx, 'tcx> {
         Bivariate { fields: fields, a_is_expected: a_is_expected }
     }
 }
 
-impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Bivariate<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Bivariate<'combine, 'infcx, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Bivariate" }
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }

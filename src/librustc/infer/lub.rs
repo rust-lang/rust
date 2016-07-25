@@ -15,25 +15,20 @@ use super::Subtype;
 
 use ty::{self, Ty, TyCtxt};
 use ty::relate::{Relate, RelateResult, TypeRelation};
-use traits::PredicateObligations;
 
 /// "Least upper bound" (common supertype)
-pub struct Lub<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: CombineFields<'infcx, 'gcx, 'tcx>,
+pub struct Lub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'infcx, 'gcx, 'tcx> Lub<'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Lub<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> Lub<'combine, 'infcx, 'gcx, 'tcx> {
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Lub<'combine, 'infcx, 'gcx, 'tcx> {
         Lub { fields: fields, a_is_expected: a_is_expected }
-    }
-
-    pub fn obligations(self) -> PredicateObligations<'tcx> {
-        self.fields.obligations
     }
 }
 
-impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Lub<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Lub<'combine, 'infcx, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Lub" }
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
@@ -76,12 +71,12 @@ impl<'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Lub<'infcx, 'gcx, 
     }
 }
 
-impl<'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx> for Lub<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx> for Lub<'combine, 'infcx, 'gcx, 'tcx> {
     fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'gcx, 'tcx> {
         self.fields.infcx
     }
 
-    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
+    fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let mut sub = self.fields.sub(self.a_is_expected);
         sub.relate(&a, &v)?;
         sub.relate(&b, &v)?;

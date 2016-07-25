@@ -154,27 +154,27 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn equate(&self, a_is_expected: bool) -> Equate<'infcx, 'gcx, 'tcx> {
-        Equate::new(self.clone(), a_is_expected)
+    pub fn equate<'a>(&'a mut self, a_is_expected: bool) -> Equate<'a, 'infcx, 'gcx, 'tcx> {
+        Equate::new(self, a_is_expected)
     }
 
-    pub fn bivariate(&self, a_is_expected: bool) -> Bivariate<'infcx, 'gcx, 'tcx> {
-        Bivariate::new(self.clone(), a_is_expected)
+    pub fn bivariate<'a>(&'a mut self, a_is_expected: bool) -> Bivariate<'a, 'infcx, 'gcx, 'tcx> {
+        Bivariate::new(self, a_is_expected)
     }
 
-    pub fn sub(&self, a_is_expected: bool) -> Sub<'infcx, 'gcx, 'tcx> {
-        Sub::new(self.clone(), a_is_expected)
+    pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> Sub<'a, 'infcx, 'gcx, 'tcx> {
+        Sub::new(self, a_is_expected)
     }
 
-    pub fn lub(&self, a_is_expected: bool) -> Lub<'infcx, 'gcx, 'tcx> {
-        Lub::new(self.clone(), a_is_expected)
+    pub fn lub<'a>(&'a mut self, a_is_expected: bool) -> Lub<'a, 'infcx, 'gcx, 'tcx> {
+        Lub::new(self, a_is_expected)
     }
 
-    pub fn glb(&self, a_is_expected: bool) -> Glb<'infcx, 'gcx, 'tcx> {
-        Glb::new(self.clone(), a_is_expected)
+    pub fn glb<'a>(&'a mut self, a_is_expected: bool) -> Glb<'a, 'infcx, 'gcx, 'tcx> {
+        Glb::new(self, a_is_expected)
     }
 
-    pub fn instantiate(&self,
+    pub fn instantiate(&mut self,
                        a_ty: Ty<'tcx>,
                        dir: RelationDir,
                        b_vid: ty::TyVid,
