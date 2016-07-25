@@ -48,18 +48,18 @@ use self::higher_ranked::HrMatchResult;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::unify_key::ToType;
 
-pub mod bivariate;
-pub mod combine;
-pub mod equate;
+mod bivariate;
+mod combine;
+mod equate;
 pub mod error_reporting;
-pub mod glb;
+mod glb;
 mod higher_ranked;
 pub mod lattice;
-pub mod lub;
+mod lub;
 pub mod region_inference;
 pub mod resolve;
 mod freshen;
-pub mod sub;
+mod sub;
 pub mod type_variable;
 pub mod unify_key;
 
