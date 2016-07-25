@@ -51,7 +51,7 @@
 
 TARGET_CRATES := libc std term \
                  getopts collections test rand \
-                 core alloc \
+                 compiler_builtins core alloc \
                  rustc_unicode rustc_bitflags \
 		 alloc_system alloc_jemalloc \
 		 panic_abort panic_unwind unwind
@@ -65,6 +65,7 @@ HOST_CRATES := syntax syntax_ext proc_macro syntax_pos $(RUSTC_CRATES) rustdoc f
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
 DEPS_core :=
+DEPS_compiler_builtins := core
 DEPS_alloc := core libc alloc_system
 DEPS_alloc_system := core libc
 DEPS_alloc_jemalloc := core libc native:jemalloc
@@ -77,12 +78,14 @@ DEPS_panic_abort := libc alloc
 DEPS_panic_unwind := libc alloc unwind
 DEPS_unwind := libc
 
+RUSTFLAGS_compiler_builtins := -lstatic=compiler-rt
+
 # FIXME(stage0): change this to just `RUSTFLAGS_panic_abort := ...`
 RUSTFLAGS1_panic_abort := -C panic=abort
 RUSTFLAGS2_panic_abort := -C panic=abort
 RUSTFLAGS3_panic_abort := -C panic=abort
 
-DEPS_std := core libc rand alloc collections rustc_unicode \
+DEPS_std := core libc rand alloc collections compiler_builtins rustc_unicode \
 	native:backtrace \
 	alloc_system panic_abort panic_unwind unwind
 DEPS_arena := std
@@ -153,6 +156,7 @@ TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustbook := $(S)src/tools/rustbook/main.rs
 TOOL_SOURCE_error_index_generator := $(S)src/tools/error_index_generator/main.rs
 
+ONLY_RLIB_compiler_builtins := 1
 ONLY_RLIB_core := 1
 ONLY_RLIB_libc := 1
 ONLY_RLIB_alloc := 1

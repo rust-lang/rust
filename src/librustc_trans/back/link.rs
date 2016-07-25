@@ -573,10 +573,6 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
                   tempdir: &Path) {
     let mut ab = link_rlib(sess, None, objects, out_filename, tempdir);
-    if !sess.target.target.options.no_compiler_rt {
-        ab.add_native_library("compiler-rt");
-    }
-
     let mut all_native_libs = vec![];
 
     each_linked_rlib(sess, &mut |cnum, path| {
@@ -640,9 +636,6 @@ fn link_natively(sess: &Session,
         let mut linker = trans.linker_info.to_linker(&mut cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
                   objects, out_filename, outputs);
-        if !sess.target.target.options.no_compiler_rt {
-            linker.link_staticlib("compiler-rt");
-        }
     }
     cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {
@@ -939,6 +932,12 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum as usize - 1] {
+            // We must always link the `compiler_builtins` crate statically. Even if it was already
+            // "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic` is used)
+            _ if sess.cstore.is_compiler_builtins(cnum) => {
+                add_static_crate(cmd, sess, tmpdir, crate_type,
+                                 &src.rlib.unwrap().0, sess.cstore.is_no_builtins(cnum))
+            }
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
             Linkage::Static => {

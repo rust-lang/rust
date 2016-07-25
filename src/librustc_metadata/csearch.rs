@@ -346,6 +346,10 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(cnum).is_panic_runtime()
     }
 
+    fn is_compiler_builtins(&self, cnum: ast::CrateNum) -> bool {
+        self.get_crate_data(cnum).is_compiler_builtins()
+    }
+
     fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy {
         self.get_crate_data(cnum).panic_strategy()
     }
