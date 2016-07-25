@@ -13,47 +13,51 @@
 use persist::util::*;
 use rustc::dep_graph::{WorkProduct, WorkProductId};
 use rustc::session::Session;
+use rustc::session::config::OutputType;
 use rustc::util::fs::link_or_copy;
-use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 pub fn save_trans_partition(sess: &Session,
-                            partition_name: &str,
+                            cgu_name: &str,
                             partition_hash: u64,
-                            path_to_obj_file: &Path) {
-    debug!("save_trans_partition({:?},{},{})",
-           partition_name,
+                            files: &[(OutputType, PathBuf)]) {
+    debug!("save_trans_partition({:?},{},{:?})",
+           cgu_name,
            partition_hash,
-           path_to_obj_file.display());
+           files);
     if sess.opts.incremental.is_none() {
         return;
     }
-    let id = Arc::new(WorkProductId::PartitionObjectFile(partition_name.to_string()));
-    let file_name = format!("cgu-{}", partition_name);
-    let path_in_incr_dir = in_incr_comp_dir(sess, &file_name).unwrap();
+    let work_product_id = Arc::new(WorkProductId(cgu_name.to_string()));
 
-    // try to delete the file if it already exists
-    //
-    // FIXME(#34955) we can be smarter here -- if we are re-using, no need to do anything
-    if path_in_incr_dir.exists() {
-        let _ = fs::remove_file(&path_in_incr_dir);
-    }
+    let saved_files: Option<Vec<_>> =
+        files.iter()
+             .map(|&(kind, ref path)| {
+                 let file_name = format!("cgu-{}.{}", cgu_name, kind.extension());
+                 let path_in_incr_dir = in_incr_comp_dir(sess, &file_name).unwrap();
+                 match link_or_copy(path, &path_in_incr_dir) {
+                     Ok(_) => Some((kind, file_name)),
+                     Err(err) => {
+                         sess.warn(&format!("error copying object file `{}` \
+                                             to incremental directory as `{}`: {}",
+                                            path.display(),
+                                            path_in_incr_dir.display(),
+                                            err));
+                         None
+                     }
+                 }
+             })
+             .collect();
+    let saved_files = match saved_files {
+        Some(v) => v,
+        None => return,
+    };
 
-    match link_or_copy(path_to_obj_file, &path_in_incr_dir) {
-        Ok(_) => {
-            let work_product = WorkProduct {
-                input_hash: partition_hash,
-                file_name: file_name,
-            };
-            sess.dep_graph.insert_work_product(&id, work_product);
-        }
-        Err(err) => {
-            sess.warn(&format!("error copying object file `{}` \
-                                to incremental directory as `{}`: {}",
-                               path_to_obj_file.display(),
-                               path_in_incr_dir.display(),
-                               err));
-        }
-    }
+    let work_product = WorkProduct {
+        input_hash: partition_hash,
+        saved_files: saved_files,
+    };
+
+    sess.dep_graph.insert_work_product(&work_product_id, work_product);
 }

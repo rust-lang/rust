@@ -246,7 +246,5 @@ impl<D: Clone + Debug> DepNode<D> {
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub enum WorkProductId {
-    PartitionObjectFile(String), // see (*TransPartition) below
-}
+pub struct WorkProductId(pub String);
 

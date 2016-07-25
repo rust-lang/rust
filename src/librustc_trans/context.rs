@@ -10,7 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig};
+use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
@@ -40,7 +40,6 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
-use std::path::PathBuf;
 use std::marker::PhantomData;
 use std::ptr;
 use std::rc::Rc;
@@ -96,7 +95,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
-    previous_work_product: Option<PathBuf>,
+    previous_work_product: Option<WorkProduct>,
     tn: TypeNames, // FIXME: This seems to be largely unused.
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
@@ -202,13 +201,13 @@ pub struct CrateContextList<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
     pub fn new(shared_ccx: &'a SharedCrateContext<'a, 'tcx>,
                codegen_units: Vec<CodegenUnit<'tcx>>,
-               previous_work_products: Vec<Option<PathBuf>>,
+               previous_work_products: Vec<Option<WorkProduct>>,
                symbol_map: Rc<SymbolMap<'tcx>>)
                -> CrateContextList<'a, 'tcx> {
         CrateContextList {
             shared: shared_ccx,
-            local_ccxs: codegen_units.into_iter().zip(previous_work_products).map(|(cgu, path)| {
-                LocalCrateContext::new(shared_ccx, cgu, path, symbol_map.clone())
+            local_ccxs: codegen_units.into_iter().zip(previous_work_products).map(|(cgu, wp)| {
+                LocalCrateContext::new(shared_ccx, cgu, wp, symbol_map.clone())
             }).collect()
         }
     }
@@ -541,7 +540,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 impl<'tcx> LocalCrateContext<'tcx> {
     fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
                codegen_unit: CodegenUnit<'tcx>,
-               previous_work_product: Option<PathBuf>,
+               previous_work_product: Option<WorkProduct>,
                symbol_map: Rc<SymbolMap<'tcx>>)
            -> LocalCrateContext<'tcx> {
         unsafe {
@@ -727,7 +726,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local().llcx
     }
 
-    pub fn previous_work_product(&self) -> Option<&PathBuf> {
+    pub fn previous_work_product(&self) -> Option<&WorkProduct> {
         self.local().previous_work_product.as_ref()
     }
 

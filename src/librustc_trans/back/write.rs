@@ -337,6 +337,8 @@ struct CodegenContext<'a> {
     remark: Passes,
     // Worker thread number
     worker: usize,
+    // Directory where incremental data is stored (if any)
+    incremental: Option<PathBuf>,
 }
 
 impl<'a> CodegenContext<'a> {
@@ -347,6 +349,7 @@ impl<'a> CodegenContext<'a> {
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
             worker: 0,
+            incremental: sess.opts.incremental.clone(),
         }
     }
 }
@@ -612,7 +615,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
     if copy_bc_to_obj {
         debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-        if let Err(e) = fs::copy(&bc_out, &obj_out) {
+        if let Err(e) = link_or_copy(&bc_out, &obj_out) {
             cgcx.handler.err(&format!("failed to copy bitcode to object file: {}", e));
         }
     }
@@ -754,9 +757,19 @@ pub fn run_passes(sess: &Session,
 
     // If in incr. comp. mode, preserve the `.o` files for potential re-use
     for mtrans in trans.modules.iter() {
-        let path_to_obj = crate_output.temp_path(OutputType::Object, Some(&mtrans.name));
-        debug!("wrote module {:?} to {:?}", mtrans.name, path_to_obj);
-        save_trans_partition(sess, &mtrans.name, mtrans.symbol_name_hash, &path_to_obj);
+        let mut files = vec![];
+
+        if modules_config.emit_obj {
+            let path = crate_output.temp_path(OutputType::Object, Some(&mtrans.name));
+            files.push((OutputType::Object, path));
+        }
+
+        if modules_config.emit_bc {
+            let path = crate_output.temp_path(OutputType::Bitcode, Some(&mtrans.name));
+            files.push((OutputType::Bitcode, path));
+        }
+
+        save_trans_partition(sess, &mtrans.name, mtrans.symbol_name_hash, &files);
     }
 
     // All codegen is finished.
@@ -941,20 +954,24 @@ fn execute_work_item(cgcx: &CodegenContext,
                                      work_item.config,
                                      work_item.output_names);
             }
-            ModuleSource::Preexisting(ref buf) => {
-                let obj_out = work_item.output_names.temp_path(OutputType::Object,
-                                                               Some(&work_item.mtrans.name));
-                debug!("copying pre-existing module `{}` from {} to {}",
-                       work_item.mtrans.name,
-                       buf.display(),
-                       obj_out.display());
-                match link_or_copy(buf, &obj_out) {
-                    Ok(()) => { }
-                    Err(err) => {
-                        cgcx.handler.err(&format!("unable to copy {} to {}: {}",
-                                                  buf.display(),
-                                                  obj_out.display(),
-                                                  err));
+            ModuleSource::Preexisting(wp) => {
+                let incremental = cgcx.incremental.as_ref().unwrap();
+                let name = &work_item.mtrans.name;
+                for (kind, saved_file) in wp.saved_files {
+                    let obj_out = work_item.output_names.temp_path(kind, Some(name));
+                    let source_file = incremental.join(&saved_file);
+                    debug!("copying pre-existing module `{}` from {:?} to {}",
+                           work_item.mtrans.name,
+                           source_file,
+                           obj_out.display());
+                    match link_or_copy(&source_file, &obj_out) {
+                        Ok(()) => { }
+                        Err(err) => {
+                            cgcx.handler.err(&format!("unable to copy {} to {}: {}",
+                                                      source_file.display(),
+                                                      obj_out.display(),
+                                                      err));
+                        }
                     }
                 }
             }
@@ -994,6 +1011,8 @@ fn run_work_multithreaded(sess: &Session,
         let mut tx = Some(tx);
         futures.push(rx);
 
+        let incremental = sess.opts.incremental.clone();
+
         thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
             let diag_handler = Handler::with_emitter(true, false, box diag_emitter);
 
@@ -1005,6 +1024,7 @@ fn run_work_multithreaded(sess: &Session,
                 plugin_passes: plugin_passes,
                 remark: remark,
                 worker: i,
+                incremental: incremental,
             };
 
             loop {

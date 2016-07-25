@@ -260,11 +260,20 @@ fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("reconcile_work_products: dep-node for {:?} is dirty", swp);
             delete_dirty_work_product(tcx, swp);
         } else {
-            let path = in_incr_comp_dir(tcx.sess, &swp.work_product.file_name).unwrap();
-            if path.exists() {
+            let all_files_exist =
+                swp.work_product
+                   .saved_files
+                   .iter()
+                   .all(|&(_, ref file_name)| {
+                       let path = in_incr_comp_dir(tcx.sess, &file_name).unwrap();
+                       path.exists()
+                   });
+            if all_files_exist {
+                debug!("reconcile_work_products: all files for {:?} exist", swp);
                 tcx.dep_graph.insert_previous_work_product(&swp.id, swp.work_product);
             } else {
-                debug!("reconcile_work_products: file for {:?} does not exist", swp);
+                debug!("reconcile_work_products: some file for {:?} does not exist", swp);
+                delete_dirty_work_product(tcx, swp);
             }
         }
     }
@@ -273,13 +282,15 @@ fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn delete_dirty_work_product(tcx: TyCtxt,
                              swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
-    let path = in_incr_comp_dir(tcx.sess, &swp.work_product.file_name).unwrap();
-    match fs::remove_file(&path) {
-        Ok(()) => { }
-        Err(err) => {
-            tcx.sess.warn(
-                &format!("file-system error deleting outdated file `{}`: {}",
-                         path.display(), err));
+    for &(_, ref file_name) in &swp.work_product.saved_files {
+        let path = in_incr_comp_dir(tcx.sess, file_name).unwrap();
+        match fs::remove_file(&path) {
+            Ok(()) => { }
+            Err(err) => {
+                tcx.sess.warn(
+                    &format!("file-system error deleting outdated file `{}`: {}",
+                             path.display(), err));
+            }
         }
     }
 }
