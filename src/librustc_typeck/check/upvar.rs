@@ -171,10 +171,13 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id);
 
         {
-            self.fcx.set_during_closure_kind_inference(true);
-            let mut euv = euv::ExprUseVisitor::new(self, self.fcx);
+            let mut euv =
+                euv::ExprUseVisitor::with_options(self,
+                                                  self.fcx,
+                                                  mc::MemCategorizationOptions {
+                                                      during_closure_kind_inference: true
+                                                  });
             euv.walk_fn(decl, body);
-            self.fcx.set_during_closure_kind_inference(false);
         }
 
         // Now that we've analyzed the closure, we know how each
