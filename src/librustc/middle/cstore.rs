@@ -120,12 +120,6 @@ pub struct ChildItem {
     pub vis: ty::Visibility,
 }
 
-pub enum FoundAst<'ast> {
-    Found(&'ast InlinedItem),
-    FoundParent(DefId, &'ast hir::Item),
-    NotFound,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct ExternCrate {
     /// def_id of an `extern crate` in the current crate that caused
@@ -250,7 +244,10 @@ pub trait CrateStore<'tcx> {
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> FoundAst<'tcx>;
+                              -> Option<(&'tcx InlinedItem, ast::NodeId)>;
+    fn local_node_for_inlined_defid(&'tcx self, def_id: DefId) -> Option<ast::NodeId>;
+    fn defid_for_inlined_node(&'tcx self, node_id: ast::NodeId) -> Option<DefId>;
+
     fn maybe_get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                               -> Option<Mir<'tcx>>;
     fn is_item_mir_available(&self, def: DefId) -> bool;
@@ -447,7 +444,16 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                              -> FoundAst<'tcx> { bug!("maybe_get_item_ast") }
+                              -> Option<(&'tcx InlinedItem, ast::NodeId)> {
+        bug!("maybe_get_item_ast")
+    }
+    fn local_node_for_inlined_defid(&'tcx self, def_id: DefId) -> Option<ast::NodeId> {
+        bug!("local_node_for_inlined_defid")
+    }
+    fn defid_for_inlined_node(&'tcx self, node_id: ast::NodeId) -> Option<DefId> {
+        bug!("defid_for_inlined_node")
+    }
+
     fn maybe_get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                               -> Option<Mir<'tcx>> { bug!("maybe_get_item_mir") }
     fn is_item_mir_available(&self, def: DefId) -> bool {

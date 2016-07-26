@@ -17,7 +17,7 @@ use self::EvalHint::*;
 
 use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::cstore::{self, InlinedItem};
+use rustc::middle::cstore::InlinedItem;
 use rustc::traits;
 use rustc::hir::def::{Def, PathResolution};
 use rustc::hir::def_id::DefId;
@@ -142,13 +142,13 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         let mut used_substs = false;
         let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-            cstore::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
+            Some((&InlinedItem::Item(ref item), _)) => match item.node {
                 hir::ItemConst(ref ty, ref const_expr) => {
                     Some((&**const_expr, tcx.ast_ty_to_prim_ty(ty)))
                 },
                 _ => None
             },
-            cstore::FoundAst::Found(&InlinedItem::TraitItem(trait_id, ref ti)) => match ti.node {
+            Some((&InlinedItem::TraitItem(trait_id, ref ti), _)) => match ti.node {
                 hir::ConstTraitItem(_, _) => {
                     used_substs = true;
                     if let Some(substs) = substs {
@@ -163,7 +163,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
                 _ => None
             },
-            cstore::FoundAst::Found(&InlinedItem::ImplItem(_, ref ii)) => match ii.node {
+            Some((&InlinedItem::ImplItem(_, ref ii), _)) => match ii.node {
                 hir::ImplItemKind::Const(ref ty, ref expr) => {
                     Some((&**expr, tcx.ast_ty_to_prim_ty(ty)))
                 },
@@ -198,8 +198,8 @@ fn inline_const_fn_from_external_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let fn_id = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-        cstore::FoundAst::Found(&InlinedItem::Item(ref item)) => Some(item.id),
-        cstore::FoundAst::Found(&InlinedItem::ImplItem(_, ref item)) => Some(item.id),
+        Some((&InlinedItem::Item(ref item), _)) => Some(item.id),
+        Some((&InlinedItem::ImplItem(_, ref item), _)) => Some(item.id),
         _ => None
     };
     tcx.extern_const_fns.borrow_mut().insert(def_id,
