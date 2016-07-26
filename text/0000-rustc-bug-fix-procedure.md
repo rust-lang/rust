@@ -263,7 +263,6 @@ There are obviously many points that we could tweak in this policy:
 
 - Eliminate the tracking issue.
 - Change the stabilization schedule.
-- 
 
 Two other obvious (and rather extreme) alternatives are not having a
 policy and not making any sort of breaking change at all:
