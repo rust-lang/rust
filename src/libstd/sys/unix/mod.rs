@@ -30,6 +30,7 @@ use libc;
 pub mod weak;
 
 pub mod android;
+#[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod condvar;
 pub mod ext;

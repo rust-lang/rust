@@ -72,6 +72,7 @@ pub struct Config {
     // libstd features
     pub debug_jemalloc: bool,
     pub use_jemalloc: bool,
+    pub backtrace: bool, // support for RUST_BACKTRACE
 
     // misc
     pub channel: String,
@@ -134,6 +135,7 @@ struct Rust {
     debuginfo: Option<bool>,
     debug_jemalloc: Option<bool>,
     use_jemalloc: Option<bool>,
+    backtrace: Option<bool>,
     default_linker: Option<String>,
     default_ar: Option<String>,
     channel: Option<String>,
@@ -158,6 +160,7 @@ impl Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
         config.use_jemalloc = true;
+        config.backtrace = true;
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
         config.submodules = true;
@@ -230,6 +233,7 @@ impl Config {
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.debug_jemalloc, rust.debug_jemalloc);
             set(&mut config.use_jemalloc, rust.use_jemalloc);
+            set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
             config.rustc_default_linker = rust.default_linker.clone();
             config.rustc_default_ar = rust.default_ar.clone();
