@@ -189,7 +189,6 @@ macro_rules! debug_assert_eq {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_eq!($($arg)*); })
 }
 
-/// Helper macro for unwrapping `Result` values while returning early with an
 /// error if the value of the expression is `Err`. Can only be used in
 /// functions that return `Result` because of the early return of `Err` that
 /// it provides.
@@ -218,6 +217,7 @@ macro_rules! debug_assert_eq {
 ///     Ok(())
 /// }
 /// ```
+#[cfg(stage0)]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! try {
@@ -227,6 +227,13 @@ macro_rules! try {
             return $crate::result::Result::Err($crate::convert::From::from(err))
         }
     })
+}
+/// Helper macro for unwrapping `Result` values while returning early with an
+#[cfg(not(stage0))]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+macro_rules! try {
+    ($expr:expr) => ($expr?)
 }
 
 /// Use the `format!` syntax to write data into a buffer.
