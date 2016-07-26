@@ -1881,6 +1881,26 @@ impl Into<Vec<u8>> for String {
     }
 }
 
+#[stable(feature = "stringfromchars", since = "1.12.0")]
+impl<'a> From<&'a [char]> for String {
+    #[inline]
+    fn from(v: &'a [char]) -> String {
+        let mut s = String::with_capacity(v.len());
+        for c in v {
+            s.push(*c);
+        }
+        s
+    }
+}
+
+#[stable(feature = "stringfromchars", since = "1.12.0")]
+impl From<Vec<char>> for String {
+    #[inline]
+    fn from(v: Vec<char>) -> String {
+        String::from(v.as_slice())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {
     #[inline]
