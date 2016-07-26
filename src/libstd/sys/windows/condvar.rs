@@ -25,6 +25,9 @@ impl Condvar {
     }
 
     #[inline]
+    pub unsafe fn init(&mut self) {}
+
+    #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
         let r = c::SleepConditionVariableSRW(self.inner.get(),
                                              mutex::raw(mutex),

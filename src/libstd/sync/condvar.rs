@@ -82,10 +82,14 @@ impl Condvar {
     /// notified.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Condvar {
-        Condvar {
+        let mut c = Condvar {
             inner: box sys::Condvar::new(),
             mutex: AtomicUsize::new(0),
+        };
+        unsafe {
+            c.inner.init();
         }
+        c
     }
 
     /// Blocks the current thread until this condition variable receives a
