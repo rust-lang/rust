@@ -58,28 +58,37 @@ pub struct File {
 
 /// Metadata information about a file.
 ///
-/// This structure is returned from the `metadata` function or method and
+/// This structure is returned from the [`metadata`] function or method and
 /// represents known metadata about a file such as its permissions, size,
 /// modification times, etc.
+///
+/// [`metadata`]: fn.metadata.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Metadata(fs_imp::FileAttr);
 
 /// Iterator over the entries in a directory.
 ///
-/// This iterator is returned from the `read_dir` function of this module and
-/// will yield instances of `io::Result<DirEntry>`. Through a `DirEntry`
+/// This iterator is returned from the [`read_dir`] function of this module and
+/// will yield instances of `io::Result<DirEntry>`. Through a [`DirEntry`]
 /// information like the entry's path and possibly other metadata can be
 /// learned.
 ///
+/// [`read_dir`]: fn.read_dir.html
+/// [`DirEntry`]: struct.DirEntry.html
+///
 /// # Errors
 ///
-/// This `io::Result` will be an `Err` if there's some sort of intermittent
+/// This [`io::Result`] will be an `Err` if there's some sort of intermittent
 /// IO error during iteration.
+///
+/// [`io::Result`]: ../io/type.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ReadDir(fs_imp::ReadDir);
 
-/// Entries returned by the `ReadDir` iterator.
+/// Entries returned by the [`ReadDir`] iterator.
+///
+/// [`ReadDir`]: struct.ReadDir.html
 ///
 /// An instance of `DirEntry` represents an entry inside of a directory on the
 /// filesystem. Each entry can be inspected via methods to learn about the full
@@ -89,17 +98,23 @@ pub struct DirEntry(fs_imp::DirEntry);
 
 /// Options and flags which can be used to configure how a file is opened.
 ///
-/// This builder exposes the ability to configure how a `File` is opened and
-/// what operations are permitted on the open file. The `File::open` and
-/// `File::create` methods are aliases for commonly used options using this
+/// This builder exposes the ability to configure how a [`File`] is opened and
+/// what operations are permitted on the open file. The [`File::open`] and
+/// [`File::create`] methods are aliases for commonly used options using this
 /// builder.
 ///
-/// Generally speaking, when using `OpenOptions`, you'll first call `new()`,
-/// then chain calls to methods to set each option, then call `open()`, passing
-/// the path of the file you're trying to open. This will give you a
+/// [`File`]: struct.File.html
+/// [`File::open`]: struct.File.html#method.open
+/// [`File::create`]: struct.File.html#method.create
+///
+/// Generally speaking, when using `OpenOptions`, you'll first call [`new()`],
+/// then chain calls to methods to set each option, then call [`open()`],
+/// passing the path of the file you're trying to open. This will give you a
 /// [`io::Result`][result] with a [`File`][file] inside that you can further
 /// operate on.
 ///
+/// [`new()`]: struct.OpenOptions.html#method.new
+/// [`open()`]: struct.OpenOptions.html#method.open
 /// [result]: ../io/type.Result.html
 /// [file]: struct.File.html
 ///
@@ -131,10 +146,12 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 
 /// Representation of the various permissions on a file.
 ///
-/// This module only currently provides one bit of information, `readonly`,
+/// This module only currently provides one bit of information, [`readonly`],
 /// which is exposed on all currently supported platforms. Unix-specific
 /// functionality, such as mode bits, is available through the
 /// `os::unix::PermissionsExt` trait.
+///
+/// [`readonly`]: struct.Permissions.html#method.readonly
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
@@ -829,6 +846,26 @@ impl DirEntry {
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
     /// calling `symlink_metadata` on the path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             if let Ok(metadata) = entry.metadata() {
+    ///                 // Now let's show our entry's permissions!
+    ///                 println!("{:?}: {:?}", entry.path(), metadata.permissions());
+    ///             } else {
+    ///                 println!("Couldn't get metadata for {:?}", entry.path());
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
         self.0.metadata().map(Metadata)
@@ -844,6 +881,26 @@ impl DirEntry {
     /// On Windows and most Unix platforms this function is free (no extra
     /// system calls needed), but some Unix platforms may require the equivalent
     /// call to `symlink_metadata` to learn about the target file type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             if let Ok(file_type) = entry.file_type() {
+    ///                 // Now let's show our entry's file type!
+    ///                 println!("{:?}: {:?}", entry.path(), file_type);
+    ///             } else {
+    ///                 println!("Couldn't get file type for {:?}", entry.path());
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_type(&self) -> io::Result<FileType> {
         self.0.file_type().map(FileType)
@@ -851,6 +908,21 @@ impl DirEntry {
 
     /// Returns the bare file name of this directory entry without any other
     /// leading path component.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             println!("{:?}", entry.file_name());
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_name(&self) -> OsString {
         self.0.file_name()
