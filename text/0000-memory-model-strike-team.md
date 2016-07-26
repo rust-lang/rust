@@ -135,6 +135,13 @@ that roughly correspond to C++11 atomics, and the intention is that we
 can layer our rules for sequential execution atop those rules for
 parallel execution.
 
+## Termination conditions
+
+The unsafe code guidelines team is intended as a temporary strike team
+with the goal of producing the documents described below. Once the RFC
+for those documents have been approved, responsibility for maintaining
+the documents falls to the lang team.
+
 ## Time frame
 
 Working out a a set of rules for unsafe code is a detailed process and
