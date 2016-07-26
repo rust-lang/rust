@@ -251,7 +251,8 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
                 BiTo => self.bivariate(a_is_expected).relate(&a_ty, &b_ty),
                 EqTo => self.equate(a_is_expected).relate(&a_ty, &b_ty),
                 SubtypeOf => self.sub(a_is_expected).relate(&a_ty, &b_ty),
-                SupertypeOf => self.sub(a_is_expected).relate_with_variance(ty::Contravariant, &a_ty, &b_ty),
+                SupertypeOf => self.sub(a_is_expected).relate_with_variance(
+                    ty::Contravariant, &a_ty, &b_ty),
             }?;
         }
 

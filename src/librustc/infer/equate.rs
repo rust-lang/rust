@@ -23,12 +23,16 @@ pub struct Equate<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
 }
 
 impl<'combine, 'infcx, 'gcx, 'tcx> Equate<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool) -> Equate<'combine, 'infcx, 'gcx, 'tcx> {
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
+        -> Equate<'combine, 'infcx, 'gcx, 'tcx>
+    {
         Equate { fields: fields, a_is_expected: a_is_expected }
     }
 }
 
-impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx> for Equate<'combine, 'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
+    for Equate<'combine, 'infcx, 'gcx, 'tcx>
+{
     fn tag(&self) -> &'static str { "Equate" }
 
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
