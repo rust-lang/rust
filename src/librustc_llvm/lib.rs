@@ -1591,9 +1591,6 @@ extern {
 
     /// Creates target data from a target layout string.
     pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
-    /// Adds the target data to the given pass manager. The pass manager
-    /// references the target data only weakly.
-    pub fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
     /// Number of bytes clobbered when doing a Store to *T.
     pub fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef)
                                -> c_ulonglong;
