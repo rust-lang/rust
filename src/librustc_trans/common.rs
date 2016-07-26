@@ -1235,7 +1235,6 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      inlined_vid: ast::NodeId)
                                      -> ty::VariantDef<'tcx>
 {
-
     let ctor_ty = ccx.tcx().node_id_to_type(inlined_vid);
     debug!("inlined_variant_def: ctor_ty={:?} inlined_vid={:?}", ctor_ty,
            inlined_vid);
@@ -1245,13 +1244,18 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }), ..}) => ty,
         _ => ctor_ty
     }.ty_adt_def().unwrap();
-    let inlined_vid_def_id = ccx.tcx().map.local_def_id(inlined_vid);
-    adt_def.variants.iter().find(|v| {
-        inlined_vid_def_id == v.did ||
-            ccx.external().borrow().get(&v.did) == Some(&Some(inlined_vid))
-    }).unwrap_or_else(|| {
-        bug!("no variant for {:?}::{}", adt_def, inlined_vid)
-    })
+    let variant_def_id = if ccx.tcx().map.is_inlined(inlined_vid) {
+        ccx.defid_for_inlined_node(inlined_vid).unwrap()
+    } else {
+        ccx.tcx().map.local_def_id(inlined_vid)
+    };
+
+    adt_def.variants
+           .iter()
+           .find(|v| variant_def_id == v.did)
+           .unwrap_or_else(|| {
+                bug!("no variant for {:?}::{}", adt_def, inlined_vid)
+            })
 }
 
 // To avoid UB from LLVM, these two functions mask RHS with an

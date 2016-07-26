@@ -1026,7 +1026,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                              .get(TransItem::Static(id))
                              .expect("Local statics should always be in the SymbolMap");
                 // Make sure that this is never executed for something inlined.
-                assert!(!ccx.external_srcs().borrow().contains_key(&id));
+                assert!(!ccx.tcx().map.is_inlined(id));
 
                 let defined_in_current_codegen_unit = ccx.codegen_unit()
                                                          .items()
