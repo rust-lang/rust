@@ -1,4 +1,4 @@
-// rustfmt-reorder_imports: true
+// rustfmt-reorder_imported_names: true
 
 use path::{self /* self */, /* A */ A, B /* B */, C};
 

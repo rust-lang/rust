@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::{ast, visit};
+use syntax::{ast, ptr, visit};
 use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::parse::ParseSess;
 
@@ -23,11 +23,10 @@ use comment::rewrite_comment;
 use macros::rewrite_macro;
 use items::{rewrite_static, rewrite_associated_type, rewrite_type_alias, format_impl, format_trait};
 
-// For format_missing and last_pos, need to use the source callsite (if applicable).
-// Required as generated code spans aren't guaranteed to follow on from the last span.
-macro_rules! source {
-    ($this:ident, $sp: expr) => {
-        $this.codemap.source_callsite($sp)
+fn is_use_item(item: &ast::Item) -> bool {
+    match item.node {
+        ast::ItemKind::Use(_) => true,
+        _ => false,
     }
 }
 
@@ -191,7 +190,7 @@ impl<'a> FmtVisitor<'a> {
         self.visit_block(b)
     }
 
-    fn visit_item(&mut self, item: &ast::Item) {
+    pub fn visit_item(&mut self, item: &ast::Item) {
         // This is where we bail out if there is a skip attribute. This is only
         // complex in the module case. It is complex because the module could be
         // in a seperate file and there might be attributes in both files, but
@@ -502,8 +501,24 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn walk_mod_items(&mut self, m: &ast::Mod) {
-        for item in &m.items {
-            self.visit_item(&item);
+        let mut items_left: &[ptr::P<ast::Item>] = &m.items;
+        while !items_left.is_empty() {
+            // If the next item is a `use` declaration, then extract it and any subsequent `use`s
+            // to be potentially reordered within `format_imports`. Otherwise, just format the
+            // next item for output.
+            if self.config.reorder_imports && is_use_item(&*items_left[0]) {
+                let use_item_length =
+                    items_left.iter().take_while(|ppi| is_use_item(&***ppi)).count();
+                let (use_items, rest) = items_left.split_at(use_item_length);
+                self.format_imports(use_items);
+                items_left = rest;
+            } else {
+                // `unwrap()` is safe here because we know `items_left`
+                // has elements from the loop condition
+                let (item, rest) = items_left.split_first().unwrap();
+                self.visit_item(&item);
+                items_left = rest;
+            }
         }
     }
 
@@ -545,37 +560,6 @@ impl<'a> FmtVisitor<'a> {
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);
         self.format_missing(filemap.end_pos);
-    }
-
-    fn format_import(&mut self, vis: &ast::Visibility, vp: &ast::ViewPath, span: Span) {
-        let vis = utils::format_visibility(vis);
-        let mut offset = self.block_indent;
-        offset.alignment += vis.len() + "use ".len();
-        // 1 = ";"
-        match vp.rewrite(&self.get_context(),
-                         self.config.max_width - offset.width() - 1,
-                         offset) {
-            Some(ref s) if s.is_empty() => {
-                // Format up to last newline
-                let prev_span = codemap::mk_sp(self.last_pos, source!(self, span).lo);
-                let span_end = match self.snippet(prev_span).rfind('\n') {
-                    Some(offset) => self.last_pos + BytePos(offset as u32),
-                    None => source!(self, span).lo,
-                };
-                self.format_missing(span_end);
-                self.last_pos = source!(self, span).hi;
-            }
-            Some(ref s) => {
-                let s = format!("{}use {};", vis, s);
-                self.format_missing_with_indent(source!(self, span).lo);
-                self.buffer.push_str(&s);
-                self.last_pos = source!(self, span).hi;
-            }
-            None => {
-                self.format_missing_with_indent(source!(self, span).lo);
-                self.format_missing(source!(self, span).hi);
-            }
-        }
     }
 
     pub fn get_context(&self) -> RewriteContext {

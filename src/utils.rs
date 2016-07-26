@@ -224,6 +224,13 @@ macro_rules! msg {
     )
 }
 
+// For format_missing and last_pos, need to use the source callsite (if applicable).
+// Required as generated code spans aren't guaranteed to follow on from the last span.
+macro_rules! source {
+    ($this:ident, $sp: expr) => {
+        $this.codemap.source_callsite($sp)
+    }
+}
 
 // Wraps string-like values in an Option. Returns Some when the string adheres
 // to the Rewrite constraints defined for the Rewrite trait and else otherwise.
