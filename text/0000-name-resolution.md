@@ -1,4 +1,4 @@
-- Feature Name: N/A
+- Feature Name: item_like_imports
 - Start Date: 2016-02-09
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -310,7 +310,7 @@ mod boz {
 ```
 
 Caveat: an explicit name which is defined by the expansion of a macro does **not**
-shadow glob imports. Example:
+shadow implicit names. Example:
 
 ```
 macro_rules! foo {
@@ -332,10 +332,10 @@ mod b {
 ```
 
 The rationale for this caveat is so that during import resolution, if we have a
-glob import we can be sure that any imported names will not be shadowed, either
-the name will continue to be valid, or there will be an error. Without this
-caveat, a name could be valid, and then after further expansion, become shadowed
-by a higher priority name.
+glob import (or other implicit name) we can be sure that any imported names will
+not be shadowed, either the name will continue to be valid, or there will be an
+error. Without this caveat, a name could be valid, and then after further
+expansion, become shadowed by a higher priority name.
 
 An error is reported if there is an ambiguity between names due to the lack of
 shadowing, e.g., (this example assumes modularised macros),
@@ -393,6 +393,9 @@ following behaviour should be followed for a re-export of `foo`:
   it is declared publicly and imported but not re-exported in namespaces in which
   it is declared privately.
 
+For a glob re-export, there is an error if there are no public items in any
+namespace. Otherwise private names are imported and public names are re-exported
+on a per-namespace basis (i.e., following the above rules).
 
 ## Changes to the implementation
 
@@ -433,8 +436,7 @@ in the same way as we parsed the original program. We add new names to the
 binding table, and expand any new macro uses.
 
 If we add names for a module which has back links, we must follow them and add
-these names to the importing module (if they are accessible). When following
-these back links, we check for cycles, signaling an error if one is found.
+these names to the importing module (if they are accessible).
 
 In pseudo-code:
 
@@ -520,7 +522,7 @@ use a::foo; // foo exists in the value namespace of a.
 use b::*;   // foo exists in the type namespace of b.
 ```
 
-Can we resolve a use fo `foo` in type position to the import from `b`? That
+Can we resolve a use of `foo` in type position to the import from `b`? That
 depends on whether `foo` exists in the type namespace in `a`. If we can prove
 that it does not (i.e., resolution fails) then we can use the glob import. If we
 cannot (i.e., the name is unresolved but we can't prove it will not resolve
@@ -640,6 +642,13 @@ the lowering from AST to HIR, so the HIR is a name-resolved data structure. Or,
 name lookup could be done lazily (probably with some caching) so no tables
 binding names to definitions are kept. I prefer the first option, but this is
 not really in scope for this RFC.
+
+## `pub(restricted)`
+
+Where this RFC touches on the privacy system there are some edge cases involving
+the `pub(path)` form of restricted visibility. I expect the precise solutions
+will be settled during implementation and this RFC should be amended to reflect
+those choices.
 
 
 # References
