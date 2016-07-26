@@ -36,9 +36,7 @@ use libc::{c_int, c_void, size_t};
 #[cfg_attr(target_os = "android", link(name = "gcc"))]
 #[cfg_attr(all(not(windows),
                not(target_os = "android"),
-               not(target_env = "musl"),
-               not(target_env = "musleabi"),
-               not(target_env = "musleabihf")),
+               not(target_env = "musl")),
            link(name = "pthread"))]
 #[cfg(not(cargobuild))]
 extern "C" {}
