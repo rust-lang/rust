@@ -173,12 +173,14 @@ pub struct DirBuilder {
 impl File {
     /// Attempts to open a file in read-only mode.
     ///
-    /// See the `OpenOptions::open` method for more details.
+    /// See the [`OpenOptions::open`] method for more details.
     ///
     /// # Errors
     ///
     /// This function will return an error if `path` does not already exist.
-    /// Other errors may also be returned according to `OpenOptions::open`.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///
@@ -200,7 +202,9 @@ impl File {
     /// This function will create a file if it does not exist,
     /// and will truncate it if it does.
     ///
-    /// See the `OpenOptions::open` function for more details.
+    /// See the [`OpenOptions::open`] function for more details.
+    ///
+    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///
@@ -241,7 +245,7 @@ impl File {
         self.inner.fsync()
     }
 
-    /// This function is similar to `sync_all`, except that it may not
+    /// This function is similar to [`sync_all`], except that it may not
     /// synchronize file metadata to the filesystem.
     ///
     /// This is intended for use cases that must synchronize content, but don't
@@ -249,7 +253,9 @@ impl File {
     /// operations.
     ///
     /// Note that some platforms may simply implement this in terms of
-    /// `sync_all`.
+    /// [`sync_all`].
+    ///
+    /// [`sync_all`]: struct.File.html#method.sync_all
     ///
     /// # Examples
     ///
@@ -321,6 +327,18 @@ impl File {
     /// The returned `File` is a reference to the same state that this object
     /// references. Both handles will read and write with the same cursor
     /// position.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::open("foo.txt"));
+    /// let file_copy = try!(f.try_clone());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_try_clone", since = "1.9.0")]
     pub fn try_clone(&self) -> io::Result<File> {
         Ok(File {
