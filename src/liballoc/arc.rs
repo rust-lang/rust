@@ -21,6 +21,10 @@
 //!
 //! Sharing some immutable data between threads:
 //!
+// Note that we **do not** run these tests here. The windows builders get super
+// unhappy of a thread outlives the main thread and then exits at the same time
+// (something deadlocks) so we just avoid this entirely by not running these
+// tests.
 //! ```no_run
 //! use std::sync::Arc;
 //! use std::thread;
@@ -97,7 +101,8 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// by putting it inside `Mutex` and then share `Mutex` immutably
 /// with `Arc<T>` as shown below.
 ///
-/// ```
+// See comment at the top of this file for why the test is no_run
+/// ```no_run
 /// use std::sync::{Arc, Mutex};
 /// use std::thread;
 ///
