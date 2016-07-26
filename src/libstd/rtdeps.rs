@@ -19,9 +19,7 @@
 //
 // On Linux, librt and libdl are indirect dependencies via std,
 // and binutils 2.22+ won't add them automatically
-#[cfg(all(target_os = "linux", not(any(target_env = "musl",
-                                       target_env = "musleabi",
-                                       target_env = "musleabihf"))))]
+#[cfg(all(target_os = "linux", not(any(target_env = "musl"))))]
 #[link(name = "dl")]
 #[link(name = "pthread")]
 extern {}

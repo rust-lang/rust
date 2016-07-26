@@ -26,7 +26,7 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
         target_os: "linux".to_string(),
-        target_env: "musleabi".to_string(),
+        target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
     }
