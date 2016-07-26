@@ -407,7 +407,14 @@ pub fn enc_existential_bounds<'a,'tcx>(w: &mut Cursor<Vec<u8>>,
 
     enc_region(w, cx, bs.region_bound);
 
-    for tp in &bs.projection_bounds {
+    // Encode projection_bounds in a stable order
+    let mut projection_bounds: Vec<_> = bs.projection_bounds
+                                          .iter()
+                                          .map(|b| (b.item_name().as_str(), b))
+                                          .collect();
+    projection_bounds.sort_by_key(|&(ref name, _)| name.clone());
+
+    for tp in projection_bounds.iter().map(|&(_, tp)| tp) {
         write!(w, "P");
         enc_projection_predicate(w, cx, &tp.0);
     }
