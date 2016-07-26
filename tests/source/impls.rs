@@ -97,3 +97,6 @@ mod m {
 
         impl<T> PartialEq for S<T> where T: PartialEq {      }
  }
+
+impl<BorrowType, K, V, NodeType, HandleType> Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType> {
+}
