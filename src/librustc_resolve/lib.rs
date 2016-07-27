@@ -1005,7 +1005,7 @@ pub struct Resolver<'a> {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    pub module_map: NodeMap<Module<'a>>,
+    module_map: NodeMap<Module<'a>>,
 
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
