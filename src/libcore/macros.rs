@@ -36,7 +36,8 @@ macro_rules! panic {
 /// evaluated to `true` at runtime.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
-/// be disabled.
+/// be disabled. See `debug_assert!` for assertions that are not enabled in
+/// release builds by default.
 ///
 /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
 /// violated could lead to unsafety.
