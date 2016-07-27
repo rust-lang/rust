@@ -59,7 +59,6 @@ mod freebsd_base;
 mod linux_base;
 mod linux_musl_base;
 mod openbsd_base;
-mod musl_base;
 mod netbsd_base;
 mod solaris_base;
 mod windows_base;
