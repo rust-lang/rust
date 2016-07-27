@@ -203,24 +203,6 @@ impl<'a> NameResolution<'a> {
 
         self.binding.map(Success)
     }
-
-    fn report_conflicts<F: FnMut(&NameBinding, &NameBinding)>(&self, mut report: F) {
-        let binding = match self.binding {
-            Some(binding) => binding,
-            None => return,
-        };
-
-        for duplicate_glob in self.duplicate_globs.iter() {
-            // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
-            if !binding.is_import() {
-                if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
-                    if binding.is_import() { continue }
-                }
-            }
-
-            report(duplicate_glob, binding);
-        }
-    }
 }
 
 impl<'a> ::ModuleS<'a> {
@@ -677,14 +659,22 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let mut reexports = Vec::new();
         for (&(name, ns), resolution) in module.resolutions.borrow().iter() {
             let resolution = resolution.borrow();
-            resolution.report_conflicts(|b1, b2| {
-                self.report_conflict(module, name, ns, b1, b2)
-            });
-
             let binding = match resolution.binding {
                 Some(binding) => binding,
                 None => continue,
             };
+
+            // Report conflicts
+            for duplicate_glob in resolution.duplicate_globs.iter() {
+                // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
+                if !binding.is_import() {
+                    if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
+                        if binding.is_import() { continue }
+                    }
+                }
+
+                self.report_conflict(module, name, ns, duplicate_glob, binding);
+            }
 
             if binding.vis == ty::Visibility::Public &&
                (binding.is_import() || binding.is_extern_crate()) {
