@@ -44,6 +44,7 @@ use syntax::ptr::P;
 use syntax::parse::token;
 
 use rustc::session::Session;
+use rustc_const_eval::fatal_const_eval_err;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
@@ -1414,7 +1415,10 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
                                          // this should probably help simd error reporting
                                          consts::TrueConst::Yes) {
                     Ok((vector, _)) => vector,
-                    Err(err) => bcx.sess().span_fatal(span, &err.description()),
+                    Err(err) => {
+                        fatal_const_eval_err(bcx.tcx(), err.as_inner(), span,
+                                             "shuffle indices");
+                    }
                 }
             }
             None => llargs[2]

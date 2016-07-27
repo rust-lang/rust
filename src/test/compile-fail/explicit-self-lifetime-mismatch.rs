@@ -14,15 +14,17 @@ struct Foo<'a,'b> {
 }
 
 impl<'a,'b> Foo<'a,'b> {
-    fn bar(self: Foo<'b,'a>) {}
-    //~^ ERROR mismatched types
+    fn bar(
+        self
+    //~^ ERROR mismatched method receiver
     //~| expected type `Foo<'a, 'b>`
     //~| found type `Foo<'b, 'a>`
     //~| lifetime mismatch
-    //~| ERROR mismatched types
+    //~| ERROR mismatched method receiver
     //~| expected type `Foo<'a, 'b>`
     //~| found type `Foo<'b, 'a>`
     //~| lifetime mismatch
+            : Foo<'b,'a>) {}
 }
 
 fn main() {}

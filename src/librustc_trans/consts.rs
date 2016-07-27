@@ -14,7 +14,7 @@ use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::const_qualif::ConstQualif;
 use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, lookup_const_by_id, ErrKind};
-use rustc_const_eval::eval_repeat_count;
+use rustc_const_eval::{eval_length, report_const_eval_err, note_const_eval_err};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
@@ -44,7 +44,6 @@ use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
 use rustc::hir;
 
 use std::ffi::{CStr, CString};
-use std::borrow::Cow;
 use libc::c_uint;
 use syntax::ast::{self, LitKind};
 use syntax::attr::{self, AttrMetaMethods};
@@ -250,10 +249,11 @@ impl ConstEvalFailure {
             Compiletime(e) => e,
         }
     }
-    pub fn description(&self) -> Cow<str> {
+
+    pub fn as_inner(&self) -> &ConstEvalErr {
         match self {
-            &Runtime(ref e) => e.description(),
-            &Compiletime(ref e) => e.description(),
+            &Runtime(ref e) => e,
+            &Compiletime(ref e) => e,
         }
     }
 }
@@ -274,7 +274,7 @@ fn get_const_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let empty_substs = ccx.tcx().mk_substs(Substs::empty());
     match get_const_expr_as_global(ccx, expr, ConstQualif::empty(), empty_substs, TrueConst::Yes) {
         Err(Runtime(err)) => {
-            ccx.tcx().sess.span_err(expr.span, &err.description());
+            report_const_eval_err(ccx.tcx(), &err, expr.span, "expression").emit();
             Err(Compiletime(err))
         },
         other => other,
@@ -526,12 +526,15 @@ pub fn const_err<T>(cx: &CrateContext,
         (Ok(x), _) => Ok(x),
         (Err(err), TrueConst::Yes) => {
             let err = ConstEvalErr{ span: span, kind: err };
-            cx.tcx().sess.span_err(span, &err.description());
+            report_const_eval_err(cx.tcx(), &err, span, "expression").emit();
             Err(Compiletime(err))
         },
         (Err(err), TrueConst::No) => {
             let err = ConstEvalErr{ span: span, kind: err };
-            cx.tcx().sess.span_warn(span, &err.description());
+            let mut diag = cx.tcx().sess.struct_span_warn(
+                span, "this expression will panic at run-time");
+            note_const_eval_err(cx.tcx(), &err, span, "expression", &mut diag);
+            diag.emit();
             Err(Runtime(err))
         },
     }
@@ -875,7 +878,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprRepeat(ref elem, ref count) => {
             let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
-            let n = eval_repeat_count(cx.tcx(), count);
+            let n = eval_length(cx.tcx(), count, "repeat count").unwrap();
             let unit_val = const_expr(cx, &elem, param_substs, fn_args, trueconst)?.0;
             let vs = vec![unit_val; n];
             if val_ty(unit_val) != llunitty {

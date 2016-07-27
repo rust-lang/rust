@@ -1079,25 +1079,6 @@ impl Foo {
 ```
 "##,
 
-E0080: r##"
-This error indicates that the compiler was unable to sensibly evaluate an
-integer expression provided as an enum discriminant. Attempting to divide by 0
-or causing integer overflow are two ways to induce this error. For example:
-
-```compile_fail
-enum Enum {
-    X = (1 << 500),
-    Y = (1 / 0)
-}
-```
-
-Ensure that the expressions given can be evaluated as the desired integer type.
-See the FFI section of the Reference for more information about using a custom
-integer type:
-
-https://doc.rust-lang.org/reference.html#ffi-attributes
-"##,
-
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -2660,6 +2641,7 @@ For information on the design of the orphan rules, see [RFC 1023].
 [RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
 "##,
 
+/*
 E0211: r##"
 You used a function or type which doesn't fit the requirements for where it was
 used. Erroneous code examples:
@@ -2739,6 +2721,7 @@ impl Foo {
 }
 ```
 "##,
+     */
 
 E0214: r##"
 A generic type was described using parentheses rather than angle brackets. For
@@ -2966,38 +2949,6 @@ do_something function. This is not legal: `Foo::Bar` is a value of type `Foo`,
 not a distinct static type. Likewise, it's not legal to attempt to
 `impl Foo::Bar`: instead, you must `impl Foo` and then pattern match to specify
 behavior for specific enum variants.
-"##,
-
-E0249: r##"
-This error indicates a constant expression for the array length was found, but
-it was not an integer (signed or unsigned) expression.
-
-Some examples of code that produces this error are:
-
-```compile_fail
-const A: [u32; "hello"] = []; // error
-const B: [u32; true] = []; // error
-const C: [u32; 0.0] = []; // error
-"##,
-
-E0250: r##"
-There was an error while evaluating the expression for the length of a fixed-
-size array type.
-
-Some examples of this error are:
-
-```compile_fail
-// divide by zero in the length expression
-const A: [u32; 1/0] = [];
-
-// Rust currently will not evaluate the function `foo` at compile time
-fn foo() -> usize { 12 }
-const B: [u32; foo()] = [];
-
-// it is an error to try to add `u8` and `f64`
-use std::{f64, u8};
-const C: [u32; u8::MAX + f64::EPSILON] = [];
-```
 "##,
 
 E0318: r##"
@@ -4029,6 +3980,57 @@ impl SpaceLlama for i32 {
 ```
 "##,
 
+E0559: r##"
+An unknown field was specified into an enum's structure variant.
+
+Erroneous code example:
+
+```compile_fail,E0559
+enum Field {
+    Fool { x: u32 },
+}
+
+let s = Field::Fool { joke: 0 };
+// error: struct variant `Field::Fool` has no field named `joke`
+```
+
+Verify you didn't misspell the field's name or that the field exists. Example:
+
+```
+enum Field {
+    Fool { joke: u32 },
+}
+
+let s = Field::Fool { joke: 0 }; // ok!
+```
+"##,
+
+E0560: r##"
+An unknown field was specified into a structure.
+
+Erroneous code example:
+
+```compile_fail,E0560
+struct Simba {
+    mother: u32,
+}
+
+let s = Simba { mother: 1, father: 0 };
+// error: structure `Simba` has no field named `father`
+```
+
+Verify you didn't misspell the field's name or that the field exists. Example:
+
+```
+struct Simba {
+    mother: u32,
+    father: u32,
+}
+
+let s = Simba { mother: 1, father: 0 }; // ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -4086,6 +4088,7 @@ register_diagnostics! {
     E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,
+//  E0249,
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0328, // cannot implement Unsize explicitly

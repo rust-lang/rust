@@ -17,6 +17,7 @@ impl S {
 }
 
 static STUFF: [u8; S::N] = [0; S::N];
-//~^ ERROR array length constant evaluation error: unresolved path in constant expression
+//~^ ERROR constant evaluation error
+//~| unresolved path in constant expression
 
 fn main() {}

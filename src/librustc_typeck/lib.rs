@@ -186,28 +186,14 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
     }
 }
 
-pub fn emit_type_err<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                     span: Span,
-                                     found_ty: Ty<'tcx>,
-                                     expected_ty: Ty<'tcx>,
-                                     terr: &ty::error::TypeError<'tcx>,
-                                     msg: &str) {
-    let mut err = struct_span_err!(tcx.sess, span, E0211, "{}", msg);
-    err.span_label(span, &terr);
-    err.note_expected_found(&"type", &expected_ty, &found_ty);
-    tcx.note_and_explain_type_err(&mut err, terr, span);
-    err.emit();
-}
-
 fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                span: Span,
+                                origin: TypeOrigin,
                                 t1: Ty<'tcx>,
-                                t2: Ty<'tcx>,
-                                msg: &str)
+                                t2: Ty<'tcx>)
                                 -> bool {
     ccx.tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
-        if let Err(err) = infcx.eq_types(false, TypeOrigin::Misc(span), t1, t2) {
-            emit_type_err(infcx.tcx, span, t1, t2, &err, msg);
+        if let Err(err) = infcx.eq_types(false, origin.clone(), t1, t2) {
+            infcx.report_mismatched_types(origin, t1, t2, err);
             false
         } else {
             true
@@ -249,8 +235,11 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 })
             }));
 
-            require_same_types(ccx, main_span, main_t, se_ty,
-                               "main function has wrong type");
+            require_same_types(
+                ccx,
+                TypeOrigin::MainFunctionType(main_span),
+                main_t,
+                se_ty);
         }
         _ => {
             span_bug!(main_span,
@@ -298,8 +287,11 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 }),
             }));
 
-            require_same_types(ccx, start_span, start_t, se_ty,
-                               "start function has wrong type");
+            require_same_types(
+                ccx,
+                TypeOrigin::StartFunctionType(start_span),
+                start_t,
+                se_ty);
         }
         _ => {
             span_bug!(start_span,

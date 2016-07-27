@@ -12,6 +12,7 @@
 //! intrinsics that the compiler exposes.
 
 use intrinsics;
+use rustc::infer::TypeOrigin;
 use rustc::ty::subst::{self, Substs};
 use rustc::ty::FnSig;
 use rustc::ty::{self, Ty};
@@ -56,10 +57,9 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
              i_n_tps, n_tps);
     } else {
         require_same_types(ccx,
-                           it.span,
+                           TypeOrigin::IntrinsicType(it.span),
                            i_ty.ty,
-                           fty,
-                           "intrinsic has wrong type");
+                           fty);
     }
 }
 

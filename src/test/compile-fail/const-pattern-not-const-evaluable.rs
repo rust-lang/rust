@@ -17,22 +17,26 @@ enum Cake {
 use Cake::*;
 
 const BOO: (Cake, Cake) = (Marmor, BlackForest);
-//~^ ERROR: constant evaluation error: unimplemented constant expression: enum variants [E0471]
+//~^ ERROR: constant evaluation error [E0080]
+//~| unimplemented constant expression: enum variants
 const FOO: Cake = BOO.1;
 
 const fn foo() -> Cake {
-    Marmor //~ ERROR: constant evaluation error: unimplemented constant expression: enum variants
-    //~^ ERROR: unimplemented constant expression: enum variants
+    Marmor
+        //~^ ERROR: constant evaluation error [E0080]
+        //~| unimplemented constant expression: enum variants
+        //~^^^ ERROR: constant evaluation error [E0080]
+        //~| unimplemented constant expression: enum variants
 }
 
 const WORKS: Cake = Marmor;
 
-const GOO: Cake = foo();
+const GOO: Cake = foo(); //~ NOTE for expression here
 
 fn main() {
     match BlackForest {
-        FOO => println!("hi"), //~ NOTE: in pattern here
-        GOO => println!("meh"), //~ NOTE: in pattern here
+        FOO => println!("hi"), //~ NOTE: for pattern here
+        GOO => println!("meh"), //~ NOTE: for pattern here
         WORKS => println!("möp"),
         _ => println!("bye"),
     }
