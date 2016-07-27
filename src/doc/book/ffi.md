@@ -635,7 +635,7 @@ void register(void (*f)(void (*)(int), int)) {
 }
 ```
 
-No `tranmsute` required!
+No `transmute` required!
 
 # Calling Rust code from C
 
