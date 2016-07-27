@@ -32,9 +32,8 @@ macro_rules! panic {
 
 /// Ensure that a boolean expression is `true` at runtime.
 ///
-/// This will ensure the termination of the program if the provided expression
-/// cannot be evaluated to `true` at runtime by means of an unrecoverable error
-/// (not necessarily a `panic!`, can also be an `abort`).
+/// This will invoke the `panic!` macro if the provided expression cannot be
+/// evaluated to `true` at runtime.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
 /// be disabled.
