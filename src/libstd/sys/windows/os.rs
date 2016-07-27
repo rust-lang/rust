@@ -278,21 +278,28 @@ pub struct Args {
     cur: *mut *mut u16,
 }
 
+unsafe fn os_string_from_ptr(ptr: *mut u16) -> OsString {
+    let mut len = 0;
+    while *ptr.offset(len) != 0 { len += 1; }
+
+    // Push it onto the list.
+    let ptr = ptr as *const u16;
+    let buf = slice::from_raw_parts(ptr, len as usize);
+    OsStringExt::from_wide(buf)
+}
+
 impl Iterator for Args {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> {
-        self.range.next().map(|i| unsafe {
-            let ptr = *self.cur.offset(i);
-            let mut len = 0;
-            while *ptr.offset(len) != 0 { len += 1; }
-
-            // Push it onto the list.
-            let ptr = ptr as *const u16;
-            let buf = slice::from_raw_parts(ptr, len as usize);
-            OsStringExt::from_wide(buf)
-        })
+        self.range.next().map(|i| unsafe { os_string_from_ptr(*self.cur.offset(i)) } )
     }
     fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
+}
+
+impl DoubleEndedIterator for Args {
+    fn next_back(&mut self) -> Option<OsString> {
+        self.range.next_back().map(|i| unsafe { os_string_from_ptr(*self.cur.offset(i)) } )
+    }
 }
 
 impl ExactSizeIterator for Args {

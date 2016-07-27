@@ -625,6 +625,13 @@ impl ExactSizeIterator for Args {
     fn len(&self) -> usize { self.inner.len() }
 }
 
+#[stable(feature = "env_iterators", since = "1.11.0")]
+impl DoubleEndedIterator for Args {
+    fn next_back(&mut self) -> Option<String> {
+        self.inner.next_back().map(|s| s.into_string().unwrap())
+    }
+}
+
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for ArgsOs {
     type Item = OsString;
@@ -637,6 +644,10 @@ impl ExactSizeIterator for ArgsOs {
     fn len(&self) -> usize { self.inner.len() }
 }
 
+#[stable(feature = "env_iterators", since = "1.11.0")]
+impl DoubleEndedIterator for ArgsOs {
+    fn next_back(&mut self) -> Option<OsString> { self.inner.next_back() }
+}
 /// Constants associated with the current target
 #[stable(feature = "env", since = "1.0.0")]
 pub mod consts {
