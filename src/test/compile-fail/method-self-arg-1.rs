@@ -24,6 +24,6 @@ fn main() {
                  //~| expected &-ptr, found struct `Foo`
     Foo::bar(&42); //~  ERROR mismatched types
                       //~| expected type `&Foo`
-                      //~| found type `&_`
+                      //~| found type `&{numeric}`
                       //~| expected struct `Foo`, found integral variable
 }

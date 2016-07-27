@@ -20,7 +20,7 @@ fn main() {
         10 ... "what" => ()
     };
     //~^^ ERROR only char and numeric types are allowed in range
-    //~| start type: _
+    //~| start type: {numeric}
     //~| end type: &'static str
 
     match 5 {
