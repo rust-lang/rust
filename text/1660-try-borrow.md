@@ -1,7 +1,7 @@
-- Feature Name: try_borrow
+- Feature Name: `try_borrow`
 - Start Date: 2016-06-27
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1660](https://github.com/rust-lang/rfcs/pull/1660)
+- Rust Issue: [rust-lang/rust#35070](https://github.com/rust-lang/rust/issues/35070)
 
 # Summary
 [summary]: #summary
