@@ -138,7 +138,7 @@ macro_rules! assert_eq {
 /// running, which might have unexpected consequences but does not introduce
 /// unsafety as long as this only happens in safe code. The performance cost
 /// of assertions, is however, not measurable in general. Replacing `assert!`
-/// with `debug_assert!` is thus only encourage after thorough profiling, and
+/// with `debug_assert!` is thus only encouraged after thorough profiling, and
 /// more importantly, only in safe code!
 ///
 /// # Examples
