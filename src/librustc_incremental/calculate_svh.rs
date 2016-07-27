@@ -182,7 +182,6 @@ mod svh_visitor {
         SawMod,
         SawForeignItem,
         SawItem,
-        SawDecl,
         SawTy,
         SawGenerics,
         SawFn,
@@ -285,24 +284,13 @@ mod svh_visitor {
     /// SawStmtComponent is analogous to SawExprComponent, but for statements.
     #[derive(Hash)]
     pub enum SawStmtComponent {
-        SawStmtDecl,
         SawStmtExpr,
         SawStmtSemi,
     }
 
-    fn saw_stmt(node: &Stmt_) -> SawStmtComponent {
-        match *node {
-            StmtDecl(..) => SawStmtDecl,
-            StmtExpr(..) => SawStmtExpr,
-            StmtSemi(..) => SawStmtSemi,
-        }
-    }
-
     impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
-        fn visit_nested_item(&mut self, item: ItemId) {
-            let def_path = self.tcx.map.def_path_from_id(item.id).unwrap();
-            debug!("visit_nested_item: def_path={:?} st={:?}", def_path, self.st);
-            self.hash_def_path(&def_path);
+        fn visit_nested_item(&mut self, _: ItemId) {
+            // Each item is hashed independently; ignore nested items.
         }
 
         fn visit_variant_data(&mut self, s: &'a VariantData, name: Name,
@@ -362,7 +350,20 @@ mod svh_visitor {
 
         fn visit_stmt(&mut self, s: &'a Stmt) {
             debug!("visit_stmt: st={:?}", self.st);
-            SawStmt(saw_stmt(&s.node)).hash(self.st); visit::walk_stmt(self, s)
+
+            // We don't want to modify the hash for decls, because
+            // they might be item decls (if they are local decls,
+            // we'll hash that fact in visit_local); but we do want to
+            // remember if this was a StmtExpr or StmtSemi (the later
+            // had an explicit semi-colon; this affects the typing
+            // rules).
+            match s.node {
+                StmtDecl(..) => (),
+                StmtExpr(..) => SawStmt(SawStmtExpr).hash(self.st),
+                StmtSemi(..) => SawStmt(SawStmtSemi).hash(self.st),
+            }
+
+            visit::walk_stmt(self, s)
         }
 
         fn visit_foreign_item(&mut self, i: &'a ForeignItem) {
@@ -388,11 +389,6 @@ mod svh_visitor {
         fn visit_mod(&mut self, m: &'a Mod, _s: Span, n: NodeId) {
             debug!("visit_mod: st={:?}", self.st);
             SawMod.hash(self.st); visit::walk_mod(self, m, n)
-        }
-
-        fn visit_decl(&mut self, d: &'a Decl) {
-            debug!("visit_decl: st={:?}", self.st);
-            SawDecl.hash(self.st); visit::walk_decl(self, d)
         }
 
         fn visit_ty(&mut self, t: &'a Ty) {
