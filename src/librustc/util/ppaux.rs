@@ -974,7 +974,8 @@ impl fmt::Display for ty::InferTy {
             ty::TyVar(ref vid) if print_var_ids => write!(f, "{:?}", vid),
             ty::IntVar(ref vid) if print_var_ids => write!(f, "{:?}", vid),
             ty::FloatVar(ref vid) if print_var_ids => write!(f, "{:?}", vid),
-            ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => write!(f, "_"),
+            ty::TyVar(_) => write!(f, "_"),
+            ty::IntVar(_) | ty::FloatVar(_) => write!(f, "{}", "{numeric}"),
             ty::FreshTy(v) => write!(f, "FreshTy({})", v),
             ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
             ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
