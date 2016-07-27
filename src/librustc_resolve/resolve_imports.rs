@@ -137,23 +137,6 @@ impl<'a> SingleImports<'a> {
 }
 
 impl<'a> NameResolution<'a> {
-    fn try_define(&mut self, binding: &'a NameBinding<'a>) -> Result<(), &'a NameBinding<'a>> {
-        if let Some(old_binding) = self.binding {
-            if binding.is_glob_import() {
-                self.duplicate_globs.push(binding);
-            } else if old_binding.is_glob_import() {
-                self.duplicate_globs.push(old_binding);
-                self.binding = Some(binding);
-            } else {
-                return Err(old_binding);
-            }
-        } else {
-            self.binding = Some(binding);
-        }
-
-        Ok(())
-    }
-
     // Returns the binding for the name if it is known or None if it not known.
     fn binding(&self) -> Option<&'a NameBinding<'a>> {
         self.binding.and_then(|binding| match self.single_imports {
@@ -246,8 +229,22 @@ impl<'a> ::ModuleS<'a> {
     // Define the name or return the existing binding if there is a collision.
     pub fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>)
                             -> Result<(), &'a NameBinding<'a>> {
+        let binding = self.arenas.alloc_name_binding(binding);
         self.update_resolution(name, ns, |resolution| {
-            resolution.try_define(self.arenas.alloc_name_binding(binding))
+            if let Some(old_binding) = resolution.binding {
+                if binding.is_glob_import() {
+                    resolution.duplicate_globs.push(binding);
+                } else if old_binding.is_glob_import() {
+                    resolution.duplicate_globs.push(old_binding);
+                    resolution.binding = Some(binding);
+                } else {
+                    return Err(old_binding);
+                }
+            } else {
+                resolution.binding = Some(binding);
+            }
+
+            Ok(())
         })
     }
 
