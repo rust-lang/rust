@@ -10,7 +10,7 @@
 
 //! The 16-bit unsigned integer type.
 //!
-//! *[See also the `u16` primitive type](../../std/primitive.u16.html).*
+//! *[See also the `u16` primitive type](../../std/u16.t.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

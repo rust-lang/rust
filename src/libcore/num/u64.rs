@@ -10,7 +10,7 @@
 
 //! The 64-bit unsigned integer type.
 //!
-//! *[See also the `u64` primitive type](../../std/primitive.u64.html).*
+//! *[See also the `u64` primitive type](../../std/u64.t.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
