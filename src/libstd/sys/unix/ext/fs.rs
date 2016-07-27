@@ -196,6 +196,22 @@ impl FileTypeExt for fs::FileType {
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
     /// structure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::DirEntryExt;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             println!("{:?}: {}", entry.file_name(), entry.ino());
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     fn ino(&self) -> u64;
 }
@@ -239,6 +255,16 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::fs::DirBuilder;
+    /// use std::os::unix::fs::DirBuilderExt;
+    ///
+    /// let mut builder = DirBuilder::new();
+    /// builder.mode(0o755);
+    /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
     fn mode(&mut self, mode: u32) -> &mut Self;
 }

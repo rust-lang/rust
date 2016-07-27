@@ -386,10 +386,11 @@ pub trait Extend<A> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait DoubleEndedIterator: Iterator {
-    /// An iterator able to yield elements from both ends.
+    /// Removes and returns an element from the end of the iterator.
     ///
-    /// As this is the only method for this trait, the [trait-level] docs
-    /// contain more details.
+    /// Returns `None` when there are no more elements.
+    ///
+    /// The [trait-level] docs contain more details.
     ///
     /// [trait-level]: trait.DoubleEndedIterator.html
     ///
