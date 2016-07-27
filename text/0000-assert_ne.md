@@ -8,6 +8,7 @@
 
 `assert_ne` is a macro that takes 2 arguments and panics if they are equal. It
 works and is implemented identically to `assert_eq` and serves as its complement.
+This proposal also includes a `debug_asset_ne`, matching `debug_assert_eq`.
 
 # Motivation
 [motivation]: #motivation
@@ -35,6 +36,14 @@ macro_rules! assert_ne {
             }
         }
     })
+}
+```
+
+This is complemented by a `debug_assert_ne` (similar to `debug_assert_eq`):
+
+```rust
+macro_rules! debug_assert_ne {
+    ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_ne!($($arg)*); })
 }
 ```
 
