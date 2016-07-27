@@ -71,7 +71,7 @@ macro_rules! supported_targets {
         $(mod $module;)*
 
         /// List of supported targets
-        pub const TARGETS: &'static [&'static str] = &[$($triple),*];
+        const TARGETS: &'static [&'static str] = &[$($triple),*];
 
         fn load_specific(target: &str) -> TargetResult {
             match target {
@@ -89,6 +89,14 @@ macro_rules! supported_targets {
                 )+
                 _ => Err(format!("Unable to find target: {}", target))
             }
+        }
+
+        pub fn get_targets() -> Box<Iterator<Item=String>> {
+            Box::new(TARGETS.iter().filter_map(|t| -> Option<String> {
+                load_specific(t)
+                    .map(|t| t.llvm_target)
+                    .ok()
+            }))
         }
 
         #[cfg(test)]
