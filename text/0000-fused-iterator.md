@@ -269,3 +269,8 @@ change.
 
 Should this trait be unsafe? I can't think of any way generic unsafe code could
 end up relying on the guarantees of `Fused`.
+
+Also, it's possible to implement the specialized `Fuse` struct without a useless
+`don` bool. Unfortunately, it's *very* messy. IMO, this is not worth it for now
+and can always be fixed in the future as it doesn't change the `FusedIterator`
+trait.
