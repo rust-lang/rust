@@ -1874,6 +1874,27 @@ impl<'a> From<String> for Cow<'a, str> {
     }
 }
 
+#[stable(feature = "cow_str_from_iter", since = "1.12.0")]
+impl<'a> FromIterator<char> for Cow<'a, str> {
+    fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
+#[stable(feature = "cow_str_from_iter", since = "1.12.0")]
+impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
+    fn from_iter<I: IntoIterator<Item = &'b str>>(it: I) -> Cow<'a, str> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
+#[stable(feature = "cow_str_from_iter", since = "1.12.0")]
+impl<'a> FromIterator<String> for Cow<'a, str> {
+    fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Into<Vec<u8>> for String {
     fn into(self) -> Vec<u8> {
