@@ -119,6 +119,44 @@ macro_rules! assert_eq {
     });
 }
 
+/// Asserts that two expressions are not equal to each other.
+///
+/// On panic, this macro will print the values of the expressions with their
+/// debug representations.
+///
+/// # Examples
+///
+/// ```
+/// let a = 3;
+/// let b = 2;
+/// assert_ne!(a, b);
+/// ```
+#[macro_export]
+#[stable(feature = "assert_ne", since = "1.12.0")]
+macro_rules! assert_ne {
+    ($left:expr , $right:expr) => ({
+        match (&$left, &$right) {
+            (left_val, right_val) => {
+                if *left_val == *right_val {
+                    panic!("assertion failed: `(left != right)` \
+                           (left: `{:?}`, right: `{:?}`)", left_val, right_val)
+                }
+            }
+        }
+    });
+    ($left:expr , $right:expr, $($arg:tt)*) => ({
+        match (&($left), &($right)) {
+            (left_val, right_val) => {
+                if *left_val == *right_val {
+                    panic!("assertion failed: `(left != right)` \
+                           (left: `{:?}`, right: `{:?}`): {}", left_val, right_val,
+                           format_args!($($arg)*))
+                }
+            }
+        }
+    });
+}
+
 /// Ensure that a boolean expression is `true` at runtime.
 ///
 /// This will invoke the `panic!` macro if the provided expression cannot be
@@ -187,6 +225,31 @@ macro_rules! debug_assert {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! debug_assert_eq {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_eq!($($arg)*); })
+}
+
+/// Asserts that two expressions are not equal to each other.
+///
+/// On panic, this macro will print the values of the expressions with their
+/// debug representations.
+///
+/// Unlike `assert_ne!`, `debug_assert_ne!` statements are only enabled in non
+/// optimized builds by default. An optimized build will omit all
+/// `debug_assert_ne!` statements unless `-C debug-assertions` is passed to the
+/// compiler. This makes `debug_assert_ne!` useful for checks that are too
+/// expensive to be present in a release build but may be helpful during
+/// development.
+///
+/// # Examples
+///
+/// ```
+/// let a = 3;
+/// let b = 2;
+/// debug_assert_ne!(a, b);
+/// ```
+#[macro_export]
+#[stable(feature = "assert_ne", since = "1.12.0")]
+macro_rules! debug_assert_ne {
+    ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_ne!($($arg)*); })
 }
 
 /// Helper macro for reducing boilerplate code for matching `Result` together
