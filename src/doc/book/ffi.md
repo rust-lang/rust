@@ -461,11 +461,12 @@ global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
 ```rust,no_run
-use std::os::raw::c_int;
+# #![feature(libc)]
+extern crate libc;
 
 #[link(name = "readline")]
 extern {
-    static rl_readline_version: c_int;
+    static rl_readline_version: libc::c_int;
 }
 
 fn main() {
@@ -479,14 +480,15 @@ interface. To do this, statics can be declared with `mut` so we can mutate
 them.
 
 ```rust,no_run
+# #![feature(libc)]
+extern crate libc;
 
 use std::ffi::CString;
-use std::os::raw::c_char;
 use std::ptr;
 
 #[link(name = "readline")]
 extern {
-    static mut rl_prompt: *const c_char;
+    static mut rl_prompt: *const libc::c_char;
 }
 
 fn main() {
@@ -511,13 +513,14 @@ calling foreign functions. Some foreign functions, most notably the Windows API,
 conventions. Rust provides a way to tell the compiler which convention to use:
 
 ```rust
-use std::os::raw::c_int;
+# #![feature(libc)]
+extern crate libc;
 
 #[cfg(all(target_os = "win32", target_arch = "x86"))]
 #[link(name = "kernel32")]
 #[allow(non_snake_case)]
 extern "stdcall" {
-    fn SetEnvironmentVariableA(n: *const u8, v: *const u8) -> c_int;
+    fn SetEnvironmentVariableA(n: *const u8, v: *const u8) -> libc::c_int;
 }
 # fn main() { }
 ```
@@ -690,11 +693,12 @@ void bar(void *arg);
 We can represent this in Rust with the `c_void` type:
 
 ```rust
-use std::os::raw::c_void;
+# #![feature(libc)]
+extern crate libc;
 
 extern "C" {
-    pub fn foo(arg: *mut c_void);
-    pub fn bar(arg: *mut c_void);
+    pub fn foo(arg: *mut libc::c_void);
+    pub fn bar(arg: *mut libc::c_void);
 }
 # fn main() {}
 ```
