@@ -61,7 +61,7 @@ fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     };
 
     match decode_dep_graph(tcx, &dep_graph_data, &work_products_data) {
-        Ok(()) => return,
+        Ok(dirty_nodes) => dirty_nodes,
         Err(err) => {
             tcx.sess.warn(
                 &format!("decoding error in dep-graph from `{}` and `{}`: {}",

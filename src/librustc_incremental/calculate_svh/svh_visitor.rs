@@ -19,12 +19,14 @@ use self::SawAbiComponent::*;
 use syntax::ast::{self, Name, NodeId};
 use syntax::parse::token;
 use syntax_pos::Span;
-use rustc::ty::TyCtxt;
 use rustc::hir;
 use rustc::hir::*;
-use rustc::hir::map::DefPath;
+use rustc::hir::def::{Def, PathResolution};
+use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::hir::intravisit::{Visitor, FnKind};
+use rustc::hir::map::DefPath;
+use rustc::ty::TyCtxt;
 
 use std::hash::{Hash, SipHasher};
 
@@ -342,5 +344,96 @@ impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
     fn visit_arm(&mut self, a: &'a Arm) {
         debug!("visit_arm: st={:?}", self.st);
         SawArm.hash(self.st); visit::walk_arm(self, a)
+    }
+
+    fn visit_id(&mut self, id: NodeId) {
+        debug!("visit_id: id={} st={:?}", id, self.st);
+        self.hash_resolve(id);
+    }
+}
+
+#[derive(Hash)]
+pub enum DefHash {
+    SawDefId,
+    SawLabel,
+    SawPrimTy,
+    SawSelfTy,
+    SawErr,
+}
+
+impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
+    fn hash_resolve(&mut self, id: ast::NodeId) {
+        // Because whether or not a given id has an entry is dependent
+        // solely on expr variant etc, we don't need to hash whether
+        // or not an entry was present (we are already hashing what
+        // variant it is above when we visit the HIR).
+
+        if let Some(def) = self.tcx.def_map.borrow().get(&id) {
+            self.hash_partial_def(def);
+        }
+
+        if let Some(traits) = self.tcx.trait_map.get(&id) {
+            traits.len().hash(self.st);
+            for candidate in traits {
+                self.hash_def_id(candidate.def_id);
+            }
+        }
+    }
+
+    fn hash_def_id(&mut self, def_id: DefId) {
+        let def_path = self.tcx.def_path(def_id);
+        self.hash_def_path(&def_path);
+    }
+
+    fn hash_partial_def(&mut self, def: &PathResolution) {
+        self.hash_def(def.base_def);
+        def.depth.hash(self.st);
+    }
+
+    fn hash_def(&mut self, def: Def) {
+        match def {
+            // Crucial point: for all of these variants, the variant +
+            // add'l data that is added is always the same if the
+            // def-id is the same, so it suffices to hash the def-id
+            Def::Fn(..) |
+            Def::Mod(..) |
+            Def::ForeignMod(..) |
+            Def::Static(..) |
+            Def::Variant(..) |
+            Def::Enum(..) |
+            Def::TyAlias(..) |
+            Def::AssociatedTy(..) |
+            Def::TyParam(..) |
+            Def::Struct(..) |
+            Def::Trait(..) |
+            Def::Method(..) |
+            Def::Const(..) |
+            Def::AssociatedConst(..) |
+            Def::Local(..) |
+            Def::Upvar(..) => {
+                DefHash::SawDefId.hash(self.st);
+                self.hash_def_id(def.def_id());
+            }
+
+            Def::Label(..) => {
+                DefHash::SawLabel.hash(self.st);
+                // we don't encode the `id` because it always refers to something
+                // within this item, so if it changed, there would have to be other
+                // changes too
+            }
+            Def::PrimTy(ref prim_ty) => {
+                DefHash::SawPrimTy.hash(self.st);
+                prim_ty.hash(self.st);
+            }
+            Def::SelfTy(..) => {
+                DefHash::SawSelfTy.hash(self.st);
+                // the meaning of Self is always the same within a
+                // given context, so we don't need to hash the other
+                // fields
+            }
+            Def::Err => {
+                DefHash::SawErr.hash(self.st);
+            }
+        }
     }
 }
