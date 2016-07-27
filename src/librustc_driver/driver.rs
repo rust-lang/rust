@@ -846,10 +846,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let index = stability::Index::new(&hir_map);
 
-    let trait_map = resolutions.trait_map;
     TyCtxt::create_and_enter(sess,
                              arenas,
                              resolutions.def_map,
+                             resolutions.trait_map,
                              named_region_map,
                              hir_map,
                              resolutions.freevars,
@@ -864,7 +864,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || rustc_incremental::load_dep_graph(tcx));
 
         // passes are timed inside typeck
-        try_with_f!(typeck::check_crate(tcx, trait_map), (tcx, None, analysis));
+        try_with_f!(typeck::check_crate(tcx), (tcx, None, analysis));
 
         time(time_passes,
              "const checking",
