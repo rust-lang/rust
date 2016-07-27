@@ -17,11 +17,11 @@ no-op if `I` implements `FusedIterator`.
 
 Iterators are allowed to return whatever they want after returning `None` once.
 However, assuming that an iterator continues to return `None` can make
-implementing some algorithms/adapters easier. Therefore, `Fused` and
-`Iterator::fuse` exist. Unfortunately, the `Fused` iterator adapter introduces a
+implementing some algorithms/adapters easier. Therefore, `Fuse` and
+`Iterator::fuse` exist. Unfortunately, the `Fuse` iterator adapter introduces a
 noticeable overhead. Furthermore, many iterators (most if not all iterators in
 std) already act as if they were fused (this is considered to be the "polite"
-behavior). Therefore, it would be nice to be able to pay the `Fused` overhead
+behavior). Therefore, it would be nice to be able to pay the `Fuse` overhead
 only when necessary.
 
 Microbenchmarks:
@@ -42,28 +42,28 @@ use std::ops::Range;
 
 #[derive(Clone, Debug)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-pub struct MyFuse<I> {
+pub struct Fuse<I> {
     iter: I,
     done: bool
 }
 
-pub trait Fused: Iterator {}
+pub trait FusedIterator: Iterator {}
 
 trait IterExt: Iterator + Sized {
-    fn myfuse(self) -> MyFuse<Self> {
-        MyFuse {
+    fn myfuse(self) -> Fuse<Self> {
+        Fuse {
             iter: self,
             done: false,
         }
     }
 }
 
-impl<I> Fused for MyFuse<I> where MyFuse<I>: Iterator {}
-impl<T> Fused for Range<T> where Range<T>: Iterator {}
+impl<I> FusedIterator for Fuse<I> where Fuse<I>: Iterator {}
+impl<T> FusedIterator for Range<T> where Range<T>: Iterator {}
 
 impl<T: Iterator> IterExt for T {}
 
-impl<I> Iterator for MyFuse<I> where I: Iterator {
+impl<I> Iterator for Fuse<I> where I: Iterator {
     type Item = <I as Iterator>::Item;
 
     #[inline]
@@ -78,14 +78,14 @@ impl<I> Iterator for MyFuse<I> where I: Iterator {
     }
 }
 
-impl<I> Iterator for MyFuse<I> where I: Iterator + Fused {
+impl<I> Iterator for Fuse<I> where I: FusedIterator {
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
         self.iter.next()
     }
 }
 
-impl<I> ExactSizeIterator for MyFuse<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
 
 #[bench]
 fn myfuse(b: &mut test::Bencher) {
