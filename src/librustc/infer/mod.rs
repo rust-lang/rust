@@ -32,7 +32,7 @@ use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use ty::fold::TypeFoldable;
+use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::{self, PredicateObligations, ProjectionMode};
 use rustc_data_structures::unify::{self, UnificationTable};
@@ -196,12 +196,6 @@ pub enum TypeOrigin {
     // FIXME(eddyb) #11161 is the original Expr required?
     ExprAssignable(Span),
 
-    // Relating trait refs when resolving vtables
-    RelateTraitRefs(Span),
-
-    // Relating self types when resolving vtables
-    RelateSelfType(Span),
-
     // Relating trait type parameters to those found in impl etc
     RelateOutputImplTypes(Span),
 
@@ -219,16 +213,26 @@ pub enum TypeOrigin {
 
     // `where a == b`
     EquatePredicate(Span),
+
+    // `main` has wrong type
+    MainFunctionType(Span),
+
+    // `start` has wrong type
+    StartFunctionType(Span),
+
+    // intrinsic has wrong type
+    IntrinsicType(Span),
+
+    // method receiver
+    MethodReceiver(Span),
 }
 
 impl TypeOrigin {
-    fn as_str(&self) -> &'static str {
+    fn as_failure_str(&self) -> &'static str {
         match self {
             &TypeOrigin::Misc(_) |
-            &TypeOrigin::RelateSelfType(_) |
             &TypeOrigin::RelateOutputImplTypes(_) |
             &TypeOrigin::ExprAssignable(_) => "mismatched types",
-            &TypeOrigin::RelateTraitRefs(_) => "mismatched traits",
             &TypeOrigin::MethodCompatCheck(_) => "method not compatible with trait",
             &TypeOrigin::MatchExpressionArm(_, _, source) => match source {
                 hir::MatchSource::IfLetDesugar{..} => "`if let` arms have incompatible types",
@@ -238,13 +242,31 @@ impl TypeOrigin {
             &TypeOrigin::IfExpressionWithNoElse(_) => "if may be missing an else clause",
             &TypeOrigin::RangeExpression(_) => "start and end of range have incompatible types",
             &TypeOrigin::EquatePredicate(_) => "equality predicate not satisfied",
+            &TypeOrigin::MainFunctionType(_) => "main function has wrong type",
+            &TypeOrigin::StartFunctionType(_) => "start function has wrong type",
+            &TypeOrigin::IntrinsicType(_) => "intrinsic has wrong type",
+            &TypeOrigin::MethodReceiver(_) => "mismatched method receiver",
         }
     }
-}
 
-impl fmt::Display for TypeOrigin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(),fmt::Error> {
-        fmt::Display::fmt(self.as_str(), f)
+    fn as_requirement_str(&self) -> &'static str {
+        match self {
+            &TypeOrigin::Misc(_) => "types are compatible",
+            &TypeOrigin::MethodCompatCheck(_) => "method type is compatible with trait",
+            &TypeOrigin::ExprAssignable(_) => "expression is assignable",
+            &TypeOrigin::RelateOutputImplTypes(_) => {
+                "trait type parameters matches those specified on the impl"
+            }
+            &TypeOrigin::MatchExpressionArm(_, _, _) => "match arms have compatible types",
+            &TypeOrigin::IfExpression(_) => "if and else have compatible types",
+            &TypeOrigin::IfExpressionWithNoElse(_) => "if missing an else returns ()",
+            &TypeOrigin::RangeExpression(_) => "start and end of range have compatible types",
+            &TypeOrigin::EquatePredicate(_) => "equality where clause is satisfied",
+            &TypeOrigin::MainFunctionType(_) => "`main` function has the correct type",
+            &TypeOrigin::StartFunctionType(_) => "`start` function has the correct type",
+            &TypeOrigin::IntrinsicType(_) => "intrinsic has the correct type",
+            &TypeOrigin::MethodReceiver(_) => "method receiver has the correct type",
+        }
     }
 }
 
@@ -1468,104 +1490,50 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // error type, meaning that an error occurred when typechecking this expression),
     // this is a derived error. The error cascaded from another error (that was already
     // reported), so it's not useful to display it to the user.
-    // The following four methods -- type_error_message_str, type_error_message_str_with_expected,
-    // type_error_message, and report_mismatched_types -- implement this logic.
+    // The following methods implement this logic.
     // They check if either the actual or expected type is TyError, and don't print the error
     // in this case. The typechecker should only ever report type errors involving mismatched
-    // types using one of these four methods, and should not call span_err directly for such
+    // types using one of these methods, and should not call span_err directly for such
     // errors.
-    pub fn type_error_message_str<M>(&self,
-                                     sp: Span,
-                                     mk_msg: M,
-                                     actual_ty: String,
-                                     err: Option<&TypeError<'tcx>>)
-        where M: FnOnce(Option<String>, String) -> String,
-    {
-        self.type_error_message_str_with_expected(sp, mk_msg, None, actual_ty, err)
-    }
-
-    pub fn type_error_struct_str<M>(&self,
-                                    sp: Span,
-                                    mk_msg: M,
-                                    actual_ty: String,
-                                    err: Option<&TypeError<'tcx>>)
-                                    -> DiagnosticBuilder<'tcx>
-        where M: FnOnce(Option<String>, String) -> String,
-    {
-        self.type_error_struct_str_with_expected(sp, mk_msg, None, actual_ty, err)
-    }
-
-    pub fn type_error_message_str_with_expected<M>(&self,
-                                                   sp: Span,
-                                                   mk_msg: M,
-                                                   expected_ty: Option<Ty<'tcx>>,
-                                                   actual_ty: String,
-                                                   err: Option<&TypeError<'tcx>>)
-        where M: FnOnce(Option<String>, String) -> String,
-    {
-        self.type_error_struct_str_with_expected(sp, mk_msg, expected_ty, actual_ty, err)
-            .emit();
-    }
-
-    pub fn type_error_struct_str_with_expected<M>(&self,
-                                                  sp: Span,
-                                                  mk_msg: M,
-                                                  expected_ty: Option<Ty<'tcx>>,
-                                                  actual_ty: String,
-                                                  err: Option<&TypeError<'tcx>>)
-                                                  -> DiagnosticBuilder<'tcx>
-        where M: FnOnce(Option<String>, String) -> String,
-    {
-        debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
-
-        let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
-
-        if !resolved_expected.references_error() {
-            let error_str = err.map_or("".to_string(), |t_err| {
-                format!(" ({})", t_err)
-            });
-
-            let mut db = self.tcx.sess.struct_span_err(sp, &format!("{}{}",
-                mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
-                error_str));
-
-            if let Some(err) = err {
-                self.tcx.note_and_explain_type_err(&mut db, err, sp);
-            }
-            db
-        } else {
-            self.tcx.sess.diagnostic().struct_dummy()
-        }
-    }
 
     pub fn type_error_message<M>(&self,
                                  sp: Span,
                                  mk_msg: M,
-                                 actual_ty: Ty<'tcx>,
-                                 err: Option<&TypeError<'tcx>>)
+                                 actual_ty: Ty<'tcx>)
         where M: FnOnce(String) -> String,
     {
-        self.type_error_struct(sp, mk_msg, actual_ty, err).emit();
+        self.type_error_struct(sp, mk_msg, actual_ty).emit();
     }
 
+    // FIXME: this results in errors without an error code. Deprecate?
     pub fn type_error_struct<M>(&self,
                                 sp: Span,
                                 mk_msg: M,
-                                actual_ty: Ty<'tcx>,
-                                err: Option<&TypeError<'tcx>>)
+                                actual_ty: Ty<'tcx>)
                                 -> DiagnosticBuilder<'tcx>
         where M: FnOnce(String) -> String,
     {
+        self.type_error_struct_with_diag(sp, |actual_ty| {
+            self.tcx.sess.struct_span_err(sp, &mk_msg(actual_ty))
+        }, actual_ty)
+    }
+
+    pub fn type_error_struct_with_diag<M>(&self,
+                                          sp: Span,
+                                          mk_diag: M,
+                                          actual_ty: Ty<'tcx>)
+                                          -> DiagnosticBuilder<'tcx>
+        where M: FnOnce(String) -> DiagnosticBuilder<'tcx>,
+    {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
+        debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
         // Don't report an error if actual type is TyError.
         if actual_ty.references_error() {
             return self.tcx.sess.diagnostic().struct_dummy();
         }
 
-        self.type_error_struct_str(sp,
-            move |_e, a| { mk_msg(a) },
-            self.ty_to_string(actual_ty), err)
+        mk_diag(self.ty_to_string(actual_ty))
     }
 
     pub fn report_mismatched_types(&self,
@@ -1833,14 +1801,16 @@ impl TypeOrigin {
             TypeOrigin::MethodCompatCheck(span) => span,
             TypeOrigin::ExprAssignable(span) => span,
             TypeOrigin::Misc(span) => span,
-            TypeOrigin::RelateTraitRefs(span) => span,
-            TypeOrigin::RelateSelfType(span) => span,
             TypeOrigin::RelateOutputImplTypes(span) => span,
             TypeOrigin::MatchExpressionArm(match_span, _, _) => match_span,
             TypeOrigin::IfExpression(span) => span,
             TypeOrigin::IfExpressionWithNoElse(span) => span,
             TypeOrigin::RangeExpression(span) => span,
             TypeOrigin::EquatePredicate(span) => span,
+            TypeOrigin::MainFunctionType(span) => span,
+            TypeOrigin::StartFunctionType(span) => span,
+            TypeOrigin::IntrinsicType(span) => span,
+            TypeOrigin::MethodReceiver(span) => span,
         }
     }
 }
@@ -1889,5 +1859,52 @@ impl RegionVariableOrigin {
             BoundRegionInCoherence(_) => syntax_pos::DUMMY_SP,
             UpvarRegion(_, a) => a
         }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for TypeOrigin {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
+        self.clone()
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
+        false
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ValuePairs<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            ValuePairs::Types(ref ef) => {
+                ValuePairs::Types(ef.fold_with(folder))
+            }
+            ValuePairs::TraitRefs(ref ef) => {
+                ValuePairs::TraitRefs(ef.fold_with(folder))
+            }
+            ValuePairs::PolyTraitRefs(ref ef) => {
+                ValuePairs::PolyTraitRefs(ef.fold_with(folder))
+            }
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            ValuePairs::Types(ref ef) => ef.visit_with(visitor),
+            ValuePairs::TraitRefs(ref ef) => ef.visit_with(visitor),
+            ValuePairs::PolyTraitRefs(ref ef) => ef.visit_with(visitor),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for TypeTrace<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        TypeTrace {
+            origin: self.origin.fold_with(folder),
+            values: self.values.fold_with(folder)
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.origin.visit_with(visitor) || self.values.visit_with(visitor)
     }
 }

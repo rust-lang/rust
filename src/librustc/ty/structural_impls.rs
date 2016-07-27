@@ -1018,3 +1018,16 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeScheme<'tcx>  {
         self.generics.visit_with(visitor) || self.ty.visit_with(visitor)
     }
 }
+
+impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::error::ExpectedFound<T> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        ty::error::ExpectedFound {
+            expected: self.expected.fold_with(folder),
+            found: self.found.fold_with(folder),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.expected.visit_with(visitor) || self.found.visit_with(visitor)
+    }
+}

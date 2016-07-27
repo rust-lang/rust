@@ -11,7 +11,7 @@
 #![allow(non_snake_case)]
 
 register_long_diagnostics! {
-
+/*
 E0014: r##"
 Constants can only be initialized by a constant value or, in a future
 version of Rust, a call to a const function. This error indicates the use
@@ -30,7 +30,7 @@ const FOO: i32 = { const X : i32 = 0; X };
 const FOO2: i32 = { 0 }; // but brackets are useless here
 ```
 "##,
-
+*/
 E0030: r##"
 When matching against a range, the compiler verifies that the range is
 non-empty.  Range patterns include both end-points, so this is equivalent to

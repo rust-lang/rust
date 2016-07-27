@@ -40,6 +40,7 @@ use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::ProjectionMode;
+use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::lint::builtin::CONST_ERR;
@@ -116,7 +117,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 _ => self.tcx.sess.add_lint(CONST_ERR, expr.id, expr.span,
                                          format!("constant evaluation error: {}. This will \
                                                  become a HARD ERROR in the future",
-                                                 err.description())),
+                                                 err.description().into_oneline())),
             }
         }
         self.with_mode(mode, |this| {
@@ -211,15 +212,6 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             }
         }
     }
-
-    fn msg(&self) -> &'static str {
-        match self.mode {
-            Mode::Const => "constant",
-            Mode::ConstFn => "constant function",
-            Mode::StaticMut | Mode::Static => "static",
-            Mode::Var => bug!(),
-        }
-    }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
@@ -289,18 +281,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 self.global_expr(Mode::Const, &start);
                 self.global_expr(Mode::Const, &end);
 
-                match compare_lit_exprs(self.tcx, start, end) {
-                    Some(Ordering::Less) |
-                    Some(Ordering::Equal) => {}
-                    Some(Ordering::Greater) => {
+                match compare_lit_exprs(self.tcx, p.span, start, end) {
+                    Ok(Ordering::Less) |
+                    Ok(Ordering::Equal) => {}
+                    Ok(Ordering::Greater) => {
                         span_err!(self.tcx.sess, start.span, E0030,
                             "lower range bound must be less than or equal to upper");
                     }
-                    None => {
-                        span_err!(self.tcx.sess, p.span, E0014,
-                                  "paths in {}s may only refer to constants",
-                                  self.msg());
-                    }
+                    Err(ErrorReported) => {}
                 }
             }
             _ => intravisit::walk_pat(self, p)
@@ -429,7 +417,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 Err(msg) => {
                     self.tcx.sess.add_lint(CONST_ERR, ex.id,
                                            msg.span,
-                                           msg.description().into_owned())
+                                           msg.description().into_oneline().into_owned())
                 }
             }
         }

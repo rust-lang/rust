@@ -531,10 +531,12 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 
-    pub fn cancel(&mut self, err: &mut DiagnosticBuilder) {
+    pub fn cancel(&self, err: &mut DiagnosticBuilder) {
         if err.level == Level::Error || err.level == Level::Fatal {
-            assert!(self.has_errors());
-            self.err_count.set(self.err_count.get() + 1);
+            self.err_count.set(
+                self.err_count.get().checked_sub(1)
+                    .expect("cancelled an error but err_count is 0")
+            );
         }
         err.cancel();
     }

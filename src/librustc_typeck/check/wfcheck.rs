@@ -13,6 +13,7 @@ use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use hir::def_id::DefId;
 use middle::region::{CodeExtent};
+use rustc::infer::TypeOrigin;
 use rustc::ty::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -157,7 +158,10 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         }
     }
 
-    fn check_trait_or_impl_item(&mut self, item_id: ast::NodeId, span: Span) {
+    fn check_trait_or_impl_item(&mut self,
+                                item_id: ast::NodeId,
+                                span: Span,
+                                sig_if_method: Option<&hir::MethodSig>) {
         let code = self.code.clone();
         self.for_id(item_id, span).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
@@ -182,7 +186,8 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                     let predicates = fcx.instantiate_bounds(span, free_substs, &method.predicates);
                     this.check_fn_or_method(fcx, span, &method_ty, &predicates,
                                             free_id_outlive, &mut implied_bounds);
-                    this.check_method_receiver(fcx, span, &method,
+                    let sig_if_method = sig_if_method.expect("bad signature for method");
+                    this.check_method_receiver(fcx, sig_if_method, &method,
                                                free_id_outlive, self_ty);
                 }
                 ty::TypeTraitItem(assoc_type) => {
@@ -405,20 +410,15 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
     fn check_method_receiver<'fcx, 'tcx>(&mut self,
                                          fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
-                                         span: Span,
+                                         method_sig: &hir::MethodSig,
                                          method: &ty::Method<'tcx>,
                                          free_id_outlive: CodeExtent,
                                          self_ty: ty::Ty<'tcx>)
     {
         // check that the type of the method's receiver matches the
         // method's first parameter.
-
-        let free_substs = &fcx.parameter_environment.free_substs;
-        let fty = fcx.instantiate_type_scheme(span, free_substs, &method.fty);
-        let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &fty.sig);
-
-        debug!("check_method_receiver({:?},cat={:?},self_ty={:?},sig={:?})",
-               method.name, method.explicit_self, self_ty, sig);
+        debug!("check_method_receiver({:?},cat={:?},self_ty={:?})",
+               method.name, method.explicit_self, self_ty);
 
         let rcvr_ty = match method.explicit_self {
             ty::ExplicitSelfCategory::Static => return,
@@ -431,14 +431,23 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             }
             ty::ExplicitSelfCategory::ByBox => fcx.tcx.mk_box(self_ty)
         };
+
+        let span = method_sig.decl.inputs[0].pat.span;
+
+        let free_substs = &fcx.parameter_environment.free_substs;
+        let fty = fcx.instantiate_type_scheme(span, free_substs, &method.fty);
+        let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &fty.sig);
+
+        debug!("check_method_receiver: sig={:?}", sig);
+
         let rcvr_ty = fcx.instantiate_type_scheme(span, free_substs, &rcvr_ty);
         let rcvr_ty = fcx.tcx.liberate_late_bound_regions(free_id_outlive,
                                                           &ty::Binder(rcvr_ty));
 
         debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
 
-        fcx.require_same_types(span, sig.inputs[0], rcvr_ty,
-                               "mismatched method receiver");
+        let origin = TypeOrigin::MethodReceiver(span);
+        fcx.demand_eqtype_with_origin(origin, rcvr_ty, sig.inputs[0]);
     }
 
     fn check_variances_for_type_defn(&self,
@@ -553,13 +562,21 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
-        self.check_trait_or_impl_item(trait_item.id, trait_item.span);
+        let method_sig = match trait_item.node {
+            hir::TraitItem_::MethodTraitItem(ref sig, _) => Some(sig),
+            _ => None
+        };
+        self.check_trait_or_impl_item(trait_item.id, trait_item.span, method_sig);
         intravisit::walk_trait_item(self, trait_item)
     }
 
     fn visit_impl_item(&mut self, impl_item: &'v hir::ImplItem) {
         debug!("visit_impl_item: {:?}", impl_item);
-        self.check_trait_or_impl_item(impl_item.id, impl_item.span);
+        let method_sig = match impl_item.node {
+            hir::ImplItemKind::Method(ref sig, _) => Some(sig),
+            _ => None
+        };
+        self.check_trait_or_impl_item(impl_item.id, impl_item.span, method_sig);
         intravisit::walk_impl_item(self, impl_item)
     }
 }
