@@ -581,12 +581,12 @@ interfacing with C, pointers that might be `null` are often used, which would se
 require some messy `transmute`s and/or unsafe code to handle conversions to/from Rust types.
 However, the language provides a workaround.
 
-As a special case, an `enum` is eligible for the "nullable pointer optimization" if it
-contains exactly two variants, one of which contains no data and the other contains
-a field of one of the non-nullable types listed above (or a struct containing such a type).
-This means no extra space is required for a discriminant; rather, the empty variant is represented
-by putting a `null` value into the non-nullable field. This is called an "optimization", but unlike
-other optimizations it is guaranteed to apply to eligible types.
+As a special case, an `enum` is eligible for the "nullable pointer optimization" if it contains
+exactly two variants, one of which contains no data and the other contains a field of one of the
+non-nullable types listed above.  This means no extra space is required for a discriminant; rather,
+the empty variant is represented by putting a `null` value into the non-nullable field. This is
+called an "optimization", but unlike other optimizations it is guaranteed to apply to eligible
+types.
 
 The most common type that takes advantage of the nullable pointer optimization is `Option<T>`,
 where `None` corresponds to `null`. So `Option<extern "C" fn(c_int) -> c_int>` is a correct way
@@ -599,7 +599,9 @@ and an integer and it is supposed to run the function with the integer as a para
 we have function pointers flying across the FFI boundary in both directions.
 
 ```rust
-use std::os::raw::c_int;
+# #![feature(libc)]
+extern crate libc;
+use libc::c_int;
 
 # #[cfg(hidden)]
 extern "C" {
