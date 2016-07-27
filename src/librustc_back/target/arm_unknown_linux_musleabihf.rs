@@ -11,7 +11,7 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let mut base = super::musl_base::opts();
+    let mut base = super::linux_musl_base::opts();
 
     // Most of these settings are copied from the arm_unknown_linux_gnueabihf
     // target.
