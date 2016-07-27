@@ -124,9 +124,9 @@ fn test_is_digit() {
 }
 
 #[test]
-fn test_escape() {
+fn test_escape_debug() {
     fn string(c: char) -> String {
-        c.escape().collect()
+        c.escape_debug().collect()
     }
     let s = string('\n');
     assert_eq!(s, "\\n");

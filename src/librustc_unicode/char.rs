@@ -36,7 +36,7 @@ use tables::{conversions, derived_property, general_category, property};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{EncodeUtf16, EncodeUtf8, Escape, EscapeDefault, EscapeUnicode};
+pub use core::char::{EncodeUtf16, EncodeUtf8, EscapeDebug, EscapeDefault, EscapeUnicode};
 
 // unstable reexports
 #[unstable(feature = "decode_utf8", issue = "33906")]
@@ -296,10 +296,10 @@ impl char {
     ///
     /// assert_eq!(quote, "\\n");
     /// ```
-    #[unstable(feature = "char_escape", issue = "0")]
+    #[unstable(feature = "char_escape_debug", issue = "35068")]
     #[inline]
-    pub fn escape(self) -> Escape {
-        C::escape(self)
+    pub fn escape_debug(self) -> EscapeDebug {
+        C::escape_debug(self)
     }
 
     /// Returns an iterator that yields the literal escape code of a `char`.
