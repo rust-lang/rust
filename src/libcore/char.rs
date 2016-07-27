@@ -264,8 +264,8 @@ pub trait CharExt {
     fn escape_unicode(self) -> EscapeUnicode;
     #[stable(feature = "core", since = "1.6.0")]
     fn escape_default(self) -> EscapeDefault;
-    #[unstable(feature = "char_escape", issue = "0")]
-    fn escape(self) -> Escape;
+    #[unstable(feature = "char_escape_debug", issue = "35068")]
+    fn escape_debug(self) -> EscapeDebug;
     #[stable(feature = "core", since = "1.6.0")]
     fn len_utf8(self) -> usize;
     #[stable(feature = "core", since = "1.6.0")]
@@ -330,7 +330,7 @@ impl CharExt for char {
     }
 
     #[inline]
-    fn escape(self) -> Escape {
+    fn escape_debug(self) -> EscapeDebug {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
@@ -339,7 +339,7 @@ impl CharExt for char {
             c if is_printable(c) => EscapeDefaultState::Char(c),
             c => EscapeDefaultState::Unicode(c.escape_unicode()),
         };
-        Escape(EscapeDefault { state: init_state })
+        EscapeDebug(EscapeDefault { state: init_state })
     }
 
     #[inline]
@@ -618,24 +618,24 @@ impl ExactSizeIterator for EscapeDefault {
 
 /// An iterator that yields the literal escape code of a `char`.
 ///
-/// This `struct` is created by the [`escape()`] method on [`char`]. See its
+/// This `struct` is created by the [`escape_debug()`] method on [`char`]. See its
 /// documentation for more.
 ///
-/// [`escape()`]: ../../std/primitive.char.html#method.escape
+/// [`escape_debug()`]: ../../std/primitive.char.html#method.escape_debug
 /// [`char`]: ../../std/primitive.char.html
-#[unstable(feature = "char_escape", issue = "0")]
+#[unstable(feature = "char_escape_debug", issue = "35068")]
 #[derive(Clone, Debug)]
-pub struct Escape(EscapeDefault);
+pub struct EscapeDebug(EscapeDefault);
 
-#[unstable(feature = "char_escape", issue = "0")]
-impl Iterator for Escape {
+#[unstable(feature = "char_escape_debug", issue = "35068")]
+impl Iterator for EscapeDebug {
     type Item = char;
     fn next(&mut self) -> Option<char> { self.0.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.0.size_hint() }
 }
 
-#[unstable(feature = "char_escape", issue = "0")]
-impl ExactSizeIterator for Escape { }
+#[unstable(feature = "char_escape_debug", issue = "35068")]
+impl ExactSizeIterator for EscapeDebug { }
 
 /// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
 /// value.
