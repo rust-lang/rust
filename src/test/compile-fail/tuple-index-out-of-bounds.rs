@@ -20,5 +20,5 @@ fn main() {
     tuple.0;
     tuple.1;
     tuple.2;
-    //~^ ERROR attempted out-of-bounds tuple index `2` on type `({numeric}, {numeric})`
+    //~^ ERROR attempted out-of-bounds tuple index `2` on type `({integer}, {integer})`
 }

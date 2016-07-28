@@ -15,6 +15,6 @@ fn main() {
     x = 5;
     //~^ ERROR mismatched types
     //~| expected type `std::option::Option<usize>`
-    //~| found type `{numeric}`
+    //~| found type `{integer}`
     //~| expected enum `std::option::Option`, found integral variable
 }
