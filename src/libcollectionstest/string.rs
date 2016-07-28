@@ -392,6 +392,22 @@ fn test_into_boxed_str() {
     assert_eq!(&*ys, "hello my name is bob");
 }
 
+#[test]
+fn test_string_from_vec_char() {
+    let str1 = String::from(vec!['a', 'b', '😃', 'a', 'b']);
+    let str2 = String::from(vec!['a', 'ą', 'あ', '🞎']);
+    let str3 = String::from(vec!['🞎', 'あ', 'ą', 'a']);
+    assert_eq!("ab😃ab", str1);
+    assert_eq!(str1.len(), 8);
+    assert!(str1.capacity() >= 20);
+    assert_eq!("aąあ🞎", str2);
+    assert_eq!(str2.len(), 10);
+    assert!(str2.capacity() >= 16);
+    assert_eq!("🞎あąa", str3);
+    assert_eq!(str3.len(), 10);
+    assert!(str3.capacity() >= 16);
+}
+
 #[bench]
 fn bench_with_capacity(b: &mut Bencher) {
     b.iter(|| String::with_capacity(100));
