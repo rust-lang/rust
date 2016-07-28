@@ -402,6 +402,8 @@ impl<T> VecDeque<T> {
 
     /// Retrieves an element in the `VecDeque` by index.
     ///
+    /// Element at index 0 is the front of the queue.
+    ///
     /// # Examples
     ///
     /// ```
@@ -424,6 +426,8 @@ impl<T> VecDeque<T> {
     }
 
     /// Retrieves an element in the `VecDeque` mutably by index.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Examples
     ///
@@ -455,6 +459,8 @@ impl<T> VecDeque<T> {
     /// `i` and `j` may be equal.
     ///
     /// Fails if there is no element with either index.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Examples
     ///
@@ -1180,6 +1186,8 @@ impl<T> VecDeque<T> {
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
+    /// Element at index 0 is the front of the queue.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1214,6 +1222,8 @@ impl<T> VecDeque<T> {
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
+    /// Element at index 0 is the front of the queue.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1244,6 +1254,8 @@ impl<T> VecDeque<T> {
     /// Inserts an element at `index` within the `VecDeque`. Whichever
     /// end is closer to the insertion point will be moved to make room,
     /// and all the affected elements will be moved to new positions.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Panics
     ///
@@ -1472,6 +1484,8 @@ impl<T> VecDeque<T> {
     /// room, and all the affected elements will be moved to new positions.
     /// Returns `None` if `index` is out of bounds.
     ///
+    /// Element at index 0 is the front of the queue.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1650,6 +1664,8 @@ impl<T> VecDeque<T> {
     /// and the returned `Self` contains elements `[at, len)`.
     ///
     /// Note that the capacity of `self` does not change.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Panics
     ///

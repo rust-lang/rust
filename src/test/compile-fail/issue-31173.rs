@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
+use std::vec::IntoIter;
 
-trait Foo {
-    const ID: usize;
+pub fn get_tok(it: &mut IntoIter<u8>) {
+    let mut found_e = false;
+
+    let temp: Vec<u8> = it.take_while(|&x| {
+        found_e = true;
+        false
+    })
+        .cloned()
+        //~^ ERROR type mismatch resolving
+        //~| expected type `u8`
+        //~| found type `&_`
+        .collect(); //~ ERROR no method named `collect`
 }
 
-const X: [i32; <i32 as Foo>::ID] = [0, 1, 2]; //~ ERROR E0080
-
-fn main() {
-    assert_eq!(1, X);
-}
+fn main() {}

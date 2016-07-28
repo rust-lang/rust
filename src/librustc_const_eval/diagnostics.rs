@@ -551,6 +551,26 @@ The `op_string_ref` binding has type `&Option<&String>` in both cases.
 See also https://github.com/rust-lang/rust/issues/14587
 "##,
 
+E0080: r##"
+This error indicates that the compiler was unable to sensibly evaluate an
+constant expression that had to be evaluated. Attempting to divide by 0
+or causing integer overflow are two ways to induce this error. For example:
+
+```compile_fail
+enum Enum {
+    X = (1 << 500),
+    Y = (1 / 0)
+}
+```
+
+Ensure that the expressions given can be evaluated as the desired integer type.
+See the FFI section of the Reference for more information about using a custom
+integer type:
+
+https://doc.rust-lang.org/reference.html#ffi-attributes
+"##,
+
+
 E0306: r##"
 In an array literal `[x; N]`, `N` is the number of elements in the array. This
 must be an unsigned integer. Erroneous code example:
@@ -566,29 +586,11 @@ Working example:
 let x = [0i32; 2];
 ```
 "##,
-
-E0307: r##"
-The length of an array is part of its type. For this reason, this length must
-be a compile-time constant. Erroneous code example:
-
-```compile_fail
-    let len = 10;
-    let x = [0i32; len]; // error: expected constant integer for repeat count,
-                         //        found variable
-```
-
-Working example:
-
-```
-let x = [0i32; 10];
-```
-"##,
-
 }
 
 
 register_diagnostics! {
-E0298, // mismatched types between arms
-E0299, // mismatched types between arms
-E0471, // constant evaluation error: ..
+    E0298, // cannot compare constants
+//  E0299, // mismatched types between arms
+//  E0471, // constant evaluation error (in pattern)
 }

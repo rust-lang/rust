@@ -73,6 +73,7 @@ use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ops;
 use core::ptr;
+use core::ptr::Shared;
 use core::slice;
 
 use super::SpecExtend;
@@ -899,8 +900,8 @@ impl<T> Vec<T> {
             Drain {
                 tail_start: end,
                 tail_len: len - end,
-                iter: range_slice.iter_mut(),
-                vec: self as *mut _,
+                iter: range_slice.iter(),
+                vec: Shared::new(self as *mut _),
             }
         }
     }
@@ -1806,8 +1807,8 @@ pub struct Drain<'a, T: 'a> {
     /// Length of tail
     tail_len: usize,
     /// Current remaining range to remove
-    iter: slice::IterMut<'a, T>,
-    vec: *mut Vec<T>,
+    iter: slice::Iter<'a, T>,
+    vec: Shared<Vec<T>>,
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -1845,7 +1846,7 @@ impl<'a, T> Drop for Drain<'a, T> {
 
         if self.tail_len > 0 {
             unsafe {
-                let source_vec = &mut *self.vec;
+                let source_vec = &mut **self.vec;
                 // memmove back untouched tail, update to new length
                 let start = source_vec.len();
                 let tail = self.tail_start;

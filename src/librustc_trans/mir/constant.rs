@@ -925,7 +925,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
             Err(ConstEvalFailure::Runtime(err)) => {
                 span_bug!(constant.span,
-                          "MIR constant {:?} results in runtime panic: {}",
+                          "MIR constant {:?} results in runtime panic: {:?}",
                           constant, err.description())
             }
         }

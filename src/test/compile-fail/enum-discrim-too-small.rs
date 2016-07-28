@@ -13,28 +13,32 @@
 enum Eu8 {
     Au8 = 23,
     Bu8 = 223,
-    Cu8 = -23, //~ ERROR unary negation of unsigned integer
+    Cu8 = -23, //~ ERROR E0080
+               //~| unary negation of unsigned integer
 }
 
 #[repr(u16)]
 enum Eu16 {
     Au16 = 23,
     Bu16 = 55555,
-    Cu16 = -22333, //~ ERROR unary negation of unsigned integer
+    Cu16 = -22333, //~ ERROR E0080
+                   //~| unary negation of unsigned integer
 }
 
 #[repr(u32)]
 enum Eu32 {
     Au32 = 23,
     Bu32 = 3_000_000_000,
-    Cu32 = -2_000_000_000, //~ ERROR unary negation of unsigned integer
+    Cu32 = -2_000_000_000, //~ ERROR E0080
+                           //~| unary negation of unsigned integer
 }
 
 #[repr(u64)]
 enum Eu64 {
     Au32 = 23,
     Bu32 = 3_000_000_000,
-    Cu32 = -2_000_000_000, //~ ERROR unary negation of unsigned integer
+    Cu32 = -2_000_000_000, //~ ERROR E0080
+                           //~| unary negation of unsigned integer
 }
 
 // u64 currently allows negative numbers, and i64 allows numbers greater than `1<<63`.  This is a

@@ -25,7 +25,8 @@ impl Foo for Def {
 }
 
 pub fn test<A: Foo, B: Foo>() {
-    let _array = [4; <A as Foo>::Y]; //~ error: expected constant integer
+    let _array = [4; <A as Foo>::Y]; //~ ERROR E0080
+                                     //~| non-constant path in constant
 }
 
 fn main() {

@@ -427,7 +427,7 @@ fn make_values_str(pairs: &[(&'static str, &str)]) -> String {
 }
 
 fn span_extent_str(span: SpanData) -> String {
-    format!("file_name,\"{}\",file_line,{},file_col,{},byte_start,{}\
+    format!("file_name,\"{}\",file_line,{},file_col,{},byte_start,{},\
              file_line_end,{},file_col_end,{},byte_end,{}",
              span.file_name, span.line_start, span.column_start, span.byte_start,
              span.line_end, span.column_end, span.byte_end)

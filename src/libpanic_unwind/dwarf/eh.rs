@@ -108,10 +108,9 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
                 }
             }
         }
-        // If ip is not present in the table, call terminate.  This is for
-        // a destructor inside a cleanup, or a library routine the compiler
-        // was not expecting to throw
-        EHAction::Terminate
+        // Ip is not present in the table.  This should not hapen... but it does: issie #35011.
+        // So rather than returning EHAction::Terminate, we do this.
+        EHAction::None
     } else {
         // SjLj version:
         // The "IP" is an index into the call-site table, with two exceptions:
