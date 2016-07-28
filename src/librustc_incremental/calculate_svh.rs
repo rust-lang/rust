@@ -119,6 +119,7 @@ mod svh_visitor {
     use rustc::ty::TyCtxt;
     use rustc::hir;
     use rustc::hir::*;
+    use rustc::hir::map::DefPath;
     use rustc::hir::intravisit as visit;
     use rustc::hir::intravisit::{Visitor, FnKind};
 
@@ -134,6 +135,15 @@ mod svh_visitor {
                    tcx: TyCtxt<'a, 'tcx, 'tcx>)
                    -> Self {
             StrictVersionHashVisitor { st: st, tcx: tcx }
+        }
+
+        fn hash_def_path(&mut self, path: &DefPath) {
+            self.tcx.crate_name(path.krate).hash(self.st);
+            self.tcx.crate_disambiguator(path.krate).hash(self.st);
+            for data in &path.data {
+                data.data.as_interned_str().hash(self.st);
+                data.disambiguator.hash(self.st);
+            }
         }
     }
 
@@ -289,9 +299,9 @@ mod svh_visitor {
 
     impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
         fn visit_nested_item(&mut self, item: ItemId) {
-            debug!("visit_nested_item: {:?} st={:?}", item, self.st);
-            let def_path = self.tcx.map.def_path_from_id(item.id);
-            def_path.hash(self.st);
+            let def_path = self.tcx.map.def_path_from_id(item.id).unwrap();
+            debug!("visit_nested_item: def_path={:?} st={:?}", def_path, self.st);
+            self.hash_def_path(&def_path);
         }
 
         fn visit_variant_data(&mut self, s: &'a VariantData, name: Name,
