@@ -50,7 +50,7 @@ struct Vec<T> {
 }
 ```
 
-Unlike the previous example it *appears* that everything is exactly as we
+Unlike the previous example, it *appears* that everything is exactly as we
 want. Every generic argument to Vec shows up in at least one field.
 Good to go!
 
@@ -84,4 +84,3 @@ standard library made a utility for itself called `Unique<T>` which:
 * includes a `PhantomData<T>`
 * auto-derives Send/Sync as if T was contained
 * marks the pointer as NonZero for the null-pointer optimization
-

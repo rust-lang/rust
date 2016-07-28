@@ -25,6 +25,7 @@ use rustc::hir::pat_util::def_to_path;
 use rustc::ty::{self, Ty, TyCtxt, subst};
 use rustc::ty::util::IntTypeExt;
 use rustc::traits::ProjectionMode;
+use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc::lint;
 
@@ -43,6 +44,7 @@ use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
 
 use rustc_const_math::*;
+use rustc_errors::{DiagnosticBuilder, check_old_school};
 
 macro_rules! math {
     ($e:expr, $op:expr) => {
@@ -338,20 +340,71 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Ok(P(hir::Pat { id: expr.id, node: pat, span: span }))
 }
 
+pub fn report_const_eval_err<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    err: &ConstEvalErr,
+    primary_span: Span,
+    primary_kind: &str)
+    -> DiagnosticBuilder<'tcx>
+{
+    let mut err = err;
+    while let &ConstEvalErr { kind: ErroneousReferencedConstant(box ref i_err), .. } = err {
+        err = i_err;
+    }
+
+    let mut diag = struct_span_err!(tcx.sess, err.span, E0080, "constant evaluation error");
+    note_const_eval_err(tcx, err, primary_span, primary_kind, &mut diag);
+    diag
+}
+
+pub fn fatal_const_eval_err<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    err: &ConstEvalErr,
+    primary_span: Span,
+    primary_kind: &str)
+    -> !
+{
+    report_const_eval_err(tcx, err, primary_span, primary_kind).emit();
+    tcx.sess.abort_if_errors();
+    unreachable!()
+}
+
+pub fn note_const_eval_err<'a, 'tcx>(
+    _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    err: &ConstEvalErr,
+    primary_span: Span,
+    primary_kind: &str,
+    diag: &mut DiagnosticBuilder)
+{
+    match err.description() {
+        ConstEvalErrDescription::Simple(message) => {
+            if check_old_school() {
+                diag.note(&message);
+            } else {
+                diag.span_label(err.span, &message);
+            }
+        }
+    }
+
+    if !primary_span.contains(err.span) {
+        diag.span_note(primary_span,
+                       &format!("for {} here", primary_kind));
+    }
+}
+
 pub fn eval_const_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  e: &Expr) -> ConstVal {
     match eval_const_expr_partial(tcx, e, ExprTypeChecked, None) {
         Ok(r) => r,
         // non-const path still needs to be a fatal error, because enums are funky
         Err(s) => {
+            report_const_eval_err(tcx, &s, e.span, "expression").emit();
             match s.kind {
                 NonConstPath |
-                UnimplementedConstVal(_) => tcx.sess.span_fatal(s.span, &s.description()),
-                _ => {
-                    tcx.sess.span_err(s.span, &s.description());
-                    Dummy
-                }
+                UnimplementedConstVal(_) => tcx.sess.abort_if_errors(),
+                _ => {}
             }
+            Dummy
         },
     }
 }
@@ -400,6 +453,7 @@ pub enum ErrKind {
     IntermediateUnsignedNegative,
     /// Expected, Got
     TypeMismatch(String, ConstInt),
+
     BadType(ConstVal),
     ErroneousReferencedConstant(Box<ConstEvalErr>),
     CharCast(ConstInt),
@@ -411,57 +465,79 @@ impl From<ConstMathErr> for ErrKind {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum ConstEvalErrDescription<'a> {
+    Simple(Cow<'a, str>),
+}
+
+impl<'a> ConstEvalErrDescription<'a> {
+    /// Return a one-line description of the error, for lints and such
+    pub fn into_oneline(self) -> Cow<'a, str> {
+        match self {
+            ConstEvalErrDescription::Simple(simple) => simple,
+        }
+    }
+}
+
 impl ConstEvalErr {
-    pub fn description(&self) -> Cow<str> {
+    pub fn description(&self) -> ConstEvalErrDescription {
         use self::ErrKind::*;
+        use self::ConstEvalErrDescription::*;
+
+        macro_rules! simple {
+            ($msg:expr) => ({ Simple($msg.into_cow()) });
+            ($fmt:expr, $($arg:tt)+) => ({
+                Simple(format!($fmt, $($arg)+).into_cow())
+            })
+        }
 
         match self.kind {
-            CannotCast => "can't cast this type".into_cow(),
-            CannotCastTo(s) => format!("can't cast this type to {}", s).into_cow(),
-            InvalidOpForInts(_) =>  "can't do this op on integrals".into_cow(),
-            InvalidOpForBools(_) =>  "can't do this op on bools".into_cow(),
-            InvalidOpForFloats(_) => "can't do this op on floats".into_cow(),
-            InvalidOpForIntUint(..) => "can't do this op on an isize and usize".into_cow(),
-            InvalidOpForUintInt(..) => "can't do this op on a usize and isize".into_cow(),
-            NegateOn(ref const_val) => format!("negate on {}", const_val.description()).into_cow(),
-            NotOn(ref const_val) => format!("not on {}", const_val.description()).into_cow(),
-            CallOn(ref const_val) => format!("call on {}", const_val.description()).into_cow(),
+            CannotCast => simple!("can't cast this type"),
+            CannotCastTo(s) => simple!("can't cast this type to {}", s),
+            InvalidOpForInts(_) =>  simple!("can't do this op on integrals"),
+            InvalidOpForBools(_) =>  simple!("can't do this op on bools"),
+            InvalidOpForFloats(_) => simple!("can't do this op on floats"),
+            InvalidOpForIntUint(..) => simple!("can't do this op on an isize and usize"),
+            InvalidOpForUintInt(..) => simple!("can't do this op on a usize and isize"),
+            NegateOn(ref const_val) => simple!("negate on {}", const_val.description()),
+            NotOn(ref const_val) => simple!("not on {}", const_val.description()),
+            CallOn(ref const_val) => simple!("call on {}", const_val.description()),
 
-            MissingStructField  => "nonexistent struct field".into_cow(),
-            NonConstPath        => "non-constant path in constant expression".into_cow(),
+            MissingStructField  => simple!("nonexistent struct field"),
+            NonConstPath        => simple!("non-constant path in constant expression"),
             UnimplementedConstVal(what) =>
-                format!("unimplemented constant expression: {}", what).into_cow(),
-            UnresolvedPath => "unresolved path in constant expression".into_cow(),
-            ExpectedConstTuple => "expected constant tuple".into_cow(),
-            ExpectedConstStruct => "expected constant struct".into_cow(),
-            TupleIndexOutOfBounds => "tuple index out of bounds".into_cow(),
-            IndexedNonVec => "indexing is only supported for arrays".into_cow(),
-            IndexNegative => "indices must be non-negative integers".into_cow(),
-            IndexNotInt => "indices must be integers".into_cow(),
+                simple!("unimplemented constant expression: {}", what),
+            UnresolvedPath => simple!("unresolved path in constant expression"),
+            ExpectedConstTuple => simple!("expected constant tuple"),
+            ExpectedConstStruct => simple!("expected constant struct"),
+            TupleIndexOutOfBounds => simple!("tuple index out of bounds"),
+            IndexedNonVec => simple!("indexing is only supported for arrays"),
+            IndexNegative => simple!("indices must be non-negative integers"),
+            IndexNotInt => simple!("indices must be integers"),
             IndexOutOfBounds { len, index } => {
-                format!("index out of bounds: the len is {} but the index is {}",
-                        len, index).into_cow()
+                simple!("index out of bounds: the len is {} but the index is {}",
+                        len, index)
             }
-            RepeatCountNotNatural => "repeat count must be a natural number".into_cow(),
-            RepeatCountNotInt => "repeat count must be integers".into_cow(),
+            RepeatCountNotNatural => simple!("repeat count must be a natural number"),
+            RepeatCountNotInt => simple!("repeat count must be integers"),
 
-            MiscBinaryOp => "bad operands for binary".into_cow(),
-            MiscCatchAll => "unsupported constant expr".into_cow(),
-            IndexOpFeatureGated => "the index operation on const values is unstable".into_cow(),
-            Math(ref err) => err.description().into_cow(),
+            MiscBinaryOp => simple!("bad operands for binary"),
+            MiscCatchAll => simple!("unsupported constant expr"),
+            IndexOpFeatureGated => simple!("the index operation on const values is unstable"),
+            Math(ref err) => Simple(err.description().into_cow()),
 
-            IntermediateUnsignedNegative => "during the computation of an unsigned a negative \
-                                             number was encountered. This is most likely a bug in\
-                                             the constant evaluator".into_cow(),
+            IntermediateUnsignedNegative => simple!(
+                "during the computation of an unsigned a negative \
+                 number was encountered. This is most likely a bug in\
+                 the constant evaluator"),
 
             TypeMismatch(ref expected, ref got) => {
-                format!("mismatched types: expected `{}`, found `{}`",
-                        expected, got.description()).into_cow()
+                simple!("expected {}, found {}", expected, got.description())
             },
-            BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
-            ErroneousReferencedConstant(_) => "could not evaluate referenced constant".into_cow(),
+            BadType(ref i) => simple!("value of wrong type: {:?}", i),
+            ErroneousReferencedConstant(_) => simple!("could not evaluate referenced constant"),
             CharCast(ref got) => {
-                format!("only `u8` can be cast as `char`, not `{}`", got.description()).into_cow()
+                simple!("only `u8` can be cast as `char`, not `{}`", got.description())
             },
         }
     }
@@ -1199,8 +1275,10 @@ fn parse_float(num: &str, fty_hint: Option<ast::FloatTy>, span: Span) -> ConstFl
     })
 }
 
-pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
-    match (a, b) {
+pub fn compare_const_vals(tcx: TyCtxt, span: Span, a: &ConstVal, b: &ConstVal)
+                          -> Result<Ordering, ErrorReported>
+{
+    let result = match (a, b) {
         (&Integral(a), &Integral(b)) => a.try_cmp(b).ok(),
         (&Float(a), &Float(b)) => a.try_cmp(b).ok(),
         (&Str(ref a), &Str(ref b)) => Some(a.cmp(b)),
@@ -1208,62 +1286,82 @@ pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
         (&ByteStr(ref a), &ByteStr(ref b)) => Some(a.cmp(b)),
         (&Char(a), &Char(ref b)) => Some(a.cmp(b)),
         _ => None,
+    };
+
+    match result {
+        Some(result) => Ok(result),
+        None => {
+            // FIXME: can this ever be reached?
+            span_err!(tcx.sess, span, E0298,
+                      "type mismatch comparing {} and {}",
+                      a.description(),
+                      b.description());
+            Err(ErrorReported)
+        }
     }
 }
 
 pub fn compare_lit_exprs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   span: Span,
                                    a: &Expr,
-                                   b: &Expr) -> Option<Ordering> {
+                                   b: &Expr) -> Result<Ordering, ErrorReported> {
     let a = match eval_const_expr_partial(tcx, a, ExprTypeChecked, None) {
         Ok(a) => a,
         Err(e) => {
-            tcx.sess.span_err(a.span, &e.description());
-            return None;
+            report_const_eval_err(tcx, &e, a.span, "expression").emit();
+            return Err(ErrorReported);
         }
     };
     let b = match eval_const_expr_partial(tcx, b, ExprTypeChecked, None) {
         Ok(b) => b,
         Err(e) => {
-            tcx.sess.span_err(b.span, &e.description());
-            return None;
+            report_const_eval_err(tcx, &e, b.span, "expression").emit();
+            return Err(ErrorReported);
         }
     };
-    compare_const_vals(&a, &b)
+    compare_const_vals(tcx, span, &a, &b)
 }
 
 
-/// Returns the repeat count for a repeating vector expression.
-pub fn eval_repeat_count<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   count_expr: &hir::Expr) -> usize {
+/// Returns the value of the length-valued expression
+pub fn eval_length<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             count_expr: &hir::Expr,
+                             reason: &str)
+                             -> Result<usize, ErrorReported>
+{
     let hint = UncheckedExprHint(tcx.types.usize);
     match eval_const_expr_partial(tcx, count_expr, hint, None) {
         Ok(Integral(Usize(count))) => {
             let val = count.as_u64(tcx.sess.target.uint_type);
             assert_eq!(val as usize as u64, val);
-            val as usize
+            Ok(val as usize)
         },
         Ok(const_val) => {
             span_err!(tcx.sess, count_expr.span, E0306,
-                      "expected positive integer for repeat count, found {}",
+                      "expected usize for {}, found {}",
+                      reason,
                       const_val.description());
-            0
+            Err(ErrorReported)
         }
         Err(err) => {
-            let err_msg = match count_expr.node {
+            let mut diag = report_const_eval_err(
+                tcx, &err, count_expr.span, reason);
+
+            match count_expr.node {
                 hir::ExprPath(None, hir::Path {
                     global: false,
                     ref segments,
                     ..
-                }) if segments.len() == 1 =>
-                    format!("found variable"),
-                _ => match err.kind {
-                    MiscCatchAll => format!("but found {}", err.description()),
-                    _ => format!("but {}", err.description())
+                }) if segments.len() == 1 => {
+                    if let Some(Def::Local(..)) = tcx.expect_def_or_none(count_expr.id) {
+                        diag.note(&format!("`{}` is a variable", segments[0].name));
+                    }
                 }
-            };
-            span_err!(tcx.sess, count_expr.span, E0307,
-                "expected constant integer for repeat count, {}", err_msg);
-            0
+                _ => {}
+            }
+
+            diag.emit();
+            Err(ErrorReported)
         }
     }
 }

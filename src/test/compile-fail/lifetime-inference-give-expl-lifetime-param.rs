@@ -49,7 +49,8 @@ struct Baz<'x> {
 
 impl<'a> Baz<'a> {
     fn baz2<'b>(&self, x: &isize) -> (&'b isize, &'b isize) {
-        //~^ HELP consider using an explicit lifetime parameter as shown: fn baz2<'b>(&self, x: &'a isize) -> (&'a isize, &'a isize)
+        //~^ HELP consider using an explicit lifetime parameter as shown: fn baz2<'b>(&self, x: &'
+        // FIXME #35038: The above suggestion is different on Linux and Mac.
         (self.bar, x) //~ ERROR E0312
         //~^ ERROR E0312
     }

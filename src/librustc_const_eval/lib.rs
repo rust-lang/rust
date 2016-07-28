@@ -36,6 +36,7 @@
 #[macro_use] extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_const_math;
+extern crate rustc_errors;
 extern crate graphviz;
 extern crate syntax_pos;
 extern crate serialize as rustc_serialize; // used by deriving

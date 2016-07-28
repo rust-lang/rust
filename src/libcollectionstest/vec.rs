@@ -11,6 +11,7 @@
 use std::borrow::Cow;
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
+use std::vec::Drain;
 
 use test::Bencher;
 
@@ -508,6 +509,11 @@ fn test_cow_from() {
         (Cow::Owned(o), Cow::Borrowed(b)) => assert!(o == owned && b == borrowed),
         _ => panic!("invalid `Cow::from`"),
     }
+}
+
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
 }
 
 #[bench]

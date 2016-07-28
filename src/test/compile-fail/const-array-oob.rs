@@ -16,7 +16,8 @@ const FOO: [u32; 3] = [1, 2, 3];
 const BAR: u32 = FOO[5]; // no error, because the error below occurs before regular const eval
 
 const BLUB: [u32; FOO[4]] = [5, 6];
-//~^ ERROR array length constant evaluation error: index out of bounds: the len is 3 but the index is 4 [E0250]
+//~^ ERROR constant evaluation error [E0080]
+//~| index out of bounds: the len is 3 but the index is 4
 
 fn main() {
     let _ = BAR;

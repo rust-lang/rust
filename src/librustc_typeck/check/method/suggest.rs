@@ -160,8 +160,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 item_name,
                                 actual)
                     },
-                    rcvr_ty,
-                    None);
+                    rcvr_ty);
 
                 // If the item has the name of a field, give a help note
                 if let (&ty::TyStruct(def, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {

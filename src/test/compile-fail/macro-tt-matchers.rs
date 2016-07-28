@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
+#![feature(rustc_attrs)]
 
-trait Foo {
-    const ID: usize;
+macro_rules! foo {
+    ($x:tt) => (type Alias = $x<i32>;)
 }
 
-const X: [i32; <i32 as Foo>::ID] = [0, 1, 2]; //~ ERROR E0080
+foo!(Box);
 
-fn main() {
-    assert_eq!(1, X);
-}
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

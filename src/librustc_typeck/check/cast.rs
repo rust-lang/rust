@@ -149,7 +149,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     format!("casting `{}` as `{}` is invalid",
                             actual,
                             fcx.ty_to_string(self.cast_ty))
-                }, self.expr_ty, None)
+                }, self.expr_ty)
                     .help(&format!("cast through {} first", match e {
                             CastError::NeedViaPtr => "a raw pointer",
                             CastError::NeedViaThinPtr => "a thin pointer",
@@ -167,35 +167,35 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             CastError::CastToChar => {
                 fcx.type_error_message(self.span, |actual| {
                     format!("only `u8` can be cast as `char`, not `{}`", actual)
-                }, self.expr_ty, None);
+                }, self.expr_ty);
             }
             CastError::NonScalar => {
                 fcx.type_error_message(self.span, |actual| {
                     format!("non-scalar cast: `{}` as `{}`",
                             actual,
                             fcx.ty_to_string(self.cast_ty))
-                }, self.expr_ty, None);
+                }, self.expr_ty);
             }
             CastError::IllegalCast => {
                 fcx.type_error_message(self.span, |actual| {
                     format!("casting `{}` as `{}` is invalid",
                             actual,
                             fcx.ty_to_string(self.cast_ty))
-                }, self.expr_ty, None);
+                }, self.expr_ty);
             }
             CastError::SizedUnsizedCast => {
                 fcx.type_error_message(self.span, |actual| {
                     format!("cannot cast thin pointer `{}` to fat pointer `{}`",
                             actual,
                             fcx.ty_to_string(self.cast_ty))
-                }, self.expr_ty, None)
+                }, self.expr_ty)
             }
             CastError::DifferingKinds => {
                 fcx.type_error_struct(self.span, |actual| {
                     format!("casting `{}` as `{}` is invalid",
                             actual,
                             fcx.ty_to_string(self.cast_ty))
-                }, self.expr_ty, None)
+                }, self.expr_ty)
                     .note("vtable kinds may not match")
                     .emit();
             }
@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         let tstr = fcx.ty_to_string(self.cast_ty);
         let mut err = fcx.type_error_struct(self.span, |actual| {
             format!("cast to unsized type: `{}` as `{}`", actual, tstr)
-        }, self.expr_ty, None);
+        }, self.expr_ty);
         match self.expr_ty.sty {
             ty::TyRef(_, ty::TypeAndMut { mutbl: mt, .. }) => {
                 let mtstr = match mt {
@@ -484,4 +484,3 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundSized, span)
     }
 }
-

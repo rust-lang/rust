@@ -66,8 +66,7 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
-use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
-use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
+use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
 use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
@@ -1091,14 +1090,9 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             },
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error
-            Err(ConstEvalErr { kind: ErroneousReferencedConstant(box err), ..}) |
             Err(err) => {
-                let mut diag = struct_span_err!(ccx.tcx.sess, err.span, E0080,
-                                                "constant evaluation error: {}",
-                                                err.description());
-                if !e.span.contains(err.span) {
-                    diag.span_note(e.span, "for enum discriminant here");
-                }
+                let mut diag = report_const_eval_err(
+                    ccx.tcx, &err, e.span, "enum discriminant");
                 diag.emit();
                 None
             }
