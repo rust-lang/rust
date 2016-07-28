@@ -141,7 +141,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn regionck_fn(&self,
                        fn_id: ast::NodeId,
-                       fn_span: Span,
                        decl: &hir::FnDecl,
                        blk: &hir::Block) {
         debug!("regionck_fn(id={})", fn_id);
@@ -149,7 +148,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_id, decl, blk, fn_span);
+            rcx.visit_fn_body(fn_id, decl, blk, self.tcx.map.span(fn_id));
         }
 
         rcx.free_region_map.relate_free_regions_from_predicates(

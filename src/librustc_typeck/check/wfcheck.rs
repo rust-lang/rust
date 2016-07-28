@@ -209,9 +209,8 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
     fn for_id<'tcx>(&self, id: ast::NodeId, span: Span)
                     -> CheckWfFcxBuilder<'ccx, 'gcx, 'tcx> {
-        let param_env = ty::ParameterEnvironment::for_item(self.ccx.tcx, id);
         CheckWfFcxBuilder {
-            inherited: self.ccx.inherited(Some(param_env)),
+            inherited: self.ccx.inherited(id),
             code: self.code.clone(),
             id: id,
             span: span

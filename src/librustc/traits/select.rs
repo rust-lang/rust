@@ -2128,7 +2128,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                           obligation)
             };
 
-            let cause = self.derived_cause(obligation, BuiltinDerivedObligation);
+            let cause = obligation.derived_cause(BuiltinDerivedObligation);
             self.collect_predicates_for_types(cause,
                                               obligation.recursion_depth+1,
                                               trait_def,
@@ -2208,7 +2208,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         debug!("vtable_default_impl: nested={:?}", nested);
 
-        let cause = self.derived_cause(obligation, BuiltinDerivedObligation);
+        let cause = obligation.derived_cause(BuiltinDerivedObligation);
         let mut obligations = self.collect_predicates_for_types(
             cause,
             obligation.recursion_depth+1,
@@ -2219,7 +2219,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let (trait_ref, skol_map) =
                 this.infcx().skolemize_late_bound_regions(&poly_trait_ref, snapshot);
-            let cause = this.derived_cause(obligation, ImplDerivedObligation);
+            let cause = obligation.derived_cause(ImplDerivedObligation);
             this.impl_or_trait_obligations(cause,
                                            obligation.recursion_depth + 1,
                                            trait_def_id,
@@ -2254,7 +2254,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 this.rematch_impl(impl_def_id, obligation,
                                   snapshot);
             debug!("confirm_impl_candidate substs={:?}", substs);
-            let cause = this.derived_cause(obligation, ImplDerivedObligation);
+            let cause = obligation.derived_cause(ImplDerivedObligation);
             this.vtable_impl(impl_def_id, substs, cause,
                              obligation.recursion_depth + 1,
                              skol_map, snapshot)
@@ -2907,12 +2907,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }).collect();
         self.infcx().plug_leaks(skol_map, snapshot, &predicates)
     }
+}
 
+impl<'tcx> TraitObligation<'tcx> {
     #[allow(unused_comparisons)]
-    fn derived_cause(&self,
-                     obligation: &TraitObligation<'tcx>,
-                     variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>)
-                     -> ObligationCause<'tcx>
+    pub fn derived_cause(&self,
+                        variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>)
+                        -> ObligationCause<'tcx>
     {
         /*!
          * Creates a cause for obligations that are derived from
@@ -2923,6 +2924,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
          * keep track of the original root obligation for error
          * reporting.
          */
+
+        let obligation = self;
 
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either

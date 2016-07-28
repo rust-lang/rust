@@ -14,6 +14,7 @@ use ty::{Lift, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::fmt;
+use std::rc::Rc;
 
 // structural impls for the structs in traits
 
@@ -159,6 +160,86 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
                 Some(super::TraitNotObjectSafe(def_id))
             }
         }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
+    type Lifted = traits::ObligationCauseCode<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            super::MiscObligation => Some(super::MiscObligation),
+            super::SliceOrArrayElem => Some(super::SliceOrArrayElem),
+            super::TupleElem => Some(super::TupleElem),
+            super::ProjectionWf(proj) => tcx.lift(&proj).map(super::ProjectionWf),
+            super::ItemObligation(def_id) => Some(super::ItemObligation(def_id)),
+            super::ReferenceOutlivesReferent(ty) => {
+                tcx.lift(&ty).map(super::ReferenceOutlivesReferent)
+            }
+            super::ObjectCastObligation(ty) => {
+                tcx.lift(&ty).map(super::ObjectCastObligation)
+            }
+            super::AssignmentLhsSized => Some(super::AssignmentLhsSized),
+            super::StructInitializerSized => Some(super::StructInitializerSized),
+            super::VariableType(id) => Some(super::VariableType(id)),
+            super::ReturnType => Some(super::ReturnType),
+            super::RepeatVec => Some(super::RepeatVec),
+            super::ClosureCapture(node_id, span, bound) => {
+                Some(super::ClosureCapture(node_id, span, bound))
+            }
+            super::FieldSized => Some(super::FieldSized),
+            super::ConstSized => Some(super::ConstSized),
+            super::SharedStatic => Some(super::SharedStatic),
+            super::BuiltinDerivedObligation(ref cause) => {
+                tcx.lift(cause).map(super::BuiltinDerivedObligation)
+            }
+            super::ImplDerivedObligation(ref cause) => {
+                tcx.lift(cause).map(super::ImplDerivedObligation)
+            }
+            super::CompareImplMethodObligation => {
+                Some(super::CompareImplMethodObligation)
+            }
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
+    type Lifted = traits::DerivedObligationCause<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.parent_trait_ref).and_then(|trait_ref| {
+            tcx.lift(&*self.parent_code).map(|code| {
+                traits::DerivedObligationCause {
+                    parent_trait_ref: trait_ref,
+                    parent_code: Rc::new(code)
+                }
+            })
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCause<'a> {
+    type Lifted = traits::ObligationCause<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.code).map(|code| {
+            traits::ObligationCause {
+                span: self.span,
+                body_id: self.body_id,
+                code: code,
+            }
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for traits::DeferredObligation<'a> {
+    type Lifted = traits::DeferredObligation<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.predicate).and_then(|predicate| {
+            tcx.lift(&self.cause).map(|cause| {
+                traits::DeferredObligation {
+                    predicate: predicate,
+                    cause: cause
+                }
+            })
+        })
     }
 }
 
@@ -359,5 +440,105 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.value.visit_with(visitor) || self.obligations.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            super::MiscObligation |
+            super::SliceOrArrayElem |
+            super::TupleElem |
+            super::ItemObligation(_) |
+            super::AssignmentLhsSized |
+            super::StructInitializerSized |
+            super::VariableType(_) |
+            super::ReturnType |
+            super::RepeatVec |
+            super::ClosureCapture(..) |
+            super::FieldSized |
+            super::ConstSized |
+            super::SharedStatic |
+            super::CompareImplMethodObligation => self.clone(),
+
+            super::ProjectionWf(proj) => super::ProjectionWf(proj.fold_with(folder)),
+            super::ReferenceOutlivesReferent(ty) => {
+                super::ReferenceOutlivesReferent(ty.fold_with(folder))
+            }
+            super::ObjectCastObligation(ty) => {
+                super::ObjectCastObligation(ty.fold_with(folder))
+            }
+            super::BuiltinDerivedObligation(ref cause) => {
+                super::BuiltinDerivedObligation(cause.fold_with(folder))
+            }
+            super::ImplDerivedObligation(ref cause) => {
+                super::ImplDerivedObligation(cause.fold_with(folder))
+            }
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            super::MiscObligation |
+            super::SliceOrArrayElem |
+            super::TupleElem |
+            super::ItemObligation(_) |
+            super::AssignmentLhsSized |
+            super::StructInitializerSized |
+            super::VariableType(_) |
+            super::ReturnType |
+            super::RepeatVec |
+            super::ClosureCapture(..) |
+            super::FieldSized |
+            super::ConstSized |
+            super::SharedStatic |
+            super::CompareImplMethodObligation => false,
+
+            super::ProjectionWf(proj) => proj.visit_with(visitor),
+            super::ReferenceOutlivesReferent(ty) => ty.visit_with(visitor),
+            super::ObjectCastObligation(ty) => ty.visit_with(visitor),
+            super::BuiltinDerivedObligation(ref cause) => cause.visit_with(visitor),
+            super::ImplDerivedObligation(ref cause) => cause.visit_with(visitor)
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::DerivedObligationCause<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        traits::DerivedObligationCause {
+            parent_trait_ref: self.parent_trait_ref.fold_with(folder),
+            parent_code: self.parent_code.fold_with(folder)
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.parent_trait_ref.visit_with(visitor) || self.parent_code.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCause<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        traits::ObligationCause {
+            span: self.span,
+            body_id: self.body_id,
+            code: self.code.fold_with(folder),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.code.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for traits::DeferredObligation<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        traits::DeferredObligation {
+            predicate: self.predicate.fold_with(folder),
+            cause: self.cause.fold_with(folder)
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.predicate.visit_with(visitor) || self.cause.visit_with(visitor)
     }
 }
