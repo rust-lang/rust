@@ -291,7 +291,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             }
         }
 
-        intravisit::walk_mod(self, m);
+        intravisit::walk_mod(self, m, id);
     }
 
     fn visit_macro_def(&mut self, md: &'v hir::MacroDef) {
