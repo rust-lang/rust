@@ -10,15 +10,17 @@
 
 use back::lto;
 use back::link::{get_linker, remove};
+use rustc_incremental::save_trans_partition;
 use session::config::{OutputFilenames, Passes, SomePasses, AllPasses};
 use session::Session;
 use session::config::{self, OutputType};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use llvm::SMDiagnosticRef;
-use {CrateTranslation, ModuleTranslation};
+use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
+use util::fs::link_or_copy;
 use errors::{self, Handler, Level, DiagnosticBuilder};
 use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
@@ -335,6 +337,8 @@ struct CodegenContext<'a> {
     remark: Passes,
     // Worker thread number
     worker: usize,
+    // Directory where incremental data is stored (if any)
+    incremental: Option<PathBuf>,
 }
 
 impl<'a> CodegenContext<'a> {
@@ -345,6 +349,7 @@ impl<'a> CodegenContext<'a> {
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
             worker: 0,
+            incremental: sess.opts.incremental.clone(),
         }
     }
 }
@@ -422,10 +427,11 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 // Unsafe due to LLVM calls.
 unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                mtrans: ModuleTranslation,
+                               mllvm: ModuleLlvm,
                                config: ModuleConfig,
                                output_names: OutputFilenames) {
-    let llmod = mtrans.llmod;
-    let llcx = mtrans.llcx;
+    let llmod = mllvm.llmod;
+    let llcx = mllvm.llcx;
     let tm = config.tm;
 
     // llcx doesn't outlive this function, so we can put this on the stack.
@@ -609,7 +615,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
     if copy_bc_to_obj {
         debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-        if let Err(e) = fs::copy(&bc_out, &obj_out) {
+        if let Err(e) = link_or_copy(&bc_out, &obj_out) {
             cgcx.handler.err(&format!("failed to copy bitcode to object file: {}", e));
         }
     }
@@ -628,8 +634,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 pub fn cleanup_llvm(trans: &CrateTranslation) {
     for module in trans.modules.iter() {
         unsafe {
-            llvm::LLVMDisposeModule(module.llmod);
-            llvm::LLVMContextDispose(module.llcx);
+            match module.source {
+                ModuleSource::Translated(llvm) => {
+                    llvm::LLVMDisposeModule(llvm.llmod);
+                    llvm::LLVMContextDispose(llvm.llcx);
+                }
+                ModuleSource::Preexisting(_) => {
+                }
+            }
         }
     }
 }
@@ -741,6 +753,23 @@ pub fn run_passes(sess: &Session,
         run_work_singlethreaded(sess, &trans.reachable, work_items);
     } else {
         run_work_multithreaded(sess, work_items, num_workers);
+    }
+
+    // If in incr. comp. mode, preserve the `.o` files for potential re-use
+    for mtrans in trans.modules.iter() {
+        let mut files = vec![];
+
+        if modules_config.emit_obj {
+            let path = crate_output.temp_path(OutputType::Object, Some(&mtrans.name));
+            files.push((OutputType::Object, path));
+        }
+
+        if modules_config.emit_bc {
+            let path = crate_output.temp_path(OutputType::Bitcode, Some(&mtrans.name));
+            files.push((OutputType::Bitcode, path));
+        }
+
+        save_trans_partition(sess, &mtrans.name, mtrans.symbol_name_hash, &files);
     }
 
     // All codegen is finished.
@@ -916,10 +945,37 @@ fn build_work_item(sess: &Session,
 fn execute_work_item(cgcx: &CodegenContext,
                      work_item: WorkItem) {
     unsafe {
-        optimize_and_codegen(cgcx,
-                             work_item.mtrans,
-                             work_item.config,
-                             work_item.output_names);
+        match work_item.mtrans.source {
+            ModuleSource::Translated(mllvm) => {
+                debug!("llvm-optimizing {:?}", work_item.mtrans.name);
+                optimize_and_codegen(cgcx,
+                                     work_item.mtrans,
+                                     mllvm,
+                                     work_item.config,
+                                     work_item.output_names);
+            }
+            ModuleSource::Preexisting(wp) => {
+                let incremental = cgcx.incremental.as_ref().unwrap();
+                let name = &work_item.mtrans.name;
+                for (kind, saved_file) in wp.saved_files {
+                    let obj_out = work_item.output_names.temp_path(kind, Some(name));
+                    let source_file = incremental.join(&saved_file);
+                    debug!("copying pre-existing module `{}` from {:?} to {}",
+                           work_item.mtrans.name,
+                           source_file,
+                           obj_out.display());
+                    match link_or_copy(&source_file, &obj_out) {
+                        Ok(()) => { }
+                        Err(err) => {
+                            cgcx.handler.err(&format!("unable to copy {} to {}: {}",
+                                                      source_file.display(),
+                                                      obj_out.display(),
+                                                      err));
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -955,6 +1011,8 @@ fn run_work_multithreaded(sess: &Session,
         let mut tx = Some(tx);
         futures.push(rx);
 
+        let incremental = sess.opts.incremental.clone();
+
         thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
             let diag_handler = Handler::with_emitter(true, false, box diag_emitter);
 
@@ -966,6 +1024,7 @@ fn run_work_multithreaded(sess: &Session,
                 plugin_passes: plugin_passes,
                 remark: remark,
                 worker: i,
+                incremental: incremental,
             };
 
             loop {

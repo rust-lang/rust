@@ -13,11 +13,13 @@
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_llvm;
+extern crate rustc_trans;
 #[macro_use] extern crate syntax;
 extern crate getopts;
 
 use rustc_driver::{CompilerCalls, Compilation};
 use rustc_driver::driver::CompileController;
+use rustc_trans::ModuleSource;
 use rustc::session::Session;
 use syntax::codemap::FileLoader;
 use std::io;
@@ -51,7 +53,10 @@ impl<'a> CompilerCalls<'a> for JitCalls {
             state.session.abort_if_errors();
             let trans = state.trans.unwrap();
             assert_eq!(trans.modules.len(), 1);
-            let rs_llmod = trans.modules[0].llmod;
+            let rs_llmod = match trans.modules[0].source {
+                ModuleSource::Preexisting(_) => unimplemented!(),
+                ModuleSource::Translated(llvm) => llvm.llmod,
+            };
             unsafe { rustc_llvm::LLVMDumpModule(rs_llmod) };
         });
         cc

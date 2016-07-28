@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::fmt::Debug;
+use std::sync::Arc;
 
 macro_rules! try_opt {
     ($e:expr) => (
@@ -44,6 +45,10 @@ pub enum DepNode<D: Clone + Debug> {
     // Represents the metadata for a given HIR node, typically found
     // in an extern crate.
     MetaData(D),
+
+    // Represents some artifact that we save to disk. Note that these
+    // do not have a def-id as part of their identifier.
+    WorkProduct(Arc<WorkProductId>),
 
     // Represents different phases in the compiler.
     CrateReader,
@@ -189,6 +194,11 @@ impl<D: Clone + Debug> DepNode<D> {
             TransCrate => Some(TransCrate),
             TransWriteMetadata => Some(TransWriteMetadata),
             LinkBinary => Some(LinkBinary),
+
+            // work product names do not need to be mapped, because
+            // they are always absolute.
+            WorkProduct(ref id) => Some(WorkProduct(id.clone())),
+
             Hir(ref d) => op(d).map(Hir),
             MetaData(ref d) => op(d).map(MetaData),
             CollectItem(ref d) => op(d).map(CollectItem),
@@ -229,3 +239,12 @@ impl<D: Clone + Debug> DepNode<D> {
         }
     }
 }
+
+/// A "work product" corresponds to a `.o` (or other) file that we
+/// save in between runs. These ids do not have a DefId but rather
+/// some independent path or string that persists between runs without
+/// the need to be mapped or unmapped. (This ensures we can serialize
+/// them even in the absence of a tcx.)
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct WorkProductId(pub String);
+

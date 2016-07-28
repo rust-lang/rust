@@ -88,7 +88,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans) = {
+    let (outputs, trans, crate_name) = {
         let krate = match phase_1_parse_input(sess, cfg, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -113,13 +113,13 @@ pub fn compile_input(sess: &Session,
         };
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
-        let id = link::find_crate_name(Some(sess), &krate.attrs, input);
+        let crate_name = link::find_crate_name(Some(sess), &krate.attrs, input);
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
-                sess, &cstore, krate, &id, addl_plugins, control.make_glob_map,
+                sess, &cstore, krate, &crate_name, addl_plugins, control.make_glob_map,
                 |expanded_crate| {
                     let mut state = CompileState::state_after_expand(
-                        input, sess, outdir, output, &cstore, expanded_crate, &id,
+                        input, sess, outdir, output, &cstore, expanded_crate, &crate_name,
                     );
                     controller_entry_point!(after_expand, sess, state, Ok(()));
                     Ok(())
@@ -127,7 +127,7 @@ pub fn compile_input(sess: &Session,
             )?
         };
 
-        write_out_deps(sess, &outputs, &id);
+        write_out_deps(sess, &outputs, &crate_name);
 
         let arenas = ty::CtxtArenas::new();
 
@@ -151,7 +151,7 @@ pub fn compile_input(sess: &Session,
                                                                   &resolutions,
                                                                   &expanded_crate,
                                                                   &hir_map.krate(),
-                                                                  &id),
+                                                                  &crate_name),
                                     Ok(()));
         }
 
@@ -171,7 +171,7 @@ pub fn compile_input(sess: &Session,
                                     analysis,
                                     resolutions,
                                     &arenas,
-                                    &id,
+                                    &crate_name,
                                     |tcx, mir_map, analysis, result| {
             {
                 // Eventually, we will want to track plugins.
@@ -186,7 +186,7 @@ pub fn compile_input(sess: &Session,
                                                                    &analysis,
                                                                    mir_map.as_ref(),
                                                                    tcx,
-                                                                   &id);
+                                                                   &crate_name);
                 (control.after_analysis.callback)(&mut state);
 
                 if control.after_analysis.stop == Compilation::Stop {
@@ -212,11 +212,11 @@ pub fn compile_input(sess: &Session,
             // Discard interned strings as they are no longer required.
             token::clear_ident_interner();
 
-            Ok((outputs, trans))
+            Ok((outputs, trans, crate_name.clone()))
         })??
     };
 
-    let phase5_result = phase_5_run_llvm_passes(sess, &trans, &outputs);
+    let phase5_result = phase_5_run_llvm_passes(sess, &crate_name, &trans, &outputs);
 
     controller_entry_point!(after_llvm,
                             sess,
@@ -566,7 +566,8 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     });
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
-    sess.crate_disambiguator.set(token::intern(&compute_crate_disambiguator(sess)));
+    *sess.crate_disambiguator.borrow_mut() =
+        token::intern(&compute_crate_disambiguator(sess)).as_str();
 
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
@@ -1019,6 +1020,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
+                               crate_name: &str,
                                trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) -> CompileResult {
     if sess.opts.cg.no_integrated_as {
@@ -1039,6 +1041,10 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
              "LLVM passes",
              || write::run_passes(sess, trans, &sess.opts.output_types, outputs));
     }
+
+    time(sess.time_passes(),
+         "serialize work products",
+         move || rustc_incremental::save_work_products(sess, crate_name));
 
     if sess.err_count() > 0 {
         Err(sess.err_count())
@@ -1063,14 +1069,14 @@ fn escape_dep_filename(filename: &str) -> String {
     filename.replace(" ", "\\ ")
 }
 
-fn write_out_deps(sess: &Session, outputs: &OutputFilenames, id: &str) {
+fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.keys() {
         let file = outputs.path(*output_type);
         match *output_type {
             OutputType::Exe => {
                 for output in sess.crate_types.borrow().iter() {
-                    let p = link::filename_for_input(sess, *output, id, outputs);
+                    let p = link::filename_for_input(sess, *output, crate_name, outputs);
                     out_filenames.push(p);
                 }
             }
