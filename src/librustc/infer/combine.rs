@@ -52,21 +52,20 @@ use syntax::ast;
 use syntax_pos::Span;
 
 #[derive(Clone)]
-pub struct CombineFields<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    pub a_is_expected: bool,
+pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    pub infcx: &'infcx InferCtxt<'infcx, 'gcx, 'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
     pub obligations: PredicateObligations<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
     pub fn super_combine_tys<R>(&self,
                                 relation: &mut R,
                                 a: Ty<'tcx>,
                                 b: Ty<'tcx>)
                                 -> RelateResult<'tcx, Ty<'tcx>>
-        where R: TypeRelation<'a, 'gcx, 'tcx>
+        where R: TypeRelation<'infcx, 'gcx, 'tcx>
     {
         let a_is_expected = relation.a_is_expected();
 
@@ -150,42 +149,36 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn switch_expected(&self) -> CombineFields<'a, 'gcx, 'tcx> {
-        CombineFields {
-            a_is_expected: !self.a_is_expected,
-            ..(*self).clone()
-        }
+    pub fn equate<'a>(&'a mut self, a_is_expected: bool) -> Equate<'a, 'infcx, 'gcx, 'tcx> {
+        Equate::new(self, a_is_expected)
     }
 
-    pub fn equate(&self) -> Equate<'a, 'gcx, 'tcx> {
-        Equate::new(self.clone())
+    pub fn bivariate<'a>(&'a mut self, a_is_expected: bool) -> Bivariate<'a, 'infcx, 'gcx, 'tcx> {
+        Bivariate::new(self, a_is_expected)
     }
 
-    pub fn bivariate(&self) -> Bivariate<'a, 'gcx, 'tcx> {
-        Bivariate::new(self.clone())
+    pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> Sub<'a, 'infcx, 'gcx, 'tcx> {
+        Sub::new(self, a_is_expected)
     }
 
-    pub fn sub(&self) -> Sub<'a, 'gcx, 'tcx> {
-        Sub::new(self.clone())
+    pub fn lub<'a>(&'a mut self, a_is_expected: bool) -> Lub<'a, 'infcx, 'gcx, 'tcx> {
+        Lub::new(self, a_is_expected)
     }
 
-    pub fn lub(&self) -> Lub<'a, 'gcx, 'tcx> {
-        Lub::new(self.clone())
+    pub fn glb<'a>(&'a mut self, a_is_expected: bool) -> Glb<'a, 'infcx, 'gcx, 'tcx> {
+        Glb::new(self, a_is_expected)
     }
 
-    pub fn glb(&self) -> Glb<'a, 'gcx, 'tcx> {
-        Glb::new(self.clone())
-    }
-
-    pub fn instantiate(&self,
+    pub fn instantiate(&mut self,
                        a_ty: Ty<'tcx>,
                        dir: RelationDir,
-                       b_vid: ty::TyVid)
+                       b_vid: ty::TyVid,
+                       a_is_expected: bool)
                        -> RelateResult<'tcx, ()>
     {
         let mut stack = Vec::new();
@@ -255,10 +248,11 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
             match dir {
-                BiTo => self.bivariate().relate(&a_ty, &b_ty),
-                EqTo => self.equate().relate(&a_ty, &b_ty),
-                SubtypeOf => self.sub().relate(&a_ty, &b_ty),
-                SupertypeOf => self.sub().relate_with_variance(ty::Contravariant, &a_ty, &b_ty),
+                BiTo => self.bivariate(a_is_expected).relate(&a_ty, &b_ty),
+                EqTo => self.equate(a_is_expected).relate(&a_ty, &b_ty),
+                SubtypeOf => self.sub(a_is_expected).relate(&a_ty, &b_ty),
+                SupertypeOf => self.sub(a_is_expected).relate_with_variance(
+                    ty::Contravariant, &a_ty, &b_ty),
             }?;
         }
 
