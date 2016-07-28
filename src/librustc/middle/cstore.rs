@@ -44,7 +44,7 @@ use syntax::parse::token::InternedString;
 use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;
-use hir::intravisit::{IdVisitor, IdVisitingOperation, Visitor};
+use hir::intravisit::Visitor;
 
 pub use self::DefLike::{DlDef, DlField, DlImpl};
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
@@ -291,11 +291,6 @@ impl InlinedItem {
             InlinedItem::TraitItem(_, ref ti) => visitor.visit_trait_item(ti),
             InlinedItem::ImplItem(_, ref ii) => visitor.visit_impl_item(ii),
         }
-    }
-
-    pub fn visit_ids<O: IdVisitingOperation>(&self, operation: &mut O) {
-        let mut id_visitor = IdVisitor::new(operation);
-        self.visit(&mut id_visitor);
     }
 }
 

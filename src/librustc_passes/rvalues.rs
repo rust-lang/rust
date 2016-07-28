@@ -49,7 +49,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
             euv.walk_fn(fd, b);
         });
-        intravisit::walk_fn(self, fk, fd, b, s)
+        intravisit::walk_fn(self, fk, fd, b, s, fn_id)
     }
 }
 

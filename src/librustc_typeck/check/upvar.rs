@@ -503,7 +503,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 span: Span,
                 id: ast::NodeId)
     {
-        intravisit::walk_fn(self, fn_kind, decl, body, span);
+        intravisit::walk_fn(self, fn_kind, decl, body, span, id);
         self.analyze_closure(id, span, decl, body);
     }
 }
