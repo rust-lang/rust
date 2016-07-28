@@ -124,7 +124,7 @@ pub fn strip_unconfigured_items(mut krate: ast::Crate, sess: &ParseSess, should_
         };
 
         let err_count = sess.span_diagnostic.err_count();
-        let krate_attrs = strip_unconfigured.process_cfg_attrs(krate.attrs.clone());
+        let krate_attrs = strip_unconfigured.configure(krate.attrs.clone()).unwrap_or_default();
         features = get_features(&sess.span_diagnostic, &krate_attrs);
         if err_count < sess.span_diagnostic.err_count() {
             krate.attrs = krate_attrs.clone(); // Avoid reconfiguring malformed `cfg_attr`s
