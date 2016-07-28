@@ -25,15 +25,53 @@ use sys::platform::fs::MetadataExt as UnixMetadataExt;
 pub trait PermissionsExt {
     /// Returns the underlying raw `mode_t` bits that are the standard Unix
     /// permissions for this file.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use std::fs::File;
+    /// use std::os::unix::fs::PermissionsExt;
+    ///
+    /// let f = try!(File::create("foo.txt"));
+    /// let metadata = try!(f.metadata());
+    /// let permissions = metadata.permissions();
+    ///
+    /// println!("permissions: {}", permissions.mode());
+    /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
 
     /// Sets the underlying raw bits for this set of permissions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use std::fs::File;
+    /// use std::os::unix::fs::PermissionsExt;
+    ///
+    /// let f = try!(File::create("foo.txt"));
+    /// let metadata = try!(f.metadata());
+    /// let mut permissions = metadata.permissions();
+    ///
+    /// permissions.set_mode(0o644); // Read/write for owner and read for others.
+    /// assert_eq!(permissions.mode(), 0o644);
+    /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn set_mode(&mut self, mode: u32);
 
     /// Creates a new instance of `Permissions` from the given set of Unix
     /// permission bits.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use std::fs::Permissions;
+    /// use std::os::unix::fs::PermissionsExt;
+    ///
+    /// // Read/write for owner and read for others.
+    /// let permissions = Permissions::from_mode(0o644);
+    /// assert_eq!(permissions.mode(), 0o644);
+    /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn from_mode(mode: u32) -> Self;
 }
