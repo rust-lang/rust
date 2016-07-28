@@ -14,7 +14,7 @@ fn main() {
     } else if false {
 //~^ ERROR if may be missing an else clause
 //~| expected type `()`
-//~| found type `{numeric}`
+//~| found type `{integer}`
 //~| expected (), found integral variable
         1
     };
