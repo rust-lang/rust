@@ -63,6 +63,18 @@ pub trait OpenOptionsExt {
     /// If no `mode` is set, the default of `0o666` will be used.
     /// The operating system masks out bits with the systems `umask`, to produce
     /// the final permissions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// extern crate libc;
+    /// use std::fs::OpenOptions;
+    /// use std::os::unix::fs::OpenOptionsExt;
+    ///
+    /// let mut options = OpenOptions::new();
+    /// options.mode(0o644); // Give read/write for owner and read for others.
+    /// let file = options.open("foo.txt");
+    /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&mut self, mode: u32) -> &mut Self;
 
