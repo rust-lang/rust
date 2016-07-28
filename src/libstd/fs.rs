@@ -694,6 +694,23 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn foo() -> std::io::Result<()> {
+    /// use std::fs;
+    ///
+    /// let metadata = try!(fs::metadata("foo.txt"));
+    ///
+    /// if let Ok(time) = metadata.modified() {
+    ///     println!("{:?}", time);
+    /// } else {
+    ///     println!("Not supported on this platform");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn modified(&self) -> io::Result<SystemTime> {
         self.0.modified().map(FromInner::from_inner)
@@ -712,6 +729,23 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn foo() -> std::io::Result<()> {
+    /// use std::fs;
+    ///
+    /// let metadata = try!(fs::metadata("foo.txt"));
+    ///
+    /// if let Ok(time) = metadata.accessed() {
+    ///     println!("{:?}", time);
+    /// } else {
+    ///     println!("Not supported on this platform");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         self.0.accessed().map(FromInner::from_inner)
@@ -726,6 +760,23 @@ impl Metadata {
     ///
     /// This field may not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn foo() -> std::io::Result<()> {
+    /// use std::fs;
+    ///
+    /// let metadata = try!(fs::metadata("foo.txt"));
+    ///
+    /// if let Ok(time) = metadata.created() {
+    ///     println!("{:?}", time);
+    /// } else {
+    ///     println!("Not supported on this platform");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn created(&self) -> io::Result<SystemTime> {
         self.0.created().map(FromInner::from_inner)
