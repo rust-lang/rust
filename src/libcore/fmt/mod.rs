@@ -1383,7 +1383,7 @@ impl Debug for str {
         f.write_char('"')?;
         let mut from = 0;
         for (i, c) in self.char_indices() {
-            let esc = c.escape_default();
+            let esc = c.escape_debug();
             // If char needs escaping, flush backlog so far and write, else skip
             if esc.len() != 1 {
                 f.write_str(&self[from..i])?;
@@ -1409,7 +1409,7 @@ impl Display for str {
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.write_char('\'')?;
-        for c in self.escape_default() {
+        for c in self.escape_debug() {
             f.write_char(c)?
         }
         f.write_char('\'')
