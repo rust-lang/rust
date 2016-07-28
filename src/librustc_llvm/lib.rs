@@ -2155,6 +2155,13 @@ extern {
 
     pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: ValueRef);
+
+    // Target initialization
+    pub fn LLVMRustInitializeAllTargets();
+    pub fn LLVMRustInitializeAllTargetInfos();
+    pub fn LLVMRustInitializeAllTargetMCs();
+    pub fn LLVMRustInitializeAllAsmPrinters();
+    pub fn LLVMRustInitializeAllAsmParsers();
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed
@@ -2364,59 +2371,6 @@ pub unsafe fn twine_to_string(tr: TwineRef) -> String {
 pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
     build_string(|s| LLVMWriteDebugLocToString(c, tr, s))
         .expect("got a non-UTF8 DebugLoc from LLVM")
-}
-
-pub fn initialize_available_targets() {
-    macro_rules! init_target(
-        ($cfg:meta, $($method:ident),*) => { {
-            #[cfg($cfg)]
-            fn init() {
-                extern {
-                    $(fn $method();)*
-                }
-                unsafe {
-                    $($method();)*
-                }
-            }
-            #[cfg(not($cfg))]
-            fn init() { }
-            init();
-        } }
-    );
-    init_target!(llvm_component = "x86",
-                 LLVMInitializeX86TargetInfo,
-                 LLVMInitializeX86Target,
-                 LLVMInitializeX86TargetMC,
-                 LLVMInitializeX86AsmPrinter,
-                 LLVMInitializeX86AsmParser);
-    init_target!(llvm_component = "arm",
-                 LLVMInitializeARMTargetInfo,
-                 LLVMInitializeARMTarget,
-                 LLVMInitializeARMTargetMC,
-                 LLVMInitializeARMAsmPrinter,
-                 LLVMInitializeARMAsmParser);
-    init_target!(llvm_component = "aarch64",
-                 LLVMInitializeAArch64TargetInfo,
-                 LLVMInitializeAArch64Target,
-                 LLVMInitializeAArch64TargetMC,
-                 LLVMInitializeAArch64AsmPrinter,
-                 LLVMInitializeAArch64AsmParser);
-    init_target!(llvm_component = "mips",
-                 LLVMInitializeMipsTargetInfo,
-                 LLVMInitializeMipsTarget,
-                 LLVMInitializeMipsTargetMC,
-                 LLVMInitializeMipsAsmPrinter,
-                 LLVMInitializeMipsAsmParser);
-    init_target!(llvm_component = "powerpc",
-                 LLVMInitializePowerPCTargetInfo,
-                 LLVMInitializePowerPCTarget,
-                 LLVMInitializePowerPCTargetMC,
-                 LLVMInitializePowerPCAsmPrinter,
-                 LLVMInitializePowerPCAsmParser);
-    init_target!(llvm_component = "pnacl",
-                 LLVMInitializePNaClTargetInfo,
-                 LLVMInitializePNaClTarget,
-                 LLVMInitializePNaClTargetMC);
 }
 
 pub fn last_error() -> Option<String> {

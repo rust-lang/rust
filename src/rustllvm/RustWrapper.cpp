@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #include "rustllvm.h"
+#include "llvm-c/Target.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -1064,4 +1065,25 @@ extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V, const char *N
 extern "C" void LLVMRustUnsetComdat(LLVMValueRef V) {
     GlobalObject *GV = unwrap<GlobalObject>(V);
     GV->setComdat(nullptr);
+}
+
+// FIXME(#34962): should eventually use the functions directly once they become non-inline
+extern "C" void LLVMRustInitializeAllTargets() {
+    LLVMInitializeAllTargets();
+}
+
+extern "C" void LLVMRustInitializeAllTargetInfos() {
+    LLVMInitializeAllTargetInfos();
+}
+
+extern "C" void LLVMRustInitializeAllTargetMCs() {
+    LLVMInitializeAllTargetMCs();
+}
+
+extern "C" void LLVMRustInitializeAllAsmPrinters() {
+    LLVMInitializeAllAsmPrinters();
+}
+
+extern "C" void LLVMRustInitializeAllAsmParsers() {
+    LLVMInitializeAllAsmParsers();
 }

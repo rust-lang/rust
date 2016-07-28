@@ -496,7 +496,13 @@ unsafe fn configure_llvm(sess: &Session) {
 
     llvm::LLVMInitializePasses();
 
-    llvm::initialize_available_targets();
+    llvm::LLVMRustInitializeAllTargetInfos();
+    llvm::LLVMRustInitializeAllTargets();
+    // FIXME: these could be delayed till just before-trans, potentially reducing peak memory
+    // usage.
+    llvm::LLVMRustInitializeAllTargetMCs();
+    llvm::LLVMRustInitializeAllAsmPrinters();
+    llvm::LLVMRustInitializeAllAsmParsers();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                  llvm_args.as_ptr());
