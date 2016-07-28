@@ -36,7 +36,7 @@ impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
         // to ensure it is not incorporating implementation artifacts into
         // the hash that are not otherwise visible.)
 
-        let crate_disambiguator = self.sess.crate_disambiguator.get();
+        let crate_disambiguator = self.sess.local_crate_disambiguator();
         let krate = self.map.krate();
 
         // FIXME: this should use SHA1, not SipHash. SipHash is not built to
@@ -47,10 +47,10 @@ impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
         // FIXME(#32753) -- at (*) we `to_le` for endianness, but is
         // this enough, and does it matter anyway?
         "crate_disambiguator".hash(&mut state);
-        crate_disambiguator.as_str().len().to_le().hash(&mut state); // (*)
-        crate_disambiguator.as_str().hash(&mut state);
+        crate_disambiguator.len().to_le().hash(&mut state); // (*)
+        crate_disambiguator.hash(&mut state);
 
-        debug!("crate_disambiguator: {:?}", crate_disambiguator.as_str());
+        debug!("crate_disambiguator: {:?}", crate_disambiguator);
         debug!("state: {:?}", state);
 
         {
@@ -119,6 +119,7 @@ mod svh_visitor {
     use rustc::ty::TyCtxt;
     use rustc::hir;
     use rustc::hir::*;
+    use rustc::hir::map::DefPath;
     use rustc::hir::intravisit as visit;
     use rustc::hir::intravisit::{Visitor, FnKind};
 
@@ -134,6 +135,15 @@ mod svh_visitor {
                    tcx: TyCtxt<'a, 'tcx, 'tcx>)
                    -> Self {
             StrictVersionHashVisitor { st: st, tcx: tcx }
+        }
+
+        fn hash_def_path(&mut self, path: &DefPath) {
+            self.tcx.crate_name(path.krate).hash(self.st);
+            self.tcx.crate_disambiguator(path.krate).hash(self.st);
+            for data in &path.data {
+                data.data.as_interned_str().hash(self.st);
+                data.disambiguator.hash(self.st);
+            }
         }
     }
 
@@ -289,19 +299,21 @@ mod svh_visitor {
 
     impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
         fn visit_nested_item(&mut self, item: ItemId) {
-            debug!("visit_nested_item: {:?} st={:?}", item, self.st);
-            let def_path = self.tcx.map.def_path_from_id(item.id);
-            def_path.hash(self.st);
+            let def_path = self.tcx.map.def_path_from_id(item.id).unwrap();
+            debug!("visit_nested_item: def_path={:?} st={:?}", def_path, self.st);
+            self.hash_def_path(&def_path);
         }
 
         fn visit_variant_data(&mut self, s: &'a VariantData, name: Name,
                               g: &'a Generics, _: NodeId, _: Span) {
+            debug!("visit_variant_data: st={:?}", self.st);
             SawStructDef(name.as_str()).hash(self.st);
             visit::walk_generics(self, g);
             visit::walk_struct_def(self, s)
         }
 
         fn visit_variant(&mut self, v: &'a Variant, g: &'a Generics, item_id: NodeId) {
+            debug!("visit_variant: st={:?}", self.st);
             SawVariant.hash(self.st);
             // walk_variant does not call walk_generics, so do it here.
             visit::walk_generics(self, g);
@@ -323,14 +335,17 @@ mod svh_visitor {
         // pattern, please move that method up above this comment.)
 
         fn visit_name(&mut self, _: Span, name: Name) {
+            debug!("visit_name: st={:?}", self.st);
             SawIdent(name.as_str()).hash(self.st);
         }
 
         fn visit_lifetime(&mut self, l: &'a Lifetime) {
+            debug!("visit_lifetime: st={:?}", self.st);
             SawLifetime(l.name.as_str()).hash(self.st);
         }
 
         fn visit_lifetime_def(&mut self, l: &'a LifetimeDef) {
+            debug!("visit_lifetime_def: st={:?}", self.st);
             SawLifetimeDef(l.lifetime.name.as_str()).hash(self.st);
         }
 
@@ -340,14 +355,18 @@ mod svh_visitor {
         // that a change to a crate body will require downstream
         // crates to be recompiled.
         fn visit_expr(&mut self, ex: &'a Expr) {
+            debug!("visit_expr: st={:?}", self.st);
             SawExpr(saw_expr(&ex.node)).hash(self.st); visit::walk_expr(self, ex)
         }
 
         fn visit_stmt(&mut self, s: &'a Stmt) {
+            debug!("visit_stmt: st={:?}", self.st);
             SawStmt(saw_stmt(&s.node)).hash(self.st); visit::walk_stmt(self, s)
         }
 
         fn visit_foreign_item(&mut self, i: &'a ForeignItem) {
+            debug!("visit_foreign_item: st={:?}", self.st);
+
             // FIXME (#14132) ideally we would incorporate privacy (or
             // perhaps reachability) somewhere here, so foreign items
             // that do not leak into downstream crates would not be
@@ -357,6 +376,7 @@ mod svh_visitor {
 
         fn visit_item(&mut self, i: &'a Item) {
             debug!("visit_item: {:?} st={:?}", i, self.st);
+
             // FIXME (#14132) ideally would incorporate reachability
             // analysis somewhere here, so items that never leak into
             // downstream crates (e.g. via monomorphisation or
@@ -365,55 +385,68 @@ mod svh_visitor {
         }
 
         fn visit_mod(&mut self, m: &'a Mod, _s: Span, _n: NodeId) {
+            debug!("visit_mod: st={:?}", self.st);
             SawMod.hash(self.st); visit::walk_mod(self, m)
         }
 
         fn visit_decl(&mut self, d: &'a Decl) {
+            debug!("visit_decl: st={:?}", self.st);
             SawDecl.hash(self.st); visit::walk_decl(self, d)
         }
 
         fn visit_ty(&mut self, t: &'a Ty) {
+            debug!("visit_ty: st={:?}", self.st);
             SawTy.hash(self.st); visit::walk_ty(self, t)
         }
 
         fn visit_generics(&mut self, g: &'a Generics) {
+            debug!("visit_generics: st={:?}", self.st);
             SawGenerics.hash(self.st); visit::walk_generics(self, g)
         }
 
         fn visit_fn(&mut self, fk: FnKind<'a>, fd: &'a FnDecl,
                     b: &'a Block, s: Span, _: NodeId) {
+            debug!("visit_fn: st={:?}", self.st);
             SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s)
         }
 
         fn visit_trait_item(&mut self, ti: &'a TraitItem) {
+            debug!("visit_trait_item: st={:?}", self.st);
             SawTraitItem.hash(self.st); visit::walk_trait_item(self, ti)
         }
 
         fn visit_impl_item(&mut self, ii: &'a ImplItem) {
+            debug!("visit_impl_item: st={:?}", self.st);
             SawImplItem.hash(self.st); visit::walk_impl_item(self, ii)
         }
 
         fn visit_struct_field(&mut self, s: &'a StructField) {
+            debug!("visit_struct_field: st={:?}", self.st);
             SawStructField.hash(self.st); visit::walk_struct_field(self, s)
         }
 
         fn visit_path(&mut self, path: &'a Path, _: ast::NodeId) {
+            debug!("visit_path: st={:?}", self.st);
             SawPath.hash(self.st); visit::walk_path(self, path)
         }
 
         fn visit_block(&mut self, b: &'a Block) {
+            debug!("visit_block: st={:?}", self.st);
             SawBlock.hash(self.st); visit::walk_block(self, b)
         }
 
         fn visit_pat(&mut self, p: &'a Pat) {
+            debug!("visit_pat: st={:?}", self.st);
             SawPat.hash(self.st); visit::walk_pat(self, p)
         }
 
         fn visit_local(&mut self, l: &'a Local) {
+            debug!("visit_local: st={:?}", self.st);
             SawLocal.hash(self.st); visit::walk_local(self, l)
         }
 
         fn visit_arm(&mut self, a: &'a Arm) {
+            debug!("visit_arm: st={:?}", self.st);
             SawArm.hash(self.st); visit::walk_arm(self, a)
         }
     }

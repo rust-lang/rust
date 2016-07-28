@@ -23,12 +23,12 @@ use glue::DropGlueKind;
 use llvm;
 use monomorphize::{self, Instance};
 use inline;
+use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst;
-use rustc::dep_graph::DepNode;
 use rustc_const_eval::fatal_const_eval_err;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
@@ -68,16 +68,27 @@ impl<'tcx> Hash for TransItem<'tcx> {
 impl<'a, 'tcx> TransItem<'tcx> {
 
     pub fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
-
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                   self.to_string(ccx.tcx()),
                   self.to_raw_string(),
-                  ccx.codegen_unit().name);
+                  ccx.codegen_unit().name());
+
+        // (*) This code executes in the context of a dep-node for the
+        // entire CGU. In some cases, we introduce dep-nodes for
+        // particular items that we are translating (these nodes will
+        // have read edges coming into the CGU node). These smaller
+        // nodes are not needed for correctness -- we always
+        // invalidate an entire CGU at a time -- but they enable
+        // finer-grained testing, since you can write tests that check
+        // that the incoming edges to a particular fn are from a
+        // particular set.
 
         self.register_reads(ccx);
 
         match *self {
             TransItem::Static(node_id) => {
+                let def_id = ccx.tcx().map.local_def_id(node_id);
+                let _task = ccx.tcx().dep_graph.in_task(DepNode::TransCrateItem(def_id)); // (*)
                 let item = ccx.tcx().map.expect_item(node_id);
                 if let hir::ItemStatic(_, m, ref expr) = item.node {
                     match consts::trans_static(&ccx, m, expr, item.id, &item.attrs) {
@@ -93,6 +104,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 }
             }
             TransItem::Fn(instance) => {
+                let _task = ccx.tcx().dep_graph.in_task(
+                    DepNode::TransCrateItem(instance.def)); // (*)
+
                 base::trans_instance(&ccx, instance);
             }
             TransItem::DropGlue(dg) => {
@@ -103,7 +117,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         debug!("END IMPLEMENTING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),
                self.to_raw_string(),
-               ccx.codegen_unit().name);
+               ccx.codegen_unit().name());
     }
 
     /// If necessary, creates a subtask for trans'ing a particular item and registers reads on
@@ -152,7 +166,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),
                self.to_raw_string(),
-               ccx.codegen_unit().name);
+               ccx.codegen_unit().name());
 
         let symbol_name = ccx.symbol_map()
                              .get_or_compute(ccx.shared(), *self);
@@ -174,7 +188,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         debug!("END PREDEFINING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),
                self.to_raw_string(),
-               ccx.codegen_unit().name);
+               ccx.codegen_unit().name());
     }
 
     fn predefine_static(ccx: &CrateContext<'a, 'tcx>,

@@ -119,12 +119,15 @@
 use collector::InliningMap;
 use llvm;
 use monomorphize;
+use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use std::cmp::Ordering;
+use std::hash::{Hash, Hasher, SipHasher};
+use std::sync::Arc;
 use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
 use syntax::parse::token::{self, InternedString};
@@ -140,11 +143,59 @@ pub enum PartitioningStrategy {
 }
 
 pub struct CodegenUnit<'tcx> {
-    pub name: InternedString,
-    pub items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>,
+    /// A name for this CGU. Incremental compilation requires that
+    /// name be unique amongst **all** crates.  Therefore, it should
+    /// contain something unique to this crate (e.g., a module path)
+    /// as well as the crate name and disambiguator.
+    name: InternedString,
+
+    items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>,
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
+    pub fn new(name: InternedString,
+               items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>)
+               -> Self {
+        CodegenUnit {
+            name: name,
+            items: items,
+        }
+    }
+
+    pub fn empty(name: InternedString) -> Self {
+        Self::new(name, FnvHashMap())
+    }
+
+    pub fn contains_item(&self, item: &TransItem<'tcx>) -> bool {
+        self.items.contains_key(item)
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn items(&self) -> &FnvHashMap<TransItem<'tcx>, llvm::Linkage> {
+        &self.items
+    }
+
+    pub fn work_product_id(&self) -> Arc<WorkProductId> {
+        Arc::new(WorkProductId(self.name().to_string()))
+    }
+
+    pub fn work_product_dep_node(&self) -> DepNode<DefId> {
+        DepNode::WorkProduct(self.work_product_id())
+    }
+
+    pub fn compute_symbol_name_hash(&self, tcx: TyCtxt, symbol_map: &SymbolMap) -> u64 {
+        let mut state = SipHasher::new();
+        let all_items = self.items_in_deterministic_order(tcx, symbol_map);
+        for (item, _) in all_items {
+            let symbol_name = symbol_map.get(item).unwrap();
+            symbol_name.hash(&mut state);
+        }
+        state.finish()
+    }
+
     pub fn items_in_deterministic_order(&self,
                                         tcx: TyCtxt,
                                         symbol_map: &SymbolMap)
@@ -277,10 +328,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
 
             let make_codegen_unit = || {
-                CodegenUnit {
-                    name: codegen_unit_name.clone(),
-                    items: FnvHashMap(),
-                }
+                CodegenUnit::empty(codegen_unit_name.clone())
             };
 
             let mut codegen_unit = codegen_units.entry(codegen_unit_name.clone())
@@ -319,10 +367,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if codegen_units.is_empty() {
         let codegen_unit_name = InternedString::new(FALLBACK_CODEGEN_UNIT);
         codegen_units.entry(codegen_unit_name.clone())
-                     .or_insert_with(|| CodegenUnit {
-                         name: codegen_unit_name.clone(),
-                         items: FnvHashMap(),
-                     });
+                     .or_insert_with(|| CodegenUnit::empty(codegen_unit_name.clone()));
     }
 
     PreInliningPartitioning {
@@ -362,10 +407,8 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     // we reach the target count
     while codegen_units.len() < target_cgu_count {
         let index = codegen_units.len();
-        codegen_units.push(CodegenUnit {
-            name: numbered_codegen_unit_name(crate_name, index),
-            items: FnvHashMap()
-        });
+        codegen_units.push(
+            CodegenUnit::empty(numbered_codegen_unit_name(crate_name, index)));
     }
 }
 
@@ -381,10 +424,8 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
             follow_inlining(*root, inlining_map, &mut reachable);
         }
 
-        let mut new_codegen_unit = CodegenUnit {
-            name: codegen_unit.name.clone(),
-            items: FnvHashMap(),
-        };
+        let mut new_codegen_unit =
+            CodegenUnit::empty(codegen_unit.name.clone());
 
         // Add all translation items that are not already there
         for trans_item in reachable {
@@ -560,10 +601,9 @@ fn single_codegen_unit<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         items.insert(trans_item, linkage);
     }
 
-    CodegenUnit {
-        name: numbered_codegen_unit_name(&tcx.crate_name[..], 0),
-        items: items
-    }
+    CodegenUnit::new(
+        numbered_codegen_unit_name(&tcx.crate_name[..], 0),
+        items)
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
