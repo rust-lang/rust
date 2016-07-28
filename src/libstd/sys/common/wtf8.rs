@@ -390,7 +390,7 @@ impl fmt::Debug for Wtf8 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         fn write_str_escaped(f: &mut fmt::Formatter, s: &str) -> fmt::Result {
             use fmt::Write;
-            for c in s.chars().flat_map(|c| c.escape_default()) {
+            for c in s.chars().flat_map(|c| c.escape_debug()) {
                 f.write_char(c)?
             }
             Ok(())
@@ -1064,9 +1064,9 @@ mod tests {
 
     #[test]
     fn wtf8buf_show() {
-        let mut string = Wtf8Buf::from_str("a\té 💩\r");
+        let mut string = Wtf8Buf::from_str("a\té \u{7f}💩\r");
         string.push(CodePoint::from_u32(0xD800).unwrap());
-        assert_eq!(format!("{:?}", string), r#""a\t\u{e9} \u{1f4a9}\r\u{D800}""#);
+        assert_eq!(format!("{:?}", string), "\"a\\té \\u{7f}\u{1f4a9}\\r\\u{D800}\"");
     }
 
     #[test]

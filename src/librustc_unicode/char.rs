@@ -36,7 +36,7 @@ use tables::{conversions, derived_property, general_category, property};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{EncodeUtf16, EncodeUtf8, EscapeDefault, EscapeUnicode};
+pub use core::char::{EncodeUtf16, EncodeUtf8, EscapeDebug, EscapeDefault, EscapeUnicode};
 
 // unstable reexports
 #[unstable(feature = "decode_utf8", issue = "33906")]
@@ -265,6 +265,41 @@ impl char {
     #[inline]
     pub fn escape_unicode(self) -> EscapeUnicode {
         C::escape_unicode(self)
+    }
+
+    /// Returns an iterator that yields the literal escape code of a `char`.
+    ///
+    /// This will escape the characters similar to the `Debug` implementations
+    /// of `str` or `char`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// for i in '\n'.escape_default() {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// This prints:
+    ///
+    /// ```text
+    /// \
+    /// n
+    /// ```
+    ///
+    /// Collecting into a `String`:
+    ///
+    /// ```
+    /// let quote: String = '\n'.escape_default().collect();
+    ///
+    /// assert_eq!(quote, "\\n");
+    /// ```
+    #[unstable(feature = "char_escape_debug", issue = "35068")]
+    #[inline]
+    pub fn escape_debug(self) -> EscapeDebug {
+        C::escape_debug(self)
     }
 
     /// Returns an iterator that yields the literal escape code of a `char`.
