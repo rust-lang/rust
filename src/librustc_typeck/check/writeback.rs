@@ -37,7 +37,7 @@ use rustc::hir::{self, PatKind};
 // Entry point functions
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr) {
+    pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr, item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
         wbcx.visit_expr(e);
@@ -45,9 +45,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
+        wbcx.visit_deferred_obligations(item_id);
     }
 
-    pub fn resolve_type_vars_in_fn(&self, decl: &hir::FnDecl, blk: &hir::Block) {
+    pub fn resolve_type_vars_in_fn(&self,
+                                   decl: &hir::FnDecl,
+                                   blk: &hir::Block,
+                                   item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
         wbcx.visit_block(blk);
@@ -65,6 +69,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
         wbcx.visit_anon_types();
+        wbcx.visit_deferred_obligations(item_id);
     }
 }
 
@@ -445,6 +450,19 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn visit_deferred_obligations(&self, item_id: ast::NodeId) {
+        let deferred_obligations = self.fcx.deferred_obligations.borrow();
+        let obligations: Vec<_> = deferred_obligations.iter().map(|obligation| {
+            let reason = ResolvingDeferredObligation(obligation.cause.span);
+            self.resolve(obligation, reason)
+        }).collect();
+
+        if !obligations.is_empty() {
+            assert!(self.fcx.ccx.deferred_obligations.borrow_mut()
+                                .insert(item_id, obligations).is_none());
+        }
+    }
+
     fn resolve<T>(&self, x: &T, reason: ResolveReason) -> T::Lifted
         where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
     {
@@ -461,7 +479,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Resolution reason.
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum ResolveReason {
     ResolvingExpr(Span),
     ResolvingLocal(Span),
@@ -471,6 +489,7 @@ enum ResolveReason {
     ResolvingFnSig(ast::NodeId),
     ResolvingFieldTypes(ast::NodeId),
     ResolvingAnonTy(DefId),
+    ResolvingDeferredObligation(Span),
 }
 
 impl<'a, 'gcx, 'tcx> ResolveReason {
@@ -492,6 +511,7 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
             ResolvingAnonTy(did) => {
                 tcx.map.def_id_span(did, DUMMY_SP)
             }
+            ResolvingDeferredObligation(span) => span
         }
     }
 }
@@ -564,14 +584,17 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
                               "cannot determine a type for this closure")
                 }
 
-                ResolvingFnSig(id) | ResolvingFieldTypes(id) => {
+                ResolvingFnSig(_) |
+                ResolvingFieldTypes(_) |
+                ResolvingDeferredObligation(_) => {
                     // any failures here should also fail when
                     // resolving the patterns, closure types, or
                     // something else.
                     let span = self.reason.span(self.tcx);
                     self.tcx.sess.delay_span_bug(
                         span,
-                        &format!("cannot resolve some aspect of data for {:?}", id));
+                        &format!("cannot resolve some aspect of data for {:?}: {}",
+                                 self.reason, e));
                 }
 
                 ResolvingAnonTy(_) => {
