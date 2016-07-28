@@ -126,7 +126,7 @@ use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
 use rustc_back::slice;
-use rustc_const_eval::eval_repeat_count;
+use rustc_const_eval::eval_length;
 
 mod assoc;
 mod autoderef;
@@ -2541,21 +2541,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.type_error_message(arg.span, |t| {
                             format!("can't pass an `{}` to variadic \
                                      function, cast to `c_double`", t)
-                        }, arg_ty, None);
+                        }, arg_ty);
                     }
                     ty::TyInt(ast::IntTy::I8) | ty::TyInt(ast::IntTy::I16) | ty::TyBool => {
                         self.type_error_message(arg.span, |t| {
                             format!("can't pass `{}` to variadic \
                                      function, cast to `c_int`",
                                            t)
-                        }, arg_ty, None);
+                        }, arg_ty);
                     }
                     ty::TyUint(ast::UintTy::U8) | ty::TyUint(ast::UintTy::U16) => {
                         self.type_error_message(arg.span, |t| {
                             format!("can't pass `{}` to variadic \
                                      function, cast to `c_uint`",
                                            t)
-                        }, arg_ty, None);
+                        }, arg_ty);
                     }
                     ty::TyFnDef(_, _, f) => {
                         let ptr_ty = self.tcx.mk_fn_ptr(f);
@@ -2564,7 +2564,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                 |t| {
                             format!("can't pass `{}` to variadic \
                                      function, cast to `{}`", t, ptr_ty)
-                        }, arg_ty, None);
+                        }, arg_ty);
                     }
                     _ => {}
                 }
@@ -2908,9 +2908,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.type_error_struct(field.span, |actual| {
                 format!("attempted to take value of method `{}` on type \
                          `{}`", field.node, actual)
-            }, expr_t, None)
-                .help(
-                       "maybe a `()` to call it is missing? \
+            }, expr_t)
+                .help("maybe a `()` to call it is missing? \
                        If not, try an anonymous function")
                 .emit();
             self.write_error(expr.id);
@@ -2919,7 +2918,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 format!("attempted access of field `{}` on type `{}`, \
                          but no field with that name was found",
                         field.node, actual)
-            }, expr_t, None);
+            }, expr_t);
             if let ty::TyStruct(def, _) = expr_t.sty {
                 Self::suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
             }
@@ -3019,7 +3018,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     actual)
                 }
             },
-            expr_t, None);
+            expr_t);
 
         self.write_error(expr.id);
     }
@@ -3029,17 +3028,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             variant: ty::VariantDef<'tcx>,
                             field: &hir::Field,
                             skip_fields: &[hir::Field]) {
-        let mut err = self.type_error_struct(
+        let mut err = self.type_error_struct_with_diag(
             field.name.span,
             |actual| if let ty::TyEnum(..) = ty.sty {
-                format!("struct variant `{}::{}` has no field named `{}`",
-                        actual, variant.name.as_str(), field.name.node)
+                struct_span_err!(self.tcx.sess, field.name.span, E0559,
+                                 "struct variant `{}::{}` has no field named `{}`",
+                                 actual, variant.name.as_str(), field.name.node)
             } else {
-                format!("structure `{}` has no field named `{}`",
-                        actual, field.name.node)
+                struct_span_err!(self.tcx.sess, field.name.span, E0560,
+                                 "structure `{}` has no field named `{}`",
+                                 actual, field.name.node)
             },
-            ty,
-            None);
+            ty);
         // prevent all specified fields from being suggested
         let skip_fields = skip_fields.iter().map(|ref x| x.name.node.as_str());
         Self::suggest_field_names(&mut err, variant, &field.name, skip_fields.collect());
@@ -3272,7 +3272,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             self.type_error_message(expr.span, |actual| {
                                 format!("type `{}` cannot be \
                                         dereferenced", actual)
-                            }, oprnd_t, None);
+                            }, oprnd_t);
                             oprnd_t = tcx.types.err;
                         }
                     }
@@ -3541,7 +3541,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprRepeat(ref element, ref count_expr) => {
             self.check_expr_has_type(&count_expr, tcx.types.usize);
-            let count = eval_repeat_count(self.tcx.global_tcx(), &count_expr);
+            let count = eval_length(self.tcx.global_tcx(), &count_expr, "repeat count")
+                  .unwrap_or(0);
 
             let uty = match expected {
                 ExpectHasType(uty) => {
@@ -3647,8 +3648,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   format!("cannot index a value of type `{}`",
                                           actual)
                               },
-                              base_t,
-                              None);
+                              base_t);
                           // Try to give some advice about indexing tuples.
                           if let ty::TyTuple(_) = base_t.sty {
                               let mut needs_note = true;
@@ -4523,7 +4523,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if !self.is_tainted_by_errors() {
                     self.type_error_message(sp, |_actual| {
                         "the type of this value must be known in this context".to_string()
-                    }, ty, None);
+                    }, ty);
                 }
                 self.demand_suptype(sp, self.tcx.types.err, ty);
                 ty = self.tcx.types.err;

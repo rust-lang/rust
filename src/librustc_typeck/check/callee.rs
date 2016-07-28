@@ -216,7 +216,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => {
                 let mut err = self.type_error_struct(call_expr.span, |actual| {
                     format!("expected function, found `{}`", actual)
-                }, callee_ty, None);
+                }, callee_ty);
 
                 if let hir::ExprCall(ref expr, _) = call_expr.node {
                     let tcx = self.tcx;

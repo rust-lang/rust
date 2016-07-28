@@ -1653,13 +1653,42 @@ the Rust ABI and the foreign ABI.
 A number of [attributes](#ffi-attributes) control the behavior of external blocks.
 
 By default external blocks assume that the library they are calling uses the
-standard C "cdecl" ABI. Other ABIs may be specified using an `abi` string, as
-shown here:
+standard C ABI on the specific platform. Other ABIs may be specified using an
+`abi` string, as shown here:
 
 ```ignore
 // Interface to the Windows API
 extern "stdcall" { }
 ```
+
+There are three ABI strings which are cross-platform, and which all compilers
+are guaranteed to support:
+
+* `extern "Rust"` -- The default ABI when you write a normal `fn foo()` in any
+  Rust code.
+* `extern "C"` -- This is the same as `extern fn foo()`; whatever the default
+  your C compiler supports.
+* `extern "system"` -- Usually the same as `extern "C"`, except on Win32, in
+  which case it's `"stdcall"`, or what you should use to link to the Windows API
+  itself
+
+There are also some platform-specific ABI strings:
+
+* `extern "cdecl"` -- The default for x86\_32 C code.
+* `extern "stdcall"` -- The default for the Win32 API on x86\_32.
+* `extern "win64"` -- The default for C code on x86\_64 Windows.
+* `extern "aapcs"` -- The default for ARM.
+* `extern "fastcall"` -- The `fastcall` ABI -- corresponds to MSVC's
+  `__fastcall` and GCC and clang's `__attribute__((fastcall))`
+* `extern "vectorcall"` -- The `vectorcall` ABI -- corresponds to MSVC's
+  `__vectorcall` and clang's `__attribute__((vectorcall))`
+
+Finally, there are some rustc-specific ABI strings:
+
+* `extern "rust-intrinsic"` -- The ABI of rustc intrinsics.
+* `extern "rust-call"` -- The ABI of the Fn::call trait functions.
+* `extern "platform-intrinsic"` -- Specific platform intrinsics -- like, for
+  example, `sqrt` -- have this ABI. You should never have to deal with it.
 
 The `link` attribute allows the name of the library to be specified. When
 specified the compiler will attempt to link against the native library of the

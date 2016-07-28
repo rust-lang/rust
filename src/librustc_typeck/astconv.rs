@@ -48,10 +48,7 @@
 //! case but `&a` in the second.  Basically, defaults that appear inside
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
-use middle::const_val::ConstVal;
-use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
-use rustc_const_eval::EvalHint::UncheckedExprHint;
-use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
+use rustc_const_eval::eval_length;
 use hir::{self, SelfKind};
 use hir::def::{Def, PathResolution};
 use hir::def_id::DefId;
@@ -70,7 +67,6 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::{NodeMap, FnvHashSet};
 
-use rustc_const_math::ConstInt;
 use std::cell::RefCell;
 use syntax::{abi, ast};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -1741,33 +1737,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 ty
             }
             hir::TyFixedLengthVec(ref ty, ref e) => {
-                let hint = UncheckedExprHint(tcx.types.usize);
-                match eval_const_expr_partial(tcx.global_tcx(), &e, hint, None) {
-                    Ok(ConstVal::Integral(ConstInt::Usize(i))) => {
-                        let i = i.as_u64(tcx.sess.target.uint_type);
-                        assert_eq!(i as usize as u64, i);
-                        tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), i as usize)
-                    },
-                    Ok(val) => {
-                        span_err!(tcx.sess, ast_ty.span, E0249,
-                                  "expected usize value for array length, got {}",
-                                  val.description());
-                        self.tcx().types.err
-                    },
-                    // array length errors happen before the global constant check
-                    // so we need to report the real error
-                    Err(ConstEvalErr { kind: ErroneousReferencedConstant(box r), ..}) |
-                    Err(r) => {
-                        let mut err = struct_span_err!(tcx.sess, r.span, E0250,
-                                                       "array length constant \
-                                                        evaluation error: {}",
-                                                       r.description());
-                        if !ast_ty.span.contains(r.span) {
-                            span_note!(&mut err, ast_ty.span, "for array length here")
-                        }
-                        err.emit();
-                        self.tcx().types.err
-                    }
+                if let Ok(length) = eval_length(tcx.global_tcx(), &e, "array length") {
+                    tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), length)
+                } else {
+                    self.tcx().types.err
                 }
             }
             hir::TyTypeof(ref _e) => {

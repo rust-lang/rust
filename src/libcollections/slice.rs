@@ -691,15 +691,40 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// Print the slice split by numbers divisible by 3 (i.e. `[10, 40]`,
-    /// `[20]`, `[50]`):
+    /// ```
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.split(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[20]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// If the first element is matched, an empty slice will be the first item
+    /// returned by the iterator. Similarly, if the last element in the slice
+    /// is matched, an empty slice will be the last item returned by the
+    /// iterator:
     ///
     /// ```
-    /// let v = [10, 40, 30, 20, 60, 50];
+    /// let slice = [10, 40, 33];
+    /// let mut iter = slice.split(|num| num % 3 == 0);
     ///
-    /// for group in v.split(|num| *num % 3 == 0) {
-    ///     println!("{:?}", group);
-    /// }
+    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// If two matched elements are directly adjacent, an empty slice will be
+    /// present between them:
+    ///
+    /// ```
+    /// let slice = [10, 6, 33, 20];
+    /// let mut iter = slice.split(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10]);
+    /// assert_eq!(iter.next().unwrap(), &[]);
+    /// assert_eq!(iter.next().unwrap(), &[20]);
+    /// assert!(iter.next().is_none());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]

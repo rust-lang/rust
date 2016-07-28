@@ -70,20 +70,18 @@ macro_rules! supported_targets {
         /// List of supported targets
         pub const TARGETS: &'static [&'static str] = &[$($triple),*];
 
-        // this would use a match if stringify! were allowed in pattern position
         fn load_specific(target: &str) -> Option<Target> {
-            let target = target.replace("-", "_");
-            if false { }
-            $(
-                else if target == stringify!($module) {
-                    let mut t = $module::target();
-                    t.options.is_builtin = true;
-                    debug!("Got builtin target: {:?}", t);
-                    return Some(t);
-                }
-            )*
-
-            None
+            match target {
+                $(
+                    $triple => {
+                        let mut t = $module::target();
+                        t.options.is_builtin = true;
+                        debug!("Got builtin target: {:?}", t);
+                        Some(t)
+                    },
+                )+
+                _ => None
+            }
         }
     )
 }
