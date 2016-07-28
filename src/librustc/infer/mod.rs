@@ -48,18 +48,18 @@ use self::higher_ranked::HrMatchResult;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::unify_key::ToType;
 
-pub mod bivariate;
-pub mod combine;
-pub mod equate;
+mod bivariate;
+mod combine;
+mod equate;
 pub mod error_reporting;
-pub mod glb;
+mod glb;
 mod higher_ranked;
 pub mod lattice;
-pub mod lub;
+mod lub;
 pub mod region_inference;
 pub mod resolve;
 mod freshen;
-pub mod sub;
+mod sub;
 pub mod type_variable;
 pub mod unify_key;
 
@@ -821,11 +821,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         return variables;
     }
 
-    fn combine_fields(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+    fn combine_fields(&'a self, trace: TypeTrace<'tcx>)
                       -> CombineFields<'a, 'gcx, 'tcx> {
         CombineFields {
             infcx: self,
-            a_is_expected: a_is_expected,
             trace: trace,
             cause: None,
             obligations: PredicateObligations::new(),
@@ -836,36 +835,36 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut equate = self.combine_fields(a_is_expected, trace).equate();
-        let result = equate.relate(a, b);
-        result.map(|t| InferOk { value: t, obligations: equate.obligations() })
+        let mut fields = self.combine_fields(trace);
+        let result = fields.equate(a_is_expected).relate(a, b);
+        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     pub fn sub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut sub = self.combine_fields(a_is_expected, trace).sub();
-        let result = sub.relate(a, b);
-        result.map(|t| InferOk { value: t, obligations: sub.obligations() })
+        let mut fields = self.combine_fields(trace);
+        let result = fields.sub(a_is_expected).relate(a, b);
+        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     pub fn lub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut lub = self.combine_fields(a_is_expected, trace).lub();
-        let result = lub.relate(a, b);
-        result.map(|t| InferOk { value: t, obligations: lub.obligations() })
+        let mut fields = self.combine_fields(trace);
+        let result = fields.lub(a_is_expected).relate(a, b);
+        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     pub fn glb<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut glb = self.combine_fields(a_is_expected, trace).glb();
-        let result = glb.relate(a, b);
-        result.map(|t| InferOk { value: t, obligations: glb.obligations() })
+        let mut fields = self.combine_fields(trace);
+        let result = fields.glb(a_is_expected).relate(a, b);
+        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
@@ -1614,8 +1613,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref, p.ty));
-        let combine = self.combine_fields(true, trace);
-        let result = combine.higher_ranked_match(span, &match_pair, &match_b)?;
+        let mut combine = self.combine_fields(trace);
+        let result = combine.higher_ranked_match(span, &match_pair, &match_b, true)?;
         Ok(InferOk { value: result, obligations: combine.obligations })
     }
 
