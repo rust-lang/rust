@@ -40,7 +40,7 @@ pub struct HrMatchResult<U> {
 }
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
-    pub fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
+    pub fn higher_ranked_sub<T>(&mut self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
                                 -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'tcx>
     {
@@ -77,11 +77,11 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             debug!("b_prime={:?}", b_prime);
 
             // Compare types now that bound regions have been replaced.
-            let result = self.sub().relate(&a_prime, &b_prime)?;
+            let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
-            self.infcx.leak_check(!self.a_is_expected, span, &skol_map, snapshot)?;
+            self.infcx.leak_check(!a_is_expected, span, &skol_map, snapshot)?;
 
             // We are finished with the skolemized regions now so pop
             // them off.
@@ -106,10 +106,11 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     /// NB. It should not happen that there are LBR appearing in `U`
     /// that do not appear in `T`. If that happens, those regions are
     /// unconstrained, and this routine replaces them with `'static`.
-    pub fn higher_ranked_match<T, U>(&self,
+    pub fn higher_ranked_match<T, U>(&mut self,
                                      span: Span,
                                      a_pair: &Binder<(T, U)>,
-                                     b_match: &T)
+                                     b_match: &T,
+                                     a_is_expected: bool)
                                      -> RelateResult<'tcx, HrMatchResult<U>>
         where T: Relate<'tcx>,
               U: TypeFoldable<'tcx>
@@ -129,7 +130,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             debug!("higher_ranked_match: skol_map={:?}", skol_map);
 
             // Equate types now that bound regions have been replaced.
-            try!(self.equate().relate(&a_match, &b_match));
+            try!(self.equate(a_is_expected).relate(&a_match, &b_match));
 
             // Map each skolemized region to a vector of other regions that it
             // must be equated with. (Note that this vector may include other
@@ -221,7 +222,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         });
     }
 
-    pub fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>)
+    pub fn higher_ranked_lub<T>(&mut self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
                                 -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'tcx>
     {
@@ -239,7 +240,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             // Collect constraints.
             let result0 =
-                self.lub().relate(&a_with_fresh, &b_with_fresh)?;
+                self.lub(a_is_expected).relate(&a_with_fresh, &b_with_fresh)?;
             let result0 =
                 self.infcx.resolve_type_vars_if_possible(&result0);
             debug!("lub result0 = {:?}", result0);
@@ -311,7 +312,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>)
+    pub fn higher_ranked_glb<T>(&mut self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
                                 -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'tcx>
     {
@@ -333,7 +334,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             // Collect constraints.
             let result0 =
-                self.glb().relate(&a_with_fresh, &b_with_fresh)?;
+                self.glb(a_is_expected).relate(&a_with_fresh, &b_with_fresh)?;
             let result0 =
                 self.infcx.resolve_type_vars_if_possible(&result0);
             debug!("glb result0 = {:?}", result0);

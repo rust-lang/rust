@@ -15,28 +15,35 @@ use super::type_variable::{SubtypeOf, SupertypeOf};
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Cause, Relate, RelateResult, TypeRelation};
-use traits::PredicateObligations;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    fields: CombineFields<'a, 'gcx, 'tcx>,
+pub struct Sub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+    a_is_expected: bool,
 }
 
-impl<'a, 'gcx, 'tcx> Sub<'a, 'gcx, 'tcx> {
-    pub fn new(f: CombineFields<'a, 'gcx, 'tcx>) -> Sub<'a, 'gcx, 'tcx> {
-        Sub { fields: f }
+impl<'combine, 'infcx, 'gcx, 'tcx> Sub<'combine, 'infcx, 'gcx, 'tcx> {
+    pub fn new(f: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
+        -> Sub<'combine, 'infcx, 'gcx, 'tcx>
+    {
+        Sub { fields: f, a_is_expected: a_is_expected }
     }
 
-    pub fn obligations(self) -> PredicateObligations<'tcx> {
-        self.fields.obligations
+    fn with_expected_switched<R, F: FnOnce(&mut Self) -> R>(&mut self, f: F) -> R {
+        self.a_is_expected = !self.a_is_expected;
+        let result = f(self);
+        self.a_is_expected = !self.a_is_expected;
+        result
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Sub<'a, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
+    for Sub<'combine, 'infcx, 'gcx, 'tcx>
+{
     fn tag(&self) -> &'static str { "Sub" }
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.infcx.tcx }
-    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+    fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.infcx.tcx }
+    fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R
         where F: FnOnce(&mut Self) -> R
@@ -56,10 +63,10 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Sub<'a, 'gcx, 'tcx> {
                                              -> RelateResult<'tcx, T>
     {
         match variance {
-            ty::Invariant => self.fields.equate().relate(a, b),
+            ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
-            ty::Bivariant => self.fields.bivariate().relate(a, b),
-            ty::Contravariant => self.fields.switch_expected().sub().relate(b, a),
+            ty::Bivariant => self.fields.bivariate(self.a_is_expected).relate(a, b),
+            ty::Contravariant => self.with_expected_switched(|this| { this.relate(b, a) }),
         }
     }
 
@@ -80,12 +87,11 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Sub<'a, 'gcx, 'tcx> {
             }
             (&ty::TyInfer(TyVar(a_id)), _) => {
                 self.fields
-                    .switch_expected()
-                    .instantiate(b, SupertypeOf, a_id)?;
+                    .instantiate(b, SupertypeOf, a_id, !self.a_is_expected)?;
                 Ok(a)
             }
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, SubtypeOf, b_id)?;
+                self.fields.instantiate(a, SubtypeOf, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 
@@ -116,6 +122,6 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Sub<'a, 'gcx, 'tcx> {
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        self.fields.higher_ranked_sub(a, b)
+        self.fields.higher_ranked_sub(a, b, self.a_is_expected)
     }
 }
