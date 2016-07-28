@@ -818,6 +818,16 @@ pub struct NameBinding<'a> {
     vis: ty::Visibility,
 }
 
+pub trait ToNameBinding<'a> {
+    fn to_name_binding(self) -> NameBinding<'a>;
+}
+
+impl<'a> ToNameBinding<'a> for NameBinding<'a> {
+    fn to_name_binding(self) -> NameBinding<'a> {
+        self
+    }
+}
+
 #[derive(Clone, Debug)]
 enum NameBindingKind<'a> {
     Def(Def),

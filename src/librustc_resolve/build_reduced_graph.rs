@@ -16,7 +16,7 @@
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
-use {NameBinding, NameBindingKind};
+use {NameBinding, NameBindingKind, ToNameBinding};
 use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
@@ -38,10 +38,6 @@ use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
-
-trait ToNameBinding<'a> {
-    fn to_name_binding(self) -> NameBinding<'a>;
-}
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, Span, ty::Visibility) {
     fn to_name_binding(self) -> NameBinding<'a> {
@@ -68,18 +64,13 @@ impl<'b> Resolver<'b> {
         visit::walk_crate(&mut visitor, krate);
     }
 
-    /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined.
-    fn try_define<T>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
-        where T: ToNameBinding<'b>
-    {
-        let _ = parent.try_define_child(name, ns, def.to_name_binding());
-    }
-
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
-    fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
+    fn define<T>(&mut self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
+        where T: ToNameBinding<'b>,
+    {
         let binding = def.to_name_binding();
-        if let Err(old_binding) = parent.try_define_child(name, ns, binding.clone()) {
+        if let Err(old_binding) = self.try_define(parent, name, ns, binding.clone()) {
             self.report_conflict(parent, name, ns, old_binding, &binding);
         }
     }
@@ -399,14 +390,14 @@ impl<'b> Resolver<'b> {
                        name, vis);
                 let parent_link = ModuleParentLink(parent, name);
                 let module = self.new_module(parent_link, Some(def), true);
-                self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
+                let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::Variant(_, variant_id) => {
                 debug!("(building reduced graph for external crate) building variant {}", name);
                 // Variants are always treated as importable to allow them to be glob used.
                 // All variants are defined in both type and value namespaces as future-proofing.
-                self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
-                self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
+                let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
+                let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
                 if self.session.cstore.variant_kind(variant_id) == Some(VariantKind::Struct) {
                     // Not adding fields for variants as they are not accessed with a self receiver
                     self.structs.insert(variant_id, Vec::new());
@@ -419,7 +410,7 @@ impl<'b> Resolver<'b> {
             Def::Method(..) => {
                 debug!("(building reduced graph for external crate) building value (fn/static) {}",
                        name);
-                self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
+                let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
             }
             Def::Trait(def_id) => {
                 debug!("(building reduced graph for external crate) building type {}", name);
@@ -441,20 +432,20 @@ impl<'b> Resolver<'b> {
 
                 let parent_link = ModuleParentLink(parent, name);
                 let module = self.new_module(parent_link, Some(def), true);
-                self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
+                let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}", name);
-                self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
+                let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
             }
             Def::Struct(def_id)
                 if self.session.cstore.tuple_struct_definition_if_ctor(def_id).is_none() => {
                 debug!("(building reduced graph for external crate) building type and value for {}",
                        name);
-                self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
+                let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
                 if let Some(ctor_def_id) = self.session.cstore.struct_ctor_def_id(def_id) {
                     let def = Def::Struct(ctor_def_id);
-                    self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
+                    let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
                 }
 
                 // Record the def ID and fields of this struct.

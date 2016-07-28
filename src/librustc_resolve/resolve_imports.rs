@@ -12,7 +12,7 @@ use self::ImportDirectiveSubclass::*;
 
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
-use {NameBinding, NameBindingKind, PrivacyError};
+use {NameBinding, NameBindingKind, PrivacyError, ToNameBinding};
 use ResolveResult;
 use ResolveResult::*;
 use Resolver;
@@ -226,28 +226,6 @@ impl<'a> ::ModuleS<'a> {
         Failed(None)
     }
 
-    // Define the name or return the existing binding if there is a collision.
-    pub fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>)
-                            -> Result<(), &'a NameBinding<'a>> {
-        let binding = self.arenas.alloc_name_binding(binding);
-        self.update_resolution(name, ns, |resolution| {
-            if let Some(old_binding) = resolution.binding {
-                if binding.is_glob_import() {
-                    resolution.duplicate_globs.push(binding);
-                } else if old_binding.is_glob_import() {
-                    resolution.duplicate_globs.push(old_binding);
-                    resolution.binding = Some(binding);
-                } else {
-                    return Err(old_binding);
-                }
-            } else {
-                resolution.binding = Some(binding);
-            }
-
-            Ok(())
-        })
-    }
-
     pub fn add_import_directive(&self,
                                 module_path: Vec<Name>,
                                 subclass: ImportDirectiveSubclass,
@@ -277,19 +255,45 @@ impl<'a> ::ModuleS<'a> {
             GlobImport { .. } => self.globs.borrow_mut().push(directive),
         }
     }
+}
 
-    // Use `update` to mutate the resolution for the name.
-    // If the resolution becomes a success, define it in the module's glob importers.
-    fn update_resolution<T, F>(&self, name: Name, ns: Namespace, update: F) -> T
-        where F: FnOnce(&mut NameResolution<'a>) -> T
+impl<'a> Resolver<'a> {
+    // Define the name or return the existing binding if there is a collision.
+    pub fn try_define<T>(&mut self, module: Module<'a>, name: Name, ns: Namespace, binding: T)
+                         -> Result<(), &'a NameBinding<'a>>
+        where T: ToNameBinding<'a>
     {
-        // Ensure that `resolution` isn't borrowed during `define_in_glob_importers`,
-        // where it might end up getting re-defined via a glob cycle.
+        let binding = self.arenas.alloc_name_binding(binding.to_name_binding());
+        self.update_resolution(module, name, ns, |_, resolution| {
+            if let Some(old_binding) = resolution.binding {
+                if binding.is_glob_import() {
+                    resolution.duplicate_globs.push(binding);
+                } else if old_binding.is_glob_import() {
+                    resolution.duplicate_globs.push(old_binding);
+                    resolution.binding = Some(binding);
+                } else {
+                    return Err(old_binding);
+                }
+            } else {
+                resolution.binding = Some(binding);
+            }
+
+            Ok(())
+        })
+    }
+
+    // Use `f` to mutate the resolution of the name in the module.
+    // If the resolution becomes a success, define it in the module's glob importers.
+    fn update_resolution<T, F>(&mut self, module: Module<'a>, name: Name, ns: Namespace, f: F) -> T
+        where F: FnOnce(&mut Resolver<'a>, &mut NameResolution<'a>) -> T
+    {
+        // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
+        // during which the resolution might end up getting re-defined via a glob cycle.
         let (new_binding, t) = {
-            let mut resolution = &mut *self.resolution(name, ns).borrow_mut();
+            let mut resolution = &mut *module.resolution(name, ns).borrow_mut();
             let was_known = resolution.binding().is_some();
 
-            let t = update(resolution);
+            let t = f(self, resolution);
 
             if was_known { return t; }
             match resolution.binding() {
@@ -298,15 +302,14 @@ impl<'a> ::ModuleS<'a> {
             }
         };
 
-        self.define_in_glob_importers(name, ns, new_binding);
-        t
-    }
-
-    fn define_in_glob_importers(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
-        if !binding.is_importable() || !binding.is_pseudo_public() { return }
-        for &(importer, directive) in self.glob_importers.borrow_mut().iter() {
-            let _ = importer.try_define_child(name, ns, directive.import(binding));
+        // Define `new_binding` in `module`s glob importers.
+        if new_binding.is_importable() && new_binding.is_pseudo_public() {
+            for &(importer, directive) in module.glob_importers.borrow_mut().iter() {
+                let _ = self.try_define(importer, name, ns, directive.import(new_binding));
+            }
         }
+
+        t
     }
 }
 
@@ -396,7 +399,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
     // Define a "dummy" resolution containing a Def::Err as a placeholder for a
     // failed resolution
-    fn import_dummy_binding(&self, source_module: Module<'b>, directive: &'b ImportDirective<'b>) {
+    fn import_dummy_binding(&mut self,
+                            source_module: Module<'b>,
+                            directive: &'b ImportDirective<'b>) {
         if let SingleImport { target, .. } = directive.subclass {
             let dummy_binding = self.arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err),
@@ -405,14 +410,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             });
             let dummy_binding = directive.import(dummy_binding);
 
-            let _ = source_module.try_define_child(target, ValueNS, dummy_binding.clone());
-            let _ = source_module.try_define_child(target, TypeNS, dummy_binding);
+            let _ = self.try_define(source_module, target, ValueNS, dummy_binding.clone());
+            let _ = self.try_define(source_module, target, TypeNS, dummy_binding);
         }
     }
 
     /// Resolves an `ImportResolvingError` into the correct enum discriminant
     /// and passes that on to `resolve_error`.
-    fn import_resolving_error(&self, e: ImportResolvingError<'b>) {
+    fn import_resolving_error(&mut self, e: ImportResolvingError<'b>) {
         // If the error is a single failed import then create a "fake" import
         // resolution for it so that later resolve stages won't complain.
         self.import_dummy_binding(e.source_module, e.import_directive);
@@ -492,7 +497,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             match *result {
                 Failed(..) if !determined.get() => {
                     determined.set(true);
-                    module_.update_resolution(target, ns, |resolution| {
+                    self.update_resolution(module_, target, ns, |_, resolution| {
                         resolution.single_imports.directive_failed()
                     });
                 }
@@ -508,7 +513,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Success(binding) if !determined.get() => {
                     determined.set(true);
                     let imported_binding = directive.import(binding);
-                    let conflict = module_.try_define_child(target, ns, imported_binding);
+                    let conflict = self.try_define(module_, target, ns, imported_binding);
                     if let Err(old_binding) = conflict {
                         let binding = &directive.import(binding);
                         self.report_conflict(module_, target, ns, binding, old_binding);
@@ -551,7 +556,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
                 let binding = match *result { Success(binding) => binding, _ => continue };
                 self.privacy_errors.push(PrivacyError(directive.span, source, binding));
-                let _ = module_.try_define_child(target, ns, directive.import(binding));
+                let _ = self.try_define(module_, target, ns, directive.import(binding));
             }
         }
 
@@ -626,14 +631,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // Add to target_module's glob_importers
         target_module.glob_importers.borrow_mut().push((module_, directive));
 
-        // Ensure that `resolutions` isn't borrowed during `try_define_child`,
+        // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
         let bindings = target_module.resolutions.borrow().iter().filter_map(|(name, resolution)| {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
             if binding.is_importable() && binding.is_pseudo_public() {
-                let _ = module_.try_define_child(name, ns, directive.import(binding));
+                let _ = self.try_define(module_, name, ns, directive.import(binding));
             }
         }
 
