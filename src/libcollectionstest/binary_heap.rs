@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::collections::BinaryHeap;
+use std::collections::binary_heap::Drain;
 
 #[test]
 fn test_iterator() {
@@ -291,4 +292,9 @@ fn test_extend_specialization() {
     a.extend(b);
 
     assert_eq!(a.into_sorted_vec(), [-20, -10, 1, 2, 3, 3, 5, 43]);
+}
+
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
 }
