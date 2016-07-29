@@ -1244,7 +1244,7 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }), ..}) => ty,
         _ => ctor_ty
     }.ty_adt_def().unwrap();
-    let variant_def_id = if ccx.tcx().map.is_inlined(inlined_vid) {
+    let variant_def_id = if ccx.tcx().map.is_inlined_node_id(inlined_vid) {
         ccx.defid_for_inlined_node(inlined_vid).unwrap()
     } else {
         ccx.tcx().map.local_def_id(inlined_vid)

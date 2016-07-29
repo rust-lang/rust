@@ -204,9 +204,21 @@ pub struct Map<'ast> {
     /// All NodeIds that are numerically greater or equal to this value come
     /// from inlined items.
     local_node_id_watermark: NodeId,
+
+    /// All def-indices that are numerically greater or equal to this value come
+    /// from inlined items.
+    local_def_id_watermark: usize,
 }
 
 impl<'ast> Map<'ast> {
+    pub fn is_inlined_def_id(&self, id: DefId) -> bool {
+        id.is_local() && id.index.as_usize() >= self.local_def_id_watermark
+    }
+
+    pub fn is_inlined_node_id(&self, id: NodeId) -> bool {
+        id >= self.local_node_id_watermark
+    }
+
     /// Registers a read in the dependency graph of the AST node with
     /// the given `id`. This needs to be called each time a public
     /// function returns the HIR for a node -- in other words, when it
@@ -664,10 +676,6 @@ impl<'ast> Map<'ast> {
     pub fn node_to_user_string(&self, id: NodeId) -> String {
         node_id_to_string(self, id, false)
     }
-
-    pub fn is_inlined(&self, id: NodeId) -> bool {
-        id >= self.local_node_id_watermark
-    }
 }
 
 pub struct NodesMatchingSuffix<'a, 'ast:'a> {
@@ -846,13 +854,15 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
     }
 
     let local_node_id_watermark = map.len() as NodeId;
+    let local_def_id_watermark = definitions.len();
 
     Map {
         forest: forest,
         dep_graph: forest.dep_graph.clone(),
         map: RefCell::new(map),
         definitions: RefCell::new(definitions),
-        local_node_id_watermark: local_node_id_watermark
+        local_node_id_watermark: local_node_id_watermark,
+        local_def_id_watermark: local_def_id_watermark,
     }
 }
 

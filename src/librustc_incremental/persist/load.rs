@@ -93,7 +93,6 @@ fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
             None
         }
     }
-
 }
 
 /// Decode the dep graph and load the edges/nodes that are still clean
@@ -108,13 +107,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let directory = try!(DefIdDirectory::decode(&mut dep_graph_decoder));
     let serialized_dep_graph = try!(SerializedDepGraph::decode(&mut dep_graph_decoder));
 
-    debug!("decode_dep_graph: directory = {:#?}", directory);
-    debug!("decode_dep_graph: serialized_dep_graph = {:#?}", serialized_dep_graph);
-
     // Retrace the paths in the directory to find their current location (if any).
     let retraced = directory.retrace(tcx);
-
-    debug!("decode_dep_graph: retraced = {:#?}", retraced);
 
     // Compute the set of Hir nodes whose data has changed.
     let mut dirty_nodes =
@@ -169,6 +163,7 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut items_removed = false;
     let mut dirty_nodes = FnvHashSet();
     for hash in hashes {
+        debug!("initial_dirty_nodes: retracing {:?}", hash);
         match hash.node.map_def(|&i| retraced.def_id(i)) {
             Some(dep_node) => {
                 let current_hash = hcx.hash(&dep_node).unwrap();

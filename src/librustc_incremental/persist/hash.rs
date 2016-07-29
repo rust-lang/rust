@@ -43,7 +43,6 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         match *dep_node {
             // HIR nodes (which always come from our crate) are an input:
             DepNode::Hir(def_id) => {
-                assert!(def_id.is_local());
                 Some(self.hir_hash(def_id))
             }
 
@@ -66,7 +65,11 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
     }
 
     fn hir_hash(&mut self, def_id: DefId) -> u64 {
-        assert!(def_id.is_local());
+        assert!(def_id.is_local(),
+                "cannot hash HIR for non-local def-id {:?} => {:?}",
+                def_id,
+                self.tcx.item_path_str(def_id));
+
         // FIXME(#32753) -- should we use a distinct hash here
         self.tcx.calculate_item_hash(def_id)
     }
