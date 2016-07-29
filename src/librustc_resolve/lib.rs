@@ -1228,9 +1228,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Resolves the given module path from the given root `module_`.
+    /// Resolves the given module path from the given root `search_module`.
     fn resolve_module_path_from_root(&mut self,
-                                     module_: Module<'a>,
+                                     mut search_module: Module<'a>,
                                      module_path: &[Name],
                                      index: usize,
                                      span: Span)
@@ -1247,7 +1247,6 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let mut search_module = module_;
         let mut index = index;
         let module_path_len = module_path.len();
 
@@ -1444,10 +1443,9 @@ impl<'a> Resolver<'a> {
     }
 
     /// Returns the nearest normal module parent of the given module.
-    fn get_nearest_normal_module_parent(&self, module_: Module<'a>) -> Option<Module<'a>> {
-        let mut module_ = module_;
+    fn get_nearest_normal_module_parent(&self, mut module: Module<'a>) -> Option<Module<'a>> {
         loop {
-            match module_.parent_link {
+            match module.parent_link {
                 NoParentLink => return None,
                 ModuleParentLink(new_module, _) |
                 BlockParentLink(new_module, _) => {
@@ -1455,7 +1453,7 @@ impl<'a> Resolver<'a> {
                     if new_module.is_normal() {
                         return Some(new_module);
                     }
-                    module_ = new_module;
+                    module = new_module;
                 }
             }
         }
@@ -1463,12 +1461,12 @@ impl<'a> Resolver<'a> {
 
     /// Returns the nearest normal module parent of the given module, or the
     /// module itself if it is a normal module.
-    fn get_nearest_normal_module_parent_or_self(&self, module_: Module<'a>) -> Module<'a> {
-        if module_.is_normal() {
-            return module_;
+    fn get_nearest_normal_module_parent_or_self(&self, module: Module<'a>) -> Module<'a> {
+        if module.is_normal() {
+            return module;
         }
-        match self.get_nearest_normal_module_parent(module_) {
-            None => module_,
+        match self.get_nearest_normal_module_parent(module) {
+            None => module,
             Some(new_module) => new_module,
         }
     }
@@ -1485,8 +1483,8 @@ impl<'a> Resolver<'a> {
             "super" => 0,
             _ => return Success(NoPrefixFound),
         };
-        let module_ = self.current_module;
-        let mut containing_module = self.get_nearest_normal_module_parent_or_self(module_);
+        let mut containing_module =
+            self.get_nearest_normal_module_parent_or_self(self.current_module);
 
         // Now loop through all the `super`s we find.
         while i < module_path.len() && "super" == module_path[i].as_str() {

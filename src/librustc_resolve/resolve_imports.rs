@@ -490,14 +490,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let value_result = self.resolve_name_in_module(target_module, source, ValueNS, false, true);
         let type_result = self.resolve_name_in_module(target_module, source, TypeNS, false, true);
 
-        let module_ = self.current_module;
+        let module = self.current_module;
         let mut privacy_error = true;
         for &(ns, result, determined) in &[(ValueNS, &value_result, value_determined),
                                            (TypeNS, &type_result, type_determined)] {
             match *result {
                 Failed(..) if !determined.get() => {
                     determined.set(true);
-                    self.update_resolution(module_, target, ns, |_, resolution| {
+                    self.update_resolution(module, target, ns, |_, resolution| {
                         resolution.single_imports.directive_failed()
                     });
                 }
@@ -506,17 +506,17 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     span_err!(self.session, directive.span, E0253, "{}", &msg);
                     // Do not import this illegal binding. Import a dummy binding and pretend
                     // everything is fine
-                    self.import_dummy_binding(module_, directive);
+                    self.import_dummy_binding(module, directive);
                     return Success(());
                 }
                 Success(binding) if !self.is_accessible(binding.vis) => {}
                 Success(binding) if !determined.get() => {
                     determined.set(true);
                     let imported_binding = directive.import(binding);
-                    let conflict = self.try_define(module_, target, ns, imported_binding);
+                    let conflict = self.try_define(module, target, ns, imported_binding);
                     if let Err(old_binding) = conflict {
                         let binding = &directive.import(binding);
-                        self.report_conflict(module_, target, ns, binding, old_binding);
+                        self.report_conflict(module, target, ns, binding, old_binding);
                     }
                     privacy_error = false;
                 }
@@ -556,7 +556,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
                 let binding = match *result { Success(binding) => binding, _ => continue };
                 self.privacy_errors.push(PrivacyError(directive.span, source, binding));
-                let _ = self.try_define(module_, target, ns, directive.import(binding));
+                let _ = self.try_define(module, target, ns, directive.import(binding));
             }
         }
 
@@ -615,8 +615,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             self.session.span_err(directive.span, "items in traits are not importable.");
         }
 
-        let module_ = self.current_module;
-        if module_.def_id() == target_module.def_id() {
+        let module = self.current_module;
+        if module.def_id() == target_module.def_id() {
             // This means we are trying to glob import a module into itself, and it is a no-go
             let msg = "Cannot glob-import a module into itself.".into();
             return Failed(Some((directive.span, msg)));
@@ -629,7 +629,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         // Add to target_module's glob_importers
-        target_module.glob_importers.borrow_mut().push((module_, directive));
+        target_module.glob_importers.borrow_mut().push((module, directive));
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
@@ -638,7 +638,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
             if binding.is_importable() && binding.is_pseudo_public() {
-                let _ = self.try_define(module_, name, ns, directive.import(binding));
+                let _ = self.try_define(module, name, ns, directive.import(binding));
             }
         }
 
