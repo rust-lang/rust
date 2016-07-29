@@ -35,6 +35,17 @@ macro_rules! panic {
 /// This will invoke the `panic!` macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
 ///
+/// Assertions are always checked in both debug and release builds, and cannot
+/// be disabled. See `debug_assert!` for assertions that are not enabled in
+/// release builds by default.
+///
+/// Unsafe code relies on `assert!` to enforce run-time invariants that, if
+/// violated could lead to unsafety.
+///
+/// Other use-cases of `assert!` include
+/// [testing](https://doc.rust-lang.org/book/testing.html) and enforcing
+/// run-time invariants in safe code (whose violation cannot result in unsafety).
+///
 /// This macro has a second version, where a custom panic message can be provided.
 ///
 /// # Examples
@@ -122,6 +133,13 @@ macro_rules! assert_eq {
 /// compiler. This makes `debug_assert!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
 /// development.
+///
+/// An unchecked assertion allows a program in an inconsistent state to keep
+/// running, which might have unexpected consequences but does not introduce
+/// unsafety as long as this only happens in safe code. The performance cost
+/// of assertions, is however, not measurable in general. Replacing `assert!`
+/// with `debug_assert!` is thus only encouraged after thorough profiling, and
+/// more importantly, only in safe code!
 ///
 /// # Examples
 ///
