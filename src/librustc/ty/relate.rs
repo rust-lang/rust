@@ -462,6 +462,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.types.err)
         }
 
+        (&ty::TyEmpty, _) |
         (&ty::TyChar, _) |
         (&ty::TyBool, _) |
         (&ty::TyInt(_), _) |
