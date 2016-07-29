@@ -2366,57 +2366,62 @@ pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
         .expect("got a non-UTF8 DebugLoc from LLVM")
 }
 
-pub fn initialize_available_targets() {
-    macro_rules! init_target(
-        ($cfg:meta, $($method:ident),*) => { {
-            #[cfg($cfg)]
-            fn init() {
-                extern {
-                    $(fn $method();)*
+macro_rules! generate_target_init (
+    ($($cfg:meta: $($method:ident),*);*) => {
+        $(#[cfg($cfg)]
+        extern {
+            $(pub fn $method();)*
+        })*
+
+        pub fn initialize_available_targets() {
+            $({
+                #[cfg($cfg)]
+                fn init() {
+                    unsafe { $($method();)* }
                 }
-                unsafe {
-                    $($method();)*
-                }
-            }
-            #[cfg(not($cfg))]
-            fn init() { }
-            init();
-        } }
-    );
-    init_target!(llvm_component = "x86",
-                 LLVMInitializeX86TargetInfo,
-                 LLVMInitializeX86Target,
-                 LLVMInitializeX86TargetMC,
-                 LLVMInitializeX86AsmPrinter,
-                 LLVMInitializeX86AsmParser);
-    init_target!(llvm_component = "arm",
-                 LLVMInitializeARMTargetInfo,
-                 LLVMInitializeARMTarget,
-                 LLVMInitializeARMTargetMC,
-                 LLVMInitializeARMAsmPrinter,
-                 LLVMInitializeARMAsmParser);
-    init_target!(llvm_component = "aarch64",
-                 LLVMInitializeAArch64TargetInfo,
-                 LLVMInitializeAArch64Target,
-                 LLVMInitializeAArch64TargetMC,
-                 LLVMInitializeAArch64AsmPrinter,
-                 LLVMInitializeAArch64AsmParser);
-    init_target!(llvm_component = "mips",
-                 LLVMInitializeMipsTargetInfo,
-                 LLVMInitializeMipsTarget,
-                 LLVMInitializeMipsTargetMC,
-                 LLVMInitializeMipsAsmPrinter,
-                 LLVMInitializeMipsAsmParser);
-    init_target!(llvm_component = "powerpc",
-                 LLVMInitializePowerPCTargetInfo,
-                 LLVMInitializePowerPCTarget,
-                 LLVMInitializePowerPCTargetMC,
-                 LLVMInitializePowerPCAsmPrinter,
-                 LLVMInitializePowerPCAsmParser);
-    init_target!(llvm_component = "pnacl",
-                 LLVMInitializePNaClTargetInfo,
-                 LLVMInitializePNaClTarget,
-                 LLVMInitializePNaClTargetMC);
+                #[cfg(not($cfg))]
+                fn init() {};
+                init();
+            })*
+        }
+    }
+);
+
+generate_target_init! {
+llvm_component = "x86":
+    LLVMInitializeX86TargetInfo,
+    LLVMInitializeX86Target,
+    LLVMInitializeX86TargetMC,
+    LLVMInitializeX86AsmPrinter,
+    LLVMInitializeX86AsmParser;
+llvm_component = "arm":
+    LLVMInitializeARMTargetInfo,
+    LLVMInitializeARMTarget,
+    LLVMInitializeARMTargetMC,
+    LLVMInitializeARMAsmPrinter,
+    LLVMInitializeARMAsmParser;
+llvm_component = "aarch64":
+    LLVMInitializeAArch64TargetInfo,
+    LLVMInitializeAArch64Target,
+    LLVMInitializeAArch64TargetMC,
+    LLVMInitializeAArch64AsmPrinter,
+    LLVMInitializeAArch64AsmParser;
+llvm_component = "mips":
+    LLVMInitializeMipsTargetInfo,
+    LLVMInitializeMipsTarget,
+    LLVMInitializeMipsTargetMC,
+    LLVMInitializeMipsAsmPrinter,
+    LLVMInitializeMipsAsmParser;
+llvm_component = "powerpc":
+    LLVMInitializePowerPCTargetInfo,
+    LLVMInitializePowerPCTarget,
+    LLVMInitializePowerPCTargetMC,
+    LLVMInitializePowerPCAsmPrinter,
+    LLVMInitializePowerPCAsmParser;
+llvm_component = "pnacl":
+    LLVMInitializePNaClTargetInfo,
+    LLVMInitializePNaClTarget,
+    LLVMInitializePNaClTargetMC
 }
 
 pub fn last_error() -> Option<String> {
