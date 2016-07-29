@@ -505,6 +505,21 @@ impl Stderr {
     ///
     /// The lock is released when the returned lock goes out of scope. The
     /// returned guard also implements the `Write` trait for writing data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{self, Write};
+    ///
+    /// fn foo() -> io::Result<()> {
+    ///     let stderr = io::stderr();
+    ///     let mut handle = stderr.lock();
+    ///
+    ///     try!(handle.write(b"hello world"));
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock {
         StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
