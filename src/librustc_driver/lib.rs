@@ -609,7 +609,7 @@ impl RustcDefaultCalls {
         for req in &sess.opts.prints {
             match *req {
                 PrintRequest::TargetList => {
-                    let mut targets = rustc_back::target::TARGETS.to_vec();
+                    let mut targets = rustc_back::target::get_targets().collect::<Vec<String>>();
                     targets.sort();
                     println!("{}", targets.join("\n"));
                 },
