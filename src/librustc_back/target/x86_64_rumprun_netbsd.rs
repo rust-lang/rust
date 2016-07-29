@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::netbsd_base::opts();
     base.pre_link_args.push("-m64".to_string());
     base.linker = "x86_64-rumprun-netbsd-gcc".to_string();
@@ -24,7 +24,7 @@ pub fn target() -> Target {
     base.no_default_libraries = false;
     base.exe_allocation_crate = "alloc_system".to_string();
 
-    Target {
+    Ok(Target {
         llvm_target: "x86_64-rumprun-netbsd".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -34,5 +34,5 @@ pub fn target() -> Target {
         target_env: "".to_string(),
         target_vendor: "rumprun".to_string(),
         options: base,
-    }
+    })
 }
