@@ -108,7 +108,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
                 }
             }
         }
-        // Ip is not present in the table.  This should not hapen... but it does: issie #35011.
+        // Ip is not present in the table.  This should not happen... but it does: issue #35011.
         // So rather than returning EHAction::Terminate, we do this.
         EHAction::None
     } else {
