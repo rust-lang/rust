@@ -12,6 +12,8 @@
 
 // aux-build:empty-struct.rs
 
+#![feature(relaxed_adts)]
+
 extern crate empty_struct;
 use empty_struct::*;
 
@@ -21,13 +23,12 @@ fn main() {
     let e1 = Empty1 {};
     let xe1 = XEmpty1 {};
 
-    // Rejected by parser as yet
-    // match e1 {
-    //     Empty1() => () // ERROR unresolved enum variant, struct or const `Empty1`
-    // }
-    // match xe1 {
-    //     XEmpty1() => () // ERROR unresolved enum variant, struct or const `XEmpty1`
-    // }
+    match e1 {
+        Empty1() => () //~ ERROR unresolved variant or struct `Empty1`
+    }
+    match xe1 {
+        XEmpty1() => () //~ ERROR unresolved variant or struct `XEmpty1`
+    }
     match e1 {
         Empty1(..) => () //~ ERROR unresolved variant or struct `Empty1`
     }

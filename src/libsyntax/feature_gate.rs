@@ -280,7 +280,11 @@ declare_features! (
     (active, dotdot_in_tuple_patterns, "1.10.0", Some(33627)),
 
     // Allows `impl Trait` in function return types.
-    (active, conservative_impl_trait, "1.12.0", Some(34511))
+    (active, conservative_impl_trait, "1.12.0", Some(34511)),
+
+    // Allows tuple structs and variants in more contexts,
+    // Permits numeric fields in struct expressions and patterns.
+    (active, relaxed_adts, "1.12.0", Some(35626))
 );
 
 declare_features! (
@@ -1022,9 +1026,8 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             }
             PatKind::TupleStruct(_, ref fields, ddpos)
                     if ddpos.is_none() && fields.is_empty() => {
-                self.context.span_handler.struct_span_err(pattern.span,
-                                                          "nullary enum variants are written with \
-                                                           no trailing `( )`").emit();
+                gate_feature_post!(&self, relaxed_adts, pattern.span,
+                                   "empty tuple structs patterns are unstable");
             }
             _ => {}
         }
@@ -1105,6 +1108,19 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii);
+    }
+
+    fn visit_variant_data(&mut self, vdata: &ast::VariantData, _: ast::Ident,
+                          _: &ast::Generics, _: NodeId, span: Span) {
+        if vdata.fields().is_empty() {
+            if vdata.is_tuple() {
+                gate_feature_post!(&self, relaxed_adts, span,
+                                   "empty tuple structs and enum variants are unstable, \
+                                    use unit structs and enum variants instead");
+            }
+        }
+
+        visit::walk_struct_def(self, vdata)
     }
 
     fn visit_vis(&mut self, vis: &ast::Visibility) {

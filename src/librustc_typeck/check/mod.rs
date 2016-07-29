@@ -116,6 +116,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Spanned};
+use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -1700,7 +1701,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  node_id: ast::NodeId)
                                  -> Ty<'tcx> {
         debug!("instantiate_type_path(did={:?}, path={:?})", did, path);
-        let type_scheme = self.tcx.lookup_item_type(did);
+        let mut type_scheme = self.tcx.lookup_item_type(did);
+        if type_scheme.ty.is_fn() {
+            // Tuple variants have fn type even in type namespace, extract true variant type from it
+            let fn_ret = self.tcx.no_late_bound_regions(&type_scheme.ty.fn_ret()).unwrap().unwrap();
+            type_scheme = ty::TypeScheme { ty: fn_ret, generics: type_scheme.generics }
+        }
         let type_predicates = self.tcx.lookup_predicates(did);
         let substs = AstConv::ast_path_substs_for_ty(self, self,
                                                      path.span,
@@ -3244,19 +3250,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             _ => None
         };
-        if variant.is_none() || variant.unwrap().kind == ty::VariantKind::Tuple {
-            // Reject tuple structs for now, braced and unit structs are allowed.
+
+        if let Some(variant) = variant {
+            if variant.kind == ty::VariantKind::Tuple &&
+                    !self.tcx.sess.features.borrow().relaxed_adts {
+                emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
+                                 "relaxed_adts", span, GateIssue::Language,
+                                 "tuple structs and variants in struct patterns are unstable");
+            }
+            let ty = self.instantiate_type_path(def.def_id(), path, node_id);
+            Some((variant, ty))
+        } else {
             struct_span_err!(self.tcx.sess, path.span, E0071,
                              "`{}` does not name a struct or a struct variant",
                              pprust::path_to_string(path))
                 .span_label(path.span, &format!("not a struct"))
                 .emit();
-
-            return None;
+            None
         }
-
-        let ty = self.instantiate_type_path(def.def_id(), path, node_id);
-        Some((variant.unwrap(), ty))
     }
 
     fn check_expr_struct(&self,

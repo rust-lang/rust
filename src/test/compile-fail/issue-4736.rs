@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(relaxed_adts)]
+
 struct NonCopyable(());
 
 fn main() {
-    let z = NonCopyable{ p: () }; //~ ERROR `NonCopyable` does not name a struct or a struct variant
+    let z = NonCopyable{ p: () }; //~ ERROR structure `NonCopyable` has no field named `p`
 }
