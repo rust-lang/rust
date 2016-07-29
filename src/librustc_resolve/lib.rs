@@ -1207,29 +1207,22 @@ impl<'a> Resolver<'a> {
         match ns { ValueNS => &mut self.value_ribs, TypeNS => &mut self.type_ribs }
     }
 
-    #[inline]
-    fn record_use(&mut self, name: Name, binding: &'a NameBinding<'a>) {
+    fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
         // track extern crates for unused_extern_crate lint
         if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleS::def_id) {
             self.used_crates.insert(krate);
         }
 
-        let directive = match binding.kind {
-            NameBindingKind::Import { directive, .. } => directive,
-            _ => return,
-        };
-
-        if !self.make_glob_map {
-            return;
+        if let NameBindingKind::Import { directive, .. } = binding.kind {
+            self.used_imports.insert((directive.id, ns));
+            self.add_to_glob_map(directive.id, name);
         }
-        if self.glob_map.contains_key(&directive.id) {
-            self.glob_map.get_mut(&directive.id).unwrap().insert(name);
-            return;
-        }
+    }
 
-        let mut new_set = FnvHashSet();
-        new_set.insert(name);
-        self.glob_map.insert(directive.id, new_set);
+    fn add_to_glob_map(&mut self, id: NodeId, name: Name) {
+        if self.make_glob_map {
+            self.glob_map.entry(id).or_insert_with(FnvHashSet).insert(name);
+        }
     }
 
     /// Resolves the given module path from the given root `module_`.
@@ -1529,10 +1522,7 @@ impl<'a> Resolver<'a> {
         self.populate_module_if_necessary(module);
         module.resolve_name(name, namespace, use_lexical_scope).and_then(|binding| {
             if record_used {
-                if let NameBindingKind::Import { directive, .. } = binding.kind {
-                    self.used_imports.insert((directive.id, namespace));
-                }
-                self.record_use(name, binding);
+                self.record_use(name, namespace, binding);
             }
             Success(binding)
         })
@@ -3154,10 +3144,10 @@ impl<'a> Resolver<'a> {
                         if let NameBindingKind::Import { directive, .. } = binding.kind {
                             let id = directive.id;
                             this.maybe_unused_trait_imports.insert(id);
+                            this.add_to_glob_map(id, trait_name);
                             import_id = Some(id);
                         }
                         add_trait_info(&mut found_traits, trait_def_id, import_id, name);
-                        this.record_use(trait_name, binding);
                     }
                 }
             };
