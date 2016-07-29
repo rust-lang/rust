@@ -366,18 +366,18 @@ pub fn gather_attr(attr: &ast::Attribute)
     attr::mark_used(attr);
 
     let meta = &attr.node.value;
-    let metas = match meta.node {
-        ast::MetaItemKind::List(_, ref metas) => metas,
-        _ => {
-            out.push(Err(meta.span));
-            return out;
-        }
+    let metas = if let Some(metas) = meta.meta_item_list() {
+        metas
+    } else {
+        out.push(Err(meta.span));
+        return out;
     };
 
     for meta in metas {
-        out.push(match meta.node {
-            ast::MetaItemKind::Word(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
-            _ => Err(meta.span),
+        out.push(if meta.is_word() {
+            Ok((meta.name().clone(), level, meta.span))
+        } else {
+            Err(meta.span)
         });
     }
 
