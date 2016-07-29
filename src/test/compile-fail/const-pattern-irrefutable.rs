@@ -25,4 +25,5 @@ fn main() {
                //~^ NOTE cannot be named the same as a constant
     let d = 4; //~ ERROR let bindings cannot shadow constants
                //~^ NOTE cannot be named the same as a constant
+    fn f() {} // Check that the `NOTE`s still work with an item here (c.f. issue #35115).
 }

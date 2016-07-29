@@ -79,6 +79,13 @@ fn g() {
     }
 }
 
+// c.f. issue #35135
+#[allow(unused_variables)]
+fn h() {
+    use test2::foo; //~ ERROR unused import
+    let foo = 0;
+}
+
 fn main() {
     cal(foo::Point{x:3, y:9});
     let mut a = 3;

@@ -158,7 +158,7 @@ enum ResolutionError<'a> {
     /// error E0435: attempt to use a non-constant value in a constant
     AttemptToUseNonConstantValueInConstant,
     /// error E0530: X bindings cannot shadow Ys
-    BindingShadowsSomethingUnacceptable(&'a str, &'a str, Name),
+    BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
     /// error E0531: unresolved pattern path kind `name`
     PatPathUnresolved(&'a str, &'a Path),
     /// error E0532: expected pattern path kind, found another pattern path kind
@@ -422,17 +422,16 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              E0435,
                              "attempt to use a non-constant value in a constant")
         }
-        ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, shadows_what, name) => {
+        ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
+            let shadows_what = PathResolution::new(binding.def().unwrap()).kind_name();
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0530,
                                            "{}s cannot shadow {}s", what_binding, shadows_what);
             err.span_label(span, &format!("cannot be named the same as a {}", shadows_what));
-            if let Success(binding) = resolver.current_module.resolve_name(name, ValueNS, true) {
-                let participle = if binding.is_import() { "imported" } else { "defined" };
-                err.span_label(binding.span, &format!("a {} `{}` is {} here",
-                                                      shadows_what, name, participle));
-            }
+            let participle = if binding.is_import() { "imported" } else { "defined" };
+            let msg = &format!("a {} `{}` is {} here", shadows_what, name, participle);
+            err.span_label(binding.span, msg);
             err
         }
         ResolutionError::PatPathUnresolved(expected_what, path) => {
@@ -712,11 +711,15 @@ impl<'a> LexicalScopeBinding<'a> {
         }
     }
 
-    fn module(self) -> Option<Module<'a>> {
+    fn item(self) -> Option<&'a NameBinding<'a>> {
         match self {
-            LexicalScopeBinding::Item(binding) => binding.module(),
+            LexicalScopeBinding::Item(binding) => Some(binding),
             _ => None,
         }
+    }
+
+    fn module(self) -> Option<Module<'a>> {
+        self.item().and_then(NameBinding::module)
     }
 }
 
@@ -2316,16 +2319,17 @@ impl<'a> Resolver<'a> {
                 PatKind::Ident(bmode, ref ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
-                    let resolution = self.resolve_identifier(ident.node, ValueNS, true)
-                                         .map(|local_def| PathResolution::new(local_def.def))
-                                         .and_then(|resolution| {
+                    let binding = self.resolve_ident_in_lexical_scope(ident.node, ValueNS, false)
+                                      .and_then(LexicalScopeBinding::item);
+                    let resolution = binding.and_then(NameBinding::def).and_then(|def| {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
-                        match resolution.base_def {
+                        match def {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
-                                Some(resolution)
+                                self.record_use(ident.node.name, ValueNS, binding.unwrap());
+                                Some(PathResolution::new(def))
                             }
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
@@ -2334,7 +2338,7 @@ impl<'a> Resolver<'a> {
                                     self,
                                     ident.span,
                                     ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), resolution.kind_name(), ident.node.name)
+                                        pat_src.descr(), ident.node.name, binding.unwrap())
                                 );
                                 None
                             }
