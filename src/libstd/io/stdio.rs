@@ -414,6 +414,21 @@ impl Stdout {
     ///
     /// The lock is released when the returned lock goes out of scope. The
     /// returned guard also implements the `Write` trait for writing data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{self, Write};
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let stdout = io::stdout();
+    /// let mut handle = stdout.lock();
+    ///
+    /// try!(handle.write(b"hello world"));
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock {
         StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
