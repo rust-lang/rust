@@ -10,14 +10,28 @@
 
 pub use self::imp::OsRng;
 
+use mem;
+
+fn next_u32(mut fill_buf: &mut FnMut(&mut [u8])) -> u32 {
+    let mut buf: [u8; 4] = [0; 4];
+    fill_buf(&mut buf);
+    unsafe { mem::transmute::<[u8; 4], u32>(buf) }
+}
+
+fn next_u64(mut fill_buf: &mut FnMut(&mut [u8])) -> u64 {
+    let mut buf: [u8; 8] = [0; 8];
+    fill_buf(&mut buf);
+    unsafe { mem::transmute::<[u8; 8], u64>(buf) }
+}
+
 #[cfg(all(unix, not(target_os = "ios"), not(target_os = "openbsd")))]
 mod imp {
     use self::OsRngInner::*;
+    use super::{next_u32, next_u64};
 
     use fs::File;
     use io;
     use libc;
-    use mem;
     use rand::Rng;
     use rand::reader::ReaderRng;
     use sys::os::errno;
@@ -87,18 +101,6 @@ mod imp {
         }
     }
 
-    fn getrandom_next_u32() -> u32 {
-        let mut buf: [u8; 4] = [0; 4];
-        getrandom_fill_bytes(&mut buf);
-        unsafe { mem::transmute::<[u8; 4], u32>(buf) }
-    }
-
-    fn getrandom_next_u64() -> u64 {
-        let mut buf: [u8; 8] = [0; 8];
-        getrandom_fill_bytes(&mut buf);
-        unsafe { mem::transmute::<[u8; 8], u64>(buf) }
-    }
-
     #[cfg(all(target_os = "linux",
               any(target_arch = "x86_64",
                   target_arch = "x86",
@@ -163,13 +165,13 @@ mod imp {
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
             match self.inner {
-                OsGetrandomRng => getrandom_next_u32(),
+                OsGetrandomRng => next_u32(&mut getrandom_fill_bytes),
                 OsReaderRng(ref mut rng) => rng.next_u32(),
             }
         }
         fn next_u64(&mut self) -> u64 {
             match self.inner {
-                OsGetrandomRng => getrandom_next_u64(),
+                OsGetrandomRng => next_u64(&mut getrandom_fill_bytes),
                 OsReaderRng(ref mut rng) => rng.next_u64(),
             }
         }
@@ -184,9 +186,10 @@ mod imp {
 
 #[cfg(target_os = "openbsd")]
 mod imp {
+    use super::{next_u32, next_u64};
+
     use io;
     use libc;
-    use mem;
     use sys::os::errno;
     use rand::Rng;
 
@@ -205,14 +208,10 @@ mod imp {
 
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
-            let mut v = [0; 4];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
+            next_u32(&mut |v| self.fill_bytes(v))
         }
         fn next_u64(&mut self) -> u64 {
-            let mut v = [0; 8];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
+            next_u64(&mut |v| self.fill_bytes(v))
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             // getentropy(2) permits a maximum buffer size of 256 bytes
@@ -230,8 +229,9 @@ mod imp {
 
 #[cfg(target_os = "ios")]
 mod imp {
+    use super::{next_u32, next_u64};
+
     use io;
-    use mem;
     use ptr;
     use rand::Rng;
     use libc::{c_int, size_t};
@@ -265,14 +265,10 @@ mod imp {
 
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
-            let mut v = [0; 4];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
+            next_u32(&mut |v| self.fill_bytes(v))
         }
         fn next_u64(&mut self) -> u64 {
-            let mut v = [0; 8];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
+            next_u64(&mut |v| self.fill_bytes(v))
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             let ret = unsafe {
