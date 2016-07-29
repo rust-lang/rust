@@ -418,3 +418,9 @@ structs.  For instance, a union may contain anonymous structs to define
 non-overlapping fields, and a struct may contain an anonymous union to define
 overlapping fields.  This RFC does not define anonymous unions or structs, but
 a subsequent RFC may wish to do so.
+
+# Edit History
+
+- This RFC was amended in https://github.com/rust-lang/rfcs/pull/1663/
+  to clarify the behavior when an individual field whose type
+  implements `Drop`.
