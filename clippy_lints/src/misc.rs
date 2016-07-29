@@ -357,7 +357,7 @@ impl LateLintPass for ModuloOne {
 /// **Known problems:** None
 ///
 /// **Example**:
-/// ```
+/// ```rust
 /// match v {
 ///     Some(x) => (),
 ///     y @ _   => (), // easier written as `y`,
@@ -399,7 +399,7 @@ impl LateLintPass for PatternPass {
 /// allowed in the mean time.
 ///
 /// **Example**:
-/// ```
+/// ```rust
 /// let _x = 0;
 /// let y = _x + 1; // Here we are using `_x`, even though it has a leading underscore.
 ///                 // We should rename `_x` to `x`

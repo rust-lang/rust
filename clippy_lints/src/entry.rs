@@ -11,7 +11,7 @@ use utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_
 /// **Why is this bad?** Using `entry` is more efficient.
 ///
 /// **Known problems:** Some false negatives, eg.:
-/// ```
+/// ```rust
 /// let k = &key;
 /// if !m.contains_key(k) { m.insert(k.clone(), v); }
 /// ```

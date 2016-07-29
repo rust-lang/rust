@@ -41,7 +41,7 @@ contains some questionable code itself! Also before making a pull request, pleas
 travis build actually checks for this.
 
 Also please document your lint with a doc comment akin to the following:
-```
+```rust
 /// **What it does:** Describe what the lint matches.
 ///
 /// **Why is this bad?** Write the reason for linting the code.

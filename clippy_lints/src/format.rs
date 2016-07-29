@@ -65,7 +65,7 @@ impl LateLintPass for Pass {
 }
 
 /// Checks if the expressions matches
-/// ```
+/// ```rust
 /// { static __STATIC_FMTSTR: &[""] = _; __STATIC_FMTSTR }
 /// ```
 fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
@@ -91,7 +91,7 @@ fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
 }
 
 /// Checks if the expressions matches
-/// ```
+/// ```rust
 /// &match (&42,) {
 ///     (__arg0,) => [::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Display::fmt)],
 /// })

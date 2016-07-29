@@ -2,7 +2,7 @@
 //!
 //! For example, the lint would catch:
 //!
-//! ```
+//! ```rust
 //! if x {
 //!     if y {
 //!         println!("Hello world");
