@@ -10,7 +10,7 @@
 
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use syntax::ast::{self, MetaItem, MetaItemKind};
+use syntax::ast::{MetaItem, self};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxEnv};
 use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
@@ -98,15 +98,14 @@ fn expand_derive(cx: &mut ExtCtxt,
             let mut eq_span = None;
 
             for titem in traits.iter().rev() {
-                let tname = match titem.node {
-                    MetaItemKind::Word(ref tname) => tname,
-                    _ => {
-                        cx.span_err(titem.span, "malformed `derive` entry");
-                        continue;
-                    }
-                };
+                let tname = if titem.is_word() {
+                                titem.name() }
+                            else {
+                                cx.span_err(titem.span, "malformed `derive` entry");
+                                continue;
+                            };
 
-                if !(is_builtin_trait(tname) || cx.ecfg.enable_custom_derive()) {
+                if !(is_builtin_trait(&tname) || cx.ecfg.enable_custom_derive()) {
                     feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
                                                    "custom_derive",
                                                    titem.span,

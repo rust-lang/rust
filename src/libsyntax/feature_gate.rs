@@ -1118,14 +1118,13 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
             }
             Some(list) => {
                 for mi in list {
-                    let name = match mi.node {
-                        ast::MetaItemKind::Word(ref word) => (*word).clone(),
-                        _ => {
-                            span_err!(span_handler, mi.span, E0556,
-                                      "malformed feature, expected just one word");
-                            continue
-                        }
-                    };
+                    let name = if mi.is_word() {
+                                   mi.name()
+                               } else {
+                                   span_err!(span_handler, mi.span, E0556,
+                                             "malformed feature, expected just one word");
+                                   continue
+                               };
                     if let Some(&(_, _, _, setter)) = ACTIVE_FEATURES.iter()
                         .find(|& &(n, _, _, _)| name == n) {
                         *(setter(&mut features)) = true;
