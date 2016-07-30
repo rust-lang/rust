@@ -73,13 +73,11 @@ pub struct ImportDirective<'a> {
 impl<'a> ImportDirective<'a> {
     // Given the binding to which this directive resolves in a particular namespace,
     // this returns the binding for the name this directive defines in that namespace.
-    fn import(&'a self, binding: &'a NameBinding<'a>, privacy_error: Option<Box<PrivacyError<'a>>>)
-              -> NameBinding<'a> {
+    fn import(&'a self, binding: &'a NameBinding<'a>) -> NameBinding<'a> {
         NameBinding {
             kind: NameBindingKind::Import {
                 binding: binding,
                 directive: self,
-                privacy_error: privacy_error,
             },
             span: self.span,
             vis: self.vis,
@@ -328,7 +326,7 @@ impl<'a> ::ModuleS<'a> {
     fn define_in_glob_importers(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
         if !binding.is_importable() || !binding.is_pseudo_public() { return }
         for &(importer, directive) in self.glob_importers.borrow_mut().iter() {
-            let _ = importer.try_define_child(name, ns, directive.import(binding, None));
+            let _ = importer.try_define_child(name, ns, directive.import(binding));
         }
     }
 }
@@ -409,7 +407,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             });
-            let dummy_binding = directive.import(dummy_binding, None);
+            let dummy_binding = directive.import(dummy_binding);
 
             let _ = source_module.try_define_child(target, ValueNS, dummy_binding.clone());
             let _ = source_module.try_define_child(target, TypeNS, dummy_binding);
@@ -494,14 +492,17 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             self.resolver.resolve_name_in_module(target_module, source, TypeNS, false, true);
 
         let module_ = self.resolver.current_module;
+        let mut privacy_error = true;
         for &(ns, result, determined) in &[(ValueNS, &value_result, value_determined),
                                            (TypeNS, &type_result, type_determined)] {
-            if determined.get() { continue }
-            if let Indeterminate = *result { continue }
-
-            determined.set(true);
-            if let Success(binding) = *result {
-                if !binding.is_importable() {
+            match *result {
+                Failed(..) if !determined.get() => {
+                    determined.set(true);
+                    module_.update_resolution(target, ns, |resolution| {
+                        resolution.single_imports.directive_failed()
+                    });
+                }
+                Success(binding) if !binding.is_importable() => {
                     let msg = format!("`{}` is not directly importable", target);
                     span_err!(self.resolver.session, directive.span, E0253, "{}", &msg);
                     // Do not import this illegal binding. Import a dummy binding and pretend
@@ -509,23 +510,19 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     self.import_dummy_binding(module_, directive);
                     return Success(());
                 }
-
-                let privacy_error = if !self.resolver.is_accessible(binding.vis) {
-                    Some(Box::new(PrivacyError(directive.span, source, binding)))
-                } else {
-                    None
-                };
-
-                let imported_binding = directive.import(binding, privacy_error);
-                let conflict = module_.try_define_child(target, ns, imported_binding);
-                if let Err(old_binding) = conflict {
-                    let binding = &directive.import(binding, None);
-                    self.resolver.report_conflict(module_, target, ns, binding, old_binding);
+                Success(binding) if !self.resolver.is_accessible(binding.vis) => {}
+                Success(binding) if !determined.get() => {
+                    determined.set(true);
+                    let imported_binding = directive.import(binding);
+                    let conflict = module_.try_define_child(target, ns, imported_binding);
+                    if let Err(old_binding) = conflict {
+                        let binding = &directive.import(binding);
+                        self.resolver.report_conflict(module_, target, ns, binding, old_binding);
+                    }
+                    privacy_error = false;
                 }
-            } else {
-                module_.update_resolution(target, ns, |resolution| {
-                    resolution.single_imports.directive_failed();
-                });
+                Success(_) => privacy_error = false,
+                _ => {}
             }
         }
 
@@ -554,6 +551,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 return Failed(Some((directive.span, msg)));
             }
             _ => (),
+        }
+
+        if privacy_error {
+            for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
+                let binding = match *result { Success(binding) => binding, _ => continue };
+                self.resolver.privacy_errors.push(PrivacyError(directive.span, source, binding));
+                let _ = module_.try_define_child(target, ns, directive.import(binding));
+            }
         }
 
         match (&value_result, &type_result) {
@@ -591,19 +596,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
             _ => {}
         }
-
-        // Report a privacy error here if all successful namespaces are privacy errors.
-        let mut privacy_error = None;
-        for &ns in &[ValueNS, TypeNS] {
-            privacy_error = match module_.resolve_name(target, ns, true) {
-                Success(&NameBinding {
-                    kind: NameBindingKind::Import { ref privacy_error, .. }, ..
-                }) => privacy_error.as_ref().map(|error| (**error).clone()),
-                _ => continue,
-            };
-            if privacy_error.is_none() { break }
-        }
-        privacy_error.map(|error| self.resolver.privacy_errors.push(error));
 
         // Record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
@@ -652,7 +644,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
             if binding.is_importable() && binding.is_pseudo_public() {
-                let _ = module_.try_define_child(name, ns, directive.import(binding, None));
+                let _ = module_.try_define_child(name, ns, directive.import(binding));
             }
         }
 
