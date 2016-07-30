@@ -81,6 +81,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send> {
 // This is considered acceptable, because the behavior of throwing exceptions
 // through a C ABI boundary is undefined.
 
+// *** Delete after a new snapshot ***
 #[cfg(stage0)]
 #[lang = "eh_personality_catch"]
 #[cfg(not(test))]
