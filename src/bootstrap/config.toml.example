@@ -99,6 +99,9 @@
 # Whether or not jemalloc is built with its debug option set
 #debug-jemalloc = false
 
+# Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
+#backtrace = true
+
 # The default linker that will be used by the generated compiler. Note that this
 # is not the linker used to link said compiler.
 #default-linker = "cc"

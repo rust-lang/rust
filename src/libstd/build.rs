@@ -25,7 +25,8 @@ fn main() {
 
     let target = env::var("TARGET").unwrap();
     let host = env::var("HOST").unwrap();
-    if !target.contains("apple") && !target.contains("msvc") && !target.contains("emscripten"){
+    if cfg!(feature = "backtrace") && !target.contains("apple") && !target.contains("msvc") &&
+        !target.contains("emscripten") {
         build_libbacktrace(&host, &target);
     }
 
