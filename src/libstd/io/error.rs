@@ -55,7 +55,9 @@ pub type Result<T> = result::Result<T, Error>;
 ///
 /// Errors mostly originate from the underlying OS, but custom instances of
 /// `Error` can be created with crafted error messages and a particular value of
-/// `ErrorKind`.
+/// [`ErrorKind`].
+///
+/// [`ErrorKind`]: enum.ErrorKind.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
@@ -77,6 +79,10 @@ struct Custom {
 ///
 /// This list is intended to grow over time and it is not recommended to
 /// exhaustively match against it.
+///
+/// It is used with the [`io::Error`] type.
+///
+/// [`io::Error`]: struct.Error.html
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
