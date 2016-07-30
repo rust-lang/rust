@@ -203,19 +203,22 @@ impl<T> LinkedList<T> {
     /// ```
     /// use std::collections::LinkedList;
     ///
-    /// let mut a = LinkedList::new();
-    /// let mut b = LinkedList::new();
-    /// a.push_back(1);
-    /// a.push_back(2);
-    /// b.push_back(3);
-    /// b.push_back(4);
+    /// let mut list1 = LinkedList::new();
+    /// list1.push_back('a');
     ///
-    /// a.append(&mut b);
+    /// let mut list2 = LinkedList::new();
+    /// list2.push_back('b');
+    /// list2.push_back('c');
     ///
-    /// for e in &a {
-    ///     println!("{}", e); // prints 1, then 2, then 3, then 4
-    /// }
-    /// println!("{}", b.len()); // prints 0
+    /// list1.append(&mut list2);
+    ///
+    /// let mut iter = list1.iter();
+    /// assert_eq!(iter.next(), Some(&'a'));
+    /// assert_eq!(iter.next(), Some(&'b'));
+    /// assert_eq!(iter.next(), Some(&'c'));
+    /// assert!(iter.next().is_none());
+    ///
+    /// assert!(list2.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn append(&mut self, other: &mut Self) {
