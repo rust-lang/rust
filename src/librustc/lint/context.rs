@@ -45,7 +45,6 @@ use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 use hir;
 use hir::intravisit as hir_visit;
-use hir::intravisit::{IdVisitor, IdVisitingOperation};
 use syntax::visit as ast_visit;
 
 /// Information about the registered lints.
@@ -663,9 +662,11 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 
     fn visit_ids<F>(&mut self, f: F)
-        where F: FnOnce(&mut IdVisitor<LateContext>)
+        where F: FnOnce(&mut IdVisitor)
     {
-        let mut v = IdVisitor::new(self);
+        let mut v = IdVisitor {
+            cx: self
+        };
         f(&mut v);
     }
 }
@@ -779,7 +780,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     fn visit_fn(&mut self, fk: hir_visit::FnKind<'v>, decl: &'v hir::FnDecl,
                 body: &'v hir::Block, span: Span, id: ast::NodeId) {
         run_lints!(self, check_fn, late_passes, fk, decl, body, span, id);
-        hir_visit::walk_fn(self, fk, decl, body, span);
+        hir_visit::walk_fn(self, fk, decl, body, span, id);
         run_lints!(self, check_fn_post, late_passes, fk, decl, body, span, id);
     }
 
@@ -820,7 +821,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
 
     fn visit_mod(&mut self, m: &hir::Mod, s: Span, n: ast::NodeId) {
         run_lints!(self, check_mod, late_passes, m, s, n);
-        hir_visit::walk_mod(self, m);
+        hir_visit::walk_mod(self, m, n);
         run_lints!(self, check_mod_post, late_passes, m, s, n);
     }
 
@@ -859,7 +860,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
         self.with_lint_attrs(&trait_item.attrs, |cx| {
             run_lints!(cx, check_trait_item, late_passes, trait_item);
-            cx.visit_ids(|v| v.visit_trait_item(trait_item));
+            cx.visit_ids(|v| hir_visit::walk_trait_item(v, trait_item));
             hir_visit::walk_trait_item(cx, trait_item);
             run_lints!(cx, check_trait_item_post, late_passes, trait_item);
         });
@@ -868,7 +869,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
         self.with_lint_attrs(&impl_item.attrs, |cx| {
             run_lints!(cx, check_impl_item, late_passes, impl_item);
-            cx.visit_ids(|v| v.visit_impl_item(impl_item));
+            cx.visit_ids(|v| hir_visit::walk_impl_item(v, impl_item));
             hir_visit::walk_impl_item(cx, impl_item);
             run_lints!(cx, check_impl_item_post, late_passes, impl_item);
         });
@@ -1046,15 +1047,29 @@ impl<'a> ast_visit::Visitor for EarlyContext<'a> {
     }
 }
 
+struct IdVisitor<'a, 'b: 'a, 'tcx: 'a+'b> {
+    cx: &'a mut LateContext<'b, 'tcx>
+}
+
 // Output any lints that were previously added to the session.
-impl<'a, 'tcx> IdVisitingOperation for LateContext<'a, 'tcx> {
+impl<'a, 'b, 'tcx, 'v> hir_visit::Visitor<'v> for IdVisitor<'a, 'b, 'tcx> {
+
     fn visit_id(&mut self, id: ast::NodeId) {
-        if let Some(lints) = self.sess().lints.borrow_mut().remove(&id) {
+        if let Some(lints) = self.cx.sess().lints.borrow_mut().remove(&id) {
             debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
             for (lint_id, span, msg) in lints {
-                self.span_lint(lint_id.lint, span, &msg[..])
+                self.cx.span_lint(lint_id.lint, span, &msg[..])
             }
         }
+    }
+
+    fn visit_trait_item(&mut self, _ti: &hir::TraitItem) {
+        // Do not recurse into trait or impl items automatically. These are
+        // processed separately by calling hir_visit::walk_trait_item()
+    }
+
+    fn visit_impl_item(&mut self, _ii: &hir::ImplItem) {
+        // See visit_trait_item()
     }
 }
 
@@ -1172,7 +1187,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Visit the whole crate.
     cx.with_lint_attrs(&krate.attrs, |cx| {
-        cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
             hir_visit::walk_crate(v, krate);
         });

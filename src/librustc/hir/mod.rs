@@ -1362,9 +1362,9 @@ pub enum ViewPath_ {
 /// TraitRef's appear in impls.
 ///
 /// resolve maps each TraitRef's ref_id to its defining trait; that's all
-/// that the ref_id is for. The impl_id maps to the "self type" of this impl.
-/// If this impl is an ItemImpl, the impl_id is redundant (it could be the
-/// same as the impl's node id).
+/// that the ref_id is for. Note that ref_id's value is not the NodeId of the
+/// trait being referred to but just a unique NodeId that serves as a key
+/// within the DefMap.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TraitRef {
     pub path: Path,

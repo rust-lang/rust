@@ -34,7 +34,7 @@ use std::iter::{FromIterator, IntoIterator, repeat};
 
 use rustc::hir;
 use rustc::hir::{Pat, PatKind};
-use rustc::hir::intravisit::{self, IdVisitor, IdVisitingOperation, Visitor, FnKind};
+use rustc::hir::intravisit::{self, Visitor, FnKind};
 use rustc_back::slice;
 
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
@@ -474,7 +474,7 @@ struct RenamingRecorder<'map> {
     renaming_map: &'map mut FnvHashMap<(NodeId, Span), NodeId>
 }
 
-impl<'map> IdVisitingOperation for RenamingRecorder<'map> {
+impl<'v, 'map> Visitor<'v> for RenamingRecorder<'map> {
     fn visit_id(&mut self, node_id: NodeId) {
         let key = (node_id, self.origin_span);
         self.renaming_map.insert(key, self.substituted_node_id);
@@ -529,9 +529,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                 renaming_map: renaming_map,
             };
 
-            let mut id_visitor = IdVisitor::new(&mut renaming_recorder);
-
-            id_visitor.visit_expr(const_expr);
+            renaming_recorder.visit_expr(const_expr);
         }
     }
 }
@@ -1049,7 +1047,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
         _ => cx.param_env = ParameterEnvironment::for_item(cx.tcx, fn_id),
     }
 
-    intravisit::walk_fn(cx, kind, decl, body, sp);
+    intravisit::walk_fn(cx, kind, decl, body, sp, fn_id);
 
     for input in &decl.inputs {
         check_irrefutable(cx, &input.pat, true);
