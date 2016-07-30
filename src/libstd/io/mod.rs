@@ -1482,6 +1482,24 @@ impl<T> Take<T> {
     ///
     /// This instance may reach EOF after reading fewer bytes than indicated by
     /// this method if the underlying `Read` instance reaches EOF.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let f = try!(File::open("foo.txt"));
+    ///
+    /// // read at most five bytes
+    /// let handle = f.take(5);
+    ///
+    /// println!("limit: {}", handle.limit());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn limit(&self) -> u64 { self.limit }
 }
