@@ -182,6 +182,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         pat_util::arm_contains_ref_binding(arm)
     }
 
+    pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
+        match ty.sty {
+            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+                for field in def.all_fields() {
+                    let field_ty = field.ty(self, substs);
+                    if let TyError = field_ty.sty {
+                        return true;
+                    }
+                }
+            }
+            _ => ()
+        }
+        false
+    }
+
     /// Returns the type of element at index `i` in tuple or tuple-like type `t`.
     /// For an enum `t`, `variant` is None only if `t` is a univariant enum.
     pub fn positional_element_ty(self,
