@@ -28,7 +28,7 @@ fn main() {
     let d = [0; 0.5];
     //~^ ERROR mismatched types
     //~| expected type `usize`
-    //~| found type `_`
+    //~| found type `{float}`
     //~| expected usize, found floating-point variable
     //~| ERROR expected usize for repeat count, found float [E0306]
     let e = [0; "foo"];

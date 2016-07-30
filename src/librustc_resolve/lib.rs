@@ -825,8 +825,6 @@ enum NameBindingKind<'a> {
     Import {
         binding: &'a NameBinding<'a>,
         directive: &'a ImportDirective<'a>,
-        // Some(error) if using this imported name causes the import to be a privacy error
-        privacy_error: Option<Box<PrivacyError<'a>>>,
     },
 }
 
@@ -1206,15 +1204,10 @@ impl<'a> Resolver<'a> {
             self.used_crates.insert(krate);
         }
 
-        let (directive, privacy_error) = match binding.kind {
-            NameBindingKind::Import { directive, ref privacy_error, .. } =>
-                (directive, privacy_error),
+        let directive = match binding.kind {
+            NameBindingKind::Import { directive, .. } => directive,
             _ => return,
         };
-
-        if let Some(error) = privacy_error.as_ref() {
-            self.privacy_errors.push((**error).clone());
-        }
 
         if !self.make_glob_map {
             return;
