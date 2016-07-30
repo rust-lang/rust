@@ -23,5 +23,5 @@ pub fn main() {
     // Unsized type.
     let arr: &[_] = &[1, 2, 3];
     let range = *arr..;
-    //~^ ERROR `[_]: std::marker::Sized` is not satisfied
+    //~^ ERROR `[{integer}]: std::marker::Sized` is not satisfied
 }

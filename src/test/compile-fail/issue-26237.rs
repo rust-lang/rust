@@ -11,7 +11,7 @@
 macro_rules! macro_panic {
     ($not_a_function:expr, $some_argument:ident) => {
         $not_a_function($some_argument)
-        //~^ ERROR expected function, found `_`
+        //~^ ERROR expected function, found `{integer}`
     }
 }
 

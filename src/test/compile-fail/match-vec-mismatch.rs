@@ -18,7 +18,7 @@ fn main() {
     };
 
     match &[0, 1, 2] {
-        [..] => {} //~ ERROR expected an array or slice, found `&[_; 3]`
+        [..] => {} //~ ERROR expected an array or slice, found `&[{integer}; 3]`
     };
 
     match &[0, 1, 2] {

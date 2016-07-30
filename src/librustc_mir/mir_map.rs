@@ -250,7 +250,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
             build::construct_fn(cx, id, arguments, fn_sig.output, body)
         });
 
-        intravisit::walk_fn(self, fk, decl, body, span);
+        intravisit::walk_fn(self, fk, decl, body, span, id);
     }
 }
 

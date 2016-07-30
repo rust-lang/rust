@@ -18,7 +18,7 @@ use rustc::session::Session;
 use rustc::hir;
 use rustc::hir::fold;
 use rustc::hir::fold::Folder;
-use rustc::hir::intravisit::{IdRange, IdRangeComputingVisitor, IdVisitingOperation};
+use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange};
 
 use common as c;
 use cstore;
@@ -693,7 +693,7 @@ struct SideTableEncodingIdVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     rbml_w: &'a mut Encoder<'b>,
 }
 
-impl<'a, 'b, 'c, 'tcx> IdVisitingOperation for
+impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for
         SideTableEncodingIdVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
         encode_side_tables_for_id(self.ecx, self.rbml_w, id)
@@ -704,7 +704,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              rbml_w: &mut Encoder,
                              ii: &InlinedItem) {
     rbml_w.start_tag(c::tag_table as usize);
-    ii.visit_ids(&mut SideTableEncodingIdVisitor {
+    ii.visit(&mut SideTableEncodingIdVisitor {
         ecx: ecx,
         rbml_w: rbml_w
     });
@@ -1242,9 +1242,9 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
     }
 }
 
-fn inlined_item_id_range(v: &InlinedItem) -> IdRange {
+fn inlined_item_id_range(ii: &InlinedItem) -> IdRange {
     let mut visitor = IdRangeComputingVisitor::new();
-    v.visit_ids(&mut visitor);
+    ii.visit(&mut visitor);
     visitor.result()
 }
 
