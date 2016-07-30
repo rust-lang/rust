@@ -454,6 +454,11 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                                      item: &hir::Item,
                                      ast_generics: &hir::Generics)
     {
+        let ty = self.tcx().node_id_to_type(item.id);
+        if self.tcx().has_error_field(ty) {
+            return;
+        }
+
         let item_def_id = self.tcx().map.local_def_id(item.id);
         let ty_predicates = self.tcx().lookup_predicates(item_def_id);
         let variances = self.tcx().item_variances(item_def_id);
