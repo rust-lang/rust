@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::linux_musl_base::opts();
 
     // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
@@ -18,7 +18,7 @@ pub fn target() -> Target {
     base.features = "+v7,+vfp3,+neon".to_string();
     base.cpu = "cortex-a8".to_string();
     base.max_atomic_width = 64;
-    Target {
+    Ok(Target {
         // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
         // uses it to determine the calling convention and float ABI, and LLVM
         // doesn't support the "musleabihf" value.
@@ -31,5 +31,5 @@ pub fn target() -> Target {
         target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
-    }
+    })
 }
