@@ -1363,6 +1363,29 @@ macro_rules! fmt_refs {
 
 fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
+// Note: This macro is a temporary hack that can be remove once we are building with a compiler
+// that supports `!`
+macro_rules! argh {
+    () => {
+        #[unstable(feature = "bang_type", issue = "35121")]
+        impl Debug for ! {
+            fn fmt(&self, _: &mut Formatter) -> Result {
+                *self
+            }
+        }
+
+        #[unstable(feature = "bang_type", issue = "35121")]
+        impl Display for ! {
+            fn fmt(&self, _: &mut Formatter) -> Result {
+                *self
+            }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+argh!();
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {
