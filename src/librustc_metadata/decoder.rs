@@ -55,7 +55,6 @@ use rustc_serialize::Decodable;
 use syntax::attr;
 use syntax::parse::token;
 use syntax::ast;
-use syntax::abi::Abi;
 use syntax::codemap;
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -1534,13 +1533,9 @@ pub fn is_extern_item<'a, 'tcx>(cdata: Cmd,
     let applicable = match item_family(item_doc) {
         ImmStatic | MutStatic => true,
         Fn => {
-            let ty::TypeScheme { generics, ty } = get_type(cdata, id, tcx);
+            let ty::TypeScheme { generics, .. } = get_type(cdata, id, tcx);
             let no_generics = generics.types.is_empty();
-            match ty.sty {
-                ty::TyFnDef(_, _, fn_ty) | ty::TyFnPtr(fn_ty)
-                    if fn_ty.abi != Abi::Rust => return no_generics,
-                _ => no_generics,
-            }
+            no_generics
         },
         _ => false,
     };
