@@ -611,6 +611,31 @@ macro_rules! int_impl {
             if b {None} else {Some(a)}
         }
 
+        /// Checked absolute value. Computes `self.abs()`, returning `None` if
+        /// `self == MIN`.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(no_panic_abs)]
+        ///
+        /// use std::i32;
+        ///
+        /// assert_eq!((-5i32).checked_abs(), Some(5));
+        /// assert_eq!(i32::MIN.checked_abs(), None);
+        /// ```
+        #[unstable(feature = "no_panic_abs", issue = "35057")]
+        #[inline]
+        pub fn checked_abs(self) -> Option<Self> {
+            if self.is_negative() {
+                self.checked_neg()
+            } else {
+                Some(self)
+            }
+        }
+
         /// Saturating integer addition. Computes `self + other`, saturating at
         /// the numeric bounds instead of overflowing.
         ///
@@ -863,6 +888,36 @@ macro_rules! int_impl {
             self.overflowing_shr(rhs).0
         }
 
+        /// Wrapping (modular) absolute value. Computes `self.abs()`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// The only case where such wrapping can occur is when one takes
+        /// the absolute value of the negative minimal value for the type
+        /// this is a positive value that is too large to represent in the
+        /// type. In such a case, this function returns `MIN` itself.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(no_panic_abs)]
+        ///
+        /// assert_eq!(100i8.wrapping_abs(), 100);
+        /// assert_eq!((-100i8).wrapping_abs(), 100);
+        /// assert_eq!((-128i8).wrapping_abs(), -128);
+        /// assert_eq!((-128i8).wrapping_abs() as u8, 128);
+        /// ```
+        #[unstable(feature = "no_panic_abs", issue = "35057")]
+        #[inline(always)]
+        pub fn wrapping_abs(self) -> Self {
+            if self.is_negative() {
+                self.wrapping_neg()
+            } else {
+                self
+            }
+        }
+
         /// Calculates `self` + `rhs`
         ///
         /// Returns a tuple of the addition along with a boolean indicating
@@ -1069,6 +1124,35 @@ macro_rules! int_impl {
         #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
+        }
+
+        /// Computes the absolute value of `self`.
+        ///
+        /// Returns a tuple of the absolute version of self along with a
+        /// boolean indicating whether an overflow happened. If self is the
+        /// minimum value (e.g. i32::MIN for values of type i32), then the
+        /// minimum value will be returned again and true will be returned for
+        /// an overflow happening.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(no_panic_abs)]
+        ///
+        /// assert_eq!(10i8.overflowing_abs(), (10,false));
+        /// assert_eq!((-10i8).overflowing_abs(), (10,false));
+        /// assert_eq!((-128i8).overflowing_abs(), (-128,true));
+        /// ```
+        #[unstable(feature = "no_panic_abs", issue = "35057")]
+        #[inline]
+        pub fn overflowing_abs(self) -> (Self, bool) {
+            if self.is_negative() {
+                self.overflowing_neg()
+            } else {
+                (self, false)
+            }
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.
