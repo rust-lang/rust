@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::linux_musl_base::opts();
 
     // Most of these settings are copied from the arm_unknown_linux_gnueabi
     // target.
     base.features = "+v6".to_string();
     base.max_atomic_width = 64;
-    Target {
+    Ok(Target {
         // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it
         // to determine the calling convention and float ABI, and it doesn't
         // support the "musleabi" value.
@@ -30,5 +30,5 @@ pub fn target() -> Target {
         target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
-    }
+    })
 }
