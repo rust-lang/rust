@@ -1082,16 +1082,22 @@ pub trait Seek {
     ///
     /// If the seek operation completed successfully,
     /// this method returns the new position from the start of the stream.
-    /// That position can be used later with `SeekFrom::Start`.
+    /// That position can be used later with [`SeekFrom::Start`].
     ///
     /// # Errors
     ///
     /// Seeking to a negative offset is considered an error.
+    ///
+    /// [`SeekFrom::Start`]: enum.SeekFrom.html#variant.Start
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
+///
+/// It is used by the [`Seek`] trait.
+///
+/// [`Seek`]: trait.Seek.html
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SeekFrom {
