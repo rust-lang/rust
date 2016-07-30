@@ -15,6 +15,6 @@ fn main() {
     f(&x);
     //~^ ERROR mismatched types
     //~| expected type `&mut i32`
-    //~| found type `&_`
+    //~| found type `&{integer}`
     //~| values differ in mutability
 }

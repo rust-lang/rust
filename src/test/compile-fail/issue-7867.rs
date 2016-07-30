@@ -25,12 +25,12 @@ fn main() {
     match &Some(42) {
         Some(x) => (),
         //~^ ERROR mismatched types
-        //~| expected type `&std::option::Option<_>`
+        //~| expected type `&std::option::Option<{integer}>`
         //~| found type `std::option::Option<_>`
         //~| expected &-ptr, found enum `std::option::Option`
         None => ()
         //~^ ERROR mismatched types
-        //~| expected type `&std::option::Option<_>`
+        //~| expected type `&std::option::Option<{integer}>`
         //~| found type `std::option::Option<_>`
         //~| expected &-ptr, found enum `std::option::Option`
     }

@@ -5,7 +5,7 @@ error[E0308]: mismatched types
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected u64, found usize
 $DIR/issue-26480.rs:38:5: 38:19 note: in this expansion of write! (defined in $DIR/issue-26480.rs)
 
-error: non-scalar cast: `_` as `()`
+error: non-scalar cast: `{integer}` as `()`
   --> $DIR/issue-26480.rs:33:19
    |
 33 |     ($x:expr) => ($x as ())
