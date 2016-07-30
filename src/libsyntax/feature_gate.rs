@@ -810,6 +810,29 @@ macro_rules! gate_feature_post {
     }}
 }
 
+impl<'a> PostExpansionVisitor<'a> {
+    fn check_abi(&self, abi: Abi, span: Span) {
+        match abi {
+            Abi::RustIntrinsic =>
+                gate_feature_post!(&self, intrinsics, span,
+                                   "intrinsics are subject to change"),
+            Abi::PlatformIntrinsic => {
+                gate_feature_post!(&self, platform_intrinsics, span,
+                                   "platform intrinsics are experimental and possibly buggy")
+            },
+            Abi::Vectorcall => {
+                gate_feature_post!(&self, abi_vectorcall, span,
+                                   "vectorcall is experimental and subject to change")
+            }
+            Abi::RustCall => {
+                gate_feature_post!(&self, unboxed_closures, span,
+                                   "rust-call ABI is subject to change");
+            }
+            _ => {}
+        }
+    }
+}
+
 impl<'a> Visitor for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if !self.context.cm.span_allows_unstable(attr.span) {
@@ -841,21 +864,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                                        across platforms, it is recommended to \
                                        use `#[link(name = \"foo\")]` instead")
                 }
-                match foreign_module.abi {
-                    Abi::RustIntrinsic =>
-                        gate_feature_post!(&self, intrinsics, i.span,
-                                           "intrinsics are subject to change"),
-                    Abi::PlatformIntrinsic => {
-                        gate_feature_post!(&self, platform_intrinsics, i.span,
-                                           "platform intrinsics are experimental \
-                                            and possibly buggy")
-                    },
-                    Abi::Vectorcall => {
-                        gate_feature_post!(&self, abi_vectorcall, i.span,
-                                           "vectorcall is experimental and subject to change")
-                    }
-                    _ => ()
-                }
+                self.check_abi(foreign_module.abi, i.span);
             }
 
             ast::ItemKind::Fn(..) => {
@@ -936,6 +945,16 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
         }
 
         visit::walk_foreign_item(self, i)
+    }
+
+    fn visit_ty(&mut self, ty: &ast::Ty) {
+        match ty.node {
+            ast::TyKind::BareFn(ref bare_fn_ty) => {
+                self.check_abi(bare_fn_ty.abi, ty.span);
+            }
+            _ => {}
+        }
+        visit::walk_ty(self, ty)
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
@@ -1025,23 +1044,10 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
         }
 
         match fn_kind {
-            FnKind::ItemFn(_, _, _, _, abi, _) if abi == Abi::RustIntrinsic => {
-                gate_feature_post!(&self, intrinsics,
-                                  span,
-                                  "intrinsics are subject to change")
-            }
             FnKind::ItemFn(_, _, _, _, abi, _) |
-            FnKind::Method(_, &ast::MethodSig { abi, .. }, _) => match abi {
-                Abi::RustCall => {
-                    gate_feature_post!(&self, unboxed_closures, span,
-                        "rust-call ABI is subject to change");
-                },
-                Abi::Vectorcall => {
-                    gate_feature_post!(&self, abi_vectorcall, span,
-                        "vectorcall is experimental and subject to change");
-                },
-                _ => {}
-            },
+            FnKind::Method(_, &ast::MethodSig { abi, .. }, _) => {
+                self.check_abi(abi, span);
+            }
             _ => {}
         }
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
@@ -1054,7 +1060,10 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                                   ti.span,
                                   "associated constants are experimental")
             }
-            ast::TraitItemKind::Method(ref sig, _) => {
+            ast::TraitItemKind::Method(ref sig, ref block) => {
+                if block.is_none() {
+                    self.check_abi(sig.abi, ti.span);
+                }
                 if sig.constness == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
                 }

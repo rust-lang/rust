@@ -223,6 +223,7 @@ trait system to overload operators. Calling functions is no different. We have
 three separate traits to overload with:
 
 ```rust
+# #![feature(unboxed_closures)]
 # mod foo {
 pub trait Fn<Args> : FnMut<Args> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
