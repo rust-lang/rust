@@ -197,7 +197,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                              decl,
                              body);
 
-    intravisit::walk_fn(this, fk, decl, body, sp);
+    intravisit::walk_fn(this, fk, decl, body, sp, id);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
