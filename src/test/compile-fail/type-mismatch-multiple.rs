@@ -13,7 +13,7 @@
 fn main() { let a: bool = 1; let b: i32 = true; }
 //~^ ERROR mismatched types
 //~| expected type `bool`
-//~| found type `_`
+//~| found type `{integer}`
 //~| expected bool, found integral variable
 //~| ERROR mismatched types
 //~| expected i32, found bool
