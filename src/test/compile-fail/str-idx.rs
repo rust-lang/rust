@@ -10,5 +10,5 @@
 
 pub fn main() {
     let s: &str = "hello";
-    let c: u8 = s[4]; //~ ERROR `str: std::ops::Index<_>` is not satisfied
+    let c: u8 = s[4]; //~ ERROR `str: std::ops::Index<{integer}>` is not satisfied
 }

@@ -26,5 +26,5 @@ fn is_ee<T: Combo>(t: T) {
 
 fn main() {
     is_ee(4);
-    //~^ ERROR overflow evaluating the requirement `_: Tweedle
+    //~^ ERROR overflow evaluating the requirement `{integer}: Tweedle
 }

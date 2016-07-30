@@ -16,7 +16,7 @@ fn main() {
     let y = first ((1,2.0,3));
     //~^ ERROR mismatched types
     //~| expected type `(isize, f64)`
-    //~| found type `(isize, f64, _)`
+    //~| found type `(isize, f64, {integer})`
     //~| expected a tuple with 2 elements, found one with 3 elements
 
     let y = first ((1,));

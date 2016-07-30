@@ -23,7 +23,7 @@ static foo: Foo = Foo { a: 2, ..bar }; //~  ERROR mismatched types
                                        //~| expected struct `Foo`, found struct `Bar`
 static foo_i: Foo = Foo { a: 2, ..4 }; //~  ERROR mismatched types
                                        //~| expected type `Foo`
-                                       //~| found type `_`
+                                       //~| found type `{integer}`
                                        //~| expected struct `Foo`, found integral variable
 
 fn main() {
