@@ -153,7 +153,7 @@ Decide which macros you would like to export and list them properly.
 
 These are proper reexport declarations:
 
-```compile_fail,E0463
+```compile_fail
 #[macro_reexport(some_macro, another_macro)]
 extern crate macros_for_good;
 ```
