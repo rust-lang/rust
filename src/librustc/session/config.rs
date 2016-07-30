@@ -61,7 +61,7 @@ pub enum DebugInfoLevel {
     FullDebugInfo,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum OutputType {
     Bitcode,
     Assembly,
@@ -103,6 +103,17 @@ impl OutputType {
             OutputType::Object => "obj",
             OutputType::Exe => "link",
             OutputType::DepInfo => "dep-info",
+        }
+    }
+
+    pub fn extension(&self) -> &'static str {
+        match *self {
+            OutputType::Bitcode => "bc",
+            OutputType::Assembly => "s",
+            OutputType::LlvmAssembly => "ll",
+            OutputType::Object => "o",
+            OutputType::DepInfo => "d",
+            OutputType::Exe => "",
         }
     }
 }
@@ -215,15 +226,7 @@ impl OutputFilenames {
                      flavor: OutputType,
                      codegen_unit_name: Option<&str>)
                      -> PathBuf {
-        let extension = match flavor {
-            OutputType::Bitcode => "bc",
-            OutputType::Assembly => "s",
-            OutputType::LlvmAssembly => "ll",
-            OutputType::Object => "o",
-            OutputType::DepInfo => "d",
-            OutputType::Exe => "",
-        };
-
+        let extension = flavor.extension();
         self.temp_path_ext(extension, codegen_unit_name)
     }
 
@@ -747,6 +750,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "set the MIR optimization level (0-3)"),
     dump_mir: Option<String> = (None, parse_opt_string,
           "dump MIR state at various points in translation"),
+    dump_mir_dir: Option<String> = (None, parse_opt_string,
+          "the directory the MIR is dumped into"),
     orbit: bool = (false, parse_bool,
           "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }

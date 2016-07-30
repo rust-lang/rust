@@ -313,6 +313,10 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
+/// This enum is constructed from the [`entry`] method on [`BTreeMap`].
+///
+/// [`BTreeMap`]: struct.BTreeMap.html
+/// [`entry`]: struct.BTreeMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// A vacant Entry
@@ -340,7 +344,9 @@ impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
     }
 }
 
-/// A vacant Entry.
+/// A vacant Entry. It is part of the [`Entry`] enum.
+///
+/// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     key: K,
@@ -360,7 +366,9 @@ impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
     }
 }
 
-/// An occupied Entry.
+/// An occupied Entry. It is part of the [`Entry`] enum.
+///
+/// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>,
@@ -1890,6 +1898,17 @@ impl<K, V> BTreeMap<K, V> {
 impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// assert_eq!(map["poneyland"], 12);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
@@ -1900,6 +1919,19 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, String> = BTreeMap::new();
+    /// let s = "hoho".to_owned();
+    ///
+    /// map.entry("poneyland").or_insert_with(|| s);
+    ///
+    /// assert_eq!(map["poneyland"], "hoho".to_owned());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
@@ -1909,6 +1941,15 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     }
 
     /// Returns a reference to this entry's key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
+    /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         match *self {
@@ -1921,12 +1962,36 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the VacantEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
+    /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         &self.key
     }
 
     /// Take ownership of the key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_entry_recover_keys)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    ///
+    /// if let Entry::Vacant(v) = map.entry("poneyland") {
+    ///     v.into_key();
+    /// }
+    /// ```
     #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
     pub fn into_key(self) -> K {
         self.key
@@ -1934,6 +1999,21 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
 
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut count: BTreeMap<&str, usize> = BTreeMap::new();
+    ///
+    /// // count the number of occurrences of letters in the vec
+    /// for x in vec!["a","b","a","c","a","b"] {
+    ///     *count.entry(x).or_insert(0) += 1;
+    /// }
+    ///
+    /// assert_eq!(count["a"], 3);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         *self.length += 1;
@@ -1979,30 +2059,106 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the key in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
+    /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         self.handle.reborrow().into_kv().0
     }
 
     /// Take ownership of the key and value from the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_entry_recover_keys)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// if let Entry::Occupied(o) = map.entry("poneyland") {
+    ///     // We delete the entry from the map.
+    ///     o.remove_pair();
+    /// }
+    ///
+    /// // If now try to get the value, it will panic:
+    /// // println!("{}", map["poneyland"]);
+    /// ```
     #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
     pub fn remove_pair(self) -> (K, V) {
         self.remove_kv()
     }
 
     /// Gets a reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// if let Entry::Occupied(o) = map.entry("poneyland") {
+    ///     assert_eq!(o.get(), &12);
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
         self.handle.reborrow().into_kv().1
     }
 
     /// Gets a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// assert_eq!(map["poneyland"], 12);
+    /// if let Entry::Occupied(mut o) = map.entry("poneyland") {
+    ///      *o.get_mut() += 10;
+    /// }
+    /// assert_eq!(map["poneyland"], 22);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
         self.handle.kv_mut().1
     }
 
     /// Converts the entry into a mutable reference to its value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// assert_eq!(map["poneyland"], 12);
+    /// if let Entry::Occupied(o) = map.entry("poneyland") {
+    ///     *o.into_mut() += 10;
+    /// }
+    /// assert_eq!(map["poneyland"], 22);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
         self.handle.into_kv_mut().1
@@ -2010,12 +2166,43 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
     /// Sets the value of the entry with the OccupiedEntry's key,
     /// and returns the entry's old value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// if let Entry::Occupied(mut o) = map.entry("poneyland") {
+    ///     assert_eq!(o.insert(15), 12);
+    /// }
+    /// assert_eq!(map["poneyland"], 15);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, value: V) -> V {
         mem::replace(self.get_mut(), value)
     }
 
     /// Takes the value of the entry out of the map, and returns it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
+    ///
+    /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
+    /// map.entry("poneyland").or_insert(12);
+    ///
+    /// if let Entry::Occupied(o) = map.entry("poneyland") {
+    ///     assert_eq!(o.remove(), 12);
+    /// }
+    /// // If we try to get "poneyland"'s value, it'll panic:
+    /// // println!("{}", map["poneyland"]);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
         self.remove_kv().1

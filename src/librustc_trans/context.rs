@@ -10,7 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig};
+use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
@@ -95,6 +95,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
+    previous_work_product: Option<WorkProduct>,
     tn: TypeNames, // FIXME: This seems to be largely unused.
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
@@ -198,24 +199,39 @@ pub struct CrateContextList<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
-
     pub fn new(shared_ccx: &'a SharedCrateContext<'a, 'tcx>,
                codegen_units: Vec<CodegenUnit<'tcx>>,
+               previous_work_products: Vec<Option<WorkProduct>>,
                symbol_map: Rc<SymbolMap<'tcx>>)
                -> CrateContextList<'a, 'tcx> {
         CrateContextList {
             shared: shared_ccx,
-            local_ccxs: codegen_units.into_iter().map(|codegen_unit| {
-                LocalCrateContext::new(shared_ccx, codegen_unit, symbol_map.clone())
+            local_ccxs: codegen_units.into_iter().zip(previous_work_products).map(|(cgu, wp)| {
+                LocalCrateContext::new(shared_ccx, cgu, wp, symbol_map.clone())
             }).collect()
         }
     }
 
-    pub fn iter<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
+    /// Iterate over all crate contexts, whether or not they need
+    /// translation.  That is, whether or not a `.o` file is available
+    /// for re-use from a previous incr. comp.).
+    pub fn iter_all<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
         CrateContextIterator {
             shared: self.shared,
             index: 0,
-            local_ccxs: &self.local_ccxs[..]
+            local_ccxs: &self.local_ccxs[..],
+            filter_to_previous_work_product_unavail: false,
+        }
+    }
+
+    /// Iterator over all CCX that need translation (cannot reuse results from
+    /// previous incr. comp.).
+    pub fn iter_need_trans<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
+        CrateContextIterator {
+            shared: self.shared,
+            index: 0,
+            local_ccxs: &self.local_ccxs[..],
+            filter_to_previous_work_product_unavail: true,
         }
     }
 
@@ -239,24 +255,38 @@ pub struct CrateContextIterator<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
     local_ccxs: &'a [LocalCrateContext<'tcx>],
     index: usize,
+
+    /// if true, only return results where `previous_work_product` is none
+    filter_to_previous_work_product_unavail: bool,
 }
 
 impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
     type Item = CrateContext<'a, 'tcx>;
 
     fn next(&mut self) -> Option<CrateContext<'a, 'tcx>> {
-        if self.index >= self.local_ccxs.len() {
-            return None;
+        loop {
+            if self.index >= self.local_ccxs.len() {
+                return None;
+            }
+
+            let index = self.index;
+            self.index += 1;
+
+            let ccx = CrateContext {
+                shared: self.shared,
+                index: index,
+                local_ccxs: self.local_ccxs,
+            };
+
+            if
+                self.filter_to_previous_work_product_unavail &&
+                ccx.previous_work_product().is_some()
+            {
+                continue;
+            }
+
+            return Some(ccx);
         }
-
-        let index = self.index;
-        self.index += 1;
-
-        Some(CrateContext {
-            shared: self.shared,
-            index: index,
-            local_ccxs: self.local_ccxs,
-        })
     }
 }
 
@@ -510,6 +540,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 impl<'tcx> LocalCrateContext<'tcx> {
     fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
                codegen_unit: CodegenUnit<'tcx>,
+               previous_work_product: Option<WorkProduct>,
                symbol_map: Rc<SymbolMap<'tcx>>)
            -> LocalCrateContext<'tcx> {
         unsafe {
@@ -521,7 +552,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
             // crashes if the module identifier is same as other symbols
             // such as a function name in the module.
             // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-            let llmod_id = format!("{}.rs", codegen_unit.name);
+            let llmod_id = format!("{}.rs", codegen_unit.name());
 
             let (llcx, llmod) = create_context_and_module(&shared.tcx.sess,
                                                           &llmod_id[..]);
@@ -535,6 +566,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
             let local_ccx = LocalCrateContext {
                 llmod: llmod,
                 llcx: llcx,
+                previous_work_product: previous_work_product,
                 codegen_unit: codegen_unit,
                 tn: TypeNames::new(),
                 needs_unwind_cleanup_cache: RefCell::new(FnvHashMap()),
@@ -692,6 +724,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn llcx(&self) -> ContextRef {
         self.local().llcx
+    }
+
+    pub fn previous_work_product(&self) -> Option<&WorkProduct> {
+        self.local().previous_work_product.as_ref()
     }
 
     pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {

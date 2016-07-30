@@ -103,15 +103,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     return;
                 }
 
-                // Check that the types of the end-points can be unified.
-                let types_unify = self.require_same_types(pat.span, rhs_ty, lhs_ty,
-                                                          "mismatched types in range");
-
-                // It's ok to return without a message as `require_same_types` prints an error.
-                if !types_unify {
-                    return;
-                }
-
                 // Now that we know the types can be unified we find the unified type and use
                 // it to type the entire expression.
                 let common_type = self.resolve_type_vars_if_possible(&lhs_ty);
@@ -120,6 +111,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // subtyping doesn't matter here, as the value is some kind of scalar
                 self.demand_eqtype(pat.span, expected, lhs_ty);
+                self.demand_eqtype(pat.span, expected, rhs_ty);
             }
             PatKind::Binding(bm, _, ref sub) => {
                 let typ = self.local_ty(pat.span, pat.id);

@@ -30,9 +30,6 @@ fn main() {
         impl Deref for Thing {
             //~^ ERROR not all trait items implemented, missing: `Target` [E0046]
             fn deref(&self) -> i8 { self.0 }
-            //~^ ERROR method `deref` has an incompatible type for trait
-            //~| expected &-ptr
-            //~| found i8 [E0053]
         }
 
         let thing = Thing(72);

@@ -8,7 +8,7 @@ CFG_STATIC_LIB_NAME_asmjs-unknown-emscripten=lib$(1).a
 CFG_LIB_GLOB_asmjs-unknown-emscripten=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_asmjs-unknown-emscripten=lib$(1)-*.dylib.dSYM
 CFG_JEMALLOC_CFLAGS_asmjs-unknown-emscripten := -m32 $(CFLAGS)
-CFG_GCCISH_CFLAGS_asmjs-unknown-emscripten := -Wall -Werror -g -fPIC -m32 $(CFLAGS)
+CFG_GCCISH_CFLAGS_asmjs-unknown-emscripten :=  -g -fPIC -m32 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_asmjs-unknown-emscripten := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_asmjs-unknown-emscripten := -shared -fPIC -ldl -pthread  -lrt -g -m32
 CFG_GCCISH_DEF_FLAG_asmjs-unknown-emscripten := -Wl,--export-dynamic,--dynamic-list=

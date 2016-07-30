@@ -498,21 +498,20 @@ pub enum Attribute {
 
 impl Clean<Attribute> for ast::MetaItem {
     fn clean(&self, cx: &DocContext) -> Attribute {
-        match self.node {
-            ast::MetaItemKind::Word(ref s) => Word(s.to_string()),
-            ast::MetaItemKind::List(ref s, ref l) => {
-                List(s.to_string(), l.clean(cx))
-            }
-            ast::MetaItemKind::NameValue(ref s, ref v) => {
-                NameValue(s.to_string(), lit_to_string(v))
-            }
-        }
+        if self.is_word() {
+            Word(self.name().to_string())
+        } else if let Some(v) = self.value_str() {
+            NameValue(self.name().to_string(), v.to_string())
+        } else { // must be a list
+            let l = self.meta_item_list().unwrap();
+            List(self.name().to_string(), l.clean(cx))
+       }
     }
 }
 
 impl Clean<Attribute> for ast::Attribute {
     fn clean(&self, cx: &DocContext) -> Attribute {
-        self.with_desugared_doc(|a| a.node.value.clean(cx))
+        self.with_desugared_doc(|a| a.meta().clean(cx))
     }
 }
 
@@ -535,6 +534,28 @@ impl attr::AttrMetaMethods for Attribute {
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
+
+    fn is_word(&self) -> bool {
+      match *self {
+        Word(_) => true,
+        _ => false,
+      }
+    }
+
+    fn is_value_str(&self) -> bool {
+      match *self {
+        NameValue(..) => true,
+        _ => false,
+      }
+    }
+
+    fn is_meta_item_list(&self) -> bool {
+      match *self {
+        List(..) => true,
+        _ => false,
+      }
+    }
+
     fn span(&self) -> syntax_pos::Span { unimplemented!() }
 }
 
@@ -2565,26 +2586,6 @@ impl ToSource for syntax_pos::Span {
         };
         debug!("got snippet {}", sn);
         sn
-    }
-}
-
-fn lit_to_string(lit: &ast::Lit) -> String {
-    match lit.node {
-        ast::LitKind::Str(ref st, _) => st.to_string(),
-        ast::LitKind::ByteStr(ref data) => format!("{:?}", data),
-        ast::LitKind::Byte(b) => {
-            let mut res = String::from("b'");
-            for c in (b as char).escape_default() {
-                res.push(c);
-            }
-            res.push('\'');
-            res
-        },
-        ast::LitKind::Char(c) => format!("'{}'", c),
-        ast::LitKind::Int(i, _t) => i.to_string(),
-        ast::LitKind::Float(ref f, _t) => f.to_string(),
-        ast::LitKind::FloatUnsuffixed(ref f) => f.to_string(),
-        ast::LitKind::Bool(b) => b.to_string(),
     }
 }
 

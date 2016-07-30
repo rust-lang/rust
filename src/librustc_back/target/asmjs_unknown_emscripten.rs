@@ -10,7 +10,7 @@
 
 use super::{Target, TargetOptions};
 
-pub fn target() -> Target {
+pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
         linker: "emcc".to_string(),
         ar: "emar".to_string(),
@@ -25,7 +25,7 @@ pub fn target() -> Target {
         max_atomic_width: 32,
         .. Default::default()
     };
-    Target {
+    Ok(Target {
         llvm_target: "asmjs-unknown-emscripten".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -35,5 +35,5 @@ pub fn target() -> Target {
         data_layout: "e-p:32:32-i64:64-v128:32:128-n32-S128".to_string(),
         arch: "asmjs".to_string(),
         options: opts,
-    }
+    })
 }

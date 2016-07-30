@@ -142,6 +142,7 @@
 use self::Option::*;
 
 use clone::Clone;
+use convert::From;
 use default::Default;
 use iter::ExactSizeIterator;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, IntoIterator};
@@ -751,6 +752,13 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 
     fn into_iter(mut self) -> IterMut<'a, T> {
         self.iter_mut()
+    }
+}
+
+#[stable(since = "1.12.0", feature = "option_from")]
+impl<T> From<T> for Option<T> {
+    fn from(val: T) -> Option<T> {
+        Some(val)
     }
 }
 

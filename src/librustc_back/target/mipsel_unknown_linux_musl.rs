@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::{Target, TargetOptions};
+use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> Target {
-    Target {
+pub fn target() -> TargetResult {
+    Ok(Target {
         llvm_target: "mipsel-unknown-linux-musl".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
@@ -22,9 +22,9 @@ pub fn target() -> Target {
         target_vendor: "unknown".to_string(),
         options: TargetOptions {
             cpu: "mips32".to_string(),
-            features: "+mips32".to_string(),
+            features: "+mips32,+soft-float".to_string(),
             max_atomic_width: 32,
             ..super::linux_base::opts()
         }
-    }
+    })
 }

@@ -19,6 +19,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![feature(question_mark)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 
@@ -40,3 +41,6 @@ pub use assert_dep_graph::assert_dep_graph;
 pub use calculate_svh::SvhCalculate;
 pub use persist::load_dep_graph;
 pub use persist::save_dep_graph;
+pub use persist::save_trans_partition;
+pub use persist::save_work_products;
+pub use persist::in_incr_comp_dir;

@@ -575,16 +575,69 @@ against `libc` and `libm` by default.
 
 # The "nullable pointer optimization"
 
-Certain types are defined to not be NULL. This includes references (`&T`,
-`&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi" fn()`).
-When interfacing with C, pointers that might be NULL are often used.
-As a special case, a generic `enum` that contains exactly two variants, one of
-which contains no data and the other containing a single field, is eligible
-for the "nullable pointer optimization". When such an enum is instantiated
-with one of the non-nullable types, it is represented as a single pointer,
-and the non-data variant is represented as the NULL pointer. So
-`Option<extern "C" fn(c_int) -> c_int>` is how one represents a nullable
-function pointer using the C ABI.
+Certain Rust types are defined to never be `null`. This includes references (`&T`,
+`&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi" fn()`). When
+interfacing with C, pointers that might be `null` are often used, which would seem to
+require some messy `transmute`s and/or unsafe code to handle conversions to/from Rust types.
+However, the language provides a workaround.
+
+As a special case, an `enum` is eligible for the "nullable pointer optimization" if it contains
+exactly two variants, one of which contains no data and the other contains a field of one of the
+non-nullable types listed above.  This means no extra space is required for a discriminant; rather,
+the empty variant is represented by putting a `null` value into the non-nullable field. This is
+called an "optimization", but unlike other optimizations it is guaranteed to apply to eligible
+types.
+
+The most common type that takes advantage of the nullable pointer optimization is `Option<T>`,
+where `None` corresponds to `null`. So `Option<extern "C" fn(c_int) -> c_int>` is a correct way
+to represent a nullable function pointer using the C ABI (corresponding to the C type
+`int (*)(int)`).
+
+Here is a contrived example. Let's say some C library has a facility for registering a
+callback, which gets called in certain situations. The callback is passed a function pointer
+and an integer and it is supposed to run the function with the integer as a parameter. So
+we have function pointers flying across the FFI boundary in both directions.
+
+```rust
+# #![feature(libc)]
+extern crate libc;
+use libc::c_int;
+
+# #[cfg(hidden)]
+extern "C" {
+    /// Register the callback.
+    fn register(cb: Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>, c_int) -> c_int>);
+}
+# unsafe fn register(_: Option<extern "C" fn(Option<extern "C" fn(c_int) -> c_int>,
+#                                            c_int) -> c_int>)
+# {}
+
+/// This fairly useless function receives a function pointer and an integer
+/// from C, and returns the result of calling the function with the integer.
+/// In case no function is provided, it squares the integer by default.
+extern "C" fn apply(process: Option<extern "C" fn(c_int) -> c_int>, int: c_int) -> c_int {
+    match process {
+        Some(f) => f(int),
+        None    => int * int
+    }
+}
+
+fn main() {
+    unsafe {
+        register(Some(apply));
+    }
+}
+```
+
+And the code on the C side looks like this:
+
+```c
+void register(void (*f)(void (*)(int), int)) {
+    ...
+}
+```
+
+No `transmute` required!
 
 # Calling Rust code from C
 

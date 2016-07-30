@@ -636,8 +636,11 @@ span.since {
     margin-right: 5px;
 }
 
-.enum > .toggle-wrapper > .collapse-toggle, .struct > .toggle-wrapper > .collapse-toggle {
+.toggle-wrapper > .collapse-toggle {
     left: 0;
+}
+
+.variant + .toggle-wrapper > a {
     margin-top: 5px;
 }
 

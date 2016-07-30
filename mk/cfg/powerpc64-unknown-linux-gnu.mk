@@ -10,7 +10,7 @@ CFG_LIB_GLOB_powerpc64-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_powerpc64-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
 CFG_JEMALLOC_CFLAGS_powerpc64-unknown-linux-gnu := -m64
 CFG_CFLAGS_powerpc64-unknown-linux-gnu := -m64 $(CFLAGS)
-CFG_GCCISH_CFLAGS_powerpc64-unknown-linux-gnu := -Wall -Werror -g -fPIC -m64 $(CFLAGS)
+CFG_GCCISH_CFLAGS_powerpc64-unknown-linux-gnu :=  -g -fPIC -m64 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_powerpc64-unknown-linux-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_powerpc64-unknown-linux-gnu := -shared -fPIC -ldl -pthread  -lrt -g -m64
 CFG_GCCISH_DEF_FLAG_powerpc64-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=

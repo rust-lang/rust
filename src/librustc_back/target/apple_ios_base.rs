@@ -36,7 +36,7 @@ impl Arch {
     }
 }
 
-pub fn get_sdk_root(sdk_name: &str) -> String {
+pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
     let res = Command::new("xcrun")
                       .arg("--show-sdk-path")
                       .arg("-sdk")
@@ -55,12 +55,12 @@ pub fn get_sdk_root(sdk_name: &str) -> String {
                       });
 
     match res {
-        Ok(output) => output.trim().to_string(),
-        Err(e) => panic!("failed to get {} SDK path: {}", sdk_name, e)
+        Ok(output) => Ok(output.trim().to_string()),
+        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e))
     }
 }
 
-fn pre_link_args(arch: Arch) -> Vec<String> {
+fn build_pre_link_args(arch: Arch) -> Result<Vec<String>, String> {
     let sdk_name = match arch {
         Armv7 | Armv7s | Arm64 => "iphoneos",
         I386 | X86_64 => "iphonesimulator"
@@ -68,8 +68,10 @@ fn pre_link_args(arch: Arch) -> Vec<String> {
 
     let arch_name = arch.to_string();
 
-    vec!["-arch".to_string(), arch_name.to_string(),
-         "-Wl,-syslibroot".to_string(), get_sdk_root(sdk_name)]
+    let sdk_root = try!(get_sdk_root(sdk_name));
+
+    Ok(vec!["-arch".to_string(), arch_name.to_string(),
+         "-Wl,-syslibroot".to_string(), sdk_root])
 }
 
 fn target_cpu(arch: Arch) -> String {
@@ -82,13 +84,14 @@ fn target_cpu(arch: Arch) -> String {
     }.to_string()
 }
 
-pub fn opts(arch: Arch) -> TargetOptions {
-    TargetOptions {
+pub fn opts(arch: Arch) -> Result<TargetOptions, String> {
+    let pre_link_args = try!(build_pre_link_args(arch));
+    Ok(TargetOptions {
         cpu: target_cpu(arch),
         dynamic_linking: false,
         executables: true,
-        pre_link_args: pre_link_args(arch),
+        pre_link_args: pre_link_args,
         has_elf_tls: false,
         .. super::apple_base::opts()
-    }
+    })
 }

@@ -233,6 +233,7 @@ impl<'a> Classifier<'a> {
             token::Dot | token::DotDot | token::DotDotDot | token::Comma | token::Semi |
                 token::Colon | token::ModSep | token::LArrow | token::OpenDelim(_) |
                 token::CloseDelim(token::Brace) | token::CloseDelim(token::Paren) |
+                token::CloseDelim(token::NoDelim) |
                 token::Question => Class::None,
             token::Dollar => {
                 if self.lexer.peek().tok.is_ident() {

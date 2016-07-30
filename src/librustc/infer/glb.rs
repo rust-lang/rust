@@ -15,29 +15,29 @@ use super::Subtype;
 
 use ty::{self, Ty, TyCtxt};
 use ty::relate::{Relate, RelateResult, TypeRelation};
-use traits::PredicateObligations;
 
 /// "Greatest lower bound" (common subtype)
-pub struct Glb<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    fields: CombineFields<'a, 'gcx, 'tcx>
+pub struct Glb<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+    a_is_expected: bool,
 }
 
-impl<'a, 'gcx, 'tcx> Glb<'a, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'gcx, 'tcx>) -> Glb<'a, 'gcx, 'tcx> {
-        Glb { fields: fields }
-    }
-
-    pub fn obligations(self) -> PredicateObligations<'tcx> {
-        self.fields.obligations
+impl<'combine, 'infcx, 'gcx, 'tcx> Glb<'combine, 'infcx, 'gcx, 'tcx> {
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
+        -> Glb<'combine, 'infcx, 'gcx, 'tcx>
+    {
+        Glb { fields: fields, a_is_expected: a_is_expected }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Glb<'a, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
+    for Glb<'combine, 'infcx, 'gcx, 'tcx>
+{
     fn tag(&self) -> &'static str { "Glb" }
 
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
-    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+    fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,
                                              variance: ty::Variance,
@@ -46,10 +46,10 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Glb<'a, 'gcx, 'tcx> {
                                              -> RelateResult<'tcx, T>
     {
         match variance {
-            ty::Invariant => self.fields.equate().relate(a, b),
+            ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
-            ty::Bivariant => self.fields.bivariate().relate(a, b),
-            ty::Contravariant => self.fields.lub().relate(a, b),
+            ty::Bivariant => self.fields.bivariate(self.a_is_expected).relate(a, b),
+            ty::Contravariant => self.fields.lub(self.a_is_expected).relate(a, b),
         }
     }
 
@@ -71,17 +71,19 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Glb<'a, 'gcx, 'tcx> {
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        self.fields.higher_ranked_glb(a, b)
+        self.fields.higher_ranked_glb(a, b, self.a_is_expected)
     }
 }
 
-impl<'a, 'gcx, 'tcx> LatticeDir<'a, 'gcx, 'tcx> for Glb<'a, 'gcx, 'tcx> {
-    fn infcx(&self) -> &'a InferCtxt<'a, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx>
+    for Glb<'combine, 'infcx, 'gcx, 'tcx>
+{
+    fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'gcx, 'tcx> {
         self.fields.infcx
     }
 
-    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
-        let mut sub = self.fields.sub();
+    fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
+        let mut sub = self.fields.sub(self.a_is_expected);
         sub.relate(&v, &a)?;
         sub.relate(&v, &b)?;
         Ok(())

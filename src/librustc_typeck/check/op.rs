@@ -239,7 +239,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.type_error_message(ex.span, |actual| {
                     format!("cannot apply unary operator `{}` to type `{}`",
                             op_str, actual)
-                }, operand_ty, None);
+                }, operand_ty);
                 self.tcx.types.err
             }
         }

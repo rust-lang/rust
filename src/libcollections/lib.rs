@@ -33,6 +33,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![cfg_attr(not(test), feature(char_escape_debug))]
 #![feature(core_intrinsics)]
 #![feature(dropck_parametricity)]
 #![feature(fmt_internals)]

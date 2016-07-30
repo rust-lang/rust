@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
+pub fn target() -> TargetResult {
     let mut base = super::windows_msvc_base::opts();
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = 64;
 
-    Target {
+    Ok(Target {
         llvm_target: "x86_64-pc-windows-msvc".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -25,5 +25,5 @@ pub fn target() -> Target {
         target_env: "msvc".to_string(),
         target_vendor: "pc".to_string(),
         options: base,
-    }
+    })
 }

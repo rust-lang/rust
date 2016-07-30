@@ -10,7 +10,8 @@
 
 pub enum SomeEnum {
     B = SomeEnum::A,
-    //~^ ERROR constant evaluation error: unresolved path in constant expression
+    //~^ ERROR constant evaluation error
+    //~| unresolved path in constant expression
 }
 
 fn main() {}
