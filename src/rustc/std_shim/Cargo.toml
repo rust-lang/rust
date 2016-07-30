@@ -46,3 +46,4 @@ std = { path = "../../libstd" }
 [features]
 jemalloc = ["std/jemalloc"]
 debug-jemalloc = ["std/debug-jemalloc"]
+backtrace = ["std/backtrace"]

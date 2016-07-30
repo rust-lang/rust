@@ -652,6 +652,9 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
+        if self.config.backtrace {
+            features.push_str(" backtrace");
+        }
         return features
     }
 

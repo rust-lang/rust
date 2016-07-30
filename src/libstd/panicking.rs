@@ -28,9 +28,7 @@ use intrinsics;
 use mem;
 use raw;
 use sys_common::rwlock::RWLock;
-use sync::atomic::{AtomicBool, Ordering};
 use sys::stdio::Stderr;
-use sys_common::backtrace;
 use sys_common::thread_info;
 use sys_common::util;
 use thread;
@@ -71,7 +69,6 @@ enum Hook {
 
 static HOOK_LOCK: RWLock = RWLock::new();
 static mut HOOK: Hook = Hook::Default;
-static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
 /// Registers a custom panic hook, replacing any that was previously registered.
 ///
@@ -183,11 +180,17 @@ impl<'a> Location<'a> {
 }
 
 fn default_hook(info: &PanicInfo) {
-    let panics = PANIC_COUNT.with(|c| c.get());
+    #[cfg(any(not(cargobuild), feature = "backtrace"))]
+    use sys_common::backtrace;
 
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    let log_backtrace = panics >= 2 || backtrace::log_enabled();
+    #[cfg(any(not(cargobuild), feature = "backtrace"))]
+    let log_backtrace = {
+        let panics = PANIC_COUNT.with(|c| c.get());
+
+        panics >= 2 || backtrace::log_enabled()
+    };
 
     let file = info.location.file;
     let line = info.location.line;
@@ -207,10 +210,17 @@ fn default_hook(info: &PanicInfo) {
         let _ = writeln!(err, "thread '{}' panicked at '{}', {}:{}",
                          name, msg, file, line);
 
-        if log_backtrace {
-            let _ = backtrace::write(err);
-        } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
-            let _ = writeln!(err, "note: Run with `RUST_BACKTRACE=1` for a backtrace.");
+        #[cfg(any(not(cargobuild), feature = "backtrace"))]
+        {
+            use sync::atomic::{AtomicBool, Ordering};
+
+            static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
+
+            if log_backtrace {
+                let _ = backtrace::write(err);
+            } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
+                let _ = writeln!(err, "note: Run with `RUST_BACKTRACE=1` for a backtrace.");
+            }
         }
     };
 
