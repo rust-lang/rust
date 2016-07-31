@@ -365,7 +365,7 @@ numbers. A bare number like above is actually shorthand for `^0.3.0`,
 meaning "anything compatible with 0.3.0".
 If we wanted to use only `0.3.0` exactly, we could say `rand="=0.3.0"`
 (note the two equal signs).
-And if we wanted to use the latest version we could use `*`.
+And if we wanted to use the latest version we could use `rand="*"`.
 We could also use a range of versions.
 [Cargo’s documentation][cargodoc] contains more details.
 
