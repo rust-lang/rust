@@ -71,19 +71,6 @@ pub struct ImportDirective<'a> {
 }
 
 impl<'a> ImportDirective<'a> {
-    // Given the binding to which this directive resolves in a particular namespace,
-    // this returns the binding for the name this directive defines in that namespace.
-    fn import(&'a self, binding: &'a NameBinding<'a>) -> NameBinding<'a> {
-        NameBinding {
-            kind: NameBindingKind::Import {
-                binding: binding,
-                directive: self,
-            },
-            span: self.span,
-            vis: self.vis,
-        }
-    }
-
     pub fn is_glob(&self) -> bool {
         match self.subclass { ImportDirectiveSubclass::GlobImport { .. } => true, _ => false }
     }
@@ -258,6 +245,20 @@ impl<'a> ::ModuleS<'a> {
 }
 
 impl<'a> Resolver<'a> {
+    // Given a binding and an import directive that resolves to it,
+    // return the corresponding binding defined by the import directive.
+    fn import(&mut self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
+              -> NameBinding<'a> {
+        NameBinding {
+            kind: NameBindingKind::Import {
+                binding: binding,
+                directive: directive,
+            },
+            span: directive.span,
+            vis: directive.vis,
+        }
+    }
+
     // Define the name or return the existing binding if there is a collision.
     pub fn try_define<T>(&mut self, module: Module<'a>, name: Name, ns: Namespace, binding: T)
                          -> Result<(), &'a NameBinding<'a>>
@@ -305,7 +306,8 @@ impl<'a> Resolver<'a> {
         // Define `new_binding` in `module`s glob importers.
         if new_binding.is_importable() && new_binding.is_pseudo_public() {
             for &(importer, directive) in module.glob_importers.borrow_mut().iter() {
-                let _ = self.try_define(importer, name, ns, directive.import(new_binding));
+                let imported_binding = self.import(new_binding, directive);
+                let _ = self.try_define(importer, name, ns, imported_binding);
             }
         }
 
@@ -408,7 +410,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             });
-            let dummy_binding = directive.import(dummy_binding);
+            let dummy_binding = self.import(dummy_binding, directive);
 
             let _ = self.try_define(source_module, target, ValueNS, dummy_binding.clone());
             let _ = self.try_define(source_module, target, TypeNS, dummy_binding);
@@ -512,10 +514,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Success(binding) if !self.is_accessible(binding.vis) => {}
                 Success(binding) if !determined.get() => {
                     determined.set(true);
-                    let imported_binding = directive.import(binding);
+                    let imported_binding = self.import(binding, directive);
                     let conflict = self.try_define(module, target, ns, imported_binding);
                     if let Err(old_binding) = conflict {
-                        let binding = &directive.import(binding);
+                        let binding = &self.import(binding, directive);
                         self.report_conflict(module, target, ns, binding, old_binding);
                     }
                     privacy_error = false;
@@ -556,7 +558,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
                 let binding = match *result { Success(binding) => binding, _ => continue };
                 self.privacy_errors.push(PrivacyError(directive.span, source, binding));
-                let _ = self.try_define(module, target, ns, directive.import(binding));
+                let imported_binding = self.import(binding, directive);
+                let _ = self.try_define(module, target, ns, imported_binding);
             }
         }
 
@@ -638,7 +641,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
             if binding.is_importable() && binding.is_pseudo_public() {
-                let _ = self.try_define(module, name, ns, directive.import(binding));
+                let imported_binding = self.import(binding, directive);
+                let _ = self.try_define(module, name, ns, imported_binding);
             }
         }
 
