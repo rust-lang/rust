@@ -47,13 +47,13 @@ impl LintPass for UnusedLabel {
 }
 
 impl LateLintPass for UnusedLabel {
-    fn check_fn(&mut self, cx: &LateContext, kind: FnKind, decl: &hir::FnDecl, body: &hir::Block, span: Span, _: ast::NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, kind: FnKind, decl: &hir::FnDecl, body: &hir::Block, span: Span, fn_id: ast::NodeId) {
         if in_macro(cx, span) {
             return;
         }
 
         let mut v = UnusedLabelVisitor::new();
-        walk_fn(&mut v, kind, decl, body, span);
+        walk_fn(&mut v, kind, decl, body, span, fn_id);
 
         for (label, span) in v.labels {
             span_lint(cx, UNUSED_LABEL, span, &format!("unused label `{}`", label));
