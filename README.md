@@ -124,9 +124,10 @@ notes above on running rustfmt.
 ## Configuring Rustfmt
 
 Rustfmt is designed to be very configurable. You can create a TOML file called
-rustfmt.toml, place it in the project directory and it will apply the options
-in that file. See `rustfmt --config-help` for the options which are available,
-or if you prefer to see source code, [src/config.rs](src/config.rs).
+`rustfmt.toml` or `.rustfmt.toml`, place it in the project or any other parent
+directory and it will apply the options in that file. See `rustfmt
+--config-help` for the options which are available, or if you prefer to see
+source code, [src/config.rs](src/config.rs).
 
 By default, Rustfmt uses a style which (mostly) conforms to the
 [Rust style guidelines](https://github.com/rust-lang/rust/tree/master/src/doc/style).
@@ -148,8 +149,9 @@ options covering different styles. File an issue, or even better, submit a PR.
     #[rustfmt_skip]  // requires nightly and #![feature(custom_attribute)] in crate root
     #[cfg_attr(rustfmt, rustfmt_skip)]  // works in stable
     ```
-* When you run rustfmt, place a file named rustfmt.toml in target file
-  directory or its parents to override the default settings of rustfmt.
+* When you run rustfmt, place a file named `rustfmt.toml` or `.rustfmt.toml` in
+  target file directory or its parents to override the default settings of
+  rustfmt.
 * After successful compilation, a `rustfmt` executable can be found in the
   target directory.
 * If you're having issues compiling Rustfmt (or compile errors when trying to
