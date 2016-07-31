@@ -47,11 +47,11 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty};
 use rustc::infer::UpvarRegion;
-use std::collections::HashSet;
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
+use rustc::util::nodemap::NodeMap;
 
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
@@ -60,9 +60,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_analyze_fn(&self, body: &hir::Block) {
         let mut seed = SeedBorrowKind::new(self);
         seed.visit_block(body);
-        let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
 
-        let mut adjust = AdjustBorrowKind::new(self, &closures_with_inferred_kinds);
+        let mut adjust = AdjustBorrowKind::new(self, seed.temp_closure_kinds);
         adjust.visit_block(body);
 
         // it's our job to process these.
@@ -72,9 +71,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_analyze_const(&self, body: &hir::Expr) {
         let mut seed = SeedBorrowKind::new(self);
         seed.visit_expr(body);
-        let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
 
-        let mut adjust = AdjustBorrowKind::new(self, &closures_with_inferred_kinds);
+        let mut adjust = AdjustBorrowKind::new(self, seed.temp_closure_kinds);
         adjust.visit_expr(body);
 
         // it's our job to process these.
@@ -87,7 +85,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
 struct SeedBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-    closures_with_inferred_kinds: HashSet<ast::NodeId>,
+    temp_closure_kinds: NodeMap<ty::ClosureKind>,
 }
 
 impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'gcx, 'tcx> {
@@ -106,7 +104,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>) -> SeedBorrowKind<'a, 'gcx, 'tcx> {
-        SeedBorrowKind { fcx: fcx, closures_with_inferred_kinds: HashSet::new() }
+        SeedBorrowKind { fcx: fcx, temp_closure_kinds: NodeMap() }
     }
 
     fn check_closure(&mut self,
@@ -116,11 +114,8 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
     {
         let closure_def_id = self.fcx.tcx.map.local_def_id(expr.id);
         if !self.fcx.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
-            self.closures_with_inferred_kinds.insert(expr.id);
-            self.fcx.tables.borrow_mut().closure_kinds
-                                        .insert(closure_def_id, ty::ClosureKind::Fn);
-            debug!("check_closure: adding closure_id={:?} to closures_with_inferred_kinds",
-                   closure_def_id);
+            self.temp_closure_kinds.insert(expr.id, ty::ClosureKind::Fn);
+            debug!("check_closure: adding closure {:?} as Fn", expr.id);
         }
 
         self.fcx.tcx.with_freevars(expr.id, |freevars| {
@@ -154,14 +149,14 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
 
 struct AdjustBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-    closures_with_inferred_kinds: &'a HashSet<ast::NodeId>,
+    temp_closure_kinds: NodeMap<ty::ClosureKind>,
 }
 
 impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-           closures_with_inferred_kinds: &'a HashSet<ast::NodeId>)
+           temp_closure_kinds: NodeMap<ty::ClosureKind>)
            -> AdjustBorrowKind<'a, 'gcx, 'tcx> {
-        AdjustBorrowKind { fcx: fcx, closures_with_inferred_kinds: closures_with_inferred_kinds }
+        AdjustBorrowKind { fcx: fcx, temp_closure_kinds: temp_closure_kinds }
     }
 
     fn analyze_closure(&mut self,
@@ -176,7 +171,12 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id);
 
         {
-            let mut euv = euv::ExprUseVisitor::new(self, self.fcx);
+            let mut euv =
+                euv::ExprUseVisitor::with_options(self,
+                                                  self.fcx,
+                                                  mc::MemCategorizationOptions {
+                                                      during_closure_kind_inference: true
+                                                  });
             euv.walk_fn(decl, body);
         }
 
@@ -211,10 +211,14 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
             self.fcx.demand_eqtype(span, final_upvar_ty, upvar_ty);
         }
 
-        // Now we must process and remove any deferred resolutions,
-        // since we have a concrete closure kind.
+        // If we are also inferred the closure kind here, update the
+        // main table and process any deferred resolutions.
         let closure_def_id = self.fcx.tcx.map.local_def_id(id);
-        if self.closures_with_inferred_kinds.contains(&id) {
+        if let Some(&kind) = self.temp_closure_kinds.get(&id) {
+            self.fcx.tables.borrow_mut().closure_kinds
+                                        .insert(closure_def_id, kind);
+            debug!("closure_kind({:?}) = {:?}", closure_def_id, kind);
+
             let mut deferred_call_resolutions =
                 self.fcx.remove_deferred_call_resolutions(closure_def_id);
             for deferred_call_resolution in &mut deferred_call_resolutions {
@@ -259,7 +263,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
             })
     }
 
-    fn adjust_upvar_borrow_kind_for_consume(&self,
+    fn adjust_upvar_borrow_kind_for_consume(&mut self,
                                             cmt: mc::cmt<'tcx>,
                                             mode: euv::ConsumeMode)
     {
@@ -350,7 +354,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn adjust_upvar_borrow_kind_for_unique(&self, cmt: mc::cmt<'tcx>) {
+    fn adjust_upvar_borrow_kind_for_unique(&mut self, cmt: mc::cmt<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={:?})",
                cmt);
 
@@ -381,7 +385,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn try_adjust_upvar_deref(&self,
+    fn try_adjust_upvar_deref(&mut self,
                               note: &mc::Note,
                               borrow_kind: ty::BorrowKind)
                               -> bool
@@ -430,7 +434,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
     /// moving from left to right as needed (but never right to left).
     /// Here the argument `mutbl` is the borrow_kind that is required by
     /// some particular use.
-    fn adjust_upvar_borrow_kind(&self,
+    fn adjust_upvar_borrow_kind(&mut self,
                                 upvar_id: ty::UpvarId,
                                 upvar_capture: &mut ty::UpvarCapture,
                                 kind: ty::BorrowKind) {
@@ -460,36 +464,30 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn adjust_closure_kind(&self,
+    fn adjust_closure_kind(&mut self,
                            closure_id: ast::NodeId,
                            new_kind: ty::ClosureKind) {
         debug!("adjust_closure_kind(closure_id={}, new_kind={:?})",
                closure_id, new_kind);
 
-        if !self.closures_with_inferred_kinds.contains(&closure_id) {
-            return;
-        }
+        if let Some(&existing_kind) = self.temp_closure_kinds.get(&closure_id) {
+            debug!("adjust_closure_kind: closure_id={}, existing_kind={:?}, new_kind={:?}",
+                   closure_id, existing_kind, new_kind);
 
-        let closure_def_id = self.fcx.tcx.map.local_def_id(closure_id);
-        let closure_kinds = &mut self.fcx.tables.borrow_mut().closure_kinds;
-        let existing_kind = *closure_kinds.get(&closure_def_id).unwrap();
+            match (existing_kind, new_kind) {
+                (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+                (ty::ClosureKind::FnMut, ty::ClosureKind::Fn) |
+                (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+                (ty::ClosureKind::FnOnce, _) => {
+                    // no change needed
+                }
 
-        debug!("adjust_closure_kind: closure_id={}, existing_kind={:?}, new_kind={:?}",
-               closure_id, existing_kind, new_kind);
-
-        match (existing_kind, new_kind) {
-            (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
-            (ty::ClosureKind::FnMut, ty::ClosureKind::Fn) |
-            (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
-            (ty::ClosureKind::FnOnce, _) => {
-                // no change needed
-            }
-
-            (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) |
-            (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
-            (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
-                // new kind is stronger than the old kind
-                closure_kinds.insert(closure_def_id, new_kind);
+                (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) |
+                (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+                (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+                    // new kind is stronger than the old kind
+                    self.temp_closure_kinds.insert(closure_id, new_kind);
+                }
             }
         }
     }
