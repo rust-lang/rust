@@ -1810,6 +1810,8 @@ impl<'a> Resolver<'a> {
             if let Def::Trait(_) = path_res.base_def {
                 debug!("(resolving trait) found trait def: {:?}", path_res);
                 Ok(path_res)
+            } else if path_res.base_def == Def::Err {
+                Err(true)
             } else {
                 let mut err =
                     resolve_struct_error(self,
