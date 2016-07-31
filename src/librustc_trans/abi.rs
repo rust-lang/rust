@@ -326,10 +326,7 @@ impl FnType {
             }
         };
 
-        let ret_ty = match sig.output {
-            ty::FnConverging(ret_ty) => ret_ty,
-            ty::FnDiverging => ccx.tcx().mk_nil()
-        };
+        let ret_ty = sig.output;
         let mut ret = arg_of(ret_ty, true);
 
         if !type_is_fat_ptr(ccx.tcx(), ret_ty) {
@@ -470,7 +467,7 @@ impl FnType {
             };
             // Fat pointers are returned by-value.
             if !self.ret.is_ignore() {
-                if !type_is_fat_ptr(ccx.tcx(), sig.output.unwrap()) {
+                if !type_is_fat_ptr(ccx.tcx(), sig.output) {
                     fixup(&mut self.ret);
                 }
             }

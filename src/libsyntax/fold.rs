@@ -638,7 +638,6 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
         output: match output {
             FunctionRetTy::Ty(ty) => FunctionRetTy::Ty(fld.fold_ty(ty)),
             FunctionRetTy::Default(span) => FunctionRetTy::Default(span),
-            FunctionRetTy::None(span) => FunctionRetTy::None(span),
         },
         variadic: variadic
     })

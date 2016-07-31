@@ -383,14 +383,7 @@ fn enc_fn_sig<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     } else {
         write!(w, "N");
     }
-    match fsig.0.output {
-        ty::FnConverging(result_type) => {
-            enc_ty(w, cx, result_type);
-        }
-        ty::FnDiverging => {
-            write!(w, "z");
-        }
-    }
+    enc_ty(w, cx, fsig.0.output);
 }
 
 pub fn enc_builtin_bounds(w: &mut Cursor<Vec<u8>>, _cx: &ctxt, bs: &ty::BuiltinBounds) {

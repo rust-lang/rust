@@ -26,6 +26,7 @@ use syntax::parse::token::keywords;
 
 use std::ops::Deref;
 use std::rc::Rc;
+use std::iter;
 
 use basic_block::BasicBlock;
 
@@ -183,7 +184,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
         let locals = mir.temp_decls.iter().enumerate().map(|(i, decl)| {
             (mir::Lvalue::Temp(mir::Temp::new(i)), decl.ty)
-        }).chain(mir.return_ty.maybe_converging().map(|ty| (mir::Lvalue::ReturnPointer, ty)));
+        }).chain(iter::once((mir::Lvalue::ReturnPointer, mir.return_ty)));
 
         args.into_iter().chain(vars).chain(locals.map(|(lvalue, ty)| {
             let ty = bcx.monomorphize(&ty);

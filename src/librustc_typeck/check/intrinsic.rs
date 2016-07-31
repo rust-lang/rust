@@ -31,7 +31,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    n_tps: usize,
                                    abi: Abi,
                                    inputs: Vec<ty::Ty<'tcx>>,
-                                   output: ty::FnOutput<'tcx>) {
+                                   output: ty::Ty<'tcx>) {
     let tcx = ccx.tcx;
     let def_id = tcx.map.local_def_id(it.id);
     let i_ty = tcx.lookup_item_type(def_id);
@@ -104,9 +104,9 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 return;
             }
         };
-        (n_tps, inputs, ty::FnConverging(output))
+        (n_tps, inputs, output)
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
-        (0, Vec::new(), ty::FnConverging(tcx.mk_empty()))
+        (0, Vec::new(), tcx.mk_empty())
     } else {
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_nil()),
@@ -291,7 +291,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                     abi: Abi::Rust,
                     sig: ty::Binder(FnSig {
                         inputs: vec![mut_u8],
-                        output: ty::FnOutput::FnConverging(tcx.mk_nil()),
+                        output: tcx.mk_nil(),
                         variadic: false,
                     }),
                 });
@@ -304,7 +304,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 return;
             }
         };
-        (n_tps, inputs, ty::FnConverging(output))
+        (n_tps, inputs, output)
     };
     equate_intrinsic_type(ccx, it, n_tps, Abi::RustIntrinsic, inputs, output)
 }
@@ -377,7 +377,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                     }
                     match_intrinsic_type_to_type(ccx, "return value", it.span,
                                                  &mut structural_to_nomimal,
-                                                 &intr.output, sig.output.unwrap());
+                                                 &intr.output, sig.output);
                     return
                 }
                 None => {
@@ -390,7 +390,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
     };
 
     equate_intrinsic_type(ccx, it, n_tps, Abi::PlatformIntrinsic,
-                          inputs, ty::FnConverging(output))
+                          inputs, output)
 }
 
 // walk the expected type and the actual type in lock step, checking they're

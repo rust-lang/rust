@@ -29,7 +29,6 @@ use serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use hir;
 
-use self::FnOutput::*;
 use self::InferTy::*;
 use self::TypeVariants::*;
 
@@ -477,50 +476,6 @@ pub struct ClosureTy<'tcx> {
     pub sig: PolyFnSig<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub enum FnOutput<'tcx> {
-    FnConverging(Ty<'tcx>),
-    FnDiverging
-}
-
-impl<'tcx> FnOutput<'tcx> {
-    pub fn diverges(&self, tcx: TyCtxt) -> bool {
-        match *self {
-            FnConverging(ref ty) => ty.is_empty(tcx),
-            FnDiverging => true,
-        }
-    }
-
-    pub fn unwrap(self) -> Ty<'tcx> {
-        match self {
-            ty::FnConverging(t) => t,
-            ty::FnDiverging => bug!()
-        }
-    }
-
-    pub fn unwrap_or(self, def: Ty<'tcx>) -> Ty<'tcx> {
-        match self {
-            ty::FnConverging(t) => t,
-            ty::FnDiverging => def
-        }
-    }
-
-    pub fn maybe_converging(self) -> Option<Ty<'tcx>> {
-        match self {
-            ty::FnConverging(t) => Some(t),
-            ty::FnDiverging => None
-        }
-    }
-}
-
-pub type PolyFnOutput<'tcx> = Binder<FnOutput<'tcx>>;
-
-impl<'tcx> PolyFnOutput<'tcx> {
-    pub fn diverges(&self, tcx: TyCtxt) -> bool {
-        self.0.diverges(tcx)
-    }
-}
-
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
 ///
@@ -530,7 +485,7 @@ impl<'tcx> PolyFnOutput<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FnSig<'tcx> {
     pub inputs: Vec<Ty<'tcx>>,
-    pub output: FnOutput<'tcx>,
+    pub output: Ty<'tcx>,
     pub variadic: bool
 }
 
@@ -543,7 +498,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs[index])
     }
-    pub fn output(&self) -> ty::Binder<FnOutput<'tcx>> {
+    pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output.clone())
     }
     pub fn variadic(&self) -> bool {
@@ -1205,7 +1160,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         self.fn_sig().inputs()
     }
 
-    pub fn fn_ret(&self) -> Binder<FnOutput<'tcx>> {
+    pub fn fn_ret(&self) -> Binder<Ty<'tcx>> {
         self.fn_sig().output()
     }
 

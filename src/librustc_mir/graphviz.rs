@@ -12,7 +12,7 @@ use dot;
 use rustc::hir::def_id::DefId;
 use rustc::mir::repr::*;
 use rustc::mir::mir_map::MirMap;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 use std::fmt::Debug;
 use std::io::{self, Write};
 use syntax::ast::NodeId;
@@ -143,14 +143,7 @@ fn write_graph_label<'a, 'tcx, W: Write>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         write!(w, "{:?}: {}", Lvalue::Arg(Arg::new(i)), escape(&arg.ty))?;
     }
 
-    write!(w, ") -&gt; ")?;
-
-    // fn return type.
-    match mir.return_ty {
-        ty::FnOutput::FnConverging(ty) => write!(w, "{}", escape(ty))?,
-        ty::FnOutput::FnDiverging => write!(w, "!")?,
-    }
-
+    write!(w, ") -&gt; {}", escape(mir.return_ty))?;
     write!(w, r#"<br align="left"/>"#)?;
 
     // User variable types (including the user's name in a comment).

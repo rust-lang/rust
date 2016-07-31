@@ -160,12 +160,6 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         sig.super_fold_with(self)
     }
 
-    fn fold_output(&mut self,
-                      output: &ty::FnOutput<'tcx>)
-                      -> ty::FnOutput<'tcx> {
-        output.super_fold_with(self)
-    }
-
     fn fold_bare_fn_ty(&mut self,
                        fty: &'tcx ty::BareFnTy<'tcx>)
                        -> &'tcx ty::BareFnTy<'tcx>

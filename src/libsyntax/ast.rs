@@ -1567,9 +1567,6 @@ impl fmt::Debug for ImplPolarity {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum FunctionRetTy {
-    /// Functions with return type `!`that always
-    /// raise an error or exit (i.e. never return to the caller)
-    None(Span),
     /// Return type is not specified.
     ///
     /// Functions default to `()` and
@@ -1583,7 +1580,6 @@ pub enum FunctionRetTy {
 impl FunctionRetTy {
     pub fn span(&self) -> Span {
         match *self {
-            FunctionRetTy::None(span) => span,
             FunctionRetTy::Default(span) => span,
             FunctionRetTy::Ty(ref ty) => ty.span,
         }

@@ -803,7 +803,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
 
             let ref_ty = // invoked methods have LB regions instantiated:
-                bcx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
+                bcx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap();
             let elt_ty = match ref_ty.builtin_deref(true, ty::NoPreference) {
                 None => {
                     span_bug!(index_expr.span,
@@ -2060,7 +2060,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let ref_ty = // invoked methods have their LB regions instantiated
-                ccx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
+                ccx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap();
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
             bcx = Callee::method(bcx, method)

@@ -125,7 +125,7 @@ impl<'tcx> Lvalue<'tcx> {
             &Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
             &Lvalue::ReturnPointer =>
-                LvalueTy::Ty { ty: mir.return_ty.unwrap() },
+                LvalueTy::Ty { ty: mir.return_ty },
             &Lvalue::Projection(ref proj) =>
                 proj.base.ty(mir, tcx).projection_ty(tcx, &proj.elem),
         }

@@ -17,8 +17,7 @@ use self::VariableKind::*;
 use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
 use self::namespace::mangled_name_of_item;
 use self::type_names::compute_debuginfo_type_name;
-use self::metadata::{type_metadata, diverging_type_metadata};
-use self::metadata::{file_metadata, TypeMap};
+use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
@@ -325,12 +324,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let mut signature = Vec::with_capacity(sig.inputs.len() + 1);
 
         // Return type -- llvm::DIBuilder wants this at index 0
-        signature.push(match sig.output {
-            ty::FnConverging(ret_ty) => match ret_ty.sty {
-                ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
-                _ => type_metadata(cx, ret_ty, syntax_pos::DUMMY_SP)
-            },
-            ty::FnDiverging => diverging_type_metadata(cx)
+        signature.push(match sig.output.sty {
+            ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
+            _ => type_metadata(cx, sig.output, syntax_pos::DUMMY_SP)
         });
 
         let inputs = if abi == Abi::RustCall {
