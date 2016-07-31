@@ -19,6 +19,7 @@ use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common::{self, Block, BlockAndBuilder};
 use glue;
+use std::iter;
 use super::rvalue;
 
 pub fn lvalue_locals<'bcx, 'tcx>(bcx: Block<'bcx,'tcx>,
@@ -31,7 +32,7 @@ pub fn lvalue_locals<'bcx, 'tcx>(bcx: Block<'bcx,'tcx>,
     let local_types = mir.arg_decls.iter().map(|a| a.ty)
                .chain(mir.var_decls.iter().map(|v| v.ty))
                .chain(mir.temp_decls.iter().map(|t| t.ty))
-               .chain(mir.return_ty.maybe_converging());
+               .chain(iter::once(mir.return_ty));
     for (index, ty) in local_types.enumerate() {
         let ty = bcx.monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);

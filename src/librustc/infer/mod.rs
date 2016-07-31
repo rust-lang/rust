@@ -607,7 +607,6 @@ impl_trans_normalize!('gcx,
     Ty<'gcx>,
     &'gcx Substs<'gcx>,
     ty::FnSig<'gcx>,
-    ty::FnOutput<'gcx>,
     &'gcx ty::BareFnTy<'gcx>,
     ty::ClosureSubsts<'gcx>,
     ty::PolyTraitRef<'gcx>

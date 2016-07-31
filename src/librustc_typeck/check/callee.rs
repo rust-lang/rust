@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // set up all the node type bindings.
                 error_fn_sig = ty::Binder(ty::FnSig {
                     inputs: self.err_args(arg_exprs.len()),
-                    output: ty::FnConverging(self.tcx.types.err),
+                    output: self.tcx.types.err,
                     variadic: false
                 });
 
@@ -345,10 +345,9 @@ impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tc
                     fcx.demand_eqtype(self.call_expr.span, self_arg_ty, method_arg_ty);
                 }
 
-                let nilty = fcx.tcx.mk_nil();
                 fcx.demand_eqtype(self.call_expr.span,
-                                  method_sig.output.unwrap_or(nilty),
-                                  self.fn_sig.output.unwrap_or(nilty));
+                                  method_sig.output,
+                                  self.fn_sig.output);
 
                 fcx.write_overloaded_call_method_map(self.call_expr, method_callee);
             }

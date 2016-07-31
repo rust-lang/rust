@@ -1923,11 +1923,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let output_ty = match decl.output {
             hir::Return(ref output) =>
-                ty::FnConverging(self.convert_ty_with_lifetime_elision(implied_output_region,
-                                                                       &output,
-                                                                       ret_anon_scope)),
-            hir::DefaultReturn(..) => ty::FnConverging(self.tcx().mk_nil()),
-            hir::NoReturn(..) => ty::FnDiverging
+                self.convert_ty_with_lifetime_elision(implied_output_region,
+                                                      &output,
+                                                      ret_anon_scope),
+            hir::DefaultReturn(..) => self.tcx().mk_nil(),
         };
 
         (self.tcx().mk_bare_fn(ty::BareFnTy {
@@ -2070,11 +2069,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             _ if is_infer && expected_ret_ty.is_some() =>
                 expected_ret_ty.unwrap(),
             _ if is_infer =>
-                ty::FnConverging(self.ty_infer(None, None, None, decl.output.span())),
+                self.ty_infer(None, None, None, decl.output.span()),
             hir::Return(ref output) =>
-                ty::FnConverging(self.ast_ty_to_ty(&rb, &output)),
+                self.ast_ty_to_ty(&rb, &output),
             hir::DefaultReturn(..) => bug!(),
-            hir::NoReturn(..) => ty::FnDiverging
         };
 
         debug!("ty_of_closure: input_tys={:?}", input_tys);

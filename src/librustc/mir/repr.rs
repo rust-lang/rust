@@ -17,7 +17,7 @@ use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccesso
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use hir::def_id::DefId;
 use ty::subst::Substs;
-use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
+use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use util::ppaux;
 use rustc_back::slice;
 use hir::InlineAsm;
@@ -74,7 +74,7 @@ pub struct Mir<'tcx> {
     pub promoted: IndexVec<Promoted, Mir<'tcx>>,
 
     /// Return type of the function.
-    pub return_ty: FnOutput<'tcx>,
+    pub return_ty: Ty<'tcx>,
 
     /// Variables: these are stack slots corresponding to user variables. They may be
     /// assigned many times.
@@ -107,7 +107,7 @@ impl<'tcx> Mir<'tcx> {
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
                visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
-               return_ty: FnOutput<'tcx>,
+               return_ty: Ty<'tcx>,
                var_decls: IndexVec<Var, VarDecl<'tcx>>,
                arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
                temp_decls: IndexVec<Temp, TempDecl<'tcx>>,

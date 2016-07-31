@@ -111,7 +111,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     let fty = FnType::new(ccx, abi, &sig, &[]);
     let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.llvm_type(ccx));
 
-    if sig.output == ty::FnDiverging {
+    if sig.output.is_empty(ccx.tcx()) {
         llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
     }
 

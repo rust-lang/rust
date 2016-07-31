@@ -1326,7 +1326,6 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 self.rebuild_arg_ty_or_output(&ret_ty, lifetime, anon_nums, region_names)
             ),
             hir::DefaultReturn(span) => hir::DefaultReturn(span),
-            hir::NoReturn(span) => hir::NoReturn(span)
         }
     }
 

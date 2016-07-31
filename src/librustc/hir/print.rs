@@ -1962,10 +1962,6 @@ impl<'a> State<'a> {
                 self.maybe_print_comment(ty.span.lo)
             }
             hir::DefaultReturn(..) => unreachable!(),
-            hir::NoReturn(span) => {
-                self.word_nbsp("!")?;
-                self.maybe_print_comment(span.lo)
-            }
         }
     }
 
@@ -2198,7 +2194,6 @@ impl<'a> State<'a> {
         self.ibox(indent_unit)?;
         self.word_space("->")?;
         match decl.output {
-            hir::NoReturn(_) => self.word_nbsp("!")?,
             hir::DefaultReturn(..) => unreachable!(),
             hir::Return(ref ty) => self.print_type(&ty)?,
         }
