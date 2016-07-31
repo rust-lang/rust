@@ -1822,22 +1822,7 @@ impl<'a> Resolver<'a> {
 
             // If it's a typedef, give a note
             if let Def::TyAlias(..) = path_res.base_def {
-                let trait_name = trait_path.segments.last().unwrap().identifier.name;
-                err.span_label(trait_path.span, &format!("`{}` is not a trait", trait_name));
-
-                let definition_site = {
-                    let segments = &trait_path.segments;
-                    if trait_path.global {
-                        self.resolve_crate_relative_path(trait_path.span, segments, TypeNS)
-                    } else {
-                        self.resolve_module_relative_path(trait_path.span, segments, TypeNS)
-                    }.map(|binding| binding.span).unwrap_or(syntax_pos::DUMMY_SP)
-                };
-
-                if definition_site != syntax_pos::DUMMY_SP {
-                    err.span_label(definition_site,
-                                   &format!("type aliases cannot be used for traits"));
-                }
+                err.note(&format!("type aliases cannot be used for traits"));
             }
             err.emit();
             Err(true)
