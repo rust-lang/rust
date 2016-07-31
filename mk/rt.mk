@@ -384,7 +384,11 @@ COMPRT_OBJS_$(1) += emutls.o
 endif
 
 ifeq ($$(findstring msvc,$(1)),)
+
+ifeq ($$(findstring freebsd,$(1)),)
 COMPRT_OBJS_$(1) += gcc_personality_v0.o
+endif
+
 COMPRT_OBJS_$(1) += emutls.o
 
 ifeq ($$(findstring x86_64,$(1)),x86_64)
