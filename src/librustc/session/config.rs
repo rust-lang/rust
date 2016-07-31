@@ -30,7 +30,7 @@ use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
 
-use errors::{ColorConfig, Handler};
+use errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
 use std::collections::HashMap;
@@ -836,7 +836,10 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
     let target = match Target::search(&opts.target_triple) {
         Ok(t) => t,
         Err(e) => {
-            panic!(sp.fatal(&format!("Error loading target specification: {}", e)));
+            sp.struct_fatal(&format!("Error loading target specification: {}", e))
+                .help("Use `--print target-list` for a list of built-in targets")
+                .emit();
+            panic!(FatalError);
         }
     };
 
