@@ -2237,9 +2237,9 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // reachable from there, to start (if this is an inherent impl,
     // then just examine the self type).
     let mut input_parameters: HashSet<_> =
-        ctp::parameters_for_type(impl_scheme.ty, false).into_iter().collect();
+        ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
-        input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref, false));
+        input_parameters.extend(ctp::parameters_for(trait_ref, false));
     }
 
     ctp::setup_constraining_predicates(impl_predicates.predicates.get_mut_slice(TypeSpace),
@@ -2267,9 +2267,9 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
 
     let mut input_parameters: HashSet<_> =
-        ctp::parameters_for_type(impl_scheme.ty, false).into_iter().collect();
+        ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
-        input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref, false));
+        input_parameters.extend(ctp::parameters_for(trait_ref, false));
     }
     ctp::identify_constrained_type_params(
         &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
@@ -2280,7 +2280,7 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,
             ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
         })
-        .flat_map(|ty| ctp::parameters_for_type(ty, true))
+        .flat_map(|ty| ctp::parameters_for(&ty, true))
         .filter_map(|p| match p {
             ctp::Parameter::Type(_) => None,
             ctp::Parameter::Region(r) => Some(r),
