@@ -18,7 +18,7 @@ version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
  "core 0.0.0",
- "gcc 0.3.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.0.0",
 ]
 
@@ -49,7 +49,7 @@ version = "0.0.0"
 
 [[package]]
 name = "gcc"
-version = "0.3.26"
+version = "0.3.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -101,7 +101,7 @@ dependencies = [
  "build_helper 0.1.0",
  "collections 0.0.0",
  "core 0.0.0",
- "gcc 0.3.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.0.0",
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
