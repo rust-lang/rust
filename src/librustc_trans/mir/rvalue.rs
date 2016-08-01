@@ -131,27 +131,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     _ => {
                         // FIXME Shouldn't need to manually trigger closure instantiations.
                         if let mir::AggregateKind::Closure(def_id, substs) = *kind {
-                            use rustc::hir;
-                            use syntax::ast::DUMMY_NODE_ID;
-                            use syntax::ptr::P;
-                            use syntax_pos::DUMMY_SP;
                             use closure;
 
-                            closure::trans_closure_expr(closure::Dest::Ignore(bcx.ccx()),
-                                                        &hir::FnDecl {
-                                                            inputs: P::new(),
-                                                            output: hir::NoReturn(DUMMY_SP),
-                                                            variadic: false
-                                                        },
-                                                        &hir::Block {
-                                                            stmts: P::new(),
-                                                            expr: None,
-                                                            id: DUMMY_NODE_ID,
-                                                            rules: hir::DefaultBlock,
-                                                            span: DUMMY_SP
-                                                        },
-                                                        DUMMY_NODE_ID, def_id,
-                                                        bcx.monomorphize(&substs));
+                            closure::trans_closure_body_via_mir(bcx.ccx(),
+                                                                def_id,
+                                                                bcx.monomorphize(&substs));
                         }
 
                         for (i, operand) in operands.iter().enumerate() {

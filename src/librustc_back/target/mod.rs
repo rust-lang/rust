@@ -292,6 +292,13 @@ pub struct TargetOptions {
     pub is_like_android: bool,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
+    /// The MinGW toolchain has a known issue that prevents it from correctly
+    /// handling COFF object files with more than 2^15 sections. Since each weak
+    /// symbol needs its own COMDAT section, weak linkage implies a large
+    /// number sections that easily exceeds the given limit for larger
+    /// codebases. Consequently we want a way to disallow weak linkage on some
+    /// platforms.
+    pub allows_weak_linkage: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
     pub has_rpath: bool,
     /// Whether to disable linking to compiler-rt. Defaults to false, as LLVM
@@ -367,6 +374,7 @@ impl Default for TargetOptions {
             is_like_android: false,
             is_like_msvc: false,
             linker_is_gnu: false,
+            allows_weak_linkage: true,
             has_rpath: false,
             no_compiler_rt: false,
             no_default_libraries: true,
@@ -509,6 +517,7 @@ impl Target {
         key!(is_like_msvc, bool);
         key!(is_like_android, bool);
         key!(linker_is_gnu, bool);
+        key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
         key!(no_compiler_rt, bool);
         key!(no_default_libraries, bool);
@@ -651,6 +660,7 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_android);
         target_option_val!(linker_is_gnu);
+        target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
         target_option_val!(no_compiler_rt);
         target_option_val!(no_default_libraries);
