@@ -40,7 +40,7 @@ pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRe
         bug!("name {:?} contains an interior null byte", name)
     });
     unsafe {
-        llvm::LLVMGetOrInsertGlobal(ccx.llmod(), namebuf.as_ptr(), ty.to_ref())
+        llvm::LLVMRustGetOrInsertGlobal(ccx.llmod(), namebuf.as_ptr(), ty.to_ref())
     }
 }
 
@@ -55,7 +55,7 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
         bug!("name {:?} contains an interior null byte", name)
     });
     let llfn = unsafe {
-        llvm::LLVMGetOrInsertFunction(ccx.llmod(), namebuf.as_ptr(), ty.to_ref())
+        llvm::LLVMRustGetOrInsertFunction(ccx.llmod(), namebuf.as_ptr(), ty.to_ref())
     };
 
     llvm::SetFunctionCallConv(llfn, callconv);
@@ -173,7 +173,7 @@ pub fn get_declared_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)
     });
-    let val = unsafe { llvm::LLVMGetNamedValue(ccx.llmod(), namebuf.as_ptr()) };
+    let val = unsafe { llvm::LLVMRustGetNamedValue(ccx.llmod(), namebuf.as_ptr()) };
     if val.is_null() {
         debug!("get_declared_value: {:?} value is null", name);
         None

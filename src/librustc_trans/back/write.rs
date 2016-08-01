@@ -365,7 +365,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
                                         cookie: c_uint) {
     let HandlerFreeVars { cgcx, .. } = *(user as *const HandlerFreeVars);
 
-    let msg = llvm::build_string(|s| llvm::LLVMWriteSMDiagnosticToString(diag, s))
+    let msg = llvm::build_string(|s| llvm::LLVMRustWriteSMDiagnosticToString(diag, s))
         .expect("non-UTF8 SMDiagnostic");
 
     report_inline_asm(cgcx, &msg[..], cookie);
@@ -421,7 +421,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     };
     let fv = &fv as *const HandlerFreeVars as *mut c_void;
 
-    llvm::LLVMSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
+    llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
     llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, fv);
 
     let module_name = Some(&mtrans.name[..]);

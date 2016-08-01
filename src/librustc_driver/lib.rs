@@ -186,7 +186,7 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
     let sopts = config::build_session_options(&matches);
 
     if sopts.debugging_opts.debug_llvm {
-        unsafe { llvm::LLVMSetDebug(1); }
+        unsafe { llvm::LLVMRustSetDebug(1); }
     }
 
     let descriptions = diagnostics_registry();

@@ -504,12 +504,12 @@ fn fixed_vec_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     let subrange = unsafe {
-        llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)
+        llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)
     };
 
     let subscripts = create_DIArray(DIB(cx), &[subrange]);
     let metadata = unsafe {
-        llvm::LLVMDIBuilderCreateArrayType(
+        llvm::LLVMRustDIBuilderCreateArrayType(
             DIB(cx),
             bytes_to_bits(array_size_in_bytes),
             bytes_to_bits(element_type_align),
@@ -612,7 +612,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     return MetadataCreationResult::new(
         unsafe {
-            llvm::LLVMDIBuilderCreateSubroutineType(
+            llvm::LLVMRustDIBuilderCreateSubroutineType(
                 DIB(cx),
                 unknown_file_metadata(cx),
                 create_DIArray(DIB(cx), &signature_metadata[..]))
@@ -885,8 +885,8 @@ fn file_metadata_(cx: &CrateContext, key: &str, file_name: &str, work_dir: &str)
     let file_name = CString::new(file_name).unwrap();
     let work_dir = CString::new(work_dir).unwrap();
     let file_metadata = unsafe {
-        llvm::LLVMDIBuilderCreateFile(DIB(cx), file_name.as_ptr(),
-                                      work_dir.as_ptr())
+        llvm::LLVMRustDIBuilderCreateFile(DIB(cx), file_name.as_ptr(),
+                                          work_dir.as_ptr())
     };
 
     let mut created_files = debug_context(cx).created_files.borrow_mut();
@@ -916,7 +916,7 @@ pub fn scope_metadata(fcx: &FunctionContext,
 
 pub fn diverging_type_metadata(cx: &CrateContext) -> DIType {
     unsafe {
-        llvm::LLVMDIBuilderCreateBasicType(
+        llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
             "!\0".as_ptr() as *const _,
             bytes_to_bits(0),
@@ -951,7 +951,7 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let (size, align) = size_and_align_of(cx, llvm_type);
     let name = CString::new(name).unwrap();
     let ty_metadata = unsafe {
-        llvm::LLVMDIBuilderCreateBasicType(
+        llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
             name.as_ptr(),
             bytes_to_bits(size),
@@ -971,7 +971,7 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let name = compute_debuginfo_type_name(cx, pointer_type, false);
     let name = CString::new(name).unwrap();
     let ptr_metadata = unsafe {
-        llvm::LLVMDIBuilderCreatePointerType(
+        llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
             pointee_type_metadata,
             bytes_to_bits(pointer_size),
@@ -1017,7 +1017,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
     let flags = "\0";
     let split_name = "\0";
     return unsafe {
-        llvm::LLVMDIBuilderCreateCompileUnit(
+        llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
             DW_LANG_RUST,
             compile_unit_name,
@@ -1596,7 +1596,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let token = v.name.as_str();
             let name = CString::new(token.as_bytes()).unwrap();
             unsafe {
-                llvm::LLVMDIBuilderCreateEnumerator(
+                llvm::LLVMRustDIBuilderCreateEnumerator(
                     DIB(cx),
                     name.as_ptr(),
                     v.disr_val.to_u64_unchecked())
@@ -1623,7 +1623,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
                 let name = CString::new(discriminant_name.as_bytes()).unwrap();
                 let discriminant_type_metadata = unsafe {
-                    llvm::LLVMDIBuilderCreateEnumerationType(
+                    llvm::LLVMRustDIBuilderCreateEnumerationType(
                         DIB(cx),
                         containing_scope,
                         name.as_ptr(),
@@ -1667,7 +1667,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let enum_name = CString::new(enum_name).unwrap();
     let unique_type_id_str = CString::new(unique_type_id_str.as_bytes()).unwrap();
     let enum_metadata = unsafe {
-        llvm::LLVMDIBuilderCreateUnionType(
+        llvm::LLVMRustDIBuilderCreateUnionType(
         DIB(cx),
         containing_scope,
         enum_name.as_ptr(),
@@ -1769,7 +1769,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
             let member_name = member_description.name.as_bytes();
             let member_name = CString::new(member_name).unwrap();
             unsafe {
-                llvm::LLVMDIBuilderCreateMemberType(
+                llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
                     composite_type_metadata,
                     member_name.as_ptr(),
@@ -1786,13 +1786,14 @@ fn set_members_of_composite_type(cx: &CrateContext,
 
     unsafe {
         let type_array = create_DIArray(DIB(cx), &member_metadata[..]);
-        llvm::LLVMDICompositeTypeSetTypeArray(DIB(cx), composite_type_metadata, type_array);
+        llvm::LLVMRustDICompositeTypeSetTypeArray(
+            DIB(cx), composite_type_metadata, type_array);
     }
 }
 
-// A convenience wrapper around LLVMDIBuilderCreateStructType(). Does not do any
-// caching, does not add any fields to the struct. This can be done later with
-// set_members_of_composite_type().
+// A convenience wrapper around LLVMRustDIBuilderCreateStructType(). Does not do
+// any caching, does not add any fields to the struct. This can be done later
+// with set_members_of_composite_type().
 fn create_struct_stub(cx: &CrateContext,
                       struct_llvm_type: Type,
                       struct_type_name: &str,
@@ -1807,12 +1808,12 @@ fn create_struct_stub(cx: &CrateContext,
     let name = CString::new(struct_type_name).unwrap();
     let unique_type_id = CString::new(unique_type_id_str.as_bytes()).unwrap();
     let metadata_stub = unsafe {
-        // LLVMDIBuilderCreateStructType() wants an empty array. A null
+        // LLVMRustDIBuilderCreateStructType() wants an empty array. A null
         // pointer will lead to hard to trace and debug LLVM assertions
         // later on in llvm/lib/IR/Value.cpp.
         let empty_array = create_DIArray(DIB(cx), &[]);
 
-        llvm::LLVMDIBuilderCreateStructType(
+        llvm::LLVMRustDIBuilderCreateStructType(
             DIB(cx),
             containing_scope,
             name.as_ptr(),
@@ -1868,16 +1869,16 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
     unsafe {
-        llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
-                                                var_scope,
-                                                var_name.as_ptr(),
-                                                linkage_name.as_ptr(),
-                                                file_metadata,
-                                                line_number,
-                                                type_metadata,
-                                                is_local_to_unit,
-                                                global,
-                                                ptr::null_mut());
+        llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
+                                                    var_scope,
+                                                    var_name.as_ptr(),
+                                                    linkage_name.as_ptr(),
+                                                    file_metadata,
+                                                    line_number,
+                                                    type_metadata,
+                                                    is_local_to_unit,
+                                                    global,
+                                                    ptr::null_mut());
     }
 }
 
@@ -1980,10 +1981,10 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                               env_index);
 
     let address_operations = unsafe {
-        [llvm::LLVMDIBuilderCreateOpDeref(),
-         llvm::LLVMDIBuilderCreateOpPlus(),
+        [llvm::LLVMRustDIBuilderCreateOpDeref(),
+         llvm::LLVMRustDIBuilderCreateOpPlus(),
          byte_offset_of_var_in_env as i64,
-         llvm::LLVMDIBuilderCreateOpDeref()]
+         llvm::LLVMRustDIBuilderCreateOpDeref()]
     };
 
     let address_op_count = if captured_by_ref {
@@ -2021,7 +2022,7 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let scope_metadata = scope_metadata(bcx.fcx, binding.id, binding.span);
     let aops = unsafe {
-        [llvm::LLVMDIBuilderCreateOpDeref()]
+        [llvm::LLVMRustDIBuilderCreateOpDeref()]
     };
     // Regardless of the actual type (`T`) we're always passed the stack slot
     // (alloca) for the binding. For ByRef bindings that's a `T*` but for ByMove

@@ -80,10 +80,10 @@ pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
         unsafe {
             let attr = "no-frame-pointer-elim\0".as_ptr() as *const _;
             let val = "true\0".as_ptr() as *const _;
-            llvm::LLVMAddFunctionAttrStringValue(llfn,
-                                                 llvm::FunctionIndex as c_uint,
-                                                 attr,
-                                                 val);
+            llvm::LLVMRustAddFunctionAttrStringValue(llfn,
+                                                     llvm::FunctionIndex as c_uint,
+                                                     attr,
+                                                     val);
         }
     }
 }
