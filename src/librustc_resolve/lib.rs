@@ -1250,12 +1250,13 @@ impl<'a> Resolver<'a> {
                                      index: usize,
                                      span: Span)
                                      -> ResolveResult<Module<'a>> {
-        fn search_parent_externals(needle: Name, module: Module) -> Option<Module> {
-            match module.resolve_name(needle, TypeNS, false) {
+        fn search_parent_externals<'a>(this: &mut Resolver<'a>, needle: Name, module: Module<'a>)
+                                       -> Option<Module<'a>> {
+            match this.resolve_name_in_module(module, needle, TypeNS, false, false) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
                 _ => match module.parent_link {
                     ModuleParentLink(ref parent, _) => {
-                        search_parent_externals(needle, parent)
+                        search_parent_externals(this, needle, parent)
                     }
                     _ => None,
                 },
@@ -1275,11 +1276,12 @@ impl<'a> Resolver<'a> {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
                     let msg = if "???" == &module_name {
-                        match search_parent_externals(name, &self.current_module) {
+                        let current_module = self.current_module;
+                        match search_parent_externals(self, name, current_module) {
                             Some(module) => {
                                 let path_str = names_to_string(module_path);
                                 let target_mod_str = module_to_string(&module);
-                                let current_mod_str = module_to_string(&self.current_module);
+                                let current_mod_str = module_to_string(current_module);
 
                                 let prefix = if target_mod_str == current_mod_str {
                                     "self::".to_string()
@@ -1436,8 +1438,8 @@ impl<'a> Resolver<'a> {
                 if module.def.is_some() {
                     return match self.prelude {
                         Some(prelude) if !module.no_implicit_prelude.get() => {
-                            prelude.resolve_name(name, ns, false).success()
-                                   .map(LexicalScopeBinding::Item)
+                            self.resolve_name_in_module(prelude, name, ns, false, false).success()
+                                .map(LexicalScopeBinding::Item)
                         }
                         _ => None,
                     };
@@ -1521,27 +1523,6 @@ impl<'a> Resolver<'a> {
                module_to_string(&containing_module));
 
         return Success(PrefixFound(containing_module, i));
-    }
-
-    /// Attempts to resolve the supplied name in the given module for the
-    /// given namespace. If successful, returns the binding corresponding to
-    /// the name.
-    fn resolve_name_in_module(&mut self,
-                              module: Module<'a>,
-                              name: Name,
-                              namespace: Namespace,
-                              use_lexical_scope: bool,
-                              record_used: bool)
-                              -> ResolveResult<&'a NameBinding<'a>> {
-        debug!("(resolving name in module) resolving `{}` in `{}`", name, module_to_string(module));
-
-        self.populate_module_if_necessary(module);
-        module.resolve_name(name, namespace, use_lexical_scope).and_then(|binding| {
-            if record_used {
-                self.record_use(name, namespace, binding);
-            }
-            Success(binding)
-        })
     }
 
     // AST resolution
