@@ -391,7 +391,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    if let Some(higher::Range { start: Some(ref start), ref end, limits }) = higher::range(arg) {
+    if let Some(higher::Range { start: Some(start), ref end, limits }) = higher::range(arg) {
         // the var must be a single name
         if let PatKind::Binding(_, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
@@ -425,7 +425,7 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                     format!(".skip({})", snippet(cx, start.span, ".."))
                 };
 
-                let take = if let Some(ref end) = *end {
+                let take = if let Some(end) = *end {
                     if is_len_call(end, &indexed) {
                         "".to_owned()
                     } else {
@@ -494,7 +494,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
 
 fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
-    if let Some(higher::Range { start: Some(ref start), end: Some(ref end), limits }) = higher::range(arg) {
+    if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(arg) {
         // ...and both sides are compile-time constant integers...
         if let Ok(start_idx) = eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None) {
             if let Ok(end_idx) = eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None) {
@@ -873,7 +873,7 @@ fn is_break_expr(expr: &Expr) -> bool {
         ExprBreak(None) => true,
         ExprBlock(ref b) => {
             match extract_first_expr(b) {
-                Some(ref subexpr) => is_break_expr(subexpr),
+                Some(subexpr) => is_break_expr(subexpr),
                 None => false,
             }
         }

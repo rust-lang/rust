@@ -262,7 +262,7 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
                     None
                 };
 
-                if let Some((ref true_expr, ref false_expr)) = exprs {
+                if let Some((true_expr, false_expr)) = exprs {
                     let sugg = match (is_unit_expr(true_expr), is_unit_expr(false_expr)) {
                         (false, false) => {
                             Some(format!("if {} {} else {}",

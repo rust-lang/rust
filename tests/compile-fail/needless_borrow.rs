@@ -17,6 +17,7 @@ fn main() {
     let vec = Vec::new();
     let vec_val = g(&vec); // should not error, because `&Vec<T>` derefs to `&[T]`
     h(&"foo"); // should not error, because the `&&str` is required, due to `&Trait`
+    if let Some(ref cake) = Some(&5) {} //~ ERROR: this pattern creates a reference to a reference
 }
 
 fn f<T:Copy>(y: &T) -> T {

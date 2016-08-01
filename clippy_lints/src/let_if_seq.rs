@@ -60,7 +60,7 @@ impl LintPass for LetIfSeq {
 impl LateLintPass for LetIfSeq {
     fn check_block(&mut self, cx: &LateContext, block: &hir::Block) {
         let mut it = block.stmts.iter().peekable();
-        while let Some(ref stmt) = it.next() {
+        while let Some(stmt) = it.next() {
             if_let_chain! {[
                 let Some(expr) = it.peek(),
                 let hir::StmtDecl(ref decl, _) = stmt.node,

@@ -73,7 +73,7 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                     }
                     _ => (),
                 }
-                for (ref a1, ref a2) in decl.inputs.iter().zip(args) {
+                for (a1, a2) in decl.inputs.iter().zip(args) {
                     if let PatKind::Binding(_, ident, _) = a1.pat.node {
                         // XXXManishearth Should I be checking the binding mode here?
                         if let ExprPath(None, ref p) = a2.node {

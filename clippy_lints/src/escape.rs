@@ -39,7 +39,7 @@ declare_lint! {
 
 fn is_non_trait_box(ty: ty::Ty) -> bool {
     match ty.sty {
-        ty::TyBox(ref inner) => !inner.is_trait(),
+        ty::TyBox(inner) => !inner.is_trait(),
         _ => false,
     }
 }
@@ -190,7 +190,7 @@ impl<'a, 'tcx: 'a+'gcx, 'gcx: 'a> EscapeDelegate<'a, 'tcx, 'gcx> {
         // Large types need to be boxed to avoid stack
         // overflows.
         match ty.sty {
-            ty::TyBox(ref inner) => {
+            ty::TyBox(inner) => {
                 if let Ok(layout) = inner.layout(self.infcx) {
                     let size = layout.size(&self.target);
                     size.bytes() > self.too_large_for_stack

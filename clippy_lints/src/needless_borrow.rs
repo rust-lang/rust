@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc::hir::{ExprAddrOf, Expr, MutImmutable};
+use rustc::hir::{ExprAddrOf, Expr, MutImmutable, Pat, PatKind, BindingMode};
 use rustc::ty::TyRef;
 use utils::{span_lint, in_macro};
 use rustc::ty::adjustment::AutoAdjustment::AdjustDerefRef;
@@ -48,6 +48,23 @@ impl LateLintPass for NeedlessBorrow {
                                   e.span,
                                   "this expression borrows a reference that is immediately dereferenced by the \
                                    compiler");
+                    }
+                }
+            }
+        }
+    }
+    fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
+        if in_macro(cx, pat.span) {
+            return;
+        }
+        if let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _) = pat.node {
+            if let TyRef(_, ref tam) = cx.tcx.pat_ty(pat).sty {
+                if tam.mutbl == MutImmutable {
+                    if let TyRef(..) = tam.ty.sty {
+                        span_lint(cx,
+                                  NEEDLESS_BORROW,
+                                  pat.span,
+                                  "this pattern creates a reference to a reference")
                     }
                 }
             }

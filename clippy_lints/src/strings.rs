@@ -82,7 +82,7 @@ impl LateLintPass for StringAdd {
                     // the string_add_assign is allow, so no duplicates
                 } else {
                     let parent = get_parent_expr(cx, e);
-                    if let Some(ref p) = parent {
+                    if let Some(p) = parent {
                         if let ExprAssign(ref target, _) = p.node {
                             // avoid duplicate matches
                             if SpanlessEq::new(cx).eq_expr(target, left) {

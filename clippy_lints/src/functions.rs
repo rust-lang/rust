@@ -71,7 +71,7 @@ impl LateLintPass for Functions {
     fn check_fn(&mut self, cx: &LateContext, kind: intravisit::FnKind, decl: &hir::FnDecl, block: &hir::Block, span: Span, nodeid: ast::NodeId) {
         use rustc::hir::map::Node::*;
 
-        let is_impl = if let Some(NodeItem(ref item)) = cx.tcx.map.find(cx.tcx.map.get_parent_node(nodeid)) {
+        let is_impl = if let Some(NodeItem(item)) = cx.tcx.map.find(cx.tcx.map.get_parent_node(nodeid)) {
             matches!(item.node, hir::ItemImpl(_, _, _, Some(_), _, _) | hir::ItemDefaultImpl(..))
         } else {
             false

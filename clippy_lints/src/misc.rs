@@ -55,7 +55,7 @@ impl LateLintPass for TopLevelRefPass {
             // Does not apply to closures
             return;
         }
-        for ref arg in &decl.inputs {
+        for arg in &decl.inputs {
             if let PatKind::Binding(BindByRef(_), _, _) = arg.pat.node {
                 span_lint(cx,
                           TOPLEVEL_REF_ARG,
@@ -464,7 +464,7 @@ impl LateLintPass for UsedUnderscoreBinding {
 /// Heuristic to see if an expression is used. Should be compatible with `unused_variables`'s idea
 /// of what it means for an expression to be "used".
 fn is_used(cx: &LateContext, expr: &Expr) -> bool {
-    if let Some(ref parent) = get_parent_expr(cx, expr) {
+    if let Some(parent) = get_parent_expr(cx, expr) {
         match parent.node {
             ExprAssign(_, ref rhs) |
             ExprAssignOp(_, _, ref rhs) => **rhs == *expr,

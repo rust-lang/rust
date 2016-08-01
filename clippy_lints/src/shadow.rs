@@ -161,12 +161,12 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
             }
         }
         PatKind::Struct(_, ref pfields, _) => {
-            if let Some(ref init_struct) = *init {
+            if let Some(init_struct) = *init {
                 if let ExprStruct(_, ref efields, _) = init_struct.node {
                     for field in pfields {
                         let name = field.node.name;
                         let efield = efields.iter()
-                                            .find(|ref f| f.name.node == name)
+                                            .find(|f| f.name.node == name)
                                             .map(|f| &*f.expr);
                         check_pat(cx, &field.node.pat, &efield, span, bindings);
                     }
@@ -182,7 +182,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
             }
         }
         PatKind::Tuple(ref inner, _) => {
-            if let Some(ref init_tup) = *init {
+            if let Some(init_tup) = *init {
                 if let ExprTup(ref tup) = init_tup.node {
                     for (i, p) in inner.iter().enumerate() {
                         check_pat(cx, p, &Some(&tup[i]), p.span, bindings);
@@ -199,7 +199,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
             }
         }
         PatKind::Box(ref inner) => {
-            if let Some(ref initp) = *init {
+            if let Some(initp) = *init {
                 if let ExprBox(ref inner_init) = initp.node {
                     check_pat(cx, inner, &Some(&**inner_init), span, bindings);
                 } else {
@@ -276,7 +276,7 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
         // ExprCall
         // ExprMethodCall
         ExprVec(ref v) | ExprTup(ref v) => {
-            for ref e in v {
+            for e in v {
                 check_expr(cx, e, bindings)
             }
         }
@@ -294,8 +294,8 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
         ExprMatch(ref init, ref arms, _) => {
             check_expr(cx, init, bindings);
             let len = bindings.len();
-            for ref arm in arms {
-                for ref pat in &arm.pats {
+            for arm in arms {
+                for pat in &arm.pats {
                     check_pat(cx, pat, &Some(&**init), pat.span, bindings);
                     // This is ugly, but needed to get the right type
                     if let Some(ref guard) = arm.guard {
@@ -321,7 +321,7 @@ fn check_ty(cx: &LateContext, ty: &Ty, bindings: &mut Vec<(Name, Span)>) {
         TyPtr(MutTy { ty: ref mty, .. }) |
         TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
         TyTup(ref tup) => {
-            for ref t in tup {
+            for t in tup {
                 check_ty(cx, t, bindings)
             }
         }
@@ -335,7 +335,7 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
         ExprBox(ref inner) |
         ExprAddrOf(_, ref inner) => is_self_shadow(name, inner),
         ExprBlock(ref block) => {
-            block.stmts.is_empty() && block.expr.as_ref().map_or(false, |ref e| is_self_shadow(name, e))
+            block.stmts.is_empty() && block.expr.as_ref().map_or(false, |e| is_self_shadow(name, e))
         }
         ExprUnary(op, ref inner) => (UnDeref == op) && is_self_shadow(name, inner),
         ExprPath(_, ref path) => path_eq_name(name, path),

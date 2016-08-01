@@ -320,7 +320,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// A block can only yield a constant if it only has one constant expression
     fn block(&mut self, block: &Block) -> Option<Constant> {
         if block.stmts.is_empty() {
-            block.expr.as_ref().and_then(|ref b| self.expr(b))
+            block.expr.as_ref().and_then(|b| self.expr(b))
         } else {
             None
         }

@@ -58,7 +58,7 @@ impl LateLintPass for AttrPass {
             if items.is_empty() || name != &"deprecated" {
                 return;
             }
-            for ref item in items {
+            for item in items {
                 if let MetaItemKind::NameValue(ref name, ref lit) = item.node {
                     if name == &"since" {
                         check_semver(cx, item.span, lit);
