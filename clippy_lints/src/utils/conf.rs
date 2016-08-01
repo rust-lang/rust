@@ -55,7 +55,7 @@ impl fmt::Display for Error {
 
                 Ok(())
             }
-            Error::Type(ref key, ref expected, ref got) => {
+            Error::Type(key, expected, got) => {
                 write!(f, "`{}` is expected to be a `{}` but is a `{}`", key, expected, got)
             }
             Error::UnknownKey(ref key) => write!(f, "unknown key `{}`", key),

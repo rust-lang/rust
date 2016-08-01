@@ -138,7 +138,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
             // do not require the file to exist
-            let (ref file_name, must_exist) = if let Some(ref file_name) = file_name {
+            let (file_name, must_exist) = if let Some(ref file_name) = file_name {
                 (&**file_name, true)
             } else {
                 ("clippy.toml", false)

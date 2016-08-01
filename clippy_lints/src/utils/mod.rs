@@ -154,8 +154,8 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
 /// Check if type is struct or enum type with given def path.
 pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
     match ty.sty {
-        ty::TyEnum(ref adt, _) |
-        ty::TyStruct(ref adt, _) => match_def_path(cx, adt.did, path),
+        ty::TyEnum(adt, _) |
+        ty::TyStruct(adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }
 }
@@ -427,7 +427,7 @@ pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c 
                             .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
-            Node::NodeBlock(ref block) => Some(block),
+            Node::NodeBlock(block) => Some(block),
             Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
             _ => None,
         }
@@ -719,8 +719,8 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty
 /// Return whether the given type is an `unsafe` function.
 pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     match ty.sty {
-        ty::TyFnDef(_, _, ref f) |
-        ty::TyFnPtr(ref f) => f.unsafety == Unsafety::Unsafe,
+        ty::TyFnDef(_, _, f) |
+        ty::TyFnPtr(f) => f.unsafety == Unsafety::Unsafe,
         _ => false,
     }
 }

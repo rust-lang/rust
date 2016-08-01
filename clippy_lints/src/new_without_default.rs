@@ -95,7 +95,7 @@ impl LateLintPass for NewWithoutDefault {
             return;
         }
 
-        if let FnKind::Method(name, ref sig, _, _) = kind {
+        if let FnKind::Method(name, sig, _, _) = kind {
             if sig.constness == hir::Constness::Const {
                 // can't be implemented by default
                 return;
@@ -147,7 +147,7 @@ impl LateLintPass for NewWithoutDefault {
 
 fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> bool {
     match ty.sty {
-        ty::TyStruct(ref adt_def, ref substs) => {
+        ty::TyStruct(adt_def, substs) => {
             for field in adt_def.all_fields() {
                 let f_ty = field.ty(cx.tcx, substs);
                 if !implements_trait(cx, f_ty, default_trait_id, Vec::new()) {
