@@ -330,6 +330,11 @@ impl Options {
             self.debugging_opts.dump_dep_graph ||
             self.debugging_opts.query_dep_graph
     }
+
+    pub fn single_codegen_unit(&self) -> bool {
+        self.incremental.is_none() ||
+        self.cg.codegen_units == 1
+    }
 }
 
 // The type of entry function, so
@@ -654,7 +659,6 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     panic: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy,
         "panic strategy to compile crate with"),
 }
-
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          build_debugging_options, "Z", "debugging",

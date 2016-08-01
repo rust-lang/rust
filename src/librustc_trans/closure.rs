@@ -181,6 +181,41 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llfn
 }
 
+fn translating_closure_body_via_mir_will_fail(ccx: &CrateContext,
+                                              closure_def_id: DefId)
+                                              -> bool {
+    let default_to_mir = ccx.sess().opts.debugging_opts.orbit;
+    let invert = if default_to_mir { "rustc_no_mir" } else { "rustc_mir" };
+    let use_mir = default_to_mir ^ ccx.tcx().has_attr(closure_def_id, invert);
+
+    !use_mir
+}
+
+pub fn trans_closure_body_via_mir<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                            closure_def_id: DefId,
+                                            closure_substs: ty::ClosureSubsts<'tcx>) {
+    use syntax::ast::DUMMY_NODE_ID;
+    use syntax_pos::DUMMY_SP;
+    use syntax::ptr::P;
+
+    trans_closure_expr(Dest::Ignore(ccx),
+                       &hir::FnDecl {
+                           inputs: P::new(),
+                           output: hir::NoReturn(DUMMY_SP),
+                           variadic: false
+                       },
+                       &hir::Block {
+                           stmts: P::new(),
+                           expr: None,
+                           id: DUMMY_NODE_ID,
+                           rules: hir::DefaultBlock,
+                           span: DUMMY_SP
+                       },
+                       DUMMY_NODE_ID,
+                       closure_def_id,
+                       closure_substs);
+}
+
 pub enum Dest<'a, 'tcx: 'a> {
     SaveIn(Block<'a, 'tcx>, ValueRef),
     Ignore(&'a CrateContext<'a, 'tcx>)
@@ -213,8 +248,13 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // If we have not done so yet, translate this closure's body
     if  !ccx.instances().borrow().contains_key(&instance) {
         let llfn = get_or_create_closure_declaration(ccx, closure_def_id, closure_substs);
-        llvm::SetLinkage(llfn, llvm::WeakODRLinkage);
-        llvm::SetUniqueComdat(ccx.llmod(), llfn);
+
+        if ccx.sess().target.target.options.allows_weak_linkage {
+            llvm::SetLinkage(llfn, llvm::WeakODRLinkage);
+            llvm::SetUniqueComdat(ccx.llmod(), llfn);
+        } else {
+            llvm::SetLinkage(llfn, llvm::InternalLinkage);
+        }
 
         // set an inline hint for all closures
         attributes::inline(llfn, attributes::InlineAttr::Hint);
@@ -295,6 +335,39 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 {
     // If this is a closure, redirect to it.
     let llfn = get_or_create_closure_declaration(ccx, closure_def_id, substs);
+
+    // If weak linkage is not allowed, we have to make sure that a local,
+    // private copy of the closure is available in this codegen unit
+    if !ccx.sess().target.target.options.allows_weak_linkage &&
+       !ccx.sess().opts.single_codegen_unit() {
+
+        if let Some(node_id) = ccx.tcx().map.as_local_node_id(closure_def_id) {
+            // If the closure is defined in the local crate, we can always just
+            // translate it.
+            let (decl, body) = match ccx.tcx().map.expect_expr(node_id).node {
+                hir::ExprClosure(_, ref decl, ref body, _) => (decl, body),
+                _ => { unreachable!() }
+            };
+
+            trans_closure_expr(Dest::Ignore(ccx),
+                               decl,
+                               body,
+                               node_id,
+                               closure_def_id,
+                               substs);
+        } else {
+            // If the closure is defined in an upstream crate, we can only
+            // translate it if MIR-trans is active.
+
+            if translating_closure_body_via_mir_will_fail(ccx, closure_def_id) {
+                ccx.sess().fatal("You have run into a known limitation of the \
+                                  MingW toolchain. Either compile with -Zorbit or \
+                                  with -Ccodegen-units=1 to work around it.");
+            }
+
+            trans_closure_body_via_mir(ccx, closure_def_id, substs);
+        }
+    }
 
     // If the closure is a Fn closure, but a FnOnce is needed (etc),
     // then adapt the self type
