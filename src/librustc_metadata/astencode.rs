@@ -88,8 +88,9 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
            rbml_w.writer.seek(SeekFrom::Current(0)));
 
     // Folding could be avoided with a smarter encoder.
-    let ii = simplify_ast(ii);
+    let (ii, expected_id_range) = simplify_ast(ii);
     let id_range = inlined_item_id_range(&ii);
+    assert_eq!(expected_id_range, id_range);
 
     rbml_w.start_tag(c::tag_ast as usize);
     id_range.encode(rbml_w);
@@ -186,6 +187,10 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
     pub fn tr_id(&self, id: ast::NodeId) -> ast::NodeId {
         // from_id_range should be non-empty
         assert!(!self.from_id_range.empty());
+        // Make sure that translating the NodeId will actually yield a
+        // meaningful result
+        assert!(self.from_id_range.contains(id));
+
         // Use wrapping arithmetic because otherwise it introduces control flow.
         // Maybe we should just have the control flow? -- aatch
         (id.wrapping_sub(self.from_id_range.min).wrapping_add(self.to_id_range.min))
@@ -279,9 +284,23 @@ fn encode_ast(rbml_w: &mut Encoder, item: &InlinedItem) {
     rbml_w.end_tag();
 }
 
-struct NestedItemsDropper;
+struct NestedItemsDropper {
+    id_range: IdRange
+}
 
 impl Folder for NestedItemsDropper {
+
+    // The unit tests below run on HIR with NodeIds not properly assigned. That
+    // causes an integer overflow. So we just don't track the id_range when
+    // building the unit tests.
+    #[cfg(not(test))]
+    fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
+        // Record the range of NodeIds we are visiting, so we can do a sanity
+        // check later
+        self.id_range.add(id);
+        id
+    }
+
     fn fold_block(&mut self, blk: P<hir::Block>) -> P<hir::Block> {
         blk.and_then(|hir::Block {id, stmts, expr, rules, span, ..}| {
             let stmts_sans_items = stmts.into_iter().filter_map(|stmt| {
@@ -322,10 +341,12 @@ impl Folder for NestedItemsDropper {
 // As it happens, trans relies on the fact that we do not export
 // nested items, as otherwise it would get confused when translating
 // inlined items.
-fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
-    let mut fld = NestedItemsDropper;
+fn simplify_ast(ii: InlinedItemRef) -> (InlinedItem, IdRange) {
+    let mut fld = NestedItemsDropper {
+        id_range: IdRange::max()
+    };
 
-    match ii {
+    let ii = match ii {
         // HACK we're not dropping items.
         InlinedItemRef::Item(i) => {
             InlinedItem::Item(P(fold::noop_fold_item(i.clone(), &mut fld)))
@@ -339,7 +360,9 @@ fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
         InlinedItemRef::Foreign(i) => {
             InlinedItem::Foreign(P(fold::noop_fold_foreign_item(i.clone(), &mut fld)))
         }
-    }
+    };
+
+    (ii, fld.id_range)
 }
 
 fn decode_ast(item_doc: rbml::Doc) -> InlinedItem {
@@ -361,8 +384,18 @@ impl tr for Def {
         match *self {
           Def::Fn(did) => Def::Fn(did.tr(dcx)),
           Def::Method(did) => Def::Method(did.tr(dcx)),
-          Def::SelfTy(opt_did, impl_id) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
-                                                         impl_id.map(|id| dcx.tr_id(id))) }
+          Def::SelfTy(opt_did, impl_id) => {
+              // Since the impl_id will never lie within the reserved range of
+              // imported NodeIds, it does not make sense to translate it.
+              // The result would not make any sense within the importing crate.
+              // We also don't allow for impl items to be inlined (just their
+              // members), so even if we had a DefId here, we wouldn't be able
+              // to do much with it.
+              // So, we set the id to DUMMY_NODE_ID. That way we make it
+              // explicit that this is no usable NodeId.
+              Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
+                          impl_id.map(|_| ast::DUMMY_NODE_ID))
+          }
           Def::Mod(did) => { Def::Mod(did.tr(dcx)) }
           Def::ForeignMod(did) => { Def::ForeignMod(did.tr(dcx)) }
           Def::Static(did, m) => { Def::Static(did.tr(dcx), m) }
@@ -1361,7 +1394,7 @@ fn test_simplification() {
     with_testing_context(|lcx| {
         let hir_item = lcx.lower_item(&item);
         let item_in = InlinedItemRef::Item(&hir_item);
-        let item_out = simplify_ast(item_in);
+        let (item_out, _) = simplify_ast(item_in);
         let item_exp = InlinedItem::Item(P(lcx.lower_item(&quote_item!(&cx,
             fn new_int_alist<B>() -> alist<isize, B> {
                 return alist {eq_fn: eq_int, data: Vec::new()};
