@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls)]
-
 fn f<'r>(p: &'r mut fn(p: &mut ())) {
     (*p)(()) //~  ERROR mismatched types
              //~| expected type `&mut ()`

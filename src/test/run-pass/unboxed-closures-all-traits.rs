@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(lang_items, unboxed_closures)]
+#![feature(lang_items)]
 
 fn a<F:Fn(isize, isize) -> isize>(f: F) -> isize {
     f(1, 2)

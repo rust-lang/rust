@@ -13,7 +13,6 @@
 
 #![allow(dead_code, unused_variables)]
 #![deny(hr_lifetime_in_assoc_type)]
-#![feature(unboxed_closures)]
 
 use std::str::Chars;
 

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(unknown_features)]
-#![feature(unboxed_closures)]
 
 use std::ops::FnMut;
 

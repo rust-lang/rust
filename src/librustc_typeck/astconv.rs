@@ -1313,6 +1313,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // item is declared.
         let bound = match (&ty.sty, ty_path_def) {
             (_, Def::SelfTy(Some(trait_did), Some(impl_id))) => {
+                // For Def::SelfTy() values inlined from another crate, the
+                // impl_id will be DUMMY_NODE_ID, which would cause problems
+                // here. But we should never run into an impl from another crate
+                // in this pass.
+                assert!(impl_id != ast::DUMMY_NODE_ID);
+
                 // `Self` in an impl of a trait - we have a concrete self type and a
                 // trait reference.
                 let trait_ref = tcx.impl_trait_ref(tcx.map.local_def_id(impl_id)).unwrap();
@@ -1518,6 +1524,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             Def::SelfTy(_, Some(impl_id)) => {
                 // Self in impl (we know the concrete type).
+
+                // For Def::SelfTy() values inlined from another crate, the
+                // impl_id will be DUMMY_NODE_ID, which would cause problems
+                // here. But we should never run into an impl from another crate
+                // in this pass.
+                assert!(impl_id != ast::DUMMY_NODE_ID);
+
                 tcx.prohibit_type_params(base_segments);
                 let ty = tcx.node_id_to_type(impl_id);
                 if let Some(free_substs) = self.get_free_substs() {

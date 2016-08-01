@@ -438,10 +438,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         });
 
         // Try to get some span information, if we have an inlined item.
-        let definition_span = match cx.external().borrow().get(&instance.def) {
-            Some(&Some(node_id)) => cx.tcx().map.span(node_id),
-            _ => cx.tcx().map.def_id_span(instance.def, syntax_pos::DUMMY_SP)
-        };
+        let definition_span = cx.tcx()
+                                .map
+                                .def_id_span(instance.def, syntax_pos::DUMMY_SP);
 
         (containing_scope, definition_span)
     }

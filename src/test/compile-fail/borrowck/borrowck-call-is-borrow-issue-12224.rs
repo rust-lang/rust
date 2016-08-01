@@ -10,8 +10,6 @@
 
 // Ensure that invoking a closure counts as a unique immutable borrow
 
-#![feature(unboxed_closures)]
-
 type Fn<'a> = Box<FnMut() + 'a>;
 
 struct Test<'a> {

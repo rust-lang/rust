@@ -37,7 +37,7 @@ use session::Session;
 use session::config;
 use symbol_map::SymbolMap;
 use util::sha2::Sha256;
-use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -102,11 +102,6 @@ pub struct LocalCrateContext<'tcx> {
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
-    /// Track mapping of external ids to local items imported for inlining
-    external: RefCell<DefIdMap<Option<ast::NodeId>>>,
-    /// Backwards version of the `external` map (inlined items to where they
-    /// came from)
-    external_srcs: RefCell<NodeMap<DefId>>,
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FnvHashMap<Instance<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<usize>>,
@@ -630,8 +625,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 needs_unwind_cleanup_cache: RefCell::new(FnvHashMap()),
                 fn_pointer_shims: RefCell::new(FnvHashMap()),
                 drop_glues: RefCell::new(FnvHashMap()),
-                external: RefCell::new(DefIdMap()),
-                external_srcs: RefCell::new(NodeMap()),
                 instances: RefCell::new(FnvHashMap()),
                 monomorphizing: RefCell::new(DefIdMap()),
                 vtables: RefCell::new(FnvHashMap()),
@@ -825,12 +818,12 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().drop_glues
     }
 
-    pub fn external<'a>(&'a self) -> &'a RefCell<DefIdMap<Option<ast::NodeId>>> {
-        &self.local().external
+    pub fn local_node_for_inlined_defid<'a>(&'a self, def_id: DefId) -> Option<ast::NodeId> {
+        self.sess().cstore.local_node_for_inlined_defid(def_id)
     }
 
-    pub fn external_srcs<'a>(&'a self) -> &'a RefCell<NodeMap<DefId>> {
-        &self.local().external_srcs
+    pub fn defid_for_inlined_node<'a>(&'a self, node_id: ast::NodeId) -> Option<DefId> {
+        self.sess().cstore.defid_for_inlined_node(node_id)
     }
 
     pub fn instances<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {

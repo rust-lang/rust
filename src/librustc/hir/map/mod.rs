@@ -32,6 +32,7 @@ use hir::print as pprust;
 
 use arena::TypedArena;
 use std::cell::RefCell;
+use std::cmp;
 use std::io;
 use std::mem;
 
@@ -127,7 +128,10 @@ impl<'ast> MapEntry<'ast> {
             EntryStructCtor(id, _) => id,
             EntryLifetime(id, _) => id,
             EntryTyParam(id, _) => id,
-            _ => return None
+
+            NotPresent |
+            RootCrate |
+            RootInlinedParent(_) => return None,
         })
     }
 
@@ -196,6 +200,10 @@ pub struct Map<'ast> {
     map: RefCell<Vec<MapEntry<'ast>>>,
 
     definitions: RefCell<Definitions>,
+
+    /// All NodeIds that are numerically greater or equal to this value come
+    /// from inlined items.
+    local_node_id_watermark: NodeId,
 }
 
 impl<'ast> Map<'ast> {
@@ -550,6 +558,13 @@ impl<'ast> Map<'ast> {
         }
     }
 
+    pub fn expect_inlined_item(&self, id: NodeId) -> &'ast InlinedItem {
+        match self.find_entry(id) {
+            Some(RootInlinedParent(inlined_item)) => inlined_item,
+            _ => bug!("expected inlined item, found {}", self.node_to_string(id)),
+        }
+    }
+
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
@@ -648,6 +663,10 @@ impl<'ast> Map<'ast> {
 
     pub fn node_to_user_string(&self, id: NodeId) -> String {
         node_id_to_string(self, id, false)
+    }
+
+    pub fn is_inlined(&self, id: NodeId) -> bool {
+        id >= self.local_node_id_watermark
     }
 }
 
@@ -765,13 +784,37 @@ pub trait FoldOps {
 }
 
 /// A Folder that updates IDs and Span's according to fold_ops.
-struct IdAndSpanUpdater<F> {
-    fold_ops: F
+pub struct IdAndSpanUpdater<F> {
+    fold_ops: F,
+    min_id_assigned: NodeId,
+    max_id_assigned: NodeId,
+}
+
+impl<F: FoldOps> IdAndSpanUpdater<F> {
+    pub fn new(fold_ops: F) -> IdAndSpanUpdater<F> {
+        IdAndSpanUpdater {
+            fold_ops: fold_ops,
+            min_id_assigned: ::std::u32::MAX,
+            max_id_assigned: ::std::u32::MIN,
+        }
+    }
+
+    pub fn id_range(&self) -> intravisit::IdRange {
+        intravisit::IdRange {
+            min: self.min_id_assigned,
+            max: self.max_id_assigned + 1,
+        }
+    }
 }
 
 impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
     fn new_id(&mut self, id: NodeId) -> NodeId {
-        self.fold_ops.new_id(id)
+        let id = self.fold_ops.new_id(id);
+
+        self.min_id_assigned = cmp::min(self.min_id_assigned, id);
+        self.max_id_assigned = cmp::max(self.max_id_assigned, id);
+
+        id
     }
 
     fn new_span(&mut self, span: Span) -> Span {
@@ -802,11 +845,14 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
               entries, vector_length, (entries as f64 / vector_length as f64) * 100.);
     }
 
+    let local_node_id_watermark = map.len() as NodeId;
+
     Map {
         forest: forest,
         dep_graph: forest.dep_graph.clone(),
         map: RefCell::new(map),
         definitions: RefCell::new(definitions),
+        local_node_id_watermark: local_node_id_watermark
     }
 }
 
@@ -818,7 +864,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           ii: InlinedItem,
                                           fold_ops: F)
                                           -> &'ast InlinedItem {
-    let mut fld = IdAndSpanUpdater { fold_ops: fold_ops };
+    let mut fld = IdAndSpanUpdater::new(fold_ops);
     let ii = match ii {
         II::Item(i) => II::Item(i.map(|i| fld.fold_item(i))),
         II::TraitItem(d, ti) => {
@@ -834,6 +880,12 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
 
     let ii = map.forest.inlined_items.alloc(ii);
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
+
+    // Assert that the ii_parent_id is the last NodeId in our reserved range
+    assert!(ii_parent_id == fld.max_id_assigned);
+    // Assert that we did not violate the invariant that all inlined HIR items
+    // have NodeIds greater than or equal to `local_node_id_watermark`
+    assert!(fld.min_id_assigned >= map.local_node_id_watermark);
 
     let defs = &mut *map.definitions.borrow_mut();
     let mut def_collector = DefCollector::extend(ii_parent_id,

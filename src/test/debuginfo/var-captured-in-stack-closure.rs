@@ -69,7 +69,7 @@
 // lldb-command:print *owned
 // lldb-check:[...]$9 = 6
 
-#![feature(unboxed_closures, box_syntax)]
+#![feature(box_syntax)]
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]

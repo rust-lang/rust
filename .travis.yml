@@ -7,6 +7,7 @@ services:
 # our configure script, so disable auto submodule management.
 git:
   submodules: false
+  depth: 1
 
 before_install:
   - docker build -t rust -f src/etc/Dockerfile src/etc

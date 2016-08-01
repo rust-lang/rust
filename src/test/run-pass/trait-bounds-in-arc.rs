@@ -16,7 +16,6 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax, std_misc)]
-#![feature(unboxed_closures)]
 
 use std::sync::Arc;
 use std::sync::mpsc::channel;

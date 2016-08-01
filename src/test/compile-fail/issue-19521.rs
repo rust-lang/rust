@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
-
 fn main() {
     "".homura()(); //~ ERROR no method named `homura` found
 }
