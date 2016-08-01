@@ -1099,15 +1099,6 @@ extern {
                                          Name: *const c_char);
     pub fn LLVMDisposeBuilder(Builder: BuilderRef);
 
-    /* Execution engine */
-    pub fn LLVMBuildExecutionEngine(Mod: ModuleRef) -> ExecutionEngineRef;
-    pub fn LLVMDisposeExecutionEngine(EE: ExecutionEngineRef);
-    pub fn LLVMExecutionEngineFinalizeObject(EE: ExecutionEngineRef);
-    pub fn LLVMRustLoadDynamicLibrary(path: *const c_char) -> Bool;
-    pub fn LLVMExecutionEngineAddModule(EE: ExecutionEngineRef, M: ModuleRef);
-    pub fn LLVMExecutionEngineRemoveModule(EE: ExecutionEngineRef, M: ModuleRef)
-                                           -> Bool;
-
     /* Metadata */
     pub fn LLVMSetCurrentDebugLocation(Builder: BuilderRef, L: ValueRef);
     pub fn LLVMGetCurrentDebugLocation(Builder: BuilderRef) -> ValueRef;

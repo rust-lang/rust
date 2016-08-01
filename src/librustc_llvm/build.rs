@@ -112,8 +112,7 @@ fn main() {
         cfg.flag(&flag);
     }
 
-    cfg.file("../rustllvm/ExecutionEngineWrapper.cpp")
-       .file("../rustllvm/PassWrapper.cpp")
+    cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
        .file("../rustllvm/ArchiveWrapper.cpp")
        .cpp(true)
