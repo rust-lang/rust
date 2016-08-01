@@ -4090,7 +4090,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   def: Def,
                                   span: Span,
                                   node_id: ast::NodeId,
-                                  node_is_expr: bool) {
+                                  node_is_expr: bool)
                                   -> Ty<'tcx> {
         debug!("instantiate_value_path(path={:?}, def={:?}, node_id={}, type_scheme={:?})",
                segments,
