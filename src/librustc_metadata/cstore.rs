@@ -25,7 +25,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::{DefIndex, DefId};
 use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::{ExternCrate};
+use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
@@ -96,6 +96,13 @@ pub struct CrateMetadata {
     pub explicitly_linked: Cell<bool>,
 }
 
+pub struct CachedInlinedItem {
+    /// The NodeId of the RootInlinedParent HIR map entry
+    pub inlined_root: ast::NodeId,
+    /// The local NodeId of the inlined entity
+    pub item_id: ast::NodeId,
+}
+
 pub struct CStore {
     pub dep_graph: DepGraph,
     metas: RefCell<FnvHashMap<ast::CrateNum, Rc<CrateMetadata>>>,
@@ -105,6 +112,8 @@ pub struct CStore {
     used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
     used_link_args: RefCell<Vec<String>>,
     statically_included_foreign_items: RefCell<NodeSet>,
+    pub inlined_item_cache: RefCell<DefIdMap<Option<CachedInlinedItem>>>,
+    pub defid_for_inlined_node: RefCell<NodeMap<DefId>>,
     pub visible_parent_map: RefCell<DefIdMap<DefId>>,
 }
 
@@ -119,6 +128,8 @@ impl CStore {
             used_link_args: RefCell::new(Vec::new()),
             statically_included_foreign_items: RefCell::new(NodeSet()),
             visible_parent_map: RefCell::new(FnvHashMap()),
+            inlined_item_cache: RefCell::new(FnvHashMap()),
+            defid_for_inlined_node: RefCell::new(FnvHashMap()),
         }
     }
 

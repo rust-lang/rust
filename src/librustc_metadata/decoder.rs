@@ -30,7 +30,7 @@ use rustc::util::nodemap::FnvHashMap;
 use rustc::hir;
 use rustc::session::config::PanicStrategy;
 
-use middle::cstore::{FoundAst, InlinedItem, LinkagePreference};
+use middle::cstore::{InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex};
@@ -753,6 +753,12 @@ pub fn get_item_name(cdata: Cmd, id: DefIndex) -> ast::Name {
 
 pub fn maybe_get_item_name(cdata: Cmd, id: DefIndex) -> Option<ast::Name> {
     maybe_item_name(cdata.lookup_item(id))
+}
+
+pub enum FoundAst<'ast> {
+    Found(&'ast InlinedItem),
+    FoundParent(DefId, &'ast hir::Item),
+    NotFound,
 }
 
 pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefIndex)
