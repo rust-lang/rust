@@ -159,12 +159,17 @@ impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
                  .clone()
     }
 
+    pub fn lookup_def_path(&self, id: DefPathIndex) -> &DefPath {
+        &self.directory.paths[id.index as usize]
+    }
+
+
     pub fn map(&mut self, node: &DepNode<DefId>) -> DepNode<DefPathIndex> {
         node.map_def(|&def_id| Some(self.add(def_id))).unwrap()
     }
 
-    pub fn into_directory(self) -> DefIdDirectory {
-        self.directory
+    pub fn directory(&self) -> &DefIdDirectory {
+        &self.directory
     }
 }
 

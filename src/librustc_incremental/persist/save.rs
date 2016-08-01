@@ -16,7 +16,7 @@ use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_serialize::{Encodable as RustcEncodable};
-use std::hash::{Hasher, SipHasher};
+use std::hash::{Hash, Hasher, SipHasher};
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
 use std::path::PathBuf;
@@ -30,9 +30,14 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     debug!("save_dep_graph()");
     let _ignore = tcx.dep_graph.in_ignore();
     let sess = tcx.sess;
+    if sess.opts.incremental.is_none() {
+        return;
+    }
     let mut hcx = HashContext::new(tcx);
-    save_in(sess, dep_graph_path(tcx), |e| encode_dep_graph(&mut hcx, e));
-    save_in(sess, metadata_hash_path(tcx, LOCAL_CRATE), |e| encode_metadata_hashes(&mut hcx, e));
+    let mut builder = DefIdDirectoryBuilder::new(tcx);
+    let query = tcx.dep_graph.query();
+    save_in(sess, dep_graph_path(tcx), |e| encode_dep_graph(&mut hcx, &mut builder, &query, e));
+    save_in(sess, metadata_hash_path(tcx, LOCAL_CRATE), |e| encode_metadata_hashes(&mut hcx, &mut builder, &query, e));
 }
 
 pub fn save_work_products(sess: &Session, local_crate_name: &str) {
@@ -96,21 +101,19 @@ fn save_in<F>(sess: &Session,
 }
 
 pub fn encode_dep_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
+                                  builder: &mut DefIdDirectoryBuilder,
+                                  query: &DepGraphQuery<DefId>,
                                   encoder: &mut Encoder)
                                   -> io::Result<()>
 {
-    let tcx = hcx.tcx;
-    let query = tcx.dep_graph.query();
     let (nodes, edges) = post_process_graph(hcx, query);
-
-    let mut builder = DefIdDirectoryBuilder::new(tcx);
 
     // Create hashes for inputs.
     let hashes =
         nodes.iter()
              .filter_map(|dep_node| {
                  hcx.hash(dep_node)
-                    .map(|hash| {
+                    .map(|(_, hash)| {
                         let node = builder.map(dep_node);
                         SerializedHash { node: node, hash: hash }
                     })
@@ -133,15 +136,14 @@ pub fn encode_dep_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
     debug!("graph = {:#?}", graph);
 
     // Encode the directory and then the graph data.
-    let directory = builder.into_directory();
-    try!(directory.encode(encoder));
+    try!(builder.directory().encode(encoder));
     try!(graph.encode(encoder));
 
     Ok(())
 }
 
 pub fn post_process_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
-                                    query: DepGraphQuery<DefId>)
+                                    query: &DepGraphQuery<DefId>)
                                     -> (Vec<DepNode<DefId>>, Vec<(DepNode<DefId>, DepNode<DefId>)>)
 {
     let tcx = hcx.tcx;
@@ -192,11 +194,12 @@ pub fn post_process_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
 
 
 pub fn encode_metadata_hashes<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
+                                        builder: &mut DefIdDirectoryBuilder,
+                                        query: &DepGraphQuery<DefId>,
                                         encoder: &mut Encoder)
                                         -> io::Result<()>
 {
     let tcx = hcx.tcx;
-    let query = tcx.dep_graph.query();
 
     let serialized_hashes = {
         // Identify the `MetaData(X)` nodes where `X` is local. These are
@@ -224,16 +227,32 @@ pub fn encode_metadata_hashes<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
                 let dep_node = DepNode::MetaData(def_id);
                 let mut state = SipHasher::new();
                 debug!("save: computing metadata hash for {:?}", dep_node);
-                for node in query.transitive_predecessors(&dep_node) {
-                    if let Some(hash) = hcx.hash(&node) {
-                        debug!("save: predecessor {:?} has hash {}", node, hash);
-                        state.write_u64(hash.to_le());
-                    } else {
-                        debug!("save: predecessor {:?} cannot be hashed", node);
-                    }
+
+                let predecessors = query.transitive_predecessors(&dep_node);
+                let mut hashes: Vec<_> =
+                    predecessors.iter()
+                                .filter_map(|node| hcx.hash(&node))
+                                .map(|(def_id, hash)| {
+                                    let index = builder.add(def_id);
+                                    let path = builder.lookup_def_path(index);
+                                    (path.to_string(tcx), hash) // (*)
+                                })
+                                .collect();
+
+                // (*) creating a `String` from each def-path is a bit inefficient,
+                // but it's the easiest way to get a deterministic ord/hash.
+
+                hashes.sort();
+                state.write_usize(hashes.len());
+                for (path, hash) in hashes {
+                    debug!("save: predecessor {:?} has hash {}", path, hash);
+                    path.hash(&mut state);
+                    state.write_u64(hash.to_le());
                 }
+
                 let hash = state.finish();
                 debug!("save: metadata hash for {:?} is {}", dep_node, hash);
+
                 SerializedMetadataHash {
                     def_index: def_id.index,
                     hash: hash,

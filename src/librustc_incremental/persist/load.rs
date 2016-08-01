@@ -163,13 +163,14 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut items_removed = false;
     let mut dirty_nodes = FnvHashSet();
     for hash in hashes {
-        debug!("initial_dirty_nodes: retracing {:?}", hash);
         match hash.node.map_def(|&i| retraced.def_id(i)) {
             Some(dep_node) => {
-                let current_hash = hcx.hash(&dep_node).unwrap();
+                let (_, current_hash) = hcx.hash(&dep_node).unwrap();
                 if current_hash != hash.hash {
                     debug!("initial_dirty_nodes: {:?} is dirty as hash is {:?}, was {:?}",
-                           dep_node, current_hash, hash.hash);
+                           dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
+                           current_hash,
+                           hash.hash);
                     dirty_nodes.insert(dep_node);
                 }
             }

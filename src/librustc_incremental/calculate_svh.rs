@@ -144,12 +144,7 @@ mod svh_visitor {
         }
 
         fn hash_def_path(&mut self, path: &DefPath) {
-            self.tcx.crate_name(path.krate).hash(self.st);
-            self.tcx.crate_disambiguator(path.krate).hash(self.st);
-            for data in &path.data {
-                data.data.as_interned_str().hash(self.st);
-                data.disambiguator.hash(self.st);
-            }
+            path.to_string(self.tcx).hash(self.st);
         }
     }
 
