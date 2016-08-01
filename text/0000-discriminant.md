@@ -27,7 +27,7 @@ Making `Discriminant` generic provides several benefits:
 - `discriminant(&EnumA::Variant) == discriminant(&EnumB::Variant)` is statically prevented.
 - In the future, we can implement different behavior for different kinds of enums. For example, if we add a way to distinguish C-like enums at the type level, then we can add a method like `Discriminant::into_inner` for only those enums. Or enums with certain kinds of discriminants could become orderable.
 
-The function requires a `Reflect` bound on its argument because discriminant extraction is a partial violation of parametricity, in that a generic function with no bounds on its type parameters can nonetheless find out some information about the input types, or perform a "partial equality" comparison. This restriction is debatable (open question #2), especially in light of specialization. The situation is comparable to `TypeId::of` (which requires the bound) and `mem::size_of_val` (which does not). Note that including a bound is the conservative decision, because it can be backwards-compatibly removed.
+The function no longer requires a `Reflect` bound on its argument even though discriminant extraction is a partial violation of parametricity, in that a generic function with no bounds on its type parameters can nonetheless find out some information about the input types, or perform a "partial equality" comparison. This is debatable (see [this comment](https://github.com/rust-lang/rfcs/pull/639#issuecomment-86441840), [this comment](https://github.com/rust-lang/rfcs/pull/1696#issuecomment-236669066) and open question #2), especially in light of specialization. The situation is comparable to `TypeId::of` (which requires the bound) and `mem::size_of_val` (which does not). Note that including a bound is the conservative decision, because it can be backwards-compatibly removed.
 
 ```rust
 /// Returns a value uniquely identifying the enum variant in `v`.
@@ -58,7 +58,7 @@ The function requires a `Reflect` bound on its argument because discriminant ext
 /// assert!(mem::discriminant(&Foo::B(1))     == mem::discriminant(&Foo::B(2)));
 /// assert!(mem::discriminant(&Foo::B(3))     != mem::discriminant(&Foo::C(3)));
 /// ```
-pub fn discriminant<T: Reflect>(v: &T) -> Discriminant<T> {
+pub fn discriminant<T>(v: &T) -> Discriminant<T> {
     unsafe {
         Discriminant(intrinsics::discriminant_value(v), PhantomData)
     }
