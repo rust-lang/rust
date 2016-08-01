@@ -39,11 +39,11 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<u64> {
+    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<(DefId, u64)> {
         match *dep_node {
             // HIR nodes (which always come from our crate) are an input:
             DepNode::Hir(def_id) => {
-                Some(self.hir_hash(def_id))
+                Some((def_id, self.hir_hash(def_id)))
             }
 
             // MetaData from other crates is an *input* to us.
@@ -51,7 +51,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // don't hash them, but we do compute a hash for them and
             // save it for others to use.
             DepNode::MetaData(def_id) if !def_id.is_local() => {
-                Some(self.metadata_hash(def_id))
+                Some((def_id, self.metadata_hash(def_id)))
             }
 
             _ => {

@@ -12,8 +12,10 @@ use middle::cstore::LOCAL_CRATE;
 use hir::def_id::{DefId, DefIndex};
 use hir::map::def_collector::DefCollector;
 use rustc_data_structures::fnv::FnvHashMap;
+use std::fmt::Write;
 use syntax::{ast, visit};
 use syntax::parse::token::InternedString;
+use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
 /// The definition table containing node definitions
@@ -108,6 +110,28 @@ impl DefPath {
         }
         data.reverse();
         DefPath { data: data, krate: krate }
+    }
+
+    pub fn to_string(&self, tcx: TyCtxt) -> String {
+        let mut s = String::with_capacity(self.data.len() * 16);
+
+        if self.krate == LOCAL_CRATE {
+            s.push_str(&tcx.crate_name(self.krate));
+        } else {
+            s.push_str(&tcx.sess.cstore.original_crate_name(self.krate));
+        }
+        s.push_str("/");
+        s.push_str(&tcx.crate_disambiguator(self.krate));
+
+        for component in &self.data {
+            write!(s,
+                   "::{}[{}]",
+                   component.data.as_interned_str(),
+                   component.disambiguator)
+                .unwrap();
+        }
+
+        s
     }
 }
 
