@@ -221,12 +221,19 @@ define CFG_MAKE_TOOLCHAIN
     LLVM_MC_RELOCATION_MODEL="default"
   endif
 
+  # LLVM changed this flag in 3.9
+  ifdef CFG_LLVM_MC_HAS_RELOCATION_MODEL
+    LLVM_MC_RELOC_FLAG := -relocation-model=$$(LLVM_MC_RELOCATION_MODEL)
+  else
+    LLVM_MC_RELOC_FLAG := -position-independent
+  endif
+
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
   CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(2) | \
                     $$(LLVM_MC_$$(CFG_BUILD)) \
                     -assemble \
-                    -relocation-model=$$(LLVM_MC_RELOCATION_MODEL) \
+                    $$(LLVM_MC_RELOC_FLAG) \
                     -filetype=obj \
                     -triple=$(1) \
                     -o=$$(1)

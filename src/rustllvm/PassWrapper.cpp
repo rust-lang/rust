@@ -167,12 +167,35 @@ LLVMRustCreateTargetMachine(const char *triple,
                             const char *cpu,
                             const char *feature,
                             CodeModel::Model CM,
-                            Reloc::Model RM,
+                            LLVMRelocMode Reloc,
                             CodeGenOpt::Level OptLevel,
                             bool UseSoftFloat,
                             bool PositionIndependentExecutable,
                             bool FunctionSections,
                             bool DataSections) {
+
+#if LLVM_VERSION_MINOR <= 8
+    Reloc::Model RM;
+#else
+    Optional<Reloc::Model> RM;
+#endif
+    switch (Reloc){
+        case LLVMRelocStatic:
+            RM = Reloc::Static;
+            break;
+        case LLVMRelocPIC:
+            RM = Reloc::PIC_;
+            break;
+        case LLVMRelocDynamicNoPic:
+            RM = Reloc::DynamicNoPIC;
+            break;
+        default:
+#if LLVM_VERSION_MINOR <= 8
+            RM = Reloc::Default;
+#endif
+            break;
+    }
+
     std::string Error;
     Triple Trip(Triple::normalize(triple));
     const llvm::Target *TheTarget = TargetRegistry::lookupTarget(Trip.getTriple(),
@@ -188,7 +211,10 @@ LLVMRustCreateTargetMachine(const char *triple,
     }
 
     TargetOptions Options;
+#if LLVM_VERSION_MINOR <= 8
     Options.PositionIndependentExecutable = PositionIndependentExecutable;
+#endif
+
     Options.FloatABIType = FloatABI::Default;
     if (UseSoftFloat) {
         Options.FloatABIType = FloatABI::Soft;
@@ -267,7 +293,7 @@ LLVMRustAddLibraryInfo(LLVMPassManagerRef PMB,
 // similar code in clang's BackendUtil.cpp file.
 extern "C" void
 LLVMRustRunFunctionPassManager(LLVMPassManagerRef PM, LLVMModuleRef M) {
-    FunctionPassManager *P = unwrap<FunctionPassManager>(PM);
+    llvm::legacy::FunctionPassManager *P = unwrap<llvm::legacy::FunctionPassManager>(PM);
     P->doInitialization();
     for (Module::iterator I = unwrap(M)->begin(),
          E = unwrap(M)->end(); I != E; ++I)
@@ -294,7 +320,7 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
                         LLVMModuleRef M,
                         const char *path,
                         TargetMachine::CodeGenFileType FileType) {
-  PassManager *PM = unwrap<PassManager>(PMR);
+  llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
 
   std::string ErrorInfo;
   std::error_code EC;
@@ -320,7 +346,7 @@ extern "C" void
 LLVMRustPrintModule(LLVMPassManagerRef PMR,
                     LLVMModuleRef M,
                     const char* path) {
-  PassManager *PM = unwrap<PassManager>(PMR);
+  llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
   std::string ErrorInfo;
 
   std::error_code EC;
@@ -358,9 +384,24 @@ LLVMRustAddAlwaysInlinePass(LLVMPassManagerBuilderRef PMB, bool AddLifetimes) {
 
 extern "C" void
 LLVMRustRunRestrictionPass(LLVMModuleRef M, char **symbols, size_t len) {
-    PassManager passes;
+    llvm::legacy::PassManager passes;
+
+#if LLVM_VERSION_MINOR <= 8
     ArrayRef<const char*> ref(symbols, len);
     passes.add(llvm::createInternalizePass(ref));
+#else
+    auto PreserveFunctions = [=](const GlobalValue &GV) {
+        for (size_t i=0; i<len; i++) {
+            if (GV.getName() == symbols[i]) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    passes.add(llvm::createInternalizePass(PreserveFunctions));
+#endif
+
     passes.run(*unwrap(M));
 }
 
@@ -395,4 +436,11 @@ LLVMRustSetDataLayoutFromTargetMachine(LLVMModuleRef Module,
 extern "C" LLVMTargetDataRef
 LLVMRustGetModuleDataLayout(LLVMModuleRef M) {
     return wrap(&unwrap(M)->getDataLayout());
+}
+
+extern "C" void
+LLVMRustSetModulePIELevel(LLVMModuleRef M) {
+#if LLVM_VERSION_MINOR >= 9
+    unwrap(M)->setPIELevel(PIELevel::Level::Large);
+#endif
 }

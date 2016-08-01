@@ -10,7 +10,7 @@
 
 // Namespace Handling.
 
-use super::metadata::{file_metadata, NO_FILE_METADATA, UNKNOWN_LINE_NUMBER};
+use super::metadata::{file_metadata, unknown_file_metadata, UNKNOWN_LINE_NUMBER};
 use super::utils::{DIB, debug_context, span_start};
 
 use llvm;
@@ -74,7 +74,7 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
         let loc = span_start(ccx, span);
         (file_metadata(ccx, &loc.file.name, &loc.file.abs_path), loc.line as c_uint)
     } else {
-        (NO_FILE_METADATA, UNKNOWN_LINE_NUMBER)
+        (unknown_file_metadata(ccx), UNKNOWN_LINE_NUMBER)
     };
 
     let scope = unsafe {

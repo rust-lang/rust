@@ -226,7 +226,7 @@ impl Attributes {
 
     pub fn apply_callsite(&self, idx: usize, callsite: ValueRef) {
         unsafe {
-            LLVMAddCallSiteAttribute(callsite, idx as c_uint, self.regular.bits());
+            LLVMRustAddCallSiteAttribute(callsite, idx as c_uint, self.regular.bits());
             if self.dereferenceable_bytes != 0 {
                 LLVMAddDereferenceableCallSiteAttr(callsite, idx as c_uint,
                                                    self.dereferenceable_bytes);
@@ -1056,7 +1056,7 @@ extern {
     pub fn LLVMSetInstrParamAlignment(Instr: ValueRef,
                                       index: c_uint,
                                       align: c_uint);
-    pub fn LLVMAddCallSiteAttribute(Instr: ValueRef,
+    pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef,
                                     index: c_uint,
                                     Val: uint64_t);
     pub fn LLVMAddDereferenceableCallSiteAttr(Instr: ValueRef,
@@ -1561,7 +1561,7 @@ extern {
                                 Alignment: c_uint)
                                 -> ValueRef;
 
-    pub fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
+    pub fn LLVMRustBuildAtomicCmpXchg(B: BuilderRef,
                                   LHS: ValueRef,
                                   CMP: ValueRef,
                                   RHS: ValueRef,
@@ -1591,9 +1591,6 @@ extern {
 
     /// Creates target data from a target layout string.
     pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
-    /// Adds the target data to the given pass manager. The pass manager
-    /// references the target data only weakly.
-    pub fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
     /// Number of bytes clobbered when doing a Store to *T.
     pub fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef)
                                -> c_ulonglong;
@@ -2155,6 +2152,7 @@ extern {
 
     pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: ValueRef);
+    pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed
