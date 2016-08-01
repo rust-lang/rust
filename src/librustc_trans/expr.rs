@@ -381,11 +381,11 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("unadjusted datum for expr {:?}: {:?} adjustment={:?}",
            expr, datum, adjustment);
     match adjustment {
-        AdjustEmptyToAny(..) => {
-            let const_ty = expr_ty(bcx, expr);
-            let llty = type_of::type_of(bcx.ccx(), const_ty);
+        AdjustEmptyToAny(ref target) => {
+            let mono_target = bcx.monomorphize(target);
+            let llty = type_of::type_of(bcx.ccx(), mono_target);
             let dummy = C_undef(llty.ptr_to());
-            datum = Datum::new(dummy, const_ty, Rvalue::new(ByRef)).to_expr_datum();
+            datum = Datum::new(dummy, mono_target, Rvalue::new(ByRef)).to_expr_datum();
         }
         AdjustReifyFnPointer => {
             match datum.ty.sty {
