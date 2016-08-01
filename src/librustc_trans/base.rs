@@ -2348,7 +2348,8 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
 
                     if !is_referenced_somewhere && !is_reachable && !has_fixed_linkage {
                         llvm::SetLinkage(val, llvm::InternalLinkage);
-                        llvm::SetDLLStorageClass(val, llvm::DefaultStorageClass);
+                        llvm::SetDLLStorageClass(val,
+                                                 llvm::DLLStorageClassTypes::Default);
                         llvm::UnsetComdat(val);
                     }
                 }

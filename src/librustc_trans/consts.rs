@@ -1126,7 +1126,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
             }
         }
         if ccx.use_dll_storage_attrs() {
-            llvm::SetDLLStorageClass(g, llvm::DLLImportStorageClass);
+            llvm::SetDLLStorageClass(g, llvm::DLLStorageClassTypes::DllImport);
         }
         g
     };
@@ -1182,7 +1182,7 @@ pub fn trans_static(ccx: &CrateContext,
             let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(datum.val));
             let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
             llvm::LLVMSetValueName(datum.val, empty_string.as_ptr());
-            let new_g = llvm::LLVMGetOrInsertGlobal(
+            let new_g = llvm::LLVMRustGetOrInsertGlobal(
                 ccx.llmod(), name_string.as_ptr(), val_llty.to_ref());
             // To avoid breaking any invariants, we leave around the old
             // global for the moment; we'll replace all references to it

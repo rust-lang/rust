@@ -23,15 +23,21 @@ pub enum OptimizationDiagnosticKind {
     OptimizationRemark,
     OptimizationMissed,
     OptimizationAnalysis,
+    OptimizationAnalysisFPCommute,
+    OptimizationAnalysisAliasing,
     OptimizationFailure,
+    OptimizationRemarkOther,
 }
 
 impl OptimizationDiagnosticKind {
     pub fn describe(self) -> &'static str {
         match self {
-            OptimizationRemark => "remark",
+            OptimizationRemark |
+            OptimizationRemarkOther => "remark",
             OptimizationMissed => "missed",
             OptimizationAnalysis => "analysis",
+            OptimizationAnalysisFPCommute => "floating-point",
+            OptimizationAnalysisAliasing => "aliasing",
             OptimizationFailure => "failure",
         }
     }
@@ -58,11 +64,11 @@ impl OptimizationDiagnostic {
             message: ptr::null_mut(),
         };
 
-        super::LLVMUnpackOptimizationDiagnostic(di,
-                                                &mut opt.pass_name,
-                                                &mut opt.function,
-                                                &mut opt.debug_loc,
-                                                &mut opt.message);
+        super::LLVMRustUnpackOptimizationDiagnostic(di,
+                                                    &mut opt.pass_name,
+                                                    &mut opt.function,
+                                                    &mut opt.debug_loc,
+                                                    &mut opt.message);
 
         opt
     }
@@ -84,10 +90,10 @@ impl InlineAsmDiagnostic {
             instruction: ptr::null_mut(),
         };
 
-        super::LLVMUnpackInlineAsmDiagnostic(di,
-                                             &mut opt.cookie,
-                                             &mut opt.message,
-                                             &mut opt.instruction);
+        super::LLVMRustUnpackInlineAsmDiagnostic(di,
+                                                 &mut opt.cookie,
+                                                 &mut opt.message,
+                                                 &mut opt.instruction);
 
         opt
     }
@@ -103,24 +109,39 @@ pub enum Diagnostic {
 
 impl Diagnostic {
     pub unsafe fn unpack(di: DiagnosticInfoRef) -> Diagnostic {
-        let kind = super::LLVMGetDiagInfoKind(di);
+        use super::DiagnosticKind as Dk;
+        let kind = super::LLVMRustGetDiagInfoKind(di);
 
         match kind {
-            super::DK_InlineAsm => InlineAsm(InlineAsmDiagnostic::unpack(di)),
+            Dk::InlineAsm => InlineAsm(InlineAsmDiagnostic::unpack(di)),
 
-            super::DK_OptimizationRemark => {
+            Dk::OptimizationRemark => {
                 Optimization(OptimizationDiagnostic::unpack(OptimizationRemark, di))
             }
-
-            super::DK_OptimizationRemarkMissed => {
+            Dk::OptimizationRemarkOther => {
+                Optimization(OptimizationDiagnostic::unpack(OptimizationRemarkOther, di))
+            }
+            Dk::OptimizationRemarkMissed => {
                 Optimization(OptimizationDiagnostic::unpack(OptimizationMissed, di))
             }
 
-            super::DK_OptimizationRemarkAnalysis => {
+            Dk::OptimizationRemarkAnalysis => {
                 Optimization(OptimizationDiagnostic::unpack(OptimizationAnalysis, di))
             }
 
-            super::DK_OptimizationFailure => {
+
+            Dk::OptimizationRemarkAnalysisFPCommute => {
+                Optimization(OptimizationDiagnostic::unpack(
+                    OptimizationAnalysisFPCommute, di))
+            }
+
+            Dk::OptimizationRemarkAnalysisAliasing => {
+                Optimization(OptimizationDiagnostic::unpack(
+                    OptimizationAnalysisAliasing, di))
+            }
+
+
+            Dk::OptimizationFailure => {
                 Optimization(OptimizationDiagnostic::unpack(OptimizationFailure, di))
             }
 
