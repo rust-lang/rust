@@ -133,19 +133,77 @@ impl<'a> NameResolution<'a> {
             _ => None, // The binding could be shadowed by a single import, so it is not known.
         })
     }
+}
+
+impl<'a> ::ModuleS<'a> {
+    fn resolution(&self, name: Name, ns: Namespace) -> &'a RefCell<NameResolution<'a>> {
+        *self.resolutions.borrow_mut().entry((name, ns))
+             .or_insert_with(|| self.arenas.alloc_name_resolution())
+    }
+}
+
+impl<'a> Resolver<'a> {
+    /// Attempts to resolve the supplied name in the given module for the given namespace.
+    /// If successful, returns the binding corresponding to the name.
+    pub fn resolve_name_in_module(&mut self,
+                                  module: Module<'a>,
+                                  name: Name,
+                                  ns: Namespace,
+                                  allow_private_imports: bool,
+                                  record_used: bool)
+                                  -> ResolveResult<&'a NameBinding<'a>> {
+        self.populate_module_if_necessary(module);
+
+        let resolution = module.resolution(name, ns);
+        let resolution = match resolution.borrow_state() {
+            ::std::cell::BorrowState::Unused => resolution.borrow_mut(),
+            _ => return Failed(None), // This happens when there is a cycle of imports
+        };
+
+        if let Some(result) = self.try_result(&resolution, ns, allow_private_imports) {
+            // If the resolution doesn't depend on glob definability, check privacy and return.
+            return result.and_then(|binding| {
+                if !allow_private_imports && binding.is_import() && !binding.is_pseudo_public() {
+                    return Failed(None);
+                }
+                if record_used {
+                    self.record_use(name, ns, binding);
+                }
+                Success(binding)
+            });
+        }
+
+        // Check if the globs are determined
+        for directive in module.globs.borrow().iter() {
+            if !allow_private_imports && directive.vis != ty::Visibility::Public { continue }
+            if let Some(target_module) = directive.target_module.get() {
+                let result = self.resolve_name_in_module(target_module, name, ns, false, false);
+                if let Indeterminate = result {
+                    return Indeterminate;
+                }
+            } else {
+                return Indeterminate;
+            }
+        }
+
+        Failed(None)
+    }
 
     // Returns Some(the resolution of the name), or None if the resolution depends
     // on whether more globs can define the name.
-    fn try_result(&self, ns: Namespace, allow_private_imports: bool)
+    fn try_result(&mut self,
+                  resolution: &NameResolution<'a>,
+                  ns: Namespace,
+                  allow_private_imports: bool)
                   -> Option<ResolveResult<&'a NameBinding<'a>>> {
-        match self.binding {
+        match resolution.binding {
             Some(binding) if !binding.is_glob_import() =>
-                return Some(Success(binding)),
-            _ => {} // Items and single imports are not shadowable
+                return Some(Success(binding)), // Items and single imports are not shadowable.
+            _ => {}
         };
 
         // Check if a single import can still define the name.
-        match self.single_imports {
+        match resolution.single_imports {
             SingleImports::None => {},
             SingleImports::AtLeastOne => return Some(Indeterminate),
             SingleImports::MaybeOne(directive) => {
@@ -153,7 +211,7 @@ impl<'a> NameResolution<'a> {
                 // the name, and (3) no public glob has defined the name, the resolution depends
                 // on whether more globs can define the name.
                 if !allow_private_imports && directive.vis != ty::Visibility::Public &&
-                   !self.binding.map(NameBinding::is_pseudo_public).unwrap_or(false) {
+                   !resolution.binding.map(NameBinding::is_pseudo_public).unwrap_or(false) {
                     return None;
                 }
 
@@ -165,57 +223,16 @@ impl<'a> NameResolution<'a> {
                     SingleImport { source, .. } => source,
                     GlobImport { .. } => unreachable!(),
                 };
-                match target_module.resolve_name(name, ns, false) {
+                match self.resolve_name_in_module(target_module, name, ns, false, false) {
                     Failed(_) => {}
                     _ => return Some(Indeterminate),
                 }
             }
         }
 
-        self.binding.map(Success)
-    }
-}
-
-impl<'a> ::ModuleS<'a> {
-    fn resolution(&self, name: Name, ns: Namespace) -> &'a RefCell<NameResolution<'a>> {
-        *self.resolutions.borrow_mut().entry((name, ns))
-             .or_insert_with(|| self.arenas.alloc_name_resolution())
+        resolution.binding.map(Success)
     }
 
-    pub fn resolve_name(&self, name: Name, ns: Namespace, allow_private_imports: bool)
-                        -> ResolveResult<&'a NameBinding<'a>> {
-        let resolution = self.resolution(name, ns);
-        let resolution = match resolution.borrow_state() {
-            ::std::cell::BorrowState::Unused => resolution.borrow_mut(),
-            _ => return Failed(None), // This happens when there is a cycle of imports
-        };
-
-        if let Some(result) = resolution.try_result(ns, allow_private_imports) {
-            // If the resolution doesn't depend on glob definability, check privacy and return.
-            return result.and_then(|binding| {
-                let allowed = allow_private_imports || !binding.is_import() ||
-                                                       binding.is_pseudo_public();
-                if allowed { Success(binding) } else { Failed(None) }
-            });
-        }
-
-        // Check if the globs are determined
-        for directive in self.globs.borrow().iter() {
-            if !allow_private_imports && directive.vis != ty::Visibility::Public { continue }
-            match directive.target_module.get() {
-                None => return Indeterminate,
-                Some(target_module) => match target_module.resolve_name(name, ns, false) {
-                    Indeterminate => return Indeterminate,
-                    _ => {}
-                }
-            }
-        }
-
-        Failed(None)
-    }
-}
-
-impl<'a> Resolver<'a> {
     // Add an import directive to the current module.
     pub fn add_import_directive(&mut self,
                                 module_path: Vec<Name>,
