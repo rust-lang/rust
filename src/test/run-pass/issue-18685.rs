@@ -13,8 +13,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures)]
-
 trait Tr {
     fn foo(&self);
 

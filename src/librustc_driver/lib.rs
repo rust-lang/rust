@@ -31,7 +31,6 @@
 #![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(question_mark)]
-#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate flate;

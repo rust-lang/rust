@@ -10,8 +10,6 @@
 
 // ignore-emscripten no threads support
 
-#![feature(unboxed_closures)]
-
 use std::thread;
 use std::mem;
 

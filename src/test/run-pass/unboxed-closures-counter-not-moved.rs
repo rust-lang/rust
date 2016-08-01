@@ -10,7 +10,6 @@
 
 // Test that we mutate a counter on the stack only when we expect to.
 
-
 fn call<F>(f: F) where F : FnOnce() {
     f();
 }

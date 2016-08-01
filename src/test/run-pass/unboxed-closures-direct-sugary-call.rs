@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures)]
-
 fn main() {
     let mut unboxed = || {};
     unboxed();

@@ -27,33 +27,8 @@ use rustc::hir;
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called)
 pub fn check_legal_trait_for_method_call(ccx: &CrateCtxt, span: Span, trait_id: DefId) {
-    let tcx = ccx.tcx;
-    let did = Some(trait_id);
-    let li = &tcx.lang_items;
-
-    if did == li.drop_trait() {
-        span_err!(tcx.sess, span, E0040, "explicit use of destructor method");
-    } else if !tcx.sess.features.borrow().unboxed_closures {
-        // the #[feature(unboxed_closures)] feature isn't
-        // activated so we need to enforce the closure
-        // restrictions.
-
-        let method = if did == li.fn_trait() {
-            "call"
-        } else if did == li.fn_mut_trait() {
-            "call_mut"
-        } else if did == li.fn_once_trait() {
-            "call_once"
-        } else {
-            return // not a closure method, everything is OK.
-        };
-
-        struct_span_err!(tcx.sess, span, E0174,
-                         "explicit use of unboxed closure method `{}` is experimental",
-                         method)
-            .help("add `#![feature(unboxed_closures)]` to the crate \
-                  attributes to enable")
-            .emit();
+    if ccx.tcx.lang_items.drop_trait() == Some(trait_id) {
+        span_err!(ccx.tcx.sess, span, E0040, "explicit use of destructor method");
     }
 }
 

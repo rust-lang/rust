@@ -11,7 +11,6 @@
 // Test that we are able to infer a suitable kind for this closure
 // that is just called (`FnMut`).
 
-
 fn main() {
     let mut counter = 0;
 

@@ -12,7 +12,6 @@
 
 #![allow(dead_code)]
 #![feature(rustc_attrs)]
-#![feature(unboxed_closures)]
 #![deny(hr_lifetime_in_assoc_type)]
 
 trait Foo<'a> {

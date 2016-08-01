@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
-
 // Test that even unboxed closures that are capable of mutating their
 // environment cannot mutate captured variables that have not been
 // declared mutable (#18335)

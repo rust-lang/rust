@@ -11,9 +11,6 @@
 // A battery of tests to ensure destructors of unboxed closure environments
 // run at the right times.
 
-
-#![feature(unboxed_closures)]
-
 static mut DROP_COUNT: usize = 0;
 
 fn drop_count() -> usize {
