@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unboxed_closures)]
-
 fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
     for val in x {
         f(val)

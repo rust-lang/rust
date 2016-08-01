@@ -10,10 +10,10 @@
 
 #![allow(dead_code)]
 
-fn foo<F: Fn()>(mut f: F, mut g: F) {
-    Fn::call(&g, ()); //~ ERROR explicit use of unboxed closure method `call`
-    FnMut::call_mut(&mut g, ()); //~ ERROR explicit use of unboxed closure method `call_mut`
-    FnOnce::call_once(g, ()); //~ ERROR explicit use of unboxed closure method `call_once`
+fn foo<F: Fn()>(mut f: F) {
+    Fn::call(&f, ()); //~ ERROR use of unstable library feature 'fn_traits'
+    FnMut::call_mut(&mut f, ()); //~ ERROR use of unstable library feature 'fn_traits'
+    FnOnce::call_once(f, ()); //~ ERROR use of unstable library feature 'fn_traits'
 }
 
 fn main() {}

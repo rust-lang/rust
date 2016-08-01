@@ -11,9 +11,6 @@
 // Ensures that single-word environments work right in unboxed closures.
 // These take a different path in codegen.
 
-
-#![feature(unboxed_closures)]
-
 fn a<F:Fn(isize, isize) -> isize>(f: F) -> isize {
     f(1, 2)
 }

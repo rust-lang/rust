@@ -31,7 +31,6 @@
 #![feature(step_by)]
 #![feature(test)]
 #![feature(try_from)]
-#![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
 

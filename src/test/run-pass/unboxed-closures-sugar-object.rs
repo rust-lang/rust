@@ -10,9 +10,7 @@
 
 // Test unboxed closure sugar used in object types.
 
-
 #![allow(dead_code)]
-#![feature(unboxed_closures)]
 
 struct Foo<T,U> {
     t: T, u: U
