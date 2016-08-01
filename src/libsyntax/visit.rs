@@ -4,7 +4,8 @@
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your,
+//                 "The `!` type is experimental");
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
@@ -127,6 +128,9 @@ pub trait Visitor: Sized {
     }
     fn visit_vis(&mut self, vis: &Visibility) {
         walk_vis(self, vis)
+    }
+    fn visit_fn_ret_ty(&mut self, ret_ty: &FunctionRetTy) {
+        walk_fn_ret_ty(self, ret_ty)
     }
 }
 
@@ -510,7 +514,7 @@ pub fn walk_fn_decl<V: Visitor>(visitor: &mut V, function_declaration: &FnDecl) 
         visitor.visit_pat(&argument.pat);
         visitor.visit_ty(&argument.ty)
     }
-    walk_fn_ret_ty(visitor, &function_declaration.output)
+    visitor.visit_fn_ret_ty(&function_declaration.output)
 }
 
 pub fn walk_fn_kind<V: Visitor>(visitor: &mut V, function_kind: FnKind) {

@@ -87,6 +87,7 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(question_mark)]
+#![cfg_attr(not(stage0), feature(bang_type))]
 
 #[macro_use]
 mod macros;
