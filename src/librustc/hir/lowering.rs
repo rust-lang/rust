@@ -293,8 +293,10 @@ impl<'a> LoweringContext<'a> {
                     hir::TyTypeof(self.lower_expr(expr))
                 }
                 PolyTraitRef(ref bounds) => {
-                    let bounds = bounds.iter().map(|b| self.lower_ty_param_bound(b)).collect();
-                    hir::TyPolyTraitRef(bounds)
+                    hir::TyPolyTraitRef(self.lower_bounds(bounds))
+                }
+                ImplTrait(ref bounds) => {
+                    hir::TyImplTrait(self.lower_bounds(bounds))
                 }
                 Mac(_) => panic!("TyMac should have been expanded by now."),
             },

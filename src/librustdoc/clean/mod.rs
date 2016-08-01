@@ -1492,6 +1492,9 @@ pub enum Type {
 
     // for<'a> Foo(&'a)
     PolyTraitRef(Vec<TyParamBound>),
+
+    // impl TraitA+TraitB
+    ImplTrait(Vec<TyParamBound>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Copy, Debug)]
@@ -1777,6 +1780,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyPolyTraitRef(ref bounds) => PolyTraitRef(bounds.clean(cx)),
+            TyImplTrait(ref bounds) => ImplTrait(bounds.clean(cx)),
             TyInfer => Infer,
             TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
         }
