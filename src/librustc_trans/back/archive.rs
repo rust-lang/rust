@@ -293,7 +293,7 @@ impl<'a> ArchiveBuilder<'a> {
                                                members.as_ptr(),
                                                self.should_update_symbols,
                                                kind);
-            let ret = if r != 0 {
+            let ret = if r.into_result().is_err() {
                 let err = llvm::LLVMRustGetLastError();
                 let msg = if err.is_null() {
                     "failed to write archive".to_string()

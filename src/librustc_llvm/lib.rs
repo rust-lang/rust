@@ -40,13 +40,9 @@ pub use self::TypeKind::*;
 pub use self::AtomicBinOp::*;
 pub use self::AtomicOrdering::*;
 pub use self::SynchronizationScope::*;
-pub use self::FileType::*;
 pub use self::MetadataType::*;
 pub use self::AsmDialect::*;
-pub use self::CodeGenOptLevel::*;
 pub use self::CodeGenOptSize::*;
-pub use self::RelocMode::*;
-pub use self::CodeGenModel::*;
 pub use self::DiagnosticKind::*;
 pub use self::CallConv::*;
 pub use self::Visibility::*;
@@ -75,9 +71,26 @@ pub type Bool = c_uint;
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
 
+#[repr(C)]
+#[derive(Copy, Clone, PartialEq)]
+pub enum LLVMRustResult {
+    Success = 0,
+    Failure = 1
+}
+
+impl LLVMRustResult {
+    pub fn into_result(self) -> Result<(), ()> {
+        match self {
+            LLVMRustResult::Success => Ok(()),
+            LLVMRustResult::Failure => Err(()),
+        }
+    }
+}
+
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 #[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
 pub enum CallConv {
     CCallConv = 0,
     FastCallConv = 8,
@@ -89,6 +102,7 @@ pub enum CallConv {
 }
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum Visibility {
     LLVMDefaultVisibility = 0,
     HiddenVisibility = 1,
@@ -100,6 +114,7 @@ pub enum Visibility {
 // LinkerPrivateLinkage and LinkerPrivateWeakLinkage are not included either;
 // they've been removed in upstream LLVM commit r203866.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(C)]
 pub enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
@@ -337,12 +352,12 @@ pub enum SynchronizationScope {
     CrossThread = 1
 }
 
-// Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub enum FileType {
-    AssemblyFileType = 0,
-    ObjectFileType = 1
+    Other,
+    AssemblyFile,
+    ObjectFile,
 }
 
 #[derive(Copy, Clone)]
@@ -371,10 +386,11 @@ pub enum AsmDialect {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum CodeGenOptLevel {
-    CodeGenLevelNone = 0,
-    CodeGenLevelLess = 1,
-    CodeGenLevelDefault = 2,
-    CodeGenLevelAggressive = 3,
+    Other,
+    None,
+    Less,
+    Default,
+    Aggressive,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -388,21 +404,22 @@ pub enum CodeGenOptSize {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum RelocMode {
-    RelocDefault = 0,
-    RelocStatic = 1,
-    RelocPIC = 2,
-    RelocDynamicNoPic = 3,
+    Default = 0,
+    Static = 1,
+    PIC = 2,
+    DynamicNoPic = 3,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub enum CodeGenModel {
-    CodeModelDefault = 0,
-    CodeModelJITDefault = 1,
-    CodeModelSmall = 2,
-    CodeModelKernel = 3,
-    CodeModelMedium = 4,
-    CodeModelLarge = 5,
+pub enum CodeModel {
+    Other,
+    Default,
+    JITDefault,
+    Small,
+    Kernel,
+    Medium,
+    Large,
 }
 
 #[repr(C)]
@@ -421,6 +438,7 @@ pub enum DiagnosticKind {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub enum ArchiveKind {
+    Other,
     K_GNU,
     K_MIPS64,
     K_BSD,
@@ -444,10 +462,10 @@ impl FromStr for ArchiveKind {
 /// Represents the different LLVM passes Rust supports
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
-pub enum SupportedPassKind {
+pub enum PassKind {
+    Other,
     Function,
     Module,
-    Unsupported,
 }
 
 // Opaque pointer types
@@ -2021,7 +2039,7 @@ extern {
     pub fn LLVMIsAAllocaInst(value_ref: ValueRef) -> ValueRef;
     pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;
 
-    pub fn LLVMRustPassKind(Pass: PassRef) -> SupportedPassKind;
+    pub fn LLVMRustPassKind(Pass: PassRef) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> PassRef;
     pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: PassRef);
 
@@ -2031,7 +2049,7 @@ extern {
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
                                        Features: *const c_char,
-                                       Model: CodeGenModel,
+                                       Model: CodeModel,
                                        Reloc: RelocMode,
                                        Level: CodeGenOptLevel,
                                        UseSoftFP: bool,
@@ -2057,7 +2075,8 @@ extern {
                                    PM: PassManagerRef,
                                    M: ModuleRef,
                                    Output: *const c_char,
-                                   FileType: FileType) -> bool;
+                                   FileType: FileType)
+                                   -> LLVMRustResult;
     pub fn LLVMRustPrintModule(PM: PassManagerRef,
                                M: ModuleRef,
                                Output: *const c_char);
@@ -2123,7 +2142,8 @@ extern {
                                 NumMembers: size_t,
                                 Members: *const RustArchiveMemberRef,
                                 WriteSymbtab: bool,
-                                Kind: ArchiveKind) -> c_int;
+                                Kind: ArchiveKind) ->
+                                LLVMRustResult;
     pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
                                     Name: *const c_char,
                                     Child: ArchiveChildRef) -> RustArchiveMemberRef;
