@@ -23,11 +23,5 @@ RUN apt-get update && apt-get -y install \
     libedit-dev zlib1g-dev \
     llvm-3.7-tools cmake
 
-# When we compile compiler-rt we pass it the llvm-config we just installed on
-# the system, but unfortunately it doesn't infer correctly where
-# LLVMConfig.cmake is so we need to coerce it a bit...
-RUN mkdir -p /usr/lib/llvm-3.7/build/share/llvm
-RUN ln -s /usr/share/llvm-3.7/cmake /usr/lib/llvm-3.7/build/share/llvm/cmake
-
 RUN mkdir /build
 WORKDIR /build
