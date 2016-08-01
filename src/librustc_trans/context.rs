@@ -34,6 +34,7 @@ use rustc::ty::subst::{Substs, VecPerParamSpace};
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
+use session::config;
 use symbol_map::SymbolMap;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
@@ -322,6 +323,38 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
     }
 }
 
+pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
+    let reloc_model_arg = match sess.opts.cg.relocation_model {
+        Some(ref s) => &s[..],
+        None => &sess.target.target.options.relocation_model[..],
+    };
+
+    match reloc_model_arg {
+        "pic" => llvm::RelocPIC,
+        "static" => llvm::RelocStatic,
+        "default" => llvm::RelocDefault,
+        "dynamic-no-pic" => llvm::RelocDynamicNoPic,
+        _ => {
+            sess.err(&format!("{:?} is not a valid relocation mode",
+                             sess.opts
+                                 .cg
+                                 .relocation_model));
+            sess.abort_if_errors();
+            bug!();
+        }
+    }
+}
+
+fn is_any_library(sess: &Session) -> bool {
+    sess.crate_types.borrow().iter().any(|ty| {
+        *ty != config::CrateTypeExecutable
+    })
+}
+
+pub fn is_pie_binary(sess: &Session) -> bool {
+    !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocPIC
+}
+
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let mod_name = CString::new(mod_name).unwrap();
@@ -337,7 +370,25 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
         let data_layout = str::from_utf8(CStr::from_ptr(data_layout).to_bytes())
             .ok().expect("got a non-UTF8 data-layout from LLVM");
 
-        if sess.target.target.data_layout != data_layout {
+        // Unfortunately LLVM target specs change over time, and right now we
+        // don't have proper support to work with any more than one
+        // `data_layout` than the one that is in the rust-lang/rust repo. If
+        // this compiler is configured against a custom LLVM, we may have a
+        // differing data layout, even though we should update our own to use
+        // that one.
+        //
+        // As an interim hack, if CFG_LLVM_ROOT is not an empty string then we
+        // disable this check entirely as we may be configured with something
+        // that has a different target layout.
+        //
+        // Unsure if this will actually cause breakage when rustc is configured
+        // as such.
+        //
+        // FIXME(#34960)
+        let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
+        let custom_llvm_used = cfg_llvm_root.trim() != "";
+
+        if !custom_llvm_used && sess.target.target.data_layout != data_layout {
             bug!("data-layout for builtin `{}` target, `{}`, \
                   differs from LLVM default, `{}`",
                  sess.target.target.llvm_target,
@@ -352,6 +403,11 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let llvm_target = sess.target.target.llvm_target.as_bytes();
     let llvm_target = CString::new(llvm_target).unwrap();
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
+
+    if is_pie_binary(sess) {
+        llvm::LLVMRustSetModulePIELevel(llmod);
+    }
+
     (llcx, llmod)
 }
 
@@ -558,7 +614,9 @@ impl<'tcx> LocalCrateContext<'tcx> {
                                                           &llmod_id[..]);
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
-                Some(debuginfo::CrateDebugContext::new(llmod))
+                let dctx = debuginfo::CrateDebugContext::new(llmod);
+                debuginfo::metadata::compile_unit_metadata(shared, &dctx, shared.tcx.sess);
+                Some(dctx)
             } else {
                 None
             };

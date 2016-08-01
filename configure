@@ -1020,6 +1020,12 @@ then
             err "bad LLVM version: $LLVM_VERSION, need >=3.7"
             ;;
     esac
+
+    if "$CFG_LLVM_ROOT/bin/llvm-mc" -help | grep -- "-relocation-model"; then
+        msg "found older llvm-mc"
+        CFG_LLVM_MC_HAS_RELOCATION_MODEL=1
+        putvar CFG_LLVM_MC_HAS_RELOCATION_MODEL
+    fi
 fi
 
 # Even when the user overrides the choice of CC, still try to detect

@@ -18,7 +18,7 @@ use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
 use self::namespace::mangled_name_of_item;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, diverging_type_metadata};
-use self::metadata::{file_metadata, scope_metadata, TypeMap, compile_unit_metadata};
+use self::metadata::{file_metadata, scope_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
@@ -50,7 +50,7 @@ pub mod gdb;
 mod utils;
 mod namespace;
 mod type_names;
-mod metadata;
+pub mod metadata;
 mod create_scope_map;
 mod source_loc;
 
@@ -168,7 +168,6 @@ pub fn finalize(cx: &CrateContext) {
     }
 
     debug!("finalize");
-    let _ = compile_unit_metadata(cx);
 
     if gdb::needs_gdb_debug_scripts_section(cx) {
         // Add a .debug_gdb_scripts section to this compile-unit. This will
