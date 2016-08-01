@@ -214,22 +214,20 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-fn rewrite_single_use_list(path_str: String, vpi: &ast::PathListItem) -> String {
+fn rewrite_single_use_list(path_str: Option<String>, vpi: &ast::PathListItem) -> String {
     let path_item_str = if let ast::PathListItemKind::Ident { name, .. } = vpi.node {
         // A name.
-        if path_str.is_empty() {
-            name.to_string()
-        } else {
-            format!("{}::{}", path_str, name)
+        match path_str {
+            Some(path_str) => format!("{}::{}", path_str, name),
+            None => name.to_string(),
         }
     } else {
         // `self`.
-        if !path_str.is_empty() {
-            path_str
-        } else {
+        match path_str {
+            Some(path_str) => path_str,
             // This catches the import: use {self}, which is a compiler error, so we just
             // leave it alone.
-            "{self}".to_owned()
+            None => "{self}".to_owned(),
         }
     };
 
@@ -264,20 +262,26 @@ pub fn rewrite_use_list(width: usize,
                         span: Span,
                         context: &RewriteContext)
                         -> Option<String> {
-    // 1 = {}
-    let budget = try_opt!(width.checked_sub(1));
-    let path_str = try_opt!(rewrite_path(context, false, None, path, budget, offset));
+    // Returns a different option to distinguish `::foo` and `foo`
+    let opt_path_str = if !path.to_string().is_empty() {
+        Some(path.to_string())
+    } else if path.global {
+        // path is absolute, we return an empty String to avoid a double `::`
+        Some(String::new())
+    } else {
+        None
+    };
 
     match path_list.len() {
         0 => unreachable!(),
-        1 => return Some(rewrite_single_use_list(path_str, &path_list[0])),
+        1 => return Some(rewrite_single_use_list(opt_path_str, &path_list[0])),
         _ => (),
     }
 
     // 2 = ::
-    let path_separation_w = if !path_str.is_empty() { 2 } else { 0 };
+    let path_separation_w = if opt_path_str.is_some() { 2 } else { 0 };
     // 1 = {
-    let supp_indent = path_str.len() + path_separation_w + 1;
+    let supp_indent = path.to_string().len() + path_separation_w + 1;
     // 1 = }
     let remaining_width = width.checked_sub(supp_indent + 1).unwrap_or(0);
 
@@ -323,10 +327,9 @@ pub fn rewrite_use_list(width: usize,
     };
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
-    Some(if path_str.is_empty() {
-        format!("{{{}}}", list_str)
-    } else {
-        format!("{}::{{{}}}", path_str, list_str)
+    Some(match opt_path_str {
+        Some(opt_path_str) => format!("{}::{{{}}}", opt_path_str, list_str),
+        None => format!("{{{}}}", list_str),
     })
 }
 

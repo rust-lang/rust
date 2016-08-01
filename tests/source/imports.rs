@@ -50,3 +50,10 @@ use foo::{self as bar, baz};
 use foo::{self as bar};
 use foo::{qux as bar};
 use foo::{baz, qux as bar};
+
+// With absolute paths
+use ::foo;
+use ::foo::{Bar};
+use ::foo::{Bar, Baz};
+use ::{Foo};
+use ::{Bar, Baz};
