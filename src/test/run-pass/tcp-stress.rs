@@ -21,7 +21,7 @@ use std::sync::mpsc::channel;
 use std::time::Duration;
 use std::thread::{self, Builder};
 
-const TARGET_CNT: usize = 1000;
+const TARGET_CNT: usize = 200;
 
 fn main() {
     // This test has a chance to time out, try to not let it time out
