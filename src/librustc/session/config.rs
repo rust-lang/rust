@@ -793,7 +793,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     remark: Passes = (SomePasses(Vec::new()), parse_passes, [UNTRACKED],
         "print remarks for these optimization passes (space separated, or \"all\")"),
     no_stack_check: bool = (false, parse_bool, [UNTRACKED],
-        "disable checks for stack exhaustion (a memory-safety hazard!)"),
+        "the --no-stack-check flag is deprecated and does nothing"),
     debuginfo: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "debug info emission level, 0 = no debug info, 1 = line tables only, \
          2 = full debug info with variable and type information"),
