@@ -284,6 +284,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // After this point, bcx is the block for the call to panic.
                 bcx = panic_block.build();
+                debug_loc.apply_to_bcx(&bcx);
 
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
