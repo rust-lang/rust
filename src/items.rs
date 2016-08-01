@@ -1369,10 +1369,21 @@ fn rewrite_fn_base(context: &RewriteContext,
             FnArgLayoutStyle::Block if put_args_in_block => false,
             FnArgLayoutStyle::BlockAlways => false,
             _ => {
-                // If we've already gone multi-line, or the return type would push
-                // over the max width, then put the return type on a new line.
-                result.contains("\n") || multi_line_ret_str ||
-                result.len() + indent.width() + ret_str_len > context.config.max_width
+                // If we've already gone multi-line, or the return type would push over the max
+                // width, then put the return type on a new line. With the +1 for the signature
+                // length an additional space between the closing parenthesis of the argument and
+                // the arrow '->' is considered.
+                let mut sig_length = result.len() + indent.width() + ret_str_len + 1;
+
+                // If there is no where clause, take into account the space after the return type
+                // and the brace.
+                if where_clause.predicates.is_empty() {
+                    sig_length += 2;
+                }
+
+                let overlong_sig = sig_length > context.config.max_width;
+
+                result.contains("\n") || multi_line_ret_str || overlong_sig
             }
         };
         let ret_indent = if ret_should_indent {
@@ -1400,10 +1411,8 @@ fn rewrite_fn_base(context: &RewriteContext,
         if multi_line_ret_str {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
-
             let budget = try_opt!(context.config.max_width.checked_sub(ret_indent.width()));
-            let ret_str = try_opt!(fd.output
-                .rewrite(context, budget, ret_indent));
+            let ret_str = try_opt!(fd.output.rewrite(context, budget, ret_indent));
             result.push_str(&ret_str);
         } else {
             result.push_str(&ret_str);
