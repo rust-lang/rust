@@ -12,6 +12,7 @@ use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::netbsd_base::opts();
+    base.cpu = "x86-64".to_string();
     base.pre_link_args.push("-m64".to_string());
     base.linker = "x86_64-rumprun-netbsd-gcc".to_string();
     base.ar = "x86_64-rumprun-netbsd-ar".to_string();

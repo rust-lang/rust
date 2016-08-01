@@ -10,8 +10,6 @@
 
 // Tests that unsafe extern fn pointers do not implement any Fn traits.
 
-#![feature(unboxed_closures)]
-
 use std::ops::{Fn,FnMut,FnOnce};
 
 unsafe fn square(x: isize) -> isize { x * x }

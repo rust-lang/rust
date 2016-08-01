@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures)]
-
 use std::sync::mpsc::channel;
 
 fn foo<F:FnOnce()+Send>(blk: F) {

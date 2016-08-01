@@ -11,7 +11,6 @@
 // Test that the type variable in the type(`Vec<_>`) of a closed over
 // variable does not interfere with type inference.
 
-
 fn f<F: FnMut()>(mut f: F) {
     f();
 }

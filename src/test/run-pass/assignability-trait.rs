@@ -12,9 +12,6 @@
 // making method calls, but only if there aren't any matches without
 // it.
 
-
-#![feature(unboxed_closures)]
-
 trait iterable<A> {
     fn iterate<F>(&self, blk: F) -> bool where F: FnMut(&A) -> bool;
 }

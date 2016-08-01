@@ -1944,89 +1944,6 @@ To learn more about traits, take a look at the Book:
 https://doc.rust-lang.org/book/traits.html
 "##,
 
-E0174: r##"
-This error occurs because of the explicit use of unboxed closure methods
-that are an experimental feature in current Rust version.
-
-Example of erroneous code:
-
-```compile_fail
-fn foo<F: Fn(&str)>(mut f: F) {
-    f.call(("call",));
-    // error: explicit use of unboxed closure method `call`
-    f.call_mut(("call_mut",));
-    // error: explicit use of unboxed closure method `call_mut`
-    f.call_once(("call_once",));
-    // error: explicit use of unboxed closure method `call_once`
-}
-
-fn bar(text: &str) {
-    println!("Calling {} it works!", text);
-}
-
-fn main() {
-    foo(bar);
-}
-```
-
-Rust's implementation of closures is a bit different than other languages.
-They are effectively syntax sugar for traits `Fn`, `FnMut` and `FnOnce`.
-To understand better how the closures are implemented see here:
-https://doc.rust-lang.org/book/closures.html#closure-implementation
-
-To fix this you can call them using parenthesis, like this: `foo()`.
-When you execute the closure with parenthesis, under the hood you are executing
-the method `call`, `call_mut` or `call_once`. However, using them explicitly is
-currently an experimental feature.
-
-Example of an implicit call:
-
-```
-fn foo<F: Fn(&str)>(f: F) {
-    f("using ()"); // Calling using () it works!
-}
-
-fn bar(text: &str) {
-    println!("Calling {} it works!", text);
-}
-
-fn main() {
-    foo(bar);
-}
-```
-
-To enable the explicit calls you need to add `#![feature(unboxed_closures)]`.
-
-This feature is still unstable so you will also need to add
-`#![feature(fn_traits)]`.
-More details about this issue here:
-https://github.com/rust-lang/rust/issues/29625
-
-Example of use:
-
-```
-#![feature(fn_traits)]
-#![feature(unboxed_closures)]
-
-fn foo<F: Fn(&str)>(mut f: F) {
-    f.call(("call",)); // Calling 'call' it works!
-    f.call_mut(("call_mut",)); // Calling 'call_mut' it works!
-    f.call_once(("call_once",)); // Calling 'call_once' it works!
-}
-
-fn bar(text: &str) {
-    println!("Calling '{}' it works!", text);
-}
-
-fn main() {
-    foo(bar);
-}
-```
-
-To see more about closures take a look here:
-https://doc.rust-lang.org/book/closures.html`
-"##,
-
 E0178: r##"
 In types, the `+` type operator has low precedence, so it is often necessary
 to use parentheses.
@@ -4049,6 +3966,7 @@ register_diagnostics! {
     E0167,
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
+//  E0174,
     E0182,
     E0183,
 //  E0187, // can't infer the kind of the closure
