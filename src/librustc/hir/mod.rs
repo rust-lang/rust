@@ -1132,6 +1132,8 @@ pub enum Ty_ {
     TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
     TyPolyTraitRef(TyParamBounds),
+    /// An `impl TraitA+TraitB` type.
+    TyImplTrait(TyParamBounds),
     /// Unused for now
     TyTypeof(P<Expr>),
     /// TyInfer means the type should be inferred instead of it having been

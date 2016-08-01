@@ -539,6 +539,16 @@ impl fmt::Display for clean::Type {
                 }
                 Ok(())
             }
+            clean::ImplTrait(ref bounds) => {
+                write!(f, "impl ")?;
+                for (i, bound) in bounds.iter().enumerate() {
+                    if i != 0 {
+                        write!(f, " + ")?;
+                    }
+                    write!(f, "{}", *bound)?;
+                }
+                Ok(())
+            }
             // It's pretty unsightly to look at `<A as B>::C` in output, and
             // we've got hyperlinking on our side, so try to avoid longer
             // notation as much as possible by making `C` a hyperlink to trait
