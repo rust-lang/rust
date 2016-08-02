@@ -645,8 +645,8 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     })
                 }
 
-                adjustment::AdjustEmptyToAny(ref ty) => {
-                    this.emit_enum_variant("AdjustEmptyToAny", 5, 1, |this| {
+                adjustment::AdjustNeverToAny(ref ty) => {
+                    this.emit_enum_variant("AdjustNeverToAny", 5, 1, |this| {
                         this.emit_enum_variant_arg(0, |this| Ok(this.emit_ty(ecx, ty)))
                     })
                 }
@@ -1024,7 +1024,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         self.read_enum("AutoAdjustment", |this| {
             let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer",
                             "AdjustMutToConstPointer", "AdjustDerefRef",
-                            "AdjustEmptyToAny"];
+                            "AdjustNeverToAny"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     1 => adjustment::AdjustReifyFnPointer,
@@ -1042,7 +1042,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                             Ok(this.read_ty(dcx))
                         }).unwrap();
 
-                        adjustment::AdjustEmptyToAny(ty)
+                        adjustment::AdjustNeverToAny(ty)
                     }
                     _ => bug!("bad enum variant for adjustment::AutoAdjustment")
                 })

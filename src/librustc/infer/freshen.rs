@@ -168,7 +168,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyTrait(..) |
             ty::TyStruct(..) |
             ty::TyClosure(..) |
-            ty::TyEmpty |
+            ty::TyNever |
             ty::TyTuple(..) |
             ty::TyProjection(..) |
             ty::TyParam(..) |

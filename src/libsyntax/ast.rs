@@ -1358,8 +1358,8 @@ pub enum TyKind {
     Rptr(Option<Lifetime>, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
     BareFn(P<BareFnTy>),
-    /// The empty type (`!`)
-    Empty,
+    /// The never type (`!`)
+    Never,
     /// A tuple (`(A, B, C, D,...)`)
     Tup(Vec<P<Ty>> ),
     /// A path (`module::module::...::Type`), optionally

@@ -451,7 +451,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         self.cat_expr_autoderefd(expr, autoderefs)
                     }
 
-                    adjustment::AdjustEmptyToAny(..) |
+                    adjustment::AdjustNeverToAny(..) |
                     adjustment::AdjustReifyFnPointer |
                     adjustment::AdjustUnsafeFnPointer |
                     adjustment::AdjustMutToConstPointer |

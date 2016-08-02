@@ -504,7 +504,7 @@ impl<'a> State<'a> {
                 self.print_opt_lifetime(lifetime)?;
                 self.print_mt(mt)?;
             }
-            hir::TyEmpty => {
+            hir::TyNever => {
                 word(&mut self.s, "!")?;
             },
             hir::TyTup(ref elts) => {

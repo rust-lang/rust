@@ -349,7 +349,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyAnon(..) |
         ty::TyInfer(_) |
         ty::TyError |
-        ty::TyEmpty |
+        ty::TyNever |
         ty::TyFloat(_) => None,
     }
 }

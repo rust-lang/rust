@@ -717,7 +717,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         let adj = infcx.adjustments().get(&expr.id).map(|x| x.clone());
         if let Some(adjustment) = adj {
             match adjustment {
-                adjustment::AdjustEmptyToAny(..) |
+                adjustment::AdjustNeverToAny(..) |
                 adjustment::AdjustReifyFnPointer |
                 adjustment::AdjustUnsafeFnPointer |
                 adjustment::AdjustMutToConstPointer => {

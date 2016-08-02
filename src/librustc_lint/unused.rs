@@ -133,7 +133,7 @@ impl LateLintPass for UnusedResults {
         let t = cx.tcx.expr_ty(&expr);
         let warned = match t.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
-            ty::TyEmpty => return,
+            ty::TyNever => return,
             ty::TyBool => return,
             ty::TyStruct(def, _) |
             ty::TyEnum(def, _) => {

@@ -14,7 +14,7 @@ use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyStruct, TyEnum};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
-use ty::{TyParam, TyRawPtr, TyRef, TyEmpty, TyTuple};
+use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::TyClosure;
 use ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -422,8 +422,8 @@ impl<'tcx, 'container> fmt::Debug for ty::AdtDefData<'tcx, 'container> {
 impl<'tcx> fmt::Debug for ty::adjustment::AutoAdjustment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ty::adjustment::AdjustEmptyToAny(ref target) => {
-                write!(f, "AdjustEmptyToAny({:?})", target)
+            ty::adjustment::AdjustNeverToAny(ref target) => {
+                write!(f, "AdjustNeverToAny({:?})", target)
             }
             ty::adjustment::AdjustReifyFnPointer => {
                 write!(f, "AdjustReifyFnPointer")
@@ -843,7 +843,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
                 write!(f, "{}", tm)
             }
-            TyEmpty => write!(f, "!"),
+            TyNever => write!(f, "!"),
             TyTuple(ref tys) => {
                 write!(f, "(")?;
                 let mut tys = tys.iter();

@@ -712,7 +712,8 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         _ => {}
     }
 
-    if output.is_empty(bcx.tcx()) {
+    // FIXME(canndrew): This is_never should really be an is_uninhabited
+    if output.is_never() {
         Unreachable(bcx);
     }
 

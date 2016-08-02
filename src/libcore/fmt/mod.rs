@@ -1367,14 +1367,14 @@ fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperEx
 // that supports `!`
 macro_rules! not_stage0 {
     () => {
-        #[unstable(feature = "bang_type", issue = "35121")]
+        #[unstable(feature = "never_type", issue = "35121")]
         impl Debug for ! {
             fn fmt(&self, _: &mut Formatter) -> Result {
                 *self
             }
         }
 
-        #[unstable(feature = "bang_type", issue = "35121")]
+        #[unstable(feature = "never_type", issue = "35121")]
         impl Display for ! {
             fn fmt(&self, _: &mut Formatter) -> Result {
                 *self

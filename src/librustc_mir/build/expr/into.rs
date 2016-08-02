@@ -45,7 +45,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Match { discriminant, arms } => {
                 this.match_expr(destination, expr_span, block, discriminant, arms)
             }
-            ExprKind::EmptyToAny { source } => {
+            ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);
                 let is_call = match source.kind {
                     ExprKind::Call { .. } => true,
@@ -209,7 +209,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Call { ty, fun, args } => {
                 let diverges = match ty.sty {
                     ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
-                        f.sig.0.output.is_empty(this.hir.tcx())
+                        // FIXME(canndrew): This is_never should probably be an is_uninhabited
+                        f.sig.0.output.is_never()
                     }
                     _ => false
                 };

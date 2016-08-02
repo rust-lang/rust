@@ -158,8 +158,8 @@ pub enum TypeVariants<'tcx> {
     /// `|a| a`.
     TyClosure(DefId, ClosureSubsts<'tcx>),
 
-    /// The empty type `!`
-    TyEmpty,
+    /// The never type `!`
+    TyNever,
 
     /// A tuple type.  For example, `(i32, bool)`.
     TyTuple(&'tcx [Ty<'tcx>]),
@@ -894,14 +894,22 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_empty(&self, cx: TyCtxt) -> bool {
-        // FIXME(#24885): be smarter here
+    pub fn is_never(&self) -> bool {
+        match self.sty {
+            TyNever => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_uninhabited(&self, cx: TyCtxt) -> bool {
+        // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
+        // more complete.
         match self.sty {
             TyEnum(def, _) | TyStruct(def, _) => def.is_empty(),
-            TyEmpty => true,
-            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_empty(cx)),
+            TyNever => true,
+            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
             // FIXME (canndrew): this line breaks core::fmt
-            //TyRef(_, ref tm) => tm.ty.is_empty(cx),
+            //TyRef(_, ref tm) => tm.ty.is_uninhabited(cx),
             _ => false,
         }
     }
@@ -1225,7 +1233,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyArray(_, _) |
             TySlice(_) |
             TyRawPtr(_) |
-            TyEmpty |
+            TyNever |
             TyTuple(_) |
             TyParam(_) |
             TyInfer(_) |

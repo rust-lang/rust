@@ -96,7 +96,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::LogicalOp { .. } |
             ExprKind::Box { .. } |
             ExprKind::Cast { .. } |
-            ExprKind::EmptyToAny { .. } |
+            ExprKind::NeverToAny { .. } |
             ExprKind::ReifyFnPointer { .. } |
             ExprKind::UnsafeFnPointer { .. } |
             ExprKind::Unsize { .. } |

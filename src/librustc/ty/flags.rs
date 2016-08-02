@@ -60,7 +60,7 @@ impl FlagComputation {
             &ty::TyInt(_) |
             &ty::TyFloat(_) |
             &ty::TyUint(_) |
-            &ty::TyEmpty |
+            &ty::TyNever |
             &ty::TyStr => {
             }
 

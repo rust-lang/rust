@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(bang_type)]
-
-
+#![feature(never_type)]
 
 // error-pattern:explicit
 fn main() {

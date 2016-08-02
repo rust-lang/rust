@@ -976,7 +976,7 @@ impl<'a> State<'a> {
                 try!(self.print_opt_lifetime(lifetime));
                 try!(self.print_mt(mt));
             }
-            ast::TyKind::Empty => {
+            ast::TyKind::Never => {
                 word(&mut self.s, "!")?;
             },
             ast::TyKind::Tup(ref elts) => {

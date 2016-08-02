@@ -60,13 +60,13 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
                 };
             }
-            Some(&ty::adjustment::AdjustEmptyToAny(..)) => {
+            Some(&ty::adjustment::AdjustNeverToAny(..)) => {
                 let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
                     ty: adjusted_ty,
                     span: self.span,
-                    kind: ExprKind::EmptyToAny { source: expr.to_ref() },
+                    kind: ExprKind::NeverToAny { source: expr.to_ref() },
                 };
             }
             Some(&ty::adjustment::AdjustMutToConstPointer) => {

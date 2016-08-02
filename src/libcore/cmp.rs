@@ -703,24 +703,24 @@ mod impls {
     // that supports `!`
     macro_rules! not_stage0 {
         () => {
-            #[unstable(feature = "bang_type", issue = "35121")]
+            #[unstable(feature = "never_type", issue = "35121")]
             impl PartialEq for ! {
                 fn eq(&self, _: &!) -> bool {
                     *self
                 }
             }
 
-            #[unstable(feature = "bang_type", issue = "35121")]
+            #[unstable(feature = "never_type", issue = "35121")]
             impl Eq for ! {}
 
-            #[unstable(feature = "bang_type", issue = "35121")]
+            #[unstable(feature = "never_type", issue = "35121")]
             impl PartialOrd for ! {
                 fn partial_cmp(&self, _: &!) -> Option<Ordering> {
                     *self
                 }
             }
 
-            #[unstable(feature = "bang_type", issue = "35121")]
+            #[unstable(feature = "never_type", issue = "35121")]
             impl Ord for ! {
                 fn cmp(&self, _: &!) -> Ordering {
                     *self

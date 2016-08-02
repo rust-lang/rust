@@ -1122,8 +1122,8 @@ pub enum Ty_ {
     TyRptr(Option<Lifetime>, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
     TyBareFn(P<BareFnTy>),
-    /// The empty type (`!`)
-    TyEmpty,
+    /// The never type (`!`)
+    TyNever,
     /// A tuple (`(A, B, C, D,...)`)
     TyTup(HirVec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally
