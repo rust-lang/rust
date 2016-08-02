@@ -31,55 +31,55 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
             None => { return; },
             _ => {}
         };
+
+        // Do not trigger on constants.  Could be revised in future
         if let MirSource::Fn(_) = source {} else { return; }
 
         let mut curr: usize = 0;
         for bb in mir.basic_blocks_mut() {
-            while let Some(idx) = get_aggregate_statement(curr, &bb.statements) {
-                // do the replacement
-                debug!("removing statement {:?}", idx);
-                let src_info = bb.statements[idx].source_info;
-                let mut suffix_stmts = bb.statements.split_off(idx);
-                let orig_stmt = suffix_stmts.remove(0);
-                let StatementKind::Assign(ref lhs, ref rhs) = orig_stmt.kind;
-                if let &Rvalue::Aggregate(ref agg_kind, ref operands) = rhs {
-                    if let &AggregateKind::Adt(adt_def, variant, substs) = agg_kind {
-                        let n = bb.statements.len();
-                        bb.statements.reserve(n + operands.len() + suffix_stmts.len());
-                        for (i, op) in operands.iter().enumerate() {
-                            let ref variant_def = adt_def.variants[variant];
-                            let ty = variant_def.fields[variant].ty(tcx, substs);
-                            let rhs = Rvalue::Use(op.clone());
+            let idx = match get_aggregate_statement(curr, &bb.statements) {
+                Some(idx) => idx,
+                None => continue,
+            };
+            // do the replacement
+            debug!("removing statement {:?}", idx);
+            let src_info = bb.statements[idx].source_info;
+            let suffix_stmts = bb.statements.split_off(idx+1);
+            let orig_stmt = bb.statements.pop().unwrap();
+            let StatementKind::Assign(ref lhs, ref rhs) = orig_stmt.kind;
+            let (agg_kind, operands) = match rhs {
+                &Rvalue::Aggregate(ref agg_kind, ref operands) => (agg_kind, operands),
+                _ => span_bug!(src_info.span, "expected aggregate, not {:?}", rhs),
+            };
+            let (adt_def, variant, substs) = match agg_kind {
+                &AggregateKind::Adt(adt_def, variant, substs) => (adt_def, variant, substs),
+                _ => span_bug!(src_info.span, "expected struct, not {:?}", rhs),
+            };
+            let n = bb.statements.len();
+            bb.statements.reserve(n + operands.len() + suffix_stmts.len());
+            for (i, op) in operands.iter().enumerate() {
+                let ref variant_def = adt_def.variants[variant];
+                let ty = variant_def.fields[variant].ty(tcx, substs);
+                let rhs = Rvalue::Use(op.clone());
 
-                            // since we don't handle enums, we don't need a cast
-                            let lhs_cast = lhs.clone();
+                // since we don't handle enums, we don't need a cast
+                let lhs_cast = lhs.clone();
 
-                            // if we handled enums:
-                            // let lhs_cast = if adt_def.variants.len() > 1 {
-                            //     Lvalue::Projection(Box::new(LvalueProjection {
-                            //         base: ai.lhs.clone(),
-                            //         elem: ProjectionElem::Downcast(ai.adt_def, ai.variant),
-                            //     }))
-                            // } else {
-                            //     lhs_cast
-                            // };
+                // FIXME we cannot deaggregate enums issue: 35186
 
-                            let lhs_proj = Lvalue::Projection(Box::new(LvalueProjection {
-                                base: lhs_cast,
-                                elem: ProjectionElem::Field(Field::new(i), ty),
-                            }));
-                            let new_statement = Statement {
-                                source_info: src_info,
-                                kind: StatementKind::Assign(lhs_proj, rhs),
-                            };
-                            debug!("inserting: {:?} @ {:?}", new_statement, idx + i);
-                            bb.statements.push(new_statement);
-                        }
-                        curr = bb.statements.len();
-                        bb.statements.extend(suffix_stmts);
-                    }
-                }
+                let lhs_proj = Lvalue::Projection(Box::new(LvalueProjection {
+                    base: lhs_cast,
+                    elem: ProjectionElem::Field(Field::new(i), ty),
+                }));
+                let new_statement = Statement {
+                    source_info: src_info,
+                    kind: StatementKind::Assign(lhs_proj, rhs),
+                };
+                debug!("inserting: {:?} @ {:?}", new_statement, idx + i);
+                bb.statements.push(new_statement);
             }
+            curr = bb.statements.len();
+            bb.statements.extend(suffix_stmts);
         }
     }
 }
