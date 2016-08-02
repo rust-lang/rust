@@ -476,6 +476,25 @@ impl<T> Vec<T> {
     /// Note that this will drop any excess capacity. Calling this and
     /// converting back to a vector with `into_vec()` is equivalent to calling
     /// `shrink_to_fit()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = vec![1, 2, 3];
+    ///
+    /// let slice = v.into_boxed_slice();
+    /// ```
+    ///
+    /// Any excess capacity is removed:
+    ///
+    /// ```
+    /// let mut vec = Vec::with_capacity(10);
+    /// vec.extend([1, 2, 3].iter().cloned());
+    ///
+    /// assert_eq!(vec.capacity(), 10);
+    /// let slice = vec.into_boxed_slice();
+    /// assert_eq!(slice.into_vec().capacity(), 3);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
         unsafe {
