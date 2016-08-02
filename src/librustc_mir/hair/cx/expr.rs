@@ -60,8 +60,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
                 };
             }
-            Some(&ty::adjustment::AdjustNeverToAny(..)) => {
-                let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
+            Some(&ty::adjustment::AdjustNeverToAny(adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
                     ty: adjusted_ty,
