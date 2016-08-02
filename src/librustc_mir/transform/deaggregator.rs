@@ -65,7 +65,7 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
                 // since we don't handle enums, we don't need a cast
                 let lhs_cast = lhs.clone();
 
-                // FIXME we cannot deaggregate enums issue: 35186
+                // FIXME we cannot deaggregate enums issue: #35186
 
                 let lhs_proj = Lvalue::Projection(Box::new(LvalueProjection {
                     base: lhs_cast,
