@@ -59,7 +59,7 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
             bb.statements.reserve(n + operands.len() + suffix_stmts.len());
             for (i, op) in operands.iter().enumerate() {
                 let ref variant_def = adt_def.variants[variant];
-                let ty = variant_def.fields[variant].ty(tcx, substs);
+                let ty = variant_def.fields[i].ty(tcx, substs);
                 let rhs = Rvalue::Use(op.clone());
 
                 // since we don't handle enums, we don't need a cast
