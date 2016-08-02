@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
+// aux-build:xcrate_generic_fn_nested_return.rs
 
-macro_rules! m {
-    () => { include!("file.txt"); }
-}
+extern crate xcrate_generic_fn_nested_return as test;
 
-macro_rules! n {
-    () => { unsafe { asm!(include_str!("file.txt")); } }
+pub fn main() {
+    assert!(test::decode::<()>().is_err());
 }

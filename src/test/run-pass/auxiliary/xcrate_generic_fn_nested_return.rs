@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
-macro_rules! m {
-    () => { include!("file.txt"); }
+pub struct Request {
+    pub id: String,
+    pub arg: String,
 }
 
-macro_rules! n {
-    () => { unsafe { asm!(include_str!("file.txt")); } }
+pub fn decode<T>() -> Result<Request, ()> {
+    (|| {
+        Ok(Request {
+            id: "hi".to_owned(),
+            arg: match Err(()) {
+                Ok(v) => v,
+                Err(e) => return Err(e)
+            },
+        })
+    })()
 }

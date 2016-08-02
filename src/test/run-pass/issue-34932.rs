@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
+// compile-flags:--test
+// rustc-env:RUSTC_BOOTSTRAP_KEY=
+// ignore-pretty : (#23623) problems when  ending with // comments
 
-macro_rules! m {
-    () => { include!("file.txt"); }
-}
+#![cfg(any())] // This test should be configured away
+#![feature(rustc_attrs)] // Test that this is allowed on stable/beta
+#![feature(iter_arith_traits)] // Test that this is not unused
+#![deny(unused_features)]
 
-macro_rules! n {
-    () => { unsafe { asm!(include_str!("file.txt")); } }
+#[test]
+fn dummy() {
+    let () = "this should not reach type-checking";
 }
