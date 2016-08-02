@@ -11,14 +11,14 @@
 // aux-build:issue_3907.rs
 extern crate issue_3907;
 
-type Foo = issue_3907::Foo; //~ NOTE: type aliases cannot be used for traits
+type Foo = issue_3907::Foo;
 
 struct S {
     name: isize
 }
 
 impl Foo for S { //~ ERROR: `Foo` is not a trait
-    //~| `Foo` is not a trait
+                 //~| NOTE: type aliases cannot be used for traits
     fn bar() { }
 }
 

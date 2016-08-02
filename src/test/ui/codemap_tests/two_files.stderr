@@ -2,12 +2,9 @@ error[E0404]: `Bar` is not a trait
   --> $DIR/two_files.rs:16:6
    |
 16 | impl Bar for Baz { }
-   |      ^^^ `Bar` is not a trait
-   | 
-  ::: $DIR/two_files_data.rs
+   |      ^^^
    |
-15 | type Bar = Foo;
-   | --------------- type aliases cannot be used for traits
+   = note: type aliases cannot be used for traits
 
 error: cannot continue compilation due to previous error
 
