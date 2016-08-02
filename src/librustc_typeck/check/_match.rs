@@ -473,7 +473,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
         }
 
-        self.write_ty_expr(expr.id, result_ty);
+        self.write_ty(expr.id, result_ty);
     }
 }
 
@@ -550,7 +550,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let scheme = tcx.lookup_item_type(def.def_id());
         let predicates = tcx.lookup_predicates(def.def_id());
         let pat_ty = self.instantiate_value_path(segments, scheme, &predicates,
-                                                 opt_ty, def, pat.span, pat.id, false);
+                                                 opt_ty, def, pat.span, pat.id);
         self.demand_suptype(pat.span, expected, pat_ty);
     }
 
@@ -618,7 +618,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
         let predicates = tcx.lookup_predicates(def.def_id());
         let pat_ty = self.instantiate_value_path(segments, scheme, &predicates,
-                                                 opt_ty, def, pat.span, pat.id, false);
+                                                 opt_ty, def, pat.span, pat.id);
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
