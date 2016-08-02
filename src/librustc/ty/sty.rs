@@ -901,14 +901,18 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_uninhabited(&self, cx: TyCtxt) -> bool {
+    pub fn is_uninhabited(&self, _cx: TyCtxt) -> bool {
         // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
         // more complete.
         match self.sty {
             TyEnum(def, _) | TyStruct(def, _) => def.is_empty(),
             TyNever => true,
-            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
-            // FIXME (canndrew): this line breaks core::fmt
+
+            // FIXME(canndrew): There's no reason why this can't be uncommented, it's tested and it
+            // doesn't break anything. But I'm keeping my changes small for now.
+            //TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
+
+            // FIXME(canndrew): this line breaks core::fmt
             //TyRef(_, ref tm) => tm.ty.is_uninhabited(cx),
             _ => false,
         }
