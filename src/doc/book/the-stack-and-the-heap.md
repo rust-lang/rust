@@ -26,6 +26,8 @@ The stack is very fast, and is where memory is allocated in Rust by default.
 But the allocation is local to a function call, and is limited in size. The
 heap, on the other hand, is slower, and is explicitly allocated by your
 program. But it’s effectively unlimited in size, and is globally accessible.
+Note this meaning of heap, which allocates arbitrary-sized blocks of memory in arbitrary
+order, is quite different from the heap data structure.  
 
 # The Stack
 
