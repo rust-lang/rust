@@ -52,8 +52,10 @@ impl<'tcx, 'lt> TyIVar<'tcx, 'lt> {
         self.untracked_get()
     }
 
+    /// Reads the ivar without registered a dep-graph read. Use with
+    /// caution.
     #[inline]
-    fn untracked_get(&self) -> Option<Ty<'tcx>> {
+    pub fn untracked_get(&self) -> Option<Ty<'tcx>> {
         match self.0.get() {
             None => None,
             // valid because of invariant (A)
