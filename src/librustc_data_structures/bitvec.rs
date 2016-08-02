@@ -30,7 +30,7 @@ impl BitVector {
 
     pub fn contains(&self, bit: usize) -> bool {
         let (word, mask) = word_mask(bit);
-        (self.data[word] & mask) != 0
+        (self.data.get(word).cloned().unwrap_or(0) & mask) != 0
     }
 
     /// Returns true if the bit has changed.
