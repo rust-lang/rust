@@ -122,7 +122,9 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // source is dirty, it removes it from that list and adds the
     // target to `dirty_nodes`. It stops when it reaches a fixed
     // point.
-    let clean_edges = compute_clean_edges(&serialized_dep_graph.edges,
+    let clean_edges = compute_clean_edges(tcx,
+                                          &directory,
+                                          &serialized_dep_graph.edges,
                                           &retraced,
                                           &mut dirty_nodes);
 
@@ -190,7 +192,9 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     dirty_nodes
 }
 
-fn compute_clean_edges(serialized_edges: &[(SerializedEdge)],
+fn compute_clean_edges(tcx: TyCtxt,
+                       directory: &DefIdDirectory,
+                       serialized_edges: &[(SerializedEdge)],
                        retraced: &RetracedDefIdDirectory,
                        dirty_nodes: &mut DirtyNodes)
                        -> CleanEdges {
@@ -205,7 +209,11 @@ fn compute_clean_edges(serialized_edges: &[(SerializedEdge)],
             } else {
                 // source removed, target must be dirty
                 debug!("compute_clean_edges: {:?} dirty because {:?} no longer exists",
-                       target, serialized_source);
+                       target,
+                       serialized_source.map_def(|&index| {
+                           Some(directory.def_path_string(tcx, index))
+                       }).unwrap());
+
                 dirty_nodes.insert(target);
             }
         } else {
