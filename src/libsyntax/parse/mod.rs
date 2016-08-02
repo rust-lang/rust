@@ -237,7 +237,7 @@ pub fn new_parser_from_ts<'a>(sess: &'a ParseSess,
                               cfg: ast::CrateConfig,
                               ts: tokenstream::TokenStream)
                               -> Parser<'a> {
-    tts_to_parser(sess, ts.tts, cfg)
+    tts_to_parser(sess, ts.to_tts(), cfg)
 }
 
 
