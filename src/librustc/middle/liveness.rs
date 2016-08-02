@@ -112,7 +112,7 @@ use self::VarKind::*;
 use dep_graph::DepNode;
 use hir::def::*;
 use hir::pat_util;
-use ty::{self, TyCtxt, ParameterEnvironment};
+use ty::{self, Ty, TyCtxt, ParameterEnvironment};
 use traits::{self, Reveal};
 use ty::subst::Subst;
 use lint;
@@ -1454,7 +1454,7 @@ fn check_fn(_v: &Liveness,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn fn_ret(&self, id: NodeId) -> ty::Binder<ty::Ty<'tcx>> {
+    fn fn_ret(&self, id: NodeId) -> ty::Binder<Ty<'tcx>> {
         let fn_ty = self.ir.tcx.node_id_to_type(id);
         match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>

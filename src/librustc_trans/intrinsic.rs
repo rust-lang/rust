@@ -1221,7 +1221,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                     name: &str,
                     inputs: Vec<Ty<'tcx>>,
-                    output: ty::Ty<'tcx>,
+                    output: Ty<'tcx>,
                     trans: &mut for<'b> FnMut(Block<'b, 'tcx>))
                     -> ValueRef {
     let ccx = fcx.ccx;

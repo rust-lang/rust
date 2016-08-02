@@ -1365,7 +1365,7 @@ fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperEx
 
 // Note: This macro is a temporary hack that can be remove once we are building with a compiler
 // that supports `!`
-macro_rules! argh {
+macro_rules! not_stage0 {
     () => {
         #[unstable(feature = "bang_type", issue = "35121")]
         impl Debug for ! {
@@ -1384,7 +1384,7 @@ macro_rules! argh {
 }
 
 #[cfg(not(stage0))]
-argh!();
+not_stage0!();
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for bool {

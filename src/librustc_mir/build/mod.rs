@@ -162,7 +162,7 @@ macro_rules! unpack {
 pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                        fn_id: ast::NodeId,
                                        arguments: A,
-                                       return_ty: ty::Ty<'gcx>,
+                                       return_ty: Ty<'gcx>,
                                        ast_block: &'gcx hir::Block)
                                        -> (Mir<'tcx>, ScopeAuxiliaryVec)
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
@@ -287,7 +287,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn finish(self,
               upvar_decls: Vec<UpvarDecl>,
               arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
-              return_ty: ty::Ty<'tcx>)
+              return_ty: Ty<'tcx>)
               -> (Mir<'tcx>, ScopeAuxiliaryVec) {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
@@ -309,7 +309,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn args_and_body<A>(&mut self,
                         mut block: BasicBlock,
-                        return_ty: ty::Ty<'tcx>,
+                        return_ty: Ty<'tcx>,
                         arguments: A,
                         argument_extent: CodeExtent,
                         ast_block: &'gcx hir::Block)

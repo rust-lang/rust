@@ -1701,7 +1701,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.mk_ref(tcx.mk_region(r), ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
             }
             hir::TyEmpty => {
-                tcx.mk_empty()
+                tcx.types.empty
             },
             hir::TyTup(ref fields) => {
                 let flds = fields.iter()

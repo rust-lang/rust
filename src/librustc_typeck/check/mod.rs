@@ -372,7 +372,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // expects the types within the function to be consistent.
     err_count_on_creation: usize,
 
-    ret_ty: ty::Ty<'tcx>,
+    ret_ty: Ty<'tcx>,
 
     ps: RefCell<UnsafetyState>,
 
@@ -1457,7 +1457,7 @@ enum TupleArgumentsFlag {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
-               rty: ty::Ty<'tcx>,
+               rty: Ty<'tcx>,
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
@@ -1733,7 +1733,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn write_empty(&self, node_id: ast::NodeId) {
-        self.write_ty_expr(node_id, self.tcx.mk_empty());
+        self.write_ty_expr(node_id, self.tcx.types.empty);
     }
 
     pub fn write_error(&self, node_id: ast::NodeId) {
@@ -1977,7 +1977,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if self.type_var_diverges(resolved) {
                 debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges",
                        resolved);
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_empty());
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.empty);
             } else {
                 match self.type_is_unconstrained_numeric(resolved) {
                     UnconstrainedInt => {
@@ -2051,7 +2051,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for ty in &unsolved_variables {
                 let resolved = self.resolve_type_vars_if_possible(ty);
                 if self.type_var_diverges(resolved) {
-                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_empty());
+                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.empty);
                 } else {
                     match self.type_is_unconstrained_numeric(resolved) {
                         UnconstrainedInt | UnconstrainedFloat => {
@@ -2109,7 +2109,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let _ = self.commit_if_ok(|_: &infer::CombinedSnapshot| {
                 for ty in &unbound_tyvars {
                     if self.type_var_diverges(ty) {
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_empty());
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.empty);
                     } else {
                         match self.type_is_unconstrained_numeric(ty) {
                             UnconstrainedInt => {
@@ -2205,7 +2205,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // reporting for more then one conflict.
         for ty in &unbound_tyvars {
             if self.type_var_diverges(ty) {
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_empty());
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.empty);
             } else {
                 match self.type_is_unconstrained_numeric(ty) {
                     UnconstrainedInt => {
@@ -2409,7 +2409,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    args_no_rcvr: &'gcx [P<hir::Expr>],
                                    tuple_arguments: TupleArgumentsFlag,
                                    expected: Expectation<'tcx>)
-                                   -> ty::Ty<'tcx> {
+                                   -> Ty<'tcx> {
         if method_fn_ty.references_error() {
             let err_inputs = self.err_args(args_no_rcvr.len());
 
@@ -2680,7 +2680,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn write_call(&self,
                   call_expr: &hir::Expr,
-                  output: ty::Ty<'tcx>) {
+                  output: Ty<'tcx>) {
         self.write_ty_expr(call_expr.id, output);
     }
 
@@ -2804,7 +2804,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn expected_types_for_fn_args(&self,
                                   call_span: Span,
                                   expected_ret: Expectation<'tcx>,
-                                  formal_ret: ty::Ty<'tcx>,
+                                  formal_ret: Ty<'tcx>,
                                   formal_args: &[Ty<'tcx>])
                                   -> Vec<Ty<'tcx>> {
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {

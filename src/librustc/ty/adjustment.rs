@@ -107,7 +107,7 @@ pub struct AutoDerefRef<'tcx> {
 impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
-            AdjustEmptyToAny(ref ty) => match ty.sty {
+            AdjustEmptyToAny(ty) => match ty.sty {
                 TypeVariants::TyEmpty => true,
                 _ => false,
             },

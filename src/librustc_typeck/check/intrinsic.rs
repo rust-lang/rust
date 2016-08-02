@@ -30,8 +30,8 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    it: &hir::ForeignItem,
                                    n_tps: usize,
                                    abi: Abi,
-                                   inputs: Vec<ty::Ty<'tcx>>,
-                                   output: ty::Ty<'tcx>) {
+                                   inputs: Vec<Ty<'tcx>>,
+                                   output: Ty<'tcx>) {
     let tcx = ccx.tcx;
     let def_id = tcx.map.local_def_id(it.id);
     let i_ty = tcx.lookup_item_type(def_id);
@@ -106,7 +106,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
         };
         (n_tps, inputs, output)
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
-        (0, Vec::new(), tcx.mk_empty())
+        (0, Vec::new(), tcx.types.empty)
     } else {
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_nil()),

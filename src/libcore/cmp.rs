@@ -701,7 +701,7 @@ mod impls {
 
     // Note: This macro is a temporary hack that can be remove once we are building with a compiler
     // that supports `!`
-    macro_rules! argh {
+    macro_rules! not_stage0 {
         () => {
             #[unstable(feature = "bang_type", issue = "35121")]
             impl PartialEq for ! {
@@ -730,7 +730,7 @@ mod impls {
     }
 
     #[cfg(not(stage0))]
-    argh!();
+    not_stage0!();
 
     // & pointers
 
