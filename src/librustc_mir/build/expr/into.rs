@@ -58,8 +58,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // unreachable block. Don't bother to terminate it and create a new one.
                 if is_call {
                     block.unit()
-                }
-                else {
+                } else {
                     this.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
                     let end_block = this.cfg.start_new_block();
                     end_block.unit()

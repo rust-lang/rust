@@ -1258,10 +1258,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TySlice(ty))
     }
 
-    pub fn mk_empty(&self) -> Ty<'tcx> {
-        self.mk_ty(TyEmpty)
-    }
-
     pub fn mk_tup(self, ts: Vec<Ty<'tcx>>) -> Ty<'tcx> {
         self.mk_ty(TyTuple(self.mk_type_list(ts)))
     }
