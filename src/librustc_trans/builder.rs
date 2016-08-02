@@ -11,7 +11,7 @@
 #![allow(dead_code)] // FFI wrappers
 
 use llvm;
-use llvm::{AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
+use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use base;
@@ -1087,7 +1087,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                          order, failure_order, weak)
         }
     }
-    pub fn atomic_rmw(&self, op: AtomicBinOp,
+    pub fn atomic_rmw(&self, op: AtomicRmwBinOp,
                      dst: ValueRef, src: ValueRef,
                      order: AtomicOrdering) -> ValueRef {
         unsafe {
