@@ -17,6 +17,7 @@ pub struct BitVector {
 }
 
 impl BitVector {
+    /// Create a new bitvector of at least num_bits length.
     pub fn new(num_bits: usize) -> BitVector {
         let num_words = u64s(num_bits);
         BitVector { data: vec![0; num_words] }
@@ -44,14 +45,12 @@ impl BitVector {
     }
 
     pub fn insert_all(&mut self, all: &BitVector) -> bool {
-        assert!(self.data.len() == all.data.len());
+        assert!(self.data.len() >= all.data.len());
         let mut changed = false;
-        for (i, j) in self.data.iter_mut().zip(&all.data) {
-            let value = *i;
-            *i = value | *j;
-            if value != *i {
-                changed = true;
-            }
+        for (i, &j) in self.data.iter_mut().zip(all.data.iter()) {
+            let new_value = *i | j;
+            changed = changed || *i != new_value;
+            *i = new_value;
         }
         changed
     }
@@ -61,6 +60,45 @@ impl BitVector {
         if self.data.len() < num_words {
             self.data.resize(num_words, 0)
         }
+    }
+
+    /// Return and unset first bit set.
+    pub fn pop(&mut self) -> Option<usize> {
+        for (idx, el) in self.data.iter_mut().enumerate() {
+            if *el != 0 {
+                let bit = el.trailing_zeros() as usize;
+                *el &= !word_mask(bit).1;
+                return Some(idx * 64 + bit);
+            }
+        }
+        None
+    }
+
+    /// Returns true if the bit has changed.
+    pub fn remove(&mut self, bit: usize) -> bool {
+        let (word, mask) = word_mask(bit);
+        let data = &mut self.data[word];
+        let value = *data;
+        let new_value = value & !mask;
+        *data = new_value;
+        new_value != value
+    }
+
+    /// Clear the bitvector.
+    pub fn clear(&mut self) {
+        for datum in &mut self.data {
+            *datum = 0;
+        }
+    }
+
+    pub fn invert(&mut self) {
+        for datum in &mut self.data {
+            *datum = !*datum;
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len() * 64
     }
 
     /// Iterates over indexes of set bits in a sorted order
