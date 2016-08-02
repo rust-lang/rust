@@ -56,7 +56,7 @@ impl Category {
             ExprKind::LogicalOp { .. } |
             ExprKind::If { .. } |
             ExprKind::Match { .. } |
-            ExprKind::EmptyToAny { .. } |
+            ExprKind::NeverToAny { .. } |
             ExprKind::Call { .. } =>
                 Some(Category::Rvalue(RvalueFunc::Into)),
 

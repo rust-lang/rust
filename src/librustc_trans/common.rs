@@ -558,7 +558,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             abi: Abi::C,
             sig: ty::Binder(ty::FnSig {
                 inputs: vec![tcx.mk_mut_ptr(tcx.types.u8)],
-                output: tcx.types.empty,
+                output: tcx.types.never,
                 variadic: false
             }),
         }));

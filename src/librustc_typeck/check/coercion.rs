@@ -68,8 +68,8 @@ use rustc::traits::{self, ObligationCause};
 use rustc::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use rustc::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
 use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
-use rustc::ty::adjustment::AdjustEmptyToAny;
-use rustc::ty::{self, TypeVariants, LvaluePreference, TypeAndMut, Ty};
+use rustc::ty::adjustment::AdjustNeverToAny;
+use rustc::ty::{self, LvaluePreference, TypeAndMut, Ty};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
@@ -168,8 +168,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             return self.identity(b);
         }
 
-        if let TypeVariants::TyEmpty = a.sty {
-            return Ok((b, AdjustEmptyToAny(b)));
+        if a.is_never() {
+            return Ok((b, AdjustNeverToAny(b)));
         }
 
         // Consider coercing the subtype to a DST

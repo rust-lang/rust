@@ -1459,8 +1459,7 @@ pub enum Type {
     Tuple(Vec<Type>),
     Vector(Box<Type>),
     FixedVector(Box<Type>, String),
-    /// aka TyBot
-    Bottom,
+    Never,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
     BorrowedRef {
@@ -1671,7 +1670,7 @@ impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         use rustc::hir::*;
         match self.node {
-            TyEmpty => Bottom,
+            TyNever => Never,
             TyPtr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
@@ -1780,7 +1779,7 @@ impl Clean<Type> for hir::Ty {
 impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
-            ty::TyEmpty => Bottom,
+            ty::TyNever => Never,
             ty::TyBool => Primitive(Bool),
             ty::TyChar => Primitive(Char),
             ty::TyInt(ast::IntTy::Is) => Primitive(Isize),

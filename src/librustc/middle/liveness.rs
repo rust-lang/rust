@@ -1111,8 +1111,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprCall(ref f, ref args) => {
+            // FIXME(canndrew): This is_never should really be an is_uninhabited
             let diverges = !self.ir.tcx.is_method_call(expr.id) &&
-                self.ir.tcx.expr_ty_adjusted(&f).fn_ret().0.is_empty(self.ir.tcx);
+                self.ir.tcx.expr_ty_adjusted(&f).fn_ret().0.is_never();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1125,7 +1126,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprMethodCall(_, _, ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.tables.borrow().method_map[&method_call].ty;
-            let succ = if method_ty.fn_ret().0.is_empty(self.ir.tcx) {
+            // FIXME(canndrew): This is_never should really be an is_uninhabited
+            let succ = if method_ty.fn_ret().0.is_never() {
                 self.s.exit_ln
             } else {
                 succ

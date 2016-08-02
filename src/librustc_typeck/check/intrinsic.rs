@@ -106,7 +106,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
         };
         (n_tps, inputs, output)
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
-        (0, Vec::new(), tcx.types.empty)
+        (0, Vec::new(), tcx.types.never)
     } else {
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_nil()),

@@ -89,7 +89,7 @@
 #![feature(question_mark)]
 
 // NOTE: remove the cfg_attr next snapshot
-#![cfg_attr(not(stage0), feature(bang_type))]
+#![cfg_attr(not(stage0), feature(never_type))]
 
 #[macro_use]
 mod macros;
