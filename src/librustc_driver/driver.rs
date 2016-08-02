@@ -15,7 +15,8 @@ use rustc::hir::lowering::lower_crate;
 use rustc_mir as mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
-use rustc::session::config::{self, Input, OutputFilenames, OutputType};
+use rustc::session::config::{self, Input, OutputFilenames, OutputType,
+                             OutputTypes};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, dependency_format, stability, reachable};
@@ -42,7 +43,6 @@ use super::Compilation;
 
 use serialize::json;
 
-use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsString, OsStr};
 use std::fs;
@@ -478,7 +478,7 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
                                cfg: ast::CrateConfig,
                                input: &Input)
                                -> PResult<'a, ast::Crate> {
-    let continue_after_error = sess.opts.continue_parse_after_error;
+    let continue_after_error = sess.opts.debugging_opts.continue_parse_after_error;
     sess.diagnostic().set_continue_after_error(continue_after_error);
 
     let krate = time(sess.time_passes(), "parsing", || {
@@ -1026,11 +1026,10 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) -> CompileResult {
     if sess.opts.cg.no_integrated_as {
-        let mut map = HashMap::new();
-        map.insert(OutputType::Assembly, None);
+        let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
         time(sess.time_passes(),
              "LLVM passes",
-             || write::run_passes(sess, trans, &map, outputs));
+             || write::run_passes(sess, trans, &output_types, outputs));
 
         write::run_assembler(sess, outputs);
 

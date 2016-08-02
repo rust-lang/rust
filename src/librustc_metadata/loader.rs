@@ -400,7 +400,7 @@ impl<'a> Context<'a> {
         if self.hash.is_none() {
             self.should_match_name = false;
             if let Some(s) = self.sess.opts.externs.get(self.crate_name) {
-                return self.find_commandline_library(s);
+                return self.find_commandline_library(s.iter());
             }
             self.should_match_name = true;
         }
@@ -661,7 +661,9 @@ impl<'a> Context<'a> {
         (t.options.staticlib_prefix.clone(), t.options.staticlib_suffix.clone())
     }
 
-    fn find_commandline_library(&mut self, locs: &[String]) -> Option<Library> {
+    fn find_commandline_library<'b, LOCS> (&mut self, locs: LOCS) -> Option<Library>
+        where LOCS: Iterator<Item=&'b String>
+    {
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
@@ -670,7 +672,7 @@ impl<'a> Context<'a> {
         let mut rlibs = HashMap::new();
         let mut dylibs = HashMap::new();
         {
-            let locs = locs.iter().map(|l| PathBuf::from(l)).filter(|loc| {
+            let locs = locs.map(|l| PathBuf::from(l)).filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
                                      self.crate_name, loc.display()));

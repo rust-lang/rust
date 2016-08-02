@@ -26,7 +26,8 @@ use rustc_lint;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
-use rustc::session::config::{get_unstable_features_setting, OutputType};
+use rustc::session::config::{get_unstable_features_setting, OutputType,
+                             OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
@@ -55,7 +56,7 @@ pub struct TestOptions {
 pub fn run(input: &str,
            cfgs: Vec<String>,
            libs: SearchPaths,
-           externs: core::Externs,
+           externs: Externs,
            mut test_args: Vec<String>,
            crate_name: Option<String>)
            -> isize {
@@ -172,7 +173,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 }
 
 fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
-           externs: core::Externs,
+           externs: Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
            compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions) {
     // the test harness wants its own `main` & top level functions, so
@@ -182,8 +183,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         name: driver::anon_src(),
         input: test.to_owned(),
     };
-    let mut outputs = HashMap::new();
-    outputs.insert(OutputType::Exe, None);
+    let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
 
     let sessopts = config::Options {
         maybe_sysroot: Some(env::current_exe().unwrap().parent().unwrap()
@@ -396,7 +396,7 @@ pub struct Collector {
     names: Vec<String>,
     cfgs: Vec<String>,
     libs: SearchPaths,
-    externs: core::Externs,
+    externs: Externs,
     cnt: usize,
     use_headers: bool,
     current_header: Option<String>,
@@ -405,7 +405,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: core::Externs,
+    pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions) -> Collector {
         Collector {
             tests: Vec::new(),

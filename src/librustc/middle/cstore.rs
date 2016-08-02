@@ -73,7 +73,7 @@ pub enum LinkagePreference {
 }
 
 enum_from_u32! {
-    #[derive(Copy, Clone, PartialEq)]
+    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub enum NativeLibraryKind {
         NativeStatic,    // native static library (.a archive)
         NativeFramework, // OSX-specific
