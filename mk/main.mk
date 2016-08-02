@@ -164,7 +164,8 @@ endif
 
 ifdef CFG_DISABLE_ORBIT
   $(info cfg: HOLD HOLD HOLD (CFG_DISABLE_ORBIT))
-  CFG_RUSTC_FLAGS += -Z orbit=off
+  RUSTFLAGS_STAGE1 += -Z orbit=off
+  RUSTFLAGS_STAGE2 += -Z orbit=off
 endif
 
 ifdef SAVE_TEMPS
