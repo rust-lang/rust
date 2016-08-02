@@ -463,6 +463,8 @@ macro_rules! options {
         pub const parse_bool: Option<&'static str> = None;
         pub const parse_opt_bool: Option<&'static str> =
             Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
+        pub const parse_all_bool: Option<&'static str> =
+            Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
         pub const parse_string: Option<&'static str> = Some("a string");
         pub const parse_opt_string: Option<&'static str> = Some("a string");
         pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
@@ -509,6 +511,25 @@ macro_rules! options {
                     true
                 },
                 None => { *slot = Some(true); true }
+            }
+        }
+
+        fn parse_all_bool(slot: &mut bool, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => {
+                    match s {
+                        "n" | "no" | "off" => {
+                            *slot = false;
+                        }
+                        "y" | "yes" | "on" => {
+                            *slot = true;
+                        }
+                        _ => { return false; }
+                    }
+
+                    true
+                },
+                None => { *slot = true; true }
             }
         }
 
@@ -756,7 +777,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "dump MIR state at various points in translation"),
     dump_mir_dir: Option<String> = (None, parse_opt_string,
           "the directory the MIR is dumped into"),
-    orbit: bool = (false, parse_bool,
+    orbit: bool = (true, parse_all_bool,
           "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }
 
