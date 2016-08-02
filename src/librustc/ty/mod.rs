@@ -1757,8 +1757,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer, e.g. issue #31299.
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        let dep_node = DepNode::SizedConstraint(self.did);
-        match self.sized_constraint.get(dep_node) {
+        match self.sized_constraint.get(DepNode::SizedConstraint(self.did)) {
             None => {
                 let global_tcx = tcx.global_tcx();
                 let this = global_tcx.lookup_adt_def_master(self.did);
@@ -1786,12 +1785,18 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
     ///       such.
     ///     - a TyError, if a type contained itself. The representability
     ///       check should catch this case.
-    fn calculate_sized_constraint_inner(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn calculate_sized_constraint_inner(&'tcx self,
+                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         stack: &mut Vec<AdtDefMaster<'tcx>>)
     {
-
         let dep_node = || DepNode::SizedConstraint(self.did);
-        if self.sized_constraint.get(dep_node()).is_some() {
+
+        // Follow the memoization pattern: push the computation of
+        // DepNode::SizedConstraint as our current task.
+        let _task = tcx.dep_graph.in_task(dep_node());
+        if self.sized_constraint.untracked_get().is_some() {
+            //                   ---------------
+            // can skip the dep-graph read since we just pushed the task
             return;
         }
 
