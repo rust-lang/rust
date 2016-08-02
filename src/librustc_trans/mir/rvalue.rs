@@ -244,18 +244,46 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             }
                         }
                     }
-                    mir::CastKind::Misc if common::type_is_immediate(bcx.ccx(), operand.ty) => {
+                    mir::CastKind::Misc if common::type_is_fat_ptr(bcx.tcx(), operand.ty) => {
+                        let ll_cast_ty = type_of::immediate_type_of(bcx.ccx(), cast_ty);
+                        let ll_from_ty = type_of::immediate_type_of(bcx.ccx(), operand.ty);
+                        if let OperandValue::Pair(data_ptr, meta_ptr) = operand.val {
+                            if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
+                                let ll_cft = ll_cast_ty.field_types();
+                                let ll_fft = ll_from_ty.field_types();
+                                let data_cast = bcx.pointercast(data_ptr, ll_cft[0]);
+                                assert_eq!(ll_cft[1].kind(), ll_fft[1].kind());
+                                OperandValue::Pair(data_cast, meta_ptr)
+                            } else { // cast to thin-ptr
+                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
+                                // pointer-cast of that pointer to desired pointer type.
+                                let llval = bcx.pointercast(data_ptr, ll_cast_ty);
+                                OperandValue::Immediate(llval)
+                            }
+                        } else {
+                            bug!("Unexpected non-Pair operand")
+                        }
+                    }
+                    mir::CastKind::Misc => {
                         debug_assert!(common::type_is_immediate(bcx.ccx(), cast_ty));
                         let r_t_in = CastTy::from_ty(operand.ty).expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                         let ll_t_in = type_of::immediate_type_of(bcx.ccx(), operand.ty);
                         let ll_t_out = type_of::immediate_type_of(bcx.ccx(), cast_ty);
-                        let llval = operand.immediate();
-                        let signed = if let CastTy::Int(IntTy::CEnum) = r_t_in {
+                        let (llval, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {
                             let repr = adt::represent_type(bcx.ccx(), operand.ty);
-                            adt::is_discr_signed(&repr)
+                            let discr = match operand.val {
+                                OperandValue::Immediate(llval) => llval,
+                                OperandValue::Ref(llptr) => {
+                                    bcx.with_block(|bcx| {
+                                        adt::trans_get_discr(bcx, &repr, llptr, None, true)
+                                    })
+                                }
+                                OperandValue::Pair(..) => bug!("Unexpected Pair operand")
+                            };
+                            (discr, adt::is_discr_signed(&repr))
                         } else {
-                            operand.ty.is_signed()
+                            (operand.immediate(), operand.ty.is_signed())
                         };
 
                         let newval = match (r_t_in, r_t_out) {
@@ -303,26 +331,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             _ => bug!("unsupported cast: {:?} to {:?}", operand.ty, cast_ty)
                         };
                         OperandValue::Immediate(newval)
-                    }
-                    mir::CastKind::Misc => { // Casts from a fat-ptr.
-                        let ll_cast_ty = type_of::immediate_type_of(bcx.ccx(), cast_ty);
-                        let ll_from_ty = type_of::immediate_type_of(bcx.ccx(), operand.ty);
-                        if let OperandValue::Pair(data_ptr, meta_ptr) = operand.val {
-                            if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
-                                let ll_cft = ll_cast_ty.field_types();
-                                let ll_fft = ll_from_ty.field_types();
-                                let data_cast = bcx.pointercast(data_ptr, ll_cft[0]);
-                                assert_eq!(ll_cft[1].kind(), ll_fft[1].kind());
-                                OperandValue::Pair(data_cast, meta_ptr)
-                            } else { // cast to thin-ptr
-                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
-                                // pointer-cast of that pointer to desired pointer type.
-                                let llval = bcx.pointercast(data_ptr, ll_cast_ty);
-                                OperandValue::Immediate(llval)
-                            }
-                        } else {
-                            bug!("Unexpected non-Pair operand")
-                        }
                     }
                 };
                 let operand = OperandRef {
