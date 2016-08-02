@@ -747,6 +747,16 @@ pub enum Lvalue<'tcx> {
     Projection(Box<LvalueProjection<'tcx>>),
 }
 
+impl<'tcx> Lvalue<'tcx> {
+    pub fn base(&self) -> &Lvalue<'tcx> {
+        let mut lval = self;
+        while let Lvalue::Projection(ref proj) = *lval {
+            lval = &proj.base;
+        }
+        lval
+    }
+}
+
 /// The `Projection` data structure defines things of the form `B.x`
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
 /// shared between `Constant` and `Lvalue`. See the aliases
