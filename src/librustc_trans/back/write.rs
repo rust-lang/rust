@@ -11,7 +11,7 @@
 use back::lto;
 use back::link::{get_linker, remove};
 use rustc_incremental::save_trans_partition;
-use session::config::{OutputFilenames, Passes, SomePasses, AllPasses};
+use session::config::{OutputFilenames, OutputTypes, Passes, SomePasses, AllPasses};
 use session::Session;
 use session::config::{self, OutputType};
 use llvm;
@@ -26,7 +26,6 @@ use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
 use context::{is_pie_binary, get_reloc_model};
 
-use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -641,7 +640,7 @@ pub fn cleanup_llvm(trans: &CrateTranslation) {
 
 pub fn run_passes(sess: &Session,
                   trans: &CrateTranslation,
-                  output_types: &HashMap<OutputType, Option<PathBuf>>,
+                  output_types: &OutputTypes,
                   crate_output: &OutputFilenames) {
     // It's possible that we have `codegen_units > 1` but only one item in
     // `trans.modules`.  We could theoretically proceed and do LTO in that

@@ -14,10 +14,10 @@ use std::io::prelude::*;
 use std::io;
 use std::path::{PathBuf, Path};
 
-use core;
 use getopts;
 use testing;
 use rustc::session::search_paths::SearchPaths;
+use rustc::session::config::Externs;
 
 use externalfiles::ExternalHtml;
 
@@ -142,7 +142,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 }
 
 /// Run any tests/code examples in the markdown file `input`.
-pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: core::Externs,
+pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
             mut test_args: Vec<String>) -> isize {
     let input_str = load_or_return!(input, 1, 2);
 

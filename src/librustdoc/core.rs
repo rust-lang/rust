@@ -45,7 +45,6 @@ pub enum MaybeTyped<'a, 'tcx: 'a> {
     NotTyped(&'a session::Session)
 }
 
-pub type Externs = HashMap<String, Vec<String>>;
 pub type ExternalPaths = HashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 pub struct DocContext<'a, 'tcx: 'a> {
@@ -99,7 +98,7 @@ impl DocAccessLevels for AccessLevels<DefId> {
 
 pub fn run_core(search_paths: SearchPaths,
                 cfgs: Vec<String>,
-                externs: Externs,
+                externs: config::Externs,
                 input: Input,
                 triple: Option<String>) -> (clean::Crate, RenderInfo)
 {
