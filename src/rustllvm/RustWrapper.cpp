@@ -263,7 +263,7 @@ from_rust(LLVMRustSynchronizationScope scope)
     case LLVMRustSynchronizationScope::CrossThread:
         return CrossThread;
     default:
-        abort();
+        llvm_unreachable("bad SynchronizationScope.");
     }
 }
 
@@ -281,15 +281,34 @@ extern "C" void LLVMRustSetDebug(int Enabled) {
 #endif
 }
 
+enum class LLVMRustAsmDialect {
+    Other,
+    Att,
+    Intel,
+};
+
+static InlineAsm::AsmDialect
+from_rust(LLVMRustAsmDialect dialect)
+{
+    switch (dialect) {
+    case LLVMRustAsmDialect::Att:
+        return InlineAsm::AD_ATT;
+    case LLVMRustAsmDialect::Intel:
+        return InlineAsm::AD_Intel;
+    default:
+        llvm_unreachable("bad AsmDialect.");
+    }
+}
+
 extern "C" LLVMValueRef LLVMRustInlineAsm(LLVMTypeRef Ty,
 					  char *AsmString,
 					  char *Constraints,
 					  LLVMBool HasSideEffects,
 					  LLVMBool IsAlignStack,
-					  unsigned Dialect) {
+					  LLVMRustAsmDialect Dialect) {
     return wrap(InlineAsm::get(unwrap<FunctionType>(Ty), AsmString,
                                Constraints, HasSideEffects,
-                               IsAlignStack, (InlineAsm::AsmDialect) Dialect));
+                               IsAlignStack, from_rust(Dialect)));
 }
 
 typedef DIBuilder* LLVMRustDIBuilderRef;
@@ -797,35 +816,6 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     return true;
 }
 
-enum class LLVMRustDLLStorageClassTypes {
-    Other,
-    Default,
-    DllImport,
-    DllExport,
-};
-
-static GlobalValue::DLLStorageClassTypes
-from_rust(LLVMRustDLLStorageClassTypes Class)
-{
-    switch (Class) {
-    case LLVMRustDLLStorageClassTypes::Default:
-        return GlobalValue::DefaultStorageClass;
-    case LLVMRustDLLStorageClassTypes::DllImport:
-        return GlobalValue::DLLImportStorageClass;
-    case LLVMRustDLLStorageClassTypes::DllExport:
-        return GlobalValue::DLLExportStorageClass;
-    default:
-        abort();
-  }
-}
-
-extern "C" void
-LLVMRustSetDLLStorageClass(LLVMValueRef Value,
-                           LLVMRustDLLStorageClassTypes Class) {
-    GlobalValue *V = unwrap<GlobalValue>(Value);
-    V->setDLLStorageClass(from_rust(Class));
-}
-
 // Note that the two following functions look quite similar to the
 // LLVMGetSectionName function. Sadly, it appears that this function only
 // returns a char* pointer, which isn't guaranteed to be null-terminated. The
@@ -955,9 +945,52 @@ to_rust(DiagnosticKind kind)
   }
 }
 
-
 extern "C" LLVMRustDiagnosticKind LLVMRustGetDiagInfoKind(LLVMDiagnosticInfoRef di) {
     return to_rust((DiagnosticKind) unwrap(di)->getKind());
+}
+// This is kept distinct from LLVMGetTypeKind, because when
+// a new type kind is added, the Rust-side enum must be
+// updated or UB will result.
+extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
+  switch (unwrap(Ty)->getTypeID()) {
+  case Type::VoidTyID:
+    return LLVMVoidTypeKind;
+  case Type::HalfTyID:
+    return LLVMHalfTypeKind;
+  case Type::FloatTyID:
+    return LLVMFloatTypeKind;
+  case Type::DoubleTyID:
+    return LLVMDoubleTypeKind;
+  case Type::X86_FP80TyID:
+    return LLVMX86_FP80TypeKind;
+  case Type::FP128TyID:
+    return LLVMFP128TypeKind;
+  case Type::PPC_FP128TyID:
+    return LLVMPPC_FP128TypeKind;
+  case Type::LabelTyID:
+    return LLVMLabelTypeKind;
+  case Type::MetadataTyID:
+    return LLVMMetadataTypeKind;
+  case Type::IntegerTyID:
+    return LLVMIntegerTypeKind;
+  case Type::FunctionTyID:
+    return LLVMFunctionTypeKind;
+  case Type::StructTyID:
+    return LLVMStructTypeKind;
+  case Type::ArrayTyID:
+    return LLVMArrayTypeKind;
+  case Type::PointerTyID:
+    return LLVMPointerTypeKind;
+  case Type::VectorTyID:
+    return LLVMVectorTypeKind;
+  case Type::X86_MMXTyID:
+    return LLVMX86_MMXTypeKind;
+#if LLVM_VERSION_MINOR >= 8
+  case Type::TokenTyID:
+    return LLVMTokenTypeKind;
+#endif
+  }
+  llvm_unreachable("Unhandled TypeID.");
 }
 
 extern "C" void LLVMRustWriteDebugLocToString(
@@ -971,7 +1004,6 @@ extern "C" void LLVMRustWriteDebugLocToString(
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
 
-// FIXME(type-audit): assume this function-pointer type does not change
 extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
     LLVMContextRef C,
     LLVMContext::InlineAsmDiagHandlerTy H,
@@ -1027,8 +1059,6 @@ LLVMRustBuildCleanupRet(LLVMBuilderRef Builder,
     return NULL;
 #endif
 }
-
-// FIXME: to here.
 
 extern "C" LLVMValueRef
 LLVMRustBuildCatchPad(LLVMBuilderRef Builder,

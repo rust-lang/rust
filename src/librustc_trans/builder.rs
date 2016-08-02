@@ -841,7 +841,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let fty = Type::func(&argtys[..], &output);
         unsafe {
             let v = llvm::LLVMRustInlineAsm(
-                fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
+                fty.to_ref(), asm, cons, volatile, alignstack, dia);
             self.call(v, inputs, None)
         }
     }

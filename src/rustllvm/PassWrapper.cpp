@@ -196,7 +196,7 @@ from_rust(LLVMRustCodeModel model)
     case LLVMRustCodeModel::Large:
         return CodeModel::Large;
     default:
-        abort();
+        llvm_unreachable("Bad CodeModel.");
   }
 }
 
@@ -221,7 +221,7 @@ from_rust(LLVMRustCodeGenOptLevel level)
     case LLVMRustCodeGenOptLevel::Aggressive:
         return CodeGenOpt::Aggressive;
     default:
-        abort();
+        llvm_unreachable("Bad CodeGenOptLevel.");
   }
 }
 
@@ -395,7 +395,7 @@ from_rust(LLVMRustFileType type)
     case LLVMRustFileType::ObjectFile:
         return TargetMachine::CGFT_ObjectFile;
     default:
-        abort();
+        llvm_unreachable("Bad FileType.");
   }
 }
 

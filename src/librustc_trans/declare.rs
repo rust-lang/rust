@@ -20,6 +20,7 @@
 //! * Use define_* family of methods when you might be defining the ValueRef.
 //! * When in doubt, define.
 use llvm::{self, ValueRef};
+use llvm::AttributePlace::Function;
 use rustc::ty;
 use abi::{Abi, FnType};
 use attributes;
@@ -65,16 +66,16 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
 
     if ccx.tcx().sess.opts.cg.no_redzone
         .unwrap_or(ccx.tcx().sess.target.target.options.disable_redzone) {
-        llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoRedZone)
+        llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
     }
 
     match ccx.tcx().sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
         Some("s") => {
-            llvm::SetFunctionAttribute(llfn, llvm::Attribute::OptimizeForSize);
+            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
         },
         Some("z") => {
-            llvm::SetFunctionAttribute(llfn, llvm::Attribute::MinSize);
-            llvm::SetFunctionAttribute(llfn, llvm::Attribute::OptimizeForSize);
+            llvm::Attribute::MinSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
         },
         _ => {},
     }
@@ -111,7 +112,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.llvm_type(ccx));
 
     if sig.output == ty::FnDiverging {
-        llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoReturn);
+        llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
     }
 
     if abi != Abi::Rust && abi != Abi::RustCall {
@@ -162,7 +163,7 @@ pub fn define_internal_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     name: &str,
                                     fn_type: ty::Ty<'tcx>) -> ValueRef {
     let llfn = define_fn(ccx, name, fn_type);
-    llvm::SetLinkage(llfn, llvm::InternalLinkage);
+    unsafe { llvm::LLVMSetLinkage(llfn, llvm::InternalLinkage) };
     llfn
 }
 

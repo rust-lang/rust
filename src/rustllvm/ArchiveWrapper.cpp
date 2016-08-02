@@ -61,7 +61,7 @@ from_rust(LLVMRustArchiveKind kind)
     case LLVMRustArchiveKind::COFF:
         return Archive::K_COFF;
     default:
-        abort();
+      llvm_unreachable("Bad ArchiveKind.");
   }
 }
 
