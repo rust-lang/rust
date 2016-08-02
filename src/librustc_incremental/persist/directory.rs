@@ -53,6 +53,23 @@ impl DefIdDirectory {
         DefIdDirectory { paths: vec![], krates: krates }
     }
 
+    fn max_current_crate(&self, tcx: TyCtxt) -> ast::CrateNum {
+        tcx.sess.cstore.crates()
+                       .into_iter()
+                       .max()
+                       .unwrap_or(LOCAL_CRATE)
+    }
+
+    /// Returns a string form for `index`; useful for debugging
+    pub fn def_path_string(&self, tcx: TyCtxt, index: DefPathIndex) -> String {
+        let path = &self.paths[index.index as usize];
+        if self.krate_still_valid(tcx, self.max_current_crate(tcx), path.krate) {
+            path.to_string(tcx)
+        } else {
+            format!("<crate {} changed>", path.krate)
+        }
+    }
+
     pub fn krate_still_valid(&self,
                              tcx: TyCtxt,
                              max_current_crate: ast::CrateNum,
@@ -75,11 +92,7 @@ impl DefIdDirectory {
     }
 
     pub fn retrace(&self, tcx: TyCtxt) -> RetracedDefIdDirectory {
-        let max_current_crate =
-            tcx.sess.cstore.crates()
-                           .into_iter()
-                           .max()
-                           .unwrap_or(LOCAL_CRATE);
+        let max_current_crate = self.max_current_crate(tcx);
 
         let ids = self.paths.iter()
                             .map(|path| {

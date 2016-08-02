@@ -14,7 +14,6 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::fnv::FnvHashMap;
 use rustc_serialize::{Encodable as RustcEncodable};
 use std::hash::{Hash, Hasher, SipHasher};
 use std::io::{self, Cursor, Write};
