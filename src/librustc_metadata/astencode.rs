@@ -78,8 +78,8 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            rbml_w: &mut Encoder,
                            ii: InlinedItemRef) {
     let id = match ii {
-        InlinedItemRef::Item(i) => i.id,
-        InlinedItemRef::Foreign(i) => i.id,
+        InlinedItemRef::Item(_, i) => i.id,
+        InlinedItemRef::Foreign(_, i) => i.id,
         InlinedItemRef::TraitItem(_, ti) => ti.id,
         InlinedItemRef::ImplItem(_, ii) => ii.id,
     };
@@ -146,8 +146,8 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::CrateMetadata,
                                        decode_ast(ast_doc),
                                        dcx);
     let name = match *ii {
-        InlinedItem::Item(ref i) => i.name,
-        InlinedItem::Foreign(ref i) => i.name,
+        InlinedItem::Item(_, ref i) => i.name,
+        InlinedItem::Foreign(_, ref i) => i.name,
         InlinedItem::TraitItem(_, ref ti) => ti.name,
         InlinedItem::ImplItem(_, ref ii) => ii.name
     };
@@ -158,7 +158,7 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::CrateMetadata,
     region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
     decode_side_tables(dcx, ast_doc);
     copy_item_types(dcx, ii, orig_did);
-    if let InlinedItem::Item(ref i) = *ii {
+    if let InlinedItem::Item(_, ref i) = *ii {
         debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
                ::rustc::hir::print::item_to_string(&i));
     }
@@ -348,8 +348,8 @@ fn simplify_ast(ii: InlinedItemRef) -> (InlinedItem, IdRange) {
 
     let ii = match ii {
         // HACK we're not dropping items.
-        InlinedItemRef::Item(i) => {
-            InlinedItem::Item(P(fold::noop_fold_item(i.clone(), &mut fld)))
+        InlinedItemRef::Item(d, i) => {
+            InlinedItem::Item(d, P(fold::noop_fold_item(i.clone(), &mut fld)))
         }
         InlinedItemRef::TraitItem(d, ti) => {
             InlinedItem::TraitItem(d, P(fold::noop_fold_trait_item(ti.clone(), &mut fld)))
@@ -357,8 +357,8 @@ fn simplify_ast(ii: InlinedItemRef) -> (InlinedItem, IdRange) {
         InlinedItemRef::ImplItem(d, ii) => {
             InlinedItem::ImplItem(d, P(fold::noop_fold_impl_item(ii.clone(), &mut fld)))
         }
-        InlinedItemRef::Foreign(i) => {
-            InlinedItem::Foreign(P(fold::noop_fold_foreign_item(i.clone(), &mut fld)))
+        InlinedItemRef::Foreign(d, i) => {
+            InlinedItem::Foreign(d, P(fold::noop_fold_foreign_item(i.clone(), &mut fld)))
         }
     };
 
@@ -1241,15 +1241,15 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
     }
     // copy the entry for the item itself
     let item_node_id = match ii {
-        &InlinedItem::Item(ref i) => i.id,
+        &InlinedItem::Item(_, ref i) => i.id,
         &InlinedItem::TraitItem(_, ref ti) => ti.id,
         &InlinedItem::ImplItem(_, ref ii) => ii.id,
-        &InlinedItem::Foreign(ref fi) => fi.id
+        &InlinedItem::Foreign(_, ref fi) => fi.id
     };
     copy_item_type(dcx, item_node_id, orig_did);
 
     // copy the entries of inner items
-    if let &InlinedItem::Item(ref item) = ii {
+    if let &InlinedItem::Item(_, ref item) = ii {
         match item.node {
             hir::ItemEnum(ref def, _) => {
                 let orig_def = dcx.tcx.lookup_adt_def(orig_did);

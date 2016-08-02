@@ -226,60 +226,99 @@ impl<'ast> Map<'ast> {
     /// otherwise have had access to those contents, and hence needs a
     /// read recorded). If the function just returns a DefId or
     /// NodeId, no actual content was returned, so no read is needed.
-    fn read(&self, id: NodeId) {
+    pub fn read(&self, id: NodeId) {
         self.dep_graph.read(self.dep_node(id));
     }
 
     fn dep_node(&self, id0: NodeId) -> DepNode<DefId> {
         let map = self.map.borrow();
         let mut id = id0;
-        loop {
-            match map[id as usize] {
-                EntryItem(_, item) => {
-                    let def_id = self.local_def_id(item.id);
-                    // NB                          ^~~~~~~
-                    //
-                    // You would expect that `item.id == id`, but this
-                    // is not always the case. In particular, for a
-                    // ViewPath item like `use self::{mem, foo}`, we
-                    // map the ids for `mem` and `foo` to the
-                    // enclosing view path item. This seems mega super
-                    // ultra wrong, but then who am I to judge?
-                    // -nmatsakis
-                    return DepNode::Hir(def_id);
+        if !self.is_inlined_node_id(id) {
+            loop {
+                match map[id as usize] {
+                    EntryItem(_, item) => {
+                        let def_id = self.local_def_id(item.id);
+                        // NB                          ^~~~~~~
+                        //
+                        // You would expect that `item.id == id`, but this
+                        // is not always the case. In particular, for a
+                        // ViewPath item like `use self::{mem, foo}`, we
+                        // map the ids for `mem` and `foo` to the
+                        // enclosing view path item. This seems mega super
+                        // ultra wrong, but then who am I to judge?
+                        // -nmatsakis
+                        assert!(!self.is_inlined_def_id(def_id));
+                        return DepNode::Hir(def_id);
+                    }
+
+                    EntryForeignItem(p, _) |
+                    EntryTraitItem(p, _) |
+                    EntryImplItem(p, _) |
+                    EntryVariant(p, _) |
+                    EntryExpr(p, _) |
+                    EntryStmt(p, _) |
+                    EntryLocal(p, _) |
+                    EntryPat(p, _) |
+                    EntryBlock(p, _) |
+                    EntryStructCtor(p, _) |
+                    EntryLifetime(p, _) |
+                    EntryTyParam(p, _) =>
+                        id = p,
+
+                    RootCrate =>
+                        return DepNode::Krate,
+
+                    RootInlinedParent(_) =>
+                        bug!("node {} has inlined ancestor but is not inlined", id0),
+
+                    NotPresent =>
+                        // Some nodes, notably struct fields, are not
+                        // present in the map for whatever reason, but
+                        // they *do* have def-ids. So if we encounter an
+                        // empty hole, check for that case.
+                        return self.opt_local_def_id(id)
+                                   .map(|def_id| DepNode::Hir(def_id))
+                                   .unwrap_or_else(|| {
+                                       bug!("Walking parents from `{}` \
+                                             led to `NotPresent` at `{}`",
+                                            id0, id)
+                                   }),
                 }
+            }
+        } else {
+            // reading from an inlined def-id is really a read out of
+            // the metadata from which we loaded the item.
+            loop {
+                match map[id as usize] {
+                    EntryItem(p, _) |
+                    EntryForeignItem(p, _) |
+                    EntryTraitItem(p, _) |
+                    EntryImplItem(p, _) |
+                    EntryVariant(p, _) |
+                    EntryExpr(p, _) |
+                    EntryStmt(p, _) |
+                    EntryLocal(p, _) |
+                    EntryPat(p, _) |
+                    EntryBlock(p, _) |
+                    EntryStructCtor(p, _) |
+                    EntryLifetime(p, _) |
+                    EntryTyParam(p, _) =>
+                        id = p,
 
-                EntryForeignItem(p, _) |
-                EntryTraitItem(p, _) |
-                EntryImplItem(p, _) |
-                EntryVariant(p, _) |
-                EntryExpr(p, _) |
-                EntryStmt(p, _) |
-                EntryLocal(p, _) |
-                EntryPat(p, _) |
-                EntryBlock(p, _) |
-                EntryStructCtor(p, _) |
-                EntryLifetime(p, _) |
-                EntryTyParam(p, _) =>
-                    id = p,
+                    RootInlinedParent(parent) => match *parent {
+                        InlinedItem::Item(def_id, _) |
+                        InlinedItem::TraitItem(def_id, _) |
+                        InlinedItem::ImplItem(def_id, _) |
+                        InlinedItem::Foreign(def_id, _) =>
+                            return DepNode::MetaData(def_id)
+                    },
 
-                RootCrate |
-                RootInlinedParent(_) =>
-                    // FIXME(#32015) clarify story about cross-crate dep tracking
-                    return DepNode::Krate,
+                    RootCrate =>
+                        bug!("node {} has crate ancestor but is inlined", id0),
 
-                NotPresent =>
-                    // Some nodes, notably struct fields, are not
-                    // present in the map for whatever reason, but
-                    // they *do* have def-ids. So if we encounter an
-                    // empty hole, check for that case.
-                    return self.opt_local_def_id(id)
-                               .map(|def_id| DepNode::Hir(def_id))
-                               .unwrap_or_else(|| {
-                                   bug!("Walking parents from `{}` \
-                                         led to `NotPresent` at `{}`",
-                                        id0, id)
-                               }),
+                    NotPresent =>
+                        bug!("node {} is inlined but not present in map", id0),
+                }
             }
         }
     }
@@ -876,7 +915,8 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           -> &'ast InlinedItem {
     let mut fld = IdAndSpanUpdater::new(fold_ops);
     let ii = match ii {
-        II::Item(i) => II::Item(i.map(|i| fld.fold_item(i))),
+        II::Item(d, i) => II::Item(fld.fold_ops.new_def_id(d),
+                                   i.map(|i| fld.fold_item(i))),
         II::TraitItem(d, ti) => {
             II::TraitItem(fld.fold_ops.new_def_id(d),
                           ti.map(|ti| fld.fold_trait_item(ti)))
@@ -885,7 +925,8 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             II::ImplItem(fld.fold_ops.new_def_id(d),
                          ii.map(|ii| fld.fold_impl_item(ii)))
         }
-        II::Foreign(i) => II::Foreign(i.map(|i| fld.fold_foreign_item(i)))
+        II::Foreign(d, i) => II::Foreign(fld.fold_ops.new_def_id(d),
+                                         i.map(|i| fld.fold_foreign_item(i)))
     };
 
     let ii = map.forest.inlined_items.alloc(ii);

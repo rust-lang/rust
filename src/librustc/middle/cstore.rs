@@ -94,19 +94,19 @@ pub enum DefLike {
 /// that we trans.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum InlinedItem {
-    Item(P<hir::Item>),
+    Item(DefId /* def-id in source crate */, P<hir::Item>),
     TraitItem(DefId /* impl id */, P<hir::TraitItem>),
     ImplItem(DefId /* impl id */, P<hir::ImplItem>),
-    Foreign(P<hir::ForeignItem>),
+    Foreign(DefId /* extern item */, P<hir::ForeignItem>),
 }
 
 /// A borrowed version of `hir::InlinedItem`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InlinedItemRef<'a> {
-    Item(&'a hir::Item),
+    Item(DefId, &'a hir::Item),
     TraitItem(DefId, &'a hir::TraitItem),
     ImplItem(DefId, &'a hir::ImplItem),
-    Foreign(&'a hir::ForeignItem)
+    Foreign(DefId, &'a hir::ForeignItem)
 }
 
 /// Item definitions in the currently-compiled crate would have the CrateNum
@@ -283,8 +283,8 @@ impl InlinedItem {
         where V: Visitor<'ast>
     {
         match *self {
-            InlinedItem::Item(ref i) => visitor.visit_item(&i),
-            InlinedItem::Foreign(ref i) => visitor.visit_foreign_item(&i),
+            InlinedItem::Item(_, ref i) => visitor.visit_item(&i),
+            InlinedItem::Foreign(_, ref i) => visitor.visit_foreign_item(&i),
             InlinedItem::TraitItem(_, ref ti) => visitor.visit_trait_item(ti),
             InlinedItem::ImplItem(_, ref ii) => visitor.visit_impl_item(ii),
         }

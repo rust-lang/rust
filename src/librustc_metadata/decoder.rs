@@ -797,7 +797,7 @@ pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id:
                                          grandparent_def_id,
                                          ast_doc,
                                          parent_did);
-            if let &InlinedItem::Item(ref i) = ii {
+            if let &InlinedItem::Item(_, ref i) = ii {
                 return FoundAst::FoundParent(parent_did, i);
             }
         }

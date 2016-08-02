@@ -106,7 +106,7 @@ pub fn encode_dep_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
                                   encoder: &mut Encoder)
                                   -> io::Result<()>
 {
-    let (nodes, edges) = post_process_graph(hcx, query);
+    let (nodes, edges) = (query.nodes(), query.edges());
 
     // Create hashes for inputs.
     let hashes =
@@ -141,57 +141,6 @@ pub fn encode_dep_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
 
     Ok(())
 }
-
-pub fn post_process_graph<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
-                                    query: &DepGraphQuery<DefId>)
-                                    -> (Vec<DepNode<DefId>>, Vec<(DepNode<DefId>, DepNode<DefId>)>)
-{
-    let tcx = hcx.tcx;
-    let mut cache = FnvHashMap();
-
-    let mut uninline_def_id = |def_id: DefId| -> Option<DefId> {
-        if tcx.map.is_inlined_def_id(def_id) {
-            Some(
-                cache.entry(def_id)
-                     .or_insert_with(|| {
-                         let def_path = tcx.def_path(def_id);
-                         debug!("post_process_graph: uninlining def-id {:?} to yield {:?}",
-                                def_id, def_path);
-                         let retraced_def_id = tcx.retrace_path(&def_path).unwrap();
-                         debug!("post_process_graph: retraced to {:?}", retraced_def_id);
-                         retraced_def_id
-                     })
-                     .clone())
-        } else {
-            None
-        }
-    };
-
-    let mut uninline_metadata = |node: &DepNode<DefId>| -> DepNode<DefId> {
-        match *node {
-            DepNode::Hir(def_id) => {
-                match uninline_def_id(def_id) {
-                    Some(uninlined_def_id) => DepNode::MetaData(uninlined_def_id),
-                    None => DepNode::Hir(def_id)
-                }
-            }
-            _ => node.clone()
-        }
-    };
-
-    let nodes = query.nodes()
-                     .into_iter()
-                     .map(|node| uninline_metadata(node))
-                     .collect();
-
-    let edges = query.edges()
-                     .into_iter()
-                     .map(|(from, to)| (uninline_metadata(from), uninline_metadata(to)))
-                     .collect();
-
-    (nodes, edges)
-}
-
 
 pub fn encode_metadata_hashes<'a, 'tcx>(hcx: &mut HashContext<'a, 'tcx>,
                                         builder: &mut DefIdDirectoryBuilder,
