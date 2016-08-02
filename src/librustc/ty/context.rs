@@ -1266,6 +1266,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_tup(Vec::new())
     }
 
+    pub fn mk_diverging_default(self) -> Ty<'tcx> {
+        if self.sess.features.borrow().never_type {
+            self.types.never
+        } else {
+            self.mk_nil()
+        }
+    }
+
     pub fn mk_bool(self) -> Ty<'tcx> {
         self.mk_ty(TyBool)
     }

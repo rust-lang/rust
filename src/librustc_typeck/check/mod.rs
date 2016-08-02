@@ -1977,7 +1977,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if self.type_var_diverges(resolved) {
                 debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges",
                        resolved);
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.never);
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_diverging_default());
             } else {
                 match self.type_is_unconstrained_numeric(resolved) {
                     UnconstrainedInt => {
@@ -2051,7 +2051,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for ty in &unsolved_variables {
                 let resolved = self.resolve_type_vars_if_possible(ty);
                 if self.type_var_diverges(resolved) {
-                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.never);
+                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_diverging_default());
                 } else {
                     match self.type_is_unconstrained_numeric(resolved) {
                         UnconstrainedInt | UnconstrainedFloat => {
@@ -2109,7 +2109,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let _ = self.commit_if_ok(|_: &infer::CombinedSnapshot| {
                 for ty in &unbound_tyvars {
                     if self.type_var_diverges(ty) {
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.never);
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_diverging_default());
                     } else {
                         match self.type_is_unconstrained_numeric(ty) {
                             UnconstrainedInt => {
@@ -2205,7 +2205,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // reporting for more then one conflict.
         for ty in &unbound_tyvars {
             if self.type_var_diverges(ty) {
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.never);
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_diverging_default());
             } else {
                 match self.type_is_unconstrained_numeric(ty) {
                     UnconstrainedInt => {
