@@ -142,7 +142,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         let mut used_substs = false;
         let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-            Some((&InlinedItem::Item(ref item), _)) => match item.node {
+            Some((&InlinedItem::Item(_, ref item), _)) => match item.node {
                 hir::ItemConst(ref ty, ref const_expr) => {
                     Some((&**const_expr, tcx.ast_ty_to_prim_ty(ty)))
                 },
@@ -198,7 +198,7 @@ fn inline_const_fn_from_external_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let fn_id = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
-        Some((&InlinedItem::Item(ref item), _)) => Some(item.id),
+        Some((&InlinedItem::Item(_, ref item), _)) => Some(item.id),
         Some((&InlinedItem::ImplItem(_, ref item), _)) => Some(item.id),
         _ => None
     };

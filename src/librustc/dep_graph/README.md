@@ -134,6 +134,10 @@ to read from it. Similarly, reading from the `tcache` map for item `X`
 (which is a `DepTrackingMap`, described below) automatically invokes
 `dep_graph.read(ItemSignature(X))`.
 
+**Note:** adding `Hir` nodes requires a bit of caution due to the
+"inlining" that old trans and constant evaluation still use. See the
+section on inlining below.
+
 To make this strategy work, a certain amount of indirection is
 required. For example, modules in the HIR do not have direct pointers
 to the items that they contain. Rather, they contain node-ids -- one
@@ -387,3 +391,24 @@ RUST_DEP_GRAPH_FILTER='Hir&foo -> TypeckItemBody & bar'
 This will dump out all the nodes that lead from `Hir(foo)` to
 `TypeckItemBody(bar)`, from which you can (hopefully) see the source
 of the erroneous edge.
+
+### Inlining of HIR nodes
+
+For the time being, at least, we still sometimes "inline" HIR nodes
+from other crates into the current HIR map. This creates a weird
+scenario where the same logical item (let's call it `X`) has two
+def-ids: the original def-id `X` and a new, inlined one `X'`. `X'` is
+in the current crate, but it's not like other HIR nodes: in
+particular, when we restart compilation, it will not be available to
+hash. Therefore, we do not want `Hir(X')` nodes appearing in our
+graph.  Instead, we want a "read" of `Hir(X')` to be represented as a
+read of `MetaData(X)`, since the metadata for `X` is where the inlined
+representation originated in the first place.
+
+To achieve this, the HIR map will detect if the def-id originates in
+an inlined node and add a dependency to a suitable `MetaData` node
+instead. If you are reading a HIR node and are not sure if it may be
+inlined or not, you can use `tcx.map.read(node_id)` and it will detect
+whether the node is inlined or not and do the right thing.  You can
+also use `tcx.map.is_inlined_def_id()` and
+`tcx.map.is_inlined_node_id()` to test.
