@@ -408,7 +408,7 @@ impl fmt::Debug for Wtf8 {
                             &self.bytes[pos .. surrogate_pos]
                         )},
                     )?;
-                    write!(formatter, "\\u{{{:X}}}", surrogate)?;
+                    write!(formatter, "\\u{{{:x}}}", surrogate)?;
                     pos = surrogate_pos + 3;
                 }
             }
@@ -1066,7 +1066,7 @@ mod tests {
     fn wtf8buf_show() {
         let mut string = Wtf8Buf::from_str("a\té \u{7f}💩\r");
         string.push(CodePoint::from_u32(0xD800).unwrap());
-        assert_eq!(format!("{:?}", string), "\"a\\té \\u{7f}\u{1f4a9}\\r\\u{D800}\"");
+        assert_eq!(format!("{:?}", string), "\"a\\té \\u{7f}\u{1f4a9}\\r\\u{d800}\"");
     }
 
     #[test]
