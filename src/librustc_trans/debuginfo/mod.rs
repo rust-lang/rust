@@ -32,6 +32,7 @@ use rustc::hir;
 
 use abi::Abi;
 use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block, BlockAndBuilder};
+use inline;
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -238,6 +239,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // Do this here already, in case we do an early exit from this function.
     source_loc::set_debug_location(cx, None, UnknownLocation);
 
+    let instance = inline::maybe_inline_instance(cx, instance);
     let (containing_scope, span) = get_containing_scope_and_span(cx, instance);
 
     // This can be the case for functions inlined from another crate
