@@ -1918,9 +1918,9 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
-    let instance = inline::maybe_inline_instance(ccx, instance);
+    let local_instance = inline::maybe_inline_instance(ccx, instance);
 
-    let fn_node_id = ccx.tcx().map.as_local_node_id(instance.def).unwrap();
+    let fn_node_id = ccx.tcx().map.as_local_node_id(local_instance.def).unwrap();
 
     let _s = StatRecorder::new(ccx, ccx.tcx().node_path_str(fn_node_id));
     debug!("trans_instance(instance={:?})", instance);
@@ -1936,7 +1936,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     let sig = ccx.tcx().normalize_associated_type(&sig);
     let abi = fn_ty.fn_abi();
 
-    let lldecl = match ccx.instances().borrow().get(&instance) {
+    let lldecl = match ccx.instances().borrow().get(&local_instance) {
         Some(&val) => val,
         None => bug!("Instance `{:?}` not already declared", instance)
     };
