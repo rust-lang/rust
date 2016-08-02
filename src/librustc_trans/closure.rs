@@ -249,11 +249,13 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     if  !ccx.instances().borrow().contains_key(&instance) {
         let llfn = get_or_create_closure_declaration(ccx, closure_def_id, closure_substs);
 
-        if ccx.sess().target.target.options.allows_weak_linkage {
-            llvm::SetLinkage(llfn, llvm::WeakODRLinkage);
-            llvm::SetUniqueComdat(ccx.llmod(), llfn);
-        } else {
-            llvm::SetLinkage(llfn, llvm::InternalLinkage);
+        unsafe {
+            if ccx.sess().target.target.options.allows_weak_linkage {
+                llvm::LLVMSetLinkage(llfn, llvm::WeakODRLinkage);
+                llvm::SetUniqueComdat(ccx.llmod(), llfn);
+            } else {
+                llvm::LLVMSetLinkage(llfn, llvm::InternalLinkage);
+            }
         }
 
         // set an inline hint for all closures

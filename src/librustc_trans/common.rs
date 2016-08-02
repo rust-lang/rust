@@ -980,7 +980,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         });
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
-        llvm::SetLinkage(g, llvm::InternalLinkage);
+        llvm::LLVMSetLinkage(g, llvm::InternalLinkage);
 
         cx.const_cstr_cache().borrow_mut().insert(s, g);
         g

@@ -13,10 +13,11 @@ use debuginfo::{DIBuilderRef, DIDescriptor,
                 DIBasicType, DIDerivedType, DICompositeType, DIScope,
                 DIVariable, DIGlobalVariable, DIArray, DISubrange,
                 DITemplateTypeParameter, DIEnumerator, DINameSpace};
-use RustStringRef;
 
-use libc::{c_uint, c_ushort, c_int, size_t, c_char};
+use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_longlong, c_ulonglong, c_void};
+
+use RustStringRef;
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -24,8 +25,8 @@ pub type Bool = c_uint;
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
 
-#[repr(C)]
 #[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
 pub enum LLVMRustResult {
     Success,
     Failure,
@@ -68,8 +69,8 @@ pub enum Linkage {
 }
 
 /// LLVMDiagnosticSeverity
-#[repr(C)]
 #[derive(Copy, Clone, Debug)]
+#[repr(C)]
 pub enum DiagnosticSeverity {
     Error = 0,
     Warning = 1,
@@ -77,14 +78,13 @@ pub enum DiagnosticSeverity {
     Note = 3,
 }
 
-/// LLVMRustDLLStorageClassTypes
-#[repr(C)]
+/// LLVMDLLStorageClass
 #[derive(Copy, Clone)]
-pub enum DLLStorageClassTypes {
-    Other,
-    Default,
-    DllImport,
-    DllExport,
+#[repr(C)]
+pub enum DLLStorageClass {
+  Default   = 0,
+  DllImport = 1, /* Function to be imported from DLL. */
+  DllExport = 2, /* Function to be accessible from DLL. */
 }
 
 bitflags! {
@@ -144,6 +144,7 @@ bitflags! {
 
 /// LLVMIntPredicate
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum IntPredicate {
     IntEQ = 32,
     IntNE = 33,
@@ -159,6 +160,7 @@ pub enum IntPredicate {
 
 /// LLVMRealPredicate
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum RealPredicate {
     RealPredicateFalse = 0,
     RealOEQ = 1,
@@ -178,7 +180,7 @@ pub enum RealPredicate {
     RealPredicateTrue = 15,
 }
 
-/// LLVMTypeKind; FIXME: wrap
+/// LLVMTypeKind
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub enum TypeKind {
@@ -198,11 +200,12 @@ pub enum TypeKind {
     Vector    = 13,
     Metadata  = 14,
     X86_MMX   = 15,
+    Token     = 16,
 }
 
 /// LLVMAtomicRmwBinOp
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum AtomicRmwBinOp {
     AtomicXchg = 0,
     AtomicAdd  = 1,
@@ -218,8 +221,8 @@ pub enum AtomicRmwBinOp {
 }
 
 /// LLVMAtomicOrdering
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum AtomicOrdering {
     NotAtomic = 0,
     Unordered = 1,
@@ -232,8 +235,8 @@ pub enum AtomicOrdering {
 }
 
 /// LLVMRustSynchronizationScope
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum SynchronizationScope {
     Other,
     SingleThread,
@@ -241,16 +244,18 @@ pub enum SynchronizationScope {
 }
 
 /// LLVMRustFileType
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum FileType {
     Other,
     AssemblyFile,
     ObjectFile,
 }
 
-/// FIXME: ?
+/// Enum pinned in LLVMContext, used in
+/// LLVMSetMetadata so ABI-stable.
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum MetadataType {
     MD_dbg = 0,
     MD_tbaa = 1,
@@ -266,11 +271,13 @@ pub enum MetadataType {
     MD_nonnull = 11,
 }
 
-/// FIXME: ?
+/// LLVMRustAsmDialect
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum AsmDialect {
-    AD_ATT   = 0,
-    AD_Intel = 1
+    Other,
+    Att,
+    Intel,
 }
 
 /// LLVMRustCodeGenOptLevel
@@ -295,8 +302,8 @@ pub enum RelocMode {
 }
 
 /// LLVMRustCodeModel
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum CodeModel {
     Other,
     Default,
@@ -308,8 +315,8 @@ pub enum CodeModel {
 }
 
 /// LLVMRustDiagnosticKind
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum DiagnosticKind {
     Other,
     InlineAsm,
@@ -326,8 +333,8 @@ pub enum DiagnosticKind {
 }
 
 /// LLVMRustArchiveKind
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub enum ArchiveKind {
     Other,
     K_GNU,
@@ -335,6 +342,7 @@ pub enum ArchiveKind {
     K_BSD,
     K_COFF,
 }
+
 /// LLVMRustPassKind
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
@@ -519,7 +527,7 @@ extern {
     pub fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
 
     /// See llvm::LLVMTypeKind::getTypeID.
-    pub fn LLVMGetTypeKind(Ty: TypeRef) -> TypeKind;
+    pub fn LLVMRustGetTypeKind(Ty: TypeRef) -> TypeKind;
 
     /// See llvm::LLVMType::getContext.
     pub fn LLVMGetTypeContext(Ty: TypeRef) -> ContextRef;
@@ -589,8 +597,6 @@ extern {
     pub fn LLVMSetValueName(Val: ValueRef, Name: *const c_char);
     pub fn LLVMDumpValue(Val: ValueRef);
     pub fn LLVMReplaceAllUsesWith(OldVal: ValueRef, NewVal: ValueRef);
-    pub fn LLVMHasMetadata(Val: ValueRef) -> c_int;
-    pub fn LLVMGetMetadata(Val: ValueRef, KindID: c_uint) -> ValueRef;
     pub fn LLVMSetMetadata(Val: ValueRef, KindID: c_uint, Node: ValueRef);
 
     /* Operations on Uses */
@@ -608,9 +614,9 @@ extern {
     pub fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
     /* all zeroes */
     pub fn LLVMConstAllOnes(Ty: TypeRef) -> ValueRef;
-    pub fn LLVMConstICmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef)
+    pub fn LLVMConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef)
                          -> ValueRef;
-    pub fn LLVMConstFCmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef)
+    pub fn LLVMConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef)
                          -> ValueRef;
     /* only for isize/vector */
     pub fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
@@ -815,13 +821,15 @@ extern {
     pub fn LLVMGetGlobalParent(Global: ValueRef) -> ModuleRef;
     pub fn LLVMIsDeclaration(Global: ValueRef) -> Bool;
     pub fn LLVMGetLinkage(Global: ValueRef) -> c_uint;
-    pub fn LLVMSetLinkage(Global: ValueRef, Link: c_uint);
+    pub fn LLVMSetLinkage(Global: ValueRef, Link: Linkage);
     pub fn LLVMGetSection(Global: ValueRef) -> *const c_char;
     pub fn LLVMSetSection(Global: ValueRef, Section: *const c_char);
     pub fn LLVMGetVisibility(Global: ValueRef) -> c_uint;
     pub fn LLVMSetVisibility(Global: ValueRef, Viz: c_uint);
     pub fn LLVMGetAlignment(Global: ValueRef) -> c_uint;
     pub fn LLVMSetAlignment(Global: ValueRef, Bytes: c_uint);
+    pub fn LLVMSetDLLStorageClass(V: ValueRef,
+                                  C: DLLStorageClass);
 
 
     /* Operations on global variables */
@@ -1685,7 +1693,7 @@ extern {
                              Constraints: *const c_char,
                              SideEffects: Bool,
                              AlignStack: Bool,
-                             Dialect: c_uint)
+                             Dialect: AsmDialect)
                              -> ValueRef;
 
     pub fn LLVMRustDebugMetadataVersion() -> u32;
@@ -1989,9 +1997,6 @@ extern {
     pub fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
     pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
     pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
-
-    pub fn LLVMRustSetDLLStorageClass(V: ValueRef,
-                                      C: DLLStorageClassTypes);
 
     pub fn LLVMRustGetSectionName(SI: SectionIteratorRef,
                                   data: *mut *const c_char) -> size_t;

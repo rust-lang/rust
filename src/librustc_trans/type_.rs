@@ -208,7 +208,7 @@ impl Type {
 
     pub fn kind(&self) -> TypeKind {
         unsafe {
-            llvm::LLVMGetTypeKind(self.to_ref())
+            llvm::LLVMRustGetTypeKind(self.to_ref())
         }
     }
 

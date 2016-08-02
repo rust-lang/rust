@@ -33,13 +33,11 @@
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
-pub use self::AttributeSet::*;
 pub use self::IntPredicate::*;
 pub use self::RealPredicate::*;
 pub use self::TypeKind::*;
 pub use self::AtomicRmwBinOp::*;
 pub use self::MetadataType::*;
-pub use self::AsmDialect::*;
 pub use self::CodeGenOptSize::*;
 pub use self::DiagnosticKind::*;
 pub use self::CallConv::*;
@@ -50,7 +48,7 @@ use std::str::FromStr;
 use std::slice;
 use std::ffi::{CString, CStr};
 use std::cell::RefCell;
-use libc::{c_uint, c_ushort, c_char, size_t};
+use libc::{c_uint, c_char, size_t};
 
 pub mod archive_ro;
 pub mod diagnostic;
@@ -94,32 +92,64 @@ impl Attributes {
         self
     }
 
-    pub fn apply_llfn(&self, idx: usize, llfn: ValueRef) {
+    pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
         unsafe {
-            LLVMRustAddFunctionAttribute(llfn, idx as c_uint, self.regular.bits());
+            self.regular.apply_llfn(idx, llfn);
             if self.dereferenceable_bytes != 0 {
-                LLVMRustAddDereferenceableAttr(llfn, idx as c_uint,
-                                               self.dereferenceable_bytes);
+                LLVMRustAddDereferenceableAttr(
+                    llfn,
+                    idx.as_uint(),
+                    self.dereferenceable_bytes);
             }
         }
     }
 
-    pub fn apply_callsite(&self, idx: usize, callsite: ValueRef) {
+    pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
         unsafe {
-            LLVMRustAddCallSiteAttribute(callsite, idx as c_uint, self.regular.bits());
+            self.regular.apply_callsite(idx, callsite);
             if self.dereferenceable_bytes != 0 {
-                LLVMRustAddDereferenceableCallSiteAttr(callsite, idx as c_uint,
-                                                       self.dereferenceable_bytes);
+                LLVMRustAddDereferenceableCallSiteAttr(
+                    callsite,
+                    idx.as_uint(),
+                    self.dereferenceable_bytes);
             }
         }
     }
 }
 
+pub fn AddFunctionAttrStringValue(
+    llfn: ValueRef,
+    idx: AttributePlace,
+    attr: &'static str,
+    value: &'static str
+) {
+    unsafe {
+        LLVMRustAddFunctionAttrStringValue(
+            llfn,
+            idx.as_uint(),
+            attr.as_ptr() as *const _,
+            value.as_ptr() as *const _)
+    }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub enum AttributeSet {
-    ReturnIndex = 0,
-    FunctionIndex = !0
+pub enum AttributePlace {
+    Argument(u32),
+    Function,
+}
+
+impl AttributePlace {
+    pub fn ReturnValue() -> Self {
+        AttributePlace::Argument(0)
+    }
+
+    fn as_uint(self) -> c_uint {
+        match self {
+            AttributePlace::Function => !0,
+            AttributePlace::Argument(i) => i,
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -170,11 +200,6 @@ pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
         LLVMSetFunctionCallConv(fn_, cc as c_uint);
     }
 }
-pub fn SetLinkage(global: ValueRef, link: Linkage) {
-    unsafe {
-        LLVMSetLinkage(global, link as c_uint);
-    }
-}
 
 // Externally visible symbols that might appear in multiple translation units need to appear in
 // their own comdat section so that the duplicates can be discarded at link time. This can for
@@ -194,12 +219,6 @@ pub fn UnsetComdat(val: ValueRef) {
     }
 }
 
-pub fn SetDLLStorageClass(global: ValueRef, class: DLLStorageClassTypes) {
-    unsafe {
-        LLVMRustSetDLLStorageClass(global, class);
-    }
-}
-
 pub fn SetUnnamedAddr(global: ValueRef, unnamed: bool) {
     unsafe {
         LLVMSetUnnamedAddr(global, unnamed as Bool);
@@ -212,29 +231,40 @@ pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
     }
 }
 
-pub fn ConstICmp(pred: IntPredicate, v1: ValueRef, v2: ValueRef) -> ValueRef {
-    unsafe {
-        LLVMConstICmp(pred as c_ushort, v1, v2)
+impl Attribute {
+    pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
+        unsafe {
+            LLVMRustAddFunctionAttribute(
+                llfn, idx.as_uint(), self.bits())
+        }
     }
-}
-pub fn ConstFCmp(pred: RealPredicate, v1: ValueRef, v2: ValueRef) -> ValueRef {
-    unsafe {
-        LLVMConstFCmp(pred as c_ushort, v1, v2)
-    }
-}
 
-pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
-    unsafe {
-        LLVMRustAddFunctionAttribute(fn_, FunctionIndex as c_uint,
-                                     attr.bits() as u64)
+    pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
+        unsafe {
+            LLVMRustAddCallSiteAttribute(
+                callsite, idx.as_uint(), self.bits())
+        }
     }
-}
 
-pub fn RemoveFunctionAttributes(fn_: ValueRef, attr: Attribute) {
-    unsafe {
-        LLVMRustRemoveFunctionAttributes(fn_, FunctionIndex as c_uint,
-                                         attr.bits() as u64)
+    pub fn unapply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
+        unsafe {
+            LLVMRustRemoveFunctionAttributes(
+                llfn, idx.as_uint(), self.bits())
+        }
     }
+
+    pub fn toggle_llfn(&self,
+                       idx: AttributePlace,
+                       llfn: ValueRef,
+                       set: bool)
+    {
+        if set {
+            self.apply_llfn(idx, llfn);
+        } else {
+            self.unapply_llfn(idx, llfn);
+        }
+    }
+
 }
 
 /* Memory-managed interface to target data. */

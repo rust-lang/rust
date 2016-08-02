@@ -125,7 +125,9 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             if ccx.shared().translation_items().borrow().contains(&trans_item) {
                 attributes::from_fn_attrs(ccx, attrs, lldecl);
-                llvm::SetLinkage(lldecl, llvm::ExternalLinkage);
+                unsafe {
+                    llvm::LLVMSetLinkage(lldecl, llvm::ExternalLinkage);
+                }
             } else {
                 // FIXME: #34151
                 // Normally, getting here would indicate a bug in trans::collector,
