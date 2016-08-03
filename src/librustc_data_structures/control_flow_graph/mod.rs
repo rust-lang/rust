@@ -26,6 +26,8 @@ pub trait ControlFlowGraph
 {
     type Node: Idx;
 
+    // Since we now use IndexVec start_node must be zero
+    // The nodes should be indexed 0..num_nodes
     fn num_nodes(&self) -> usize;
     fn start_node(&self) -> Self::Node;
     fn predecessors<'graph>(&'graph self, node: Self::Node)
