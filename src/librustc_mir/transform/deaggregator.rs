@@ -34,6 +34,8 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
 
         // Do not trigger on constants.  Could be revised in future
         if let MirSource::Fn(_) = source {} else { return; }
+        // In fact, we might not want to trigger in other cases.
+        // Ex: when we could use SROA.  See issue #35259
 
         let mut curr: usize = 0;
         for bb in mir.basic_blocks_mut() {
@@ -90,21 +92,24 @@ fn get_aggregate_statement<'a, 'tcx, 'b>(curr: usize,
     for i in curr..statements.len() {
         let ref statement = statements[i];
         let StatementKind::Assign(_, ref rhs) = statement.kind;
-        if let &Rvalue::Aggregate(ref kind, ref operands) = rhs {
-            if let &AggregateKind::Adt(adt_def, variant, _) = kind {
-                if operands.len() > 0 { // don't deaggregate ()
-                    if adt_def.variants.len() > 1 {
-                        // only deaggrate structs for now
-                        continue;
-                    }
-                    debug!("getting variant {:?}", variant);
-                    debug!("for adt_def {:?}", adt_def);
-                    let variant_def = &adt_def.variants[variant];
-                    if variant_def.kind == VariantKind::Struct {
-                        return Some(i);
-                    }
-                }
-            }
+        let (kind, operands) = match rhs {
+            &Rvalue::Aggregate(ref kind, ref operands) => (kind, operands),
+            _ => continue,
+        };
+        let (adt_def, variant) = match kind {
+            &AggregateKind::Adt(adt_def, variant, _) => (adt_def, variant),
+            _ => continue,
+        };
+        if operands.len() == 0 || adt_def.variants.len() > 1 {
+            // don't deaggregate ()
+            // don't deaggregate enums ... for now
+            continue;
+        }
+        debug!("getting variant {:?}", variant);
+        debug!("for adt_def {:?}", adt_def);
+        let variant_def = &adt_def.variants[variant];
+        if variant_def.kind == VariantKind::Struct {
+            return Some(i);
         }
     };
     None
