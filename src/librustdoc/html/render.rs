@@ -41,7 +41,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::default::Default;
 use std::error;
 use std::fmt::{self, Display, Formatter};
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
 use std::iter::repeat;
@@ -1409,11 +1409,23 @@ impl Context {
             self.render_item(&mut buf, &item, true).unwrap();
             // buf will be empty if the item is stripped and there is no redirect for it
             if !buf.is_empty() {
-                let joint_dst = self.dst.join(&item_path(item_type(&item),
-                                                         item.name.as_ref().unwrap()));
+                let name = item.name.as_ref().unwrap();
+                let item_type = item_type(&item);
+                let file_name = &item_path(item_type, name);
+                let joint_dst = self.dst.join(file_name);
                 try_err!(fs::create_dir_all(&self.dst), &self.dst);
                 let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                 try_err!(dst.write_all(&buf), &joint_dst);
+
+                // Redirect from a sane URL using the namespace to Rustdoc's
+                // URL for the page.
+                let redir_name = format!("{}.{}.html", name, item_type.name_space());
+                let redir_dst = self.dst.join(redir_name);
+                if let Ok(mut redirect_out) = OpenOptions::new().create_new(true)
+                                                                .write(true)
+                                                                .open(&redir_dst) {
+                    try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
+                }
             }
         }
         Ok(())
@@ -2270,9 +2282,12 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         if fields.peek().is_some() {
             write!(w, "<h2 class='fields'>Fields</h2>")?;
             for (field, ty) in fields {
-                write!(w, "<span id='{item_type}.{name}' class='{item_type}'><code>{name}: {ty}</code>
-                           </span><span class='stab {stab}'></span>",
+                write!(w, "<span id='{item_type}.{name}' class='{item_type}'>
+                           <a id='{name}.{name_space}'>
+                           <code>{name}: {ty}</code>
+                           </a></span><span class='stab {stab}'></span>",
                        item_type = ItemType::StructField,
+                       name_space = ItemType::StructField.name_space(),
                        stab = field.stability_class(),
                        name = field.name.as_ref().unwrap(),
                        ty = ty)?;
@@ -2341,8 +2356,10 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     if !e.variants.is_empty() {
         write!(w, "<h2 class='variants'>Variants</h2>\n")?;
         for variant in &e.variants {
-            write!(w, "<span id='{item_type}.{name}' class='variant'><code>{name}",
+            write!(w, "<span id='{item_type}.{name}' class='variant'>\
+                       <a id='{name}.{name_space}'><code>{name}",
                    item_type = ItemType::Variant,
+                   name_space = ItemType::Variant.name_space(),
                    name = variant.name.as_ref().unwrap())?;
             if let clean::VariantItem(ref var) = variant.inner {
                 if let clean::TupleVariant(ref tys) = var.kind {
@@ -2356,7 +2373,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                     write!(w, ")")?;
                 }
             }
-            write!(w, "</code></span>")?;
+            write!(w, "</code></a></span>")?;
             document(w, cx, variant)?;
 
             use clean::{Variant, StructVariant};
@@ -2368,9 +2385,12 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                     if let StructFieldItem(ref ty) = field.inner {
                         write!(w, "<tr><td \
                                    id='variant.{v}.field.{f}'>\
-                                   <code>{f}:&nbsp;{t}</code></td><td>",
+                                   <a id='{v}.{vns}.{f}.{fns}'>\
+                                   <code>{f}:&nbsp;{t}</code></a></td><td>",
                                v = variant.name.as_ref().unwrap(),
                                f = field.name.as_ref().unwrap(),
+                               vns = ItemType::Variant.name_space(),
+                               fns = ItemType::StructField.name_space(),
                                t = *ty)?;
                         document(w, cx, field)?;
                         write!(w, "</td></tr>")?;
@@ -2605,36 +2625,41 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 if !is_static || render_static {
                     let id = derive_id(format!("{}.{}", item_type, name));
                     write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                    write!(w, "<a id='{}.{}'>", name, item_type.name_space())?;
                     write!(w, "<code>")?;
                     render_assoc_item(w, item, link.anchor(&id))?;
                     write!(w, "</code>")?;
                     render_stability_since_raw(w, item.stable_since(), outer_version)?;
-                    write!(w, "</h4>\n")?;
+                    write!(w, "</a></h4>\n")?;
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
                 let id = derive_id(format!("{}.{}", ItemType::AssociatedType, name));
-                write!(w, "<h4 id='{}' class='{}'><code>", id, item_type)?;
+                write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                write!(w, "<a id='{}.{}'><code>", name, item_type.name_space())?;
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
-                write!(w, "</code></h4>\n")?;
+                write!(w, "</code></a></h4>\n")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
-                write!(w, "<h4 id='{}' class='{}'><code>", id, item_type)?;
+                write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                write!(w, "<a id='{}.{}'><code>", name, item_type.name_space())?;
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
-                write!(w, "</code></h4>\n")?;
+                write!(w, "</code></a></h4>\n")?;
             }
             clean::ConstantItem(ref c) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
-                write!(w, "<h4 id='{}' class='{}'><code>", id, item_type)?;
+                write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                write!(w, "<a id='{}.{}'><code>", name, item_type.name_space())?;
                 assoc_const(w, item, &c.type_, Some(&c.expr), link.anchor(&id))?;
-                write!(w, "</code></h4>\n")?;
+                write!(w, "</code></a></h4>\n")?;
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
-                write!(w, "<h4 id='{}' class='{}'><code>", id, item_type)?;
+                write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                write!(w, "<a id='{}.{}'><code>", name, item_type.name_space())?;
                 assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id))?;
-                write!(w, "</code></h4>\n")?;
+                write!(w, "</code></a></h4>\n")?;
             }
             clean::StrippedItem(..) => return Ok(()),
             _ => panic!("can't make docs for trait item with name {:?}", item.name)

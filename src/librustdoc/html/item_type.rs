@@ -168,3 +168,9 @@ impl NameSpace {
         }
     }
 }
+
+impl fmt::Display for NameSpace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_static_str().fmt(f)
+    }
+}
