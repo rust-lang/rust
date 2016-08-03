@@ -855,6 +855,12 @@ impl Build {
             base.push("-stdlib=libc++".into());
             base.push("-mmacosx-version-min=10.7".into());
         }
+        // This is a hack, because newer binutils broke things on some vms/distros
+        // (i.e., linking against unknown relocs disabled by the following flag)
+        // See: https://github.com/rust-lang/rust/issues/34978
+        if target == "x86_64-unknown-linux-musl" {
+            base.push("-Wa,-mrelax-relocations=no".into());
+        }
         return base
     }
 
