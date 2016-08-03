@@ -28,10 +28,10 @@ cargo fmt
 cargo install rustfmt
 ```
 
-or if you're using [`multirust`](https://github.com/brson/multirust)
+or if you're using [`rustup.rs`](https://www.rustup.rs/)
 
 ```
-multirust run nightly cargo install rustfmt
+rustup run nightly cargo install rustfmt
 ```
 
 Usually cargo-fmt, which enables usage of Cargo subcommand `cargo fmt`, is
