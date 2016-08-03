@@ -35,7 +35,11 @@ mod udp;
 mod parser;
 #[cfg(test)] mod test;
 
-/// Possible values which can be passed to the `shutdown` method of `TcpStream`.
+/// Possible values which can be passed to the [`shutdown`] method of
+/// [`TcpStream`].
+///
+/// [`shutdown`]: struct.TcpStream.html#method.shutdown
+/// [`TcpStream`]: struct.TcpStream.html
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
