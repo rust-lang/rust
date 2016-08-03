@@ -90,7 +90,7 @@ impl ItemType {
         }
     }
 
-    pub fn to_static_str(&self) -> &'static str {
+    pub fn css_class(&self) -> &'static str {
         match *self {
             ItemType::Module          => "mod",
             ItemType::ExternCrate     => "externcrate",
@@ -117,6 +117,6 @@ impl ItemType {
 
 impl fmt::Display for ItemType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_static_str().fmt(f)
+        self.css_class().fmt(f)
     }
 }
