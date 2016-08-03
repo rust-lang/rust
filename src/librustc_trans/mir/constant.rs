@@ -824,11 +824,11 @@ pub fn const_scalar_binop(op: mir::BinOp,
             mir::BinOp::Gt | mir::BinOp::Ge => {
                 if is_float {
                     let cmp = base::bin_op_to_fcmp_predicate(op.to_hir_binop());
-                    llvm::ConstFCmp(cmp, lhs, rhs)
+                    llvm::LLVMConstFCmp(cmp, lhs, rhs)
                 } else {
                     let cmp = base::bin_op_to_icmp_predicate(op.to_hir_binop(),
                                                                 signed);
-                    llvm::ConstICmp(cmp, lhs, rhs)
+                    llvm::LLVMConstICmp(cmp, lhs, rhs)
                 }
             }
         }

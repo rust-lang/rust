@@ -54,41 +54,48 @@ LLVMInitializePasses() {
   initializeTarget(Registry);
 }
 
-
-enum class SupportedPassKind {
+enum class LLVMRustPassKind {
+  Other,
   Function,
   Module,
-  Unsupported
 };
 
-extern "C" Pass*
+static LLVMRustPassKind
+to_rust(PassKind kind)
+{
+  switch (kind) {
+  case PT_Function:
+      return LLVMRustPassKind::Function;
+  case PT_Module:
+      return LLVMRustPassKind::Module;
+  default:
+      return LLVMRustPassKind::Other;
+  }
+}
+
+extern "C" LLVMPassRef
 LLVMRustFindAndCreatePass(const char *PassName) {
     StringRef SR(PassName);
     PassRegistry *PR = PassRegistry::getPassRegistry();
 
     const PassInfo *PI = PR->getPassInfo(SR);
     if (PI) {
-        return PI->createPass();
+      return wrap(PI->createPass());
     }
     return NULL;
 }
 
-extern "C" SupportedPassKind
-LLVMRustPassKind(Pass *pass) {
-    assert(pass);
-    PassKind passKind = pass->getPassKind();
-    if (passKind == PT_Module) {
-        return SupportedPassKind::Module;
-    } else if (passKind == PT_Function) {
-        return SupportedPassKind::Function;
-    } else {
-        return SupportedPassKind::Unsupported;
-    }
+extern "C" LLVMRustPassKind
+LLVMRustPassKind(LLVMPassRef rust_pass) {
+    assert(rust_pass);
+    Pass *pass = unwrap(rust_pass);
+    return to_rust(pass->getPassKind());
 }
 
 extern "C" void
-LLVMRustAddPass(LLVMPassManagerRef PM, Pass *pass) {
-    assert(pass);
+LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
+    assert(rust_pass);
+    Pass *pass = unwrap(rust_pass);
     PassManagerBase *pm = unwrap(PM);
     pm->add(pass);
 }
@@ -162,13 +169,69 @@ LLVMRustHasFeature(LLVMTargetMachineRef TM,
     return (Bits & FeatureEntry->Value) == FeatureEntry->Value;
 }
 
+enum class LLVMRustCodeModel {
+    Other,
+    Default,
+    JITDefault,
+    Small,
+    Kernel,
+    Medium,
+    Large,
+};
+
+static CodeModel::Model
+from_rust(LLVMRustCodeModel model)
+{
+    switch (model) {
+    case LLVMRustCodeModel::Default:
+        return CodeModel::Default;
+    case LLVMRustCodeModel::JITDefault:
+        return CodeModel::JITDefault;
+    case LLVMRustCodeModel::Small:
+        return CodeModel::Small;
+    case LLVMRustCodeModel::Kernel:
+        return CodeModel::Kernel;
+    case LLVMRustCodeModel::Medium:
+        return CodeModel::Medium;
+    case LLVMRustCodeModel::Large:
+        return CodeModel::Large;
+    default:
+        llvm_unreachable("Bad CodeModel.");
+  }
+}
+
+enum class LLVMRustCodeGenOptLevel {
+    Other,
+    None,
+    Less,
+    Default,
+    Aggressive,
+};
+
+static CodeGenOpt::Level
+from_rust(LLVMRustCodeGenOptLevel level)
+{
+    switch (level) {
+    case LLVMRustCodeGenOptLevel::None:
+        return CodeGenOpt::None;
+    case LLVMRustCodeGenOptLevel::Less:
+        return CodeGenOpt::Less;
+    case LLVMRustCodeGenOptLevel::Default:
+        return CodeGenOpt::Default;
+    case LLVMRustCodeGenOptLevel::Aggressive:
+        return CodeGenOpt::Aggressive;
+    default:
+        llvm_unreachable("Bad CodeGenOptLevel.");
+  }
+}
+
 extern "C" LLVMTargetMachineRef
 LLVMRustCreateTargetMachine(const char *triple,
                             const char *cpu,
                             const char *feature,
-                            CodeModel::Model CM,
+                            LLVMRustCodeModel rust_CM,
                             LLVMRelocMode Reloc,
-                            CodeGenOpt::Level OptLevel,
+                            LLVMRustCodeGenOptLevel rust_OptLevel,
                             bool UseSoftFloat,
                             bool PositionIndependentExecutable,
                             bool FunctionSections,
@@ -179,6 +242,9 @@ LLVMRustCreateTargetMachine(const char *triple,
 #else
     Optional<Reloc::Model> RM;
 #endif
+    auto CM = from_rust(rust_CM);
+    auto OptLevel = from_rust(rust_OptLevel);
+
     switch (Reloc){
         case LLVMRelocStatic:
             RM = Reloc::Static;
@@ -251,14 +317,14 @@ LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
 
 extern "C" void
 LLVMRustConfigurePassManagerBuilder(LLVMPassManagerBuilderRef PMB,
-                                    CodeGenOpt::Level OptLevel,
+				    LLVMRustCodeGenOptLevel OptLevel,
                                     bool MergeFunctions,
                                     bool SLPVectorize,
                                     bool LoopVectorize) {
     // Ignore mergefunc for now as enabling it causes crashes.
     //unwrap(PMB)->MergeFunctions = MergeFunctions;
     unwrap(PMB)->SLPVectorize = SLPVectorize;
-    unwrap(PMB)->OptLevel = OptLevel;
+    unwrap(PMB)->OptLevel = from_rust(OptLevel);
     unwrap(PMB)->LoopVectorize = LoopVectorize;
 }
 
@@ -314,13 +380,33 @@ LLVMRustSetLLVMOptions(int Argc, char **Argv) {
     cl::ParseCommandLineOptions(Argc, Argv);
 }
 
-extern "C" bool
+enum class LLVMRustFileType {
+    Other,
+    AssemblyFile,
+    ObjectFile,
+};
+
+static TargetMachine::CodeGenFileType
+from_rust(LLVMRustFileType type)
+{
+    switch (type) {
+    case LLVMRustFileType::AssemblyFile:
+        return TargetMachine::CGFT_AssemblyFile;
+    case LLVMRustFileType::ObjectFile:
+        return TargetMachine::CGFT_ObjectFile;
+    default:
+        llvm_unreachable("Bad FileType.");
+  }
+}
+
+extern "C" LLVMRustResult
 LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
                         LLVMPassManagerRef PMR,
                         LLVMModuleRef M,
                         const char *path,
-                        TargetMachine::CodeGenFileType FileType) {
+                        LLVMRustFileType rust_FileType) {
   llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
+  auto FileType = from_rust(rust_FileType);
 
   std::string ErrorInfo;
   std::error_code EC;
@@ -329,7 +415,7 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
     ErrorInfo = EC.message();
   if (ErrorInfo != "") {
     LLVMRustSetLastError(ErrorInfo.c_str());
-    return false;
+    return LLVMRustResult::Failure;
   }
 
   unwrap(Target)->addPassesToEmitFile(*PM, OS, FileType, false);
@@ -339,7 +425,7 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
   // stream (OS), so the only real safe place to delete this is here? Don't we
   // wish this was written in Rust?
   delete PM;
-  return true;
+  return LLVMRustResult::Success;
 }
 
 extern "C" void

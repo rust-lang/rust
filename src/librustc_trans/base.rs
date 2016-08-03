@@ -2347,8 +2347,9 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
                     let has_fixed_linkage = linkage_fixed_explicitly.contains(&name_cow);
 
                     if !is_referenced_somewhere && !is_reachable && !has_fixed_linkage {
-                        llvm::SetLinkage(val, llvm::InternalLinkage);
-                        llvm::SetDLLStorageClass(val, llvm::DefaultStorageClass);
+                        llvm::LLVMSetLinkage(val, llvm::InternalLinkage);
+                        llvm::LLVMSetDLLStorageClass(val,
+                                                     llvm::DLLStorageClass::Default);
                         llvm::UnsetComdat(val);
                     }
                 }
@@ -2393,7 +2394,7 @@ fn create_imps(cx: &CrateContextList) {
                                               imp_name.as_ptr() as *const _);
                 let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
                 llvm::LLVMSetInitializer(imp, init);
-                llvm::SetLinkage(imp, llvm::ExternalLinkage);
+                llvm::LLVMSetLinkage(imp, llvm::ExternalLinkage);
             }
         }
     }

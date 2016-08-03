@@ -23,7 +23,7 @@ pub struct Value(pub ValueRef);
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&llvm::build_string(|s| unsafe {
-            llvm::LLVMWriteValueToString(self.0, s);
+            llvm::LLVMRustWriteValueToString(self.0, s);
         }).expect("nun-UTF8 value description from LLVM"))
     }
 }

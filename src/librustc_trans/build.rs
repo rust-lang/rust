@@ -12,7 +12,7 @@
 #![allow(non_snake_case)]
 
 use llvm;
-use llvm::{AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
+use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate};
 use llvm::{ValueRef, BasicBlockRef};
 use common::*;
@@ -1117,7 +1117,7 @@ pub fn AtomicCmpXchg(cx: Block, dst: ValueRef,
                      weak: llvm::Bool) -> ValueRef {
     B(cx).atomic_cmpxchg(dst, cmp, src, order, failure_order, weak)
 }
-pub fn AtomicRMW(cx: Block, op: AtomicBinOp,
+pub fn AtomicRMW(cx: Block, op: AtomicRmwBinOp,
                  dst: ValueRef, src: ValueRef,
                  order: AtomicOrdering) -> ValueRef {
     B(cx).atomic_rmw(op, dst, src, order)

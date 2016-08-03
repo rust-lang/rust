@@ -208,7 +208,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                         &format!("symbol `{}` is already defined", symbol_name))
                 });
 
-                llvm::SetLinkage(g, linkage);
+                unsafe { llvm::LLVMSetLinkage(g, linkage) };
             }
 
             item => bug!("predefine_static: expected static, found {:?}", item)
@@ -250,7 +250,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 ref attrs, node: hir::ImplItemKind::Method(..), ..
             }) => {
                 let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
-                llvm::SetLinkage(lldecl, linkage);
+                unsafe { llvm::LLVMSetLinkage(lldecl, linkage) };
                 base::set_link_section(ccx, lldecl, attrs);
                 if linkage == llvm::LinkOnceODRLinkage ||
                    linkage == llvm::WeakODRLinkage {
@@ -287,7 +287,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         assert!(declare::get_defined_value(ccx, symbol_name).is_none());
         let llfn = declare::declare_cfn(ccx, symbol_name, llfnty);
-        llvm::SetLinkage(llfn, linkage);
+        unsafe { llvm::LLVMSetLinkage(llfn, linkage) };
         if linkage == llvm::LinkOnceODRLinkage ||
            linkage == llvm::WeakODRLinkage {
             llvm::SetUniqueComdat(ccx.llmod(), llfn);

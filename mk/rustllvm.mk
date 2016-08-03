@@ -24,7 +24,7 @@ LLVM_EXTRA_INCDIRS_$(1)= $$(call CFG_CC_INCLUDE_$(1),$(S)src/llvm/include) \
 endif
 
 RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, \
-	ExecutionEngineWrapper.cpp RustWrapper.cpp PassWrapper.cpp \
+	RustWrapper.cpp PassWrapper.cpp \
 	ArchiveWrapper.cpp)
 
 RUSTLLVM_INCS_$(1) = $$(LLVM_EXTRA_INCDIRS_$(1)) \
