@@ -521,6 +521,45 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn note_possible_function_call(&self,
+                                   diag: &mut DiagnosticBuilder<'tcx>,
+                                   values: Option<ValuePairs<'tcx>>,
+                                   span: Span)
+    {
+        if let Some(infer::Types(ty::error::ExpectedFound {
+            expected, found
+        })) = values {
+            let (def_id, ret_ty) = match found.sty {
+                ty::TyFnDef(def, _, fty) => (Some(def), fty.sig.output()),
+                ty::TyFnPtr(fty) => (None, fty.sig.output()),
+                _ => return
+            };
+
+            let ok = self.probe(|_| {
+                match self.replace_late_bound_regions_with_fresh_var(
+                    span,
+                    super::LateBoundRegionConversionTime::HigherRankedType,
+                    &ret_ty)
+                {
+                    (ty::FnConverging(ret_ty), _) => {
+                        self.can_equate(&ret_ty, &expected).is_ok()
+                    }
+                    (ty::FnDiverging, _) => true
+                }
+            });
+
+            if ok {
+                let message = match def_id {
+                    Some(def_id) => {
+                        format!("`{}` is a function", self.tcx.item_path_str(def_id))
+                    }
+                    _ => format!("found a function")
+                };
+                diag.help(&format!("{} - maybe try calling it?", message));
+            }
+        }
+    }
+
     pub fn note_type_err(&self,
                          diag: &mut DiagnosticBuilder<'tcx>,
                          origin: TypeOrigin,
@@ -529,7 +568,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         let expected_found = match values {
             None => None,
-            Some(values) => match self.values_str(&values) {
+            Some(ref values) => match self.values_str(values) {
                 Some((expected, found)) => Some((expected, found)),
                 None => {
                     // Derived error. Cancel the emitter.
@@ -563,6 +602,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.note_error_origin(diag, &origin);
         self.check_and_note_conflicting_crates(diag, terr, span);
+        self.note_possible_function_call(diag, values, span);
         self.tcx.note_and_explain_type_err(diag, terr, span);
     }
 
