@@ -17,6 +17,7 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/IR/AutoUpgrade.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -361,10 +362,17 @@ extern "C" void
 LLVMRustRunFunctionPassManager(LLVMPassManagerRef PM, LLVMModuleRef M) {
     llvm::legacy::FunctionPassManager *P = unwrap<llvm::legacy::FunctionPassManager>(PM);
     P->doInitialization();
+
+    // Upgrade all calls to old intrinsics first.
+    for (Module::iterator I = unwrap(M)->begin(),
+         E = unwrap(M)->end(); I != E;)
+        UpgradeCallsToIntrinsic(&*I++); // must be post-increment, as we remove
+
     for (Module::iterator I = unwrap(M)->begin(),
          E = unwrap(M)->end(); I != E; ++I)
         if (!I->isDeclaration())
             P->run(*I);
+
     P->doFinalization();
 }
 
