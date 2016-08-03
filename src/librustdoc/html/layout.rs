@@ -24,7 +24,7 @@ pub struct Layout {
 
 pub struct Page<'a> {
     pub title: &'a str,
-    pub ty: &'a str,
+    pub css_class: &'a str,
     pub root_path: &'a str,
     pub description: &'a str,
     pub keywords: &'a str,
@@ -80,7 +80,7 @@ r##"<!DOCTYPE html>
         </form>
     </nav>
 
-    <section id='main' class="content {ty}">{content}</section>
+    <section id='main' class="content {css_class}">{content}</section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
@@ -152,7 +152,7 @@ r##"<!DOCTYPE html>
     },
     content   = *t,
     root_path = page.root_path,
-    ty        = page.ty,
+    css_class = page.css_class,
     logo      = if layout.logo.is_empty() {
         "".to_string()
     } else {

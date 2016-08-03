@@ -326,7 +326,7 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
             url.push_str("/index.html");
         }
         _ => {
-            url.push_str(shortty.to_static_str());
+            url.push_str(shortty.css_class());
             url.push_str(".");
             url.push_str(fqp.last().unwrap());
             url.push_str(".html");
