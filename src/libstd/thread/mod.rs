@@ -478,6 +478,25 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
+///
+/// # Example
+///
+/// Waiting for the complete expiration of the timeout:
+///
+/// ```rust,no_run
+/// use std::thread::park_timeout;
+/// use std::time::{Instant, Duration};
+///
+/// let timeout = Duration::from_secs(2);
+/// let beginning_park = Instant::now();
+/// park_timeout(timeout);
+///
+/// while beginning_park.elapsed() < timeout {
+///     println!("restarting park_timeout after {:?}", beginning_park.elapsed());
+///     let timeout = timeout - beginning_park.elapsed();
+///     park_timeout(timeout);
+/// }
+/// ```
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
     let thread = current();
