@@ -178,7 +178,7 @@ fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span
         }
     }
 
-    if read && truncate && read_arg && truncate_arg {
+    if read && truncate && read_arg && truncate_arg && !(write && write_arg) {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "file opened with \"truncate\" and \"read\"");
     }
     if append && truncate && append_arg && truncate_arg {
