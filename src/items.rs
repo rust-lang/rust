@@ -45,13 +45,17 @@ impl Rewrite for ast::Local {
             let mut infix = String::new();
 
             if let Some(ref ty) = self.ty {
-                // 2 = ": ".len()
+                let separator = if context.config.space_before_type_annotation {
+                    " : "
+                } else {
+                    ": "
+                };
+                let indent = offset + last_line_width(&result) + separator.len();
                 // 1 = ;
-                let indent = offset + last_line_width(&result) + 2;
                 let budget = try_opt!(width.checked_sub(indent.width() + 1));
                 let rewrite = try_opt!(ty.rewrite(context, budget, indent));
 
-                infix.push_str(": ");
+                infix.push_str(separator);
                 infix.push_str(&rewrite);
             }
 
@@ -998,6 +1002,14 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     Some(result)
 }
 
+fn type_annotation_spacing(config: &Config) -> &str {
+    if config.space_before_type_annotation {
+        " "
+    } else {
+        ""
+    }
+}
+
 impl Rewrite for ast::StructField {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         if contains_skip(&self.attrs) {
@@ -1014,8 +1026,9 @@ impl Rewrite for ast::StructField {
             attr_str.push_str(&offset.to_string(context.config));
         }
 
+        let type_annotation_spacing = type_annotation_spacing(context.config);
         let result = match name {
-            Some(name) => format!("{}{}{}: ", attr_str, vis, name),
+            Some(name) => format!("{}{}{}{}: ", attr_str, vis, name, type_annotation_spacing),
             None => format!("{}{}", attr_str, vis),
         };
 
@@ -1034,11 +1047,13 @@ pub fn rewrite_static(prefix: &str,
                       expr_opt: Option<&ptr::P<ast::Expr>>,
                       context: &RewriteContext)
                       -> Option<String> {
-    let prefix = format!("{}{} {}{}: ",
+    let type_annotation_spacing = type_annotation_spacing(context.config);
+    let prefix = format!("{}{} {}{}{}: ",
                          format_visibility(vis),
                          prefix,
                          format_mutability(mutability),
-                         ident);
+                         ident,
+                         type_annotation_spacing);
     // 2 = " =".len()
     let ty_str = try_opt!(ty.rewrite(context,
                                      context.config.max_width - context.block_indent.width() -
@@ -1117,6 +1132,9 @@ impl Rewrite for ast::Arg {
             let mut result = try_opt!(self.pat.rewrite(context, width, offset));
 
             if self.ty.node != ast::TyKind::Infer {
+                if context.config.space_before_type_annotation {
+                    result.push_str(" ");
+                }
                 result.push_str(": ");
                 let max_width = try_opt!(width.checked_sub(result.len()));
                 let ty_str = try_opt!(self.ty.rewrite(context, max_width, offset + result.len()));

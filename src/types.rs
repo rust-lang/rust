@@ -406,7 +406,12 @@ fn rewrite_bounded_lifetime<'b, I>(lt: &ast::Lifetime,
         let appendix: Vec<_> = try_opt!(bounds.into_iter()
             .map(|b| b.rewrite(context, width, offset))
             .collect());
-        let result = format!("{}: {}", result, appendix.join(" + "));
+        let bound_spacing = if context.config.space_before_bound {
+            " "
+        } else {
+            ""
+        };
+        let result = format!("{}{}: {}", result, bound_spacing, appendix.join(" + "));
         wrap_str(result, context.config.max_width, width, offset)
     }
 }
@@ -449,6 +454,9 @@ impl Rewrite for ast::TyParam {
         let mut result = String::with_capacity(128);
         result.push_str(&self.ident.to_string());
         if !self.bounds.is_empty() {
+            if context.config.space_before_bound {
+                result.push_str(" ");
+            }
             result.push_str(": ");
 
             let bounds: String = try_opt!(self.bounds
