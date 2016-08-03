@@ -977,7 +977,7 @@ impl<'a> State<'a> {
                 try!(self.print_mt(mt));
             }
             ast::TyKind::Never => {
-                word(&mut self.s, "!")?;
+                try!(word(&mut self.s, "!"));
             },
             ast::TyKind::Tup(ref elts) => {
                 try!(self.popen());
