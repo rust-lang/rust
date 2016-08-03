@@ -10,7 +10,7 @@
 
 
 use llvm;
-use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
+use llvm::{SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::const_qualif::ConstQualif;
 use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, lookup_const_by_id, ErrKind};
@@ -125,7 +125,7 @@ pub fn addr_of_mut(ccx: &CrateContext,
         });
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetAlignment(gv, align);
-        SetLinkage(gv, InternalLinkage);
+        llvm::LLVMSetLinkage(gv, InternalLinkage);
         SetUnnamedAddr(gv, true);
         gv
     }
@@ -637,10 +637,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 hir::BiEq | hir::BiNe | hir::BiLt | hir::BiLe | hir::BiGt | hir::BiGe => {
                     if is_float {
                         let cmp = base::bin_op_to_fcmp_predicate(b.node);
-                        ConstFCmp(cmp, te1, te2)
+                        llvm::LLVMConstFCmp(cmp, te1, te2)
                     } else {
                         let cmp = base::bin_op_to_icmp_predicate(b.node, signed);
-                        ConstICmp(cmp, te1, te2)
+                        llvm::LLVMConstICmp(cmp, te1, te2)
                     }
                 },
             } } // unsafe { match b.node {
@@ -1072,7 +1072,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                     unsafe {
                         // Declare a symbol `foo` with the desired linkage.
                         let g1 = declare::declare_global(ccx, &sym, llty2);
-                        llvm::SetLinkage(g1, linkage);
+                        llvm::LLVMSetLinkage(g1, linkage);
 
                         // Declare an internal global `extern_with_linkage_foo` which
                         // is initialized with the address of `foo`.  If `foo` is
@@ -1086,7 +1086,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                             ccx.sess().span_fatal(span,
                                 &format!("symbol `{}` is already defined", &sym))
                         });
-                        llvm::SetLinkage(g2, llvm::InternalLinkage);
+                        llvm::LLVMSetLinkage(g2, llvm::InternalLinkage);
                         llvm::LLVMSetInitializer(g2, g1);
                         g2
                     }
@@ -1126,7 +1126,9 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
             }
         }
         if ccx.use_dll_storage_attrs() {
-            llvm::SetDLLStorageClass(g, llvm::DLLImportStorageClass);
+            unsafe {
+                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+            }
         }
         g
     };
@@ -1182,7 +1184,7 @@ pub fn trans_static(ccx: &CrateContext,
             let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(datum.val));
             let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
             llvm::LLVMSetValueName(datum.val, empty_string.as_ptr());
-            let new_g = llvm::LLVMGetOrInsertGlobal(
+            let new_g = llvm::LLVMRustGetOrInsertGlobal(
                 ccx.llmod(), name_string.as_ptr(), val_llty.to_ref());
             // To avoid breaking any invariants, we leave around the old
             // global for the moment; we'll replace all references to it

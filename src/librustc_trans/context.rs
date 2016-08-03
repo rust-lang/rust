@@ -325,10 +325,10 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     };
 
     match reloc_model_arg {
-        "pic" => llvm::RelocPIC,
-        "static" => llvm::RelocStatic,
-        "default" => llvm::RelocDefault,
-        "dynamic-no-pic" => llvm::RelocDynamicNoPic,
+        "pic" => llvm::RelocMode::PIC,
+        "static" => llvm::RelocMode::Static,
+        "default" => llvm::RelocMode::Default,
+        "dynamic-no-pic" => llvm::RelocMode::DynamicNoPic,
         _ => {
             sess.err(&format!("{:?} is not a valid relocation mode",
                              sess.opts
@@ -347,7 +347,7 @@ fn is_any_library(sess: &Session) -> bool {
 }
 
 pub fn is_pie_binary(sess: &Session) -> bool {
-    !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocPIC
+    !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {

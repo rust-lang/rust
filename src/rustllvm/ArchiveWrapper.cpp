@@ -16,24 +16,62 @@
 using namespace llvm;
 using namespace llvm::object;
 
-struct LLVMRustArchiveMember {
+struct RustArchiveMember {
   const char *filename;
   const char *name;
   Archive::Child child;
 
-  LLVMRustArchiveMember(): filename(NULL), name(NULL),
+  RustArchiveMember(): filename(NULL), name(NULL),
 #if LLVM_VERSION_MINOR >= 8
     child(NULL, NULL, NULL)
 #else
     child(NULL, NULL)
 #endif
   {}
-  ~LLVMRustArchiveMember() {}
+  ~RustArchiveMember() {}
 };
 
-typedef OwningBinary<Archive> RustArchive;
 
-extern "C" void*
+struct RustArchiveIterator {
+    Archive::child_iterator cur;
+    Archive::child_iterator end;
+#if LLVM_VERSION_MINOR >= 9
+    Error err;
+#endif
+};
+
+enum class LLVMRustArchiveKind {
+    Other,
+    GNU,
+    MIPS64,
+    BSD,
+    COFF,
+};
+
+static Archive::Kind
+from_rust(LLVMRustArchiveKind kind)
+{
+    switch (kind) {
+    case LLVMRustArchiveKind::GNU:
+        return Archive::K_GNU;
+    case LLVMRustArchiveKind::MIPS64:
+        return Archive::K_MIPS64;
+    case LLVMRustArchiveKind::BSD:
+        return Archive::K_BSD;
+    case LLVMRustArchiveKind::COFF:
+        return Archive::K_COFF;
+    default:
+      llvm_unreachable("Bad ArchiveKind.");
+  }
+}
+
+typedef OwningBinary<Archive> *LLVMRustArchiveRef;
+typedef RustArchiveMember *LLVMRustArchiveMemberRef;
+typedef Archive::Child *LLVMRustArchiveChildRef;
+typedef Archive::Child const *LLVMRustArchiveChildConstRef;
+typedef RustArchiveIterator *LLVMRustArchiveIteratorRef;
+
+extern "C" LLVMRustArchiveRef
 LLVMRustOpenArchive(char *path) {
     ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or = MemoryBuffer::getFile(path,
                                                                           -1,
@@ -66,20 +104,12 @@ LLVMRustOpenArchive(char *path) {
 }
 
 extern "C" void
-LLVMRustDestroyArchive(RustArchive *ar) {
+LLVMRustDestroyArchive(LLVMRustArchiveRef ar) {
     delete ar;
 }
 
-struct RustArchiveIterator {
-    Archive::child_iterator cur;
-    Archive::child_iterator end;
-#if LLVM_VERSION_MINOR >= 9
-    Error err;
-#endif
-};
-
-extern "C" RustArchiveIterator*
-LLVMRustArchiveIteratorNew(RustArchive *ra) {
+extern "C" LLVMRustArchiveIteratorRef
+LLVMRustArchiveIteratorNew(LLVMRustArchiveRef ra) {
     Archive *ar = ra->getBinary();
     RustArchiveIterator *rai = new RustArchiveIterator();
 #if LLVM_VERSION_MINOR <= 8
@@ -95,8 +125,8 @@ LLVMRustArchiveIteratorNew(RustArchive *ra) {
     return rai;
 }
 
-extern "C" const Archive::Child*
-LLVMRustArchiveIteratorNext(RustArchiveIterator *rai) {
+extern "C" LLVMRustArchiveChildConstRef
+LLVMRustArchiveIteratorNext(LLVMRustArchiveIteratorRef rai) {
 #if LLVM_VERSION_MINOR >= 9
     if (rai->err) {
         LLVMRustSetLastError(toString(std::move(rai->err)).c_str());
@@ -122,17 +152,17 @@ LLVMRustArchiveIteratorNext(RustArchiveIterator *rai) {
 }
 
 extern "C" void
-LLVMRustArchiveChildFree(Archive::Child *child) {
+LLVMRustArchiveChildFree(LLVMRustArchiveChildRef child) {
     delete child;
 }
 
 extern "C" void
-LLVMRustArchiveIteratorFree(RustArchiveIterator *rai) {
+LLVMRustArchiveIteratorFree(LLVMRustArchiveIteratorRef rai) {
     delete rai;
 }
 
 extern "C" const char*
-LLVMRustArchiveChildName(const Archive::Child *child, size_t *size) {
+LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef child, size_t *size) {
     ErrorOr<StringRef> name_or_err = child->getName();
     if (name_or_err.getError())
         return NULL;
@@ -142,7 +172,7 @@ LLVMRustArchiveChildName(const Archive::Child *child, size_t *size) {
 }
 
 extern "C" const char*
-LLVMRustArchiveChildData(Archive::Child *child, size_t *size) {
+LLVMRustArchiveChildData(LLVMRustArchiveChildRef child, size_t *size) {
     StringRef buf;
     ErrorOr<StringRef> buf_or_err = child->getBuffer();
     if (buf_or_err.getError()) {
@@ -154,9 +184,10 @@ LLVMRustArchiveChildData(Archive::Child *child, size_t *size) {
     return buf.data();
 }
 
-extern "C" LLVMRustArchiveMember*
-LLVMRustArchiveMemberNew(char *Filename, char *Name, Archive::Child *child) {
-    LLVMRustArchiveMember *Member = new LLVMRustArchiveMember;
+extern "C" LLVMRustArchiveMemberRef
+LLVMRustArchiveMemberNew(char *Filename, char *Name,
+			 LLVMRustArchiveChildRef child) {
+    RustArchiveMember *Member = new RustArchiveMember;
     Member->filename = Filename;
     Member->name = Name;
     if (child)
@@ -165,22 +196,23 @@ LLVMRustArchiveMemberNew(char *Filename, char *Name, Archive::Child *child) {
 }
 
 extern "C" void
-LLVMRustArchiveMemberFree(LLVMRustArchiveMember *Member) {
+LLVMRustArchiveMemberFree(LLVMRustArchiveMemberRef Member) {
     delete Member;
 }
 
-extern "C" int
+extern "C" LLVMRustResult
 LLVMRustWriteArchive(char *Dst,
                      size_t NumMembers,
-                     const LLVMRustArchiveMember **NewMembers,
+                     const LLVMRustArchiveMemberRef *NewMembers,
                      bool WriteSymbtab,
-                     Archive::Kind Kind) {
+                     LLVMRustArchiveKind rust_kind) {
 
 #if LLVM_VERSION_MINOR <= 8
   std::vector<NewArchiveIterator> Members;
 #else
   std::vector<NewArchiveMember> Members;
 #endif
+  auto Kind = from_rust(rust_kind);
 
   for (size_t i = 0; i < NumMembers; i++) {
     auto Member = NewMembers[i];
@@ -190,7 +222,7 @@ LLVMRustWriteArchive(char *Dst,
       Expected<NewArchiveMember> MOrErr = NewArchiveMember::getFile(Member->filename, true);
       if (!MOrErr) {
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
-        return -1;
+        return LLVMRustResult::Failure;
       }
       Members.push_back(std::move(*MOrErr));
 #elif LLVM_VERSION_MINOR == 8
@@ -205,7 +237,7 @@ LLVMRustWriteArchive(char *Dst,
       Expected<NewArchiveMember> MOrErr = NewArchiveMember::getOldMember(Member->child, true);
       if (!MOrErr) {
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
-        return -1;
+        return LLVMRustResult::Failure;
       }
       Members.push_back(std::move(*MOrErr));
 #endif
@@ -217,7 +249,7 @@ LLVMRustWriteArchive(char *Dst,
   auto pair = writeArchive(Dst, Members, WriteSymbtab, Kind, true);
 #endif
   if (!pair.second)
-    return 0;
+    return LLVMRustResult::Success;
   LLVMRustSetLastError(pair.second.message().c_str());
-  return -1;
+  return LLVMRustResult::Failure;
 }

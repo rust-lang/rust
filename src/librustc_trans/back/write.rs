@@ -54,7 +54,7 @@ pub fn write_output_file(
         let output_c = path2cstr(output);
         let result = llvm::LLVMRustWriteOutputFile(
                 target, pm, m, output_c.as_ptr(), file_type);
-        if !result {
+        if result.into_result().is_err() {
             llvm_err(handler, format!("could not write output to {}", output.display()));
         }
     }
@@ -138,11 +138,11 @@ fn target_feature(sess: &Session) -> String {
 
 fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
     match optimize {
-      config::OptLevel::No => llvm::CodeGenLevelNone,
-      config::OptLevel::Less => llvm::CodeGenLevelLess,
-      config::OptLevel::Default => llvm::CodeGenLevelDefault,
-      config::OptLevel::Aggressive => llvm::CodeGenLevelAggressive,
-      _ => llvm::CodeGenLevelDefault,
+      config::OptLevel::No => llvm::CodeGenOptLevel::None,
+      config::OptLevel::Less => llvm::CodeGenOptLevel::Less,
+      config::OptLevel::Default => llvm::CodeGenOptLevel::Default,
+      config::OptLevel::Aggressive => llvm::CodeGenOptLevel::Aggressive,
+      _ => llvm::CodeGenOptLevel::Default,
     }
 }
 
@@ -169,11 +169,11 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
     };
 
     let code_model = match code_model_arg {
-        "default" => llvm::CodeModelDefault,
-        "small" => llvm::CodeModelSmall,
-        "kernel" => llvm::CodeModelKernel,
-        "medium" => llvm::CodeModelMedium,
-        "large" => llvm::CodeModelLarge,
+        "default" => llvm::CodeModel::Default,
+        "small" => llvm::CodeModel::Small,
+        "kernel" => llvm::CodeModel::Kernel,
+        "medium" => llvm::CodeModel::Medium,
+        "large" => llvm::CodeModel::Large,
         _ => {
             sess.err(&format!("{:?} is not a valid code model",
                              sess.opts
@@ -365,7 +365,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
                                         cookie: c_uint) {
     let HandlerFreeVars { cgcx, .. } = *(user as *const HandlerFreeVars);
 
-    let msg = llvm::build_string(|s| llvm::LLVMWriteSMDiagnosticToString(diag, s))
+    let msg = llvm::build_string(|s| llvm::LLVMRustWriteSMDiagnosticToString(diag, s))
         .expect("non-UTF8 SMDiagnostic");
 
     report_inline_asm(cgcx, &msg[..], cookie);
@@ -421,7 +421,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     };
     let fv = &fv as *const HandlerFreeVars as *mut c_void;
 
-    llvm::LLVMSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
+    llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
     llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, fv);
 
     let module_name = Some(&mtrans.name[..]);
@@ -449,9 +449,9 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 return false;
             }
             let pass_manager = match llvm::LLVMRustPassKind(pass) {
-                llvm::SupportedPassKind::Function => fpm,
-                llvm::SupportedPassKind::Module => mpm,
-                llvm::SupportedPassKind::Unsupported => {
+                llvm::PassKind::Function => fpm,
+                llvm::PassKind::Module => mpm,
+                llvm::PassKind::Other => {
                     cgcx.handler.err("Encountered LLVM pass kind we can't handle");
                     return true
                 },
@@ -579,7 +579,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(cgcx.handler, tm, cpm, llmod, &path,
-                                  llvm::AssemblyFileType);
+                                  llvm::FileType::AssemblyFile);
             });
             if config.emit_obj {
                 llvm::LLVMDisposeModule(llmod);
@@ -588,7 +588,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out, llvm::ObjectFileType);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out,
+                                  llvm::FileType::ObjectFile);
             });
         }
     });
@@ -1078,7 +1079,7 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
     let builder = llvm::LLVMPassManagerBuilderCreate();
-    let opt_level = config.opt_level.unwrap_or(llvm::CodeGenLevelNone);
+    let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
     let opt_size = config.opt_size.unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
 
@@ -1102,7 +1103,7 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
         (_, _, Some(t)) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t as u32);
         }
-        (llvm::CodeGenLevelAggressive, _, _) => {
+        (llvm::CodeGenOptLevel::Aggressive, _, _) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);
         }
         (_, llvm::CodeGenOptSizeDefault, _) => {
@@ -1111,14 +1112,17 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
         (_, llvm::CodeGenOptSizeAggressive, _) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 25);
         }
-        (llvm::CodeGenLevelNone, _, _) => {
+        (llvm::CodeGenOptLevel::None, _, _) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, false);
         }
-        (llvm::CodeGenLevelLess, _, _) => {
+        (llvm::CodeGenOptLevel::Less, _, _) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, true);
         }
-        (llvm::CodeGenLevelDefault, _, _) => {
+        (llvm::CodeGenOptLevel::Default, _, _) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 225);
+        }
+        (llvm::CodeGenOptLevel::Other, _, _) => {
+            bug!("CodeGenOptLevel::Other selected")
         }
     }
 

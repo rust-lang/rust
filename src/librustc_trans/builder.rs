@@ -11,7 +11,7 @@
 #![allow(dead_code)] // FFI wrappers
 
 use llvm;
-use llvm::{AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
+use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use base;
@@ -503,8 +503,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unsafe {
             let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
             let align = llalign_of_pref(self.ccx, ty.element_type());
-            llvm::LLVMBuildAtomicLoad(self.llbuilder, ptr, noname(), order,
-                                      align as c_uint)
+            llvm::LLVMRustBuildAtomicLoad(self.llbuilder, ptr, noname(), order,
+                                          align as c_uint)
         }
     }
 
@@ -565,7 +565,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unsafe {
             let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
             let align = llalign_of_pref(self.ccx, ty.element_type());
-            llvm::LLVMBuildAtomicStore(self.llbuilder, val, ptr, order, align as c_uint);
+            llvm::LLVMRustBuildAtomicStore(self.llbuilder, val, ptr, order, align as c_uint);
         }
     }
 
@@ -840,8 +840,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("Asm Output Type: {:?}", output);
         let fty = Type::func(&argtys[..], &output);
         unsafe {
-            let v = llvm::LLVMInlineAsm(
-                fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
+            let v = llvm::LLVMRustInlineAsm(
+                fty.to_ref(), asm, cons, volatile, alignstack, dia);
             self.call(v, inputs, None)
         }
     }
@@ -1087,7 +1087,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                          order, failure_order, weak)
         }
     }
-    pub fn atomic_rmw(&self, op: AtomicBinOp,
+    pub fn atomic_rmw(&self, op: AtomicRmwBinOp,
                      dst: ValueRef, src: ValueRef,
                      order: AtomicOrdering) -> ValueRef {
         unsafe {
@@ -1097,7 +1097,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub fn atomic_fence(&self, order: AtomicOrdering, scope: SynchronizationScope) {
         unsafe {
-            llvm::LLVMBuildAtomicFence(self.llbuilder, order, scope);
+            llvm::LLVMRustBuildAtomicFence(self.llbuilder, order, scope);
         }
     }
 }

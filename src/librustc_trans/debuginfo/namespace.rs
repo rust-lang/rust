@@ -78,7 +78,7 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
     };
 
     let scope = unsafe {
-        llvm::LLVMDIBuilderCreateNameSpace(
+        llvm::LLVMRustDIBuilderCreateNameSpace(
             DIB(ccx),
             parent_scope,
             namespace_name.as_ptr(),

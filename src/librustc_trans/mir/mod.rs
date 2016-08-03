@@ -324,8 +324,8 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                         machine::llelement_offset(bcx.ccx(), lltuplety, i);
 
                     let ops = unsafe {
-                        [llvm::LLVMDIBuilderCreateOpDeref(),
-                         llvm::LLVMDIBuilderCreateOpPlus(),
+                        [llvm::LLVMRustDIBuilderCreateOpDeref(),
+                         llvm::LLVMRustDIBuilderCreateOpPlus(),
                          byte_offset_of_var_in_tuple as i64]
                     };
 
@@ -450,10 +450,10 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                     machine::llelement_offset(bcx.ccx(), llclosurety, i);
 
                 let ops = unsafe {
-                    [llvm::LLVMDIBuilderCreateOpDeref(),
-                     llvm::LLVMDIBuilderCreateOpPlus(),
+                    [llvm::LLVMRustDIBuilderCreateOpDeref(),
+                     llvm::LLVMRustDIBuilderCreateOpPlus(),
                      byte_offset_of_var_in_env as i64,
-                     llvm::LLVMDIBuilderCreateOpDeref()]
+                     llvm::LLVMRustDIBuilderCreateOpDeref()]
                 };
 
                 // The environment and the capture can each be indirect.

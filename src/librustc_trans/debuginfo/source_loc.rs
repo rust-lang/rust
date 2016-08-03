@@ -206,7 +206,7 @@ pub fn set_debug_location(cx: &CrateContext,
             debug!("setting debug location to {} {}", line, col);
 
             unsafe {
-                llvm::LLVMDIBuilderCreateDebugLocation(
+                llvm::LLVMRustDIBuilderCreateDebugLocation(
                     debug_context(cx).llcontext,
                     line as c_uint,
                     col as c_uint,
