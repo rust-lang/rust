@@ -79,10 +79,12 @@ member of the team should pursue these goals:
 
 * Contributing documentation patches to Rust itself
 * Attending doc team meetings, which are open to all
-* generally being available on IRC to collaborate with others
+* generally being available on [IRC][^IRC] to collaborate with others
 
 I am not quantifying this exactly because it's not about reaching some specific number; adding someone to the team should
 make sense if someone is doing all of these things.
+
+[^IRC]: The #rust-docs channel on irc.mozilla.org
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -100,8 +102,4 @@ of the tools team, rather than its own new team. Or some other subteam.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Should we quantify the number of commits before you can get on the team? Or the amount of time?
-
-Rustdoc is a tool that's owned by the tools team, but the doc team makes
-significant contributions to it. Is it part of the tools team or the docs team?
-Maybe a backend-frontend split? Or maybe it just stays with tools?
+None.
