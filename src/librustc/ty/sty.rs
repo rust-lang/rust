@@ -906,10 +906,10 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         // more complete.
         match self.sty {
             TyEnum(def, _) | TyStruct(def, _) => def.is_empty(),
-            TyNever => true,
 
-            // FIXME(canndrew): There's no reason why this can't be uncommented, it's tested and it
-            // doesn't break anything. But I'm keeping my changes small for now.
+            // FIXME(canndrew): There's no reason why these can't be uncommented, they're tested
+            // and they don't break anything. But I'm keeping my changes small for now.
+            //TyNever => true,
             //TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
 
             // FIXME(canndrew): this line breaks core::fmt
