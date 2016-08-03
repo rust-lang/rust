@@ -746,6 +746,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     _ => false
                 },
+                Some(&AdjustNeverToAny(_)) => true,
                 Some(_) => false,
                 None => true
             };
@@ -781,7 +782,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok((ty, adjustment)) => {
                 if !adjustment.is_identity() {
                     for expr in exprs() {
-                        self.write_adjustment(expr.id, adjustment);
+                        let previous = self.tables.borrow().adjustments.get(&expr.id).cloned();
+                        if let Some(AdjustNeverToAny(_)) = previous {
+                            self.write_adjustment(expr.id, AdjustNeverToAny(ty));
+                        } else {
+                            self.write_adjustment(expr.id, adjustment);
+                        }
                     }
                 }
                 Ok(ty)
