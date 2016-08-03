@@ -74,6 +74,8 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![cfg_attr(not(target_has_atomic = "8"), allow(dead_code))]
+#![cfg_attr(not(target_has_atomic = "8"), allow(unused_imports))]
 
 use self::Ordering::*;
 
