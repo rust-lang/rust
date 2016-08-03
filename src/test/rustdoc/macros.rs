@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has macros/macro.my_macro!.html //pre 'macro_rules! my_macro {'
+// @has macros/macro.my_macro.html //pre 'macro_rules! my_macro {'
 // @has - //pre '() => { ... };'
 // @has - //pre '($a:tt) => { ... };'
 // @has - //pre '($e:expr) => { ... };'
