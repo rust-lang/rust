@@ -218,7 +218,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 if !pat_ty.is_uninhabited(cx.tcx) {
                     // We know the type is inhabited, so this must be wrong
                     let mut err = struct_span_err!(cx.tcx.sess, ex.span, E0002,
-                                                   "non-exhaustive patterns: type {} is inhabited",
+                                                   "non-exhaustive patterns: type {} is non-empty",
                                                    pat_ty);
                     span_help!(&mut err, ex.span,
                         "Please ensure that all possible cases are being handled; \
