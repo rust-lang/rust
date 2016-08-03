@@ -42,6 +42,14 @@ pub enum ItemType {
     AssociatedConst = 18,
 }
 
+
+#[derive(Copy, Eq, PartialEq, Clone)]
+pub enum NameSpace {
+    Type,
+    Value,
+    Macro,
+}
+
 impl ItemType {
     pub fn from_item(item: &clean::Item) -> ItemType {
         let inner = match item.inner {
@@ -113,10 +121,50 @@ impl ItemType {
             ItemType::AssociatedConst => "associatedconstant",
         }
     }
+
+    pub fn name_space(&self) -> NameSpace {
+        match *self {
+            ItemType::Struct |
+            ItemType::Enum |
+            ItemType::Module |
+            ItemType::Typedef |
+            ItemType::Trait |
+            ItemType::Primitive |
+            ItemType::AssociatedType => NameSpace::Type,
+
+            ItemType::ExternCrate |
+            ItemType::Import |
+            ItemType::Function |
+            ItemType::Static |
+            ItemType::Impl |
+            ItemType::TyMethod |
+            ItemType::Method |
+            ItemType::StructField |
+            ItemType::Variant |
+            ItemType::Constant |
+            ItemType::AssociatedConst => NameSpace::Value,
+
+            ItemType::Macro => NameSpace::Macro,
+        }
+    }
 }
 
 impl fmt::Display for ItemType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.css_class().fmt(f)
+    }
+}
+
+pub const NAMESPACE_TYPE: &'static str = "t";
+pub const NAMESPACE_VALUE: &'static str = "v";
+pub const NAMESPACE_MACRO: &'static str = "m";
+
+impl NameSpace {
+    pub fn to_static_str(&self) -> &'static str {
+        match *self {
+            NameSpace::Type => NAMESPACE_TYPE,
+            NameSpace::Value => NAMESPACE_VALUE,
+            NameSpace::Macro => NAMESPACE_MACRO,
+        }
     }
 }
