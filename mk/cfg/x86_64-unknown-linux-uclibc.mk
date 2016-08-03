@@ -21,9 +21,9 @@ CFG_LDPATH_x86_64-unknown-linux-uclibc :=
 CFG_RUN_x86_64-unknown-linux-uclibc=$(2)
 CFG_RUN_TARG_x86_64-unknown-linux-uclibc=$(call CFG_RUN_x86_64-unknown-linux-uclibc,,$(2))
 CFG_GNU_TRIPLE_x86_64-unknown-linux-uclibc := x86_64-unknown-linux-uclibc
-CFG_THIRD_PARTY_OBJECTS_x86_64-unknown-linux-uclibc := crt1.o crti.o crtn.o
+#CFG_THIRD_PARTY_OBJECTS_x86_64-unknown-linux-uclibc := crt1.o crti.o crtn.o
 CFG_INSTALLED_OBJECTS_x86_64-unknown-linux-uclibc := crt1.o crti.o crtn.o
 
-NATIVE_DEPS_libc_T_x86_64-unknown-linux-uclibc += libc.a
+#NATIVE_DEPS_libc_T_x86_64-unknown-linux-uclibc += libc.a
 NATIVE_DEPS_std_T_x86_64-unknown-linux-uclibc += crt1.o crti.o crtn.o
-NATIVE_DEPS_unwind_T_x86_64-unknown-linux-uclibc += libunwind.a
+#NATIVE_DEPS_unwind_T_x86_64-unknown-linux-uclibc += libunwind.a

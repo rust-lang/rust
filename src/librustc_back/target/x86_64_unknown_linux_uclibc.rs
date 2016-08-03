@@ -22,7 +22,7 @@ pub fn target() -> Target {
         target_pointer_width: "64".to_string(),
         arch: "x86_64".to_string(),
         target_os: "linux".to_string(),
-        target_env: "uclibc".to_string(),
+        //target_env: "uclibc".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
     }
