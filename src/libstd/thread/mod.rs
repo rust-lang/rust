@@ -447,6 +447,8 @@ pub fn park() {
     *guard = false;
 }
 
+/// Use [park_timeout].
+///
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
 ///
@@ -456,7 +458,10 @@ pub fn park() {
 /// preemption or platform differences that may not cause the maximum
 /// amount of time waited to be precisely `ms` long.
 ///
-/// See the module doc for more detail.
+/// See the [module documentation][thread] for more detail.
+///
+/// [thread]: index.html
+/// [park_timeout]: fn.park_timeout.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::park_timeout`")]
 pub fn park_timeout_ms(ms: u32) {
