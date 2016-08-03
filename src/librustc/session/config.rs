@@ -1168,7 +1168,15 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         })
     });
 
-    let debugging_opts = build_debugging_options(matches, error_format);
+    let mut debugging_opts = build_debugging_options(matches, error_format);
+
+    // Incremental compilation only works reliably when translation is done via
+    // MIR, so let's enable -Z orbit if necessary (see #34973).
+    if debugging_opts.incremental.is_some() && !debugging_opts.orbit {
+        early_warn(error_format, "Automatically enabling `-Z orbit` because \
+                                  `-Z incremental` was specified");
+        debugging_opts.orbit = true;
+    }
 
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;
