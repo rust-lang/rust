@@ -689,13 +689,17 @@ pub struct Statement<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     Assign(Lvalue<'tcx>, Rvalue<'tcx>),
+    SetDiscriminant{ lvalue: Lvalue<'tcx>, variant_index: usize },
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
-            Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv)
+            Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv),
+            SetDiscriminant{lvalue: ref lv, variant_index: index} => {
+                write!(fmt, "discriminant({:?}) = {:?}", lv, index)
+            }
         }
     }
 }

@@ -219,7 +219,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let (mut rvalue, mut call) = (None, None);
         let source_info = if stmt_idx < no_stmts {
             let statement = &mut self.source[bb].statements[stmt_idx];
-            let StatementKind::Assign(_, ref mut rhs) = statement.kind;
+            let mut rhs = match statement.kind {
+                StatementKind::Assign(_, ref mut rhs) => rhs,
+                StatementKind::SetDiscriminant{ .. } =>
+                    span_bug!(statement.source_info.span,
+                              "cannot promote SetDiscriminant {:?}",
+                              statement),
+            };
             if self.keep_original {
                 rvalue = Some(rhs.clone());
             } else {
@@ -300,9 +306,15 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         });
         let mut rvalue = match candidate {
             Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                match self.source[bb].statements[stmt_idx].kind {
+                let ref mut statement = self.source[bb].statements[stmt_idx];
+                match statement.kind {
                     StatementKind::Assign(_, ref mut rvalue) => {
                         mem::replace(rvalue, Rvalue::Use(new_operand))
+                    }
+                    StatementKind::SetDiscriminant{ .. } => {
+                        span_bug!(statement.source_info.span,
+                                  "cannot promote SetDiscriminant {:?}",
+                                  statement);
                     }
                 }
             }
@@ -340,7 +352,11 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         let (span, ty) = match candidate {
             Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                 let statement = &mir[bb].statements[stmt_idx];
-                let StatementKind::Assign(ref dest, _) = statement.kind;
+                let dest = match statement.kind {
+                    StatementKind::Assign(ref dest, _) => dest,
+                    StatementKind::SetDiscriminant{ .. } =>
+                        panic!("cannot promote SetDiscriminant"),
+                };
                 if let Lvalue::Temp(index) = *dest {
                     if temps[index] == TempState::PromotedOut {
                         // Already promoted.
