@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(bar: i32+std::fmt::Display) {} //~ ERROR E0172
+fn foo(bar: i32+std::fmt::Display) {}
+    //~^ ERROR E0172
+    //~| NOTE expected a trait
 
 fn main() {
 }
