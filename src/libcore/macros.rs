@@ -229,20 +229,22 @@ macro_rules! try {
     })
 }
 
-/// Calls `write_fmt` function on a writer
+/// Write formatted data into a buffer
 ///
-/// This macro takes an implementor of [`std::fmt::Write`][fmt_write] or
-/// [`std::io::Write`][io_write] trait, a format string, and a list of arguments.
+/// This macro accepts any value with `write_fmt` method as a writer, a format string, and a list
+/// of arguments to format.
 ///
-/// Implementors of the `Write` trait are sometimes called 'writers'.
+/// `write_fmt` method usually comes from an implementation of [`std::fmt::Write`][fmt_write] or
+/// [`std::io::Write`][io_write] traits. These are sometimes called 'writers'.
 ///
-/// These arguments will be formatted according to the specified format string and
-/// the resulting string will be passed to the writer.
-///
-/// Return value is either [`Result`][enum_result] or [`io::Result`][type_result] depending on
-/// the writer.
+/// Passed arguments will be formatted according to the specified format string and the resulting
+/// string will be passed to the writer.
 ///
 /// See [`std::fmt`][fmt] for more information on format syntax.
+///
+/// Return value is completely dependent on the 'write_fmt' method.
+///
+/// Common return values are: [`Result`][enum_result], [`io::Result`][type_result]
 ///
 /// [fmt]: ../std/fmt/index.html
 /// [fmt_write]: ../std/fmt/trait.Write.html
@@ -267,23 +269,25 @@ macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ($dst.write_fmt(format_args!($($arg)*)))
 }
 
-/// Calls `write_fmt` function on a writer, with appending a newline.
+/// Write formatted data into a buffer, with appending a newline.
 ///
-/// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`)
-/// alone (no additional CARRIAGE RETURN (`\r`/`U+000D`).
+/// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`) alone
+/// (no additional CARRIAGE RETURN (`\r`/`U+000D`).
 ///
-/// This macro takes an implementor of [`std::fmt::Write`][fmt_write] or
-/// [`std::io::Write`][io_write] trait, a format string, and a list of arguments.
+/// This macro accepts any value with `write_fmt` method as a writer, a format string, and a list
+/// of arguments to format.
 ///
-/// Implementors of the `Write` trait are sometimes called 'writers'.
+/// `write_fmt` method usually comes from an implementation of [`std::fmt::Write`][fmt_write] or
+/// [`std::io::Write`][io_write] traits. These are sometimes called 'writers'.
 ///
-/// These arguments will be formatted according to the specified format string and
-/// the resulting string will be passed to the writer.
-///
-/// Return value is either [`Result`][enum_result] or [`io::Result`][type_result] depending on
-/// the writer.
+/// Passed arguments will be formatted according to the specified format string and the resulting
+/// string will be passed to the writer.
 ///
 /// See [`std::fmt`][fmt] for more information on format syntax.
+///
+/// Return value is completely dependent on the 'write_fmt' method.
+///
+/// Common return values are: [`Result`][enum_result], [`io::Result`][type_result]
 ///
 /// [fmt]: ../std/fmt/index.html
 /// [fmt_write]: ../std/fmt/trait.Write.html
