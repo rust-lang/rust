@@ -229,14 +229,26 @@ macro_rules! try {
     })
 }
 
-/// Use the `format!` syntax to write data into a buffer.
+/// Calls `write_fmt` function on a writer
 ///
-/// This macro is typically used with a buffer of `&mut `[`Write`][write].
+/// This macro takes an implementer of [`std::fmt::Write`][fmt_write] or
+/// [`std::io::Write`][io_write] trait, a precompiled format string, and a list of arguments.
+///
+/// Implementors of the `Write` trait are sometimes called 'writers'.
+///
+/// These arguments will be formatted according to the specified format string and
+/// the resulting string will be passed to the writer.
+///
+/// Return value is either [`Result`][enum_result] or [`io::Result`][type_result] depending on
+/// the writer.
 ///
 /// See [`std::fmt`][fmt] for more information on format syntax.
 ///
 /// [fmt]: ../std/fmt/index.html
-/// [write]: ../std/io/trait.Write.html
+/// [fmt_write]: ../std/fmt/trait.Write.html
+/// [io_write]: ../std/io/trait.Write.html
+/// [enum_result]: ../std/result/enum.Result.html
+/// [type_result]: ../std/io/type.Result.html
 ///
 /// # Examples
 ///
@@ -255,16 +267,29 @@ macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ($dst.write_fmt(format_args!($($arg)*)))
 }
 
-/// Use the `format!` syntax to write data into a buffer, appending a newline.
+/// Calls `write_fmt` function on a writer, with appending a newline.
+///
 /// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`)
 /// alone (no additional CARRIAGE RETURN (`\r`/`U+000D`).
 ///
-/// This macro is typically used with a buffer of `&mut `[`Write`][write].
+/// This macro takes an implementer of [`std::fmt::Write`][fmt_write] or
+/// [`std::io::Write`][io_write] trait, a precompiled format string, and a list of arguments.
+///
+/// Implementors of the `Write` trait are sometimes called 'writers'.
+///
+/// These arguments will be formatted according to the specified format string and
+/// the resulting string will be passed to the writer.
+///
+/// Return value is either [`Result`][enum_result] or [`io::Result`][type_result] depending on
+/// the writer.
 ///
 /// See [`std::fmt`][fmt] for more information on format syntax.
 ///
 /// [fmt]: ../std/fmt/index.html
-/// [write]: ../std/io/trait.Write.html
+/// [fmt_write]: ../std/fmt/trait.Write.html
+/// [io_write]: ../std/io/trait.Write.html
+/// [enum_result]: ../std/result/enum.Result.html
+/// [type_result]: ../std/io/type.Result.html
 ///
 /// # Examples
 ///
