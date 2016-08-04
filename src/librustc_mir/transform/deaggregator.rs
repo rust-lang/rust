@@ -39,7 +39,7 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
 
         let mut curr: usize = 0;
         for bb in mir.basic_blocks_mut() {
-            let idx = match get_aggregate_statement(curr, &bb.statements) {
+            let idx = match get_aggregate_statement_index(curr, &bb.statements) {
                 Some(idx) => idx,
                 None => continue,
             };
@@ -48,7 +48,11 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
             let src_info = bb.statements[idx].source_info;
             let suffix_stmts = bb.statements.split_off(idx+1);
             let orig_stmt = bb.statements.pop().unwrap();
-            let StatementKind::Assign(ref lhs, ref rhs) = orig_stmt.kind;
+            let (lhs, rhs) = match orig_stmt.kind {
+                StatementKind::Assign(ref lhs, ref rhs) => (lhs, rhs),
+                StatementKind::SetDiscriminant{ .. } =>
+                    span_bug!(src_info.span, "expected aggregate, not {:?}", orig_stmt.kind),
+            };
             let (agg_kind, operands) = match rhs {
                 &Rvalue::Aggregate(ref agg_kind, ref operands) => (agg_kind, operands),
                 _ => span_bug!(src_info.span, "expected aggregate, not {:?}", rhs),
@@ -64,10 +68,14 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
                 let ty = variant_def.fields[i].ty(tcx, substs);
                 let rhs = Rvalue::Use(op.clone());
 
-                // since we don't handle enums, we don't need a cast
-                let lhs_cast = lhs.clone();
-
-                // FIXME we cannot deaggregate enums issue: #35186
+                let lhs_cast = if adt_def.variants.len() > 1 {
+                    Lvalue::Projection(Box::new(LvalueProjection {
+                        base: lhs.clone(),
+                        elem: ProjectionElem::Downcast(adt_def, variant),
+                    }))
+                } else {
+                    lhs.clone()
+                };
 
                 let lhs_proj = Lvalue::Projection(Box::new(LvalueProjection {
                     base: lhs_cast,
@@ -80,18 +88,34 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
                 debug!("inserting: {:?} @ {:?}", new_statement, idx + i);
                 bb.statements.push(new_statement);
             }
+
+            // if the aggregate was an enum, we need to set the discriminant
+            if adt_def.variants.len() > 1 {
+                let set_discriminant = Statement {
+                    kind: StatementKind::SetDiscriminant {
+                        lvalue: lhs.clone(),
+                        variant_index: variant,
+                    },
+                    source_info: src_info,
+                };
+                bb.statements.push(set_discriminant);
+            };
+
             curr = bb.statements.len();
             bb.statements.extend(suffix_stmts);
         }
     }
 }
 
-fn get_aggregate_statement<'a, 'tcx, 'b>(curr: usize,
+fn get_aggregate_statement_index<'a, 'tcx, 'b>(start: usize,
                                          statements: &Vec<Statement<'tcx>>)
                                          -> Option<usize> {
-    for i in curr..statements.len() {
+    for i in start..statements.len() {
         let ref statement = statements[i];
-        let StatementKind::Assign(_, ref rhs) = statement.kind;
+        let rhs = match statement.kind {
+            StatementKind::Assign(_, ref rhs) => rhs,
+            StatementKind::SetDiscriminant{ .. } => continue,
+        };
         let (kind, operands) = match rhs {
             &Rvalue::Aggregate(ref kind, ref operands) => (kind, operands),
             _ => continue,
@@ -100,9 +124,8 @@ fn get_aggregate_statement<'a, 'tcx, 'b>(curr: usize,
             &AggregateKind::Adt(adt_def, variant, _) => (adt_def, variant),
             _ => continue,
         };
-        if operands.len() == 0 || adt_def.variants.len() > 1 {
+        if operands.len() == 0 {
             // don't deaggregate ()
-            // don't deaggregate enums ... for now
             continue;
         }
         debug!("getting variant {:?}", variant);

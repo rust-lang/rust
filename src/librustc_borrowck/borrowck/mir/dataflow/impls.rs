@@ -442,6 +442,9 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
         }
         let bits_per_block = self.bits_per_block(ctxt);
         match stmt.kind {
+            repr::StatementKind::SetDiscriminant { .. } => {
+                span_bug!(stmt.source_info.span, "SetDiscriminant should not exist in borrowck");
+            }
             repr::StatementKind::Assign(ref lvalue, _) => {
                 // assigning into this `lvalue` kills all
                 // MoveOuts from it, and *also* all MoveOuts
