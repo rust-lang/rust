@@ -1800,39 +1800,6 @@ Please also verify that this wasn't because of a name-clash and rename the type
 parameter if so.
 "##,
 
-E0130: r##"
-You declared a pattern as an argument in a foreign function declaration.
-Erroneous code example:
-
-```compile_fail
-extern {
-    fn foo((a, b): (u32, u32)); // error: patterns aren't allowed in foreign
-                                //        function declarations
-}
-```
-
-Please replace the pattern argument with a regular one. Example:
-
-```
-struct SomeStruct {
-    a: u32,
-    b: u32,
-}
-
-extern {
-    fn foo(s: SomeStruct); // ok!
-}
-```
-
-Or:
-
-```
-extern {
-    fn foo(a: (u32, u32)); // ok!
-}
-```
-"##,
-
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
