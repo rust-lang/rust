@@ -583,13 +583,20 @@ impl Deprecated {
     }
 
     fn lint(&self, cx: &LateContext, _id: DefId, span: Span,
-            stability: &Option<&attr::Stability>, deprecation: &Option<attr::Deprecation>) {
+            stability: &Option<&attr::Stability>,
+            deprecation: &Option<stability::DeprecationEntry>) {
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(&attr::Stability{rustc_depr: Some(attr::RustcDeprecation{ref reason, ..}), ..})
                 = *stability {
             output(cx, DEPRECATED, span, Some(&reason))
-        } else if let Some(attr::Deprecation{ref note, ..}) = *deprecation {
-            output(cx, DEPRECATED, span, note.as_ref().map(|x| &**x))
+        } else if let Some(ref depr_entry) = *deprecation {
+            if let Some(parent_depr) = cx.tcx.lookup_deprecation_entry(self.parent_def(cx)) {
+                if parent_depr.same_origin(depr_entry) {
+                    return;
+                }
+            }
+
+            output(cx, DEPRECATED, span, depr_entry.attr.note.as_ref().map(|x| &**x))
         }
 
         fn output(cx: &LateContext, lint: &'static Lint, span: Span, note: Option<&str>) {
