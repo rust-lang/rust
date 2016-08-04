@@ -231,8 +231,8 @@ macro_rules! try {
 
 /// Calls `write_fmt` function on a writer
 ///
-/// This macro takes an implementer of [`std::fmt::Write`][fmt_write] or
-/// [`std::io::Write`][io_write] trait, a precompiled format string, and a list of arguments.
+/// This macro takes an implementor of [`std::fmt::Write`][fmt_write] or
+/// [`std::io::Write`][io_write] trait, a format string, and a list of arguments.
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
 ///
@@ -272,8 +272,8 @@ macro_rules! write {
 /// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`)
 /// alone (no additional CARRIAGE RETURN (`\r`/`U+000D`).
 ///
-/// This macro takes an implementer of [`std::fmt::Write`][fmt_write] or
-/// [`std::io::Write`][io_write] trait, a precompiled format string, and a list of arguments.
+/// This macro takes an implementor of [`std::fmt::Write`][fmt_write] or
+/// [`std::io::Write`][io_write] trait, a format string, and a list of arguments.
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
 ///
