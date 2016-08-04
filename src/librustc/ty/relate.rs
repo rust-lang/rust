@@ -326,24 +326,33 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &ty::ProjectionPredicate<'tcx>,
-                           b: &ty::ProjectionPredicate<'tcx>)
-                           -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>>
+                           a: &ty::ExistentialProjection<'tcx>,
+                           b: &ty::ExistentialProjection<'tcx>)
+                           -> RelateResult<'tcx, ty::ExistentialProjection<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        let projection_ty = relation.relate(&a.projection_ty, &b.projection_ty)?;
-        let ty = relation.relate(&a.ty, &b.ty)?;
-        Ok(ty::ProjectionPredicate { projection_ty: projection_ty, ty: ty })
+        if a.item_name != b.item_name {
+            Err(TypeError::ProjectionNameMismatched(
+                expected_found(relation, &a.item_name, &b.item_name)))
+        } else {
+            let trait_ref = relation.relate(&a.trait_ref, &b.trait_ref)?;
+            let ty = relation.relate(&a.ty, &b.ty)?;
+            Ok(ty::ExistentialProjection {
+                trait_ref: trait_ref,
+                item_name: a.item_name,
+                ty: ty
+            })
+        }
     }
 }
 
-impl<'tcx> Relate<'tcx> for Vec<ty::PolyProjectionPredicate<'tcx>> {
+impl<'tcx> Relate<'tcx> for Vec<ty::PolyExistentialProjection<'tcx>> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &Vec<ty::PolyProjectionPredicate<'tcx>>,
-                           b: &Vec<ty::PolyProjectionPredicate<'tcx>>)
-                           -> RelateResult<'tcx, Vec<ty::PolyProjectionPredicate<'tcx>>>
+                           a: &Vec<ty::PolyExistentialProjection<'tcx>>,
+                           b: &Vec<ty::PolyExistentialProjection<'tcx>>)
+                           -> RelateResult<'tcx, Vec<ty::PolyExistentialProjection<'tcx>>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
         // To be compatible, `a` and `b` must be for precisely the
@@ -358,27 +367,6 @@ impl<'tcx> Relate<'tcx> for Vec<ty::PolyProjectionPredicate<'tcx>> {
                 .map(|(a, b)| relation.relate(a, b))
                 .collect()
         }
-    }
-}
-
-impl<'tcx> Relate<'tcx> for ty::ExistentialBounds<'tcx> {
-    fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &ty::ExistentialBounds<'tcx>,
-                           b: &ty::ExistentialBounds<'tcx>)
-                           -> RelateResult<'tcx, ty::ExistentialBounds<'tcx>>
-        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-    {
-        let r =
-            relation.with_cause(
-                Cause::ExistentialRegionBound,
-                |relation| relation.relate_with_variance(ty::Contravariant,
-                                                         &a.region_bound,
-                                                         &b.region_bound))?;
-        let nb = relation.relate(&a.builtin_bounds, &b.builtin_bounds)?;
-        let pb = relation.relate(&a.projection_bounds, &b.projection_bounds)?;
-        Ok(ty::ExistentialBounds { region_bound: r,
-                                   builtin_bounds: nb,
-                                   projection_bounds: pb })
     }
 }
 
@@ -412,6 +400,23 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
         } else {
             let substs = relate_item_substs(relation, a.def_id, a.substs, b.substs)?;
             Ok(ty::TraitRef { def_id: a.def_id, substs: substs })
+        }
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
+    fn relate<'a, 'gcx, R>(relation: &mut R,
+                           a: &ty::ExistentialTraitRef<'tcx>,
+                           b: &ty::ExistentialTraitRef<'tcx>)
+                           -> RelateResult<'tcx, ty::ExistentialTraitRef<'tcx>>
+        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
+    {
+        // Different traits cannot be related
+        if a.def_id != b.def_id {
+            Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
+        } else {
+            let substs = relate_item_substs(relation, a.def_id, a.substs, b.substs)?;
+            Ok(ty::ExistentialTraitRef { def_id: a.def_id, substs: substs })
         }
     }
 }
@@ -478,11 +483,23 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_enum(a_def, substs))
         }
 
-        (&ty::TyTrait(ref a_), &ty::TyTrait(ref b_)) =>
+        (&ty::TyTrait(ref a_obj), &ty::TyTrait(ref b_obj)) =>
         {
-            let principal = relation.relate(&a_.principal, &b_.principal)?;
-            let bounds = relation.relate(&a_.bounds, &b_.bounds)?;
-            Ok(tcx.mk_trait(principal, bounds))
+            let principal = relation.relate(&a_obj.principal, &b_obj.principal)?;
+            let r =
+                relation.with_cause(
+                    Cause::ExistentialRegionBound,
+                    |relation| relation.relate_with_variance(ty::Contravariant,
+                                                             &a_obj.region_bound,
+                                                             &b_obj.region_bound))?;
+            let nb = relation.relate(&a_obj.builtin_bounds, &b_obj.builtin_bounds)?;
+            let pb = relation.relate(&a_obj.projection_bounds, &b_obj.projection_bounds)?;
+            Ok(tcx.mk_trait(ty::TraitObject {
+                principal: principal,
+                region_bound: r,
+                builtin_bounds: nb,
+                projection_bounds: pb
+            }))
         }
 
         (&ty::TyStruct(a_def, a_substs), &ty::TyStruct(b_def, b_substs))

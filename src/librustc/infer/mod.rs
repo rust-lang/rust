@@ -1248,9 +1248,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                      generics: &ty::Generics<'tcx>)
                                      -> &'tcx subst::Substs<'tcx>
     {
-        let type_defs = generics.types.as_full_slice();
-        let region_defs = generics.regions.as_full_slice();
-        let substs = Substs::from_param_defs(region_defs, type_defs, |def| {
+        let substs = Substs::from_generics(generics, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, substs| {
             self.type_var_for_def(span, def, substs)
@@ -1271,9 +1269,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         assert!(generics.types.len(subst::SelfSpace) == 1);
         assert!(generics.types.len(subst::FnSpace) == 0);
 
-        let type_defs = generics.types.as_full_slice();
-        let region_defs = generics.regions.as_full_slice();
-        let substs = Substs::from_param_defs(region_defs, type_defs, |def| {
+        let substs = Substs::from_generics(generics, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, substs| {
             if def.space == subst::SelfSpace {

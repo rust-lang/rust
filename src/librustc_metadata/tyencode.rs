@@ -104,11 +104,26 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
             enc_substs(w, cx, substs);
             write!(w, "]");
         }
-        ty::TyTrait(box ty::TraitTy { ref principal,
-                                       ref bounds }) => {
+        ty::TyTrait(ref obj) => {
             write!(w, "x[");
-            enc_trait_ref(w, cx, principal.0);
-            enc_existential_bounds(w, cx, bounds);
+            enc_existential_trait_ref(w, cx, obj.principal.0);
+            enc_builtin_bounds(w, cx, &obj.builtin_bounds);
+
+            enc_region(w, cx, obj.region_bound);
+
+            // Encode projection_bounds in a stable order
+            let mut projection_bounds: Vec<_> = obj.projection_bounds
+                                                .iter()
+                                                .map(|b| (b.item_name().as_str(), b))
+                                                .collect();
+            projection_bounds.sort_by_key(|&(ref name, _)| name.clone());
+
+            for tp in projection_bounds.iter().map(|&(_, tp)| tp) {
+                write!(w, "P");
+                enc_existential_projection(w, cx, &tp.0);
+            }
+
+            write!(w, ".");
             write!(w, "]");
         }
         ty::TyTuple(ts) => {
@@ -344,6 +359,12 @@ pub fn enc_trait_ref<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     enc_substs(w, cx, s.substs);
 }
 
+fn enc_existential_trait_ref<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
+                                       s: ty::ExistentialTraitRef<'tcx>) {
+    write!(w, "{}|", (cx.ds)(cx.tcx, s.def_id));
+    enc_substs(w, cx, s.substs);
+}
+
 fn enc_unsafety(w: &mut Cursor<Vec<u8>>, p: hir::Unsafety) {
     match p {
         hir::Unsafety::Normal => write!(w, "n"),
@@ -386,7 +407,7 @@ fn enc_fn_sig<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     enc_ty(w, cx, fsig.0.output);
 }
 
-pub fn enc_builtin_bounds(w: &mut Cursor<Vec<u8>>, _cx: &ctxt, bs: &ty::BuiltinBounds) {
+fn enc_builtin_bounds(w: &mut Cursor<Vec<u8>>, _cx: &ctxt, bs: &ty::BuiltinBounds) {
     for bound in bs {
         match bound {
             ty::BoundSend => write!(w, "S"),
@@ -394,28 +415,6 @@ pub fn enc_builtin_bounds(w: &mut Cursor<Vec<u8>>, _cx: &ctxt, bs: &ty::BuiltinB
             ty::BoundCopy => write!(w, "P"),
             ty::BoundSync => write!(w, "T"),
         };
-    }
-
-    write!(w, ".");
-}
-
-pub fn enc_existential_bounds<'a,'tcx>(w: &mut Cursor<Vec<u8>>,
-                                       cx: &ctxt<'a,'tcx>,
-                                       bs: &ty::ExistentialBounds<'tcx>) {
-    enc_builtin_bounds(w, cx, &bs.builtin_bounds);
-
-    enc_region(w, cx, bs.region_bound);
-
-    // Encode projection_bounds in a stable order
-    let mut projection_bounds: Vec<_> = bs.projection_bounds
-                                          .iter()
-                                          .map(|b| (b.item_name().as_str(), b))
-                                          .collect();
-    projection_bounds.sort_by_key(|&(ref name, _)| name.clone());
-
-    for tp in projection_bounds.iter().map(|&(_, tp)| tp) {
-        write!(w, "P");
-        enc_projection_predicate(w, cx, &tp.0);
     }
 
     write!(w, ".");
@@ -489,7 +488,9 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
         }
         ty::Predicate::Projection(ty::Binder(ref data)) => {
             write!(w, "p");
-            enc_projection_predicate(w, cx, data);
+            enc_trait_ref(w, cx, data.projection_ty.trait_ref);
+            write!(w, "{}|", data.projection_ty.item_name);
+            enc_ty(w, cx, data.ty);
         }
         ty::Predicate::WellFormed(data) => {
             write!(w, "w");
@@ -509,10 +510,10 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
     }
 }
 
-fn enc_projection_predicate<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
-                                      cx: &ctxt<'a, 'tcx>,
-                                      data: &ty::ProjectionPredicate<'tcx>) {
-    enc_trait_ref(w, cx, data.projection_ty.trait_ref);
-    write!(w, "{}|", data.projection_ty.item_name);
+fn enc_existential_projection<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
+                                        cx: &ctxt<'a, 'tcx>,
+                                        data: &ty::ExistentialProjection<'tcx>) {
+    enc_existential_trait_ref(w, cx, data.trait_ref);
+    write!(w, "{}|", data.item_name);
     enc_ty(w, cx, data.ty);
 }

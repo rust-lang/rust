@@ -288,7 +288,8 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
 /// projection bounds, so we just stuff them altogether. But in
 /// reality we should eventually sort things out better.
 #[derive(Clone, Debug)]
-struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
+struct TraitAndProjections<'tcx>(ty::ExistentialTraitRef<'tcx>,
+                                 Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
@@ -311,24 +312,24 @@ impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
+impl<'tcx> fmt::Display for ty::TraitObject<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let bounds = &self.bounds;
-
         // Generate the main trait ref, including associated types.
         ty::tls::with(|tcx| {
             let principal = tcx.lift(&self.principal.0)
                                .expect("could not lift TraitRef for printing");
-            let projections = tcx.lift(&bounds.projection_bounds[..])
-                                 .expect("could not lift projections for printing");
-            let projections = projections.into_iter().map(|p| p.0).collect();
+            let projections = self.projection_bounds.iter().map(|p| {
+                let projection = tcx.lift(p)
+                                    .expect("could not lift projection for printing");
+                projection.with_self_ty(tcx, tcx.types.err).0
+            }).collect();
 
             let tap = ty::Binder(TraitAndProjections(principal, projections));
             in_binder(f, tcx, &ty::Binder(""), Some(tap))
         })?;
 
         // Builtin bounds.
-        for bound in &bounds.builtin_bounds {
+        for bound in &self.builtin_bounds {
             write!(f, " + {:?}", bound)?;
         }
 
@@ -337,7 +338,7 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
         // use thread-local data of some kind? There are also
         // advantages to just showing the region, since it makes
         // people aware that it's there.
-        let bound = bounds.region_bound.to_string();
+        let bound = self.region_bound.to_string();
         if !bound.is_empty() {
             write!(f, " + {}", bound)?;
         }
@@ -397,10 +398,13 @@ impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
         // when printing out the debug representation, we don't need
         // to enumerate the `for<...>` etc because the debruijn index
         // tells you everything you need to know.
-        match self.substs.self_ty() {
-            None => write!(f, "{}", *self),
-            Some(self_ty) => write!(f, "<{:?} as {}>", self_ty, *self)
-        }
+        write!(f, "<{:?} as {}>", self.self_ty(), *self)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", *self)
     }
 }
 
@@ -448,11 +452,38 @@ impl<'tcx> fmt::Debug for ty::adjustment::AutoDerefRef<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::TraitTy<'tcx> {
+impl<'tcx> fmt::Debug for ty::TraitObject<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TraitTy({:?},{:?})",
-               self.principal,
-               self.bounds)
+        let mut empty = true;
+        let mut maybe_continue = |f: &mut fmt::Formatter| {
+            if empty {
+                empty = false;
+                Ok(())
+            } else {
+                write!(f, " + ")
+            }
+        };
+
+        maybe_continue(f)?;
+        write!(f, "{:?}", self.principal)?;
+
+        let region_str = format!("{:?}", self.region_bound);
+        if !region_str.is_empty() {
+            maybe_continue(f)?;
+            write!(f, "{}", region_str)?;
+        }
+
+        for bound in &self.builtin_bounds {
+            maybe_continue(f)?;
+            write!(f, "{:?}", bound)?;
+        }
+
+        for projection_bound in &self.projection_bounds {
+            maybe_continue(f)?;
+            write!(f, "{:?}", projection_bound)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -668,38 +699,6 @@ impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ExistentialBounds<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut empty = true;
-        let mut maybe_continue = |f: &mut fmt::Formatter| {
-            if empty {
-                empty = false;
-                Ok(())
-            } else {
-                write!(f, " + ")
-            }
-        };
-
-        let region_str = format!("{:?}", self.region_bound);
-        if !region_str.is_empty() {
-            maybe_continue(f)?;
-            write!(f, "{}", region_str)?;
-        }
-
-        for bound in &self.builtin_bounds {
-            maybe_continue(f)?;
-            write!(f, "{:?}", bound)?;
-        }
-
-        for projection_bound in &self.projection_bounds {
-            maybe_continue(f)?;
-            write!(f, "{:?}", projection_bound)?;
-        }
-
-        Ok(())
-    }
-}
-
 impl fmt::Display for ty::BuiltinBounds {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut bounds = self.iter();
@@ -813,6 +812,13 @@ impl fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region, ty::Region>> 
 }
 
 impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        parameterized(f, self.substs, self.def_id, Ns::Type, &[],
+                      |tcx| Some(tcx.lookup_trait_def(self.def_id).generics.clone()))
+    }
+}
+
+impl<'tcx> fmt::Display for ty::ExistentialTraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         parameterized(f, self.substs, self.def_id, Ns::Type, &[],
                       |tcx| Some(tcx.lookup_trait_def(self.def_id).generics.clone()))

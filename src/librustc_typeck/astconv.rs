@@ -169,6 +169,11 @@ struct ConvertedBinding<'tcx> {
 
 type TraitAndProjections<'tcx> = (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjectionPredicate<'tcx>>);
 
+/// Dummy type used for the `Self` of a `TraitRef` created for converting
+/// a trait object, and which gets removed in `ExistentialTraitRef`.
+/// This type must not appear anywhere in other converted types.
+const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::FreshTy(0));
+
 pub fn ast_region_to_region(tcx: TyCtxt, lifetime: &hir::Lifetime)
                             -> ty::Region {
     let r = match tcx.named_region_map.defs.get(&lifetime.id) {
@@ -478,48 +483,37 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 type_substs.len() <= formal_ty_param_count);
 
         let mut substs = region_substs;
+
+        // If a self-type was declared, one should be provided.
+        assert_eq!(decl_generics.types.get_self().is_some(), self_ty.is_some());
+        substs.types.extend(SelfSpace, self_ty.into_iter());
         substs.types.extend(TypeSpace, type_substs.into_iter());
 
-        match self_ty {
-            None => {
-                // If no self-type is provided, it's still possible that
-                // one was declared, because this could be an object type.
-            }
-            Some(ty) => {
-                // If a self-type is provided, one should have been
-                // "declared" (in other words, this should be a
-                // trait-ref).
-                assert!(decl_generics.types.get_self().is_some());
-                substs.types.push(SelfSpace, ty);
-            }
-        }
-
+        let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let actual_supplied_ty_param_count = substs.types.len(TypeSpace);
         for param in &ty_param_defs[actual_supplied_ty_param_count..] {
-            if let Some(default) = param.default {
+            let default = if let Some(default) = param.default {
                 // If we are converting an object type, then the
                 // `Self` parameter is unknown. However, some of the
                 // other type parameters may reference `Self` in their
                 // defaults. This will lead to an ICE if we are not
                 // careful!
-                if self_ty.is_none() && default.has_self_ty() {
+                if is_object && default.has_self_ty() {
                     span_err!(tcx.sess, span, E0393,
                               "the type parameter `{}` must be explicitly specified \
                                in an object type because its default value `{}` references \
                                the type `Self`",
                               param.name,
                               default);
-                    substs.types.push(TypeSpace, tcx.types.err);
+                    tcx.types.err
                 } else {
                     // This is a default type parameter.
-                    let default = default.subst_spanned(tcx,
-                                                        &substs,
-                                                        Some(span));
-                    substs.types.push(TypeSpace, default);
+                    default.subst_spanned(tcx, &substs, Some(span))
                 }
             } else {
                 span_bug!(span, "extra parameter without default");
-            }
+            };
+            substs.types.push(TypeSpace, default);
         }
 
         debug!("create_substs_for_ast_path(decl_generics={:?}, self_ty={:?}) -> {:?}",
@@ -539,11 +533,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                 self_ty: Option<Ty<'tcx>>)
                                 -> Vec<Ty<'tcx>>
     {
+        let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let use_default = |p: &ty::TypeParameterDef<'tcx>| {
             if let Some(ref default) = p.default {
-                if self_ty.is_none() && default.has_self_ty() {
+                if is_object && default.has_self_ty() {
                     // There is no suitable inference default for a type parameter
-                    // that references self with no self-type provided.
+                    // that references self, in an object type.
                     return false;
                 }
             }
@@ -709,7 +704,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn instantiate_poly_trait_ref(&self,
         rscope: &RegionScope,
         ast_trait_ref: &hir::PolyTraitRef,
-        self_ty: Option<Ty<'tcx>>,
+        self_ty: Ty<'tcx>,
         poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
         -> ty::PolyTraitRef<'tcx>
     {
@@ -734,7 +729,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn instantiate_mono_trait_ref(&self,
         rscope: &RegionScope,
         trait_ref: &hir::TraitRef,
-        self_ty: Option<Ty<'tcx>>)
+        self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>
     {
         let trait_def_id = self.trait_def_id(trait_ref);
@@ -760,32 +755,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    fn object_path_to_poly_trait_ref(&self,
-        rscope: &RegionScope,
-        span: Span,
-        param_mode: PathParamMode,
-        trait_def_id: DefId,
-        trait_path_ref_id: ast::NodeId,
-        trait_segment: &hir::PathSegment,
-        mut projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
-        -> ty::PolyTraitRef<'tcx>
-    {
-        self.ast_path_to_poly_trait_ref(rscope,
-                                        span,
-                                        param_mode,
-                                        trait_def_id,
-                                        None,
-                                        trait_path_ref_id,
-                                        trait_segment,
-                                        projections)
-    }
-
     fn ast_path_to_poly_trait_ref(&self,
         rscope: &RegionScope,
         span: Span,
         param_mode: PathParamMode,
         trait_def_id: DefId,
-        self_ty: Option<Ty<'tcx>>,
+        self_ty: Ty<'tcx>,
         path_id: ast::NodeId,
         trait_segment: &hir::PathSegment,
         poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
@@ -808,21 +783,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                  trait_segment);
         let poly_trait_ref = ty::Binder(ty::TraitRef::new(trait_def_id, substs));
 
-        {
-            let converted_bindings =
-                assoc_bindings
-                .iter()
-                .filter_map(|binding| {
-                    // specify type to assert that error was already reported in Err case:
-                    let predicate: Result<_, ErrorReported> =
-                        self.ast_type_binding_to_poly_projection_predicate(path_id,
-                                                                           poly_trait_ref.clone(),
-                                                                           self_ty,
-                                                                           binding);
-                    predicate.ok() // ok to ignore Err() because ErrorReported (see above)
-                });
-            poly_projections.extend(converted_bindings);
-        }
+        poly_projections.extend(assoc_bindings.iter().filter_map(|binding| {
+            // specify type to assert that error was already reported in Err case:
+            let predicate: Result<_, ErrorReported> =
+                self.ast_type_binding_to_poly_projection_predicate(path_id,
+                                                                   poly_trait_ref,
+                                                                   binding);
+            predicate.ok() // ok to ignore Err() because ErrorReported (see above)
+        }));
 
         debug!("ast_path_to_poly_trait_ref(trait_segment={:?}, projections={:?}) -> {:?}",
                trait_segment, poly_projections, poly_trait_ref);
@@ -834,7 +802,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                   span: Span,
                                   param_mode: PathParamMode,
                                   trait_def_id: DefId,
-                                  self_ty: Option<Ty<'tcx>>,
+                                  self_ty: Ty<'tcx>,
                                   trait_segment: &hir::PathSegment)
                                   -> ty::TraitRef<'tcx>
     {
@@ -854,7 +822,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                        span: Span,
                                        param_mode: PathParamMode,
                                        trait_def_id: DefId,
-                                       self_ty: Option<Ty<'tcx>>,
+                                       self_ty: Ty<'tcx>,
                                        trait_segment: &hir::PathSegment)
                                        -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>)
     {
@@ -902,7 +870,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let substs = self.create_substs_for_ast_path(span,
                                                      param_mode,
                                                      &trait_def.generics,
-                                                     self_ty,
+                                                     Some(self_ty),
                                                      types,
                                                      regions);
 
@@ -912,8 +880,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn ast_type_binding_to_poly_projection_predicate(
         &self,
         path_id: ast::NodeId,
-        mut trait_ref: ty::PolyTraitRef<'tcx>,
-        self_ty: Option<Ty<'tcx>>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
     {
@@ -967,62 +934,39 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Simple case: X is defined in the current trait.
         if self.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
-            return Ok(ty::Binder(ty::ProjectionPredicate {      // <-------------------+
-                projection_ty: ty::ProjectionTy {               //                     |
-                    trait_ref: trait_ref.skip_binder().clone(), // Binder moved here --+
-                    item_name: binding.item_name,
-                },
-                ty: binding.ty,
+            return Ok(trait_ref.map_bound(|trait_ref| {
+                ty::ProjectionPredicate {
+                    projection_ty: ty::ProjectionTy {
+                        trait_ref: trait_ref,
+                        item_name: binding.item_name,
+                    },
+                    ty: binding.ty,
+                }
             }));
         }
 
         // Otherwise, we have to walk through the supertraits to find
-        // those that do.  This is complicated by the fact that, for an
-        // object type, the `Self` type is not present in the
-        // substitutions (after all, it's being constructed right now),
-        // but the `supertraits` iterator really wants one. To handle
-        // this, we currently insert a dummy type and then remove it
-        // later. Yuck.
-
-        let dummy_self_ty = tcx.mk_infer(ty::FreshTy(0));
-        if self_ty.is_none() { // if converting for an object type
-            let mut dummy_substs = trait_ref.skip_binder().substs.clone(); // binder moved here -+
-            assert!(dummy_substs.self_ty().is_none());                     //                    |
-            dummy_substs.types.push(SelfSpace, dummy_self_ty);             //                    |
-            trait_ref = ty::Binder(ty::TraitRef::new(trait_ref.def_id(),   // <------------+
-                                                     tcx.mk_substs(dummy_substs)));
-        }
-
+        // those that do.
         self.ensure_super_predicates(binding.span, trait_ref.def_id())?;
 
-        let mut candidates: Vec<ty::PolyTraitRef> =
+        let candidates: Vec<ty::PolyTraitRef> =
             traits::supertraits(tcx, trait_ref.clone())
             .filter(|r| self.trait_defines_associated_type_named(r.def_id(), binding.item_name))
             .collect();
-
-        // If converting for an object type, then remove the dummy-ty from `Self` now.
-        // Yuckety yuck.
-        if self_ty.is_none() {
-            for candidate in &mut candidates {
-                let mut dummy_substs = candidate.0.substs.clone();
-                assert!(dummy_substs.self_ty() == Some(dummy_self_ty));
-                dummy_substs.types.pop(SelfSpace);
-                *candidate = ty::Binder(ty::TraitRef::new(candidate.def_id(),
-                                                          tcx.mk_substs(dummy_substs)));
-            }
-        }
 
         let candidate = self.one_bound_for_assoc_type(candidates,
                                                       &trait_ref.to_string(),
                                                       &binding.item_name.as_str(),
                                                       binding.span)?;
 
-        Ok(ty::Binder(ty::ProjectionPredicate {             // <-------------------------+
-            projection_ty: ty::ProjectionTy {               //                           |
-                trait_ref: candidate.skip_binder().clone(), // binder is moved up here --+
-                item_name: binding.item_name,
-            },
-            ty: binding.ty,
+        Ok(candidate.map_bound(|trait_ref| {
+            ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy {
+                    trait_ref: trait_ref,
+                    item_name: binding.item_name,
+                },
+                ty: binding.ty,
+            }
         }))
     }
 
@@ -1059,11 +1003,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         decl_ty.subst(self.tcx(), &substs)
     }
 
-    fn ast_ty_to_trait_ref(&self,
-                           rscope: &RegionScope,
-                           ty: &hir::Ty,
-                           bounds: &[hir::TyParamBound])
-                           -> Result<TraitAndProjections<'tcx>, ErrorReported>
+    fn ast_ty_to_object_trait_ref(&self,
+                                  rscope: &RegionScope,
+                                  span: Span,
+                                  ty: &hir::Ty,
+                                  bounds: &[hir::TyParamBound])
+                                  -> Ty<'tcx>
     {
         /*!
          * In a type like `Foo + Send`, we want to wait to collect the
@@ -1076,33 +1021,32 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
          * name, and reports an error otherwise.
          */
 
+        let tcx = self.tcx();
         match ty.node {
             hir::TyPath(None, ref path) => {
-                let resolution = self.tcx().expect_resolution(ty.id);
+                let resolution = tcx.expect_resolution(ty.id);
                 match resolution.base_def {
                     Def::Trait(trait_def_id) if resolution.depth == 0 => {
-                        let mut projection_bounds = Vec::new();
-                        let trait_ref =
-                            self.object_path_to_poly_trait_ref(rscope,
-                                                               path.span,
-                                                               PathParamMode::Explicit,
-                                                               trait_def_id,
-                                                               ty.id,
-                                                               path.segments.last().unwrap(),
-                                                               &mut projection_bounds);
-                        Ok((trait_ref, projection_bounds))
+                        self.trait_path_to_object_type(rscope,
+                                                       path.span,
+                                                       PathParamMode::Explicit,
+                                                       trait_def_id,
+                                                       ty.id,
+                                                       path.segments.last().unwrap(),
+                                                       span,
+                                                       partition_bounds(tcx, span, bounds))
                     }
                     _ => {
-                        struct_span_err!(self.tcx().sess, ty.span, E0172,
+                        struct_span_err!(tcx.sess, ty.span, E0172,
                                   "expected a reference to a trait")
                             .span_label(ty.span, &format!("expected a trait"))
                             .emit();
-                        Err(ErrorReported)
+                        tcx.types.err
                     }
                 }
             }
             _ => {
-                let mut err = struct_span_err!(self.tcx().sess, ty.span, E0178,
+                let mut err = struct_span_err!(tcx.sess, ty.span, E0178,
                                                "expected a path on the left-hand side \
                                                 of `+`, not `{}`",
                                                pprust::ty_to_string(ty));
@@ -1141,44 +1085,93 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     }
                 }
                 err.emit();
-                Err(ErrorReported)
+                tcx.types.err
             }
         }
     }
 
-    fn trait_ref_to_object_type(&self,
-                                rscope: &RegionScope,
-                                span: Span,
-                                trait_ref: ty::PolyTraitRef<'tcx>,
-                                projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
-                                bounds: &[hir::TyParamBound])
-                                -> Ty<'tcx>
-    {
-        let existential_bounds = self.conv_existential_bounds(rscope,
-                                                              span,
-                                                              trait_ref.clone(),
-                                                              projection_bounds,
-                                                              bounds);
-
-        let result = self.make_object_type(span, trait_ref, existential_bounds);
-        debug!("trait_ref_to_object_type: result={:?}",
-               result);
-
-        result
+    /// Transform a PolyTraitRef into a PolyExistentialTraitRef by
+    /// removing the dummy Self type (TRAIT_OBJECT_DUMMY_SELF).
+    fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
+                                -> ty::ExistentialTraitRef<'tcx> {
+        assert_eq!(trait_ref.self_ty().sty, TRAIT_OBJECT_DUMMY_SELF);
+        ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
 
-    fn make_object_type(&self,
-                        span: Span,
-                        principal: ty::PolyTraitRef<'tcx>,
-                        bounds: ty::ExistentialBounds<'tcx>)
-                        -> Ty<'tcx> {
+    fn trait_path_to_object_type(&self,
+                                 rscope: &RegionScope,
+                                 path_span: Span,
+                                 param_mode: PathParamMode,
+                                 trait_def_id: DefId,
+                                 trait_path_ref_id: ast::NodeId,
+                                 trait_segment: &hir::PathSegment,
+                                 span: Span,
+                                 partitioned_bounds: PartitionedBounds)
+                                 -> Ty<'tcx> {
         let tcx = self.tcx();
-        let object = ty::TraitTy {
-            principal: principal,
-            bounds: bounds
+
+        let mut projection_bounds = vec![];
+        let dummy_self = tcx.mk_ty(TRAIT_OBJECT_DUMMY_SELF);
+        let principal = self.ast_path_to_poly_trait_ref(rscope,
+                                                        path_span,
+                                                        param_mode,
+                                                        trait_def_id,
+                                                        dummy_self,
+                                                        trait_path_ref_id,
+                                                        trait_segment,
+                                                        &mut projection_bounds);
+
+        let PartitionedBounds { builtin_bounds,
+                                trait_bounds,
+                                region_bounds } =
+            partitioned_bounds;
+
+        if !trait_bounds.is_empty() {
+            let b = &trait_bounds[0];
+            let span = b.trait_ref.path.span;
+            struct_span_err!(self.tcx().sess, span, E0225,
+                             "only the builtin traits can be used as closure or object bounds")
+                .span_label(span, &format!("non-builtin trait used as bounds"))
+                .emit();
+        }
+
+        // Erase the dummy_self (TRAIT_OBJECT_DUMMY_SELF) used above.
+        let existential_principal = principal.map_bound(|trait_ref| {
+            self.trait_ref_to_existential(trait_ref)
+        });
+        let existential_projections = projection_bounds.iter().map(|bound| {
+            bound.map_bound(|b| {
+                let p = b.projection_ty;
+                ty::ExistentialProjection {
+                    trait_ref: self.trait_ref_to_existential(p.trait_ref),
+                    item_name: p.item_name,
+                    ty: b.ty
+                }
+            })
+        }).collect();
+
+        let region_bound =
+            self.compute_object_lifetime_bound(span,
+                                               &region_bounds,
+                                               existential_principal,
+                                               builtin_bounds);
+
+        let region_bound = match region_bound {
+            Some(r) => r,
+            None => {
+                match rscope.object_lifetime_default(span) {
+                    Some(r) => r,
+                    None => {
+                        span_err!(self.tcx().sess, span, E0228,
+                                  "the lifetime bound for this object type cannot be deduced \
+                                   from context; please supply an explicit bound");
+                        ty::ReStatic
+                    }
+                }
+            }
         };
-        let object_trait_ref =
-            object.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
+
+        debug!("region_bound: {:?}", region_bound);
 
         // ensure the super predicates and stop if we encountered an error
         if self.ensure_super_predicates(span, principal.def_id()).is_err() {
@@ -1198,7 +1191,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         let mut associated_types: FnvHashSet<(DefId, ast::Name)> =
-            traits::supertraits(tcx, object_trait_ref)
+            traits::supertraits(tcx, principal)
             .flat_map(|tr| {
                 let trait_def = tcx.lookup_trait_def(tr.def_id());
                 trait_def.associated_type_names
@@ -1208,7 +1201,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             })
             .collect();
 
-        for projection_bound in &object.bounds.projection_bounds {
+        for projection_bound in &projection_bounds {
             let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
                         projection_bound.0.projection_ty.item_name);
             associated_types.remove(&pair);
@@ -1224,7 +1217,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         .emit();
         }
 
-        tcx.mk_trait(object.principal, object.bounds)
+        let ty = tcx.mk_trait(ty::TraitObject {
+            principal: existential_principal,
+            region_bound: region_bound,
+            builtin_bounds: builtin_bounds,
+            projection_bounds: existential_projections
+        });
+        debug!("trait_object_type: {:?}", ty);
+        ty
     }
 
     fn report_ambiguous_associated_type(&self,
@@ -1458,7 +1458,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                         span,
                                                         param_mode,
                                                         trait_def_id,
-                                                        Some(self_ty),
+                                                        self_ty,
                                                         trait_segment);
 
         debug!("qpath_to_ty: trait_ref={:?}", trait_ref);
@@ -1520,23 +1520,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Def::Trait(trait_def_id) => {
                 // N.B. this case overlaps somewhat with
                 // TyObjectSum, see that fn for details
-                let mut projection_bounds = Vec::new();
-
-                let trait_ref =
-                    self.object_path_to_poly_trait_ref(rscope,
-                                                       span,
-                                                       param_mode,
-                                                       trait_def_id,
-                                                       base_path_ref_id,
-                                                       base_segments.last().unwrap(),
-                                                       &mut projection_bounds);
 
                 tcx.prohibit_type_params(base_segments.split_last().unwrap().1);
-                self.trait_ref_to_object_type(rscope,
-                                              span,
-                                              trait_ref,
-                                              projection_bounds,
-                                              &[])
+
+                self.trait_path_to_object_type(rscope,
+                                               span,
+                                               param_mode,
+                                               trait_def_id,
+                                               base_path_ref_id,
+                                               base_segments.last().unwrap(),
+                                               span,
+                                               partition_bounds(tcx, span, &[]))
             }
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
                 tcx.prohibit_type_params(base_segments.split_last().unwrap().1);
@@ -1676,18 +1670,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.mk_slice(self.ast_ty_to_ty(rscope, &ty))
             }
             hir::TyObjectSum(ref ty, ref bounds) => {
-                match self.ast_ty_to_trait_ref(rscope, &ty, bounds) {
-                    Ok((trait_ref, projection_bounds)) => {
-                        self.trait_ref_to_object_type(rscope,
-                                                      ast_ty.span,
-                                                      trait_ref,
-                                                      projection_bounds,
-                                                      bounds)
-                    }
-                    Err(ErrorReported) => {
-                        self.tcx().types.err
-                    }
-                }
+                self.ast_ty_to_object_trait_ref(rscope, ast_ty.span, ty, bounds)
             }
             hir::TyPtr(ref mt) => {
                 tcx.mk_ptr(ty::TypeAndMut {
@@ -1764,7 +1747,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.mk_fn_ptr(bare_fn_ty)
             }
             hir::TyPolyTraitRef(ref bounds) => {
-                self.conv_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
+                self.conv_object_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
             }
             hir::TyImplTrait(ref bounds) => {
                 use collect::{compute_bounds, SizedByDefault};
@@ -2091,28 +2074,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    /// Given an existential type like `Foo+'a+Bar`, this routine converts
-    /// the `'a` and `Bar` intos an `ExistentialBounds` struct.
-    /// The `main_trait_refs` argument specifies the `Foo` -- it is absent
-    /// for closures. Eventually this should all be normalized, I think,
-    /// so that there is no "main trait ref" and instead we just have a flat
-    /// list of bounds as the existential type.
-    fn conv_existential_bounds(&self,
-        rscope: &RegionScope,
-        span: Span,
-        principal_trait_ref: ty::PolyTraitRef<'tcx>,
-        projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
-        ast_bounds: &[hir::TyParamBound])
-        -> ty::ExistentialBounds<'tcx>
-    {
-        let partitioned_bounds =
-            partition_bounds(self.tcx(), span, ast_bounds);
-
-        self.conv_existential_bounds_from_partitioned_bounds(
-            rscope, span, principal_trait_ref, projection_bounds, partitioned_bounds)
-    }
-
-    fn conv_ty_poly_trait_ref(&self,
+    fn conv_object_ty_poly_trait_ref(&self,
         rscope: &RegionScope,
         span: Span,
         ast_bounds: &[hir::TyParamBound])
@@ -2120,75 +2082,24 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     {
         let mut partitioned_bounds = partition_bounds(self.tcx(), span, &ast_bounds[..]);
 
-        let mut projection_bounds = Vec::new();
-        let main_trait_bound = if !partitioned_bounds.trait_bounds.is_empty() {
-            let trait_bound = partitioned_bounds.trait_bounds.remove(0);
-            self.instantiate_poly_trait_ref(rscope,
-                                            trait_bound,
-                                            None,
-                                            &mut projection_bounds)
+        let trait_bound = if !partitioned_bounds.trait_bounds.is_empty() {
+            partitioned_bounds.trait_bounds.remove(0)
         } else {
             span_err!(self.tcx().sess, span, E0224,
                       "at least one non-builtin trait is required for an object type");
             return self.tcx().types.err;
         };
 
-        let bounds =
-            self.conv_existential_bounds_from_partitioned_bounds(rscope,
-                                                                 span,
-                                                                 main_trait_bound.clone(),
-                                                                 projection_bounds,
-                                                                 partitioned_bounds);
-
-        self.make_object_type(span, main_trait_bound, bounds)
-    }
-
-    pub fn conv_existential_bounds_from_partitioned_bounds(&self,
-        rscope: &RegionScope,
-        span: Span,
-        principal_trait_ref: ty::PolyTraitRef<'tcx>,
-        projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>, // Empty for boxed closures
-        partitioned_bounds: PartitionedBounds)
-        -> ty::ExistentialBounds<'tcx>
-    {
-        let PartitionedBounds { builtin_bounds,
-                                trait_bounds,
-                                region_bounds } =
-            partitioned_bounds;
-
-        if !trait_bounds.is_empty() {
-            let b = &trait_bounds[0];
-            let span = b.trait_ref.path.span;
-            struct_span_err!(self.tcx().sess, span, E0225,
-                             "only the builtin traits can be used as closure or object bounds")
-                .span_label(span, &format!("non-builtin trait used as bounds"))
-                .emit();
-        }
-
-        let region_bound =
-            self.compute_object_lifetime_bound(span,
-                                               &region_bounds,
-                                               principal_trait_ref,
-                                               builtin_bounds);
-
-        let region_bound = match region_bound {
-            Some(r) => r,
-            None => {
-                match rscope.object_lifetime_default(span) {
-                    Some(r) => r,
-                    None => {
-                        span_err!(self.tcx().sess, span, E0228,
-                                  "the lifetime bound for this object type cannot be deduced \
-                                   from context; please supply an explicit bound");
-                        ty::ReStatic
-                    }
-                }
-            }
-        };
-
-        debug!("region_bound: {:?}", region_bound);
-
-        ty::ExistentialBounds::new(region_bound, builtin_bounds, projection_bounds)
+        let trait_ref = &trait_bound.trait_ref;
+        let trait_def_id = self.trait_def_id(trait_ref);
+        self.trait_path_to_object_type(rscope,
+                                       trait_ref.path.span,
+                                       PathParamMode::Explicit,
+                                       trait_def_id,
+                                       trait_ref.ref_id,
+                                       trait_ref.path.segments.last().unwrap(),
+                                       span,
+                                       partitioned_bounds)
     }
 
     /// Given the bounds on an object, determines what single region bound (if any) we can
@@ -2199,7 +2110,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn compute_object_lifetime_bound(&self,
         span: Span,
         explicit_region_bounds: &[&hir::Lifetime],
-        principal_trait_ref: ty::PolyTraitRef<'tcx>,
+        principal_trait_ref: ty::PolyExistentialTraitRef<'tcx>,
         builtin_bounds: ty::BuiltinBounds)
         -> Option<ty::Region> // if None, use the default
     {
@@ -2230,7 +2141,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // No explicit region bound specified. Therefore, examine trait
         // bounds and see if we can derive region bounds from those.
         let derived_region_bounds =
-            object_region_bounds(tcx, &principal_trait_ref, builtin_bounds);
+            object_region_bounds(tcx, principal_trait_ref, builtin_bounds);
 
         // If there are no derived region bounds, then report back that we
         // can find no region bound. The caller will use the default.

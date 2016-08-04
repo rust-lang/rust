@@ -630,26 +630,6 @@ impl Clean<TyParamBound> for hir::TyParamBound {
     }
 }
 
-impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBounds<'tcx> {
-    fn clean(&self, cx: &DocContext) -> (Vec<TyParamBound>, Vec<TypeBinding>) {
-        let mut tp_bounds = vec![];
-        self.region_bound.clean(cx).map(|b| tp_bounds.push(RegionBound(b)));
-        for bb in &self.builtin_bounds {
-            tp_bounds.push(bb.clean(cx));
-        }
-
-        let mut bindings = vec![];
-        for &ty::Binder(ref pb) in &self.projection_bounds {
-            bindings.push(TypeBinding {
-                name: pb.projection_ty.item_name.clean(cx),
-                ty: pb.ty.clean(cx)
-            });
-        }
-
-        (tp_bounds, bindings)
-    }
-}
-
 fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
                         bindings: Vec<TypeBinding>, substs: &subst::Substs) -> PathParameters {
     let lifetimes = substs.regions.get_slice(subst::TypeSpace)
@@ -1848,12 +1828,26 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
-                let did = principal.def_id();
+            ty::TyTrait(ref obj) => {
+                let did = obj.principal.def_id();
                 inline::record_extern_fqn(cx, did, TypeTrait);
-                let (typarams, bindings) = bounds.clean(cx);
+
+                let mut typarams = vec![];
+                obj.region_bound.clean(cx).map(|b| typarams.push(RegionBound(b)));
+                for bb in &obj.builtin_bounds {
+                    typarams.push(bb.clean(cx));
+                }
+
+                let mut bindings = vec![];
+                for &ty::Binder(ref pb) in &obj.projection_bounds {
+                    bindings.push(TypeBinding {
+                        name: pb.item_name.clean(cx),
+                        ty: pb.ty.clean(cx)
+                    });
+                }
+
                 let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
-                                         Some(did), bindings, principal.substs());
+                                         Some(did), bindings, obj.principal.0.substs);
                 ResolvedPath {
                     path: path,
                     typarams: Some(typarams),

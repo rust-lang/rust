@@ -189,9 +189,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(trait_def.generics.regions.is_empty());
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let type_defs = trait_def.generics.types.as_full_slice();
-        let region_defs = trait_def.generics.regions.as_full_slice();
-        let substs = subst::Substs::from_param_defs(region_defs, type_defs, |def| {
+        let substs = subst::Substs::from_generics(&trait_def.generics, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, substs| {
             if def.space == subst::SelfSpace {

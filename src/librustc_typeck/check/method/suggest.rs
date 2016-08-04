@@ -358,7 +358,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match ty.sty {
                 ty::TyEnum(def, _) | ty::TyStruct(def, _) => def.did.is_local(),
 
-                ty::TyTrait(ref tr) => tr.principal_def_id().is_local(),
+                ty::TyTrait(ref tr) => tr.principal.def_id().is_local(),
 
                 ty::TyParam(_) => true,
 

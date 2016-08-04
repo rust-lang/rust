@@ -1133,10 +1133,9 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
                 object_ty)
         }
     };
-    let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
-    let env_predicates = projection_bounds.iter()
-                                          .map(|p| p.to_predicate())
-                                          .collect();
+    let env_predicates = data.projection_bounds.iter().map(|p| {
+        p.with_self_ty(selcx.tcx(), object_ty).to_predicate()
+    }).collect();
     let env_predicate = {
         let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
 

@@ -562,14 +562,9 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::TyTrait(box ty::TraitTy { ref principal, .. })) => {
-            // Note that we preserve binding levels here:
-            let substs = principal.0.substs.with_self_ty(source).erase_regions();
-            let substs = ccx.tcx().mk_substs(substs);
-            let trait_ref = ty::Binder(ty::TraitRef {
-                def_id: principal.def_id(),
-                substs: substs,
-            });
+        (_, &ty::TyTrait(ref data)) => {
+            let trait_ref = data.principal.with_self_ty(ccx.tcx(), source);
+            let trait_ref = ccx.tcx().erase_regions(&trait_ref);
             consts::ptrcast(meth::get_vtable(ccx, trait_ref),
                             Type::vtable_ptr(ccx))
         }

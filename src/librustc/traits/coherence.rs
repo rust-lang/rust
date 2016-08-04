@@ -231,7 +231,7 @@ fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
         ty::TyEnum(def, _) | ty::TyStruct(def, _) =>
             def.is_fundamental(),
         ty::TyTrait(ref data) =>
-            tcx.has_attr(data.principal_def_id(), "fundamental"),
+            tcx.has_attr(data.principal.def_id(), "fundamental"),
         _ =>
             false
     }
@@ -275,7 +275,7 @@ fn ty_is_local_constructor(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal)-> 
         }
 
         ty::TyTrait(ref tt) => {
-            tt.principal_def_id().is_local()
+            tt.principal.def_id().is_local()
         }
 
         ty::TyError => {

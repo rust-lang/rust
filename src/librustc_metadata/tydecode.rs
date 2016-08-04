@@ -307,6 +307,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::TraitRef {def_id: def, substs: substs}
     }
 
+    pub fn parse_existential_trait_ref(&mut self) -> ty::ExistentialTraitRef<'tcx> {
+        let def = self.parse_def();
+        let substs = self.tcx.mk_substs(self.parse_substs());
+        ty::ExistentialTraitRef {def_id: def, substs: substs}
+    }
+
     pub fn parse_ty(&mut self) -> Ty<'tcx> {
         let tcx = self.tcx;
         match self.next() {
@@ -340,10 +346,30 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'x' => {
                 assert_eq!(self.next(), '[');
-                let trait_ref = ty::Binder(self.parse_trait_ref());
-                let bounds = self.parse_existential_bounds();
+                let trait_ref = ty::Binder(self.parse_existential_trait_ref());
+                let builtin_bounds = self.parse_builtin_bounds();
+                let region_bound = self.parse_region();
+                let mut projection_bounds = Vec::new();
+
+                loop {
+                    match self.next() {
+                        'P' => {
+                            let bound = self.parse_existential_projection();
+                            projection_bounds.push(ty::Binder(bound));
+                        }
+                        '.' => { break; }
+                        c => {
+                            bug!("parse_bounds: bad bounds ('{}')", c)
+                        }
+                    }
+                }
                 assert_eq!(self.next(), ']');
-                return tcx.mk_trait(trait_ref, bounds);
+                return tcx.mk_trait(ty::TraitObject {
+                    principal: trait_ref,
+                    region_bound: region_bound,
+                    builtin_bounds: builtin_bounds,
+                    projection_bounds: projection_bounds
+                });
             }
             'p' => {
                 assert_eq!(self.next(), '[');
@@ -588,6 +614,14 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
+    fn parse_existential_projection(&mut self) -> ty::ExistentialProjection<'tcx> {
+        ty::ExistentialProjection {
+            trait_ref: self.parse_existential_trait_ref(),
+            item_name: token::intern(&self.parse_str('|')),
+            ty: self.parse_ty(),
+        }
+    }
+
     pub fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
         let name = self.parse_name(':');
         let def_id = self.parse_def();
@@ -647,27 +681,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             _ => bug!("parse_object_lifetime_default: bad input")
         }
-    }
-
-    pub fn parse_existential_bounds(&mut self) -> ty::ExistentialBounds<'tcx> {
-        let builtin_bounds = self.parse_builtin_bounds();
-        let region_bound = self.parse_region();
-        let mut projection_bounds = Vec::new();
-
-        loop {
-            match self.next() {
-                'P' => {
-                    projection_bounds.push(ty::Binder(self.parse_projection_predicate()));
-                }
-                '.' => { break; }
-                c => {
-                    bug!("parse_bounds: bad bounds ('{}')", c)
-                }
-            }
-        }
-
-        ty::ExistentialBounds::new(
-            region_bound, builtin_bounds, projection_bounds)
     }
 
     fn parse_builtin_bounds(&mut self) -> ty::BuiltinBounds {
