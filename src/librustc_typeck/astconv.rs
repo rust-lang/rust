@@ -1088,6 +1088,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                "expected a path on the left-hand side \
                                                 of `+`, not `{}`",
                                                pprust::ty_to_string(ty));
+                err.span_label(ty.span, &format!("expected a path"));
                 let hi = bounds.iter().map(|x| match *x {
                     hir::TraitTyParamBound(ref tr, _) => tr.span.hi,
                     hir::RegionTyParamBound(ref r) => r.span.hi,
