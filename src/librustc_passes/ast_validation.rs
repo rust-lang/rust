@@ -183,6 +183,7 @@ impl<'a> Visitor for AstValidator<'a> {
                                                    E0130,
                                                    "patterns aren't allowed in foreign function \
                                                     declarations");
+                    err.span_label(span, &format!("pattern not allowed in foreign function"));
                     if is_recent {
                         err.span_note(span,
                                       "this is a recent error, see issue #35203 for more details");
