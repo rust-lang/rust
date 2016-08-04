@@ -61,12 +61,39 @@ enum AnnotationKind {
     Container,
 }
 
+/// An entry in the `depr_map`.
+#[derive(Clone)]
+struct DeprecationEntry {
+    /// The metadata of the attribute associated with this entry.
+    attr: Deprecation,
+    /// The def id where the attr was originally attached. `None` for non-local
+    /// `DefId`'s.
+    origin: Option<DefIndex>,
+}
+
+impl DeprecationEntry {
+    fn local(attr: Deprecation, id: DefId) -> DeprecationEntry {
+        assert!(id.is_local());
+        DeprecationEntry {
+            attr: attr,
+            origin: Some(id.index),
+        }
+    }
+
+    fn external(attr: Deprecation) -> DeprecationEntry {
+        DeprecationEntry {
+            attr: attr,
+            origin: None,
+        }
+    }
+}
+
 /// A stability index, giving the stability level for items and methods.
 pub struct Index<'tcx> {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
     stab_map: DefIdMap<Option<&'tcx Stability>>,
-    depr_map: DefIdMap<Option<Deprecation>>,
+    depr_map: DefIdMap<Option<DeprecationEntry>>,
 
     /// Maps for each crate whether it is part of the staged API.
     staged_api: FnvHashMap<ast::CrateNum, bool>
@@ -77,7 +104,7 @@ struct Annotator<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     index: &'a mut Index<'tcx>,
     parent_stab: Option<&'tcx Stability>,
-    parent_depr: Option<Deprecation>,
+    parent_depr: Option<DeprecationEntry>,
     access_levels: &'a AccessLevels,
     in_trait_impl: bool,
 }
@@ -184,14 +211,15 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
 
                 // `Deprecation` is just two pointers, no need to intern it
                 let def_id = self.tcx.map.local_def_id(id);
-                self.index.depr_map.insert(def_id, Some(depr.clone()));
+                let depr_entry = Some(DeprecationEntry::local(depr, def_id));
+                self.index.depr_map.insert(def_id, depr_entry.clone());
 
-                let orig_parent_depr = replace(&mut self.parent_depr, Some(depr));
+                let orig_parent_depr = replace(&mut self.parent_depr, depr_entry);
                 visit_children(self);
                 self.parent_depr = orig_parent_depr;
-            } else if let Some(depr) = self.parent_depr.clone() {
+            } else if let parent_depr @ Some(_) = self.parent_depr.clone() {
                 let def_id = self.tcx.map.local_def_id(id);
-                self.index.depr_map.insert(def_id, Some(depr));
+                self.index.depr_map.insert(def_id, parent_depr);
                 visit_children(self);
             } else {
                 visit_children(self);
@@ -726,6 +754,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 
     pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {
+        self.lookup_deprecation_entry(id).map(|depr| depr.attr)
+    }
+
+    fn lookup_deprecation_entry(self, id: DefId) -> Option<DeprecationEntry> {
         if let Some(depr) = self.stability.borrow().depr_map.get(&id) {
             return depr.clone();
         }
@@ -744,12 +776,34 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn lookup_deprecation_uncached(self, id: DefId) -> Option<Deprecation> {
+    fn lookup_deprecation_uncached(self, id: DefId) -> Option<DeprecationEntry> {
         debug!("lookup(id={:?})", id);
         if id.is_local() {
             None // The stability cache is filled partially lazily
         } else {
-            self.sess.cstore.deprecation(id)
+            self.sess.cstore.deprecation(id).map(DeprecationEntry::external)
+        }
+    }
+
+    /// Different from `lookup_deprecation` this method returns `None` if parent
+    /// and id have been deprecated by the same attribute.
+    fn lookup_maybe_deprecation(self, id: DefId, parent: DefIndex) -> Option<Deprecation> {
+        if let Some(depr) = self.lookup_deprecation_entry(id) {
+            // if id is external, it cannot have the same origin as parent, since
+            // parent is local
+            if let None = depr.origin {
+                return Some(depr.attr);
+            }
+
+            if let Some(parent_depr) = self.lookup_deprecation_entry(DefId::local(parent)) {
+                if depr.origin == parent_depr.origin {
+                    return None
+                }
+            }
+
+            Some(depr.attr)
+        } else {
+            None
         }
     }
 }
