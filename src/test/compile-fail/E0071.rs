@@ -11,6 +11,11 @@
 enum Foo { FirstValue(i32) }
 
 fn main() {
-    let u = Foo::FirstValue { value: 0 }; //~ ERROR E0071
-    let t = u32 { value: 4 }; //~ ERROR E0071
+    let u = Foo::FirstValue { value: 0 };
+    //~^ ERROR `Foo::FirstValue` does not name a struct or a struct variant [E0071]
+    //~| NOTE not a struct
+
+    let t = u32 { value: 4 };
+    //~^ ERROR `u32` does not name a struct or a struct variant [E0071]
+    //~| NOTE not a struct
 }

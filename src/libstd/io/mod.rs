@@ -1082,16 +1082,22 @@ pub trait Seek {
     ///
     /// If the seek operation completed successfully,
     /// this method returns the new position from the start of the stream.
-    /// That position can be used later with `SeekFrom::Start`.
+    /// That position can be used later with [`SeekFrom::Start`].
     ///
     /// # Errors
     ///
     /// Seeking to a negative offset is considered an error.
+    ///
+    /// [`SeekFrom::Start`]: enum.SeekFrom.html#variant.Start
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
+///
+/// It is used by the [`Seek`] trait.
+///
+/// [`Seek`]: trait.Seek.html
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SeekFrom {
@@ -1482,6 +1488,24 @@ impl<T> Take<T> {
     ///
     /// This instance may reach EOF after reading fewer bytes than indicated by
     /// this method if the underlying `Read` instance reaches EOF.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let f = try!(File::open("foo.txt"));
+    ///
+    /// // read at most five bytes
+    /// let handle = f.take(5);
+    ///
+    /// println!("limit: {}", handle.limit());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn limit(&self) -> u64 { self.limit }
 }

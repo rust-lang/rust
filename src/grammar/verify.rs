@@ -11,6 +11,7 @@
 #![feature(plugin, rustc_private)]
 
 extern crate syntax;
+extern crate syntax_pos;
 extern crate rustc;
 
 #[macro_use]
@@ -290,9 +291,10 @@ fn main() {
 
     let options = config::basic_options();
     let session = session::build_session(options, &DepGraph::new(false), None,
-                                         syntax::diagnostics::registry::Registry::new(&[]),
+                                         syntax::errors::registry::Registry::new(&[]),
                                          Rc::new(DummyCrateStore));
-    let filemap = session.parse_sess.codemap().new_filemap(String::from("<n/a>"), code);
+    let filemap = session.parse_sess.codemap()
+                         .new_filemap("<n/a>".to_string(), None, code);
     let mut lexer = lexer::StringReader::new(session.diagnostic(), filemap);
     let cm = session.codemap();
 

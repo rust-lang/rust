@@ -240,6 +240,21 @@ impl Stdin {
     ///
     /// [`Read`]: trait.Read.html
     /// [`BufRead`]: trait.BufRead.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{self, Read};
+    ///
+    /// # fn foo() -> io::Result<String> {
+    /// let mut buffer = String::new();
+    /// let stdin = io::stdin();
+    /// let mut handle = stdin.lock();
+    ///
+    /// try!(handle.read_to_string(&mut buffer));
+    /// # Ok(buffer)
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock {
         StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
@@ -399,6 +414,21 @@ impl Stdout {
     ///
     /// The lock is released when the returned lock goes out of scope. The
     /// returned guard also implements the `Write` trait for writing data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{self, Write};
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let stdout = io::stdout();
+    /// let mut handle = stdout.lock();
+    ///
+    /// try!(handle.write(b"hello world"));
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock {
         StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
@@ -505,6 +535,21 @@ impl Stderr {
     ///
     /// The lock is released when the returned lock goes out of scope. The
     /// returned guard also implements the `Write` trait for writing data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{self, Write};
+    ///
+    /// fn foo() -> io::Result<()> {
+    ///     let stderr = io::stderr();
+    ///     let mut handle = stderr.lock();
+    ///
+    ///     try!(handle.write(b"hello world"));
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock {
         StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
