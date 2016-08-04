@@ -43,9 +43,9 @@ let owned = "Hello".to_string();
 foo(&owned);
 ```
 
-Using an ampersand in front of a value takes a reference to it. So `owned` is a
-`String`, `&owned` is an `&String`, and since `impl Deref<Target=str> for
-String`, `&String` will deref to `&str`, which `foo()` takes.
+Using an ampersand in front of a value takes a reference to it. So `owned` is
+a `String`, `&owned` is a `&String`, and since `impl Deref<Target=str> for
+String`, `&String` will coerce to `&str`, which `foo()` takes.
 
 That’s it. This rule is one of the only places in which Rust does an automatic
 conversion for you, but it adds a lot of flexibility. For example, the `Rc<T>`
@@ -66,13 +66,14 @@ let counted = Rc::new(owned);
 foo(&counted);
 ```
 
-All we’ve done is wrap our `String` in an `Rc<T>`. But we can now pass the
-`Rc<String>` around anywhere we’d have a `String`. The signature of `foo`
+All we’ve done is wrap our `String` in an `Rc<T>`. But we can now pass
+`&Rc<String>` around anywhere that accepts a `&String`. The signature of `foo`
 didn’t change, but works just as well with either type. This example has two
-conversions: `Rc<String>` to `String` and then `String` to `&str`. Rust will do
-this as many times as possible until the types match.
+coercions: `&Rc<String>` to `&String` and then `&String` to `&str`. Rust will
+do this as many times as possible until the types match.
 
-Another very common implementation provided by the standard library is:
+Another very common case provided by the standard library allows a reference
+to a Vector to coerce to a slice:
 
 ```rust
 fn foo(s: &[i32]) {
@@ -84,8 +85,6 @@ let owned = vec![1, 2, 3];
 
 foo(&owned);
 ```
-
-Vectors can `Deref` to a slice.
 
 ## Deref and method calls
 
