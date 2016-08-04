@@ -60,8 +60,6 @@ There are some shortcomings in this design:
 
 use astconv::{AstConv, ast_region_to_region, Bounds, PartitionedBounds, partition_bounds};
 use lint;
-use hir::def::Def;
-use hir::def_id::DefId;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
@@ -74,7 +72,6 @@ use rustc::ty::{VariantKind};
 use rustc::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
-use rustc::hir::map as hir_map;
 use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{NodeMap, FnvHashMap};
 use {CrateCtxt, write_ty_to_tcx};
@@ -91,9 +88,9 @@ use syntax::parse::token::keywords;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
-use rustc::hir::{self, PatKind};
-use rustc::hir::intravisit;
-use rustc::hir::print as pprust;
+use rustc::hir::{self, intravisit, map as hir_map, print as pprust};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
@@ -2144,14 +2141,6 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     abi: abi::Abi)
     -> ty::TypeScheme<'tcx>
 {
-    for i in &decl.inputs {
-        match i.pat.node {
-            PatKind::Binding(..) | PatKind::Wild => {}
-            _ => span_err!(ccx.tcx.sess, i.pat.span, E0130,
-                           "patterns aren't allowed in foreign function declarations")
-        }
-    }
-
     let ty_generics = ty_generics_for_fn(ccx, ast_generics, &ty::Generics::empty());
 
     let rb = BindingRscope::new();
