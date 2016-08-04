@@ -34,11 +34,12 @@
 /// only designed to be used by unsafe code that needs to manipulate
 /// the low-level details.
 ///
-/// There is no `Repr` implementation for `TraitObject` because there
-/// is no way to refer to all trait objects generically, so the only
+/// There is no way to refer to all trait objects generically, so the only
 /// way to create values of this type is with functions like
-/// `std::mem::transmute`. Similarly, the only way to create a true
+/// [`std::mem::transmute`][transmute]. Similarly, the only way to create a true
 /// trait object from a `TraitObject` value is with `transmute`.
+///
+/// [transmute]: ../intrinsics/fn.transmute.html
 ///
 /// Synthesizing a trait object with mismatched types—one where the
 /// vtable does not correspond to the type of the value to which the
@@ -50,13 +51,13 @@
 /// ```
 /// #![feature(raw)]
 ///
-/// use std::mem;
-/// use std::raw;
+/// use std::{mem, raw};
 ///
 /// // an example trait
 /// trait Foo {
 ///     fn bar(&self) -> i32;
 /// }
+///
 /// impl Foo for i32 {
 ///     fn bar(&self) -> i32 {
 ///          *self + 1
@@ -74,7 +75,6 @@
 /// // the data pointer is the address of `value`
 /// assert_eq!(raw_object.data as *const i32, &value as *const _);
 ///
-///
 /// let other_value: i32 = 456;
 ///
 /// // construct a new object, pointing to a different `i32`, being
@@ -82,11 +82,11 @@
 /// let synthesized: &Foo = unsafe {
 ///      mem::transmute(raw::TraitObject {
 ///          data: &other_value as *const _ as *mut (),
-///          vtable: raw_object.vtable
+///          vtable: raw_object.vtable,
 ///      })
 /// };
 ///
-/// // it should work just like we constructed a trait object out of
+/// // it should work just as if we had constructed a trait object out of
 /// // `other_value` directly
 /// assert_eq!(synthesized.bar(), 457);
 /// ```
