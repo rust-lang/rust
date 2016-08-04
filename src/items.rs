@@ -16,7 +16,7 @@ use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wr
             last_line_width, semicolon_for_expr, format_unsafety, trim_newlines};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
-use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
+use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annotation_separator};
 use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
@@ -45,11 +45,7 @@ impl Rewrite for ast::Local {
             let mut infix = String::new();
 
             if let Some(ref ty) = self.ty {
-                let separator = if context.config.space_before_type_annotation {
-                    " : "
-                } else {
-                    ": "
-                };
+                let separator = type_annotation_separator(context.config);
                 let indent = offset + last_line_width(&result) + separator.len();
                 // 1 = ;
                 let budget = try_opt!(width.checked_sub(indent.width() + 1));

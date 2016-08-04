@@ -1655,19 +1655,28 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     // of space, we should fall back to BlockIndent.
 }
 
+pub fn type_annotation_separator(config: &Config) -> &str {
+    if config.space_before_type_annotation {
+        " : "
+    } else {
+        ": "
+    }
+}
+
 fn rewrite_field(context: &RewriteContext,
                  field: &ast::Field,
                  width: usize,
                  offset: Indent)
                  -> Option<String> {
     let name = &field.ident.node.to_string();
-    let overhead = name.len() + 2;
+    let separator = type_annotation_separator(context.config);
+    let overhead = name.len() + separator.len();
     let expr = field.expr.rewrite(context,
                                   try_opt!(width.checked_sub(overhead)),
                                   offset + overhead);
 
     match expr {
-        Some(e) => Some(format!("{}: {}", name, e)),
+        Some(e) => Some(format!("{}{}{}", name, separator, e)),
         None => {
             let expr_offset = offset.block_indent(&context.config);
             let expr = field.expr.rewrite(context,
