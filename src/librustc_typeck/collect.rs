@@ -1010,11 +1010,12 @@ fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let fid = ccx.tcx.map.local_def_id(f.id);
         let dup_span = seen_fields.get(&f.name).cloned();
         if let Some(prev_span) = dup_span {
-            let mut err = struct_span_err!(ccx.tcx.sess, f.span, E0124,
-                                           "field `{}` is already declared",
-                                           f.name);
-            span_note!(&mut err, prev_span, "previously declared here");
-            err.emit();
+            struct_span_err!(ccx.tcx.sess, f.span, E0124,
+                             "field `{}` is already declared",
+                             f.name)
+                .span_label(f.span, &"field already declared")
+                .span_label(prev_span, &format!("`{}` first declared here", f.name))
+                .emit();
         } else {
             seen_fields.insert(f.name, f.span);
         }
