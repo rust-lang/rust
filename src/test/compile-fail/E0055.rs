@@ -18,5 +18,7 @@ impl Foo {
 fn main() {
     let foo = Foo;
     let ref_foo = &&Foo;
-    ref_foo.foo(); //~ ERROR E0055
+    ref_foo.foo();
+    //~^ ERROR E0055
+    //~| NOTE deref recursion limit reached
 }
