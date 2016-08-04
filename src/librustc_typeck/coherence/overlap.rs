@@ -141,12 +141,18 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                         self.tcx.sess, self.tcx.span_of_impl(impl_def_id).unwrap(), E0119,
                         "conflicting implementations of trait `{}`{}:",
                         overlap.trait_desc,
-                        overlap.self_desc.map_or(String::new(),
-                                                 |ty| format!(" for type `{}`", ty)));
+                        overlap.self_desc.clone().map_or(String::new(),
+                                                         |ty| format!(" for type `{}`", ty)));
 
                     match self.tcx.span_of_impl(overlap.with_impl) {
                         Ok(span) => {
-                            err.span_note(span, "conflicting implementation is here:");
+                            err.span_label(span,
+                                           &format!("first implementation here"));
+                            err.span_label(self.tcx.span_of_impl(impl_def_id).unwrap(),
+                                           &format!("conflicting implementation{}",
+                                                    overlap.self_desc
+                                                        .map_or(String::new(),
+                                                                |ty| format!(" for `{}`", ty))));
                         }
                         Err(cname) => {
                             err.note(&format!("conflicting implementation in crate `{}`",
