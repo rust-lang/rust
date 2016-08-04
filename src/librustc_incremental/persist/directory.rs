@@ -158,6 +158,10 @@ impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
         }
     }
 
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.tcx
+    }
+
     pub fn add(&mut self, def_id: DefId) -> DefPathIndex {
         debug!("DefIdDirectoryBuilder: def_id={:?}", def_id);
         let tcx = self.tcx;

@@ -101,8 +101,25 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   work_products_data: &[u8])
                                   -> Result<(), Error>
 {
+    // Decode the list of work_products
+    let mut work_product_decoder = Decoder::new(work_products_data, 0);
+    let work_products = try!(<Vec<SerializedWorkProduct>>::decode(&mut work_product_decoder));
+
     // Deserialize the directory and dep-graph.
     let mut dep_graph_decoder = Decoder::new(dep_graph_data, 0);
+    let prev_commandline_args_hash = try!(u64::decode(&mut dep_graph_decoder));
+
+    if prev_commandline_args_hash != tcx.sess.opts.dep_tracking_hash() {
+        // We can't reuse the cache, purge it.
+        debug!("decode_dep_graph: differing commandline arg hashes");
+        for swp in work_products {
+            delete_dirty_work_product(tcx, swp);
+        }
+
+        // No need to do any further work
+        return Ok(());
+    }
+
     let directory = try!(DefIdDirectory::decode(&mut dep_graph_decoder));
     let serialized_dep_graph = try!(SerializedDepGraph::decode(&mut dep_graph_decoder));
 
@@ -179,8 +196,6 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Add in work-products that are still clean, and delete those that are
     // dirty.
-    let mut work_product_decoder = Decoder::new(work_products_data, 0);
-    let work_products = try!(<Vec<SerializedWorkProduct>>::decode(&mut work_product_decoder));
     reconcile_work_products(tcx, work_products, &dirty_target_nodes);
 
     dirty_clean::check_dirty_clean_annotations(tcx, &dirty_raw_source_nodes, &retraced);
