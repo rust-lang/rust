@@ -1340,6 +1340,8 @@ actual:\n\
             MirOpt => {
                 args.extend(["-Z",
                              "dump-mir=all",
+                             "-Z",
+                             "mir-opt-level=3",
                              "-Z"]
                             .iter()
                             .map(|s| s.to_string()));
