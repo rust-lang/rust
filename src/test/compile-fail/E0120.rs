@@ -10,7 +10,9 @@
 
 trait MyTrait {}
 
-impl Drop for MyTrait { //~ ERROR E0120
+impl Drop for MyTrait {
+              //~^ ERROR E0120
+              //~| NOTE implementing Drop requires a struct
     fn drop(&mut self) {}
 }
 
