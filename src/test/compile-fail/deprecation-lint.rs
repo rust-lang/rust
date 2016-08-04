@@ -266,14 +266,14 @@ mod this_crate {
     #[deprecated(since = "1.0.0", note = "text")]
     fn test_fn_body() {
         fn fn_in_body() {}
-        fn_in_body(); //~ ERROR use of deprecated item: text
+        fn_in_body();
     }
 
     impl MethodTester {
         #[deprecated(since = "1.0.0", note = "text")]
         fn test_method_body(&self) {
             fn fn_in_body() {}
-            fn_in_body(); //~ ERROR use of deprecated item: text
+            fn_in_body();
         }
     }
 

@@ -19,7 +19,7 @@ use session::Session;
 use lint;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::Def;
-use hir::def_id::{CRATE_DEF_INDEX, DefId};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use syntax::parse::token::InternedString;
@@ -61,12 +61,39 @@ enum AnnotationKind {
     Container,
 }
 
+/// An entry in the `depr_map`.
+#[derive(Clone)]
+struct DeprecationEntry {
+    /// The metadata of the attribute associated with this entry.
+    attr: Deprecation,
+    /// The def id where the attr was originally attached. `None` for non-local
+    /// `DefId`'s.
+    origin: Option<DefIndex>,
+}
+
+impl DeprecationEntry {
+    fn local(attr: Deprecation, id: DefId) -> DeprecationEntry {
+        assert!(id.is_local());
+        DeprecationEntry {
+            attr: attr,
+            origin: Some(id.index),
+        }
+    }
+
+    fn external(attr: Deprecation) -> DeprecationEntry {
+        DeprecationEntry {
+            attr: attr,
+            origin: None,
+        }
+    }
+}
+
 /// A stability index, giving the stability level for items and methods.
 pub struct Index<'tcx> {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
     stab_map: DefIdMap<Option<&'tcx Stability>>,
-    depr_map: DefIdMap<Option<Deprecation>>,
+    depr_map: DefIdMap<Option<DeprecationEntry>>,
 
     /// Maps for each crate whether it is part of the staged API.
     staged_api: FnvHashMap<ast::CrateNum, bool>
@@ -77,7 +104,7 @@ struct Annotator<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     index: &'a mut Index<'tcx>,
     parent_stab: Option<&'tcx Stability>,
-    parent_depr: Option<Deprecation>,
+    parent_depr: Option<DeprecationEntry>,
     access_levels: &'a AccessLevels,
     in_trait_impl: bool,
 }
@@ -184,14 +211,15 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
 
                 // `Deprecation` is just two pointers, no need to intern it
                 let def_id = self.tcx.map.local_def_id(id);
-                self.index.depr_map.insert(def_id, Some(depr.clone()));
+                let depr_entry = Some(DeprecationEntry::local(depr, def_id));
+                self.index.depr_map.insert(def_id, depr_entry.clone());
 
-                let orig_parent_depr = replace(&mut self.parent_depr, Some(depr));
+                let orig_parent_depr = replace(&mut self.parent_depr, depr_entry);
                 visit_children(self);
                 self.parent_depr = orig_parent_depr;
-            } else if let Some(depr) = self.parent_depr.clone() {
+            } else if let parent_depr @ Some(_) = self.parent_depr.clone() {
                 let def_id = self.tcx.map.local_def_id(id);
-                self.index.depr_map.insert(def_id, Some(depr));
+                self.index.depr_map.insert(def_id, parent_depr);
                 visit_children(self);
             } else {
                 visit_children(self);
@@ -335,6 +363,7 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         active_features: active_features,
         used_features: FnvHashMap(),
         in_skip_block: 0,
+        parent_def: None,
     };
     intravisit::walk_crate(&mut checker, tcx.map.krate());
 
@@ -347,6 +376,13 @@ struct Checker<'a, 'tcx: 'a> {
     used_features: FnvHashMap<InternedString, attr::StabilityLevel>,
     // Within a block where feature gate checking can be skipped.
     in_skip_block: u32,
+    /// Tracks the def id of the current parent item.
+    ///
+    /// As only local items are contained in the stack, track only DefIndex instead
+    /// of complete def ids.
+    ///
+    /// See the Deprecated lint source for more information.
+    parent_def: Option<DefIndex>,
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
@@ -408,6 +444,17 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
     }
+
+    fn enter_item(&mut self, item_id: ast::NodeId) -> Option<DefIndex> {
+        replace(&mut self.parent_def, Some(self.tcx.map.local_def_id(item_id).index))
+    }
+
+    fn parent_def(&mut self) -> DefIndex {
+        match self.parent_def {
+            Some(index) => index,
+            None => bug!("checking non-item outside of root module"),
+        }
+    }
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
@@ -425,31 +472,53 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         // name `__test`
         if item.span == DUMMY_SP && item.name.as_str() == "__test" { return }
 
-        check_item(self.tcx, item, true,
+        let old_parent_def = self.enter_item(item.id);
+
+        check_item(self.tcx, item, true, self.parent_def(),
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_item(self, item);
+
+        self.parent_def = old_parent_def;
+    }
+
+    fn visit_impl_item(&mut self, item: &hir::ImplItem) {
+        let old_parent_def = self.enter_item(item.id);
+        intravisit::walk_impl_item(self, item);
+        self.parent_def = old_parent_def;
+    }
+
+    fn visit_trait_item(&mut self, item: &hir::TraitItem) {
+        let old_parent_def = self.enter_item(item.id);
+        intravisit::walk_trait_item(self, item);
+        self.parent_def = old_parent_def;
+    }
+
+    fn visit_foreign_item(&mut self, item: &hir::ForeignItem) {
+        let old_parent_def = self.enter_item(item.id);
+        intravisit::walk_foreign_item(self, item);
+        self.parent_def = old_parent_def;
     }
 
     fn visit_expr(&mut self, ex: &hir::Expr) {
-        check_expr(self.tcx, ex,
+        check_expr(self.tcx, ex, self.parent_def(),
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_expr(self, ex);
     }
 
     fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
-        check_path(self.tcx, path, id,
+        check_path(self.tcx, path, id, self.parent_def(),
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_path(self, path)
     }
 
     fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
-        check_path_list_item(self.tcx, item,
+        check_path_list_item(self.tcx, item, self.parent_def(),
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_path_list_item(self, prefix, item)
     }
 
     fn visit_pat(&mut self, pat: &hir::Pat) {
-        check_pat(self.tcx, pat,
+        check_pat(self.tcx, pat, self.parent_def(),
                   &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_pat(self, pat)
     }
@@ -474,6 +543,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             item: &hir::Item,
                             warn_about_defns: bool,
+                            parent_def: DefIndex,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
                                            &Option<Deprecation>)) {
@@ -487,7 +557,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 None => return,
             };
             let id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-            maybe_do_stability_check(tcx, id, item.span, cb);
+            maybe_do_stability_check(tcx, id, parent_def, item.span, cb);
         }
 
         // For implementations of traits, check the stability of each item
@@ -502,7 +572,8 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     item.name() == impl_item.name
                 }).unwrap();
                 if warn_about_defns {
-                    maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);
+                    maybe_do_stability_check(tcx, item.def_id(), item.def_id().index,
+                                             impl_item.span, cb);
                 }
             }
         }
@@ -512,7 +583,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Helper for discovering nodes to check for stability
-pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
+pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr, parent_def: DefIndex,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
                                            &Option<Deprecation>)) {
@@ -551,7 +622,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
                         let did = def.struct_variant()
                             .field_named(field.name.node)
                             .did;
-                        maybe_do_stability_check(tcx, did, field.span, cb);
+                        maybe_do_stability_check(tcx, did, parent_def, field.span, cb);
                     }
 
                     // we're done.
@@ -572,11 +643,11 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         _ => return
     };
 
-    maybe_do_stability_check(tcx, id, span, cb);
+    maybe_do_stability_check(tcx, id, parent_def, span, cb);
 }
 
-pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            path: &hir::Path, id: ast::NodeId,
+pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, path: &hir::Path,
+                            id: ast::NodeId, parent_def: DefIndex,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
                                            &Option<Deprecation>)) {
@@ -585,7 +656,7 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(Def::PrimTy(..)) => {}
         Some(Def::SelfTy(..)) => {}
         Some(def) => {
-            maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
+            maybe_do_stability_check(tcx, def.def_id(), parent_def, path.span, cb);
         }
         None => {}
     }
@@ -593,18 +664,19 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       item: &hir::PathListItem,
+                                      parent_def: DefIndex,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<Deprecation>)) {
     match tcx.expect_def(item.node.id()) {
         Def::PrimTy(..) => {}
         def => {
-            maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
+            maybe_do_stability_check(tcx, def.def_id(), parent_def, item.span, cb);
         }
     }
 }
 
-pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
+pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat, parent_def: DefIndex,
                            cb: &mut FnMut(DefId, Span,
                                           &Option<&Stability>,
                                           &Option<Deprecation>)) {
@@ -619,14 +691,14 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
         // Foo(a, b, c)
         PatKind::TupleStruct(_, ref pat_fields, ddpos) => {
             for (i, field) in pat_fields.iter().enumerate_and_adjust(v.fields.len(), ddpos) {
-                maybe_do_stability_check(tcx, v.fields[i].did, field.span, cb)
+                maybe_do_stability_check(tcx, v.fields[i].did, parent_def, field.span, cb)
             }
         }
         // Foo { a, b, c }
         PatKind::Struct(_, ref pat_fields, _) => {
             for field in pat_fields {
                 let did = v.field_named(field.node.name).did;
-                maybe_do_stability_check(tcx, did, field.span, cb);
+                maybe_do_stability_check(tcx, did, parent_def, field.span, cb);
             }
         }
         // everything else is fine.
@@ -634,8 +706,8 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     }
 }
 
-fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      id: DefId, span: Span,
+fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId,
+                                      parent_def: DefIndex, span: Span,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<Deprecation>)) {
@@ -647,7 +719,7 @@ fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (stability, deprecation) = if is_staged_api(tcx, id) {
         (tcx.lookup_stability(id), None)
     } else {
-        (None, tcx.lookup_deprecation(id))
+        (None, tcx.lookup_maybe_deprecation(id, parent_def))
     };
     debug!("maybe_do_stability_check: \
             inspecting id={:?} span={:?} of stability={:?}", id, span, stability);
@@ -685,6 +757,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 
     pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {
+        self.lookup_deprecation_entry(id).map(|depr| depr.attr)
+    }
+
+    fn lookup_deprecation_entry(self, id: DefId) -> Option<DeprecationEntry> {
         if let Some(depr) = self.stability.borrow().depr_map.get(&id) {
             return depr.clone();
         }
@@ -703,12 +779,34 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn lookup_deprecation_uncached(self, id: DefId) -> Option<Deprecation> {
+    fn lookup_deprecation_uncached(self, id: DefId) -> Option<DeprecationEntry> {
         debug!("lookup(id={:?})", id);
         if id.is_local() {
             None // The stability cache is filled partially lazily
         } else {
-            self.sess.cstore.deprecation(id)
+            self.sess.cstore.deprecation(id).map(DeprecationEntry::external)
+        }
+    }
+
+    /// Different from `lookup_deprecation` this method returns `None` if parent
+    /// and id have been deprecated by the same attribute.
+    fn lookup_maybe_deprecation(self, id: DefId, parent: DefIndex) -> Option<Deprecation> {
+        if let Some(depr) = self.lookup_deprecation_entry(id) {
+            // if id is external, it cannot have the same origin as parent, since
+            // parent is local
+            if let None = depr.origin {
+                return Some(depr.attr);
+            }
+
+            if let Some(parent_depr) = self.lookup_deprecation_entry(DefId::local(parent)) {
+                if depr.origin == parent_depr.origin {
+                    return None
+                }
+            }
+
+            Some(depr.attr)
+        } else {
+            None
         }
     }
 }
