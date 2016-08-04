@@ -11,7 +11,8 @@
 fn f(a: u16, b: &str) {}
 
 fn main() {
-    f(0); //~ ERROR E0061 
-          //~| NOTE expected 2 parameters
-          //~| NOTE the following parameter types were expected
+    f(0);
+    //~^ ERROR E0061 
+    //~| NOTE expected 2 parameters
+    //~| NOTE the following parameter types were expected
 }
