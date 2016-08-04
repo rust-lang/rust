@@ -722,7 +722,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 AstConv::instantiate_mono_trait_ref(&ccx.icx(&()),
                                                     &ExplicitRscope,
                                                     ast_trait_ref,
-                                                    None);
+                                                    tcx.mk_self_type());
 
             tcx.record_trait_has_default_impl(trait_ref.def_id);
 
@@ -752,7 +752,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 AstConv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
                                                     &ExplicitRscope,
                                                     ast_trait_ref,
-                                                    Some(selfty))
+                                                    selfty)
             });
             tcx.impl_trait_refs.borrow_mut().insert(def_id, trait_ref);
 
@@ -1815,10 +1815,12 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                             let mut projections = Vec::new();
 
                             let trait_ref =
-                                conv_poly_trait_ref(&ccx.icx(&(base_predicates, ast_generics)),
-                                                    ty,
-                                                    poly_trait_ref,
-                                                    &mut projections);
+                                AstConv::instantiate_poly_trait_ref(&ccx.icx(&(base_predicates,
+                                                                               ast_generics)),
+                                                                    &ExplicitRscope,
+                                                                    poly_trait_ref,
+                                                                    ty,
+                                                                    &mut projections);
 
                             result.predicates.push(trait_ref.to_predicate());
 
@@ -2069,7 +2071,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     let mut trait_bounds: Vec<_> = trait_bounds.iter().map(|&bound| {
         astconv.instantiate_poly_trait_ref(&rscope,
                                            bound,
-                                           Some(param_ty),
+                                           param_ty,
                                            &mut projection_bounds)
     }).collect();
 
@@ -2100,7 +2102,10 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
     match *bound {
         hir::TraitTyParamBound(ref tr, hir::TraitBoundModifier::None) => {
             let mut projections = Vec::new();
-            let pred = conv_poly_trait_ref(astconv, param_ty, tr, &mut projections);
+            let pred = astconv.instantiate_poly_trait_ref(&ExplicitRscope,
+                                                          tr,
+                                                          param_ty,
+                                                          &mut projections);
             projections.into_iter()
                        .map(|p| p.to_predicate())
                        .chain(Some(pred.to_predicate()))
@@ -2115,19 +2120,6 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
             Vec::new()
         }
     }
-}
-
-fn conv_poly_trait_ref<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                         param_ty: Ty<'tcx>,
-                                         trait_ref: &hir::PolyTraitRef,
-                                         projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
-                                         -> ty::PolyTraitRef<'tcx>
-{
-    AstConv::instantiate_poly_trait_ref(astconv,
-                                        &ExplicitRscope,
-                                        trait_ref,
-                                        Some(param_ty),
-                                        projections)
 }
 
 fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(

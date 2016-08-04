@@ -61,7 +61,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyArray(..) | ty::TySlice(_) => Some(VecSimplifiedType),
         ty::TyRawPtr(_) => Some(PtrSimplifiedType),
         ty::TyTrait(ref trait_info) => {
-            Some(TraitSimplifiedType(trait_info.principal_def_id()))
+            Some(TraitSimplifiedType(trait_info.principal.def_id()))
         }
         ty::TyStruct(def, _) => {
             Some(StructSimplifiedType(def.did))

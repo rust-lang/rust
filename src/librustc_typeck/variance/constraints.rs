@@ -396,19 +396,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyTrait(ref data) => {
                 let poly_trait_ref =
-                    data.principal_trait_ref_with_self_ty(self.tcx(),
-                                                          self.tcx().types.err);
+                    data.principal.with_self_ty(self.tcx(), self.tcx().types.err);
 
                 // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
                 let contra = self.contravariant(variance);
-                self.add_constraints_from_region(generics, data.bounds.region_bound, contra);
+                self.add_constraints_from_region(generics, data.region_bound, contra);
 
                 // Ignore the SelfSpace, it is erased.
                 self.add_constraints_from_trait_ref(generics, poly_trait_ref.0, variance);
 
-                let projections = data.projection_bounds_with_self_ty(self.tcx(),
-                                                                      self.tcx().types.err);
-                for projection in &projections {
+                for projection in &data.projection_bounds {
                     self.add_constraints_from_ty(generics, projection.0.ty, self.invariant);
                 }
             }

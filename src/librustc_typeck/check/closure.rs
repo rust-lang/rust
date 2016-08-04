@@ -102,12 +102,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match expected_ty.sty {
             ty::TyTrait(ref object_type) => {
-                let proj_bounds = object_type.projection_bounds_with_self_ty(self.tcx,
-                                                                             self.tcx.types.err);
-                let sig = proj_bounds.iter()
-                                     .filter_map(|pb| self.deduce_sig_from_projection(pb))
-                                     .next();
-                let kind = self.tcx.lang_items.fn_trait_kind(object_type.principal_def_id());
+                let sig = object_type.projection_bounds.iter().filter_map(|pb| {
+                    let pb = pb.with_self_ty(self.tcx, self.tcx.types.err);
+                    self.deduce_sig_from_projection(&pb)
+                }).next();
+                let kind = self.tcx.lang_items.fn_trait_kind(object_type.principal.def_id());
                 (sig, kind)
             }
             ty::TyInfer(ty::TyVar(vid)) => {

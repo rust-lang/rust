@@ -243,7 +243,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyFnDef(..) => format!("fn item"),
             ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyTrait(ref inner) => {
-                format!("trait {}", tcx.item_path_str(inner.principal_def_id()))
+                format!("trait {}", tcx.item_path_str(inner.principal.def_id()))
             }
             ty::TyStruct(def, _) => {
                 format!("struct `{}`", tcx.item_path_str(def.did))

@@ -80,7 +80,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                         self.check_def_id(item, def.did);
                     }
                     ty::TyTrait(ref data) => {
-                        self.check_def_id(item, data.principal_def_id());
+                        self.check_def_id(item, data.principal.def_id());
                     }
                     ty::TyBox(..) => {
                         match self.tcx.lang_items.require_owned_box() {

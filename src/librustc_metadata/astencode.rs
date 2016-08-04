@@ -524,16 +524,8 @@ pub fn encode_cast_kind(ebml_w: &mut Encoder, kind: cast::CastKind) {
 trait rbml_writer_helpers<'tcx> {
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
-    fn emit_tys<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, tys: &[Ty<'tcx>]);
-    fn emit_predicate<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                          predicate: &ty::Predicate<'tcx>);
-    fn emit_trait_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                          ty: &ty::TraitRef<'tcx>);
     fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                        substs: &subst::Substs<'tcx>);
-    fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
-                                   bounds: &ty::ExistentialBounds<'tcx>);
-    fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds);
     fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture);
     fn emit_auto_adjustment<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                 adj: &adjustment::AutoAdjustment<'tcx>);
@@ -554,39 +546,6 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
         self.emit_opaque(|this| Ok(tyencode::enc_ty(&mut this.cursor,
                                                     &ecx.ty_str_ctxt(),
                                                     ty)));
-    }
-
-    fn emit_tys<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>, tys: &[Ty<'tcx>]) {
-        self.emit_from_vec(tys, |this, ty| Ok(this.emit_ty(ecx, *ty)));
-    }
-
-    fn emit_trait_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                          trait_ref: &ty::TraitRef<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_trait_ref(&mut this.cursor,
-                                                           &ecx.ty_str_ctxt(),
-                                                           *trait_ref)));
-    }
-
-    fn emit_predicate<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                          predicate: &ty::Predicate<'tcx>) {
-        self.emit_opaque(|this| {
-            Ok(tyencode::enc_predicate(&mut this.cursor,
-                                       &ecx.ty_str_ctxt(),
-                                       predicate))
-        });
-    }
-
-    fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
-                                   bounds: &ty::ExistentialBounds<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(&mut this.cursor,
-                                                                    &ecx.ty_str_ctxt(),
-                                                                    bounds)));
-    }
-
-    fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds) {
-        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(&mut this.cursor,
-                                                                &ecx.ty_str_ctxt(),
-                                                                bounds)));
     }
 
     fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture) {
@@ -879,8 +838,6 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                                    -> ty::PolyTraitRef<'tcx>;
     fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                               -> ty::Predicate<'tcx>;
-    fn read_existential_bounds<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                       -> ty::ExistentialBounds<'tcx>;
     fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                            -> subst::Substs<'tcx>;
     fn read_upvar_capture(&mut self, dcx: &DecodeContext)
@@ -986,12 +943,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                               -> ty::Predicate<'tcx>
     {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_predicate())
-    }
-
-    fn read_existential_bounds<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                       -> ty::ExistentialBounds<'tcx>
-    {
-        self.read_ty_encoded(dcx, |decoder| decoder.parse_existential_bounds())
     }
 
     fn read_substs<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)

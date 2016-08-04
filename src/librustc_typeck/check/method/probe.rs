@@ -290,8 +290,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         match self_ty.sty {
             ty::TyTrait(box ref data) => {
-                self.assemble_inherent_candidates_from_object(self_ty, data);
-                self.assemble_inherent_impl_candidates_for_type(data.principal_def_id());
+                self.assemble_inherent_candidates_from_object(self_ty, data.principal);
+                self.assemble_inherent_impl_candidates_for_type(data.principal.def_id());
             }
             ty::TyEnum(def, _) |
             ty::TyStruct(def, _) => {
@@ -445,7 +445,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn assemble_inherent_candidates_from_object(&mut self,
                                                 self_ty: Ty<'tcx>,
-                                                data: &ty::TraitTy<'tcx>) {
+                                                principal: ty::PolyExistentialTraitRef<'tcx>) {
         debug!("assemble_inherent_candidates_from_object(self_ty={:?})",
                self_ty);
 
@@ -456,7 +456,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // a substitution that replaces `Self` with the object type
         // itself. Hence, a `&self` method will wind up with an
         // argument type like `&Trait`.
-        let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx, self_ty);
+        let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(&[trait_ref], |this, new_trait_ref, item| {
             let new_trait_ref = this.erase_late_bound_regions(&new_trait_ref);
 
@@ -1227,15 +1227,16 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             return impl_ty;
         }
 
-        let placeholder;
-        let mut substs = substs;
-        if
-            !method.generics.types.is_empty_in(subst::FnSpace) ||
-            !method.generics.regions.is_empty_in(subst::FnSpace)
-        {
-            let type_defs = method.generics.types.as_full_slice();
-            let region_defs = method.generics.regions.as_full_slice();
-            placeholder = subst::Substs::from_param_defs(region_defs, type_defs, |def| {
+        // Erase any late-bound regions from the method and substitute
+        // in the values from the substitution.
+        let xform_self_ty = method.fty.sig.input(0);
+        let xform_self_ty = self.erase_late_bound_regions(&xform_self_ty);
+
+        if method.generics.types.is_empty_in(subst::FnSpace) &&
+           method.generics.regions.is_empty_in(subst::FnSpace) {
+            xform_self_ty.subst(self.tcx, substs)
+        } else {
+            let substs = subst::Substs::from_generics(&method.generics, |def, _| {
                 if def.space != subst::FnSpace {
                     substs.region_for_def(def)
                 } else {
@@ -1250,16 +1251,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     self.type_var_for_def(self.span, def, cur_substs)
                 }
             });
-            substs = &placeholder;
+            xform_self_ty.subst(self.tcx, &substs)
         }
-
-        // Erase any late-bound regions from the method and substitute
-        // in the values from the substitution.
-        let xform_self_ty = method.fty.sig.input(0);
-        let xform_self_ty = self.erase_late_bound_regions(&xform_self_ty);
-        let xform_self_ty = xform_self_ty.subst(self.tcx, substs);
-
-        xform_self_ty
     }
 
     /// Get the type of an impl and generate substitutions with placeholders.

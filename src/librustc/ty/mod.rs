@@ -54,11 +54,13 @@ use hir::{ItemImpl, ItemTrait, PatKind};
 use hir::intravisit::Visitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
-pub use self::sty::{BuiltinBound, BuiltinBounds, ExistentialBounds};
+pub use self::sty::{BuiltinBound, BuiltinBounds};
 pub use self::sty::{BareFnTy, FnSig, PolyFnSig};
-pub use self::sty::{ClosureTy, InferTy, ParamTy, ProjectionTy, TraitTy};
+pub use self::sty::{ClosureTy, InferTy, ParamTy, ProjectionTy, TraitObject};
 pub use self::sty::{ClosureSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
+pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
+pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::Issue32330;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};

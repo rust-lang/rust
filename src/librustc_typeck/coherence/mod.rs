@@ -75,7 +75,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             }
 
             TyTrait(ref t) => {
-                Some(t.principal_def_id())
+                Some(t.principal.def_id())
             }
 
             TyBox(_) => {

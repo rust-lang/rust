@@ -210,7 +210,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
             probe::ObjectPick => {
                 let trait_def_id = pick.item.container().id();
-                self.extract_trait_ref(self_ty, |this, object_ty, data| {
+                self.extract_existential_trait_ref(self_ty, |this, object_ty, principal| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
                     // substitute the object type itself. This
@@ -222,9 +222,9 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     // been ruled out when we deemed the trait to be
                     // "object safe".
                     let original_poly_trait_ref =
-                        data.principal_trait_ref_with_self_ty(this.tcx, object_ty);
+                        principal.with_self_ty(this.tcx, object_ty);
                     let upcast_poly_trait_ref =
-                        this.upcast(original_poly_trait_ref.clone(), trait_def_id);
+                        this.upcast(original_poly_trait_ref, trait_def_id);
                     let upcast_trait_ref =
                         this.replace_late_bound_regions_with_fresh_var(&upcast_poly_trait_ref);
                     debug!("original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
@@ -276,8 +276,12 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn extract_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R where
-        F: FnMut(&mut ConfirmContext<'a, 'gcx, 'tcx>, Ty<'tcx>, &ty::TraitTy<'tcx>) -> R,
+    fn extract_existential_trait_ref<R, F>(&mut self,
+                                           self_ty: Ty<'tcx>,
+                                           mut closure: F) -> R
+        where F: FnMut(&mut ConfirmContext<'a, 'gcx, 'tcx>,
+                       Ty<'tcx>,
+                       ty::PolyExistentialTraitRef<'tcx>) -> R,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to
@@ -288,7 +292,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         self.fcx.autoderef(self.span, self_ty)
             .filter_map(|(ty, _)| {
                 match ty.sty {
-                    ty::TyTrait(ref data) => Some(closure(self, ty, &data)),
+                    ty::TyTrait(ref data) => Some(closure(self, ty, data.principal)),
                     _ => None,
                 }
             })
@@ -331,9 +335,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // parameters from the type and those from the method.
         //
         // FIXME -- permit users to manually specify lifetimes
-        let type_defs = method.generics.types.as_full_slice();
-        let region_defs = method.generics.regions.as_full_slice();
-        subst::Substs::from_param_defs(region_defs, type_defs, |def| {
+        subst::Substs::from_generics(&method.generics, |def, _| {
             if def.space != subst::FnSpace {
                 substs.region_for_def(def)
             } else {

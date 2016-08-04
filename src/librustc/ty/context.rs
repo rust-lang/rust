@@ -27,9 +27,9 @@ use ty::subst::{self, Substs};
 use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants};
-use ty::{AdtDef, ClosureSubsts, ExistentialBounds, Region};
+use ty::{AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
-use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitTy};
+use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitObject};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
@@ -1150,12 +1150,6 @@ impl_interners!('tcx,
     region: mk_region(Region, keep_local) -> Region
 );
 
-fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
-    bounds.is_empty() ||
-        bounds[1..].iter().enumerate().all(
-            |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
-}
-
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Create an unsafe fn ty based on a safe fn ty.
     pub fn safe_to_unsafe_fn_ty(self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
@@ -1288,18 +1282,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyFnPtr(fty))
     }
 
-    pub fn mk_trait(self,
-                    principal: ty::PolyTraitRef<'tcx>,
-                    bounds: ExistentialBounds<'tcx>)
-                    -> Ty<'tcx>
-    {
-        assert!(bound_list_is_sorted(&bounds.projection_bounds));
-
-        let inner = box TraitTy {
-            principal: principal,
-            bounds: bounds
-        };
-        self.mk_ty(TyTrait(inner))
+    pub fn mk_trait(self, mut obj: TraitObject<'tcx>) -> Ty<'tcx> {
+        obj.projection_bounds.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
+        self.mk_ty(TyTrait(box obj))
     }
 
     pub fn mk_projection(self,
