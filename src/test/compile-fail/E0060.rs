@@ -13,7 +13,7 @@ extern "C" {
 }
 
 fn main() {
-    unsafe { printf(); } 
+    unsafe { printf(); }
     //~^ ERROR E0060
     //~| NOTE expected at least 1 parameter
     //~| NOTE the following parameter type was expected
