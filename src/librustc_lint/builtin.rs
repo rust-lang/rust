@@ -567,10 +567,21 @@ declare_lint! {
 }
 
 /// Checks for use of items with `#[deprecated]` or `#[rustc_deprecated]` attributes
-#[derive(Copy, Clone)]
-pub struct Deprecated;
+#[derive(Clone)]
+pub struct Deprecated {
+    /// Tracks the `NodeId` of the current item.
+    ///
+    /// This is required since not all node ids are present in the hir map.
+    current_item: ast::NodeId,
+}
 
 impl Deprecated {
+    pub fn new() -> Deprecated {
+        Deprecated {
+            current_item: ast::CRATE_NODE_ID,
+        }
+    }
+
     fn lint(&self, cx: &LateContext, _id: DefId, span: Span,
             stability: &Option<&attr::Stability>, deprecation: &Option<attr::Deprecation>) {
         // Deprecated attributes apply in-crate and cross-crate.
@@ -591,6 +602,19 @@ impl Deprecated {
             cx.span_lint(lint, span, &msg);
         }
     }
+
+    fn push_item(&mut self, item_id: ast::NodeId) {
+        self.current_item = item_id;
+    }
+
+    fn item_post(&mut self, cx: &LateContext, item_id: ast::NodeId) {
+        assert_eq!(self.current_item, item_id);
+        self.current_item = cx.tcx.map.get_parent(item_id);
+    }
+
+    fn parent_def(&self, cx: &LateContext) -> DefId {
+        cx.tcx.map.local_def_id(self.current_item)
+    }
 }
 
 impl LintPass for Deprecated {
@@ -601,9 +625,14 @@ impl LintPass for Deprecated {
 
 impl LateLintPass for Deprecated {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
+        self.push_item(item.id);
         stability::check_item(cx.tcx, item, false,
                               &mut |id, sp, stab, depr|
                                 self.lint(cx, id, sp, &stab, &depr));
+    }
+
+    fn check_item_post(&mut self, cx: &LateContext, item: &hir::Item) {
+        self.item_post(cx, item.id);
     }
 
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
@@ -628,6 +657,30 @@ impl LateLintPass for Deprecated {
         stability::check_pat(cx.tcx, pat,
                              &mut |id, sp, stab, depr|
                                 self.lint(cx, id, sp, &stab, &depr));
+    }
+
+    fn check_impl_item(&mut self, _: &LateContext, item: &hir::ImplItem) {
+        self.push_item(item.id);
+    }
+
+    fn check_impl_item_post(&mut self, cx: &LateContext, item: &hir::ImplItem) {
+        self.item_post(cx, item.id);
+    }
+
+    fn check_trait_item(&mut self, _: &LateContext, item: &hir::TraitItem) {
+        self.push_item(item.id);
+    }
+
+    fn check_trait_item_post(&mut self, cx: &LateContext, item: &hir::TraitItem) {
+        self.item_post(cx, item.id);
+    }
+
+    fn check_foreign_item(&mut self, _: &LateContext, item: &hir::ForeignItem) {
+        self.push_item(item.id);
+    }
+
+    fn check_foreign_item_post(&mut self, cx: &LateContext, item: &hir::ForeignItem) {
+        self.item_post(cx, item.id);
     }
 }
 
