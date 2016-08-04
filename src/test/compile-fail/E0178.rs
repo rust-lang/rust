@@ -11,10 +11,18 @@
 trait Foo {}
 
 struct Bar<'a> {
-    w: &'a Foo + Copy, //~ ERROR E0178
-    x: &'a Foo + 'a, //~ ERROR E0178
-    y: &'a mut Foo + 'a, //~ ERROR E0178
-    z: fn() -> Foo + 'a, //~ ERROR E0178
+    w: &'a Foo + Copy,
+    //~^ ERROR E0178
+    //~| NOTE expected a path
+    x: &'a Foo + 'a,
+    //~^ ERROR E0178
+    //~| NOTE expected a path
+    y: &'a mut Foo + 'a,
+    //~^ ERROR E0178
+    //~| NOTE expected a path
+    z: fn() -> Foo + 'a,
+    //~^ ERROR E0178
+    //~| NOTE expected a path
 }
 
 fn main() {
