@@ -22,6 +22,7 @@ fn main() {
         //~^ NOTE this pattern matches any value
         Var2 => (),
         //~^ ERROR unreachable pattern
+        //~^^ NOTE this is an unreachable pattern
     };
     match &s {
         &Var1 => (),
@@ -29,6 +30,7 @@ fn main() {
         //~^ NOTE this pattern matches any value
         &Var2 => (),
         //~^ ERROR unreachable pattern
+        //~^^ NOTE this is an unreachable pattern
     };
     let t = (Var1, Var1);
     match t {
@@ -37,6 +39,7 @@ fn main() {
         //~^ NOTE this pattern matches any value
         anything => ()
         //~^ ERROR unreachable pattern
+        //~^^ NOTE this is an unreachable pattern
     };
     // `_` need not emit a note, it is pretty obvious already.
     let t = (Var1, Var1);
@@ -45,5 +48,6 @@ fn main() {
         _ => (),
         anything => ()
         //~^ ERROR unreachable pattern
+        //~^^ NOTE this is an unreachable pattern
     };
 }

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 type X = u32<'static>; //~ ERROR E0110
+                       //~| NOTE lifetime parameter not allowed on this type
 
 fn main() {
 }

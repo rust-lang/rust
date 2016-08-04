@@ -2384,6 +2384,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     arg_count,
                     if arg_count == 1 {" was"} else {"s were"}),
                 error_code);
+
+            err.span_label(sp, &format!("expected {}{} parameter{}",
+                                        if variadic {"at least "} else {""},
+                                        expected_count,
+                                        if expected_count == 1 {""} else {"s"}));
+
             let input_types = fn_inputs.iter().map(|i| format!("{:?}", i)).collect::<Vec<String>>();
             if input_types.len() > 0 {
                 err.note(&format!("the following parameter type{} expected: {}",
@@ -3147,9 +3153,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
         if variant.is_none() || variant.unwrap().kind == ty::VariantKind::Tuple {
             // Reject tuple structs for now, braced and unit structs are allowed.
-            span_err!(self.tcx.sess, span, E0071,
-                      "`{}` does not name a struct or a struct variant",
-                      pprust::path_to_string(path));
+            struct_span_err!(self.tcx.sess, path.span, E0071,
+                             "`{}` does not name a struct or a struct variant",
+                             pprust::path_to_string(path))
+                .span_label(path.span, &format!("not a struct"))
+                .emit();
+
             return None;
         }
 
