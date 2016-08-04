@@ -474,7 +474,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 
         let old_parent_def = self.enter_item(item.id);
 
-        check_item(self.tcx, item, true,
+        check_item(self.tcx, item, true, self.parent_def(),
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_item(self, item);
 
@@ -500,25 +500,25 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, ex: &hir::Expr) {
-        check_expr(self.tcx, ex,
+        check_expr(self.tcx, ex, self.parent_def(),
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_expr(self, ex);
     }
 
     fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
-        check_path(self.tcx, path, id,
+        check_path(self.tcx, path, id, self.parent_def(),
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_path(self, path)
     }
 
     fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
-        check_path_list_item(self.tcx, item,
+        check_path_list_item(self.tcx, item, self.parent_def(),
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_path_list_item(self, prefix, item)
     }
 
     fn visit_pat(&mut self, pat: &hir::Pat) {
-        check_pat(self.tcx, pat,
+        check_pat(self.tcx, pat, self.parent_def(),
                   &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_pat(self, pat)
     }
@@ -543,6 +543,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             item: &hir::Item,
                             warn_about_defns: bool,
+                            parent_def: DefIndex,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
                                            &Option<Deprecation>)) {
@@ -556,7 +557,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 None => return,
             };
             let id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-            maybe_do_stability_check(tcx, id, item.span, cb);
+            maybe_do_stability_check(tcx, id, parent_def, item.span, cb);
         }
 
         // For implementations of traits, check the stability of each item
@@ -571,7 +572,8 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     item.name() == impl_item.name
                 }).unwrap();
                 if warn_about_defns {
-                    maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);
+                    maybe_do_stability_check(tcx, item.def_id(), item.def_id().index,
+                                             impl_item.span, cb);
                 }
             }
         }
@@ -581,7 +583,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Helper for discovering nodes to check for stability
-pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
+pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr, parent_def: DefIndex,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
                                            &Option<Deprecation>)) {
@@ -620,7 +622,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
                         let did = def.struct_variant()
                             .field_named(field.name.node)
                             .did;
-                        maybe_do_stability_check(tcx, did, field.span, cb);
+                        maybe_do_stability_check(tcx, did, parent_def, field.span, cb);
                     }
 
                     // we're done.
@@ -641,11 +643,11 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         _ => return
     };
 
-    maybe_do_stability_check(tcx, id, span, cb);
+    maybe_do_stability_check(tcx, id, parent_def, span, cb);
 }
 
-pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            path: &hir::Path, id: ast::NodeId,
+pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, path: &hir::Path,
+                            id: ast::NodeId, parent_def: DefIndex,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
                                            &Option<Deprecation>)) {
@@ -654,7 +656,7 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(Def::PrimTy(..)) => {}
         Some(Def::SelfTy(..)) => {}
         Some(def) => {
-            maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
+            maybe_do_stability_check(tcx, def.def_id(), parent_def, path.span, cb);
         }
         None => {}
     }
@@ -662,18 +664,19 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       item: &hir::PathListItem,
+                                      parent_def: DefIndex,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<Deprecation>)) {
     match tcx.expect_def(item.node.id()) {
         Def::PrimTy(..) => {}
         def => {
-            maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
+            maybe_do_stability_check(tcx, def.def_id(), parent_def, item.span, cb);
         }
     }
 }
 
-pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
+pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat, parent_def: DefIndex,
                            cb: &mut FnMut(DefId, Span,
                                           &Option<&Stability>,
                                           &Option<Deprecation>)) {
@@ -688,14 +691,14 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
         // Foo(a, b, c)
         PatKind::TupleStruct(_, ref pat_fields, ddpos) => {
             for (i, field) in pat_fields.iter().enumerate_and_adjust(v.fields.len(), ddpos) {
-                maybe_do_stability_check(tcx, v.fields[i].did, field.span, cb)
+                maybe_do_stability_check(tcx, v.fields[i].did, parent_def, field.span, cb)
             }
         }
         // Foo { a, b, c }
         PatKind::Struct(_, ref pat_fields, _) => {
             for field in pat_fields {
                 let did = v.field_named(field.node.name).did;
-                maybe_do_stability_check(tcx, did, field.span, cb);
+                maybe_do_stability_check(tcx, did, parent_def, field.span, cb);
             }
         }
         // everything else is fine.
@@ -703,8 +706,8 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     }
 }
 
-fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      id: DefId, span: Span,
+fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId,
+                                      parent_def: DefIndex, span: Span,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<Deprecation>)) {
@@ -716,7 +719,7 @@ fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (stability, deprecation) = if is_staged_api(tcx, id) {
         (tcx.lookup_stability(id), None)
     } else {
-        (None, tcx.lookup_deprecation(id))
+        (None, tcx.lookup_maybe_deprecation(id, parent_def))
     };
     debug!("maybe_do_stability_check: \
             inspecting id={:?} span={:?} of stability={:?}", id, span, stability);

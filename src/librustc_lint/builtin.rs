@@ -642,7 +642,7 @@ impl LintPass for Deprecated {
 impl LateLintPass for Deprecated {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         self.push_item(cx, item.id);
-        stability::check_item(cx.tcx, item, false,
+        stability::check_item(cx.tcx, item, false, self.parent_def(),
                               &mut |id, sp, stab, depr|
                                 self.lint(cx, id, sp, &stab, &depr));
     }
@@ -652,25 +652,25 @@ impl LateLintPass for Deprecated {
     }
 
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        stability::check_expr(cx.tcx, e,
+        stability::check_expr(cx.tcx, e, self.parent_def(),
                               &mut |id, sp, stab, depr|
                                 self.lint(cx, id, sp, &stab, &depr));
     }
 
     fn check_path(&mut self, cx: &LateContext, path: &hir::Path, id: ast::NodeId) {
-        stability::check_path(cx.tcx, path, id,
+        stability::check_path(cx.tcx, path, id, self.parent_def(),
                               &mut |id, sp, stab, depr|
                                 self.lint(cx, id, sp, &stab, &depr));
     }
 
     fn check_path_list_item(&mut self, cx: &LateContext, item: &hir::PathListItem) {
-        stability::check_path_list_item(cx.tcx, item,
+        stability::check_path_list_item(cx.tcx, item, self.parent_def(),
                                          &mut |id, sp, stab, depr|
                                            self.lint(cx, id, sp, &stab, &depr));
     }
 
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
-        stability::check_pat(cx.tcx, pat,
+        stability::check_pat(cx.tcx, pat, self.parent_def(),
                              &mut |id, sp, stab, depr|
                                 self.lint(cx, id, sp, &stab, &depr));
     }
