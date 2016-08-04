@@ -386,7 +386,7 @@ struct Checker<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn check(&mut self, id: DefId, span: Span,
-             stab: &Option<&Stability>, _depr: &Option<Deprecation>) {
+             stab: &Option<&Stability>, _depr: &Option<DeprecationEntry>) {
         if !is_staged_api(self.tcx, id) {
             return;
         }
@@ -511,7 +511,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             warn_about_defns: bool,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
-                                           &Option<Deprecation>)) {
+                                           &Option<DeprecationEntry>)) {
     match item.node {
         hir::ItemExternCrate(_) => {
             // compiler-generated `extern crate` items have a dummy span.
@@ -550,7 +550,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
-                                           &Option<Deprecation>)) {
+                                           &Option<DeprecationEntry>)) {
     let span;
     let id = match e.node {
         hir::ExprMethodCall(i, _, _) => {
@@ -614,7 +614,7 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             path: &hir::Path, id: ast::NodeId,
                             cb: &mut FnMut(DefId, Span,
                                            &Option<&Stability>,
-                                           &Option<Deprecation>)) {
+                                           &Option<DeprecationEntry>)) {
     // Paths in import prefixes may have no resolution.
     match tcx.expect_def_or_none(id) {
         Some(Def::PrimTy(..)) => {}
@@ -630,7 +630,7 @@ pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       item: &hir::PathListItem,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
-                                                     &Option<Deprecation>)) {
+                                                     &Option<DeprecationEntry>)) {
     match tcx.expect_def(item.node.id()) {
         Def::PrimTy(..) => {}
         def => {
@@ -642,7 +642,7 @@ pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
                            cb: &mut FnMut(DefId, Span,
                                           &Option<&Stability>,
-                                          &Option<Deprecation>)) {
+                                          &Option<DeprecationEntry>)) {
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
@@ -673,7 +673,7 @@ fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       id: DefId, span: Span,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
-                                                     &Option<Deprecation>)) {
+                                                     &Option<DeprecationEntry>)) {
     if is_internal(tcx, span) {
         debug!("maybe_do_stability_check: \
                 skipping span={:?} since it is internal", span);
@@ -682,7 +682,7 @@ fn maybe_do_stability_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (stability, deprecation) = if is_staged_api(tcx, id) {
         (tcx.lookup_stability(id), None)
     } else {
-        (None, tcx.lookup_deprecation(id))
+        (None, tcx.lookup_deprecation_entry(id))
     };
     debug!("maybe_do_stability_check: \
             inspecting id={:?} span={:?} of stability={:?}", id, span, stability);
