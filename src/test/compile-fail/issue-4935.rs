@@ -13,3 +13,4 @@
 fn foo(a: usize) {}
 fn main() { foo(5, 6) } //~ ERROR this function takes 1 parameter but 2 parameters were supplied
 //~^ NOTE the following parameter type was expected
+//~| NOTE expected 1 parameter

@@ -20,4 +20,5 @@ fn main() {
   foo(1, 2, 3);
   //~^ ERROR this function takes 4 parameters but 3
   //~^^ NOTE the following parameter types were expected
+  //~| NOTE expected 4 parameters
 }
