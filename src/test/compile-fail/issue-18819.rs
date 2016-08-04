@@ -23,6 +23,8 @@ fn print_x(_: &Foo<Item=bool>, extra: &str) {
 }
 
 fn main() {
-    print_x(X);  //~error this function takes 2 parameters but 1 parameter was supplied
-    //~^ NOTE the following parameter types were expected: &Foo<Item=bool>, &str
+    print_x(X);
+    //~^ ERROR this function takes 2 parameters but 1 parameter was supplied
+    //~| NOTE the following parameter types were expected: &Foo<Item=bool>, &str
+    //~| NOTE expected 2 parameters
 }
