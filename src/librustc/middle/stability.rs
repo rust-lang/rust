@@ -19,7 +19,7 @@ use session::Session;
 use lint;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::Def;
-use hir::def_id::{CRATE_DEF_INDEX, DefId};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use syntax::parse::token::InternedString;
@@ -335,6 +335,7 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         active_features: active_features,
         used_features: FnvHashMap(),
         in_skip_block: 0,
+        parent_def: None,
     };
     intravisit::walk_crate(&mut checker, tcx.map.krate());
 
@@ -347,6 +348,13 @@ struct Checker<'a, 'tcx: 'a> {
     used_features: FnvHashMap<InternedString, attr::StabilityLevel>,
     // Within a block where feature gate checking can be skipped.
     in_skip_block: u32,
+    /// Tracks the def id of the current parent item.
+    ///
+    /// As only local items are contained in the stack, track only DefIndex instead
+    /// of complete def ids.
+    ///
+    /// See the Deprecated lint source for more information.
+    parent_def: Option<DefIndex>,
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
@@ -408,6 +416,17 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
     }
+
+    fn enter_item(&mut self, item_id: ast::NodeId) -> Option<DefIndex> {
+        replace(&mut self.parent_def, Some(self.tcx.map.local_def_id(item_id).index))
+    }
+
+    fn parent_def(&mut self) -> DefIndex {
+        match self.parent_def {
+            Some(index) => index,
+            None => bug!("checking non-item outside of root module"),
+        }
+    }
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
@@ -425,9 +444,31 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         // name `__test`
         if item.span == DUMMY_SP && item.name.as_str() == "__test" { return }
 
+        let old_parent_def = self.enter_item(item.id);
+
         check_item(self.tcx, item, true,
                    &mut |id, sp, stab, depr| self.check(id, sp, stab, depr));
         intravisit::walk_item(self, item);
+
+        self.parent_def = old_parent_def;
+    }
+
+    fn visit_impl_item(&mut self, item: &hir::ImplItem) {
+        let old_parent_def = self.enter_item(item.id);
+        intravisit::walk_impl_item(self, item);
+        self.parent_def = old_parent_def;
+    }
+
+    fn visit_trait_item(&mut self, item: &hir::TraitItem) {
+        let old_parent_def = self.enter_item(item.id);
+        intravisit::walk_trait_item(self, item);
+        self.parent_def = old_parent_def;
+    }
+
+    fn visit_foreign_item(&mut self, item: &hir::ForeignItem) {
+        let old_parent_def = self.enter_item(item.id);
+        intravisit::walk_foreign_item(self, item);
+        self.parent_def = old_parent_def;
     }
 
     fn visit_expr(&mut self, ex: &hir::Expr) {
