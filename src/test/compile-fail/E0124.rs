@@ -9,8 +9,10 @@
 // except according to those terms.
 
 struct Foo {
+    field1: i32, //~ NOTE `field1` first declared here
     field1: i32,
-    field1: i32, //~ ERROR E0124
+    //~^ ERROR field `field1` is already declared [E0124]
+    //~| NOTE field already declared
 }
 
 fn main() {
