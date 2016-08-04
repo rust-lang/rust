@@ -30,18 +30,18 @@ const FOO: u8 = [5u8][1];
 fn main() {
     let a = -std::i8::MIN;
     //~^ WARN this expression will panic at run-time
-    //~| attempted to negate with overflow
+    //~| attempt to negate with overflow
     let b = 200u8 + 200u8 + 200u8;
     //~^ WARN this expression will panic at run-time
-    //~| attempted to add with overflow
+    //~| attempt to add with overflow
     //~^^^ WARN this expression will panic at run-time
-    //~| attempted to add with overflow
+    //~| attempt to add with overflow
     let c = 200u8 * 4;
     //~^ WARN this expression will panic at run-time
-    //~| attempted to multiply with overflow
+    //~| attempt to multiply with overflow
     let d = 42u8 - (42u8 + 1);
     //~^ WARN this expression will panic at run-time
-    //~| attempted to subtract with overflow
+    //~| attempt to subtract with overflow
     let _e = [5u8][1];
     //~^ WARN this expression will panic at run-time
     //~| index out of bounds: the len is 1 but the index is 1
