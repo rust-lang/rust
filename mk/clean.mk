@@ -35,7 +35,7 @@ clean-all: clean clean-llvm
 
 clean-llvm: $(CLEAN_LLVM_RULES)
 
-clean: clean-misc $(CLEAN_STAGE_RULES)
+clean: clean-misc clean-grammar $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
@@ -47,6 +47,10 @@ clean-misc:
 	$(Q)rm -Rf dist/*
 	$(Q)rm -Rf doc
 
+clean-grammar:
+	@$(call E, cleaning grammar verification)
+	$(Q)cd src/grammar && rm -Rf verify *.class *.java *.tokens
+	$(Q)rm -Rf grammar
 define CLEAN_GENERIC
 
 clean-generic-$(2)-$(1):
