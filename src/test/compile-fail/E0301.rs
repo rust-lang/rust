@@ -8,10 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn mangle(x: &mut Option<u32>) -> bool { *x = None; false }
+
 fn main() {
-    match Some(()) {
-        None => { },
-        option if option.take().is_none() => {}, //~ ERROR E0301
-        Some(_) => { }
+    let ref mut x = Some(4);
+    match x {
+        &mut None => {}
+        &mut Some(_) if
+            mangle(
+                x //~ ERROR E0301
+                )
+            => {}
+        &mut Some(_) => {}
     }
 }

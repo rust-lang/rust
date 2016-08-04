@@ -9,7 +9,12 @@
 // except according to those terms.
 
 fn main() {
-    let xs : Vec<Option<i32>> = vec!(Some(1), None);
+    for
+        &0
+        //~^ ERROR refutable pattern in `for` loop binding [E0297]
+        //~| `&_` not covered
+        in [1].iter()
+    {
 
-    for Some(x) in xs {} //~ ERROR E0297
+    }
 }

@@ -294,27 +294,6 @@ match x {
 ```
 "##,
 
-E0158: r##"
-`const` and `static` mean different things. A `const` is a compile-time
-constant, an alias for a literal value. This property means you can match it
-directly within a pattern.
-
-The `static` keyword, on the other hand, guarantees a fixed location in memory.
-This does not always mean that the value is constant. For example, a global
-mutex can be declared `static` as well.
-
-If you want to match against a `static`, consider using a guard instead:
-
-```
-static FORTY_TWO: i32 = 42;
-
-match Some(42) {
-    Some(x) if x == FORTY_TWO => {}
-    _ => {}
-}
-```
-"##,
-
 E0162: r##"
 An if-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
@@ -564,6 +543,7 @@ let x = [0i32; 2];
 
 register_diagnostics! {
 //  E0002, // duplicated from E0001
+    E0158, // cannot resolve constant in pattern
     E0298, // cannot compare constants
 //  E0299, // mismatched types between arms
 //  E0471, // constant evaluation error (in pattern)
