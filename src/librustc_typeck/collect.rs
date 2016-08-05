@@ -184,6 +184,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
 
         let mut err = struct_span_err!(tcx.sess, span, E0391,
             "unsupported cyclic reference between types/traits detected");
+        err.span_label(span, &format!("cyclic reference"));
 
         match cycle[0] {
             AstConvRequest::GetItemTypeScheme(def_id) |
