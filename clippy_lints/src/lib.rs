@@ -403,6 +403,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         panic::PANIC_PARAMS,
         precedence::PRECEDENCE,
+        print::PRINT_WITH_NEWLINE,
         ptr_arg::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,
