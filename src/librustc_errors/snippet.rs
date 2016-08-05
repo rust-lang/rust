@@ -16,17 +16,9 @@ use std::rc::Rc;
 use {Level};
 
 #[derive(Clone)]
-pub enum FormatMode {
-    NewErrorFormat,
-    OriginalErrorFormat,
-    EnvironmentSelected
-}
-
-#[derive(Clone)]
 pub struct SnippetData {
     codemap: Rc<CodeMapper>,
-    files: Vec<FileInfo>,
-    format_mode: FormatMode,
+    files: Vec<FileInfo>
 }
 
 #[derive(Clone)]
@@ -41,10 +33,6 @@ pub struct FileInfo {
     primary_span: Option<Span>,
 
     lines: Vec<Line>,
-
-    /// The type of error format to render.  We keep it here so that
-    /// it's easy to configure for both tests and regular usage
-    format_mode: FormatMode,
 }
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]

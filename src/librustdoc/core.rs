@@ -128,7 +128,6 @@ pub fn run_core(search_paths: SearchPaths,
 
     let codemap = Rc::new(codemap::CodeMap::new());
     let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
-                                                               None,
                                                                true,
                                                                false,
                                                                Some(codemap.clone()));
