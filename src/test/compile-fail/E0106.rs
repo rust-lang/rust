@@ -9,13 +9,19 @@
 // except according to those terms.
 
 struct Foo {
-    x: &bool, //~ ERROR E0106
+    x: &bool,
+    //~^ ERROR E0106
+    //~| NOTE expected lifetime parameter
 }
 enum Bar {
     A(u8),
-    B(&bool), //~ ERROR E0106
+    B(&bool),
+   //~^ ERROR E0106
+   //~| NOTE expected lifetime parameter
 }
-type MyStr = &str; //~ ERROR E0106
+type MyStr = &str;
+        //~^ ERROR E0106
+        //~| NOTE expected lifetime parameter
 
 fn main() {
 }
