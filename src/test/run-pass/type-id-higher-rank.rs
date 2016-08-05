@@ -16,6 +16,9 @@
 
 use std::any::{Any, TypeId};
 
+struct Struct<'a>(&'a ());
+trait Trait<'a> {}
+
 fn main() {
     // Bare fns
     {
@@ -34,6 +37,14 @@ fn main() {
         let e = TypeId::of::<for<'a> fn(fn(&'a isize) -> &'a isize)>();
         let f = TypeId::of::<fn(for<'a> fn(&'a isize) -> &'a isize)>();
         assert!(e != f);
+
+        // Make sure lifetime parameters of items are not ignored.
+        let g = TypeId::of::<for<'a> fn(&'a Trait<'a>) -> Struct<'a>>();
+        let h = TypeId::of::<for<'a> fn(&'a Trait<'a>) -> Struct<'static>>();
+        let i = TypeId::of::<for<'a, 'b> fn(&'a Trait<'b>) -> Struct<'b>>();
+        assert!(g != h);
+        assert!(g != i);
+        assert!(h != i);
     }
     // Boxed unboxed closures
     {
