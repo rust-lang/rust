@@ -146,6 +146,7 @@
 
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use convert::From;
 use default::Default;
 use marker::{Copy, Send, Sync, Sized, Unsize};
 use ops::{Deref, DerefMut, Drop, FnOnce, CoerceUnsized};
@@ -323,6 +324,13 @@ impl<T:Ord + Copy> Ord for Cell<T> {
     #[inline]
     fn cmp(&self, other: &Cell<T>) -> Ordering {
         self.get().cmp(&other.get())
+    }
+}
+
+#[stable(feature = "cell_from", since = "1.12.0")]
+impl<T: Copy> From<T> for Cell<T> {
+    fn from(t: T) -> Cell<T> {
+        Cell::new(t)
     }
 }
 
@@ -632,6 +640,13 @@ impl<T: ?Sized + Ord> Ord for RefCell<T> {
     #[inline]
     fn cmp(&self, other: &RefCell<T>) -> Ordering {
         self.borrow().cmp(&*other.borrow())
+    }
+}
+
+#[stable(feature = "cell_from", since = "1.12.0")]
+impl<T> From<T> for RefCell<T> {
+    fn from(t: T) -> RefCell<T> {
+        RefCell::new(t)
     }
 }
 
@@ -955,5 +970,12 @@ impl<T: ?Sized> UnsafeCell<T> {
 impl<T: Default> Default for UnsafeCell<T> {
     fn default() -> UnsafeCell<T> {
         UnsafeCell::new(Default::default())
+    }
+}
+
+#[stable(feature = "cell_from", since = "1.12.0")]
+impl<T> From<T> for UnsafeCell<T> {
+    fn from(t: T) -> UnsafeCell<T> {
+        UnsafeCell::new(t)
     }
 }
