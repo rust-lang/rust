@@ -11,5 +11,5 @@
 fn main() {
     // Unconstrained type:
     format!("{:?}", None);
-    //~^ ERROR type annotations or generic parameter binding required
+    //~^ ERROR unable to infer enough type information about `_` [E0282]
 }

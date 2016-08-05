@@ -10,7 +10,9 @@
 
 fn foo(b: bool) -> Result<bool,String> {
     Err("bar".to_string());
-    //~^ ERROR type annotations or generic parameter binding required
+    //~^ ERROR unable to infer enough type information about `_` [E0282]
+    //~| NOTE cannot infer type for `_`
+    //~| NOTE type annotations or generic parameter binding
 }
 
 fn main() {
