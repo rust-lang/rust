@@ -55,7 +55,9 @@ pub type Result<T> = result::Result<T, Error>;
 ///
 /// Errors mostly originate from the underlying OS, but custom instances of
 /// `Error` can be created with crafted error messages and a particular value of
-/// `ErrorKind`.
+/// [`ErrorKind`].
+///
+/// [`ErrorKind`]: enum.ErrorKind.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
@@ -77,6 +79,10 @@ struct Custom {
 ///
 /// This list is intended to grow over time and it is not recommended to
 /// exhaustively match against it.
+///
+/// It is used with the [`io::Error`] type.
+///
+/// [`io::Error`]: struct.Error.html
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
@@ -208,6 +214,14 @@ impl Error {
     /// This function reads the value of `errno` for the target platform (e.g.
     /// `GetLastError` on Windows) and will return a corresponding instance of
     /// `Error` for the error code.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::Error;
+    ///
+    /// println!("last OS error: {:?}", Error::last_os_error());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn last_os_error() -> Error {
         Error::from_raw_os_error(sys::os::errno() as i32)
@@ -248,6 +262,27 @@ impl Error {
     /// If this `Error` was constructed via `last_os_error` or
     /// `from_raw_os_error`, then this function will return `Some`, otherwise
     /// it will return `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{Error, ErrorKind};
+    ///
+    /// fn print_os_error(err: &Error) {
+    ///     if let Some(raw_os_err) = err.raw_os_error() {
+    ///         println!("raw OS error: {:?}", raw_os_err);
+    ///     } else {
+    ///         println!("Not an OS error");
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     // Will print "raw OS error: ...".
+    ///     print_os_error(&Error::last_os_error());
+    ///     // Will print "Not an OS error".
+    ///     print_os_error(&Error::new(ErrorKind::Other, "oh no!"));
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn raw_os_error(&self) -> Option<i32> {
         match self.repr {
@@ -260,6 +295,27 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{Error, ErrorKind};
+    ///
+    /// fn print_error(err: &Error) {
+    ///     if let Some(inner_err) = err.get_ref() {
+    ///         println!("Inner error: {:?}", inner_err);
+    ///     } else {
+    ///         println!("No inner error");
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     // Will print "No inner error".
+    ///     print_error(&Error::last_os_error());
+    ///     // Will print "Inner error: ...".
+    ///     print_error(&Error::new(ErrorKind::Other, "oh no!"));
+    /// }
+    /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     pub fn get_ref(&self) -> Option<&(error::Error+Send+Sync+'static)> {
         match self.repr {
@@ -273,6 +329,63 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{Error, ErrorKind};
+    /// use std::{error, fmt};
+    /// use std::fmt::Display;
+    ///
+    /// #[derive(Debug)]
+    /// struct MyError {
+    ///     v: String,
+    /// }
+    ///
+    /// impl MyError {
+    ///     fn new() -> MyError {
+    ///         MyError {
+    ///             v: "oh no!".to_owned()
+    ///         }
+    ///     }
+    ///
+    ///     fn change_message(&mut self, new_message: &str) {
+    ///         self.v = new_message.to_owned();
+    ///     }
+    /// }
+    ///
+    /// impl error::Error for MyError {
+    ///     fn description(&self) -> &str { &self.v }
+    /// }
+    ///
+    /// impl Display for MyError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "MyError: {}", &self.v)
+    ///     }
+    /// }
+    ///
+    /// fn change_error(mut err: Error) -> Error {
+    ///     if let Some(inner_err) = err.get_mut() {
+    ///         inner_err.downcast_mut::<MyError>().unwrap().change_message("I've been changed!");
+    ///     }
+    ///     err
+    /// }
+    ///
+    /// fn print_error(err: &Error) {
+    ///     if let Some(inner_err) = err.get_ref() {
+    ///         println!("Inner error: {}", inner_err);
+    ///     } else {
+    ///         println!("No inner error");
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     // Will print "No inner error".
+    ///     print_error(&change_error(Error::last_os_error()));
+    ///     // Will print "Inner error: ...".
+    ///     print_error(&change_error(Error::new(ErrorKind::Other, MyError::new())));
+    /// }
+    /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     pub fn get_mut(&mut self) -> Option<&mut (error::Error+Send+Sync+'static)> {
         match self.repr {
@@ -285,6 +398,27 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{Error, ErrorKind};
+    ///
+    /// fn print_error(err: Error) {
+    ///     if let Some(inner_err) = err.into_inner() {
+    ///         println!("Inner error: {}", inner_err);
+    ///     } else {
+    ///         println!("No inner error");
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     // Will print "No inner error".
+    ///     print_error(Error::last_os_error());
+    ///     // Will print "Inner error: ...".
+    ///     print_error(Error::new(ErrorKind::Other, "oh no!"));
+    /// }
+    /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     pub fn into_inner(self) -> Option<Box<error::Error+Send+Sync>> {
         match self.repr {
@@ -294,6 +428,23 @@ impl Error {
     }
 
     /// Returns the corresponding `ErrorKind` for this error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{Error, ErrorKind};
+    ///
+    /// fn print_error(err: Error) {
+    ///     println!("{:?}", err.kind());
+    /// }
+    ///
+    /// fn main() {
+    ///     // Will print "No inner error".
+    ///     print_error(Error::last_os_error());
+    ///     // Will print "Inner error: ...".
+    ///     print_error(Error::new(ErrorKind::AddrInUse, "oh no!"));
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> ErrorKind {
         match self.repr {

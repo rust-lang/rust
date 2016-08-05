@@ -2384,6 +2384,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     arg_count,
                     if arg_count == 1 {" was"} else {"s were"}),
                 error_code);
+
+            err.span_label(sp, &format!("expected {}{} parameter{}",
+                                        if variadic {"at least "} else {""},
+                                        expected_count,
+                                        if expected_count == 1 {""} else {"s"}));
+
             let input_types = fn_inputs.iter().map(|i| format!("{:?}", i)).collect::<Vec<String>>();
             if input_types.len() > 0 {
                 err.note(&format!("the following parameter type{} expected: {}",
@@ -3063,6 +3069,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             remaining_fields.insert(field.name, field);
         }
 
+        let mut seen_fields = FnvHashMap();
+
         let mut error_happened = false;
 
         // Typecheck each field.
@@ -3071,13 +3079,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let Some(v_field) = remaining_fields.remove(&field.name.node) {
                 expected_field_type = self.field_ty(field.span, v_field, substs);
+
+                seen_fields.insert(field.name.node, field.span);
             } else {
                 error_happened = true;
                 expected_field_type = tcx.types.err;
                 if let Some(_) = variant.find_field_named(field.name.node) {
-                    span_err!(self.tcx.sess, field.name.span, E0062,
-                        "field `{}` specified more than once",
-                        field.name.node);
+                    let mut err = struct_span_err!(self.tcx.sess,
+                                                field.name.span,
+                                                E0062,
+                                                "field `{}` specified more than once",
+                                                field.name.node);
+
+                    err.span_label(field.name.span, &format!("used more than once"));
+
+                    if let Some(prev_span) = seen_fields.get(&field.name.node) {
+                        err.span_label(*prev_span, &format!("first use of `{}`", field.name.node));
+                    }
+
+                    err.emit();
                 } else {
                     self.report_unknown_field(adt_ty, variant, field, ast_fields);
                 }
@@ -3147,9 +3167,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
         if variant.is_none() || variant.unwrap().kind == ty::VariantKind::Tuple {
             // Reject tuple structs for now, braced and unit structs are allowed.
-            span_err!(self.tcx.sess, span, E0071,
-                      "`{}` does not name a struct or a struct variant",
-                      pprust::path_to_string(path));
+            struct_span_err!(self.tcx.sess, path.span, E0071,
+                             "`{}` does not name a struct or a struct variant",
+                             pprust::path_to_string(path))
+                .span_label(path.span, &format!("not a struct"))
+                .emit();
+
             return None;
         }
 
