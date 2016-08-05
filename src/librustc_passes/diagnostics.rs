@@ -121,11 +121,11 @@ All statics and constants need to resolve to a value in an acyclic manner.
 
 For example, neither of the following can be sensibly compiled:
 
-```compile_fail
+```compile_fail,E0265
 const X: u32 = X;
 ```
 
-```compile_fail
+```compile_fail,E0265
 const X: u32 = Y;
 const Y: u32 = X;
 ```
@@ -135,7 +135,7 @@ E0267: r##"
 This error indicates the use of a loop keyword (`break` or `continue`) inside a
 closure but outside of any loop. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0267
 let w = || { break; }; // error: `break` inside of a closure
 ```
 
@@ -159,7 +159,7 @@ This error indicates the use of a loop keyword (`break` or `continue`) outside
 of a loop. Without a loop to break out of or continue in, no sensible action can
 be taken. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0268
 fn some_func() {
     break; // error: `break` outside of loop
 }

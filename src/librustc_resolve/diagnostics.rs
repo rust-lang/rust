@@ -146,6 +146,7 @@ mod foo {
 }
 
 use foo::MyTrait::do_something;
+// error: `do_something` is not directly importable
 
 fn main() {}
 ```
