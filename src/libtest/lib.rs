@@ -42,6 +42,7 @@
 #![feature(staged_api)]
 #![feature(question_mark)]
 #![feature(panic_unwind)]
+#![feature(mpsc_recv_timeout)]
 
 extern crate getopts;
 extern crate term;
@@ -72,6 +73,8 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Instant, Duration};
+
+const TEST_WARN_TIMEOUT_S: u64 = 60;
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -592,6 +595,10 @@ impl<T: Write> ConsoleTestState<T> {
         }
     }
 
+    pub fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
+        self.write_plain(&format!("test {} has been running for over {} seconds\n", desc.name, TEST_WARN_TIMEOUT_S))
+    }
+
     pub fn write_log(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
         match self.log_out {
             None => Ok(()),
@@ -709,6 +716,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
+            TeTimeout(ref test) => st.write_timeout(test),
             TeResult(test, result, stdout) => {
                 st.write_log(&test, &result)?;
                 st.write_result(&result)?;
@@ -830,6 +838,7 @@ enum TestEvent {
     TeFiltered(Vec<TestDesc>),
     TeWait(TestDesc, NamePadding),
     TeResult(TestDesc, TestResult, Vec<u8>),
+    TeTimeout(TestDesc),
 }
 
 pub type MonitorMsg = (TestDesc, TestResult, Vec<u8>);
@@ -838,6 +847,9 @@ pub type MonitorMsg = (TestDesc, TestResult, Vec<u8>);
 fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> io::Result<()>
     where F: FnMut(TestEvent) -> io::Result<()>
 {
+    use std::collections::HashMap;
+    use std::sync::mpsc::RecvTimeoutError;
+
     let mut filtered_tests = filter_tests(opts, tests);
     if !opts.bench_benchmarks {
         filtered_tests = convert_benchmarks_to_tests(filtered_tests);
@@ -867,6 +879,8 @@ fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> 
 
     let (tx, rx) = channel::<MonitorMsg>();
 
+    let mut running_tests: HashMap<TestDesc, Duration> = HashMap::new();
+
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
             let test = remaining.pop().unwrap();
@@ -876,11 +890,43 @@ fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> 
                 // that hang forever.
                 callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
             }
+            running_tests.insert(test.desc.clone(), Duration::from_secs(TEST_WARN_TIMEOUT_S));
             run_test(opts, !opts.run_tests, test, tx.clone());
             pending += 1;
         }
 
-        let (desc, result, stdout) = rx.recv().unwrap();
+        let mut res;
+        if let Some(min_timeout) = running_tests.values().min().cloned() {
+            loop {
+                let before = Instant::now();
+                res = rx.recv_timeout(min_timeout);
+                let elapsed = Instant::now() - before;
+
+                let mut to_remove = Vec::new();
+                for (desc, time_left) in &mut running_tests {
+                    if *time_left >= elapsed {
+                        *time_left -= elapsed;
+                    } else {
+                        to_remove.push(desc.clone());
+                        callback(TeTimeout(desc.clone()))?;
+                    }
+                }
+
+                for rem in to_remove {
+                    running_tests.remove(&rem);
+                }
+
+                if res != Err(RecvTimeoutError::Timeout) {
+                    break;
+                }
+            }
+        } else {
+            res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
+        }
+
+        let (desc, result, stdout) = res.unwrap();
+        running_tests.remove(&desc);
+
         if concurrency != 1 {
             callback(TeWait(desc.clone(), PadNone))?;
         }
