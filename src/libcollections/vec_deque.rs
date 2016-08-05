@@ -24,6 +24,7 @@ use core::iter::{repeat, FromIterator};
 use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ptr;
+use core::ptr::Shared;
 use core::slice;
 
 use core::hash::{Hash, Hasher};
@@ -903,7 +904,7 @@ impl<T> VecDeque<T> {
         self.head = drain_tail;
 
         Drain {
-            deque: self as *mut _,
+            deque: unsafe { Shared::new(self as *mut _) },
             after_tail: drain_head,
             after_head: head,
             iter: Iter {
@@ -1985,7 +1986,7 @@ pub struct Drain<'a, T: 'a> {
     after_tail: usize,
     after_head: usize,
     iter: Iter<'a, T>,
-    deque: *mut VecDeque<T>,
+    deque: Shared<VecDeque<T>>,
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -1998,7 +1999,7 @@ impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         for _ in self.by_ref() {}
 
-        let source_deque = unsafe { &mut *self.deque };
+        let source_deque = unsafe { &mut **self.deque };
 
         // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
         //

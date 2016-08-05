@@ -17,7 +17,7 @@ use marker;
 use mem::{align_of, size_of};
 use mem;
 use ops::{Deref, DerefMut};
-use ptr::{self, Unique};
+use ptr::{self, Unique, Shared};
 
 use self::BucketState::*;
 
@@ -754,7 +754,8 @@ impl<K, V> RawTable<K, V> {
                 hashes_end: hashes_end,
                 marker: marker::PhantomData,
             },
-            table: self,
+            table: unsafe { Shared::new(self) },
+            marker: marker::PhantomData,
         }
     }
 
@@ -897,8 +898,9 @@ unsafe impl<K: Send, V: Send> Send for IntoIter<K, V> {}
 
 /// Iterator over the entries in a table, clearing the table.
 pub struct Drain<'a, K: 'a, V: 'a> {
-    table: &'a mut RawTable<K, V>,
+    table: Shared<RawTable<K, V>>,
     iter: RawBuckets<'static, K, V>,
+    marker: marker::PhantomData<&'a RawTable<K, V>>,
 }
 
 unsafe impl<'a, K: Sync, V: Sync> Sync for Drain<'a, K, V> {}
@@ -973,8 +975,8 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
     #[inline]
     fn next(&mut self) -> Option<(SafeHash, K, V)> {
         self.iter.next().map(|bucket| {
-            self.table.size -= 1;
             unsafe {
+                (**self.table).size -= 1;
                 (SafeHash { hash: ptr::replace(bucket.hash, EMPTY_BUCKET) },
                  ptr::read(bucket.key),
                  ptr::read(bucket.val))
@@ -983,13 +985,15 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.table.size();
+        let size = unsafe { (**self.table).size() };
         (size, Some(size))
     }
 }
 impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
     fn len(&self) -> usize {
-        self.table.size()
+        unsafe {
+            (**self.table).size()
+        }
     }
 }
 
