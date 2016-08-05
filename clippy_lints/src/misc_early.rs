@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use utils::{span_lint, span_help_and_lint, snippet, span_lint_and_then};
+use utils::{span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
 /// **What it does:** This lint checks for structure field patterns bound to wildcards.
 ///
 /// **Why is this bad?** Using `..` instead is shorter and leaves the focus on the fields that are actually bound.
@@ -64,13 +64,29 @@ declare_lint! {
     "`--x` is a double negation of `x` and not a pre-decrement as in C or C++"
 }
 
+/// **What it does:** Warns on hexadecimal literals with mixed-case letter digits.
+///
+/// **Why is this bad?** It looks confusing.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let y = 0x1a9BAcD;
+/// ```
+declare_lint! {
+    pub MIXED_CASE_HEX_LITERALS, Warn,
+    "letter digits in hex literals should be either completely upper- or lowercased"
+}
+
 
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
 
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL, DOUBLE_NEG)
+        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL,
+                    DOUBLE_NEG, MIXED_CASE_HEX_LITERALS)
     }
 }
 
@@ -174,7 +190,28 @@ impl EarlyLintPass for MiscEarly {
                               DOUBLE_NEG,
                               expr.span,
                               "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op");
-    }
+                }
+            }
+            ExprKind::Lit(ref lit) => {
+                if_let_chain! {[
+                    let LitKind::Int(..) = lit.node,
+                    let Some(src) = snippet_opt(cx, lit.span),
+                    src.starts_with("0x")
+                ], {
+                    let mut seen = (false, false);
+                    for ch in src.chars() {
+                        match ch {
+                            'a' ... 'f' => seen.0 = true,
+                            'A' ... 'F' => seen.1 = true,
+                            'i' | 'u'   => break,   // start of suffix already
+                            _ => ()
+                        }
+                    }
+                    if seen.0 && seen.1 {
+                        span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
+                                  "inconsistent casing in hexadecimal literal");
+                    }
+                }}
             }
             _ => ()
         }
