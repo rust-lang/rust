@@ -158,7 +158,7 @@ enum ResolutionError<'a> {
     /// error E0435: attempt to use a non-constant value in a constant
     AttemptToUseNonConstantValueInConstant,
     /// error E0530: X bindings cannot shadow Ys
-    BindingShadowsSomethingUnacceptable(&'a str, &'a str, Name),
+    BindingShadowsSomethingUnacceptable(&'a str, Name, &'a NameBinding<'a>),
     /// error E0531: unresolved pattern path kind `name`
     PatPathUnresolved(&'a str, &'a Path),
     /// error E0532: expected pattern path kind, found another pattern path kind
@@ -428,17 +428,16 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              E0435,
                              "attempt to use a non-constant value in a constant")
         }
-        ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, shadows_what, name) => {
+        ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
+            let shadows_what = PathResolution::new(binding.def().unwrap()).kind_name();
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0530,
                                            "{}s cannot shadow {}s", what_binding, shadows_what);
             err.span_label(span, &format!("cannot be named the same as a {}", shadows_what));
-            if let Success(binding) = resolver.current_module.resolve_name(name, ValueNS, true) {
-                let participle = if binding.is_import() { "imported" } else { "defined" };
-                err.span_label(binding.span, &format!("a {} `{}` is {} here",
-                                                      shadows_what, name, participle));
-            }
+            let participle = if binding.is_import() { "imported" } else { "defined" };
+            let msg = &format!("a {} `{}` is {} here", shadows_what, name, participle);
+            err.span_label(binding.span, msg);
             err
         }
         ResolutionError::PatPathUnresolved(expected_what, path) => {
@@ -718,11 +717,15 @@ impl<'a> LexicalScopeBinding<'a> {
         }
     }
 
-    fn module(self) -> Option<Module<'a>> {
+    fn item(self) -> Option<&'a NameBinding<'a>> {
         match self {
-            LexicalScopeBinding::Item(binding) => binding.module(),
+            LexicalScopeBinding::Item(binding) => Some(binding),
             _ => None,
         }
+    }
+
+    fn module(self) -> Option<Module<'a>> {
+        self.item().and_then(NameBinding::module)
     }
 }
 
@@ -822,6 +825,16 @@ pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
     span: Span,
     vis: ty::Visibility,
+}
+
+pub trait ToNameBinding<'a> {
+    fn to_name_binding(self) -> NameBinding<'a>;
+}
+
+impl<'a> ToNameBinding<'a> for NameBinding<'a> {
+    fn to_name_binding(self) -> NameBinding<'a> {
+        self
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1203,34 +1216,27 @@ impl<'a> Resolver<'a> {
         match ns { ValueNS => &mut self.value_ribs, TypeNS => &mut self.type_ribs }
     }
 
-    #[inline]
-    fn record_use(&mut self, name: Name, binding: &'a NameBinding<'a>) {
+    fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
         // track extern crates for unused_extern_crate lint
         if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleS::def_id) {
             self.used_crates.insert(krate);
         }
 
-        let directive = match binding.kind {
-            NameBindingKind::Import { directive, .. } => directive,
-            _ => return,
-        };
-
-        if !self.make_glob_map {
-            return;
+        if let NameBindingKind::Import { directive, .. } = binding.kind {
+            self.used_imports.insert((directive.id, ns));
+            self.add_to_glob_map(directive.id, name);
         }
-        if self.glob_map.contains_key(&directive.id) {
-            self.glob_map.get_mut(&directive.id).unwrap().insert(name);
-            return;
-        }
-
-        let mut new_set = FnvHashSet();
-        new_set.insert(name);
-        self.glob_map.insert(directive.id, new_set);
     }
 
-    /// Resolves the given module path from the given root `module_`.
+    fn add_to_glob_map(&mut self, id: NodeId, name: Name) {
+        if self.make_glob_map {
+            self.glob_map.entry(id).or_insert_with(FnvHashSet).insert(name);
+        }
+    }
+
+    /// Resolves the given module path from the given root `search_module`.
     fn resolve_module_path_from_root(&mut self,
-                                     module_: Module<'a>,
+                                     mut search_module: Module<'a>,
                                      module_path: &[Name],
                                      index: usize,
                                      span: Span)
@@ -1247,7 +1253,6 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let mut search_module = module_;
         let mut index = index;
         let module_path_len = module_path.len();
 
@@ -1444,10 +1449,9 @@ impl<'a> Resolver<'a> {
     }
 
     /// Returns the nearest normal module parent of the given module.
-    fn get_nearest_normal_module_parent(&self, module_: Module<'a>) -> Option<Module<'a>> {
-        let mut module_ = module_;
+    fn get_nearest_normal_module_parent(&self, mut module: Module<'a>) -> Option<Module<'a>> {
         loop {
-            match module_.parent_link {
+            match module.parent_link {
                 NoParentLink => return None,
                 ModuleParentLink(new_module, _) |
                 BlockParentLink(new_module, _) => {
@@ -1455,7 +1459,7 @@ impl<'a> Resolver<'a> {
                     if new_module.is_normal() {
                         return Some(new_module);
                     }
-                    module_ = new_module;
+                    module = new_module;
                 }
             }
         }
@@ -1463,12 +1467,12 @@ impl<'a> Resolver<'a> {
 
     /// Returns the nearest normal module parent of the given module, or the
     /// module itself if it is a normal module.
-    fn get_nearest_normal_module_parent_or_self(&self, module_: Module<'a>) -> Module<'a> {
-        if module_.is_normal() {
-            return module_;
+    fn get_nearest_normal_module_parent_or_self(&self, module: Module<'a>) -> Module<'a> {
+        if module.is_normal() {
+            return module;
         }
-        match self.get_nearest_normal_module_parent(module_) {
-            None => module_,
+        match self.get_nearest_normal_module_parent(module) {
+            None => module,
             Some(new_module) => new_module,
         }
     }
@@ -1485,8 +1489,8 @@ impl<'a> Resolver<'a> {
             "super" => 0,
             _ => return Success(NoPrefixFound),
         };
-        let module_ = self.current_module;
-        let mut containing_module = self.get_nearest_normal_module_parent_or_self(module_);
+        let mut containing_module =
+            self.get_nearest_normal_module_parent_or_self(self.current_module);
 
         // Now loop through all the `super`s we find.
         while i < module_path.len() && "super" == module_path[i].as_str() {
@@ -1525,10 +1529,7 @@ impl<'a> Resolver<'a> {
         self.populate_module_if_necessary(module);
         module.resolve_name(name, namespace, use_lexical_scope).and_then(|binding| {
             if record_used {
-                if let NameBindingKind::Import { directive, .. } = binding.kind {
-                    self.used_imports.insert((directive.id, namespace));
-                }
-                self.record_use(name, binding);
+                self.record_use(name, namespace, binding);
             }
             Success(binding)
         })
@@ -2308,16 +2309,17 @@ impl<'a> Resolver<'a> {
                 PatKind::Ident(bmode, ref ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
-                    let resolution = self.resolve_identifier(ident.node, ValueNS, true)
-                                         .map(|local_def| PathResolution::new(local_def.def))
-                                         .and_then(|resolution| {
+                    let binding = self.resolve_ident_in_lexical_scope(ident.node, ValueNS, false)
+                                      .and_then(LexicalScopeBinding::item);
+                    let resolution = binding.and_then(NameBinding::def).and_then(|def| {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
-                        match resolution.base_def {
+                        match def {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
-                                Some(resolution)
+                                self.record_use(ident.node.name, ValueNS, binding.unwrap());
+                                Some(PathResolution::new(def))
                             }
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
@@ -2326,7 +2328,7 @@ impl<'a> Resolver<'a> {
                                     self,
                                     ident.span,
                                     ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), resolution.kind_name(), ident.node.name)
+                                        pat_src.descr(), ident.node.name, binding.unwrap())
                                 );
                                 None
                             }
@@ -3136,10 +3138,10 @@ impl<'a> Resolver<'a> {
                         if let NameBindingKind::Import { directive, .. } = binding.kind {
                             let id = directive.id;
                             this.maybe_unused_trait_imports.insert(id);
+                            this.add_to_glob_map(id, trait_name);
                             import_id = Some(id);
                         }
                         add_trait_info(&mut found_traits, trait_def_id, import_id, name);
-                        this.record_use(trait_name, binding);
                     }
                 }
             };

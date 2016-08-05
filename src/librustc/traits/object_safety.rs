@@ -17,7 +17,6 @@
 //!   - not reference the erased type `Self` except for in this receiver;
 //!   - not have generic type parameters
 
-use super::supertraits;
 use super::elaborate_predicates;
 
 use hir::def_id::DefId;

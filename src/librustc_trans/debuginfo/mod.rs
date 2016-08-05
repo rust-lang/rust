@@ -18,7 +18,7 @@ use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
 use self::namespace::mangled_name_of_item;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, diverging_type_metadata};
-use self::metadata::{file_metadata, scope_metadata, TypeMap};
+use self::metadata::{file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
