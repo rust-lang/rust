@@ -12,16 +12,18 @@ const N: isize = 1;
 
 enum Foo {
     A = 1,
+    //~^ NOTE first use
+    //~| NOTE first use
+    //~| NOTE first use
     B = 1, //~ ERROR discriminant value
     //~^ NOTE enum already
-    //~^^^ NOTE first use
     C = 0,
     D, //~ ERROR discriminant value
     //~^ NOTE enum already
-    //~^^^^^^^ NOTE first use
+
     E = N, //~ ERROR discriminant value
     //~^ NOTE enum already
-    //~^^^^^^^^^^ NOTE first use
+
 }
 
 fn main() {}
