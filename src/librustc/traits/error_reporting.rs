@@ -871,11 +871,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn need_type_info(&self, span: Span, ty: Ty<'tcx>) {
         let mut err = struct_span_err!(self.tcx.sess, span, E0282,
-                                       "unable to infer enough type information about `{}`; \
-                                       type annotations or generic parameter binding required",
+                                       "unable to infer enough type information about `{}`",
                                        ty);
         err.note("type annotations or generic parameter binding required");
-        err.span_label(span, &format!("cannot infer type about `{}`", ty));
+        err.span_label(span, &format!("cannot infer type for `{}`", ty));
         err.emit()
     }
 
