@@ -277,6 +277,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::RESULT_UNWRAP_USED,
         methods::WRONG_PUB_SELF_CONVENTION,
         misc::USED_UNDERSCORE_BINDING,
+        misc_early::UNSEPARATED_LITERAL_SUFFIX,
         mut_mut::MUT_MUT,
         mutex_atomic::MUTEX_INTEGER,
         non_expressive_names::SIMILAR_NAMES,

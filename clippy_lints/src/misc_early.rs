@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use std::collections::HashMap;
+use std::char;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
@@ -79,6 +80,21 @@ declare_lint! {
     "letter digits in hex literals should be either completely upper- or lowercased"
 }
 
+/// **What it does:** Warns if literal suffixes are not separated by an underscore.
+///
+/// **Why is this bad?** It is much less readable.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let y = 123832i32;
+/// ```
+declare_lint! {
+    pub UNSEPARATED_LITERAL_SUFFIX, Allow,
+    "literal suffixes should be separated with an underscore"
+}
+
 
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
@@ -86,7 +102,7 @@ pub struct MiscEarly;
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL,
-                    DOUBLE_NEG, MIXED_CASE_HEX_LITERALS)
+                    DOUBLE_NEG, MIXED_CASE_HEX_LITERALS, UNSEPARATED_LITERAL_SUFFIX)
     }
 }
 
@@ -196,20 +212,52 @@ impl EarlyLintPass for MiscEarly {
                 if_let_chain! {[
                     let LitKind::Int(..) = lit.node,
                     let Some(src) = snippet_opt(cx, lit.span),
-                    src.starts_with("0x")
+                    let Some(firstch) = src.chars().next(),
+                    char::to_digit(firstch, 10).is_some()
                 ], {
-                    let mut seen = (false, false);
+                    let mut prev = '\0';
                     for ch in src.chars() {
-                        match ch {
-                            'a' ... 'f' => seen.0 = true,
-                            'A' ... 'F' => seen.1 = true,
-                            'i' | 'u'   => break,   // start of suffix already
-                            _ => ()
+                        if ch == 'i' || ch == 'u' {
+                            if prev != '_' {
+                                span_lint(cx, UNSEPARATED_LITERAL_SUFFIX, lit.span,
+                                          "integer type suffix should be separated by an underscore");
+                            }
+                            break;
+                        }
+                        prev = ch;
+                    }
+                    if src.starts_with("0x") {
+                        let mut seen = (false, false);
+                        for ch in src.chars() {
+                            match ch {
+                                'a' ... 'f' => seen.0 = true,
+                                'A' ... 'F' => seen.1 = true,
+                                'i' | 'u'   => break,   // start of suffix already
+                                _ => ()
+                            }
+                        }
+                        if seen.0 && seen.1 {
+                            span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
+                                      "inconsistent casing in hexadecimal literal");
                         }
                     }
-                    if seen.0 && seen.1 {
-                        span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
-                                  "inconsistent casing in hexadecimal literal");
+                }}
+                if_let_chain! {[
+                    let LitKind::Float(..) = lit.node,
+                    let Some(src) = snippet_opt(cx, lit.span),
+                    let Some(firstch) = src.chars().next(),
+                    char::to_digit(firstch, 10).is_some()
+                ], {
+                    let mut prev = '\0';
+                    for ch in src.chars() {
+                        if ch == 'f' {
+                            if prev != '_' {
+                                span_lint(cx, UNSEPARATED_LITERAL_SUFFIX, lit.span,
+                                          "float type suffix should be separated by an underscore");
+                            }
+                            break;
+                        }
+                        prev = ch;
                     }
                 }}
             }

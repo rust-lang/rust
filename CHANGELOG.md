@@ -281,6 +281,7 @@ All notable changes to this project will be documented in this file.
 [`unnecessary_operation`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation
 [`unneeded_field_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern
 [`unsafe_removed_from_name`]: https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name
+[`unseparated_literal_suffix`]: https://github.com/Manishearth/rust-clippy/wiki#unseparated_literal_suffix
 [`unstable_as_mut_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice
 [`unstable_as_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice
 [`unused_collect`]: https://github.com/Manishearth/rust-clippy/wiki#unused_collect
