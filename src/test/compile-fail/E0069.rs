@@ -9,7 +9,9 @@
 // except according to those terms.
 
 fn foo() -> u8 {
-    return; //~ ERROR E0069
+    return;
+    //~^ ERROR `return;` in a function whose return type is not `()`
+    //~| NOTE return type is not ()
 }
 
 fn main() {
