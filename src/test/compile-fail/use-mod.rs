@@ -15,7 +15,8 @@ use foo::bar::{
     Bar,
     self
 //~^ NOTE another `self` import appears here
-//~^^ ERROR a module named `bar` has already been imported in this module
+//~| ERROR a module named `bar` has already been imported in this module
+//~| NOTE already imported
 };
 
 use {self};

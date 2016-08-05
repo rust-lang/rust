@@ -11,7 +11,9 @@
 use std::sync::{self, Arc}; //~ NOTE previous import
                             //~^ NOTE previous import
 use std::sync::Arc; //~ ERROR a type named
+                    //~| NOTE already imported
 use std::sync; //~ ERROR a module named
+               //~| NOTE already imported
 
 fn main() {
 }
