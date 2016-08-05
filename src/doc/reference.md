@@ -3049,7 +3049,8 @@ as
 == != < > <= >=
 &&
 ||
-= ..
+.. ...
+=
 ```
 
 Operators at the same precedence level are evaluated left-to-right. [Unary
