@@ -12,7 +12,7 @@
 
 const TUP: (usize,) = 5 << 64;
 //~^ ERROR E0080
-//~| attempted to shift left with overflow
+//~| attempt to shift left with overflow
 const ARR: [i32; TUP.0] = [];
 
 fn main() {

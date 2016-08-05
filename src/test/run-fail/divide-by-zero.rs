@@ -10,7 +10,7 @@
 
 // ignore-pretty : (#23623) problems when  ending with // comments
 
-// error-pattern:attempted to divide by zero
+// error-pattern:attempt to divide by zero
 
 fn main() {
     let y = 0;
