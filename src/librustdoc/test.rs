@@ -74,7 +74,6 @@ pub fn run(input: &str,
 
     let codemap = Rc::new(CodeMap::new());
     let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
-                                                               None,
                                                                true,
                                                                false,
                                                                Some(codemap.clone()));
@@ -228,9 +227,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let data = Arc::new(Mutex::new(Vec::new()));
     let codemap = Rc::new(CodeMap::new());
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
-                                                None,
-                                                Some(codemap.clone()),
-                                                errors::snippet::FormatMode::EnvironmentSelected);
+                                                      Some(codemap.clone()));
     let old = io::set_panic(box Sink(data.clone()));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 

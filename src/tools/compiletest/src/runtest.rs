@@ -1330,9 +1330,7 @@ actual:\n\
                 // patterns still match the raw compiler output.
                 if self.props.error_patterns.is_empty() {
                     args.extend(["--error-format",
-                                 "json",
-                                 "-Z",
-                                 "unstable-options"]
+                                 "json"]
                                 .iter()
                                 .map(|s| s.to_string()));
                 }

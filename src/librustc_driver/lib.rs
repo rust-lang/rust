@@ -100,7 +100,6 @@ use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::MultiSpan;
 use errors::emitter::Emitter;
-use errors::snippet::FormatMode;
 
 #[cfg(test)]
 pub mod test;
@@ -141,9 +140,7 @@ pub fn run(args: Vec<String>) -> isize {
                     None => {
                         let emitter =
                             errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                                   None,
-                                                                   None,
-                                                                   FormatMode::EnvironmentSelected);
+                                                                   None);
                         let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
                         handler.emit(&MultiSpan::new(),
                                      &abort_msg(err_count),
@@ -381,10 +378,7 @@ fn check_cfg(sopts: &config::Options,
              output: ErrorOutputType) {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(errors::emitter::EmitterWriter::stderr(color_config,
-                                                            None,
-                                                            None,
-                                                            FormatMode::EnvironmentSelected))
+            Box::new(errors::emitter::EmitterWriter::stderr(color_config, None))
         }
         config::ErrorOutputType::Json => Box::new(json::JsonEmitter::basic()),
     };
@@ -1050,10 +1044,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
         // Thread panicked without emitting a fatal diagnostic
         if !value.is::<errors::FatalError>() {
             let emitter =
-                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                       None,
-                                                       None,
-                                                       FormatMode::EnvironmentSelected));
+                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None));
             let handler = errors::Handler::with_emitter(true, false, emitter);
 
             // a .span_bug or .bug call has already printed what
