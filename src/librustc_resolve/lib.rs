@@ -219,7 +219,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              name)
         }
         ResolutionError::IsNotATrait(name) => {
-            struct_span_err!(resolver.session, span, E0404, "`{}` is not a trait", name)
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0404,
+                                           "`{}` is not a trait",
+                                           name);
+            err.span_label(span, &format!("not a trait"));
+            err
         }
         ResolutionError::UndeclaredTraitName(name, candidates) => {
             let mut err = struct_span_err!(resolver.session,

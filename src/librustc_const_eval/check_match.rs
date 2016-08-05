@@ -335,6 +335,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                         hir::MatchSource::Normal => {
                             let mut err = struct_span_err!(cx.tcx.sess, pat.span, E0001,
                                                            "unreachable pattern");
+                            err.span_label(pat.span, &format!("this is an unreachable pattern"));
                             // if we had a catchall pattern, hint at that
                             for row in &seen.0 {
                                 if pat_is_catchall(&cx.tcx.def_map.borrow(), row[0].0) {

@@ -3864,6 +3864,104 @@ impl SpaceLlama for i32 {
 ```
 "##,
 
+E0527: r##"
+The number of elements in an array or slice pattern differed from the number of
+elements in the array being matched.
+
+Example of erroneous code:
+
+```compile_fail,E0527
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4];
+match r {
+    &[a, b] => { // error: pattern requires 2 elements but array
+                 //        has 4
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+
+Ensure that the pattern is consistent with the size of the matched
+array. Additional elements can be matched with `..`:
+
+```
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4];
+match r {
+    &[a, b, ..] => { // ok!
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+"##,
+
+E0528: r##"
+An array or slice pattern required more elements than were present in the
+matched array.
+
+Example of erroneous code:
+
+```compile_fail,E0528
+#![feature(slice_patterns)]
+
+let r = &[1, 2];
+match r {
+    &[a, b, c, rest..] => { // error: pattern requires at least 3
+                            //        elements but array has 2
+        println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
+    }
+}
+```
+
+Ensure that the matched array has at least as many elements as the pattern
+requires. You can match an arbitrary number of remaining elements with `..`:
+
+```
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4, 5];
+match r {
+    &[a, b, c, rest..] => { // ok!
+        // prints `a=1, b=2, c=3 rest=[4, 5]`
+        println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
+    }
+}
+```
+"##,
+
+E0529: r##"
+An array or slice pattern was matched against some other type.
+
+Example of erroneous code:
+
+```compile_fail,E0529
+#![feature(slice_patterns)]
+
+let r: f32 = 1.0;
+match r {
+    [a, b] => { // error: expected an array or slice, found `f32`
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+
+Ensure that the pattern and the expression being matched on are of consistent
+types:
+
+```
+#![feature(slice_patterns)]
+
+let r = [1.0, 2.0];
+match r {
+    [a, b] => { // ok!
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+"##,
+
 E0559: r##"
 An unknown field was specified into an enum's structure variant.
 
@@ -3985,8 +4083,5 @@ register_diagnostics! {
     E0436, // functional record update requires a struct
     E0513, // no type for local variable ..
     E0521, // redundant default implementations of trait
-    E0527, // expected {} elements, found {}
-    E0528, // expected at least {} elements, found {}
-    E0529, // slice pattern expects array or slice, not `{}`
     E0533, // `{}` does not name a unit variant, unit struct or a constant
 }

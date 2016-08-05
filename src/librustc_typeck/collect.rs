@@ -184,6 +184,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
 
         let mut err = struct_span_err!(tcx.sess, span, E0391,
             "unsupported cyclic reference between types/traits detected");
+        err.span_label(span, &format!("cyclic reference"));
 
         match cycle[0] {
             AstConvRequest::GetItemTypeScheme(def_id) |
@@ -1010,11 +1011,12 @@ fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let fid = ccx.tcx.map.local_def_id(f.id);
         let dup_span = seen_fields.get(&f.name).cloned();
         if let Some(prev_span) = dup_span {
-            let mut err = struct_span_err!(ccx.tcx.sess, f.span, E0124,
-                                           "field `{}` is already declared",
-                                           f.name);
-            span_note!(&mut err, prev_span, "previously declared here");
-            err.emit();
+            struct_span_err!(ccx.tcx.sess, f.span, E0124,
+                             "field `{}` is already declared",
+                             f.name)
+                .span_label(f.span, &"field already declared")
+                .span_label(prev_span, &format!("`{}` first declared here", f.name))
+                .emit();
         } else {
             seen_fields.insert(f.name, f.span);
         }
@@ -1057,6 +1059,7 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let print_err = |cv: ConstVal| {
             struct_span_err!(ccx.tcx.sess, e.span, E0079, "mismatched types")
                 .note_expected_found(&"type", &ty_hint, &format!("{}", cv.description()))
+                .span_label(e.span, &format!("expected '{}' type", ty_hint))
                 .emit();
         };
 

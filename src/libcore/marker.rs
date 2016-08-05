@@ -144,6 +144,12 @@ pub trait Unsize<T: ?Sized> {
 /// Generalizing the latter case, any type implementing `Drop` can't be `Copy`, because it's
 /// managing some resource besides its own `size_of::<T>()` bytes.
 ///
+/// ## What if I derive `Copy` on a type that can't?
+///
+/// If you try to derive `Copy` on a struct or enum, you will get a compile-time error.
+/// Specifically, with structs you'll get [E0204](https://doc.rust-lang.org/error-index.html#E0204)
+/// and with enums you'll get [E0205](https://doc.rust-lang.org/error-index.html#E0205).
+///
 /// ## When should my type be `Copy`?
 ///
 /// Generally speaking, if your type _can_ implement `Copy`, it should. There's one important thing
