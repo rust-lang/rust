@@ -230,7 +230,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let ty = mir.lvalue_ty(bcx.tcx(), location).to_ty(bcx.tcx());
+                let ty = location.ty(&mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = bcx.monomorphize(&ty);
 
                 // Double check for necessity to drop
@@ -828,7 +828,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             return ReturnDest::Nothing;
         }
         let dest = if let Some(index) = self.mir.local_index(dest) {
-            let ret_ty = self.lvalue_ty(dest);
+            let ret_ty = self.monomorphized_lvalue_ty(dest);
             match self.locals[index] {
                 LocalRef::Lvalue(dest) => dest,
                 LocalRef::Operand(None) => {

@@ -185,7 +185,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     {
         match self.move_data().move_paths[path].content {
             MovePathContent::Lvalue(ref lvalue) => {
-                let ty = self.mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
+                let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
                 debug!("path_needs_drop({:?}, {:?} : {:?})", path, lvalue, ty);
 
                 self.tcx.type_needs_drop_given_env(ty, self.param_env())
@@ -555,7 +555,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
         let mut fields = fields;
         fields.retain(|&(ref lvalue, _)| {
-            let ty = self.mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
+            let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
             self.tcx.type_needs_drop_given_env(ty, self.param_env())
         });
 
@@ -706,7 +706,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     /// This creates a "drop ladder" that drops the needed fields of the
     /// ADT, both in the success case or if one of the destructors fail.
     fn open_drop<'a>(&mut self, c: &DropCtxt<'a, 'tcx>) -> BasicBlock {
-        let ty = self.mir.lvalue_ty(self.tcx, c.lvalue).to_ty(self.tcx);
+        let ty = c.lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
         match ty.sty {
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
                 self.open_drop_for_adt(c, def, substs)
@@ -892,7 +892,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         // dataflow can create unneeded children in some cases
         // - be sure to ignore them.
 
-        let ty = self.mir.lvalue_ty(self.tcx, c.lvalue).to_ty(self.tcx);
+        let ty = c.lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
 
         match ty.sty {
             ty::TyStruct(def, _) | ty::TyEnum(def, _) => {

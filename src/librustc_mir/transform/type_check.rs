@@ -355,7 +355,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let tcx = self.tcx();
         match stmt.kind {
             StatementKind::Assign(ref lv, ref rv) => {
-                let lv_ty = mir.lvalue_ty(tcx, lv).to_ty(tcx);
+                let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = mir.rvalue_ty(tcx, rv);
                 if let Some(rv_ty) = rv_ty {
                     if let Err(terr) = self.sub_types(self.last_span, rv_ty, lv_ty) {
@@ -390,7 +390,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 ref value,
                 ..
             } => {
-                let lv_ty = mir.lvalue_ty(tcx, location).to_ty(tcx);
+                let lv_ty = location.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = mir.operand_ty(tcx, value);
                 if let Err(terr) = self.sub_types(self.last_span, rv_ty, lv_ty) {
                     span_mirbug!(self, term, "bad DropAndReplace ({:?} = {:?}): {:?}",
@@ -408,7 +408,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
-                let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
+                let discr_ty = discr.ty(mir, tcx).to_ty(tcx);
                 if let Err(terr) = self.sub_types(self.last_span, discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);
@@ -421,7 +421,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // FIXME: check the values
             }
             TerminatorKind::Switch { ref discr, adt_def, ref targets } => {
-                let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
+                let discr_ty = discr.ty(mir, tcx).to_ty(tcx);
                 match discr_ty.sty {
                     ty::TyEnum(def, _)
                         if def == adt_def && adt_def.variants.len() == targets.len()
@@ -481,7 +481,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 span_mirbug!(self, term, "call to diverging function {:?} with dest", sig);
             }
             (&Some((ref dest, _)), ty::FnConverging(ty)) => {
-                let dest_ty = mir.lvalue_ty(tcx, dest).to_ty(tcx);
+                let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
                 if let Err(terr) = self.sub_types(self.last_span, ty, dest_ty) {
                     span_mirbug!(self, term,
                                  "call dest mismatch ({:?} <- {:?}): {:?}",

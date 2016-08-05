@@ -278,7 +278,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let span = statement.source_info.span;
                 match statement.kind {
                     mir::StatementKind::Assign(ref dest, ref rvalue) => {
-                        let ty = self.mir.lvalue_ty(tcx, dest);
+                        let ty = dest.ty(self.mir, tcx);
                         let ty = self.monomorphize(&ty).to_ty(tcx);
                         match self.const_rvalue(rvalue, ty, span) {
                             Ok(value) => self.store(dest, value, span),
@@ -386,7 +386,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 ConstLvalue {
                     base: Base::Static(consts::get_static(self.ccx, def_id).val),
                     llextra: ptr::null_mut(),
-                    ty: self.mir.lvalue_ty(tcx, lvalue).to_ty(tcx)
+                    ty: lvalue.ty(self.mir, tcx).to_ty(tcx)
                 }
             }
             mir::Lvalue::Projection(ref projection) => {

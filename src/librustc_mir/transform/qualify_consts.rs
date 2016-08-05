@@ -485,8 +485,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 this.add(Qualif::STATIC);
                             }
 
-                            let base_ty = this.mir.lvalue_ty(this.tcx, &proj.base)
-                                              .to_ty(this.tcx);
+                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
                             if let ty::TyRawPtr(_) = base_ty.sty {
                                 this.add(Qualif::NOT_CONST);
                                 if this.mode != Mode::Fn {
@@ -505,8 +504,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                           "cannot refer to the interior of another \
                                            static, use a constant instead");
                             }
-                            let ty = this.mir.lvalue_ty(this.tcx, lvalue)
-                                         .to_ty(this.tcx);
+                            let ty = lvalue.ty(this.mir, this.tcx).to_ty(this.tcx);
                             this.qualif.restrict(ty, this.tcx, &this.param_env);
                         }
 
@@ -591,7 +589,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     self.add(Qualif::STATIC_REF);
                 }
 
-                let ty = self.mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
+                let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
                 if kind == BorrowKind::Mut {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
@@ -801,7 +799,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 } else {
                     // Be conservative about the returned value of a const fn.
                     let tcx = self.tcx;
-                    let ty = self.mir.lvalue_ty(tcx, dest).to_ty(tcx);
+                    let ty = dest.ty(self.mir, tcx).to_ty(tcx);
                     self.qualif = Qualif::empty();
                     self.add_type(ty);
 

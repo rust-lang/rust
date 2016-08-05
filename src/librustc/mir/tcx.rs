@@ -119,7 +119,7 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
                       -> Ty<'tcx>
     {
         match *operand {
-            Operand::Consume(ref l) => self.lvalue_ty(tcx, l).to_ty(tcx),
+            Operand::Consume(ref l) => l.ty(self, tcx).to_ty(tcx),
             Operand::Constant(ref c) => c.ty,
         }
     }
@@ -148,26 +148,6 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn lvalue_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                     lvalue: &Lvalue<'tcx>)
-                     -> LvalueTy<'tcx>
-    {
-        match *lvalue {
-            Lvalue::Var(index) =>
-                LvalueTy::Ty { ty: self.var_decls[index].ty },
-            Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: self.temp_decls[index].ty },
-            Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: self.arg_decls[index].ty },
-            Lvalue::Static(def_id) =>
-                LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
-            Lvalue::ReturnPointer =>
-                LvalueTy::Ty { ty: self.return_ty.unwrap() },
-            Lvalue::Projection(ref proj) =>
-                self.lvalue_ty(tcx, &proj.base).projection_ty(tcx, &proj.elem)
-        }
-    }
-
     pub fn rvalue_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      rvalue: &Rvalue<'tcx>)
                      -> Option<Ty<'tcx>>
@@ -181,7 +161,7 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
                 Some(tcx.mk_array(op_ty, count as usize))
             }
             Rvalue::Ref(reg, bk, ref lv) => {
-                let lv_ty = self.lvalue_ty(tcx, lv).to_ty(tcx);
+                let lv_ty = lv.ty(self, tcx).to_ty(tcx);
                 Some(tcx.mk_ref(
                     tcx.mk_region(reg),
                     ty::TypeAndMut {

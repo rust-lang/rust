@@ -525,8 +525,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         debug!("visiting lvalue {:?}", *lvalue);
 
         if let mir_visit::LvalueContext::Drop = context {
-            let ty = self.mir.lvalue_ty(self.scx.tcx(), lvalue)
-                             .to_ty(self.scx.tcx());
+            let ty = lvalue.ty(self.mir, self.scx.tcx())
+                           .to_ty(self.scx.tcx());
 
             let ty = monomorphize::apply_param_substs(self.scx.tcx(),
                                                       self.param_substs,
