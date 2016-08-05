@@ -1075,8 +1075,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         Ok((trait_ref, projection_bounds))
                     }
                     _ => {
-                        span_err!(self.tcx().sess, ty.span, E0172,
-                                  "expected a reference to a trait");
+                        struct_span_err!(self.tcx().sess, ty.span, E0172,
+                                  "expected a reference to a trait")
+                            .span_label(ty.span, &format!("expected a trait"))
+                            .emit();
                         Err(ErrorReported)
                     }
                 }
