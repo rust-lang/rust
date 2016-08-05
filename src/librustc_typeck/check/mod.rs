@@ -3069,6 +3069,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             remaining_fields.insert(field.name, field);
         }
 
+        let mut seen_fields = FnvHashMap();
+
         let mut error_happened = false;
 
         // Typecheck each field.
@@ -3077,13 +3079,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let Some(v_field) = remaining_fields.remove(&field.name.node) {
                 expected_field_type = self.field_ty(field.span, v_field, substs);
+
+                seen_fields.insert(field.name.node, field.span);
             } else {
                 error_happened = true;
                 expected_field_type = tcx.types.err;
                 if let Some(_) = variant.find_field_named(field.name.node) {
-                    span_err!(self.tcx.sess, field.name.span, E0062,
-                        "field `{}` specified more than once",
-                        field.name.node);
+                    let mut err = struct_span_err!(self.tcx.sess,
+                                                field.name.span,
+                                                E0062,
+                                                "field `{}` specified more than once",
+                                                field.name.node);
+
+                    err.span_label(field.name.span, &format!("used more than once"));
+
+                    if let Some(prev_span) = seen_fields.get(&field.name.node) {
+                        err.span_label(*prev_span, &format!("first use of `{}`", field.name.node));
+                    }
+
+                    err.emit();
                 } else {
                     self.report_unknown_field(adt_ty, variant, field, ast_fields);
                 }
