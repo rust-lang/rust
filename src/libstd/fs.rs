@@ -156,7 +156,10 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
 
-/// An structure representing a type of file with accessors for each file type.
+/// A structure representing a type of file with accessors for each file type.
+/// It is returned by [`Metadata::file_type`] method.
+///
+/// [`Metadata::file_type`]: struct.Metadata.html#method.file_type
 #[stable(feature = "file_type", since = "1.1.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType(fs_imp::FileType);
@@ -610,6 +613,19 @@ impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
 
 impl Metadata {
     /// Returns the file type for this metadata.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn foo() -> std::io::Result<()> {
+    /// use std::fs;
+    ///
+    /// let metadata = try!(fs::metadata("foo.txt"));
+    ///
+    /// println!("{:?}", metadata.file_type());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn file_type(&self) -> FileType {
         FileType(self.0.file_type())
@@ -839,14 +855,56 @@ impl Permissions {
 
 impl FileType {
     /// Test whether this file type represents a directory.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn foo() -> std::io::Result<()> {
+    /// use std::fs;
+    ///
+    /// let metadata = try!(fs::metadata("foo.txt"));
+    /// let file_type = metadata.file_type();
+    ///
+    /// assert_eq!(file_type.is_dir(), false);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_dir(&self) -> bool { self.0.is_dir() }
 
     /// Test whether this file type represents a regular file.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn foo() -> std::io::Result<()> {
+    /// use std::fs;
+    ///
+    /// let metadata = try!(fs::metadata("foo.txt"));
+    /// let file_type = metadata.file_type();
+    ///
+    /// assert_eq!(file_type.is_file(), true);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_file(&self) -> bool { self.0.is_file() }
 
     /// Test whether this file type represents a symbolic link.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn foo() -> std::io::Result<()> {
+    /// use std::fs;
+    ///
+    /// let metadata = try!(fs::metadata("foo.txt"));
+    /// let file_type = metadata.file_type();
+    ///
+    /// assert_eq!(file_type.is_symlink(), false);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_symlink(&self) -> bool { self.0.is_symlink() }
 }
