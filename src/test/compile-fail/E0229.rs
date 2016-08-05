@@ -20,7 +20,9 @@ impl Foo for isize {
     fn boo(&self) -> usize { 42 }
 }
 
-fn baz<I>(x: &<I as Foo<A=Bar>>::A) {} //~ ERROR E0229
+fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
+//~^ ERROR associated type bindings are not allowed here [E0229]
+//~| NOTE associate type not allowed here
 
 fn main() {
 }
