@@ -1057,6 +1057,7 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let print_err = |cv: ConstVal| {
             struct_span_err!(ccx.tcx.sess, e.span, E0079, "mismatched types")
                 .note_expected_found(&"type", &ty_hint, &format!("{}", cv.description()))
+                .span_label(e.span, &format!("expected '{}' type", ty_hint))
                 .emit();
         };
 
