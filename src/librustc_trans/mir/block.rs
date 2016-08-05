@@ -261,7 +261,23 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
                 let cond = self.trans_operand(&bcx, cond).immediate();
-                let const_cond = common::const_to_opt_uint(cond).map(|c| c == 1);
+                let mut const_cond = common::const_to_opt_uint(cond).map(|c| c == 1);
+
+                // This case can currently arise only from functions marked
+                // with #[rustc_inherit_overflow_checks] and inlined from
+                // another crate (mostly core::num generic/#[inline] fns),
+                // while the current crate doesn't use overflow checks.
+                // NOTE: Unlike binops, negation doesn't have its own
+                // checked operation, just a comparison with the minimum
+                // value, so we have to check for the assert message.
+                if !bcx.ccx().check_overflow() {
+                    use rustc_const_math::ConstMathErr::Overflow;
+                    use rustc_const_math::Op::Neg;
+
+                    if let mir::AssertMessage::Math(Overflow(Neg)) = *msg {
+                        const_cond = Some(expected);
+                    }
+                }
 
                 // Don't translate the panic block if success if known.
                 if const_cond == Some(expected) {

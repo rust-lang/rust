@@ -49,6 +49,39 @@ match 5u32 {
 ```
 "##,
 
+E0130: r##"
+You declared a pattern as an argument in a foreign function declaration.
+Erroneous code example:
+
+```compile_fail
+extern {
+    fn foo((a, b): (u32, u32)); // error: patterns aren't allowed in foreign
+                                //        function declarations
+}
+```
+
+Please replace the pattern argument with a regular one. Example:
+
+```
+struct SomeStruct {
+    a: u32,
+    b: u32,
+}
+
+extern {
+    fn foo(s: SomeStruct); // ok!
+}
+```
+
+Or:
+
+```
+extern {
+    fn foo(a: (u32, u32)); // ok!
+}
+```
+"##,
+
 E0161: r##"
 A value was moved. However, its size was not known at compile time, and only
 values of a known size can be moved.
@@ -187,4 +220,5 @@ pub impl Foo for Bar {
 
 register_diagnostics! {
     E0472, // asm! is unsupported on this target
+    E0561, // patterns aren't allowed in function pointer types
 }
