@@ -57,6 +57,7 @@ __pycache__/
 .project
 .settings/
 .valgrindrc
+.vscode/
 /*-*-*-*/
 /*-*-*/
 /Makefile
