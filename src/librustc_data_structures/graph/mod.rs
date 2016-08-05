@@ -296,12 +296,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
                               start: NodeIndex,
                               direction: Direction)
                               -> DepthFirstTraversal<'a, N, E> {
-        DepthFirstTraversal {
-            graph: self,
-            stack: vec![start],
-            visited: BitVector::new(self.nodes.len()),
-            direction: direction,
-        }
+        DepthFirstTraversal::with_start_node(self, start, direction)
     }
 }
 
@@ -378,26 +373,57 @@ pub struct DepthFirstTraversal<'g, N: 'g, E: 'g> {
     direction: Direction,
 }
 
+impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
+    pub fn new(graph: &'g Graph<N, E>, direction: Direction) -> Self {
+        let visited = BitVector::new(graph.len_nodes());
+        DepthFirstTraversal {
+            graph: graph,
+            stack: vec![],
+            visited: visited,
+            direction: direction
+        }
+    }
+
+    pub fn with_start_node(graph: &'g Graph<N, E>,
+                           start_node: NodeIndex,
+                           direction: Direction)
+                           -> Self {
+        let mut visited = BitVector::new(graph.len_nodes());
+        visited.insert(start_node.node_id());
+        DepthFirstTraversal {
+            graph: graph,
+            stack: vec![start_node],
+            visited: visited,
+            direction: direction
+        }
+    }
+
+    pub fn reset(&mut self, start_node: NodeIndex) {
+        self.stack.truncate(0);
+        self.stack.push(start_node);
+        self.visited.clear();
+        self.visited.insert(start_node.node_id());
+    }
+
+    fn visit(&mut self, node: NodeIndex) {
+        if self.visited.insert(node.node_id()) {
+            self.stack.push(node);
+        }
+    }
+}
+
 impl<'g, N: Debug, E: Debug> Iterator for DepthFirstTraversal<'g, N, E> {
     type Item = NodeIndex;
 
     fn next(&mut self) -> Option<NodeIndex> {
-        while let Some(idx) = self.stack.pop() {
-            if !self.visited.insert(idx.node_id()) {
-                continue;
-            }
-
+        let next = self.stack.pop();
+        if let Some(idx) = next {
             for (_, edge) in self.graph.adjacent_edges(idx, self.direction) {
                 let target = edge.source_or_target(self.direction);
-                if !self.visited.contains(target.node_id()) {
-                    self.stack.push(target);
-                }
+                self.visit(target);
             }
-
-            return Some(idx);
         }
-
-        return None;
+        next
     }
 }
 
