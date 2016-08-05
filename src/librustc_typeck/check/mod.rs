@@ -995,7 +995,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        let ty_impl_item = ccx.tcx.impl_or_trait_item(ccx.tcx.map.local_def_id(impl_item.id));
+        let ty_impl_item = tcx.impl_or_trait_item(tcx.map.local_def_id(impl_item.id));
         let ty_trait_item = trait_items.iter()
             .find(|ac| ac.name() == ty_impl_item.name());
 
@@ -1016,11 +1016,18 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                            trait_const,
                                            &impl_trait_ref);
                     } else {
-                        span_err!(tcx.sess, impl_item.span, E0323,
+                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0323,
                                   "item `{}` is an associated const, \
                                   which doesn't match its trait `{:?}`",
                                   impl_const.name,
-                                  impl_trait_ref)
+                                  impl_trait_ref);
+                         err.span_label(impl_item.span, &format!("does not match trait"));
+                         // We can only get the spans from local trait definition
+                         // Same for E0324 and E0325
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                            err.span_label(trait_span, &format!("original trait requirement"));
+                         }
+                         err.emit()
                     }
                 }
                 hir::ImplItemKind::Method(ref sig, ref body) => {
@@ -1039,11 +1046,16 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             &trait_method,
                                             &impl_trait_ref);
                     } else {
-                        span_err!(tcx.sess, impl_item.span, E0324,
+                        let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                                   "item `{}` is an associated method, \
                                   which doesn't match its trait `{:?}`",
                                   impl_method.name,
-                                  impl_trait_ref)
+                                  impl_trait_ref);
+                         err.span_label(impl_item.span, &format!("does not match trait"));
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                            err.span_label(trait_span, &format!("original trait requirement"));
+                         }
+                         err.emit()
                     }
                 }
                 hir::ImplItemKind::Type(_) => {
@@ -1057,11 +1069,16 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             overridden_associated_type = Some(impl_item);
                         }
                     } else {
-                        span_err!(tcx.sess, impl_item.span, E0325,
+                        let mut err = struct_span_err!(tcx.sess, impl_item.span, E0325,
                                   "item `{}` is an associated type, \
                                   which doesn't match its trait `{:?}`",
                                   impl_type.name,
-                                  impl_trait_ref)
+                                  impl_trait_ref);
+                         err.span_label(impl_item.span, &format!("does not match trait"));
+                         if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
+                            err.span_label(trait_span, &format!("original trait requirement"));
+                         }
+                         err.emit()
                     }
                 }
             }
