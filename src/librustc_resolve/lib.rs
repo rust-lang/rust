@@ -1246,7 +1246,7 @@ impl<'a> Resolver<'a> {
                                      -> ResolveResult<Module<'a>> {
         fn search_parent_externals<'a>(this: &mut Resolver<'a>, needle: Name, module: Module<'a>)
                                        -> Option<Module<'a>> {
-            match this.resolve_name_in_module(module, needle, TypeNS, false, false) {
+            match this.resolve_name_in_module(module, needle, TypeNS, false, None) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
                 _ => match module.parent_link {
                     ModuleParentLink(ref parent, _) => {
@@ -1265,7 +1265,7 @@ impl<'a> Resolver<'a> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index];
-            match self.resolve_name_in_module(search_module, name, TypeNS, false, true) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, Some(span)) {
                 Failed(None) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
@@ -1361,7 +1361,7 @@ impl<'a> Resolver<'a> {
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
                         let ident = ast::Ident::with_empty_ctxt(module_path[0]);
-                        match self.resolve_ident_in_lexical_scope(ident, TypeNS, true)
+                        match self.resolve_ident_in_lexical_scope(ident, TypeNS, Some(span))
                                   .and_then(LexicalScopeBinding::module) {
                             None => return Failed(None),
                             Some(containing_module) => {
@@ -1404,7 +1404,7 @@ impl<'a> Resolver<'a> {
     fn resolve_ident_in_lexical_scope(&mut self,
                                       mut ident: ast::Ident,
                                       ns: Namespace,
-                                      record_used: bool)
+                                      record_used: Option<Span>)
                                       -> Option<LexicalScopeBinding<'a>> {
         if ns == TypeNS {
             ident = ast::Ident::with_empty_ctxt(ident.name);
@@ -1432,7 +1432,7 @@ impl<'a> Resolver<'a> {
                 if module.def.is_some() {
                     return match self.prelude {
                         Some(prelude) if !module.no_implicit_prelude.get() => {
-                            self.resolve_name_in_module(prelude, name, ns, false, false).success()
+                            self.resolve_name_in_module(prelude, name, ns, false, None).success()
                                 .map(LexicalScopeBinding::Item)
                         }
                         _ => None,
@@ -2287,7 +2287,7 @@ impl<'a> Resolver<'a> {
                 PatKind::Ident(bmode, ref ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
-                    let binding = self.resolve_ident_in_lexical_scope(ident.node, ValueNS, false)
+                    let binding = self.resolve_ident_in_lexical_scope(ident.node, ValueNS, None)
                                       .and_then(LexicalScopeBinding::item);
                     let resolution = binding.and_then(NameBinding::def).and_then(|def| {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
@@ -2454,11 +2454,11 @@ impl<'a> Resolver<'a> {
             //
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
-            let def = resolve_identifier_with_fallback(self, true).ok_or(false);
+            let def = resolve_identifier_with_fallback(self, Some(span)).ok_or(false);
             return def.and_then(|def| self.adjust_local_def(def, span).ok_or(true)).map(mk_res);
         }
 
-        let unqualified_def = resolve_identifier_with_fallback(self, false);
+        let unqualified_def = resolve_identifier_with_fallback(self, None);
         let qualified_binding = self.resolve_module_relative_path(span, segments, namespace);
         match (qualified_binding, unqualified_def) {
             (Ok(binding), Some(ref ud)) if binding.def().unwrap() == ud.def => {
@@ -2478,7 +2478,7 @@ impl<'a> Resolver<'a> {
     fn resolve_identifier(&mut self,
                           identifier: ast::Ident,
                           namespace: Namespace,
-                          record_used: bool)
+                          record_used: Option<Span>)
                           -> Option<LocalDef> {
         if identifier.name == keywords::Invalid.name() {
             return None;
@@ -2613,7 +2613,8 @@ impl<'a> Resolver<'a> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
+        let result =
+            self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
         result.success().map(|binding| {
             self.check_privacy(name, binding, span);
             binding
@@ -2657,7 +2658,8 @@ impl<'a> Resolver<'a> {
         }
 
         let name = segments.last().unwrap().name();
-        let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
+        let result =
+            self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
         result.success().map(|binding| {
             self.check_privacy(name, binding, span);
             binding
