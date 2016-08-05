@@ -169,6 +169,8 @@ impl<'a> Visitor for AstValidator<'a> {
                 self.check_decl_no_pat(decl, |span, is_recent| {
                     let mut err = struct_span_err!(self.session, span, E0130,
                                         "patterns aren't allowed in foreign function declarations");
+                    err.span_label(span, &format!("pattern not allowed in foreign function"));
+
                     if is_recent {
                         err.span_note(span, "this is a recent error, see \
                                              issue #35203 for more details");
