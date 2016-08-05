@@ -11,6 +11,7 @@
 trait I {}
 type K = I;
 impl K for isize {} //~ ERROR: `K` is not a trait
+                    //~| NOTE: not a trait
                     //~| NOTE: aliases cannot be used for traits
 
 use ImportError; //~ ERROR unresolved

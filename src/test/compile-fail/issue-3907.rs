@@ -18,6 +18,7 @@ struct S {
 }
 
 impl Foo for S { //~ ERROR: `Foo` is not a trait
+                 //~| NOTE: not a trait
                  //~| NOTE: type aliases cannot be used for traits
     fn bar() { }
 }
