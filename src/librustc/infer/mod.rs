@@ -136,13 +136,6 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FnvHashSet<traits::TraitErrorKey<'tcx>>>,
 
-    // This is a temporary field used for toggling on normalization in the inference context,
-    // as we move towards the approach described here:
-    // https://internals.rust-lang.org/t/flattening-the-contexts-for-fun-and-profit/2293
-    // At a point sometime in the future normalization will be done by the typing context
-    // directly.
-    normalize: bool,
-
     // Sadly, the behavior of projection varies a bit depending on the
     // stage of compilation. The specifics are given in the
     // documentation for `Reveal`.
@@ -458,7 +451,6 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tables: Option<RefCell<ty::Tables<'tcx>>>,
     param_env: Option<ty::ParameterEnvironment<'gcx>>,
     projection_mode: Reveal,
-    normalize: bool
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
@@ -473,7 +465,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             tables: tables.map(RefCell::new),
             param_env: param_env,
             projection_mode: projection_mode,
-            normalize: false
         }
     }
 
@@ -485,7 +476,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             tables: None,
             param_env: None,
             projection_mode: projection_mode,
-            normalize: false
         }
     }
 
@@ -506,7 +496,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FnvHashSet()),
-            normalize: false,
             projection_mode: Reveal::NotSpecializable,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
@@ -525,7 +514,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             ref tables,
             ref mut param_env,
             projection_mode,
-            normalize
         } = *self;
         let tables = if let Some(ref tables) = *tables {
             InferTables::Local(tables)
@@ -547,7 +535,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FnvHashSet()),
-            normalize: normalize,
             projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
@@ -1702,17 +1689,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let closure_ty = self.tcx.closure_type(def_id, substs);
-        if self.normalize {
-            let closure_ty = self.tcx.erase_regions(&closure_ty);
-
-            if !closure_ty.has_projection_types() {
-                return closure_ty;
-            }
-
-            self.normalize_projections_in(&closure_ty)
-        } else {
-            closure_ty
-        }
+        closure_ty
     }
 }
 
