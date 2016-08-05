@@ -11,12 +11,13 @@
 struct MyStruct;
 
 impl Drop for MyStruct {
-//~^ NOTE conflicting implementation is here
+//~^ NOTE first implementation here
     fn drop(&mut self) { }
 }
 
 impl Drop for MyStruct {
 //~^ ERROR conflicting implementations of trait
+//~| NOTE conflicting implementation for `MyStruct`
     fn drop(&mut self) { }
 }
 

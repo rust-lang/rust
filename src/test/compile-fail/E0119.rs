@@ -12,7 +12,7 @@ trait MyTrait {
     fn get(&self) -> usize;
 }
 
-impl<T> MyTrait for T {
+impl<T> MyTrait for T { //~ NOTE first implementation here
     fn get(&self) -> usize { 0 }
 }
 
@@ -21,6 +21,7 @@ struct Foo {
 }
 
 impl MyTrait for Foo { //~ ERROR E0119
+                       //~| NOTE conflicting implementation for `Foo`
     fn get(&self) -> usize { self.value }
 }
 
