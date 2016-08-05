@@ -149,7 +149,7 @@ impl<'a> Resolver<'a> {
                                   name: Name,
                                   ns: Namespace,
                                   allow_private_imports: bool,
-                                  record_used: bool)
+                                  record_used: Option<Span>)
                                   -> ResolveResult<&'a NameBinding<'a>> {
         self.populate_module_if_necessary(module);
 
@@ -165,7 +165,7 @@ impl<'a> Resolver<'a> {
                 if !allow_private_imports && binding.is_import() && !binding.is_pseudo_public() {
                     return Failed(None);
                 }
-                if record_used {
+                if record_used.is_some() {
                     self.record_use(name, ns, binding);
                 }
                 Success(binding)
@@ -176,7 +176,7 @@ impl<'a> Resolver<'a> {
         for directive in module.globs.borrow().iter() {
             if !allow_private_imports && directive.vis != ty::Visibility::Public { continue }
             if let Some(target_module) = directive.target_module.get() {
-                let result = self.resolve_name_in_module(target_module, name, ns, false, false);
+                let result = self.resolve_name_in_module(target_module, name, ns, false, None);
                 if let Indeterminate = result {
                     return Indeterminate;
                 }
@@ -222,7 +222,7 @@ impl<'a> Resolver<'a> {
                     SingleImport { source, .. } => source,
                     GlobImport { .. } => unreachable!(),
                 };
-                match self.resolve_name_in_module(target_module, name, ns, false, false) {
+                match self.resolve_name_in_module(target_module, name, ns, false, None) {
                     Failed(_) => {}
                     _ => return Some(Indeterminate),
                 }
@@ -495,8 +495,11 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         // We need to resolve both namespaces for this to succeed.
-        let value_result = self.resolve_name_in_module(target_module, source, ValueNS, false, true);
-        let type_result = self.resolve_name_in_module(target_module, source, TypeNS, false, true);
+        let span = directive.span;
+        let value_result =
+            self.resolve_name_in_module(target_module, source, ValueNS, false, Some(span));
+        let type_result =
+            self.resolve_name_in_module(target_module, source, TypeNS, false, Some(span));
 
         let mut privacy_error = true;
         for &(ns, result, determined) in &[(ValueNS, &value_result, value_determined),
