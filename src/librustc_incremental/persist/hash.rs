@@ -39,6 +39,14 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
+    pub fn is_hashable(dep_node: &DepNode<DefId>) -> bool {
+        match *dep_node {
+            DepNode::Hir(_) => true,
+            DepNode::MetaData(def_id) => !def_id.is_local(),
+            _ => false,
+        }
+    }
+
     pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<(DefId, u64)> {
         match *dep_node {
             // HIR nodes (which always come from our crate) are an input:

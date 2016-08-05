@@ -22,6 +22,12 @@ impl BitVector {
         BitVector { data: vec![0; num_words] }
     }
 
+    pub fn clear(&mut self) {
+        for p in &mut self.data {
+            *p = 0;
+        }
+    }
+
     pub fn contains(&self, bit: usize) -> bool {
         let (word, mask) = word_mask(bit);
         (self.data[word] & mask) != 0
