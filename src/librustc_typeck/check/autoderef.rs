@@ -54,9 +54,11 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
 
         if self.steps.len() == tcx.sess.recursion_limit.get() {
             // We've reached the recursion limit, error gracefully.
-            span_err!(tcx.sess, self.span, E0055,
+            struct_span_err!(tcx.sess, self.span, E0055,
                       "reached the recursion limit while auto-dereferencing {:?}",
-                      self.cur_ty);
+                      self.cur_ty)
+                      .span_label(self.span, &format!("deref recursion limit reached"))
+                      .emit();
             return None;
         }
 
