@@ -10,13 +10,17 @@
 
 type Foo = i32;
 
-impl Copy for Foo { } //~ ERROR E0206
-                      //~^ ERROR E0117
+impl Copy for Foo { }
+//~^ ERROR the trait `Copy` may not be implemented for this type
+//~| NOTE type is not a structure or enumeration
+//~| ERROR E0117
 
 #[derive(Copy, Clone)]
 struct Bar;
 
-impl Copy for &'static Bar { } //~ ERROR E0206
+impl Copy for &'static Bar { }
+//~^ ERROR the trait `Copy` may not be implemented for this type
+//~| NOTE type is not a structure or enumeration
 
 fn main() {
 }
