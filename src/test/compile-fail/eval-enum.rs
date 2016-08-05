@@ -10,10 +10,10 @@
 
 enum test {
     div_zero = 1/0, //~ ERROR E0080
-                    //~| attempted to divide by zero
+                    //~| attempt to divide by zero
     rem_zero = 1%0,
     //~^ ERROR E0080
-    //~| attempted to calculate the remainder with a divisor of zero
+    //~| attempt to calculate the remainder with a divisor of zero
 }
 
 fn main() {}

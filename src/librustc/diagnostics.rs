@@ -23,7 +23,7 @@ code example:
 #[deny(const_err)]
 
 const X: i32 = 42 / 0;
-// error: attempted to divide by zero in a constant expression
+// error: attempt to divide by zero in a constant expression
 ```
 "##,
 
