@@ -159,8 +159,10 @@ impl Rewrite for ast::ViewPath {
 
 impl<'a> FmtVisitor<'a> {
     pub fn format_imports(&mut self, use_items: &[ptr::P<ast::Item>]) {
-        let mut last_pos =
-            use_items.first().map(|p_i| p_i.span.lo - BytePos(1)).unwrap_or(self.last_pos);
+        let mut last_pos = use_items.first()
+            .and_then(|p_i| p_i.span.lo.0.checked_sub(1))
+            .map(|span_lo| BytePos(span_lo))
+            .unwrap_or(self.last_pos);
         let prefix = codemap::mk_sp(self.last_pos, last_pos);
         let mut ordered_use_items = use_items.iter()
             .map(|p_i| {
