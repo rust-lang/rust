@@ -1337,10 +1337,13 @@ pub fn eval_length<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Ok(val as usize)
         },
         Ok(const_val) => {
-            span_err!(tcx.sess, count_expr.span, E0306,
-                      "expected usize for {}, found {}",
-                      reason,
-                      const_val.description());
+            struct_span_err!(tcx.sess, count_expr.span, E0306,
+                             "expected `usize` for {}, found {}",
+                             reason,
+                             const_val.description())
+                .span_label(count_expr.span, &format!("expected `usize`"))
+                .emit();
+
             Err(ErrorReported)
         }
         Err(err) => {
