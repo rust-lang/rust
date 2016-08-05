@@ -50,7 +50,9 @@ impl RWLock {
         // the implementation allows recursive locking. The POSIX standard
         // doesn't require recursivly locking a rwlock to deadlock, but we can't
         // allow that because it could lead to aliasing issues.
-        if r == libc::EDEADLK || *self.write_locked.get() {
+        if r == libc::EAGAIN {
+            panic!("rwlock maximum reader count exceeded");
+        } else if r == libc::EDEADLK || *self.write_locked.get() {
             if r == 0 {
                 self.raw_unlock();
             }
