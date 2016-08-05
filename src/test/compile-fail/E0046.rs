@@ -14,7 +14,9 @@ trait Foo {
 
 struct Bar;
 
-impl Foo for Bar {} //~ ERROR E0046
+impl Foo for Bar {}
+//~^ ERROR E0046
+//~| NOTE missing `foo` in implementation
 
 fn main() {
 }
