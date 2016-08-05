@@ -8,3 +8,6 @@ fn foo(paramVar: i32) {
 struct S {
     fieldVar: i32,
 }
+fn f() {
+    S { fieldVar: 42 }
+}
