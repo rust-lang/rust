@@ -1194,10 +1194,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         for (trait_def_id, name) in associated_types {
-            span_err!(tcx.sess, span, E0191,
+            struct_span_err!(tcx.sess, span, E0191,
                 "the value of the associated type `{}` (from the trait `{}`) must be specified",
                         name,
-                        tcx.item_path_str(trait_def_id));
+                        tcx.item_path_str(trait_def_id))
+                        .span_label(span, &format!(
+                            "missing associated type `{}` value", name))
+                        .emit();
         }
 
         tcx.mk_trait(object.principal, object.bounds)
