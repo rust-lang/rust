@@ -17,8 +17,12 @@ enum Bar {
 }
 
 struct Baz<'a> {
-    foo: Foo, //~ ERROR E0107
-    bar: Bar<'a>, //~ ERROR E0107
+    foo: Foo,
+    //~^ ERROR E0107
+    //~| expected 1 lifetime parameter
+    bar: Bar<'a>,
+    //~^ ERROR E0107
+    //~| unexpected lifetime parameter
 }
 
 fn main() {
