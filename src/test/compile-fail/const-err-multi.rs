@@ -10,7 +10,7 @@
 
 #![deny(const_err)]
 
-pub const A: i8 = -std::i8::MIN; //~ ERROR attempted to negate with overflow
+pub const A: i8 = -std::i8::MIN; //~ ERROR attempt to negate with overflow
 pub const B: i8 = A;
 pub const C: u8 = A as u8;
 pub const D: i8 = 50 - A;

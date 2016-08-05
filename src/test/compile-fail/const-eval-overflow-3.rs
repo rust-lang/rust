@@ -17,7 +17,7 @@
 // self-hosted and a cross-compiled setup; therefore resorting to
 // error-pattern for now.
 
-// error-pattern: attempted to add with overflow
+// error-pattern: attempt to add with overflow
 
 #![allow(unused_imports)]
 

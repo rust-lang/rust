@@ -1512,7 +1512,7 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           C_integral(llty, min, true), debug_loc);
                         with_cond(bcx, is_min, |bcx| {
                             let msg = InternedString::new(
-                                "attempted to negate with overflow");
+                                "attempt to negate with overflow");
                             controlflow::trans_fail(bcx, expr_info(expr), msg)
                         })
                     } else {

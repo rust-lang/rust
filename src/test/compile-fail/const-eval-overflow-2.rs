@@ -20,11 +20,11 @@ use std::{u8, u16, u32, u64, usize};
 const NEG_128: i8 = -128;
 const NEG_NEG_128: i8 = -NEG_128;
 //~^ ERROR constant evaluation error
-//~| attempted to negate with overflow
+//~| attempt to negate with overflow
 //~| ERROR constant evaluation error
-//~| attempted to negate with overflow
+//~| attempt to negate with overflow
 //~| ERROR constant evaluation error
-//~| attempted to negate with overflow
+//~| attempt to negate with overflow
 
 fn main() {
     match -128i8 {

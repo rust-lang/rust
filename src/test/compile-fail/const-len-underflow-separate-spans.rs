@@ -16,7 +16,7 @@ const ONE: usize = 1;
 const TWO: usize = 2;
 const LEN: usize = ONE - TWO;
 //~^ ERROR E0080
-//~| attempted to subtract with overflow
+//~| attempt to subtract with overflow
 
 fn main() {
     let a: [i8; LEN] = unimplemented!();
