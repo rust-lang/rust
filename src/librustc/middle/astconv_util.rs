@@ -31,8 +31,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 break;
             }
             for lifetime in segment.parameters.lifetimes() {
-                span_err!(self.sess, lifetime.span, E0110,
-                          "lifetime parameters are not allowed on this type");
+                struct_span_err!(self.sess, lifetime.span, E0110,
+                                 "lifetime parameters are not allowed on this type")
+                    .span_label(lifetime.span,
+                                &format!("lifetime parameter not allowed on this type"))
+                    .emit();
                 break;
             }
             for binding in segment.parameters.bindings() {
