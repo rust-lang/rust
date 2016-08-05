@@ -10,6 +10,7 @@
 
 enum Foo {
     Q = "32" //~ ERROR E0079
+    //~^ expected 'isize' type
 }
 
 fn main() {
