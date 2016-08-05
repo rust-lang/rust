@@ -54,6 +54,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 self.trans_rvalue_operand(bcx, rvalue, debug_loc).0
                             }
                         }
+                        LocalRef::Unused => bug!("reference to unused local"),
                     }
                 } else {
                     let tr_dest = self.trans_lvalue(&bcx, lvalue);

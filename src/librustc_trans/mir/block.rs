@@ -203,6 +203,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 ty: tr_lvalue.ty.to_ty(bcx.tcx())
                             }
                         }
+                        LocalRef::Unused => bug!("reference to unused local"),
                     };
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
@@ -857,6 +858,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 LocalRef::Operand(Some(_)) => {
                     bug!("lvalue local already assigned to");
                 }
+                LocalRef::Unused => bug!("reference to unused statement"),
             }
         } else {
             self.trans_lvalue(bcx, dest)

@@ -21,7 +21,7 @@ use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind};
 use machine;
 use type_of;
 
-use syntax_pos::DUMMY_SP;
+use syntax_pos::{Span, DUMMY_SP};
 use syntax::parse::token::keywords;
 
 use std::ops::Deref;
@@ -115,6 +115,7 @@ impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
 enum LocalRef<'tcx> {
     Lvalue(LvalueRef<'tcx>),
     Operand(Option<OperandRef<'tcx>>),
+    Unused,
 }
 
 impl<'tcx> LocalRef<'tcx> {
@@ -154,6 +155,8 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         (analyze::lvalue_locals(bcx, &mir),
          analyze::cleanup_kinds(bcx, &mir))
     });
+    let (live_vars, live_temps) = analyze::count_live_locals(&mir);
+
 
     // Compute debuginfo scopes from MIR scopes.
     let scopes = debuginfo::create_mir_scopes(fcx);
@@ -161,16 +164,17 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     // Allocate variable and temp allocas
     let locals = {
         let args = arg_local_refs(&bcx, &mir, &scopes, &lvalue_locals);
-        let vars = mir.var_decls.iter().enumerate().map(|(i, decl)| {
+        let vars = mir.var_decls.iter_enumerated().map(|(var_idx, decl)| {
+            if !live_vars.contains(var_idx.index()) {
+                return LocalRef::Unused;
+            }
             let ty = bcx.monomorphize(&decl.ty);
             let scope = scopes[decl.source_info.scope];
             let dbg = !scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo;
-
-            let local = mir.local_index(&mir::Lvalue::Var(mir::Var::new(i))).unwrap();
+            let local = mir.local_index(&mir::Lvalue::Var(var_idx)).unwrap();
             if !lvalue_locals.contains(local.index()) && !dbg {
                 return LocalRef::new_operand(bcx.ccx(), ty);
             }
-
             let lvalue = LvalueRef::alloca(&bcx, ty, &decl.name.as_str());
             if dbg {
                 bcx.with_block(|bcx| {
@@ -181,23 +185,31 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
             }
             LocalRef::Lvalue(lvalue)
         });
-
-        let locals = mir.temp_decls.iter().enumerate().map(|(i, decl)| {
-            (mir::Lvalue::Temp(mir::Temp::new(i)), decl.ty)
-        }).chain(iter::once((mir::Lvalue::ReturnPointer, mir.return_ty)));
-
-        args.into_iter().chain(vars).chain(locals.map(|(lvalue, ty)| {
-            let ty = bcx.monomorphize(&ty);
-            let local = mir.local_index(&lvalue).unwrap();
-            if lvalue == mir::Lvalue::ReturnPointer && fcx.fn_ty.ret.is_indirect() {
-                let llretptr = llvm::get_param(fcx.llfn, 0);
-                LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
-            } else if lvalue_locals.contains(local.index()) {
-                LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty, &format!("{:?}", lvalue)))
+        let temps = mir.temp_decls.iter_enumerated().map(|(temp_idx, decl)| {
+            if !live_temps.contains(temp_idx.index()) {
+                return LocalRef::Unused;
+            }
+            let ty = bcx.monomorphize(&decl.ty);
+            let local = mir.local_index(&mir::Lvalue::Temp(temp_idx)).unwrap();
+            if lvalue_locals.contains(local.index()) {
+                LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty, &format!("{:?}", temp_idx)))
             } else {
                 // If this is an immediate local, we do not create an
                 // alloca in advance. Instead we wait until we see the
                 // definition and update the operand there.
+                LocalRef::new_operand(bcx.ccx(), ty)
+            }
+        });
+
+        args.into_iter().chain(vars).chain(temps).chain(mir.return_ty.maybe_converging().map(|ty| {
+            let ty = bcx.monomorphize(&ty);
+            let lvalue = mir::Lvalue::ReturnPointer;
+            if fcx.fn_ty.ret.is_indirect() {
+                let llretptr = llvm::get_param(fcx.llfn, 0);
+                LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
+            } else if lvalue_locals.contains(mir.local_index(&lvalue).unwrap().index()) {
+                LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty, "ret".into()))
+            } else {
                 LocalRef::new_operand(bcx.ccx(), ty)
             }
         })).collect()

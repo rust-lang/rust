@@ -83,7 +83,7 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                                              variant_index: index }
                     }
                     _ => {
-                        bug!("cannot downcast non-enum type: `{:?}`", self)
+                        bug!("cannot downcast non-enum type: `{:?}` as `{:?}`", self, elem)
                     }
                 },
             ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }

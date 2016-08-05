@@ -99,7 +99,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector {
             if *temp == TempState::Undefined {
                 match context {
                     LvalueContext::Store |
-                    LvalueContext::Call => {
+                    LvalueContext::CallStore => {
                         *temp = TempState::Defined {
                             location: self.location,
                             uses: 0

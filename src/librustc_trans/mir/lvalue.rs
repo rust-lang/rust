@@ -99,6 +99,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 LocalRef::Operand(..) => {
                     bug!("using operand local {:?} as lvalue", lvalue);
                 }
+                LocalRef::Unused => bug!("reference to unused local"),
             }
         }
 
@@ -261,6 +262,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         bug!("Lvalue local already set");
                     }
                 }
+                LocalRef::Unused => bug!("reference to unused local"),
             }
         } else {
             let lvalue = self.trans_lvalue(bcx, lvalue);

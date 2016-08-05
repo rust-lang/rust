@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod dataflow;
+
 pub mod simplify_branches;
 pub mod simplify_cfg;
 pub mod erase_regions;
@@ -18,3 +20,4 @@ pub mod promote_consts;
 pub mod qualify_consts;
 pub mod dump_mir;
 pub mod deaggregator;
+pub mod liveness;

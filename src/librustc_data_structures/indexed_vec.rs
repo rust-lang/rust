@@ -103,6 +103,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub unsafe fn set_len(&mut self, len: usize) {
+        self.raw.set_len(len)
+    }
+
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.raw.is_empty()
     }
@@ -148,6 +153,16 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn last(&self) -> Option<I> {
         self.len().checked_sub(1).map(I::new)
+    }
+
+    #[inline]
+    pub unsafe fn as_ptr(&mut self) -> *const T {
+        self.raw.as_ptr()
+    }
+
+    #[inline]
+    pub unsafe fn as_mut_ptr(&mut self) -> *mut T {
+        self.raw.as_mut_ptr()
     }
 }
 

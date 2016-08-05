@@ -62,12 +62,12 @@ impl BitVector {
         }
     }
 
-    /// Return and unset first bit set.
+    /// Return and unset last bit set.
     pub fn pop(&mut self) -> Option<usize> {
-        for (idx, el) in self.data.iter_mut().enumerate() {
+        for (idx, el) in self.data.iter_mut().enumerate().rev() {
             if *el != 0 {
-                let bit = el.trailing_zeros() as usize;
-                *el &= !word_mask(bit).1;
+                let bit = 63 - el.leading_zeros() as usize;
+                *el &= !(1 << bit);
                 return Some(idx * 64 + bit);
             }
         }
@@ -77,11 +77,12 @@ impl BitVector {
     /// Returns true if the bit has changed.
     pub fn remove(&mut self, bit: usize) -> bool {
         let (word, mask) = word_mask(bit);
-        let data = &mut self.data[word];
-        let value = *data;
-        let new_value = value & !mask;
-        *data = new_value;
-        new_value != value
+        self.data.get_mut(word).map(|data| {
+            let value = *data;
+            let new_value = value & !mask;
+            *data = new_value;
+            new_value != value
+        }).unwrap_or(false)
     }
 
     /// Clear the bitvector.
@@ -416,4 +417,20 @@ fn matrix_iter() {
         assert_eq!(i, j);
     }
     assert!(iter.next().is_none());
+}
+
+fn bitvec_pop() {
+    let mut bitvec = BitVector::new(100);
+    bitvec.insert(1);
+    bitvec.insert(10);
+    bitvec.insert(19);
+    bitvec.insert(62);
+    bitvec.insert(63);
+    bitvec.insert(64);
+    bitvec.insert(65);
+    bitvec.insert(66);
+    bitvec.insert(99);
+    let idxs = vec![];
+    while let Some(idx) = bitvec.pop() { idxs.push(idx); }
+    assert_eq!(idxs, [99, 66, 65, 64, 63, 62, 19, 10, 1]);
 }
