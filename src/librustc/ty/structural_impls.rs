@@ -495,6 +495,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
                 ty::TyRef(r.fold_with(folder), tm.fold_with(folder))
             }
             ty::TyStruct(did, substs) => ty::TyStruct(did, substs.fold_with(folder)),
+            ty::TyUnion(did, substs) => ty::TyUnion(did, substs.fold_with(folder)),
             ty::TyClosure(did, substs) => ty::TyClosure(did, substs.fold_with(folder)),
             ty::TyProjection(ref data) => ty::TyProjection(data.fold_with(folder)),
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
@@ -524,6 +525,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyFnPtr(ref f) => f.visit_with(visitor),
             ty::TyRef(r, ref tm) => r.visit_with(visitor) || tm.visit_with(visitor),
             ty::TyStruct(_did, ref substs) => substs.visit_with(visitor),
+            ty::TyUnion(_did, ref substs) => substs.visit_with(visitor),
             ty::TyClosure(_did, ref substs) => substs.visit_with(visitor),
             ty::TyProjection(ref data) => data.visit_with(visitor),
             ty::TyAnon(_, ref substs) => substs.visit_with(visitor),

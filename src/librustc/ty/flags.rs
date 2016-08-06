@@ -102,7 +102,7 @@ impl FlagComputation {
                 }
             }
 
-            &ty::TyEnum(_, substs) | &ty::TyStruct(_, substs) => {
+            &ty::TyEnum(_, substs) | &ty::TyStruct(_, substs) | &ty::TyUnion(_, substs) => {
                 self.add_substs(substs);
             }
 

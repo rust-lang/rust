@@ -261,7 +261,8 @@ fn ty_is_local_constructor(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal)-> 
         }
 
         ty::TyEnum(def, _) |
-        ty::TyStruct(def, _) => {
+        ty::TyStruct(def, _) |
+        ty::TyUnion(def, _) => {
             def.did.is_local()
         }
 

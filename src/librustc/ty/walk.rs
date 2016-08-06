@@ -95,6 +95,7 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
         }
         ty::TyEnum(_, ref substs) |
         ty::TyStruct(_, ref substs) |
+        ty::TyUnion(_, ref substs) |
         ty::TyAnon(_, ref substs) => {
             stack.extend(substs.types().rev());
         }

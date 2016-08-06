@@ -66,6 +66,9 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyStruct(def, _) => {
             Some(StructSimplifiedType(def.did))
         }
+        ty::TyUnion(..) => {
+            unimplemented_unions!();
+        }
         ty::TyRef(_, mt) => {
             // since we introduce auto-refs during method lookup, we
             // just treat &T and T as equivalent from the point of

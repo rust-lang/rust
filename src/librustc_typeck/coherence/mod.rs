@@ -24,7 +24,7 @@ use rustc::ty::{ImplOrTraitItemId, ConstTraitItemId};
 use rustc::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use rustc::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
-use rustc::ty::{TyRef, TyStruct, TyTrait, TyNever, TyTuple};
+use rustc::ty::{TyRef, TyStruct, TyUnion, TyTrait, TyNever, TyTuple};
 use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use rustc::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
 use rustc::ty::{TyProjection, TyAnon};
@@ -70,7 +70,8 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
     fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
         match ty.sty {
             TyEnum(def, _) |
-            TyStruct(def, _) => {
+            TyStruct(def, _) |
+            TyUnion(def, _) => {
                 Some(def.did)
             }
 
