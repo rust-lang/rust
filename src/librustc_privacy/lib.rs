@@ -234,7 +234,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
             // Visit everything except for private fields
-            hir::ItemStruct(ref struct_def, ref generics) => {
+            hir::ItemStruct(ref struct_def, ref generics) |
+            hir::ItemUnion(ref struct_def, ref generics) => {
                 if item_level.is_some() {
                     self.reach().visit_generics(generics);
                     for field in struct_def.fields() {
@@ -1067,8 +1068,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
                     check.visit_foreign_item(foreign_item);
                 }
             }
-            // Subitems of structs have their own publicity
-            hir::ItemStruct(ref struct_def, ref generics) => {
+            // Subitems of structs and unions have their own publicity
+            hir::ItemStruct(ref struct_def, ref generics) |
+            hir::ItemUnion(ref struct_def, ref generics) => {
                 check.required_visibility = item_visibility;
                 check.visit_generics(generics);
 

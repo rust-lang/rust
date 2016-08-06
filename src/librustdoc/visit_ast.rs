@@ -365,6 +365,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.enums.push(self.visit_enum_def(item, name, ed, gen)),
             hir::ItemStruct(ref sd, ref gen) =>
                 om.structs.push(self.visit_variant_data(item, name, sd, gen)),
+            hir::ItemUnion(..) =>
+                unimplemented_unions!(),
             hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, _) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
                                           constness, abi, gen)),

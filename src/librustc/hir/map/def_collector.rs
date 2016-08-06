@@ -302,9 +302,9 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
         let def_data = match i.node {
             hir::ItemDefaultImpl(..) | hir::ItemImpl(..) =>
                 DefPathData::Impl,
-            hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemTrait(..) |
-            hir::ItemExternCrate(..) | hir::ItemMod(..) | hir::ItemForeignMod(..) |
-            hir::ItemTy(..) =>
+            hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemUnion(..) |
+            hir::ItemTrait(..) | hir::ItemExternCrate(..) | hir::ItemMod(..) |
+            hir::ItemForeignMod(..) | hir::ItemTy(..) =>
                 DefPathData::TypeNs(i.name.as_str()),
             hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) =>
                 DefPathData::ValueNs(i.name.as_str()),

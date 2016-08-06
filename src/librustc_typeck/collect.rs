@@ -1637,7 +1637,8 @@ fn predicates_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         hir::ItemFn(_, _, _, _, ref generics, _) |
         hir::ItemTy(_, ref generics) |
         hir::ItemEnum(_, ref generics) |
-        hir::ItemStruct(_, ref generics) => generics,
+        hir::ItemStruct(_, ref generics) |
+        hir::ItemUnion(_, ref generics) => generics,
         _ => &no_generics
     };
 

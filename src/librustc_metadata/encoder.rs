@@ -1179,6 +1179,9 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
             hir::ItemStruct(ref struct_def, _) => {
                 self.encode_addl_struct_info(def_id, struct_def.id(), item);
             }
+            hir::ItemUnion(..) => {
+                unimplemented_unions!();
+            }
             hir::ItemImpl(_, _, _, _, _, ref ast_items) => {
                 self.encode_addl_impl_info(def_id, item.id, ast_items);
             }
