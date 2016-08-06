@@ -146,11 +146,51 @@ mod foo {
 }
 
 use foo::MyTrait::do_something;
+// error: `do_something` is not directly importable
 
 fn main() {}
 ```
 
 It's invalid to directly import methods belonging to a trait or concrete type.
+"##,
+
+E0254: r##"
+Attempt was made to import an item whereas an extern crate with this name has
+already been imported.
+
+Erroneous code example:
+
+```compile_fail,E0254
+extern crate collections;
+
+mod foo {
+    pub trait collections {
+        fn do_something();
+    }
+}
+
+use foo::collections; // error: an extern crate named `collections` has already
+                      //        been imported in this module
+
+fn main() {}
+```
+
+To fix issue issue, you have to rename at least one of the two imports.
+Example:
+
+```ignore
+extern crate collections as libcollections; // ok!
+
+mod foo {
+    pub trait collections {
+        fn do_something();
+    }
+}
+
+use foo::collections;
+
+fn main() {}
+```
 "##,
 
 E0255: r##"
@@ -1237,7 +1277,6 @@ impl Foo for i32 {}
 register_diagnostics! {
 //  E0153, unused error code
 //  E0157, unused error code
-    E0254, // import conflicts with imported crate in this module
 //  E0257,
 //  E0258,
     E0402, // cannot use an outer type parameter in this context
