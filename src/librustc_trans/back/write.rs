@@ -724,7 +724,7 @@ pub fn run_passes(sess: &Session,
         work_items.push(work);
     }
 
-    if sess.time_passes() && sess.opts.incremental.is_some() {
+    if sess.opts.debugging_opts.incremental_info {
         dump_incremental_data(&trans);
     }
 
