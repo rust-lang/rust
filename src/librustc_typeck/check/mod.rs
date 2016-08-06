@@ -847,7 +847,9 @@ fn check_trait_fn_not_const<'a,'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             // good
         }
         hir::Constness::Const => {
-            span_err!(ccx.tcx.sess, span, E0379, "trait fns cannot be declared const");
+            struct_span_err!(ccx.tcx.sess, span, E0379, "trait fns cannot be declared const")
+                .span_label(span, &format!("trait fns cannot be const"))
+                .emit()
         }
     }
 }
