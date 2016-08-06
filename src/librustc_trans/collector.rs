@@ -798,6 +798,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             /* nothing to do */
         }
         ty::TyStruct(ref adt_def, substs) |
+        ty::TyUnion(ref adt_def, substs) |
         ty::TyEnum(ref adt_def, substs) => {
             for field in adt_def.all_fields() {
                 let field_type = monomorphize::apply_param_substs(scx,

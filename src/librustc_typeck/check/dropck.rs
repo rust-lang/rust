@@ -439,7 +439,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
                 cx, context, ity, depth+1)
         }
 
-        ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+        ty::TyStruct(def, substs) | ty::TyUnion(def, substs) | ty::TyEnum(def, substs) => {
             let did = def.did;
             for variant in &def.variants {
                 for field in variant.fields.iter() {

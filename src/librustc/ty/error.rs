@@ -247,6 +247,9 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyStruct(def, _) => {
                 format!("struct `{}`", tcx.item_path_str(def.did))
             }
+            ty::TyUnion(def, _) => {
+                format!("union `{}`", tcx.item_path_str(def.did))
+            }
             ty::TyClosure(..) => "closure".to_string(),
             ty::TyTuple(_) => "tuple".to_string(),
             ty::TyInfer(ty::TyVar(_)) => "inferred type".to_string(),

@@ -166,6 +166,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyParam(..) => Some(14),
                 ty::TyAnon(..) => Some(15),
                 ty::TyNever => Some(16),
+                ty::TyUnion(..) => Some(17),
                 ty::TyInfer(..) | ty::TyError => None
             }
         }

@@ -896,6 +896,9 @@ impl<'a, 'gcx, 'tcx> Layout {
                     non_zero: Some(def.did) == tcx.lang_items.non_zero()
                 }
             }
+            ty::TyUnion(..) => {
+                unimplemented_unions!();
+            }
             ty::TyEnum(def, substs) => {
                 let hint = *tcx.lookup_repr_hints(def.did).get(0)
                     .unwrap_or(&attr::ReprAny);

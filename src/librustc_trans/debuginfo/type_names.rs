@@ -45,6 +45,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyUint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
         ty::TyFloat(float_ty) => output.push_str(float_ty.ty_to_string()),
         ty::TyStruct(def, substs) |
+        ty::TyUnion(def, substs) |
         ty::TyEnum(def, substs) => {
             push_item_name(cx, def.did, qualified, output);
             push_type_params(cx, substs, output);

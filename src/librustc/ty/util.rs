@@ -430,6 +430,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
             TyStruct(d, _) |
+            TyUnion(d, _) |
             TyEnum(d, _) => self.def_id(d.did),
             TyArray(_, n) => self.hash(n),
             TyRawPtr(m) |
@@ -558,7 +559,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }) => Some(true),
 
             TyArray(..) | TySlice(_) | TyTrait(..) | TyTuple(..) |
-            TyClosure(..) | TyEnum(..) | TyStruct(..) | TyAnon(..) |
+            TyClosure(..) | TyEnum(..) | TyStruct(..) | TyUnion(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| !self.impls_bound(tcx, param_env, ty::BoundCopy, span));
 
@@ -598,7 +599,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
             TyStr | TyTrait(..) | TySlice(_) => Some(false),
 
-            TyEnum(..) | TyStruct(..) | TyProjection(..) | TyParam(..) |
+            TyEnum(..) | TyStruct(..) | TyUnion(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyAnon(..) | TyError => None
         }.unwrap_or_else(|| self.impls_bound(tcx, param_env, ty::BoundSized, span));
 

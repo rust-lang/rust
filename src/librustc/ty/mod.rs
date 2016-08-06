@@ -1421,6 +1421,7 @@ bitflags! {
         const IS_PHANTOM_DATA     = 1 << 3,
         const IS_SIMD             = 1 << 4,
         const IS_FUNDAMENTAL      = 1 << 5,
+        const IS_UNION            = 1 << 7,
     }
 }
 
@@ -1818,7 +1819,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                 }
             }
 
-            TyEnum(adt, substs) | TyStruct(adt, substs) => {
+            TyEnum(adt, substs) | TyStruct(adt, substs) | TyUnion(adt, substs) => {
                 // recursive case
                 let adt = tcx.lookup_adt_def_master(adt.did);
                 adt.calculate_sized_constraint_inner(tcx, stack);

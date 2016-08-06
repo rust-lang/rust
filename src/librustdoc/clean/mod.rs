@@ -1801,6 +1801,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 decl: (cx.map.local_def_id(0), &fty.sig).clean(cx),
                 abi: fty.abi,
             }),
+            ty::TyUnion(..) => unimplemented_unions!(),
             ty::TyStruct(def, substs) |
             ty::TyEnum(def, substs) => {
                 let did = def.did;

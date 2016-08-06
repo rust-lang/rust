@@ -320,6 +320,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
     match ty.sty {
         ty::TyStruct(adt_def, _) |
+        ty::TyUnion(adt_def, _) |
         ty::TyEnum(adt_def, _) => Some(adt_def.did),
 
         ty::TyTrait(ref data) => Some(data.principal.def_id()),

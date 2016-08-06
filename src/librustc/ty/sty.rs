@@ -120,6 +120,11 @@ pub enum TypeVariants<'tcx> {
     /// See warning about substitutions for enumerated types.
     TyStruct(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
+    /// A union type, defined with `union`.
+    ///
+    /// See warning about substitutions for enumerated types.
+    TyUnion(AdtDef<'tcx>, &'tcx Substs<'tcx>),
+
     /// `Box<T>`; this is nominally a struct in the documentation, but is
     /// special-cased internally. For example, it is possible to implicitly
     /// move the contents of a box out of that box, and methods of any type
@@ -1227,6 +1232,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             TyEnum(_, substs) |
             TyStruct(_, substs) |
+            TyUnion(_, substs) |
             TyAnon(_, substs) => {
                 substs.regions().collect()
             }
