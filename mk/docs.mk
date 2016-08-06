@@ -191,7 +191,7 @@ ifdef CFG_DISABLE_DOCS
   COMPILER_DOC_TARGETS :=
 endif
 
-docs: $(DOC_TARGETS)
+docs: $(DOC_TARGETS) doc-man
 doc: docs
 compiler-docs: $(COMPILER_DOC_TARGETS)
 
@@ -227,3 +227,11 @@ doc/error-index.html: $(ERR_IDX_GEN_EXE) $(CSREQ$(2)_T_$(CFG_BUILD)_H_$(CFG_BUIL
 doc/error-index.md: $(ERR_IDX_GEN_EXE) $(CSREQ$(2)_T_$(CFG_BUILD)_H_$(CFG_BUILD)) | doc/
 	$(Q)$(call E, error_index_generator: $@)
 	$(Q)$(ERR_IDX_GEN_MD)
+
+doc-man:
+	cd man && \
+	echo '.TH RUSTC "1" "$(shell LANG=C date "+%B %Y")" "rustc $(CFG_RELEASE_NUM)" "User Commands"' > rustc.1  && \
+	cat rustc.1.in >> rustc.1
+	cd man && \
+	echo '.TH RUSTDOC "1" "$(shell LANG=C date "+%B %Y")" "rustdoc $(CFG_RELEASE_NUM)" "User Commands"' > rustdoc.1  && \
+	cat rustdoc.1.in >> rustdoc.1

@@ -1,4 +1,3 @@
-.TH RUSTC "1" "August 2016" "rustc 1.12.0" "User Commands"
 .SH NAME
 rustc \- The Rust compiler
 .SH SYNOPSIS
