@@ -666,8 +666,6 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "divide crate into N units to optimize in parallel"),
     remark: Passes = (SomePasses(Vec::new()), parse_passes,
         "print remarks for these optimization passes (space separated, or \"all\")"),
-    no_stack_check: bool = (false, parse_bool,
-        "disable checks for stack exhaustion (a memory-safety hazard!)"),
     debuginfo: Option<usize> = (None, parse_opt_uint,
         "debug info emission level, 0 = no debug info, 1 = line tables only, \
          2 = full debug info with variable and type information"),
