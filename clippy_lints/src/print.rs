@@ -35,7 +35,7 @@ declare_lint! {
 declare_lint! {
     pub USE_DEBUG,
     Allow,
-    "use `Debug`-based formatting"
+    "use of `Debug`-based formatting"
 }
 
 #[derive(Copy, Clone, Debug)]

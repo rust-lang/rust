@@ -29,7 +29,7 @@ use utils::{in_macro, span_lint};
 declare_lint! {
     pub ITEMS_AFTER_STATEMENTS,
     Allow,
-    "finds blocks where an item comes after a statement"
+    "blocks where an item comes after a statement"
 }
 
 pub struct ItemsAfterStatements;

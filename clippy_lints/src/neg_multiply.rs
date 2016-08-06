@@ -18,7 +18,7 @@ use utils::span_lint;
 declare_lint! {
     pub NEG_MULTIPLY,
     Warn,
-    "Warns on multiplying integers with -1"
+    "multiplying integers with -1"
 }
 
 #[derive(Copy, Clone)]

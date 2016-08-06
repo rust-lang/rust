@@ -19,7 +19,7 @@ use utils::span_lint;
 declare_lint! {
     pub UNNECESSARY_MUT_PASSED,
     Warn,
-    "an argument is passed as a mutable reference although the function/method only demands an \
+    "an argument passed as a mutable reference although the callee only demands an \
      immutable reference"
 }
 

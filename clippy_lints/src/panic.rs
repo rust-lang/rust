@@ -18,7 +18,9 @@ use utils::{is_direct_expn_of, match_path, paths, span_lint};
 /// panic!("This `panic!` is probably missing a parameter there: {}");
 /// ```
 declare_lint! {
-    pub PANIC_PARAMS, Warn, "missing parameters in `panic!`"
+    pub PANIC_PARAMS,
+    Warn,
+    "missing parameters in `panic!` calls"
 }
 
 #[allow(missing_copy_implementations)]

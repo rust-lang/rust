@@ -20,7 +20,8 @@ use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast,
 /// fn foo(x: usize) { return x; }
 /// ```
 declare_lint! {
-    pub NEEDLESS_RETURN, Warn,
+    pub NEEDLESS_RETURN,
+    Warn,
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
@@ -39,7 +40,8 @@ declare_lint! {
 /// { let x = ..; x }
 /// ```
 declare_lint! {
-    pub LET_AND_RETURN, Warn,
+    pub LET_AND_RETURN,
+    Warn,
     "creating a let-binding and then immediately returning it like `let x = expr; x` at \
      the end of a block"
 }

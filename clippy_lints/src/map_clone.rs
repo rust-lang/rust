@@ -16,9 +16,9 @@ use utils::{is_adjusted, match_path, match_trait_method, match_type, paths, snip
 /// x.map(|e| e.clone());
 /// ```
 declare_lint! {
-    pub MAP_CLONE, Warn,
-    "using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends \
-     `.cloned()` instead)"
+    pub MAP_CLONE,
+    Warn,
+    "using `.map(|x| x.clone())` to clone an iterator or option's contents"
 }
 
 #[derive(Copy, Clone)]

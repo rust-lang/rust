@@ -30,8 +30,9 @@ use utils::paths;
 /// fn not_quite_hot_code(..) { ... }
 /// ```
 declare_lint! {
-    pub INLINE_ALWAYS, Warn,
-    "`#[inline(always)]` is a bad idea in most cases"
+    pub INLINE_ALWAYS,
+    Warn,
+    "use of `#[inline(always)]`"
 }
 
 /// **What it does:** Checks for `#[deprecated]` annotations with a `since`
@@ -48,8 +49,9 @@ declare_lint! {
 /// fn something_else(..) { ... }
 /// ```
 declare_lint! {
-    pub DEPRECATED_SEMVER, Warn,
-    "`Warn` on `#[deprecated(since = \"x\")]` where x is not semver"
+    pub DEPRECATED_SEMVER,
+    Warn,
+    "use of `#[deprecated(since = \"x\")]` where x is not semver"
 }
 
 #[derive(Copy,Clone)]

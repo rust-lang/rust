@@ -27,7 +27,7 @@ use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_
 declare_lint! {
     pub INVALID_REGEX,
     Deny,
-    "finds invalid regular expressions"
+    "invalid regular expressions"
 }
 
 /// **What it does:** Checks for trivial [regex] creation (with `Regex::new`,
@@ -48,7 +48,7 @@ declare_lint! {
 declare_lint! {
     pub TRIVIAL_REGEX,
     Warn,
-    "finds trivial regular expressions"
+    "trivial regular expressions"
 }
 
 /// **What it does:** Checks for usage of `regex!(_)` which (as of now) is
@@ -67,7 +67,7 @@ declare_lint! {
 declare_lint! {
     pub REGEX_MACRO,
     Warn,
-    "finds use of `regex!(_)`, suggests `Regex::new(_)` instead"
+    "use of `regex!(_)` instead of `Regex::new(_)`"
 }
 
 #[derive(Clone, Default)]

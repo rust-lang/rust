@@ -21,7 +21,7 @@ use utils::sugg::Sugg;
 declare_lint! {
     pub MANUAL_SWAP,
     Warn,
-    "manual swap"
+    "manual swap of two variables"
 }
 
 /// **What it does:** Checks for `foo = bar; bar = foo` sequences.

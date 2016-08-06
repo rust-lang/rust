@@ -72,7 +72,7 @@ def gen_table(lints, link=None):
     w_name = max(len(l[1]) for l in lints)
     w_desc = max(len(l[3]) for l in lints)
     # header and underline
-    yield '%-*s | default | meaning\n' % (w_name, 'name')
+    yield '%-*s | default | triggers on\n' % (w_name, 'name')
     yield '%s-|-%s-|-%s\n' % ('-' * w_name, '-' * 7, '-' * w_desc)
     # one table row per lint
     for (_, name, default, meaning) in sorted(lints, key=lambda l: l[1]):

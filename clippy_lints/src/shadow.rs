@@ -22,7 +22,8 @@ use utils::{higher, in_external_macro, snippet, span_lint_and_then};
 /// let x = &x;
 /// ```
 declare_lint! {
-    pub SHADOW_SAME, Allow,
+    pub SHADOW_SAME,
+    Allow,
     "rebinding a name to itself, e.g. `let mut x = &mut x`"
 }
 
@@ -42,9 +43,10 @@ declare_lint! {
 /// let x = x + 1;
 /// ```
 declare_lint! {
-    pub SHADOW_REUSE, Allow,
+    pub SHADOW_REUSE,
+    Allow,
     "rebinding a name to an expression that re-uses the original value, e.g. \
-    `let x = x + 1`"
+     `let x = x + 1`"
 }
 
 /// **What it does:** Checks for bindings that shadow other bindings already in
@@ -64,8 +66,9 @@ declare_lint! {
 /// let x = y; let x = z; // shadows the earlier binding
 /// ```
 declare_lint! {
-    pub SHADOW_UNRELATED, Allow,
-    "The name is re-bound without even using the original value"
+    pub SHADOW_UNRELATED,
+    Allow,
+    "rebinding a name without even using the original value"
 }
 
 #[derive(Copy, Clone)]

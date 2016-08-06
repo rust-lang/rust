@@ -23,7 +23,7 @@ use utils::span_lint;
 declare_lint! {
     pub UNSAFE_REMOVED_FROM_NAME,
     Warn,
-    "unsafe removed from name"
+    "`unsafe` removed from API names on import"
 }
 
 pub struct UnsafeNameRemoval;

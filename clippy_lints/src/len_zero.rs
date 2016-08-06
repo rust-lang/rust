@@ -22,7 +22,8 @@ use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_then, wal
 /// if x.len() == 0 { .. }
 /// ```
 declare_lint! {
-    pub LEN_ZERO, Warn,
+    pub LEN_ZERO,
+    Warn,
     "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` \
      could be used instead"
 }
@@ -45,7 +46,8 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub LEN_WITHOUT_IS_EMPTY, Warn,
+    pub LEN_WITHOUT_IS_EMPTY,
+    Warn,
     "traits and impls that have `.len()` but not `.is_empty()`"
 }
 

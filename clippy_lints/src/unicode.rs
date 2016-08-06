@@ -14,7 +14,8 @@ use utils::{snippet, span_help_and_lint};
 ///
 /// **Example:** You don't see it, but there may be a zero-width space somewhere in this text.
 declare_lint! {
-    pub ZERO_WIDTH_SPACE, Deny,
+    pub ZERO_WIDTH_SPACE,
+    Deny,
     "using a zero-width space in a string literal, which is confusing"
 }
 
@@ -33,9 +34,10 @@ declare_lint! {
 /// let x = "Hä?"
 /// ```
 declare_lint! {
-    pub NON_ASCII_LITERAL, Allow,
-    "using any literal non-ASCII chars in a string literal; suggests \
-     using the `\\u` escape instead"
+    pub NON_ASCII_LITERAL,
+    Allow,
+    "using any literal non-ASCII chars in a string literal instead of \
+     using the `\\u` escape"
 }
 
 /// **What it does:** Checks for string literals that contain Unicode in a form
@@ -50,7 +52,8 @@ declare_lint! {
 /// **Example:** You may not see it, but “à” and “à” aren't the same string. The
 /// former when escaped is actually `"a\u{300}"` while the latter is `"\u{e0}"`.
 declare_lint! {
-    pub UNICODE_NOT_NFC, Allow,
+    pub UNICODE_NOT_NFC,
+    Allow,
     "using a unicode literal not in NFC normal form (see \
      [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
 }

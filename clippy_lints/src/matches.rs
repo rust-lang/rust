@@ -27,9 +27,10 @@ use utils::sugg::Sugg;
 /// }
 /// ```
 declare_lint! {
-    pub SINGLE_MATCH, Warn,
+    pub SINGLE_MATCH,
+    Warn,
     "a match statement with a single nontrivial arm (i.e, where the other arm \
-     is `_ => {}`) is used; recommends `if let` instead"
+     is `_ => {}`) instead of `if let`"
 }
 
 /// **What it does:** Checks for matches with a two arms where an `if let` will
@@ -47,9 +48,10 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub SINGLE_MATCH_ELSE, Allow,
-    "a match statement with a two arms where the second arm's pattern is a wildcard; \
-     recommends `if let` instead"
+    pub SINGLE_MATCH_ELSE,
+    Allow,
+    "a match statement with a two arms where the second arm's pattern is a wildcard \
+     instead of `if let`"
 }
 
 /// **What it does:** Checks for matches where all arms match a reference,
@@ -70,9 +72,9 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub MATCH_REF_PATS, Warn,
-    "a match or `if let` has all arms prefixed with `&`; the match expression can be \
-     dereferenced instead"
+    pub MATCH_REF_PATS,
+    Warn,
+    "a match or `if let` with all arms prefixed with `&` instead of deref-ing the match expression"
 }
 
 /// **What it does:** Checks for matches where match expression is a `bool`. It
@@ -91,8 +93,9 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub MATCH_BOOL, Warn,
-    "a match on boolean expression; recommends `if..else` block instead"
+    pub MATCH_BOOL,
+    Warn,
+    "a match on a boolean expression instead of an `if..else` block"
 }
 
 /// **What it does:** Checks for overlapping match arms.
@@ -112,7 +115,9 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub MATCH_OVERLAPPING_ARM, Warn, "a match has overlapping arms"
+    pub MATCH_OVERLAPPING_ARM,
+    Warn,
+    "a match with overlapping arms"
 }
 
 #[allow(missing_copy_implementations)]

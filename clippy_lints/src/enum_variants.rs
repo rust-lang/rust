@@ -23,8 +23,9 @@ use utils::{camel_case_from, camel_case_until, in_macro};
 /// }
 /// ```
 declare_lint! {
-    pub ENUM_VARIANT_NAMES, Warn,
-    "finds enums where all variants share a prefix/postfix"
+    pub ENUM_VARIANT_NAMES,
+    Warn,
+    "enums where all variants share a prefix/postfix"
 }
 
 /// **What it does:** Detects type names that are prefixed or suffixed by the
@@ -41,8 +42,9 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub STUTTER, Allow,
-    "finds type names prefixed/postfixed with their containing module's name"
+    pub STUTTER,
+    Allow,
+    "type names prefixed/postfixed with their containing module's name"
 }
 
 pub struct EnumVariantNames {

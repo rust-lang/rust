@@ -17,7 +17,8 @@ use rustc_const_math::ConstInt;
 /// x / 1 + 0 * 1 - 0 | 0
 /// ```
 declare_lint! {
-    pub IDENTITY_OP, Warn,
+    pub IDENTITY_OP,
+    Warn,
     "using identity operations, e.g. `x + 0` or `y / 1`"
 }
 

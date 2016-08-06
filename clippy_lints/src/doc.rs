@@ -21,8 +21,9 @@ use utils::span_lint;
 /// fn doit(foo_bar) { .. }
 /// ```
 declare_lint! {
-    pub DOC_MARKDOWN, Warn,
-    "checks for the presence of `_`, `::` or camel-case outside ticks in documentation"
+    pub DOC_MARKDOWN,
+    Warn,
+    "presence of `_`, `::` or camel-case outside backticks in documentation"
 }
 
 #[derive(Clone)]

@@ -24,7 +24,7 @@ use utils::{self, higher};
 declare_lint! {
     pub OUT_OF_BOUNDS_INDEXING,
     Deny,
-    "out of bound constant indexing"
+    "out of bounds constant indexing"
 }
 
 /// **What it does:** Checks for usage of indexing or slicing.

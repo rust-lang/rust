@@ -145,7 +145,7 @@ declare_lint! {
 declare_lint! {
     pub WHILE_LET_LOOP,
     Warn,
-    "`loop { if let { ... } else break }` can be written as a `while let` loop"
+    "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
 }
 
 /// **What it does:** Checks for using `collect()` on an iterator without using
@@ -186,7 +186,7 @@ declare_lint! {
 declare_lint! {
     pub REVERSE_RANGE_LOOP,
     Warn,
-    "Iterating over an empty range, such as `10..0` or `5..5`"
+    "iteration over an empty range, such as `10..0` or `5..5`"
 }
 
 /// **What it does:** Checks `for` loops over slices with an explicit counter
@@ -224,7 +224,7 @@ declare_lint! {
 declare_lint! {
     pub EMPTY_LOOP,
     Warn,
-    "empty `loop {}` detected"
+    "empty `loop {}`, which should block or sleep"
 }
 
 /// **What it does:** Checks for `while let` expressions on iterators.

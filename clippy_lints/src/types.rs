@@ -29,7 +29,8 @@ pub struct TypePass;
 /// }
 /// ```
 declare_lint! {
-    pub BOX_VEC, Warn,
+    pub BOX_VEC,
+    Warn,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
@@ -56,7 +57,8 @@ declare_lint! {
 /// let x = LinkedList::new();
 /// ```
 declare_lint! {
-    pub LINKEDLIST, Warn,
+    pub LINKEDLIST,
+    Warn,
     "usage of LinkedList, usually a vector is faster, or a more specialized data \
      structure like a VecDeque"
 }
@@ -117,7 +119,8 @@ pub struct LetPass;
 /// let x = { 1; };
 /// ```
 declare_lint! {
-    pub LET_UNIT_VALUE, Warn,
+    pub LET_UNIT_VALUE,
+    Warn,
     "creating a let binding to a value of unit type, which usually can't be used afterwards"
 }
 
@@ -169,8 +172,9 @@ impl LateLintPass for LetPass {
 /// { foo(); bar(); baz(); }
 /// ```
 declare_lint! {
-    pub UNIT_CMP, Warn,
-    "comparing unit values (which is always `true` or `false`, respectively)"
+    pub UNIT_CMP,
+    Warn,
+    "comparing unit values"
 }
 
 #[allow(missing_copy_implementations)]
@@ -227,7 +231,8 @@ pub struct CastPass;
 /// let x = u64::MAX; x as f64
 /// ```
 declare_lint! {
-    pub CAST_PRECISION_LOSS, Allow,
+    pub CAST_PRECISION_LOSS,
+    Allow,
     "casts that cause loss of precision, e.g `x as f32` where `x: u64`"
 }
 
@@ -247,7 +252,8 @@ declare_lint! {
 /// y as u64  // will return 18446744073709551615
 /// ```
 declare_lint! {
-    pub CAST_SIGN_LOSS, Allow,
+    pub CAST_SIGN_LOSS,
+    Allow,
     "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`"
 }
 
@@ -266,8 +272,10 @@ declare_lint! {
 /// fn as_u8(x: u64) -> u8 { x as u8 }
 /// ```
 declare_lint! {
-    pub CAST_POSSIBLE_TRUNCATION, Allow,
-    "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`"
+    pub CAST_POSSIBLE_TRUNCATION,
+    Allow,
+    "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, \
+     or `x as i32` where `x: f32`"
 }
 
 /// **What it does:** Checks for casts from an unsigned type to a signed type of
@@ -288,8 +296,10 @@ declare_lint! {
 /// u32::MAX as i32  // will yield a value of `-1`
 /// ```
 declare_lint! {
-    pub CAST_POSSIBLE_WRAP, Allow,
-    "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`"
+    pub CAST_POSSIBLE_WRAP,
+    Allow,
+    "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` \
+     and `x > i32::MAX`"
 }
 
 /// Returns the size in bits of an integral type.
@@ -494,8 +504,9 @@ impl LateLintPass for CastPass {
 /// struct Foo { inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>> }
 /// ```
 declare_lint! {
-    pub TYPE_COMPLEXITY, Warn,
-    "usage of very complex types; recommends factoring out parts into `type` definitions"
+    pub TYPE_COMPLEXITY,
+    Warn,
+    "usage of very complex types that might be better factored into `type` definitions"
 }
 
 #[allow(missing_copy_implementations)]
@@ -644,8 +655,9 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
 /// 'x' as u8
 /// ```
 declare_lint! {
-    pub CHAR_LIT_AS_U8, Warn,
-    "Casting a character literal to u8"
+    pub CHAR_LIT_AS_U8,
+    Warn,
+    "casting a character literal to u8"
 }
 
 pub struct CharLitAsU8;
@@ -695,9 +707,9 @@ impl LateLintPass for CharLitAsU8 {
 /// 100 > std::i32::MAX
 /// ```
 declare_lint! {
-    pub ABSURD_EXTREME_COMPARISONS, Warn,
-    "a comparison involving a maximum or minimum value involves a case that is always \
-    true or always false"
+    pub ABSURD_EXTREME_COMPARISONS,
+    Warn,
+    "a comparison with a maximum or minimum value that is always true or false"
 }
 
 pub struct AbsurdExtremeComparisons;
@@ -872,7 +884,8 @@ impl LateLintPass for AbsurdExtremeComparisons {
 /// let x : u8 = ...; (x as u32) > 300
 /// ```
 declare_lint! {
-    pub INVALID_UPCAST_COMPARISONS, Allow,
+    pub INVALID_UPCAST_COMPARISONS,
+    Allow,
     "a comparison involving an upcast which is always true or false"
 }
 

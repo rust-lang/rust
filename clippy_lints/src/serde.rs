@@ -11,8 +11,9 @@ use utils::{span_lint, get_trait_def_id, paths};
 ///
 /// **Example:** Implementing `Visitor::visit_string` but not `Visitor::visit_str`.
 declare_lint! {
-    pub SERDE_API_MISUSE, Warn,
-    "Various things that will negatively affect your serde experience"
+    pub SERDE_API_MISUSE,
+    Warn,
+    "various things that will negatively affect your serde experience"
 }
 
 

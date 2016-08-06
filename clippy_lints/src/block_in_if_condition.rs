@@ -16,8 +16,9 @@ use utils::*;
 /// if { true } ..
 /// ```
 declare_lint! {
-    pub BLOCK_IN_IF_CONDITION_EXPR, Warn,
-    "braces can be eliminated in conditions that are expressions, e.g `if { true } ...`"
+    pub BLOCK_IN_IF_CONDITION_EXPR,
+    Warn,
+    "braces that can be eliminated in conditions, e.g `if { true } ...`"
 }
 
 /// **What it does:** Checks for `if` conditions that use blocks containing
@@ -34,9 +35,9 @@ declare_lint! {
 /// if somefunc(|x| { x == 47 }) ..
 /// ```
 declare_lint! {
-    pub BLOCK_IN_IF_CONDITION_STMT, Warn,
-    "avoid complex blocks in conditions, instead move the block higher and bind it \
-    with 'let'; e.g: `if { let x = true; x } ...`"
+    pub BLOCK_IN_IF_CONDITION_STMT,
+    Warn,
+    "complex blocks in conditions, e.g. `if { let x = true; x } ...`"
 }
 
 #[derive(Copy,Clone)]

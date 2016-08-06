@@ -19,8 +19,9 @@ use utils::{span_lint, snippet};
 /// * `1 << 2 + 3` equals 32, while `(1 << 2) + 3` equals 7
 /// * `-1i32.abs()` equals -1, while `(-1i32).abs()` equals 1
 declare_lint! {
-    pub PRECEDENCE, Warn,
-    "catches operations where precedence may be unclear"
+    pub PRECEDENCE,
+    Warn,
+    "operations where precedence may be unclear"
 }
 
 #[derive(Copy,Clone)]

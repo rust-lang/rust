@@ -22,8 +22,9 @@ pub struct EtaPass;
 /// ```
 /// where `foo(_)` is a plain function that takes the exact argument type of `x`.
 declare_lint! {
-    pub REDUNDANT_CLOSURE, Warn,
-    "using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)"
+    pub REDUNDANT_CLOSURE,
+    Warn,
+    "redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)"
 }
 
 impl LintPass for EtaPass {

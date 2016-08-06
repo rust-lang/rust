@@ -16,7 +16,7 @@ use utils::{match_def_path, paths, span_lint};
 declare_lint! {
     pub MEM_FORGET,
     Allow,
-    "`mem::forget` usage on `Drop` types is likely to cause memory leaks"
+    "`mem::forget` usage on `Drop` types, likely to cause memory leaks"
 }
 
 pub struct MemForget;

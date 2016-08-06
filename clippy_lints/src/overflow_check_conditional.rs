@@ -14,8 +14,11 @@ use utils::span_lint;
 /// a + b < a
 /// ```
 
-declare_lint!(pub OVERFLOW_CHECK_CONDITIONAL, Warn,
-              "Using overflow checks which are likely to panic");
+declare_lint! {
+    pub OVERFLOW_CHECK_CONDITIONAL,
+    Warn,
+    "overflow checks inspired by C which are likely to panic"
+}
 
 #[derive(Copy, Clone)]
 pub struct OverflowCheckConditional;

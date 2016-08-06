@@ -16,7 +16,7 @@ use utils::{higher, sugg};
 /// ```
 declare_restriction_lint! {
     pub ASSIGN_OPS,
-    "any assignment operation"
+    "any compound assignment operation"
 }
 
 /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a` patterns.

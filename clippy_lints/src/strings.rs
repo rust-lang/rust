@@ -21,7 +21,7 @@ use utils::{match_type, paths, span_lint, span_lint_and_then, walk_ptrs_ty, get_
 declare_lint! {
     pub STRING_ADD_ASSIGN,
     Allow,
-    "using `x = x + ..` where x is a `String`; suggests using `push_str()` instead"
+    "using `x = x + ..` where x is a `String` instead of `push_str()`"
 }
 
 /// **What it does:** Checks for all instances of `x + _` where `x` is of type
@@ -49,7 +49,7 @@ declare_lint! {
 declare_lint! {
     pub STRING_ADD,
     Allow,
-    "using `x + ..` where x is a `String`; suggests using `push_str()` instead"
+    "using `x + ..` where x is a `String` instead of `push_str()`"
 }
 
 /// **What it does:** Checks for the `as_bytes` method called on string literals
@@ -67,7 +67,7 @@ declare_lint! {
 declare_lint! {
     pub STRING_LIT_AS_BYTES,
     Warn,
-    "calling `as_bytes` on a string literal; suggests using a byte string literal instead"
+    "calling `as_bytes` on a string literal instead of using a byte string literal"
 }
 
 #[derive(Copy, Clone)]

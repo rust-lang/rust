@@ -34,7 +34,8 @@ pub struct Pass;
 /// x.unwrap()
 /// ```
 declare_lint! {
-    pub OPTION_UNWRAP_USED, Allow,
+    pub OPTION_UNWRAP_USED,
+    Allow,
     "using `Option.unwrap()`, which should at least get a better message using `expect()`"
 }
 
@@ -55,7 +56,8 @@ declare_lint! {
 /// x.unwrap()
 /// ```
 declare_lint! {
-    pub RESULT_UNWRAP_USED, Allow,
+    pub RESULT_UNWRAP_USED,
+    Allow,
     "using `Result.unwrap()`, which might be better handled"
 }
 
@@ -79,7 +81,8 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub SHOULD_IMPLEMENT_TRAIT, Warn,
+    pub SHOULD_IMPLEMENT_TRAIT,
+    Warn,
     "defining a method that should be implementing a std trait"
 }
 
@@ -107,7 +110,8 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub WRONG_SELF_CONVENTION, Warn,
+    pub WRONG_SELF_CONVENTION,
+    Warn,
     "defining a method named with an established prefix (like \"into_\") that takes \
      `self` with the wrong convention"
 }
@@ -128,7 +132,8 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub WRONG_PUB_SELF_CONVENTION, Allow,
+    pub WRONG_PUB_SELF_CONVENTION,
+    Allow,
     "defining a public method named with an established prefix (like \"into_\") that takes \
      `self` with the wrong convention"
 }
@@ -145,7 +150,8 @@ declare_lint! {
 /// x.ok().expect("why did I do this again?")
 /// ```
 declare_lint! {
-    pub OK_EXPECT, Warn,
+    pub OK_EXPECT,
+    Warn,
     "using `ok().expect()`, which gives worse error messages than \
      calling `expect` directly on the Result"
 }
@@ -162,7 +168,8 @@ declare_lint! {
 /// x.map(|a| a + 1).unwrap_or(0)
 /// ```
 declare_lint! {
-    pub OPTION_MAP_UNWRAP_OR, Warn,
+    pub OPTION_MAP_UNWRAP_OR,
+    Warn,
     "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as \
      `map_or(a, f)`"
 }
@@ -179,7 +186,8 @@ declare_lint! {
 /// x.map(|a| a + 1).unwrap_or_else(some_function)
 /// ```
 declare_lint! {
-    pub OPTION_MAP_UNWRAP_OR_ELSE, Warn,
+    pub OPTION_MAP_UNWRAP_OR_ELSE,
+    Warn,
     "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
      `map_or_else(g, f)`"
 }
@@ -196,7 +204,8 @@ declare_lint! {
 /// iter.filter(|x| x == 0).next()
 /// ```
 declare_lint! {
-    pub FILTER_NEXT, Warn,
+    pub FILTER_NEXT,
+    Warn,
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
 }
 
@@ -214,8 +223,10 @@ declare_lint! {
 /// iter.filter(|x| x == 0).map(|x| x * 2)
 /// ```
 declare_lint! {
-    pub FILTER_MAP, Allow,
-    "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
+    pub FILTER_MAP,
+    Allow,
+    "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can \
+     usually be written as a single method call"
 }
 
 /// **What it does:** Checks for an iterator search (such as `find()`,
@@ -231,7 +242,8 @@ declare_lint! {
 /// iter.find(|x| x == 0).is_some()
 /// ```
 declare_lint! {
-    pub SEARCH_IS_SOME, Warn,
+    pub SEARCH_IS_SOME,
+    Warn,
     "using an iterator search followed by `is_some()`, which is more succinctly \
      expressed as a call to `any()`"
 }
@@ -249,7 +261,8 @@ declare_lint! {
 /// name.chars().next() == Some('_')
 /// ```
 declare_lint! {
-    pub CHARS_NEXT_CMP, Warn,
+    pub CHARS_NEXT_CMP,
+    Warn,
     "using `.chars().next()` to check if a string starts with a char"
 }
 
@@ -276,8 +289,9 @@ declare_lint! {
 /// foo.unwrap_or_default()
 /// ```
 declare_lint! {
-    pub OR_FUN_CALL, Warn,
-    "using any `*or` method when the `*or_else` would do"
+    pub OR_FUN_CALL,
+    Warn,
+    "using any `*or` method with a function call, which suggests `*or_else`"
 }
 
 /// **What it does:** Checks for usage of `.extend(s)` on a `Vec` to extend the
@@ -293,7 +307,8 @@ declare_lint! {
 /// my_vec.extend(&xs)
 /// ```
 declare_lint! {
-    pub EXTEND_FROM_SLICE, Warn,
+    pub EXTEND_FROM_SLICE,
+    Warn,
     "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice"
 }
 
@@ -309,7 +324,9 @@ declare_lint! {
 /// 42u64.clone()
 /// ```
 declare_lint! {
-    pub CLONE_ON_COPY, Warn, "using `clone` on a `Copy` type"
+    pub CLONE_ON_COPY,
+    Warn,
+    "using `clone` on a `Copy` type"
 }
 
 /// **What it does:** Checks for usage of `.clone()` on an `&&T`.
@@ -329,7 +346,9 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub CLONE_DOUBLE_REF, Warn, "using `clone` on `&&T`"
+    pub CLONE_DOUBLE_REF,
+    Warn,
+    "using `clone` on `&&T`"
 }
 
 /// **What it does:** Checks for `new` not returning `Self`.
@@ -347,7 +366,9 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub NEW_RET_NO_SELF, Warn, "not returning `Self` in a `new` method"
+    pub NEW_RET_NO_SELF,
+    Warn,
+    "not returning `Self` in a `new` method"
 }
 
 /// **What it does:** Checks for string methods that receive a single-character

@@ -35,10 +35,9 @@ use utils::sugg::Sugg;
 /// fn foo(ref x: u8) -> bool { .. }
 /// ```
 declare_lint! {
-    pub TOPLEVEL_REF_ARG, Warn,
-    "An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), \
-     or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take \
-     references with `&`."
+    pub TOPLEVEL_REF_ARG,
+    Warn,
+    "an entire binding declared as `ref`, in a function argument or a `let` statement"
 }
 
 #[allow(missing_copy_implementations)]
@@ -111,8 +110,11 @@ impl LateLintPass for TopLevelRefPass {
 /// ```rust
 /// x == NAN
 /// ```
-declare_lint!(pub CMP_NAN, Deny,
-              "comparisons to NAN (which will always return false, which is probably not intended)");
+declare_lint! {
+    pub CMP_NAN,
+    Deny,
+    "comparisons to NAN, which will always return false, probably not intended"
+}
 
 #[derive(Copy,Clone)]
 pub struct CmpNan;
@@ -165,10 +167,11 @@ fn check_nan(cx: &LateContext, path: &Path, span: Span) {
 /// y == 1.23f64
 /// y != x  // where both are floats
 /// ```
-declare_lint!(pub FLOAT_CMP, Warn,
-              "using `==` or `!=` on float values (as floating-point operations \
-               usually involve rounding errors, it is always better to check for approximate \
-               equality within small bounds)");
+declare_lint! {
+    pub FLOAT_CMP,
+    Warn,
+    "using `==` or `!=` on float values instead of comparing difference with an epsilon"
+}
 
 #[derive(Copy,Clone)]
 pub struct FloatCmp;
@@ -257,8 +260,11 @@ fn is_float(cx: &LateContext, expr: &Expr) -> bool {
 /// ```rust
 /// x.to_owned() == y
 /// ```
-declare_lint!(pub CMP_OWNED, Warn,
-              "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`");
+declare_lint! {
+    pub CMP_OWNED,
+    Warn,
+    "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`"
+}
 
 #[derive(Copy,Clone)]
 pub struct CmpOwned;
@@ -353,7 +359,11 @@ fn is_str_arg(cx: &LateContext, args: &[P<Expr>]) -> bool {
 /// ```rust
 /// x % 1
 /// ```
-declare_lint!(pub MODULO_ONE, Warn, "taking a number modulo 1, which always returns 0");
+declare_lint! {
+    pub MODULO_ONE,
+    Warn,
+    "taking a number modulo 1, which always returns 0"
+}
 
 #[derive(Copy,Clone)]
 pub struct ModuloOne;
@@ -389,7 +399,11 @@ impl LateLintPass for ModuloOne {
 ///     y @ _   => (), // easier written as `y`,
 /// }
 /// ```
-declare_lint!(pub REDUNDANT_PATTERN, Warn, "using `name @ _` in a pattern");
+declare_lint! {
+    pub REDUNDANT_PATTERN,
+    Warn,
+    "using `name @ _` in a pattern"
+}
 
 #[derive(Copy,Clone)]
 pub struct PatternPass;
@@ -431,8 +445,11 @@ impl LateLintPass for PatternPass {
 /// let y = _x + 1; // Here we are using `_x`, even though it has a leading underscore.
 ///                 // We should rename `_x` to `x`
 /// ```
-declare_lint!(pub USED_UNDERSCORE_BINDING, Allow,
-              "using a binding which is prefixed with an underscore");
+declare_lint! {
+    pub USED_UNDERSCORE_BINDING,
+    Allow,
+    "using a binding which is prefixed with an underscore"
+}
 
 #[derive(Copy, Clone)]
 pub struct UsedUnderscoreBinding;

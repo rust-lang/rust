@@ -31,8 +31,9 @@ use utils::span_help_and_lint;
 /// }
 /// ```
 declare_lint! {
-    pub IF_NOT_ELSE, Allow,
-    "finds if branches that could be swapped so no negation operation is necessary on the condition"
+    pub IF_NOT_ELSE,
+    Allow,
+    "`if` branches that could be swapped so no negation operation is necessary on the condition"
 }
 
 pub struct IfNotElse;

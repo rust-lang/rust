@@ -39,8 +39,7 @@ use utils::span_lint;
 declare_lint! {
     pub BAD_BIT_MASK,
     Warn,
-    "expressions of the form `_ & mask == select` that will only ever return `true` or `false` \
-     (because in the example `select` containing bits that `mask` doesn't have)"
+    "expressions of the form `_ & mask == select` that will only ever return `true` or `false`"
 }
 
 /// **What it does:** Checks for bit masks in comparisons which can be removed

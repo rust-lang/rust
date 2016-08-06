@@ -24,7 +24,7 @@ use utils::{in_macro, span_lint};
 declare_lint! {
     pub UNUSED_LABEL,
     Warn,
-    "unused label"
+    "unused labels"
 }
 
 pub struct UnusedLabel;

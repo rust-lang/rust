@@ -28,8 +28,7 @@ use utils::span_lint;
 declare_lint! {
     pub APPROX_CONSTANT,
     Warn,
-    "the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) \
-     is found; suggests to use the constant"
+    "the approximate of a known float constant (in `std::fXX::consts`)"
 }
 
 // Tuples are of the form (constant, name, min_digits)

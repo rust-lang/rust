@@ -23,8 +23,9 @@ use utils::span_lint;
 /// }
 /// ```
 declare_lint! {
-    pub ENUM_CLIKE_UNPORTABLE_VARIANT, Warn,
-    "finds C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`"
+    pub ENUM_CLIKE_UNPORTABLE_VARIANT,
+    Warn,
+    "C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`"
 }
 
 pub struct UnportableVariant;

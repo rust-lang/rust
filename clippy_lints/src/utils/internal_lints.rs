@@ -11,8 +11,9 @@ use syntax::ast::*;
 ///
 /// **Example:** Wrong ordering of the util::paths constants.
 declare_lint! {
-    pub CLIPPY_LINTS_INTERNAL, Allow,
-    "Various things that will negatively affect your clippy experience"
+    pub CLIPPY_LINTS_INTERNAL,
+    Allow,
+    "various things that will negatively affect your clippy experience"
 }
 
 

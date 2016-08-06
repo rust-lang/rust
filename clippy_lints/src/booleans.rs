@@ -20,8 +20,9 @@ use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 /// if a && true  // should be: if a
 /// if !(a == b)  // should be: if a != b
 declare_lint! {
-    pub NONMINIMAL_BOOL, Allow,
-    "checks for boolean expressions that can be written more concisely"
+    pub NONMINIMAL_BOOL,
+    Allow,
+    "boolean expressions that can be written more concisely"
 }
 
 /// **What it does:** Checks for boolean expressions that contain terminals that
@@ -37,8 +38,9 @@ declare_lint! {
 /// ```
 /// The `b` is unnecessary, the expression is equivalent to `if a`.
 declare_lint! {
-    pub LOGIC_BUG, Warn,
-    "checks for boolean expressions that contain terminals which can be eliminated"
+    pub LOGIC_BUG,
+    Warn,
+    "boolean expressions that contain terminals which can be eliminated"
 }
 
 #[derive(Copy,Clone)]

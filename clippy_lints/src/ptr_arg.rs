@@ -23,8 +23,7 @@ use utils::{match_type, paths, span_lint};
 declare_lint! {
     pub PTR_ARG,
     Warn,
-    "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
-     instead, respectively"
+    "arguments of the type `&Vec<...>` (instead of `&[...]`) or `&String` (instead of `&str`)"
 }
 
 #[derive(Copy,Clone)]

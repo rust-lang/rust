@@ -20,8 +20,9 @@ use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type};
 ///
 /// **Example:** No. You'll see it when you get the warning.
 declare_lint! {
-    pub CYCLOMATIC_COMPLEXITY, Warn,
-    "finds functions that should be split up into multiple functions"
+    pub CYCLOMATIC_COMPLEXITY,
+    Warn,
+    "functions that should be split up into multiple functions"
 }
 
 pub struct CyclomaticComplexity {

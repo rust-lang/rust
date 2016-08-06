@@ -44,8 +44,7 @@ declare_lint! {
 declare_lint! {
     pub BOOL_COMPARISON,
     Warn,
-    "comparing a variable to a boolean, e.g. \
-     `if x == true`"
+    "comparing a variable to a boolean, e.g. `if x == true`"
 }
 
 #[derive(Copy,Clone)]

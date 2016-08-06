@@ -21,8 +21,11 @@ use utils::span_lint;
 /// ```rust
 /// use std::cmp::Ordering::*;
 /// ```
-declare_lint! { pub ENUM_GLOB_USE, Allow,
-    "finds use items that import all variants of an enum" }
+declare_lint! {
+    pub ENUM_GLOB_USE,
+    Allow,
+    "use items that import all variants of an enum"
+}
 
 pub struct EnumGlobUse;
 

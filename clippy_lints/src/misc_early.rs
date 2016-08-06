@@ -18,8 +18,9 @@ use utils::{span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_t
 /// let { a: _, b: ref b, c: _ } = ..
 /// ```
 declare_lint! {
-    pub UNNEEDED_FIELD_PATTERN, Warn,
-    "Struct fields are bound to a wildcard instead of using `..`"
+    pub UNNEEDED_FIELD_PATTERN,
+    Warn,
+    "struct fields bound to a wildcard instead of using `..`"
 }
 
 /// **What it does:** Checks for function arguments having the similar names
@@ -34,8 +35,9 @@ declare_lint! {
 /// fn foo(a: i32, _a: i32) {}
 /// ```
 declare_lint! {
-    pub DUPLICATE_UNDERSCORE_ARGUMENT, Warn,
-    "Function arguments having names which only differ by an underscore"
+    pub DUPLICATE_UNDERSCORE_ARGUMENT,
+    Warn,
+    "function arguments having names which only differ by an underscore"
 }
 
 /// **What it does:** Detects closures called in the same expression where they are defined.
@@ -49,8 +51,9 @@ declare_lint! {
 /// (|| 42)()
 /// ```
 declare_lint! {
-    pub REDUNDANT_CLOSURE_CALL, Warn,
-    "Closures should not be called in the expression they are defined"
+    pub REDUNDANT_CLOSURE_CALL,
+    Warn,
+    "throwaway closures called in the expression they are defined"
 }
 
 /// **What it does:** Detects expressions of the form `--x`.
@@ -65,8 +68,9 @@ declare_lint! {
 /// --x;
 /// ```
 declare_lint! {
-    pub DOUBLE_NEG, Warn,
-    "`--x` is a double negation of `x` and not a pre-decrement as in C or C++"
+    pub DOUBLE_NEG,
+    Warn,
+    "`--x`, which is a double negation of `x` and not a pre-decrement as in C/C++"
 }
 
 /// **What it does:** Warns on hexadecimal literals with mixed-case letter digits.
@@ -80,8 +84,9 @@ declare_lint! {
 /// let y = 0x1a9BAcD;
 /// ```
 declare_lint! {
-    pub MIXED_CASE_HEX_LITERALS, Warn,
-    "letter digits in hex literals should be either completely upper- or lowercased"
+    pub MIXED_CASE_HEX_LITERALS,
+    Warn,
+    "hex literals whose letter digits are not consistently upper- or lowercased"
 }
 
 /// **What it does:** Warns if literal suffixes are not separated by an underscore.
@@ -95,8 +100,9 @@ declare_lint! {
 /// let y = 123832i32;
 /// ```
 declare_lint! {
-    pub UNSEPARATED_LITERAL_SUFFIX, Allow,
-    "literal suffixes should be separated with an underscore"
+    pub UNSEPARATED_LITERAL_SUFFIX,
+    Allow,
+    "literals whose suffix is not separated by an underscore"
 }
 
 

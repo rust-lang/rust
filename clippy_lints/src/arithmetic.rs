@@ -17,7 +17,7 @@ use utils::span_lint;
 /// ```
 declare_restriction_lint! {
     pub INTEGER_ARITHMETIC,
-    "Any integer arithmetic statement"
+    "any integer arithmetic statement"
 }
 
 /// **What it does:** Checks for float arithmetic.
@@ -33,7 +33,7 @@ declare_restriction_lint! {
 /// ```
 declare_restriction_lint! {
     pub FLOAT_ARITHMETIC,
-    "Any floating-point arithmetic statement"
+    "any floating-point arithmetic statement"
 }
 
 #[derive(Copy, Clone, Default)]
