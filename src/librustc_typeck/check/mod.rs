@@ -4118,6 +4118,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match def {
             // Case 1 and 1b. Reference to a *type* or *enum variant*.
             Def::Struct(def_id) |
+            Def::Union(def_id) |
             Def::Variant(_, def_id) |
             Def::Enum(def_id) |
             Def::TyAlias(def_id) |

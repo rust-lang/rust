@@ -416,6 +416,7 @@ impl tr for Def {
               Def::Upvar(did1, nid1, index, nid2)
           }
           Def::Struct(did) => Def::Struct(did.tr(dcx)),
+          Def::Union(did) => Def::Union(did.tr(dcx)),
           Def::Label(nid) => Def::Label(dcx.tr_id(nid)),
           Def::Err => Def::Err,
         }
