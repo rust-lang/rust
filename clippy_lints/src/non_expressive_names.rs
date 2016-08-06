@@ -6,27 +6,33 @@ use syntax::attr;
 use syntax::visit::{Visitor, walk_block, walk_pat, walk_expr};
 use utils::{span_lint_and_then, in_macro, span_lint};
 
-/// **What it does:** This lint warns about names that are very similar and thus confusing
+/// **What it does:** Checks for names that are very similar and thus confusing.
 ///
-/// **Why is this bad?** It's hard to distinguish between names that differ only by a single character
+/// **Why is this bad?** It's hard to distinguish between names that differ only
+/// by a single character.
 ///
 /// **Known problems:** None?
 ///
-/// **Example:** `checked_exp` and `checked_expr`
+/// **Example:**
+/// ```rust
+/// let checked_exp = something;
+/// let checked_expr = something_else;
+/// ```
 declare_lint! {
     pub SIMILAR_NAMES,
     Allow,
     "similarly named items and bindings"
 }
 
-/// **What it does:** This lint warns about having too many variables whose name consists of a single character
+/// **What it does:** Checks for too many variables whose name consists of a
+/// single character.
 ///
-/// **Why is this bad?** It's hard to memorize what a variable means without a descriptive name.
+/// **Why is this bad?** It's hard to memorize what a variable means without a
+/// descriptive name.
 ///
 /// **Known problems:** None?
 ///
 /// **Example:**
-///
 /// ```rust
 /// let (a, b, c, d, e, f, g) = (...);
 /// ```

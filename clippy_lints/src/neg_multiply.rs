@@ -9,7 +9,7 @@ use utils::span_lint;
 ///
 /// **Why is this bad?** It's more readable to just negate.
 ///
-/// **Known problems:** This only catches integers (for now)
+/// **Known problems:** This only catches integers (for now).
 ///
 /// **Example:**
 /// ```rust

@@ -20,13 +20,14 @@ use utils::sugg;
 #[derive(Clone)]
 pub struct Pass;
 
-/// **What it does:** This lint checks for `.unwrap()` calls on `Option`s.
+/// **What it does:** Checks for `.unwrap()` calls on `Option`s.
 ///
-/// **Why is this bad?** Usually it is better to handle the `None` case, or to at least call
-/// `.expect(_)` with a more helpful message. Still, for a lot of quick-and-dirty code, `unwrap` is
-/// a good choice, which is why this lint is `Allow` by default.
+/// **Why is this bad?** Usually it is better to handle the `None` case, or to
+/// at least call `.expect(_)` with a more helpful message. Still, for a lot of
+/// quick-and-dirty code, `unwrap` is a good choice, which is why this lint is
+/// `Allow` by default.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -37,16 +38,17 @@ declare_lint! {
     "using `Option.unwrap()`, which should at least get a better message using `expect()`"
 }
 
-/// **What it does:** This lint checks for `.unwrap()` calls on `Result`s.
+/// **What it does:** Checks for `.unwrap()` calls on `Result`s.
 ///
-/// **Why is this bad?** `result.unwrap()` will let the thread panic on `Err` values. Normally, you
-/// want to implement more sophisticated error handling, and propagate errors upwards with `try!`.
+/// **Why is this bad?** `result.unwrap()` will let the thread panic on `Err`
+/// values. Normally, you want to implement more sophisticated error handling,
+/// and propagate errors upwards with `try!`.
 ///
-/// Even if you want to panic on errors, not all `Error`s implement good messages on display.
-/// Therefore it may be beneficial to look at the places where they may get displayed. Activate
-/// this lint to do just that.
+/// Even if you want to panic on errors, not all `Error`s implement good
+/// messages on display.  Therefore it may be beneficial to look at the places
+/// where they may get displayed. Activate this lint to do just that.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -57,15 +59,17 @@ declare_lint! {
     "using `Result.unwrap()`, which might be better handled"
 }
 
-/// **What it does:** This lint checks for methods that should live in a trait implementation of a
-/// `std` trait (see [llogiq's blog post](http://llogiq.github.io/2015/07/30/traits.html) for
-/// further information) instead of an inherent implementation.
+/// **What it does:** Checks for methods that should live in a trait
+/// implementation of a `std` trait (see [llogiq's blog
+/// post](http://llogiq.github.io/2015/07/30/traits.html) for further
+/// information) instead of an inherent implementation.
 ///
-/// **Why is this bad?** Implementing the traits improve ergonomics for users of the code, often
-/// with very little cost. Also people seeing a `mul(..)` method may expect `*` to work equally, so
-/// you should have good reason to disappoint them.
+/// **Why is this bad?** Implementing the traits improve ergonomics for users of
+/// the code, often with very little cost. Also people seeing a `mul(...)` method
+/// may expect `*` to work equally, so you should have good reason to disappoint
+/// them.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -79,8 +83,8 @@ declare_lint! {
     "defining a method that should be implementing a std trait"
 }
 
-/// **What it does:** This lint checks for methods with certain name prefixes and which doesn't
-/// match how self is taken. The actual rules are:
+/// **What it does:** Checks for methods with certain name prefixes and which
+/// doesn't match how self is taken. The actual rules are:
 ///
 /// |Prefix |`self` taken          |
 /// |-------|----------------------|
@@ -90,13 +94,13 @@ declare_lint! {
 /// |`is_`  |`&self` or none       |
 /// |`to_`  |`&self`               |
 ///
-/// **Why is this bad?** Consistency breeds readability. If you follow the conventions, your users
-/// won't be surprised that they, e.g., need to supply a mutable reference to a `as_..` function.
+/// **Why is this bad?** Consistency breeds readability. If you follow the
+/// conventions, your users won't be surprised that they, e.g., need to supply a
+/// mutable reference to a `as_..` function.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example**
-///
+/// **Example:**
 /// ```rust
 /// impl X {
 ///     fn as_str(self) -> &str { .. }
@@ -108,14 +112,14 @@ declare_lint! {
      `self` with the wrong convention"
 }
 
-/// **What it does:** This is the same as [`wrong_self_convention`](#wrong_self_convention), but
-/// for public items.
+/// **What it does:** This is the same as
+/// [`wrong_self_convention`](#wrong_self_convention), but for public items.
 ///
 /// **Why is this bad?** See [`wrong_self_convention`](#wrong_self_convention).
 ///
-/// **Known problems:** Actually *renaming* the function may break clients if the function is part
-/// of the public interface. In that case, be mindful of the stability guarantees you've given your
-/// users.
+/// **Known problems:** Actually *renaming* the function may break clients if
+/// the function is part of the public interface. In that case, be mindful of
+/// the stability guarantees you've given your users.
 ///
 /// **Example:**
 /// ```rust
@@ -129,10 +133,10 @@ declare_lint! {
      `self` with the wrong convention"
 }
 
-/// **What it does:** This lint checks for usage of `ok().expect(..)`.
+/// **What it does:** Checks for usage of `ok().expect(..)`.
 ///
-/// **Why is this bad?** Because you usually call `expect()` on the `Result` directly to get a good
-/// error message.
+/// **Why is this bad?** Because you usually call `expect()` on the `Result`
+/// directly to get a better error message.
 ///
 /// **Known problems:** None.
 ///
@@ -146,9 +150,10 @@ declare_lint! {
      calling `expect` directly on the Result"
 }
 
-/// **What it does:** This lint checks for usage of `_.map(_).unwrap_or(_)`.
+/// **What it does:** Checks for usage of `_.map(_).unwrap_or(_)`.
 ///
-/// **Why is this bad?** Readability, this can be written more concisely as `_.map_or(_, _)`.
+/// **Why is this bad?** Readability, this can be written more concisely as
+/// `_.map_or(_, _)`.
 ///
 /// **Known problems:** None.
 ///
@@ -162,9 +167,10 @@ declare_lint! {
      `map_or(a, f)`"
 }
 
-/// **What it does:** This lint `Warn`s on `_.map(_).unwrap_or_else(_)`.
+/// **What it does:** Checks for usage of `_.map(_).unwrap_or_else(_)`.
 ///
-/// **Why is this bad?** Readability, this can be written more concisely as `_.map_or_else(_, _)`.
+/// **Why is this bad?** Readability, this can be written more concisely as
+/// `_.map_or_else(_, _)`.
 ///
 /// **Known problems:** None.
 ///
@@ -178,9 +184,10 @@ declare_lint! {
      `map_or_else(g, f)`"
 }
 
-/// **What it does:** This lint `Warn`s on `_.filter(_).next()`.
+/// **What it does:** Checks for usage of `_.filter(_).next()`.
 ///
-/// **Why is this bad?** Readability, this can be written more concisely as `_.find(_)`.
+/// **Why is this bad?** Readability, this can be written more concisely as
+/// `_.find(_)`.
 ///
 /// **Known problems:** None.
 ///
@@ -193,12 +200,14 @@ declare_lint! {
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
 }
 
-/// **What it does:** This lint `Warn`s on `_.filter(_).map(_)`, `_.filter(_).flat_map(_)`,
-/// `_.filter_map(_).flat_map(_)` and similar.
+/// **What it does:** Checks for usage of `_.filter(_).map(_)`,
+/// `_.filter(_).flat_map(_)`, `_.filter_map(_).flat_map(_)` and similar.
 ///
-/// **Why is this bad?** Readability, this can be written more concisely as a single method call
+/// **Why is this bad?** Readability, this can be written more concisely as a
+/// single method call.
 ///
-/// **Known problems:** Often requires a condition + Option/Iterator creation inside the closure
+/// **Known problems:** Often requires a condition + Option/Iterator creation
+/// inside the closure.
 ///
 /// **Example:**
 /// ```rust
@@ -209,10 +218,11 @@ declare_lint! {
     "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
 }
 
-/// **What it does:** This lint `Warn`s on an iterator search (such as `find()`, `position()`, or
-/// `rposition()`) followed by a call to `is_some()`.
+/// **What it does:** Checks for an iterator search (such as `find()`,
+/// `position()`, or `rposition()`) followed by a call to `is_some()`.
 ///
-/// **Why is this bad?** Readability, this can be written more concisely as `_.any(_)`.
+/// **Why is this bad?** Readability, this can be written more concisely as
+/// `_.any(_)`.
 ///
 /// **Known problems:** None.
 ///
@@ -226,10 +236,11 @@ declare_lint! {
      expressed as a call to `any()`"
 }
 
-/// **What it does:** This lint `Warn`s on using `.chars().next()` on a `str` to check if it
-/// starts with a given char.
+/// **What it does:** Checks for usage of `.chars().next()` on a `str` to check
+/// if it starts with a given char.
 ///
-/// **Why is this bad?** Readability, this can be written more concisely as `_.starts_with(_)`.
+/// **Why is this bad?** Readability, this can be written more concisely as
+/// `_.starts_with(_)`.
 ///
 /// **Known problems:** None.
 ///
@@ -242,11 +253,17 @@ declare_lint! {
     "using `.chars().next()` to check if a string starts with a char"
 }
 
-/// **What it does:** This lint checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`, etc., and
-/// suggests to use `or_else`, `unwrap_or_else`, etc., or `unwrap_or_default` instead.
+/// **What it does:** Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,
+/// etc., and suggests to use `or_else`, `unwrap_or_else`, etc., or
+/// `unwrap_or_default` instead.
 ///
-/// **Why is this bad?** The function will always be called and potentially allocate an object
-/// in expressions such as:
+/// **Why is this bad?** The function will always be called and potentially
+/// allocate an object acting as the default.
+///
+/// **Known problems:** If the function has side-effects, not calling it will
+/// change the semantic of the program, but you shouldn't rely on that anyway.
+///
+/// **Example:**
 /// ```rust
 /// foo.unwrap_or(String::new())
 /// ```
@@ -258,17 +275,16 @@ declare_lint! {
 /// ```rust
 /// foo.unwrap_or_default()
 /// ```
-///
-/// **Known problems:** If the function as side-effects, not calling it will change the semantic of
-/// the program, but you shouldn't rely on that anyway.
 declare_lint! {
     pub OR_FUN_CALL, Warn,
     "using any `*or` method when the `*or_else` would do"
 }
 
-/// **What it does:** This lint checks for usage of `.extend(s)` on a `Vec` to extend the vector by a slice.
+/// **What it does:** Checks for usage of `.extend(s)` on a `Vec` to extend the
+/// vector by a slice.
 ///
-/// **Why is this bad?** Since Rust 1.6, the `extend_from_slice(_)` method is stable and at least for now faster.
+/// **Why is this bad?** Since Rust 1.6, the `extend_from_slice(_)` method is
+/// stable and at least for now faster.
 ///
 /// **Known problems:** None.
 ///
@@ -281,10 +297,10 @@ declare_lint! {
     "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice"
 }
 
-/// **What it does:** This lint warns on using `.clone()` on a `Copy` type.
+/// **What it does:** Checks for usage of `.clone()` on a `Copy` type.
 ///
-/// **Why is this bad?** The only reason `Copy` types implement `Clone` is for generics, not for
-/// using the `clone` method on a concrete type.
+/// **Why is this bad?** The only reason `Copy` types implement `Clone` is for
+/// generics, not for using the `clone` method on a concrete type.
 ///
 /// **Known problems:** None.
 ///
@@ -296,10 +312,10 @@ declare_lint! {
     pub CLONE_ON_COPY, Warn, "using `clone` on a `Copy` type"
 }
 
-/// **What it does:** This lint warns on using `.clone()` on an `&&T`
+/// **What it does:** Checks for usage of `.clone()` on an `&&T`.
 ///
-/// **Why is this bad?** Cloning an `&&T` copies the inner `&T`, instead of cloning the underlying
-/// `T`
+/// **Why is this bad?** Cloning an `&&T` copies the inner `&T`, instead of
+/// cloning the underlying `T`.
 ///
 /// **Known problems:** None.
 ///
@@ -316,9 +332,10 @@ declare_lint! {
     pub CLONE_DOUBLE_REF, Warn, "using `clone` on `&&T`"
 }
 
-/// **What it does:** This lint warns about `new` not returning `Self`.
+/// **What it does:** Checks for `new` not returning `Self`.
 ///
-/// **Why is this bad?** As a convention, `new` methods are used to make a new instance of a type.
+/// **Why is this bad?** As a convention, `new` methods are used to make a new
+/// instance of a type.
 ///
 /// **Known problems:** None.
 ///
@@ -333,9 +350,11 @@ declare_lint! {
     pub NEW_RET_NO_SELF, Warn, "not returning `Self` in a `new` method"
 }
 
-/// **What it does:** This lint checks for string methods that receive a single-character `str` as an argument, e.g. `_.split("x")`.
+/// **What it does:** Checks for string methods that receive a single-character
+/// `str` as an argument, e.g. `_.split("x")`.
 ///
-/// **Why is this bad?** Performing these methods using a `char` is faster than using a `str`.
+/// **Why is this bad?** Performing these methods using a `char` is faster than
+/// using a `str`.
 ///
 /// **Known problems:** Does not catch multi-byte unicode characters.
 ///
@@ -350,10 +369,10 @@ declare_lint! {
      `_.split(\"x\")`"
 }
 
-/// **What it does:** This lint checks for getting the inner pointer of a temporary `CString`.
+/// **What it does:** Checks for getting the inner pointer of a temporary `CString`.
 ///
-/// **Why is this bad?** The inner pointer of a `CString` is only valid as long as the `CString` is
-/// alive.
+/// **Why is this bad?** The inner pointer of a `CString` is only valid as long
+/// as the `CString` is alive.
 ///
 /// **Known problems:** None.
 ///
@@ -377,10 +396,11 @@ declare_lint! {
     "getting the inner pointer of a temporary `CString`"
 }
 
-/// **What it does:** This lint checks for use of `.iter().nth()` (and the related
+/// **What it does:** Checks for use of `.iter().nth()` (and the related
 /// `.iter_mut().nth()`) on standard library types with O(1) element access.
 ///
-/// **Why is this bad?** `.get()` and `.get_mut()` are more efficient and more readable.
+/// **Why is this bad?** `.get()` and `.get_mut()` are more efficient and more
+/// readable.
 ///
 /// **Known problems:** None.
 ///

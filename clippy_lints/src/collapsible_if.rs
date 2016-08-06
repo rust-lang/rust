@@ -18,13 +18,14 @@ use syntax::ast;
 use utils::{in_macro, snippet_block, span_lint_and_then};
 use utils::sugg::Sugg;
 
-/// **What it does:** This lint checks for nested `if`-statements which can be collapsed by
-/// `&&`-combining their conditions and for `else { if .. }` expressions that can be collapsed to
-/// `else if ..`.
+/// **What it does:** Checks for nested `if` statements which can be collapsed
+/// by `&&`-combining their conditions and for `else { if ... }` expressions that
+/// can be collapsed to `else if ...`.
 ///
-/// **Why is this bad?** Each `if`-statement adds one level of nesting, which makes code look more complex than it really is.
+/// **Why is this bad?** Each `if`-statement adds one level of nesting, which
+/// makes code look more complex than it really is.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust

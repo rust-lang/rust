@@ -8,7 +8,7 @@ use syntax::util::small_vector::SmallVector;
 use utils::{SpanlessEq, SpanlessHash};
 use utils::{get_parent_expr, in_macro, span_lint_and_then, span_note_and_lint, snippet};
 
-/// **What it does:** This lint checks for consecutive `ifs` with the same condition.
+/// **What it does:** Checks for consecutive `if`s with the same condition.
 ///
 /// **Why is this bad?** This is probably a copy & paste error.
 ///
@@ -23,7 +23,8 @@ use utils::{get_parent_expr, in_macro, span_lint_and_then, span_note_and_lint, s
 /// }
 /// ```
 ///
-/// Note that this lint ignores all conditions with a function call as it could have side effects:
+/// Note that this lint ignores all conditions with a function call as it could
+/// have side effects:
 ///
 /// ```rust
 /// if foo() {
@@ -38,8 +39,8 @@ declare_lint! {
     "consecutive `ifs` with the same condition"
 }
 
-/// **What it does:** This lint checks for `if/else` with the same body as the *then* part and the
-/// *else* part.
+/// **What it does:** Checks for `if/else` with the same body as the *then* part
+/// and the *else* part.
 ///
 /// **Why is this bad?** This is probably a copy & paste error.
 ///
@@ -59,10 +60,10 @@ declare_lint! {
     "if with the same *then* and *else* blocks"
 }
 
-/// **What it does:** This lint checks for `match` with identical arm bodies.
+/// **What it does:** Checks for `match` with identical arm bodies.
 ///
-/// **Why is this bad?** This is probably a copy & paste error. If arm bodies are the same on
-/// purpose, you can factor them
+/// **Why is this bad?** This is probably a copy & paste error. If arm bodies
+/// are the same on purpose, you can factor them
 /// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
 ///
 /// **Known problems:** False positive possible with order dependent `match`

@@ -42,13 +42,16 @@ travis build actually checks for this.
 
 Also please document your lint with a doc comment akin to the following:
 ```rust
-/// **What it does:** Describe what the lint matches.
+/// **What it does:** Checks for ... (describe what the lint matches).
 ///
-/// **Why is this bad?** Write the reason for linting the code.
+/// **Why is this bad?** Supply the reason for linting the code.
 ///
-/// **Known problems:** Hopefully none.
+/// **Known problems:** None. (Or describe where it could go wrong.)
 ///
-/// **Example:** Insert a short example if you have one
+/// **Example:**
+/// ```rust
+/// Insert a short example if you have one.
+/// ```
 ```
 
 Our `util/update_wiki.py` script can then add your lint docs to the wiki.

@@ -9,13 +9,13 @@ use utils::paths;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint_and_then};
 use utils::sugg::DiagnosticBuilderExt;
 
-/// **What it does:** This lints about type with a `fn new() -> Self` method
-/// and no implementation of
-/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
+/// **What it does:** Checks for types with a `fn new() -> Self` method and no
+/// implementation of
+/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html).
 ///
-/// **Why is this bad?** User might expect to be able to use
-/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
-/// as the type can be constructed without arguments.
+/// **Why is this bad?** The user might expect to be able to use
+/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html) as the
+/// type can be constructed without arguments.
 ///
 /// **Known problems:** Hopefully none.
 ///
@@ -43,21 +43,21 @@ use utils::sugg::DiagnosticBuilderExt;
 /// }
 /// ```
 ///
-/// You can also have `new()` call `Default::default()`
+/// You can also have `new()` call `Default::default()`.
 declare_lint! {
     pub NEW_WITHOUT_DEFAULT,
     Warn,
     "`fn new() -> Self` method without `Default` implementation"
 }
 
-/// **What it does:** This lints about type with a `fn new() -> Self` method
+/// **What it does:** Checks for types with a `fn new() -> Self` method
 /// and no implementation of
-/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
+/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html),
+/// where the `Default` can be derived by `#[derive(Default)]`.
 ///
-/// **Why is this bad?** User might expect to be able to use
-/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
-/// as the type can be
-/// constructed without arguments.
+/// **Why is this bad?** The user might expect to be able to use
+/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html) as the
+/// type can be constructed without arguments.
 ///
 /// **Known problems:** Hopefully none.
 ///
@@ -73,7 +73,7 @@ declare_lint! {
 /// }
 /// ```
 ///
-/// Just prepend `#[derive(Default)]` before the `struct` definition
+/// Just prepend `#[derive(Default)]` before the `struct` definition.
 declare_lint! {
     pub NEW_WITHOUT_DEFAULT_DERIVE,
     Warn,

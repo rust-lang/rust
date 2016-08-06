@@ -3,10 +3,10 @@ use rustc::lint::*;
 use utils::{span_lint_and_then, snippet_opt, SpanlessEq, get_trait_def_id, implements_trait};
 use utils::{higher, sugg};
 
-/// **What it does:** This lint checks for `+=` operations and similar.
+/// **What it does:** Checks for compound assignment operations (`+=` and similar).
 ///
-/// **Why is this bad?** Projects with many developers from languages without those operations may
-/// find them unreadable and not worth their weight.
+/// **Why is this bad?** Projects with many developers from languages without
+/// those operations may find them unreadable and not worth their weight.
 ///
 /// **Known problems:** Types implementing `OpAssign` don't necessarily implement `Op`.
 ///
@@ -19,14 +19,14 @@ declare_restriction_lint! {
     "any assignment operation"
 }
 
-/// **What it does:** Check for `a = a op b` or `a = b commutative_op a` patterns.
+/// **What it does:** Checks for `a = a op b` or `a = b commutative_op a` patterns.
 ///
 /// **Why is this bad?** These can be written as the shorter `a op= b`.
 ///
-/// **Known problems:** While forbidden by the spec, `OpAssign` traits may have implementations that differ from the regular `Op` impl.
+/// **Known problems:** While forbidden by the spec, `OpAssign` traits may have
+/// implementations that differ from the regular `Op` impl.
 ///
 /// **Example:**
-///
 /// ```rust
 /// let mut a = 5;
 /// ...
@@ -38,14 +38,14 @@ declare_lint! {
     "assigning the result of an operation on a variable to that same variable"
 }
 
-/// **What it does:** Check for `a op= a op b` or `a op= b op a` patterns.
+/// **What it does:** Checks for `a op= a op b` or `a op= b op a` patterns.
 ///
-/// **Why is this bad?** Most likely these are bugs where one meant to write `a op= b`
+/// **Why is this bad?** Most likely these are bugs where one meant to write `a op= b`.
 ///
-/// **Known problems:** Someone might actually mean `a op= a op b`, but that should rather be written as `a = (2 * a) op b` where applicable.
+/// **Known problems:** Someone might actually mean `a op= a op b`, but that
+/// should rather be written as `a = (2 * a) op b` where applicable.
 ///
 /// **Example:**
-///
 /// ```rust
 /// let mut a = 5;
 /// ...

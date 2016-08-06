@@ -17,15 +17,16 @@ pub struct Pass {
     pub too_large_for_stack: u64,
 }
 
-/// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine.
+/// **What it does:** Checks for usage of `Box<T>` where an unboxed `T` would
+/// work fine.
 ///
-/// **Why is this bad?** This is an unnecessary allocation, and bad for performance. It is only
-/// necessary to allocate if you wish to move the box into something.
+/// **Why is this bad?** This is an unnecessary allocation, and bad for
+/// performance. It is only necessary to allocate if you wish to move the box
+/// into something.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
-///
 /// ```rust
 /// fn main() {
 ///     let x = Box::new(1);

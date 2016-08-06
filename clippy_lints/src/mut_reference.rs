@@ -4,15 +4,15 @@ use rustc::hir::*;
 use syntax::ptr::P;
 use utils::span_lint;
 
-/// **What it does:** This lint detects giving a mutable reference to a function that only requires
-/// an immutable reference.
+/// **What it does:** Detects giving a mutable reference to a function that only
+/// requires an immutable reference.
 ///
-/// **Why is this bad?** The immutable reference rules out all other references to the value. Also
-/// the code misleads about the intent of the call site.
+/// **Why is this bad?** The immutable reference rules out all other references
+/// to the value. Also the code misleads about the intent of the call site.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example**
+/// **Example:**
 /// ```rust
 /// my_vec.push(&mut value)
 /// ```

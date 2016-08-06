@@ -11,12 +11,12 @@ use syntax::codemap::Span;
 
 use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type};
 
-/// **What it does:** This lint checks for methods with high cyclomatic complexity
+/// **What it does:** Checks for methods with high cyclomatic complexity.
 ///
-/// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly readable. Also LLVM
-/// will usually optimize small methods better.
+/// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly
+/// readable. Also LLVM will usually optimize small methods better.
 ///
-/// **Known problems:** Sometimes it's hard to find a way to reduce the complexity
+/// **Known problems:** Sometimes it's hard to find a way to reduce the complexity.
 ///
 /// **Example:** No. You'll see it when you get the warning.
 declare_lint! {

@@ -5,9 +5,11 @@ use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
 use utils::{span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
-/// **What it does:** This lint checks for structure field patterns bound to wildcards.
+
+/// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
-/// **Why is this bad?** Using `..` instead is shorter and leaves the focus on the fields that are actually bound.
+/// **Why is this bad?** Using `..` instead is shorter and leaves the focus on
+/// the fields that are actually bound.
 ///
 /// **Known problems:** None.
 ///
@@ -20,9 +22,10 @@ declare_lint! {
     "Struct fields are bound to a wildcard instead of using `..`"
 }
 
-/// **What it does:** This lint checks for function arguments having the similar names differing by an underscore
+/// **What it does:** Checks for function arguments having the similar names
+/// differing by an underscore.
 ///
-/// **Why is this bad?** It affects code readability
+/// **Why is this bad?** It affects code readability.
 ///
 /// **Known problems:** None.
 ///
@@ -35,7 +38,7 @@ declare_lint! {
     "Function arguments having names which only differ by an underscore"
 }
 
-/// **What it does:** This lint detects closures called in the same expression where they are defined.
+/// **What it does:** Detects closures called in the same expression where they are defined.
 ///
 /// **Why is this bad?** It is unnecessarily adding to the expression's complexity.
 ///
@@ -50,9 +53,10 @@ declare_lint! {
     "Closures should not be called in the expression they are defined"
 }
 
-/// **What it does:** This lint detects expressions of the form `--x`
+/// **What it does:** Detects expressions of the form `--x`.
 ///
-/// **Why is this bad?** It can mislead C/C++ programmers to think `x` was decremented.
+/// **Why is this bad?** It can mislead C/C++ programmers to think `x` was
+/// decremented.
 ///
 /// **Known problems:** None.
 ///

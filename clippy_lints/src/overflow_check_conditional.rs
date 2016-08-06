@@ -2,10 +2,10 @@ use rustc::lint::*;
 use rustc::hir::*;
 use utils::span_lint;
 
-/// **What it does:** This lint finds classic underflow / overflow checks.
+/// **What it does:** Detects classic underflow/overflow checks.
 ///
-/// **Why is this bad?** Most classic C underflow / overflow checks will fail in Rust. Users can
-/// use functions like `overflowing_*` and `wrapping_*` instead.
+/// **Why is this bad?** Most classic C underflow/overflow checks will fail in
+/// Rust. Users can use functions like `overflowing_*` and `wrapping_*` instead.
 ///
 /// **Known problems:** None.
 ///

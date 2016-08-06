@@ -3,11 +3,11 @@ use rustc::hir::{Expr, ExprAssign, ExprField, ExprStruct, ExprTup, ExprTupField}
 use utils::is_adjusted;
 use utils::span_lint;
 
-/// **What it does:** This lint checks for construction of a structure or tuple just to assign a
-/// value in it.
+/// **What it does:** Checks for construction of a structure or tuple just to
+/// assign a value in it.
 ///
-/// **Why is this bad?** Readability. If the structure is only created to be updated, why not write
-/// the structure you want in the first place?
+/// **Why is this bad?** Readability. If the structure is only created to be
+/// updated, why not write the structure you want in the first place?
 ///
 /// **Known problems:** None.
 ///

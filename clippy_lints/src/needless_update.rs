@@ -3,9 +3,11 @@ use rustc::ty::TyStruct;
 use rustc::hir::{Expr, ExprStruct};
 use utils::span_lint;
 
-/// **What it does:** This lint warns on needlessly including a base struct on update when all fields are changed anyway.
+/// **What it does:** Checks for needlessly including a base struct on update
+/// when all fields are changed anyway.
 ///
-/// **Why is this bad?** This will cost resources (because the base has to be somewhere), and make the code less readable.
+/// **Why is this bad?** This will cost resources (because the base has to be
+/// somewhere), and make the code less readable.
 ///
 /// **Known problems:** None.
 ///

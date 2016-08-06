@@ -6,10 +6,12 @@ use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::span_lint;
 
-/// **What it does:** This lint checks for incompatible bit masks in comparisons.
+/// **What it does:** Checks for incompatible bit masks in comparisons.
 ///
-/// The formula for detecting if an expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
-/// is one of {`&`, `|`} and `<cmp_op>` is one of {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following table:
+/// The formula for detecting if an expression of the type `_ <bit_op> m
+/// <cmp_op> c` (where `<bit_op>` is one of {`&`, `|`} and `<cmp_op>` is one of
+/// {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following
+/// table:
 ///
 /// |Comparison  |Bit Op|Example     |is always|Formula               |
 /// |------------|------|------------|---------|----------------------|
@@ -20,11 +22,15 @@ use utils::span_lint;
 /// |`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
 /// |`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |
 ///
-/// **Why is this bad?** If the bits that the comparison cares about are always set to zero or one by the bit mask, the comparison is constant `true` or `false` (depending on mask, compared value, and operators).
+/// **Why is this bad?** If the bits that the comparison cares about are always
+/// set to zero or one by the bit mask, the comparison is constant `true` or
+/// `false` (depending on mask, compared value, and operators).
 ///
-/// So the code is actively misleading, and the only reason someone would write this intentionally is to win an underhanded Rust contest or create a test-case for this lint.
+/// So the code is actively misleading, and the only reason someone would write
+/// this intentionally is to win an underhanded Rust contest or create a
+/// test-case for this lint.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -37,16 +43,23 @@ declare_lint! {
      (because in the example `select` containing bits that `mask` doesn't have)"
 }
 
-/// **What it does:** This lint checks for bit masks in comparisons which can be removed without changing the outcome. The basic structure can be seen in the following table:
+/// **What it does:** Checks for bit masks in comparisons which can be removed
+/// without changing the outcome. The basic structure can be seen in the
+/// following table:
 ///
 /// |Comparison| Bit Op  |Example    |equals |
 /// |----------|---------|-----------|-------|
 /// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|
 /// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|
 ///
-/// **Why is this bad?** Not equally evil as [`bad_bit_mask`](#bad_bit_mask), but still a bit misleading, because the bit mask is ineffective.
+/// **Why is this bad?** Not equally evil as [`bad_bit_mask`](#bad_bit_mask),
+/// but still a bit misleading, because the bit mask is ineffective.
 ///
-/// **Known problems:** False negatives: This lint will only match instances where we have figured out the math (which is for a power-of-two compared value). This means things like `x | 1 >= 7` (which would be better written as `x >= 6`) will not be reported (but bit masks like this are fairly uncommon).
+/// **Known problems:** False negatives: This lint will only match instances
+/// where we have figured out the math (which is for a power-of-two compared
+/// value). This means things like `x | 1 >= 7` (which would be better written
+/// as `x >= 6`) will not be reported (but bit masks like this are fairly
+/// uncommon).
 ///
 /// **Example:**
 /// ```rust
@@ -58,32 +71,6 @@ declare_lint! {
     "expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`"
 }
 
-/// Checks for incompatible bit masks in comparisons, e.g. `x & 1 == 2`.
-/// This cannot work because the bit that makes up the value two was
-/// zeroed out by the bit-and with 1. So the formula for detecting if an
-/// expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
-/// is one of {`&`, '|'} and `<cmp_op>` is one of {`!=`, `>=`, `>` ,
-/// `!=`, `>=`, `>`}) can be determined from the following table:
-///
-/// |Comparison  |Bit Op|Example     |is always|Formula               |
-/// |------------|------|------------|---------|----------------------|
-/// |`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
-/// |`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
-/// |`>`  or `<=`| `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
-/// |`==` or `!=`| `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
-/// |`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
-/// |`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |
-///
-/// This lint is **deny** by default
-///
-/// There is also a lint that warns on ineffective masks that is *warn*
-/// by default.
-///
-/// |Comparison|Bit Op   |Example    |equals |Formula|
-/// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|`¹ && m <= c`|
-/// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|`¹ && m < c` |
-///
-/// `¹ power_of_two(c + 1)`
 #[derive(Copy,Clone)]
 pub struct BitMask;
 

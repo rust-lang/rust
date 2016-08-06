@@ -5,11 +5,12 @@ use syntax::ast::*;
 
 use utils::span_help_and_lint;
 
-/// **What it does:** Warns on the use of `!` or `!=` in an if condition with an else branch
+/// **What it does:** Checks for usage of `!` or `!=` in an if condition with an
+/// else branch.
 ///
-/// **Why is this bad?** Negations reduce the readability of statements
+/// **Why is this bad?** Negations reduce the readability of statements.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust

@@ -3,13 +3,13 @@ use rustc::lint::*;
 use syntax::codemap::Span;
 use utils::span_lint;
 
-/// **What it does:** This lint checks for plain integer arithmetic
+/// **What it does:** Checks for plain integer arithmetic.
 ///
 /// **Why is this bad?** This is only checked against overflow in debug builds.
 /// In some applications one wants explicitly checked, wrapping or saturating
 /// arithmetic.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -20,12 +20,12 @@ declare_restriction_lint! {
     "Any integer arithmetic statement"
 }
 
-/// **What it does:** This lint checks for float arithmetic
+/// **What it does:** Checks for float arithmetic.
 ///
 /// **Why is this bad?** For some embedded systems or kernel development, it
-/// can be useful to rule out floating-point numbers
+/// can be useful to rule out floating-point numbers.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust

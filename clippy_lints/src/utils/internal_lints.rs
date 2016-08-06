@@ -3,13 +3,13 @@ use utils::span_lint;
 use syntax::parse::token::InternedString;
 use syntax::ast::*;
 
-/// **What it does:** This lint checks for various things we like to keep tidy in clippy
+/// **What it does:** Checks for various things we like to keep tidy in clippy.
 ///
-/// **Why is this bad?** ???
+/// **Why is this bad?** We like to pretend we're an example of tidy code.
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** wrong ordering of the util::paths constants
+/// **Example:** Wrong ordering of the util::paths constants.
 declare_lint! {
     pub CLIPPY_LINTS_INTERNAL, Allow,
     "Various things that will negatively affect your clippy experience"

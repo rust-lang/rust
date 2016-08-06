@@ -6,7 +6,8 @@ use rustc_const_eval::eval_const_expr_partial;
 use syntax::codemap::Span;
 use utils::{higher, is_copy, snippet, span_lint_and_then};
 
-/// **What it does:** This lint warns about using `&vec![..]` when using `&[..]` would be possible.
+/// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
+/// be possible.
 ///
 /// **Why is this bad?** This is less efficient.
 ///

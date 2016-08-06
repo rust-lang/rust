@@ -4,13 +4,13 @@ use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
 use utils::{match_type, paths, span_lint, walk_ptrs_ty_depth};
 
-/// **What it does:** This lint checks for duplicate open options as well as combinations that make
-/// no sense.
+/// **What it does:** Checks for duplicate open options as well as combinations
+/// that make no sense.
 ///
-/// **Why is this bad?** In the best case, the code will be harder to read than necessary. I don't
-/// know the worst case.
+/// **Why is this bad?** In the best case, the code will be harder to read than
+/// necessary. I don't know the worst case.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust

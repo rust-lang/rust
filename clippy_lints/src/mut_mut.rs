@@ -4,12 +4,13 @@ use rustc::lint::*;
 use rustc::ty::{TypeAndMut, TyRef};
 use utils::{higher, in_external_macro, span_lint};
 
-/// **What it does:** This lint checks for instances of `mut mut` references.
+/// **What it does:** Checks for instances of `mut mut` references.
 ///
-/// **Why is this bad?** Multiple `mut`s don't add anything meaningful to the source. This is
-/// either a copy'n'paste error, or it shows a fundamental misunderstanding of references)
+/// **Why is this bad?** Multiple `mut`s don't add anything meaningful to the
+/// source. This is either a copy'n'paste error, or it shows a fundamental
+/// misunderstanding of references.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust

@@ -5,9 +5,11 @@ use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use utils::span_lint;
 
-/// **What it does:** This lint checks for imports that remove "unsafe" from an item's name
+/// **What it does:** Checks for imports that remove "unsafe" from an item's
+/// name.
 ///
-/// **Why is this bad?** Renaming makes it less clear which traits and structures are unsafe.
+/// **Why is this bad?** Renaming makes it less clear which traits and
+/// structures are unsafe.
 ///
 /// **Known problems:** None.
 ///

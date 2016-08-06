@@ -8,12 +8,13 @@ use syntax::codemap::Span;
 use utils::paths;
 use utils::{match_path, span_lint_and_then};
 
-/// **What it does:** This lint warns about deriving `Hash` but implementing `PartialEq`
+/// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly.
 ///
-/// **Why is this bad?** The implementation of these traits must agree (for example for use with
-/// `HashMap`) so it’s probably a bad idea to use a default-generated `Hash` implementation  with
-/// an explicitly defined `PartialEq`. In particular, the following must hold for any type:
+/// **Why is this bad?** The implementation of these traits must agree (for
+/// example for use with `HashMap`) so it’s probably a bad idea to use a
+/// default-generated `Hash` implementation with an explicitly defined
+/// `PartialEq`. In particular, the following must hold for any type:
 ///
 /// ```rust
 /// k1 == k2 ⇒ hash(k1) == hash(k2)
@@ -27,7 +28,7 @@ use utils::{match_path, span_lint_and_then};
 /// struct Foo;
 ///
 /// impl PartialEq for Foo {
-///     ..
+///     ...
 /// }
 /// ```
 declare_lint! {
@@ -36,12 +37,14 @@ declare_lint! {
     "deriving `Hash` but implementing `PartialEq` explicitly"
 }
 
-/// **What it does:** This lint warns about explicit `Clone` implementation for `Copy` types.
+/// **What it does:** Checks for explicit `Clone` implementations for `Copy`
+/// types.
 ///
-/// **Why is this bad?** To avoid surprising behaviour, these traits should agree and the behaviour
-/// of `Copy` cannot be overridden. In almost all situations a `Copy` type should have a `Clone`
-/// implementation that does nothing more than copy the object, which is what
-/// `#[derive(Copy, Clone)]` gets you.
+/// **Why is this bad?** To avoid surprising behaviour, these traits should
+/// agree and the behaviour of `Copy` cannot be overridden. In almost all
+/// situations a `Copy` type should have a `Clone` implementation that does
+/// nothing more than copy the object, which is what `#[derive(Copy, Clone)]`
+/// gets you.
 ///
 /// **Known problems:** None.
 ///

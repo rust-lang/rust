@@ -4,10 +4,11 @@ use rustc::hir::{Expr, Expr_, Stmt, StmtSemi, BlockCheckMode, UnsafeSource};
 use utils::{in_macro, span_lint, snippet_opt, span_lint_and_then};
 use std::ops::Deref;
 
-/// **What it does:** This lint checks for statements which have no effect.
+/// **What it does:** Checks for statements which have no effect.
 ///
-/// **Why is this bad?** Similar to dead code, these statements are actually executed. However, as
-/// they have no effect, all they do is make the code less readable.
+/// **Why is this bad?** Similar to dead code, these statements are actually
+/// executed. However, as they have no effect, all they do is make the code less
+/// readable.
 ///
 /// **Known problems:** None.
 ///
@@ -21,10 +22,11 @@ declare_lint! {
     "statements with no effect"
 }
 
-/// **What it does:** This lint checks for expression statements that can be reduced to a sub-expression
+/// **What it does:** Checks for expression statements that can be reduced to a
+/// sub-expression.
 ///
-/// **Why is this bad?** Expressions by themselves often have no side-effects. Having such
-/// expressions reduces readability.
+/// **Why is this bad?** Expressions by themselves often have no side-effects.
+/// Having such expressions reduces readability.
 ///
 /// **Known problems:** None.
 ///

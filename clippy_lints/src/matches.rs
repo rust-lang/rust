@@ -12,12 +12,12 @@ use utils::paths;
 use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 use utils::sugg::Sugg;
 
-/// **What it does:** This lint checks for matches with a single arm where an `if let` will usually
-/// suffice.
+/// **What it does:** Checks for matches with a single arm where an `if let`
+/// will usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -32,12 +32,12 @@ declare_lint! {
      is `_ => {}`) is used; recommends `if let` instead"
 }
 
-/// **What it does:** This lint checks for matches with a two arms where an `if let` will usually
-/// suffice.
+/// **What it does:** Checks for matches with a two arms where an `if let` will
+/// usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
 ///
-/// **Known problems:** Personal style preferences may differ
+/// **Known problems:** Personal style preferences may differ.
 ///
 /// **Example:**
 /// ```rust
@@ -52,17 +52,16 @@ declare_lint! {
      recommends `if let` instead"
 }
 
-/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to
-/// remove the reference and deref the matched expression instead. It also checks for `if let &foo
-/// = bar` blocks.
+/// **What it does:** Checks for matches where all arms match a reference,
+/// suggesting to remove the reference and deref the matched expression
+/// instead. It also checks for `if let &foo = bar` blocks.
 ///
-/// **Why is this bad?** It just makes the code less readable. That reference destructuring adds
-/// nothing to the code.
+/// **Why is this bad?** It just makes the code less readable. That reference
+/// destructuring adds nothing to the code.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
-///
 /// ```rust
 /// match x {
 ///     &A(ref y) => foo(y),
@@ -76,15 +75,14 @@ declare_lint! {
      dereferenced instead"
 }
 
-/// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests
-/// to replace the expression with an `if...else` block.
+/// **What it does:** Checks for matches where match expression is a `bool`. It
+/// suggests to replace the expression with an `if...else` block.
 ///
 /// **Why is this bad?** It makes the code less readable.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
-///
 /// ```rust
 /// let condition: bool = true;
 /// match condition {
@@ -97,14 +95,14 @@ declare_lint! {
     "a match on boolean expression; recommends `if..else` block instead"
 }
 
-/// **What it does:** This lint checks for overlapping match arms.
+/// **What it does:** Checks for overlapping match arms.
 ///
-/// **Why is this bad?** It is likely to be an error and if not, makes the code less obvious.
+/// **Why is this bad?** It is likely to be an error and if not, makes the code
+/// less obvious.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
-///
 /// ```rust
 /// let x = 5;
 /// match x {

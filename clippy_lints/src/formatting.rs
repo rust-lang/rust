@@ -4,7 +4,7 @@ use syntax::ast;
 use utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use syntax::ptr::P;
 
-/// **What it does:** This lint looks for use of the non-existent `=*`, `=!` and `=-` operators.
+/// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-` operators.
 ///
 /// **Why is this bad?** This is either a typo of `*=`, `!=` or `-=` or confusing.
 ///
@@ -20,11 +20,11 @@ declare_lint! {
     "suspicious formatting of `*=`, `-=` or `!=`"
 }
 
-/// **What it does:** This lint checks for formatting of `else if`. It lints if the `else` and `if`
-/// are not on the same line or the `else` seems to be missing.
+/// **What it does:** Checks for formatting of `else if`. It lints if the `else`
+/// and `if` are not on the same line or the `else` seems to be missing.
 ///
-/// **Why is this bad?** This is probably some refactoring remnant, even if the code is correct, it
-/// might look confusing.
+/// **Why is this bad?** This is probably some refactoring remnant, even if the
+/// code is correct, it might look confusing.
 ///
 /// **Known problems:** None.
 ///

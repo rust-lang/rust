@@ -7,13 +7,13 @@ use syntax::parse::token::InternedString;
 use utils::{span_help_and_lint, span_lint};
 use utils::{camel_case_from, camel_case_until, in_macro};
 
-/// **What it does:** Warns on enumeration variants that are prefixed or suffixed by the same
-/// characters.
+/// **What it does:** Detects enumeration variants that are prefixed or suffixed
+/// by the same characters.
 ///
-/// **Why is this bad?** Enumeration variant names should specify their variant, not repeat the
-/// enumeration name.
+/// **Why is this bad?** Enumeration variant names should specify their variant,
+/// not repeat the enumeration name.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -27,11 +27,12 @@ declare_lint! {
     "finds enums where all variants share a prefix/postfix"
 }
 
-/// **What it does:** Warns on type names that are prefixed or suffixed by the containing module's name
+/// **What it does:** Detects type names that are prefixed or suffixed by the
+/// containing module's name.
 ///
-/// **Why is this bad?** It requires the user to type the module name twice
+/// **Why is this bad?** It requires the user to type the module name twice.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust

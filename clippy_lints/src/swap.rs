@@ -5,10 +5,10 @@ use syntax::codemap::mk_sp;
 use utils::{differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
 use utils::sugg::Sugg;
 
-/// **What it does:** This lints manual swapping.
+/// **What it does:** Checks for manual swapping.
 ///
-/// **Why is this bad?** The `std::mem::swap` function exposes the intent better without
-/// deinitializing or copying either variable.
+/// **Why is this bad?** The `std::mem::swap` function exposes the intent better
+/// without deinitializing or copying either variable.
 ///
 /// **Known problems:** None.
 ///
@@ -24,7 +24,7 @@ declare_lint! {
     "manual swap"
 }
 
-/// **What it does:** This lints `foo = bar; bar = foo` sequences.
+/// **What it does:** Checks for `foo = bar; bar = foo` sequences.
 ///
 /// **Why is this bad?** This looks like a failed attempt to swap.
 ///

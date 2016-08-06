@@ -8,14 +8,13 @@ use rustc::hir::*;
 use syntax::ast::RangeLimits;
 use utils::{self, higher};
 
-/// **What it does:** Check for out of bounds array indexing with a constant index.
+/// **What it does:** Checks for out of bounds array indexing with a constant index.
 ///
 /// **Why is this bad?** This will always panic at runtime.
 ///
 /// **Known problems:** Hopefully none.
 ///
 /// **Example:**
-///
 /// ```rust
 /// let x = [1,2,3,4];
 /// ...
@@ -28,16 +27,15 @@ declare_lint! {
     "out of bound constant indexing"
 }
 
-/// **What it does:** Check for usage of indexing or slicing.
+/// **What it does:** Checks for usage of indexing or slicing.
 ///
-/// **Why is this bad?** Usually, this can be safely allowed. However,
-/// in some domains such as kernel development, a panic can cause the
-/// whole operating system to crash.
+/// **Why is this bad?** Usually, this can be safely allowed. However, in some
+/// domains such as kernel development, a panic can cause the whole operating
+/// system to crash.
 ///
 /// **Known problems:** Hopefully none.
 ///
 /// **Example:**
-///
 /// ```rust
 /// ...
 /// x[2];

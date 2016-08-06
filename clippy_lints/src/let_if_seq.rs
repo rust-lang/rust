@@ -3,7 +3,7 @@ use rustc::hir;
 use syntax::codemap;
 use utils::{snippet, span_lint_and_then};
 
-/// **What it does:** This lint checks for variable declarations immediately followed by a
+/// **What it does:** Checks for variable declarations immediately followed by a
 /// conditional affectation.
 ///
 /// **Why is this bad?** This is not idiomatic Rust.

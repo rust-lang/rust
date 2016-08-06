@@ -4,11 +4,15 @@ use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::{match_def_path, paths, span_note_and_lint};
 
-/// **What it does:** This lint checks for calls to `std::mem::drop` with a reference instead of an owned value.
+/// **What it does:** Checks for calls to `std::mem::drop` with a reference
+/// instead of an owned value.
 ///
-/// **Why is this bad?** Calling `drop` on a reference will only drop the reference itself, which is a no-op. It will not call the `drop` method (from the `Drop` trait implementation) on the underlying referenced value, which is likely what was intended.
+/// **Why is this bad?** Calling `drop` on a reference will only drop the
+/// reference itself, which is a no-op. It will not call the `drop` method (from
+/// the `Drop` trait implementation) on the underlying referenced value, which
+/// is likely what was intended.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
