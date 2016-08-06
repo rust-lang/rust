@@ -1251,8 +1251,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0081,
                     "discriminant value `{}` already exists", disr_vals[i]);
                 let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
-                span_note!(&mut err, ccx.tcx.map.span(variant_i_node_id),
-                    "conflicting discriminant here");
+                err.span_label(ccx.tcx.map.span(variant_i_node_id),
+                               &format!("first use of `{}`", disr_vals[i]));
+                err.span_label(v.span , &format!("enum already has `{}`", disr_vals[i]));
                 err.emit();
             }
             disr_vals.push(current_disr_val);
