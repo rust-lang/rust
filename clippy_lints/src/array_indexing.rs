@@ -43,9 +43,8 @@ declare_lint! {
 /// x[2];
 /// &x[0..2];
 /// ```
-declare_lint! {
+declare_restriction_lint! {
     pub INDEXING_SLICING,
-    Allow,
     "indexing/slicing usage"
 }
 
