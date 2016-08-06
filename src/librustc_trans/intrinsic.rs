@@ -406,9 +406,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             C_str_slice(ccx, ty_name)
         }
         (_, "type_id") => {
-            let hash = ccx.tcx().hash_crate_independent(*substs.types.get(FnSpace, 0),
-                                                        &ccx.link_meta().crate_hash);
-            C_u64(ccx, hash)
+            C_u64(ccx, ccx.tcx().type_id_hash(*substs.types.get(FnSpace, 0)))
         }
         (_, "init_dropped") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
