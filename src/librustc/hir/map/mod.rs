@@ -50,6 +50,7 @@ pub enum Node<'ast> {
     NodeVariant(&'ast Variant),
     NodeExpr(&'ast Expr),
     NodeStmt(&'ast Stmt),
+    NodeTy(&'ast Ty),
     NodeLocal(&'ast Pat),
     NodePat(&'ast Pat),
     NodeBlock(&'ast Block),
@@ -76,6 +77,7 @@ pub enum MapEntry<'ast> {
     EntryVariant(NodeId, &'ast Variant),
     EntryExpr(NodeId, &'ast Expr),
     EntryStmt(NodeId, &'ast Stmt),
+    EntryTy(NodeId, &'ast Ty),
     EntryLocal(NodeId, &'ast Pat),
     EntryPat(NodeId, &'ast Pat),
     EntryBlock(NodeId, &'ast Block),
@@ -104,6 +106,7 @@ impl<'ast> MapEntry<'ast> {
             NodeVariant(n) => EntryVariant(p, n),
             NodeExpr(n) => EntryExpr(p, n),
             NodeStmt(n) => EntryStmt(p, n),
+            NodeTy(n) => EntryTy(p, n),
             NodeLocal(n) => EntryLocal(p, n),
             NodePat(n) => EntryPat(p, n),
             NodeBlock(n) => EntryBlock(p, n),
@@ -122,6 +125,7 @@ impl<'ast> MapEntry<'ast> {
             EntryVariant(id, _) => id,
             EntryExpr(id, _) => id,
             EntryStmt(id, _) => id,
+            EntryTy(id, _) => id,
             EntryLocal(id, _) => id,
             EntryPat(id, _) => id,
             EntryBlock(id, _) => id,
@@ -144,6 +148,7 @@ impl<'ast> MapEntry<'ast> {
             EntryVariant(_, n) => NodeVariant(n),
             EntryExpr(_, n) => NodeExpr(n),
             EntryStmt(_, n) => NodeStmt(n),
+            EntryTy(_, n) => NodeTy(n),
             EntryLocal(_, n) => NodeLocal(n),
             EntryPat(_, n) => NodePat(n),
             EntryBlock(_, n) => NodeBlock(n),
@@ -257,6 +262,7 @@ impl<'ast> Map<'ast> {
                     EntryVariant(p, _) |
                     EntryExpr(p, _) |
                     EntryStmt(p, _) |
+                EntryTy(p, _) |
                     EntryLocal(p, _) |
                     EntryPat(p, _) |
                     EntryBlock(p, _) |
@@ -297,6 +303,7 @@ impl<'ast> Map<'ast> {
                     EntryVariant(p, _) |
                     EntryExpr(p, _) |
                     EntryStmt(p, _) |
+                    EntryTy(p, _) |
                     EntryLocal(p, _) |
                     EntryPat(p, _) |
                     EntryBlock(p, _) |
@@ -680,6 +687,7 @@ impl<'ast> Map<'ast> {
             Some(NodeVariant(variant)) => variant.span,
             Some(NodeExpr(expr)) => expr.span,
             Some(NodeStmt(stmt)) => stmt.span,
+            Some(NodeTy(ty)) => ty.span,
             Some(NodeLocal(pat)) => pat.span,
             Some(NodePat(pat)) => pat.span,
             Some(NodeBlock(block)) => block.span,
@@ -971,6 +979,7 @@ impl<'a> NodePrinter for pprust::State<'a> {
             NodeVariant(a)     => self.print_variant(&a),
             NodeExpr(a)        => self.print_expr(&a),
             NodeStmt(a)        => self.print_stmt(&a),
+            NodeTy(a)          => self.print_type(&a),
             NodePat(a)         => self.print_pat(&a),
             NodeBlock(a)       => self.print_block(&a),
             NodeLifetime(a)    => self.print_lifetime(&a),
@@ -1058,6 +1067,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeStmt(ref stmt)) => {
             format!("stmt {}{}", pprust::stmt_to_string(&stmt), id_str)
+        }
+        Some(NodeTy(ref ty)) => {
+            format!("type {}{}", pprust::ty_to_string(&ty), id_str)
         }
         Some(NodeLocal(ref pat)) => {
             format!("local {}{}", pprust::pat_to_string(&pat), id_str)

@@ -4086,4 +4086,7 @@ register_diagnostics! {
     E0533, // `{}` does not name a unit variant, unit struct or a constant
     E0562, // `impl Trait` not allowed outside of function
            // and inherent method return types
+    E0563, // cannot determine a type for this `impl Trait`: {}
+    E0564, // only named lifetimes are allowed in `impl Trait`,
+           // but `{}` was found in the type `{}`
 }

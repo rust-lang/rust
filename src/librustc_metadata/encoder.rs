@@ -1390,6 +1390,20 @@ impl<'a, 'b, 'c, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
         intravisit::walk_foreign_item(self, ni);
         encode_info_for_foreign_item(self.ecx, self.rbml_w_for_visit_item, ni, self.index);
     }
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+        intravisit::walk_ty(self, ty);
+
+        if let hir::TyImplTrait(_) = ty.node {
+            let rbml_w = &mut *self.rbml_w_for_visit_item;
+            let def_id = self.ecx.tcx.map.local_def_id(ty.id);
+            let _task = self.index.record(def_id, rbml_w);
+            rbml_w.start_tag(tag_items_data_item);
+            encode_def_id_and_key(self.ecx, rbml_w, def_id);
+            encode_family(rbml_w, 'y');
+            encode_bounds_and_type_for_item(rbml_w, self.ecx, self.index, ty.id);
+            rbml_w.end_tag();
+        }
+    }
 }
 
 fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
