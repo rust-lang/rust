@@ -16,7 +16,7 @@
 // aux-build:a.rs
 // revisions:rpass1 rpass2 rpass3
 // no-prefer-dynamic
-
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 
