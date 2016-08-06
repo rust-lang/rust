@@ -10,7 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures)]
 #![deny(unused_mut)]
 
 // Test that mutating a mutable upvar in a capture-by-value unboxed

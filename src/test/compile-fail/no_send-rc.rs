@@ -15,5 +15,5 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Rc::new(5);
     bar(x);
-    //~^ ERROR `std::rc::Rc<_>: std::marker::Send` is not satisfied
+    //~^ ERROR `std::rc::Rc<{integer}>: std::marker::Send` is not satisfied
 }

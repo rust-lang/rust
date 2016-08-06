@@ -55,6 +55,17 @@ impl<'a> AstValidator<'a> {
             err.emit();
         }
     }
+
+    fn check_decl_no_pat<ReportFn: Fn(Span, bool)>(&self, decl: &FnDecl, report_err: ReportFn) {
+        for arg in &decl.inputs {
+            match arg.pat.node {
+                PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), _, None) |
+                PatKind::Wild => {}
+                PatKind::Ident(..) => report_err(arg.pat.span, true),
+                _ => report_err(arg.pat.span, false),
+            }
+        }
+    }
 }
 
 impl<'a> Visitor for AstValidator<'a> {
@@ -80,6 +91,23 @@ impl<'a> Visitor for AstValidator<'a> {
         }
 
         visit::walk_expr(self, expr)
+    }
+
+    fn visit_ty(&mut self, ty: &Ty) {
+        match ty.node {
+            TyKind::BareFn(ref bfty) => {
+                self.check_decl_no_pat(&bfty.decl, |span, _| {
+                    let mut err = struct_span_err!(self.session, span, E0561,
+                                            "patterns aren't allowed in function pointer types");
+                    err.span_note(span, "this is a recent error, see \
+                                         issue #35203 for more details");
+                    err.emit();
+                });
+            }
+            _ => {}
+        }
+
+        visit::walk_ty(self, ty)
     }
 
     fn visit_path(&mut self, path: &Path, id: NodeId) {
@@ -133,6 +161,25 @@ impl<'a> Visitor for AstValidator<'a> {
         }
 
         visit::walk_item(self, item)
+    }
+
+    fn visit_foreign_item(&mut self, fi: &ForeignItem) {
+        match fi.node {
+            ForeignItemKind::Fn(ref decl, _) => {
+                self.check_decl_no_pat(decl, |span, is_recent| {
+                    let mut err = struct_span_err!(self.session, span, E0130,
+                                        "patterns aren't allowed in foreign function declarations");
+                    if is_recent {
+                        err.span_note(span, "this is a recent error, see \
+                                             issue #35203 for more details");
+                    }
+                    err.emit();
+                });
+            }
+            ForeignItemKind::Static(..) => {}
+        }
+
+        visit::walk_foreign_item(self, fi)
     }
 
     fn visit_variant_data(&mut self, vdata: &VariantData, _: Ident,

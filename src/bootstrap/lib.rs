@@ -388,6 +388,10 @@ impl Build {
                     check::compiletest(self, &compiler, target.target,
                                        "pretty", "run-pass-valgrind");
                 }
+                CheckMirOpt { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "mir-opt", "mir-opt");
+                }
                 CheckCodegen { compiler } => {
                     check::compiletest(self, &compiler, target.target,
                                        "codegen", "codegen");
@@ -648,6 +652,9 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
+        if self.config.backtrace {
+            features.push_str(" backtrace");
+        }
         return features
     }
 
@@ -847,6 +854,12 @@ impl Build {
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
             base.push("-mmacosx-version-min=10.7".into());
+        }
+        // This is a hack, because newer binutils broke things on some vms/distros
+        // (i.e., linking against unknown relocs disabled by the following flag)
+        // See: https://github.com/rust-lang/rust/issues/34978
+        if target == "x86_64-unknown-linux-musl" {
+            base.push("-Wa,-mrelax-relocations=no".into());
         }
         return base
     }

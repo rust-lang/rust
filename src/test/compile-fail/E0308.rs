@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern "rust-call" fn foo() { } //~ ERROR rust-call ABI is subject to change
+#![feature(intrinsics)]
 
-trait Foo {
-    extern "rust-call" fn foo();
+extern "rust-intrinsic" {
+    fn size_of<T>(); //~ ERROR E0308
 }
 
-impl Foo for i32 {
-    extern "rust-call" fn foo() { } //~ ERROR rust-call ABI is subject to change
+fn main() {
 }
-
-fn main() { }

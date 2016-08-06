@@ -406,7 +406,9 @@ impl<'a, 'b> Context<'a, 'b> {
                             let arg_idx = match arg_index_consumed.get_mut(i) {
                                 None => 0, // error already emitted elsewhere
                                 Some(offset) => {
-                                    let arg_idx = self.arg_index_map[i][*offset];
+                                    let ref idx_map = self.arg_index_map[i];
+                                    // unwrap_or branch: error already emitted elsewhere
+                                    let arg_idx = *idx_map.get(*offset).unwrap_or(&0);
                                     *offset += 1;
                                     arg_idx
                                 }

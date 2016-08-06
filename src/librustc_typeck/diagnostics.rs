@@ -1079,25 +1079,6 @@ impl Foo {
 ```
 "##,
 
-E0080: r##"
-This error indicates that the compiler was unable to sensibly evaluate an
-integer expression provided as an enum discriminant. Attempting to divide by 0
-or causing integer overflow are two ways to induce this error. For example:
-
-```compile_fail
-enum Enum {
-    X = (1 << 500),
-    Y = (1 / 0)
-}
-```
-
-Ensure that the expressions given can be evaluated as the desired integer type.
-See the FFI section of the Reference for more information about using a custom
-integer type:
-
-https://doc.rust-lang.org/reference.html#ffi-attributes
-"##,
-
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -1819,39 +1800,6 @@ Please also verify that this wasn't because of a name-clash and rename the type
 parameter if so.
 "##,
 
-E0130: r##"
-You declared a pattern as an argument in a foreign function declaration.
-Erroneous code example:
-
-```compile_fail
-extern {
-    fn foo((a, b): (u32, u32)); // error: patterns aren't allowed in foreign
-                                //        function declarations
-}
-```
-
-Please replace the pattern argument with a regular one. Example:
-
-```
-struct SomeStruct {
-    a: u32,
-    b: u32,
-}
-
-extern {
-    fn foo(s: SomeStruct); // ok!
-}
-```
-
-Or:
-
-```
-extern {
-    fn foo(a: (u32, u32)); // ok!
-}
-```
-"##,
-
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
@@ -1961,89 +1909,6 @@ fn foo(bar: i32) {}
 To learn more about traits, take a look at the Book:
 
 https://doc.rust-lang.org/book/traits.html
-"##,
-
-E0174: r##"
-This error occurs because of the explicit use of unboxed closure methods
-that are an experimental feature in current Rust version.
-
-Example of erroneous code:
-
-```compile_fail
-fn foo<F: Fn(&str)>(mut f: F) {
-    f.call(("call",));
-    // error: explicit use of unboxed closure method `call`
-    f.call_mut(("call_mut",));
-    // error: explicit use of unboxed closure method `call_mut`
-    f.call_once(("call_once",));
-    // error: explicit use of unboxed closure method `call_once`
-}
-
-fn bar(text: &str) {
-    println!("Calling {} it works!", text);
-}
-
-fn main() {
-    foo(bar);
-}
-```
-
-Rust's implementation of closures is a bit different than other languages.
-They are effectively syntax sugar for traits `Fn`, `FnMut` and `FnOnce`.
-To understand better how the closures are implemented see here:
-https://doc.rust-lang.org/book/closures.html#closure-implementation
-
-To fix this you can call them using parenthesis, like this: `foo()`.
-When you execute the closure with parenthesis, under the hood you are executing
-the method `call`, `call_mut` or `call_once`. However, using them explicitly is
-currently an experimental feature.
-
-Example of an implicit call:
-
-```
-fn foo<F: Fn(&str)>(f: F) {
-    f("using ()"); // Calling using () it works!
-}
-
-fn bar(text: &str) {
-    println!("Calling {} it works!", text);
-}
-
-fn main() {
-    foo(bar);
-}
-```
-
-To enable the explicit calls you need to add `#![feature(unboxed_closures)]`.
-
-This feature is still unstable so you will also need to add
-`#![feature(fn_traits)]`.
-More details about this issue here:
-https://github.com/rust-lang/rust/issues/29625
-
-Example of use:
-
-```
-#![feature(fn_traits)]
-#![feature(unboxed_closures)]
-
-fn foo<F: Fn(&str)>(mut f: F) {
-    f.call(("call",)); // Calling 'call' it works!
-    f.call_mut(("call_mut",)); // Calling 'call_mut' it works!
-    f.call_once(("call_once",)); // Calling 'call_once' it works!
-}
-
-fn bar(text: &str) {
-    println!("Calling '{}' it works!", text);
-}
-
-fn main() {
-    foo(bar);
-}
-```
-
-To see more about closures take a look here:
-https://doc.rust-lang.org/book/closures.html`
 "##,
 
 E0178: r##"
@@ -2660,6 +2525,7 @@ For information on the design of the orphan rules, see [RFC 1023].
 [RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
 "##,
 
+/*
 E0211: r##"
 You used a function or type which doesn't fit the requirements for where it was
 used. Erroneous code examples:
@@ -2739,6 +2605,7 @@ impl Foo {
 }
 ```
 "##,
+     */
 
 E0214: r##"
 A generic type was described using parentheses rather than angle brackets. For
@@ -2966,38 +2833,6 @@ do_something function. This is not legal: `Foo::Bar` is a value of type `Foo`,
 not a distinct static type. Likewise, it's not legal to attempt to
 `impl Foo::Bar`: instead, you must `impl Foo` and then pattern match to specify
 behavior for specific enum variants.
-"##,
-
-E0249: r##"
-This error indicates a constant expression for the array length was found, but
-it was not an integer (signed or unsigned) expression.
-
-Some examples of code that produces this error are:
-
-```compile_fail
-const A: [u32; "hello"] = []; // error
-const B: [u32; true] = []; // error
-const C: [u32; 0.0] = []; // error
-"##,
-
-E0250: r##"
-There was an error while evaluating the expression for the length of a fixed-
-size array type.
-
-Some examples of this error are:
-
-```compile_fail
-// divide by zero in the length expression
-const A: [u32; 1/0] = [];
-
-// Rust currently will not evaluate the function `foo` at compile time
-fn foo() -> usize { 12 }
-const B: [u32; foo()] = [];
-
-// it is an error to try to add `u8` and `f64`
-use std::{f64, u8};
-const C: [u32; u8::MAX + f64::EPSILON] = [];
-```
 "##,
 
 E0318: r##"
@@ -4029,6 +3864,155 @@ impl SpaceLlama for i32 {
 ```
 "##,
 
+E0527: r##"
+The number of elements in an array or slice pattern differed from the number of
+elements in the array being matched.
+
+Example of erroneous code:
+
+```compile_fail,E0527
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4];
+match r {
+    &[a, b] => { // error: pattern requires 2 elements but array
+                 //        has 4
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+
+Ensure that the pattern is consistent with the size of the matched
+array. Additional elements can be matched with `..`:
+
+```
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4];
+match r {
+    &[a, b, ..] => { // ok!
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+"##,
+
+E0528: r##"
+An array or slice pattern required more elements than were present in the
+matched array.
+
+Example of erroneous code:
+
+```compile_fail,E0528
+#![feature(slice_patterns)]
+
+let r = &[1, 2];
+match r {
+    &[a, b, c, rest..] => { // error: pattern requires at least 3
+                            //        elements but array has 2
+        println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
+    }
+}
+```
+
+Ensure that the matched array has at least as many elements as the pattern
+requires. You can match an arbitrary number of remaining elements with `..`:
+
+```
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4, 5];
+match r {
+    &[a, b, c, rest..] => { // ok!
+        // prints `a=1, b=2, c=3 rest=[4, 5]`
+        println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
+    }
+}
+```
+"##,
+
+E0529: r##"
+An array or slice pattern was matched against some other type.
+
+Example of erroneous code:
+
+```compile_fail,E0529
+#![feature(slice_patterns)]
+
+let r: f32 = 1.0;
+match r {
+    [a, b] => { // error: expected an array or slice, found `f32`
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+
+Ensure that the pattern and the expression being matched on are of consistent
+types:
+
+```
+#![feature(slice_patterns)]
+
+let r = [1.0, 2.0];
+match r {
+    [a, b] => { // ok!
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+"##,
+
+E0559: r##"
+An unknown field was specified into an enum's structure variant.
+
+Erroneous code example:
+
+```compile_fail,E0559
+enum Field {
+    Fool { x: u32 },
+}
+
+let s = Field::Fool { joke: 0 };
+// error: struct variant `Field::Fool` has no field named `joke`
+```
+
+Verify you didn't misspell the field's name or that the field exists. Example:
+
+```
+enum Field {
+    Fool { joke: u32 },
+}
+
+let s = Field::Fool { joke: 0 }; // ok!
+```
+"##,
+
+E0560: r##"
+An unknown field was specified into a structure.
+
+Erroneous code example:
+
+```compile_fail,E0560
+struct Simba {
+    mother: u32,
+}
+
+let s = Simba { mother: 1, father: 0 };
+// error: structure `Simba` has no field named `father`
+```
+
+Verify you didn't misspell the field's name or that the field exists. Example:
+
+```
+struct Simba {
+    mother: u32,
+    father: u32,
+}
+
+let s = Simba { mother: 1, father: 0 }; // ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -4047,6 +4031,7 @@ register_diagnostics! {
     E0167,
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
+//  E0174,
     E0182,
     E0183,
 //  E0187, // can't infer the kind of the closure
@@ -4086,6 +4071,7 @@ register_diagnostics! {
     E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,
+//  E0249,
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0328, // cannot implement Unsize explicitly
@@ -4097,8 +4083,5 @@ register_diagnostics! {
     E0436, // functional record update requires a struct
     E0513, // no type for local variable ..
     E0521, // redundant default implementations of trait
-    E0527, // expected {} elements, found {}
-    E0528, // expected at least {} elements, found {}
-    E0529, // slice pattern expects array or slice, not `{}`
     E0533, // `{}` does not name a unit variant, unit struct or a constant
 }

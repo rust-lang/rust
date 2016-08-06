@@ -219,7 +219,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              name)
         }
         ResolutionError::IsNotATrait(name) => {
-            struct_span_err!(resolver.session, span, E0404, "`{}` is not a trait", name)
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0404,
+                                           "`{}` is not a trait",
+                                           name);
+            err.span_label(span, &format!("not a trait"));
+            err
         }
         ResolutionError::UndeclaredTraitName(name, candidates) => {
             let mut err = struct_span_err!(resolver.session,
@@ -825,8 +831,6 @@ enum NameBindingKind<'a> {
     Import {
         binding: &'a NameBinding<'a>,
         directive: &'a ImportDirective<'a>,
-        // Some(error) if using this imported name causes the import to be a privacy error
-        privacy_error: Option<Box<PrivacyError<'a>>>,
     },
 }
 
@@ -1206,15 +1210,10 @@ impl<'a> Resolver<'a> {
             self.used_crates.insert(krate);
         }
 
-        let (directive, privacy_error) = match binding.kind {
-            NameBindingKind::Import { directive, ref privacy_error, .. } =>
-                (directive, privacy_error),
+        let directive = match binding.kind {
+            NameBindingKind::Import { directive, .. } => directive,
             _ => return,
         };
-
-        if let Some(error) = privacy_error.as_ref() {
-            self.privacy_errors.push((**error).clone());
-        }
 
         if !self.make_glob_map {
             return;
@@ -1814,39 +1813,25 @@ impl<'a> Resolver<'a> {
                                path_depth: usize)
                                -> Result<PathResolution, ()> {
         self.resolve_path(id, trait_path, path_depth, TypeNS).and_then(|path_res| {
-            if let Def::Trait(_) = path_res.base_def {
-                debug!("(resolving trait) found trait def: {:?}", path_res);
-                Ok(path_res)
-            } else {
-                let mut err =
-                    resolve_struct_error(self,
-                                  trait_path.span,
-                                  ResolutionError::IsNotATrait(&path_names_to_string(trait_path,
-                                                                                      path_depth)));
-
-                // If it's a typedef, give a note
-                if let Def::TyAlias(..) = path_res.base_def {
-                    let trait_name = trait_path.segments.last().unwrap().identifier.name;
-                    err.span_label(trait_path.span,
-                                   &format!("`{}` is not a trait", trait_name));
-
-                    let definition_site = {
-                        let segments = &trait_path.segments;
-                        if trait_path.global {
-                            self.resolve_crate_relative_path(trait_path.span, segments, TypeNS)
-                        } else {
-                            self.resolve_module_relative_path(trait_path.span, segments, TypeNS)
-                        }.map(|binding| binding.span).unwrap_or(syntax_pos::DUMMY_SP)
-                    };
-
-                    if definition_site != syntax_pos::DUMMY_SP {
-                        err.span_label(definition_site,
-                                       &format!("type aliases cannot be used for traits"));
-                    }
+            match path_res.base_def {
+                Def::Trait(_) => {
+                    debug!("(resolving trait) found trait def: {:?}", path_res);
+                    return Ok(path_res);
                 }
-                err.emit();
-                Err(true)
+                Def::Err => return Err(true),
+                _ => {}
             }
+
+            let mut err = resolve_struct_error(self, trait_path.span, {
+                ResolutionError::IsNotATrait(&path_names_to_string(trait_path, path_depth))
+            });
+
+            // If it's a typedef, give a note
+            if let Def::TyAlias(..) = path_res.base_def {
+                err.note(&format!("type aliases cannot be used for traits"));
+            }
+            err.emit();
+            Err(true)
         }).map_err(|error_reported| {
             if error_reported { return }
 
@@ -2274,7 +2259,7 @@ impl<'a> Resolver<'a> {
         let resolution = if let Some(resolution) = self.resolve_possibly_assoc_item(pat_id,
                                                                         qself, path, namespace) {
             if resolution.depth == 0 {
-                if expected_fn(resolution.base_def) {
+                if expected_fn(resolution.base_def) || resolution.base_def == Def::Err {
                     resolution
                 } else {
                     resolve_error(
@@ -2345,7 +2330,7 @@ impl<'a> Resolver<'a> {
                                 );
                                 None
                             }
-                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) => {
+                            Def::Local(..) | Def::Upvar(..) | Def::Fn(..) | Def::Err => {
                                 // These entities are explicitly allowed
                                 // to be shadowed by fresh bindings.
                                 None

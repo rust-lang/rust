@@ -176,11 +176,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // error types are considered "builtin"
                 if !lhs_ty.references_error() {
                     if let IsAssign::Yes = is_assign {
-                        span_err!(self.tcx.sess, lhs_expr.span, E0368,
-                                  "binary assignment operation `{}=` \
-                                   cannot be applied to type `{}`",
-                                  op.node.as_str(),
-                                  lhs_ty);
+                        struct_span_err!(self.tcx.sess, lhs_expr.span, E0368,
+                                         "binary assignment operation `{}=` \
+                                          cannot be applied to type `{}`",
+                                         op.node.as_str(),
+                                         lhs_ty)
+                            .span_label(lhs_expr.span,
+                                        &format!("cannot use `{}=` on type `{}`",
+                                        op.node.as_str(), lhs_ty))
+                            .emit();
                     } else {
                         let mut err = struct_span_err!(self.tcx.sess, lhs_expr.span, E0369,
                             "binary operation `{}` cannot be applied to type `{}`",
@@ -239,7 +243,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.type_error_message(ex.span, |actual| {
                     format!("cannot apply unary operator `{}` to type `{}`",
                             op_str, actual)
-                }, operand_ty, None);
+                }, operand_ty);
                 self.tcx.types.err
             }
         }

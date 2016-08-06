@@ -552,13 +552,13 @@ impl FnType {
     pub fn apply_attrs_llfn(&self, llfn: ValueRef) {
         let mut i = if self.ret.is_indirect() { 1 } else { 0 };
         if !self.ret.is_ignore() {
-            self.ret.attrs.apply_llfn(i, llfn);
+            self.ret.attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
         }
         i += 1;
         for arg in &self.args {
             if !arg.is_ignore() {
                 if arg.pad.is_some() { i += 1; }
-                arg.attrs.apply_llfn(i, llfn);
+                arg.attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
                 i += 1;
             }
         }
@@ -567,13 +567,13 @@ impl FnType {
     pub fn apply_attrs_callsite(&self, callsite: ValueRef) {
         let mut i = if self.ret.is_indirect() { 1 } else { 0 };
         if !self.ret.is_ignore() {
-            self.ret.attrs.apply_callsite(i, callsite);
+            self.ret.attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
         }
         i += 1;
         for arg in &self.args {
             if !arg.is_ignore() {
                 if arg.pad.is_some() { i += 1; }
-                arg.attrs.apply_callsite(i, callsite);
+                arg.attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
                 i += 1;
             }
         }

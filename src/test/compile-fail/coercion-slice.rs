@@ -14,6 +14,6 @@ fn main() {
     let _: &[i32] = [0];
     //~^ ERROR mismatched types
     //~| expected type `&[i32]`
-    //~| found type `[_; 1]`
+    //~| found type `[{integer}; 1]`
     //~| expected &-ptr, found array of 1 elements
 }

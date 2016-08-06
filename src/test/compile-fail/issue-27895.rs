@@ -14,7 +14,8 @@ fn main() {
 
     match i {
         0...index => println!("winner"),
-        //~^ ERROR non-constant path in constant expression
+        //~^ ERROR constant evaluation error
+        //~| non-constant path in constant expression
         _ => println!("hello"),
     }
 }

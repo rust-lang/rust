@@ -25,15 +25,53 @@ use sys::platform::fs::MetadataExt as UnixMetadataExt;
 pub trait PermissionsExt {
     /// Returns the underlying raw `mode_t` bits that are the standard Unix
     /// permissions for this file.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use std::fs::File;
+    /// use std::os::unix::fs::PermissionsExt;
+    ///
+    /// let f = try!(File::create("foo.txt"));
+    /// let metadata = try!(f.metadata());
+    /// let permissions = metadata.permissions();
+    ///
+    /// println!("permissions: {}", permissions.mode());
+    /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
 
     /// Sets the underlying raw bits for this set of permissions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use std::fs::File;
+    /// use std::os::unix::fs::PermissionsExt;
+    ///
+    /// let f = try!(File::create("foo.txt"));
+    /// let metadata = try!(f.metadata());
+    /// let mut permissions = metadata.permissions();
+    ///
+    /// permissions.set_mode(0o644); // Read/write for owner and read for others.
+    /// assert_eq!(permissions.mode(), 0o644);
+    /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn set_mode(&mut self, mode: u32);
 
     /// Creates a new instance of `Permissions` from the given set of Unix
     /// permission bits.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use std::fs::Permissions;
+    /// use std::os::unix::fs::PermissionsExt;
+    ///
+    /// // Read/write for owner and read for others.
+    /// let permissions = Permissions::from_mode(0o644);
+    /// assert_eq!(permissions.mode(), 0o644);
+    /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn from_mode(mode: u32) -> Self;
 }
@@ -63,6 +101,18 @@ pub trait OpenOptionsExt {
     /// If no `mode` is set, the default of `0o666` will be used.
     /// The operating system masks out bits with the systems `umask`, to produce
     /// the final permissions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// extern crate libc;
+    /// use std::fs::OpenOptions;
+    /// use std::os::unix::fs::OpenOptionsExt;
+    ///
+    /// let mut options = OpenOptions::new();
+    /// options.mode(0o644); // Give read/write for owner and read for others.
+    /// let file = options.open("foo.txt");
+    /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&mut self, mode: u32) -> &mut Self;
 
@@ -196,6 +246,22 @@ impl FileTypeExt for fs::FileType {
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
     /// structure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::DirEntryExt;
+    ///
+    /// if let Ok(entries) = fs::read_dir(".") {
+    ///     for entry in entries {
+    ///         if let Ok(entry) = entry {
+    ///             // Here, `entry` is a `DirEntry`.
+    ///             println!("{:?}: {}", entry.file_name(), entry.ino());
+    ///         }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     fn ino(&self) -> u64;
 }
@@ -239,6 +305,16 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::fs::DirBuilder;
+    /// use std::os::unix::fs::DirBuilderExt;
+    ///
+    /// let mut builder = DirBuilder::new();
+    /// builder.mode(0o755);
+    /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
     fn mode(&mut self, mode: u32) -> &mut Self;
 }

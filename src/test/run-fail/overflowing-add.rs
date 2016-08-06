@@ -10,7 +10,7 @@
 
 // ignore-pretty : (#23623) problems when  ending with // comments
 
-// error-pattern:thread 'main' panicked at 'attempted to add with overflow'
+// error-pattern:thread 'main' panicked at 'attempt to add with overflow'
 // compile-flags: -C debug-assertions
 
 

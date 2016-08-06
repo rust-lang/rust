@@ -1135,30 +1135,19 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn attribute(&self, sp: Span, mi: P<ast::MetaItem>) -> ast::Attribute {
-        respan(sp, ast::Attribute_ {
-            id: attr::mk_attr_id(),
-            style: ast::AttrStyle::Outer,
-            value: mi,
-            is_sugared_doc: false,
-        })
+        attr::mk_spanned_attr_outer(sp, attr::mk_attr_id(), mi)
     }
 
     fn meta_word(&self, sp: Span, w: InternedString) -> P<ast::MetaItem> {
-        P(respan(sp, ast::MetaItemKind::Word(w)))
+        attr::mk_spanned_word_item(sp, w)
     }
-    fn meta_list(&self,
-                 sp: Span,
-                 name: InternedString,
-                 mis: Vec<P<ast::MetaItem>> )
+    fn meta_list(&self, sp: Span, name: InternedString, mis: Vec<P<ast::MetaItem>>)
                  -> P<ast::MetaItem> {
-        P(respan(sp, ast::MetaItemKind::List(name, mis)))
+        attr::mk_spanned_list_item(sp, name, mis)
     }
-    fn meta_name_value(&self,
-                       sp: Span,
-                       name: InternedString,
-                       value: ast::LitKind)
+    fn meta_name_value(&self, sp: Span, name: InternedString, value: ast::LitKind)
                        -> P<ast::MetaItem> {
-        P(respan(sp, ast::MetaItemKind::NameValue(name, respan(sp, value))))
+        attr::mk_spanned_name_value_item(sp, name, respan(sp, value))
     }
 
     fn item_use(&self, sp: Span,

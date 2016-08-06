@@ -21,5 +21,5 @@ fn take_param<T:Foo>(foo: &T) { }
 fn main() {
     let x: Box<_> = box 3;
     take_param(&x);
-    //~^ ERROR `Box<_>: std::marker::Copy` is not satisfied
+    //~^ ERROR `Box<{integer}>: std::marker::Copy` is not satisfied
 }

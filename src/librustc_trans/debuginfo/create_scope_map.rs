@@ -133,7 +133,7 @@ fn make_mir_scope(ccx: &CrateContext,
     let loc = span_start(ccx, scope_data.span);
     scopes[scope] = unsafe {
     let file_metadata = file_metadata(ccx, &loc.file.name, &loc.file.abs_path);
-        llvm::LLVMDIBuilderCreateLexicalBlock(
+        llvm::LLVMRustDIBuilderCreateLexicalBlock(
             DIB(ccx),
             parent_scope,
             file_metadata,
@@ -156,7 +156,7 @@ fn with_new_scope<F>(cx: &CrateContext,
     let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
     let scope_metadata = unsafe {
-        llvm::LLVMDIBuilderCreateLexicalBlock(
+        llvm::LLVMRustDIBuilderCreateLexicalBlock(
             DIB(cx),
             parent_scope,
             file_metadata,
@@ -272,7 +272,7 @@ fn walk_pattern(cx: &CrateContext,
                 let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
                 let scope_metadata = unsafe {
-                    llvm::LLVMDIBuilderCreateLexicalBlock(
+                    llvm::LLVMRustDIBuilderCreateLexicalBlock(
                         DIB(cx),
                         parent_scope,
                         file_metadata,

@@ -11,8 +11,6 @@
 // That a closure whose expected argument types include two distinct
 // bound regions.
 
-#![feature(unboxed_closures)]
-
 use std::cell::Cell;
 
 fn doit<T,F>(val: T, f: &F)

@@ -249,8 +249,17 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                     if let Some(impl_node_id) = tcx.map.as_local_node_id(impl_did) {
                         match tcx.map.find(impl_node_id) {
                             Some(hir_map::NodeItem(item)) => {
-                                span_err!(tcx.sess, item.span, E0120,
-                                          "the Drop trait may only be implemented on structures");
+                                let span = match item.node {
+                                    ItemImpl(_, _, _, _, ref ty, _) => {
+                                        ty.span
+                                    },
+                                    _ => item.span
+                                };
+                                struct_span_err!(tcx.sess, span, E0120,
+                                    "the Drop trait may only be implemented on structures")
+                                    .span_label(span,
+                                                &format!("implementing Drop requires a struct"))
+                                    .emit();
                             }
                             _ => {
                                 bug!("didn't find impl in ast map");
@@ -258,7 +267,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                         }
                     } else {
                         bug!("found external impl of Drop trait on \
-                              :omething other than a struct");
+                              something other than a struct");
                     }
                 }
             }

@@ -110,13 +110,11 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
             if attr.check_name(IF_THIS_CHANGED) {
                 let mut id = None;
                 for meta_item in attr.meta_item_list().unwrap_or_default() {
-                    match meta_item.node {
-                        ast::MetaItemKind::Word(ref s) if id.is_none() => id = Some(s.clone()),
-                        _ => {
-                            self.tcx.sess.span_err(
-                                meta_item.span,
-                                &format!("unexpected meta-item {:?}", meta_item.node));
-                        }
+                    if meta_item.is_word() && id.is_none() {
+                        id = Some(meta_item.name().clone());
+                    } else {
+                        // FIXME better-encapsulate meta_item (don't directly access `node`)
+                        span_bug!(meta_item.span(), "unexpected meta-item {:?}", meta_item.node)
                     }
                 }
                 let id = id.unwrap_or(InternedString::new(ID));
@@ -127,16 +125,13 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                 let mut dep_node_interned = None;
                 let mut id = None;
                 for meta_item in attr.meta_item_list().unwrap_or_default() {
-                    match meta_item.node {
-                        ast::MetaItemKind::Word(ref s) if dep_node_interned.is_none() =>
-                            dep_node_interned = Some(s.clone()),
-                        ast::MetaItemKind::Word(ref s) if id.is_none() =>
-                            id = Some(s.clone()),
-                        _ => {
-                            self.tcx.sess.span_err(
-                                meta_item.span,
-                                &format!("unexpected meta-item {:?}", meta_item.node));
-                        }
+                    if meta_item.is_word() && dep_node_interned.is_none() {
+                        dep_node_interned = Some(meta_item.name().clone());
+                    } else if meta_item.is_word() && id.is_none() {
+                        id = Some(meta_item.name().clone());
+                    } else {
+                        // FIXME better-encapsulate meta_item (don't directly access `node`)
+                        span_bug!(meta_item.span(), "unexpected meta-item {:?}", meta_item.node)
                     }
                 }
                 let dep_node = match dep_node_interned {

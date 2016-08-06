@@ -77,6 +77,13 @@ for lib in out.strip().replace("\n", ' ').split(' '):
         lib = lib.strip()[2:]
     elif lib[0] == '-':
         lib = lib.strip()[1:]
+    # If this actually points at a literal file then we're on MSVC which now
+    # prints full paths, so get just the name of the library and strip off the
+    # trailing ".lib"
+    elif os.path.exists(lib):
+        lib = os.path.basename(lib)[:-4]
+    elif lib[-4:] == '.lib':
+        lib = lib[:-4]
     f.write("#[link(name = \"" + lib + "\"")
     if not llvm_shared and 'LLVM' in lib:
         f.write(", kind = \"static\"")

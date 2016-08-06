@@ -9,7 +9,7 @@ CFG_STATIC_LIB_NAME_x86_64-pc-windows-gnu=$(1).lib
 CFG_LIB_GLOB_x86_64-pc-windows-gnu=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_x86_64-pc-windows-gnu=$(1)-*.dylib.dSYM
 CFG_JEMALLOC_CFLAGS_x86_64-pc-windows-gnu := -m64 -D_WIN32_WINNT=0x0600 -D__USE_MINGW_ANSI_STDIO=1 $(CFLAGS)
-CFG_GCCISH_CFLAGS_x86_64-pc-windows-gnu := -Wall -Werror -g -m64 -D_WIN32_WINNT=0x0600 -D__USE_MINGW_ANSI_STDIO=1 $(CFLAGS)
+CFG_GCCISH_CFLAGS_x86_64-pc-windows-gnu :=  -g -m64 -D_WIN32_WINNT=0x0600 -D__USE_MINGW_ANSI_STDIO=1 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_x86_64-pc-windows-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_x86_64-pc-windows-gnu := -shared -g -m64
 CFG_GCCISH_DEF_FLAG_x86_64-pc-windows-gnu :=

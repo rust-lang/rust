@@ -32,22 +32,27 @@ use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 
-pub struct Bivariate<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    fields: CombineFields<'a, 'gcx, 'tcx>
+pub struct Bivariate<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+    a_is_expected: bool,
 }
 
-impl<'a, 'gcx, 'tcx> Bivariate<'a, 'gcx, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'gcx, 'tcx>) -> Bivariate<'a, 'gcx, 'tcx> {
-        Bivariate { fields: fields }
+impl<'combine, 'infcx, 'gcx, 'tcx> Bivariate<'combine, 'infcx, 'gcx, 'tcx> {
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
+        -> Bivariate<'combine, 'infcx, 'gcx, 'tcx>
+    {
+        Bivariate { fields: fields, a_is_expected: a_is_expected }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Bivariate<'a, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
+    for Bivariate<'combine, 'infcx, 'gcx, 'tcx>
+{
     fn tag(&self) -> &'static str { "Bivariate" }
 
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
-    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+    fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,
                                              variance: ty::Variance,
@@ -86,12 +91,12 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Bivariate<'a, 'gcx, 'tcx> 
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, BiTo, a_id)?;
+                self.fields.instantiate(b, BiTo, a_id, self.a_is_expected)?;
                 Ok(a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, BiTo, b_id)?;
+                self.fields.instantiate(a, BiTo, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 

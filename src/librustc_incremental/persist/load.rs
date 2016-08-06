@@ -14,12 +14,13 @@ use rbml::Error;
 use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
+use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashSet;
 use rustc_serialize::Decodable as RustcDecodable;
 use std::io::Read;
-use std::fs::File;
-use std::path::Path;
+use std::fs::{self, File};
+use std::path::{Path};
 
 use super::data::*;
 use super::directory::*;
@@ -38,18 +39,43 @@ type CleanEdges = Vec<(DepNode<DefId>, DepNode<DefId>)>;
 /// actually it doesn't matter all that much.) See `README.md` for
 /// more general overview.
 pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _ignore = tcx.dep_graph.in_ignore();
+    if tcx.sess.opts.incremental.is_none() {
+        return;
+    }
 
-    if let Some(dep_graph) = dep_graph_path(tcx) {
-        // FIXME(#32754) lock file?
-        load_dep_graph_if_exists(tcx, &dep_graph);
-        dirty_clean::check_dirty_clean_annotations(tcx);
+    let _ignore = tcx.dep_graph.in_ignore();
+    load_dep_graph_if_exists(tcx);
+    dirty_clean::check_dirty_clean_annotations(tcx);
+}
+
+fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    let dep_graph_path = dep_graph_path(tcx).unwrap();
+    let dep_graph_data = match load_data(tcx.sess, &dep_graph_path) {
+        Some(p) => p,
+        None => return // no file
+    };
+
+    let work_products_path = tcx_work_products_path(tcx).unwrap();
+    let work_products_data = match load_data(tcx.sess, &work_products_path) {
+        Some(p) => p,
+        None => return // no file
+    };
+
+    match decode_dep_graph(tcx, &dep_graph_data, &work_products_data) {
+        Ok(()) => return,
+        Err(err) => {
+            tcx.sess.warn(
+                &format!("decoding error in dep-graph from `{}` and `{}`: {}",
+                         dep_graph_path.display(),
+                         work_products_path.display(),
+                         err));
+        }
     }
 }
 
-pub fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, path: &Path) {
+fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
     if !path.exists() {
-        return;
+        return None;
     }
 
     let mut data = vec![];
@@ -57,31 +83,30 @@ pub fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, path: &Pa
         File::open(path)
         .and_then(|mut file| file.read_to_end(&mut data))
     {
-        Ok(_) => { }
+        Ok(_) => {
+            Some(data)
+        }
         Err(err) => {
-            tcx.sess.err(
+            sess.err(
                 &format!("could not load dep-graph from `{}`: {}",
                          path.display(), err));
-            return;
+            None
         }
     }
 
-    match decode_dep_graph(tcx, &data) {
-        Ok(dirty) => dirty,
-        Err(err) => {
-            bug!("decoding error in dep-graph from `{}`: {}", path.display(), err);
-        }
-    }
 }
 
+/// Decode the dep graph and load the edges/nodes that are still clean
+/// into `tcx.dep_graph`.
 pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  data: &[u8])
+                                  dep_graph_data: &[u8],
+                                  work_products_data: &[u8])
                                   -> Result<(), Error>
 {
     // Deserialize the directory and dep-graph.
-    let mut decoder = Decoder::new(data, 0);
-    let directory = try!(DefIdDirectory::decode(&mut decoder));
-    let serialized_dep_graph = try!(SerializedDepGraph::decode(&mut decoder));
+    let mut dep_graph_decoder = Decoder::new(dep_graph_data, 0);
+    let directory = try!(DefIdDirectory::decode(&mut dep_graph_decoder));
+    let serialized_dep_graph = try!(SerializedDepGraph::decode(&mut dep_graph_decoder));
 
     debug!("decode_dep_graph: directory = {:#?}", directory);
     debug!("decode_dep_graph: serialized_dep_graph = {:#?}", serialized_dep_graph);
@@ -121,11 +146,17 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Add nodes and edges that are not dirty into our main graph.
     let dep_graph = tcx.dep_graph.clone();
     for (source, target) in clean_edges.into_iter().chain(clean_nodes) {
-        let _task = dep_graph.in_task(target.clone());
-        dep_graph.read(source.clone());
-
         debug!("decode_dep_graph: clean edge: {:?} -> {:?}", source, target);
+
+        let _task = dep_graph.in_task(target);
+        dep_graph.read(source);
     }
+
+    // Add in work-products that are still clean, and delete those that are
+    // dirty.
+    let mut work_product_decoder = Decoder::new(work_products_data, 0);
+    let work_products = try!(<Vec<SerializedWorkProduct>>::decode(&mut work_product_decoder));
+    reconcile_work_products(tcx, work_products, &dirty_nodes);
 
     Ok(())
 }
@@ -141,9 +172,9 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match hash.node.map_def(|&i| retraced.def_id(i)) {
             Some(dep_node) => {
                 let current_hash = hcx.hash(&dep_node).unwrap();
-                debug!("initial_dirty_nodes: hash of {:?} is {:?}, was {:?}",
-                       dep_node, current_hash, hash.hash);
                 if current_hash != hash.hash {
+                    debug!("initial_dirty_nodes: {:?} is dirty as hash is {:?}, was {:?}",
+                           dep_node, current_hash, hash.hash);
                     dirty_nodes.insert(dep_node);
                 }
             }
@@ -177,6 +208,8 @@ fn compute_clean_edges(serialized_edges: &[(SerializedEdge)],
                 clean_edges.push((source, target))
             } else {
                 // source removed, target must be dirty
+                debug!("compute_clean_edges: {:?} dirty because {:?} no longer exists",
+                       target, serialized_source);
                 dirty_nodes.insert(target);
             }
         } else {
@@ -212,4 +245,52 @@ fn compute_clean_edges(serialized_edges: &[(SerializedEdge)],
     }
 
     clean_edges
+}
+
+/// Go through the list of work-products produced in the previous run.
+/// Delete any whose nodes have been found to be dirty or which are
+/// otherwise no longer applicable.
+fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     work_products: Vec<SerializedWorkProduct>,
+                                     dirty_nodes: &DirtyNodes) {
+    debug!("reconcile_work_products({:?})", work_products);
+    for swp in work_products {
+        let dep_node = DepNode::WorkProduct(swp.id.clone());
+        if dirty_nodes.contains(&dep_node) {
+            debug!("reconcile_work_products: dep-node for {:?} is dirty", swp);
+            delete_dirty_work_product(tcx, swp);
+        } else {
+            let all_files_exist =
+                swp.work_product
+                   .saved_files
+                   .iter()
+                   .all(|&(_, ref file_name)| {
+                       let path = in_incr_comp_dir(tcx.sess, &file_name).unwrap();
+                       path.exists()
+                   });
+            if all_files_exist {
+                debug!("reconcile_work_products: all files for {:?} exist", swp);
+                tcx.dep_graph.insert_previous_work_product(&swp.id, swp.work_product);
+            } else {
+                debug!("reconcile_work_products: some file for {:?} does not exist", swp);
+                delete_dirty_work_product(tcx, swp);
+            }
+        }
+    }
+}
+
+fn delete_dirty_work_product(tcx: TyCtxt,
+                             swp: SerializedWorkProduct) {
+    debug!("delete_dirty_work_product({:?})", swp);
+    for &(_, ref file_name) in &swp.work_product.saved_files {
+        let path = in_incr_comp_dir(tcx.sess, file_name).unwrap();
+        match fs::remove_file(&path) {
+            Ok(()) => { }
+            Err(err) => {
+                tcx.sess.warn(
+                    &format!("file-system error deleting outdated file `{}`: {}",
+                             path.display(), err));
+            }
+        }
+    }
 }

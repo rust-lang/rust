@@ -30,7 +30,7 @@ use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
 
-use errors::{ColorConfig, Handler};
+use errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
 use std::collections::HashMap;
@@ -61,7 +61,7 @@ pub enum DebugInfoLevel {
     FullDebugInfo,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum OutputType {
     Bitcode,
     Assembly,
@@ -103,6 +103,17 @@ impl OutputType {
             OutputType::Object => "obj",
             OutputType::Exe => "link",
             OutputType::DepInfo => "dep-info",
+        }
+    }
+
+    pub fn extension(&self) -> &'static str {
+        match *self {
+            OutputType::Bitcode => "bc",
+            OutputType::Assembly => "s",
+            OutputType::LlvmAssembly => "ll",
+            OutputType::Object => "o",
+            OutputType::DepInfo => "d",
+            OutputType::Exe => "",
         }
     }
 }
@@ -219,15 +230,7 @@ impl OutputFilenames {
                      flavor: OutputType,
                      codegen_unit_name: Option<&str>)
                      -> PathBuf {
-        let extension = match flavor {
-            OutputType::Bitcode => "bc",
-            OutputType::Assembly => "s",
-            OutputType::LlvmAssembly => "ll",
-            OutputType::Object => "o",
-            OutputType::DepInfo => "d",
-            OutputType::Exe => "",
-        };
-
+        let extension = flavor.extension();
         self.temp_path_ext(extension, codegen_unit_name)
     }
 
@@ -330,6 +333,11 @@ impl Options {
         self.incremental.is_some() ||
             self.debugging_opts.dump_dep_graph ||
             self.debugging_opts.query_dep_graph
+    }
+
+    pub fn single_codegen_unit(&self) -> bool {
+        self.incremental.is_none() ||
+        self.cg.codegen_units == 1
     }
 }
 
@@ -459,6 +467,8 @@ macro_rules! options {
         pub const parse_bool: Option<&'static str> = None;
         pub const parse_opt_bool: Option<&'static str> =
             Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
+        pub const parse_all_bool: Option<&'static str> =
+            Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
         pub const parse_string: Option<&'static str> = Some("a string");
         pub const parse_opt_string: Option<&'static str> = Some("a string");
         pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
@@ -505,6 +515,25 @@ macro_rules! options {
                     true
                 },
                 None => { *slot = Some(true); true }
+            }
+        }
+
+        fn parse_all_bool(slot: &mut bool, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => {
+                    match s {
+                        "n" | "no" | "off" => {
+                            *slot = false;
+                        }
+                        "y" | "yes" | "on" => {
+                            *slot = true;
+                        }
+                        _ => { return false; }
+                    }
+
+                    true
+                },
+                None => { *slot = true; true }
             }
         }
 
@@ -656,7 +685,6 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "panic strategy to compile crate with"),
 }
 
-
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          build_debugging_options, "Z", "debugging",
          DB_OPTIONS, db_type_desc, dbsetters,
@@ -751,7 +779,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "set the MIR optimization level (0-3)"),
     dump_mir: Option<String> = (None, parse_opt_string,
           "dump MIR state at various points in translation"),
-    orbit: bool = (false, parse_bool,
+    dump_mir_dir: Option<String> = (None, parse_opt_string,
+          "the directory the MIR is dumped into"),
+    orbit: bool = (true, parse_all_bool,
           "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }
 
@@ -835,7 +865,10 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
     let target = match Target::search(&opts.target_triple) {
         Ok(t) => t,
         Err(e) => {
-            panic!(sp.fatal(&format!("Error loading target specification: {}", e)));
+            sp.struct_fatal(&format!("Error loading target specification: {}", e))
+                .help("Use `--print target-list` for a list of built-in targets")
+                .emit();
+            panic!(FatalError);
         }
     };
 
@@ -1140,7 +1173,15 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         })
     });
 
-    let debugging_opts = build_debugging_options(matches, error_format);
+    let mut debugging_opts = build_debugging_options(matches, error_format);
+
+    // Incremental compilation only works reliably when translation is done via
+    // MIR, so let's enable -Z orbit if necessary (see #34973).
+    if debugging_opts.incremental.is_some() && !debugging_opts.orbit {
+        early_warn(error_format, "Automatically enabling `-Z orbit` because \
+                                  `-Z incremental` was specified");
+        debugging_opts.orbit = true;
+    }
 
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;

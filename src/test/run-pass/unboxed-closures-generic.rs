@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
-
 use std::ops::FnMut;
 
 fn call_it<F:FnMut(i32,i32)->i32>(y: i32, mut f: F) -> i32 {

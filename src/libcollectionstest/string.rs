@@ -193,6 +193,17 @@ fn test_push_str() {
 }
 
 #[test]
+fn test_add_assign() {
+    let mut s = String::new();
+    s += "";
+    assert_eq!(s.as_str(), "");
+    s += "abc";
+    assert_eq!(s.as_str(), "abc");
+    s += "ประเทศไทย中华Việt Nam";
+    assert_eq!(s.as_str(), "abcประเทศไทย中华Việt Nam");
+}
+
+#[test]
 fn test_push() {
     let mut data = String::from("ประเทศไทย中");
     data.push('华');

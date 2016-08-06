@@ -409,8 +409,8 @@
 //! ## Precision
 //!
 //! For non-numeric types, this can be considered a "maximum width". If the resulting string is
-//! longer than this width, then it is truncated down to this many characters and only those are
-//! emitted.
+//! longer than this width, then it is truncated down to this many characters and that truncated
+//! value is emitted with proper `fill`, `alignment` and `width` if those parameters are set.
 //!
 //! For integral types, this is ignored.
 //!
@@ -434,35 +434,29 @@
 //!    in this case, if one uses the format string `{<arg>:<spec>.*}`, then the `<arg>` part refers
 //!    to the *value* to print, and the `precision` must come in the input preceding `<arg>`.
 //!
-//! For example, these:
+//! For example, the following calls all print the same thing `Hello x is 0.01000`:
 //!
 //! ```
-//! // Hello {arg 0 (x)} is {arg 1 (0.01) with precision specified inline (5)}
+//! // Hello {arg 0 ("x")} is {arg 1 (0.01) with precision specified inline (5)}
 //! println!("Hello {0} is {1:.5}", "x", 0.01);
 //!
-//! // Hello {arg 1 (x)} is {arg 2 (0.01) with precision specified in arg 0 (5)}
+//! // Hello {arg 1 ("x")} is {arg 2 (0.01) with precision specified in arg 0 (5)}
 //! println!("Hello {1} is {2:.0$}", 5, "x", 0.01);
 //!
-//! // Hello {arg 0 (x)} is {arg 2 (0.01) with precision specified in arg 1 (5)}
+//! // Hello {arg 0 ("x")} is {arg 2 (0.01) with precision specified in arg 1 (5)}
 //! println!("Hello {0} is {2:.1$}", "x", 5, 0.01);
 //!
-//! // Hello {next arg (x)} is {second of next two args (0.01) with precision
+//! // Hello {next arg ("x")} is {second of next two args (0.01) with precision
 //! //                          specified in first of next two args (5)}
 //! println!("Hello {} is {:.*}",    "x", 5, 0.01);
 //!
-//! // Hello {next arg (x)} is {arg 2 (0.01) with precision
+//! // Hello {next arg ("x")} is {arg 2 (0.01) with precision
 //! //                          specified in its predecessor (5)}
 //! println!("Hello {} is {2:.*}",   "x", 5, 0.01);
 //!
-//! // Hello {next arg (x)} is {arg "number" (0.01) with precision specified
+//! // Hello {next arg ("x")} is {arg "number" (0.01) with precision specified
 //! //                          in arg "prec" (5)}
 //! println!("Hello {} is {number:.prec$}", "x", prec = 5, number = 0.01);
-//! ```
-//!
-//! All print the same thing:
-//!
-//! ```text
-//! Hello x is 0.01000
 //! ```
 //!
 //! While these:
@@ -470,6 +464,7 @@
 //! ```
 //! println!("{}, `{name:.*}` has 3 fractional digits", "Hello", 3, name=1234.56);
 //! println!("{}, `{name:.*}` has 3 characters", "Hello", 3, name="1234.56");
+//! println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
 //! ```
 //!
 //! print two significantly different things:
@@ -477,6 +472,7 @@
 //! ```text
 //! Hello, `1234.560` has 3 fractional digits
 //! Hello, `123` has 3 characters
+//! Hello, `     123` has 3 right-aligned characters
 //! ```
 //!
 //! # Escaping

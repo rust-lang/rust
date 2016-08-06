@@ -124,6 +124,49 @@ fn test_is_digit() {
 }
 
 #[test]
+fn test_escape_debug() {
+    fn string(c: char) -> String {
+        c.escape_debug().collect()
+    }
+    let s = string('\n');
+    assert_eq!(s, "\\n");
+    let s = string('\r');
+    assert_eq!(s, "\\r");
+    let s = string('\'');
+    assert_eq!(s, "\\'");
+    let s = string('"');
+    assert_eq!(s, "\\\"");
+    let s = string(' ');
+    assert_eq!(s, " ");
+    let s = string('a');
+    assert_eq!(s, "a");
+    let s = string('~');
+    assert_eq!(s, "~");
+    let s = string('é');
+    assert_eq!(s, "é");
+    let s = string('\x00');
+    assert_eq!(s, "\\u{0}");
+    let s = string('\x1f');
+    assert_eq!(s, "\\u{1f}");
+    let s = string('\x7f');
+    assert_eq!(s, "\\u{7f}");
+    let s = string('\u{80}');
+    assert_eq!(s, "\\u{80}");
+    let s = string('\u{ff}');
+    assert_eq!(s, "\u{ff}");
+    let s = string('\u{11b}');
+    assert_eq!(s, "\u{11b}");
+    let s = string('\u{1d4b6}');
+    assert_eq!(s, "\u{1d4b6}");
+    let s = string('\u{200b}'); // zero width space
+    assert_eq!(s, "\\u{200b}");
+    let s = string('\u{e000}'); // private use 1
+    assert_eq!(s, "\\u{e000}");
+    let s = string('\u{100000}'); // private use 2
+    assert_eq!(s, "\\u{100000}");
+}
+
+#[test]
 fn test_escape_default() {
     fn string(c: char) -> String {
         c.escape_default().collect()
@@ -142,18 +185,28 @@ fn test_escape_default() {
     assert_eq!(s, "a");
     let s = string('~');
     assert_eq!(s, "~");
+    let s = string('é');
+    assert_eq!(s, "\\u{e9}");
     let s = string('\x00');
     assert_eq!(s, "\\u{0}");
     let s = string('\x1f');
     assert_eq!(s, "\\u{1f}");
     let s = string('\x7f');
     assert_eq!(s, "\\u{7f}");
+    let s = string('\u{80}');
+    assert_eq!(s, "\\u{80}");
     let s = string('\u{ff}');
     assert_eq!(s, "\\u{ff}");
     let s = string('\u{11b}');
     assert_eq!(s, "\\u{11b}");
     let s = string('\u{1d4b6}');
     assert_eq!(s, "\\u{1d4b6}");
+    let s = string('\u{200b}'); // zero width space
+    assert_eq!(s, "\\u{200b}");
+    let s = string('\u{e000}'); // private use 1
+    assert_eq!(s, "\\u{e000}");
+    let s = string('\u{100000}'); // private use 2
+    assert_eq!(s, "\\u{100000}");
 }
 
 #[test]

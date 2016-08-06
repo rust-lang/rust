@@ -10,11 +10,11 @@
 
 
 use llvm;
-use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
+use llvm::{SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::const_qualif::ConstQualif;
 use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, lookup_const_by_id, ErrKind};
-use rustc_const_eval::eval_repeat_count;
+use rustc_const_eval::{eval_length, report_const_eval_err, note_const_eval_err};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
@@ -44,7 +44,6 @@ use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
 use rustc::hir;
 
 use std::ffi::{CStr, CString};
-use std::borrow::Cow;
 use libc::c_uint;
 use syntax::ast::{self, LitKind};
 use syntax::attr::{self, AttrMetaMethods};
@@ -126,7 +125,7 @@ pub fn addr_of_mut(ccx: &CrateContext,
         });
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetAlignment(gv, align);
-        SetLinkage(gv, InternalLinkage);
+        llvm::LLVMSetLinkage(gv, InternalLinkage);
         SetUnnamedAddr(gv, true);
         gv
     }
@@ -250,10 +249,11 @@ impl ConstEvalFailure {
             Compiletime(e) => e,
         }
     }
-    pub fn description(&self) -> Cow<str> {
+
+    pub fn as_inner(&self) -> &ConstEvalErr {
         match self {
-            &Runtime(ref e) => e.description(),
-            &Compiletime(ref e) => e.description(),
+            &Runtime(ref e) => e,
+            &Compiletime(ref e) => e,
         }
     }
 }
@@ -274,7 +274,7 @@ fn get_const_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let empty_substs = ccx.tcx().mk_substs(Substs::empty());
     match get_const_expr_as_global(ccx, expr, ConstQualif::empty(), empty_substs, TrueConst::Yes) {
         Err(Runtime(err)) => {
-            ccx.tcx().sess.span_err(expr.span, &err.description());
+            report_const_eval_err(ccx.tcx(), &err, expr.span, "expression").emit();
             Err(Compiletime(err))
         },
         other => other,
@@ -526,12 +526,15 @@ pub fn const_err<T>(cx: &CrateContext,
         (Ok(x), _) => Ok(x),
         (Err(err), TrueConst::Yes) => {
             let err = ConstEvalErr{ span: span, kind: err };
-            cx.tcx().sess.span_err(span, &err.description());
+            report_const_eval_err(cx.tcx(), &err, span, "expression").emit();
             Err(Compiletime(err))
         },
         (Err(err), TrueConst::No) => {
             let err = ConstEvalErr{ span: span, kind: err };
-            cx.tcx().sess.span_warn(span, &err.description());
+            let mut diag = cx.tcx().sess.struct_span_warn(
+                span, "this expression will panic at run-time");
+            note_const_eval_err(cx.tcx(), &err, span, "expression", &mut diag);
+            diag.emit();
             Err(Runtime(err))
         },
     }
@@ -634,10 +637,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 hir::BiEq | hir::BiNe | hir::BiLt | hir::BiLe | hir::BiGt | hir::BiGe => {
                     if is_float {
                         let cmp = base::bin_op_to_fcmp_predicate(b.node);
-                        ConstFCmp(cmp, te1, te2)
+                        llvm::LLVMConstFCmp(cmp, te1, te2)
                     } else {
                         let cmp = base::bin_op_to_icmp_predicate(b.node, signed);
-                        ConstICmp(cmp, te1, te2)
+                        llvm::LLVMConstICmp(cmp, te1, te2)
                     }
                 },
             } } // unsafe { match b.node {
@@ -875,7 +878,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprRepeat(ref elem, ref count) => {
             let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
-            let n = eval_repeat_count(cx.tcx(), count);
+            let n = eval_length(cx.tcx(), count, "repeat count").unwrap();
             let unit_val = const_expr(cx, &elem, param_substs, fn_args, trueconst)?.0;
             let vs = vec![unit_val; n];
             if val_ty(unit_val) != llunitty {
@@ -1023,10 +1026,10 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                              .get(TransItem::Static(id))
                              .expect("Local statics should always be in the SymbolMap");
                 // Make sure that this is never executed for something inlined.
-                assert!(!ccx.external_srcs().borrow().contains_key(&id));
+                assert!(!ccx.tcx().map.is_inlined(id));
 
                 let defined_in_current_codegen_unit = ccx.codegen_unit()
-                                                         .items
+                                                         .items()
                                                          .contains_key(&TransItem::Static(id));
                 if defined_in_current_codegen_unit {
                     if declare::get_declared_value(ccx, sym).is_none() {
@@ -1069,7 +1072,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                     unsafe {
                         // Declare a symbol `foo` with the desired linkage.
                         let g1 = declare::declare_global(ccx, &sym, llty2);
-                        llvm::SetLinkage(g1, linkage);
+                        llvm::LLVMSetLinkage(g1, linkage);
 
                         // Declare an internal global `extern_with_linkage_foo` which
                         // is initialized with the address of `foo`.  If `foo` is
@@ -1083,7 +1086,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                             ccx.sess().span_fatal(span,
                                 &format!("symbol `{}` is already defined", &sym))
                         });
-                        llvm::SetLinkage(g2, llvm::InternalLinkage);
+                        llvm::LLVMSetLinkage(g2, llvm::InternalLinkage);
                         llvm::LLVMSetInitializer(g2, g1);
                         g2
                     }
@@ -1123,7 +1126,9 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
             }
         }
         if ccx.use_dll_storage_attrs() {
-            llvm::SetDLLStorageClass(g, llvm::DLLImportStorageClass);
+            unsafe {
+                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+            }
         }
         g
     };
@@ -1179,7 +1184,7 @@ pub fn trans_static(ccx: &CrateContext,
             let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(datum.val));
             let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
             llvm::LLVMSetValueName(datum.val, empty_string.as_ptr());
-            let new_g = llvm::LLVMGetOrInsertGlobal(
+            let new_g = llvm::LLVMRustGetOrInsertGlobal(
                 ccx.llmod(), name_string.as_ptr(), val_llty.to_ref());
             // To avoid breaking any invariants, we leave around the old
             // global for the moment; we'll replace all references to it

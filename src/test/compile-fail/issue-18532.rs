@@ -12,8 +12,6 @@
 // when a type error or unconstrained type variable propagates
 // into it.
 
-#![feature(unboxed_closures)]
-
 fn main() {
     (return)((),());
     //~^ ERROR the type of this value must be known

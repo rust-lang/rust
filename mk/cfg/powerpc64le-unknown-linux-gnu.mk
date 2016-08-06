@@ -9,7 +9,7 @@ CFG_STATIC_LIB_NAME_powerpc64le-unknown-linux-gnu=lib$(1).a
 CFG_LIB_GLOB_powerpc64le-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_powerpc64le-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
 CFG_CFLAGS_powerpc64le-unknown-linux-gnu := -m64 $(CFLAGS)
-CFG_GCCISH_CFLAGS_powerpc64le-unknown-linux-gnu := -Wall -Werror -g -fPIC -m64 $(CFLAGS)
+CFG_GCCISH_CFLAGS_powerpc64le-unknown-linux-gnu :=  -g -fPIC -m64 $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_powerpc64le-unknown-linux-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_powerpc64le-unknown-linux-gnu := -shared -fPIC -ldl -pthread  -lrt -g -m64
 CFG_GCCISH_DEF_FLAG_powerpc64le-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=

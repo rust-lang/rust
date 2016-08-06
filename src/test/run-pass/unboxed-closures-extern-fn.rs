@@ -10,10 +10,6 @@
 
 // Checks that extern fn pointers implement the full range of Fn traits.
 
-
-#![feature(unboxed_closures)]
-#![feature(unboxed_closures)]
-
 use std::ops::{Fn,FnMut,FnOnce};
 
 fn square(x: isize) -> isize { x * x }

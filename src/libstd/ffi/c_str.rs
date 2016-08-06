@@ -356,6 +356,18 @@ impl Borrow<CStr> for CString {
 impl NulError {
     /// Returns the position of the nul byte in the slice that was provided to
     /// `CString::new`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let nul_error = CString::new("foo\0bar").unwrap_err();
+    /// assert_eq!(nul_error.nul_position(), 3);
+    ///
+    /// let nul_error = CString::new("foo bar\0").unwrap_err();
+    /// assert_eq!(nul_error.nul_position(), 7);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn nul_position(&self) -> usize { self.0 }
 

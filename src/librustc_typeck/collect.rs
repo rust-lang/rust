@@ -60,14 +60,11 @@ There are some shortcomings in this design:
 
 use astconv::{AstConv, ast_region_to_region, Bounds, PartitionedBounds, partition_bounds};
 use lint;
-use hir::def::Def;
-use hir::def_id::DefId;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
-use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
-use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
+use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
 use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
@@ -75,7 +72,6 @@ use rustc::ty::{VariantKind};
 use rustc::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
-use rustc::hir::map as hir_map;
 use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{NodeMap, FnvHashMap};
 use {CrateCtxt, write_ty_to_tcx};
@@ -92,9 +88,9 @@ use syntax::parse::token::keywords;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
-use rustc::hir::{self, PatKind};
-use rustc::hir::intravisit;
-use rustc::hir::print as pprust;
+use rustc::hir::{self, intravisit, map as hir_map, print as pprust};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
@@ -188,6 +184,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
 
         let mut err = struct_span_err!(tcx.sess, span, E0391,
             "unsupported cyclic reference between types/traits detected");
+        err.span_label(span, &format!("cyclic reference"));
 
         match cycle[0] {
             AstConvRequest::GetItemTypeScheme(def_id) |
@@ -1014,11 +1011,12 @@ fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let fid = ccx.tcx.map.local_def_id(f.id);
         let dup_span = seen_fields.get(&f.name).cloned();
         if let Some(prev_span) = dup_span {
-            let mut err = struct_span_err!(ccx.tcx.sess, f.span, E0124,
-                                           "field `{}` is already declared",
-                                           f.name);
-            span_note!(&mut err, prev_span, "previously declared here");
-            err.emit();
+            struct_span_err!(ccx.tcx.sess, f.span, E0124,
+                             "field `{}` is already declared",
+                             f.name)
+                .span_label(f.span, &"field already declared")
+                .span_label(prev_span, &format!("`{}` first declared here", f.name))
+                .emit();
         } else {
             seen_fields.insert(f.name, f.span);
         }
@@ -1061,6 +1059,7 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let print_err = |cv: ConstVal| {
             struct_span_err!(ccx.tcx.sess, e.span, E0079, "mismatched types")
                 .note_expected_found(&"type", &ty_hint, &format!("{}", cv.description()))
+                .span_label(e.span, &format!("expected '{}' type", ty_hint))
                 .emit();
         };
 
@@ -1091,14 +1090,9 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             },
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error
-            Err(ConstEvalErr { kind: ErroneousReferencedConstant(box err), ..}) |
             Err(err) => {
-                let mut diag = struct_span_err!(ccx.tcx.sess, err.span, E0080,
-                                                "constant evaluation error: {}",
-                                                err.description());
-                if !e.span.contains(err.span) {
-                    diag.span_note(e.span, "for enum discriminant here");
-                }
+                let mut diag = report_const_eval_err(
+                    ccx.tcx, &err, e.span, "enum discriminant");
                 diag.emit();
                 None
             }
@@ -2150,14 +2144,6 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     abi: abi::Abi)
     -> ty::TypeScheme<'tcx>
 {
-    for i in &decl.inputs {
-        match i.pat.node {
-            PatKind::Binding(..) | PatKind::Wild => {}
-            _ => span_err!(ccx.tcx.sess, i.pat.span, E0130,
-                           "patterns aren't allowed in foreign function declarations")
-        }
-    }
-
     let ty_generics = ty_generics_for_fn(ccx, ast_generics, &ty::Generics::empty());
 
     let rb = BindingRscope::new();
@@ -2243,9 +2229,9 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // reachable from there, to start (if this is an inherent impl,
     // then just examine the self type).
     let mut input_parameters: HashSet<_> =
-        ctp::parameters_for_type(impl_scheme.ty, false).into_iter().collect();
+        ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
-        input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref, false));
+        input_parameters.extend(ctp::parameters_for(trait_ref, false));
     }
 
     ctp::setup_constraining_predicates(impl_predicates.predicates.get_mut_slice(TypeSpace),
@@ -2273,9 +2259,9 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
 
     let mut input_parameters: HashSet<_> =
-        ctp::parameters_for_type(impl_scheme.ty, false).into_iter().collect();
+        ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
-        input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref, false));
+        input_parameters.extend(ctp::parameters_for(trait_ref, false));
     }
     ctp::identify_constrained_type_params(
         &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
@@ -2286,7 +2272,7 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,
             ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
         })
-        .flat_map(|ty| ctp::parameters_for_type(ty, true))
+        .flat_map(|ty| ctp::parameters_for(&ty, true))
         .filter_map(|p| match p {
             ctp::Parameter::Type(_) => None,
             ctp::Parameter::Region(r) => Some(r),

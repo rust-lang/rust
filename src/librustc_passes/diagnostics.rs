@@ -11,7 +11,7 @@
 #![allow(non_snake_case)]
 
 register_long_diagnostics! {
-
+/*
 E0014: r##"
 Constants can only be initialized by a constant value or, in a future
 version of Rust, a call to a const function. This error indicates the use
@@ -30,7 +30,7 @@ const FOO: i32 = { const X : i32 = 0; X };
 const FOO2: i32 = { 0 }; // but brackets are useless here
 ```
 "##,
-
+*/
 E0030: r##"
 When matching against a range, the compiler verifies that the range is
 non-empty.  Range patterns include both end-points, so this is equivalent to
@@ -45,6 +45,39 @@ match 5u32 {
     1 ... 1 => {}
     // This range is empty, and the compiler can tell.
     1000 ... 5 => {}
+}
+```
+"##,
+
+E0130: r##"
+You declared a pattern as an argument in a foreign function declaration.
+Erroneous code example:
+
+```compile_fail
+extern {
+    fn foo((a, b): (u32, u32)); // error: patterns aren't allowed in foreign
+                                //        function declarations
+}
+```
+
+Please replace the pattern argument with a regular one. Example:
+
+```
+struct SomeStruct {
+    a: u32,
+    b: u32,
+}
+
+extern {
+    fn foo(s: SomeStruct); // ok!
+}
+```
+
+Or:
+
+```
+extern {
+    fn foo(a: (u32, u32)); // ok!
 }
 ```
 "##,
@@ -187,4 +220,5 @@ pub impl Foo for Bar {
 
 register_diagnostics! {
     E0472, // asm! is unsupported on this target
+    E0561, // patterns aren't allowed in function pointer types
 }

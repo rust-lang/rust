@@ -70,15 +70,15 @@ pub fn main() {
     t!(format!("{}", '☃'), "☃");
     t!(format!("{}", 10), "10");
     t!(format!("{}", 10_usize), "10");
-    t!(format!("{:?}", '☃'), "'\\u{2603}'");
+    t!(format!("{:?}", '☃'), "'☃'");
     t!(format!("{:?}", 10), "10");
     t!(format!("{:?}", 10_usize), "10");
     t!(format!("{:?}", "true"), "\"true\"");
     t!(format!("{:?}", "foo\nbar"), "\"foo\\nbar\"");
     t!(format!("{:?}", "foo\n\"bar\"\r\n\'baz\'\t\\qux\\"),
        r#""foo\n\"bar\"\r\n\'baz\'\t\\qux\\""#);
-    t!(format!("{:?}", "foo\0bar\x01baz\u{3b1}q\u{75}x"),
-       r#""foo\u{0}bar\u{1}baz\u{3b1}qux""#);
+    t!(format!("{:?}", "foo\0bar\x01baz\u{7f}q\u{75}x"),
+       r#""foo\u{0}bar\u{1}baz\u{7f}qux""#);
     t!(format!("{:o}", 10_usize), "12");
     t!(format!("{:x}", 10_usize), "a");
     t!(format!("{:X}", 10_usize), "A");
@@ -125,7 +125,7 @@ pub fn main() {
     t!(format!("{:<4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:>4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:^4.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
-    t!(format!("{:>10.4}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(format!("{:>10.4}", "aaaaaaaaaaaaaaaaaa"), "      aaaa");
     t!(format!("{:2.4}", "aaaaa"), "aaaa");
     t!(format!("{:2.4}", "aaaa"), "aaaa");
     t!(format!("{:2.4}", "aaa"), "aaa");
@@ -140,6 +140,7 @@ pub fn main() {
     t!(format!("{:a$}", "a", a=4), "a   ");
     t!(format!("{:-#}", "a"), "a");
     t!(format!("{:+#}", "a"), "a");
+    t!(format!("{:/^10.8}", "1234567890"), "/12345678/");
 
     // Some float stuff
     t!(format!("{:}", 1.0f32), "1");

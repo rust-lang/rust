@@ -9,7 +9,7 @@ CFG_STATIC_LIB_NAME_x86_64-unknown-netbsd=lib$(1).a
 CFG_LIB_GLOB_x86_64-unknown-netbsd=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_x86_64-unknown-netbsd=$(1)-*.dylib.dSYM
 CFG_JEMALLOC_CFLAGS_x86_64-unknown-netbsd := -I/usr/local/include $(CFLAGS)
-CFG_GCCISH_CFLAGS_x86_64-unknown-netbsd := -Wall -Werror -g -fPIC -I/usr/local/include $(CFLAGS)
+CFG_GCCISH_CFLAGS_x86_64-unknown-netbsd :=  -g -fPIC -I/usr/local/include $(CFLAGS)
 CFG_GCCISH_LINK_FLAGS_x86_64-unknown-netbsd := -shared -fPIC -g -pthread  -lrt
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-netbsd := -Wl,--export-dynamic,--dynamic-list=
 CFG_LLC_FLAGS_x86_64-unknown-netbsd :=

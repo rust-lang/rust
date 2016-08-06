@@ -15,7 +15,7 @@ For example, `Box` pointers require two lang items, one for allocation
 and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
-```rust
+```rust,ignore
 #![feature(lang_items, box_syntax, start, libc)]
 #![no_std]
 

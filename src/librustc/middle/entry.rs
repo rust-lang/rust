@@ -121,8 +121,11 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
             if ctxt.attr_main_fn.is_none() {
                 ctxt.attr_main_fn = Some((item.id, item.span));
             } else {
-                span_err!(ctxt.session, item.span, E0137,
-                          "multiple functions with a #[main] attribute");
+                struct_span_err!(ctxt.session, item.span, E0137,
+                          "multiple functions with a #[main] attribute")
+                .span_label(item.span, &format!("additional #[main] function"))
+                .span_label(ctxt.attr_main_fn.unwrap().1, &format!("first #[main] function"))
+                .emit();
             }
         },
         EntryPointType::Start => {

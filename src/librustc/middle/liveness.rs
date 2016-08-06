@@ -390,7 +390,7 @@ fn visit_fn(ir: &mut IrMaps,
 
     // gather up the various local variables, significant expressions,
     // and so forth:
-    intravisit::walk_fn(&mut fn_maps, fk, decl, body, sp);
+    intravisit::walk_fn(&mut fn_maps, fk, decl, body, sp, id);
 
     // Special nodes and variables:
     // - exit_ln represents the end of the fn, either by return or panic

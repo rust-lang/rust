@@ -24,6 +24,6 @@ fn main() {
                                //~| expected struct `Foo`, found struct `Bar`
     let f__isize = Foo { a: 2, ..4 }; //~  ERROR mismatched types
                                  //~| expected type `Foo`
-                                 //~| found type `_`
+                                 //~| found type `{integer}`
                                  //~| expected struct `Foo`, found integral variable
 }

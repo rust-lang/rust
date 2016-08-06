@@ -11,7 +11,6 @@
 // pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
-#![feature(unboxed_closures)]
 
 // Test that `Fn(isize) -> isize + 'static` parses as `(Fn(isize) -> isize) +
 // 'static` and not `Fn(isize) -> (isize + 'static)`. The latter would

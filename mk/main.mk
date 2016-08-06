@@ -162,9 +162,10 @@ ifdef CFG_ENABLE_DEBUGINFO
   CFG_RUSTC_FLAGS += -g
 endif
 
-ifdef CFG_ENABLE_ORBIT
-  $(info cfg: launching MIR (CFG_ENABLE_ORBIT))
-  CFG_RUSTC_FLAGS += -Z orbit
+ifdef CFG_DISABLE_ORBIT
+  $(info cfg: HOLD HOLD HOLD (CFG_DISABLE_ORBIT))
+  RUSTFLAGS_STAGE1 += -Z orbit=off
+  RUSTFLAGS_STAGE2 += -Z orbit=off
 endif
 
 ifdef SAVE_TEMPS

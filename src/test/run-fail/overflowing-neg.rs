@@ -10,7 +10,7 @@
 
 // ignore-pretty : (#23623) problems when  ending with // comments
 
-// error-pattern:thread 'main' panicked at 'attempted to negate with overflow'
+// error-pattern:thread 'main' panicked at 'attempt to negate with overflow'
 // compile-flags: -C debug-assertions
 
 fn main() {
