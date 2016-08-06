@@ -434,6 +434,10 @@ pub fn initialize_available_targets() {
                  LLVMInitializeSystemZTargetMC,
                  LLVMInitializeSystemZAsmPrinter,
                  LLVMInitializeSystemZAsmParser);
+    init_target!(llvm_component = "jsbackend",
+                 LLVMInitializeJSBackendTargetInfo,
+                 LLVMInitializeJSBackendTarget,
+                 LLVMInitializeJSBackendTargetMC);
 }
 
 pub fn last_error() -> Option<String> {
