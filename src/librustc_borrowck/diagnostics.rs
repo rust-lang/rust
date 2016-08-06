@@ -286,6 +286,30 @@ You can read more about cell types in the API documentation:
 https://doc.rust-lang.org/std/cell/
 "##,
 
+E0388: r##"
+A mutable borrow was attempted in a static location.
+
+Erroneous code example:
+
+```compile_fail,E0388
+static X: i32 = 1;
+
+static STATIC_REF: &'static mut i32 = &mut X;
+// error: cannot borrow data mutably in a static location
+
+const CONST_REF: &'static mut i32 = &mut X;
+// error: cannot borrow data mutably in a static location
+```
+
+To fix this error, you have to use constant borrow:
+
+```
+static X: i32 = 1;
+
+static STATIC_REF: &'static i32 = &X;
+```
+"##,
+
 E0389: r##"
 An attempt was made to mutate data using a non-mutable reference. This
 commonly occurs when attempting to assign to a non-mutable reference of a
@@ -1113,6 +1137,5 @@ fn main() {
 
 register_diagnostics! {
     E0385, // {} in an aliasable location
-    E0388, // {} in a static location
     E0524, // two closures require unique access to `..` at the same time
 }
