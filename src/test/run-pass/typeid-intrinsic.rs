@@ -23,36 +23,37 @@ struct A;
 struct Test;
 
 pub fn main() {
-    unsafe {
-        assert_eq!(TypeId::of::<other1::A>(), other1::id_A());
-        assert_eq!(TypeId::of::<other1::B>(), other1::id_B());
-        assert_eq!(TypeId::of::<other1::C>(), other1::id_C());
-        assert_eq!(TypeId::of::<other1::D>(), other1::id_D());
-        assert_eq!(TypeId::of::<other1::E>(), other1::id_E());
-        assert_eq!(TypeId::of::<other1::F>(), other1::id_F());
-        assert_eq!(TypeId::of::<other1::G>(), other1::id_G());
-        assert_eq!(TypeId::of::<other1::H>(), other1::id_H());
+    assert_eq!(TypeId::of::<other1::A>(), other1::id_A());
+    assert_eq!(TypeId::of::<other1::B>(), other1::id_B());
+    assert_eq!(TypeId::of::<other1::C>(), other1::id_C());
+    assert_eq!(TypeId::of::<other1::D>(), other1::id_D());
+    assert_eq!(TypeId::of::<other1::E>(), other1::id_E());
+    assert_eq!(TypeId::of::<other1::F>(), other1::id_F());
+    assert_eq!(TypeId::of::<other1::G>(), other1::id_G());
+    assert_eq!(TypeId::of::<other1::H>(), other1::id_H());
+    assert_eq!(TypeId::of::<other1::I>(), other1::id_I());
 
-        assert_eq!(TypeId::of::<other2::A>(), other2::id_A());
-        assert_eq!(TypeId::of::<other2::B>(), other2::id_B());
-        assert_eq!(TypeId::of::<other2::C>(), other2::id_C());
-        assert_eq!(TypeId::of::<other2::D>(), other2::id_D());
-        assert_eq!(TypeId::of::<other2::E>(), other2::id_E());
-        assert_eq!(TypeId::of::<other2::F>(), other2::id_F());
-        assert_eq!(TypeId::of::<other2::G>(), other2::id_G());
-        assert_eq!(TypeId::of::<other2::H>(), other2::id_H());
+    assert_eq!(TypeId::of::<other2::A>(), other2::id_A());
+    assert_eq!(TypeId::of::<other2::B>(), other2::id_B());
+    assert_eq!(TypeId::of::<other2::C>(), other2::id_C());
+    assert_eq!(TypeId::of::<other2::D>(), other2::id_D());
+    assert_eq!(TypeId::of::<other2::E>(), other2::id_E());
+    assert_eq!(TypeId::of::<other2::F>(), other2::id_F());
+    assert_eq!(TypeId::of::<other2::G>(), other2::id_G());
+    assert_eq!(TypeId::of::<other2::H>(), other2::id_H());
+    assert_eq!(TypeId::of::<other1::I>(), other2::id_I());
 
-        assert_eq!(other1::id_F(), other2::id_F());
-        assert_eq!(other1::id_G(), other2::id_G());
-        assert_eq!(other1::id_H(), other2::id_H());
+    assert_eq!(other1::id_F(), other2::id_F());
+    assert_eq!(other1::id_G(), other2::id_G());
+    assert_eq!(other1::id_H(), other2::id_H());
+    assert_eq!(other1::id_I(), other2::id_I());
 
-        assert_eq!(TypeId::of::<isize>(), other2::foo::<isize>());
-        assert_eq!(TypeId::of::<isize>(), other1::foo::<isize>());
-        assert_eq!(other2::foo::<isize>(), other1::foo::<isize>());
-        assert_eq!(TypeId::of::<A>(), other2::foo::<A>());
-        assert_eq!(TypeId::of::<A>(), other1::foo::<A>());
-        assert_eq!(other2::foo::<A>(), other1::foo::<A>());
-    }
+    assert_eq!(TypeId::of::<isize>(), other2::foo::<isize>());
+    assert_eq!(TypeId::of::<isize>(), other1::foo::<isize>());
+    assert_eq!(other2::foo::<isize>(), other1::foo::<isize>());
+    assert_eq!(TypeId::of::<A>(), other2::foo::<A>());
+    assert_eq!(TypeId::of::<A>(), other1::foo::<A>());
+    assert_eq!(other2::foo::<A>(), other1::foo::<A>());
 
     // sanity test of TypeId
     let (a, b, c) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(),

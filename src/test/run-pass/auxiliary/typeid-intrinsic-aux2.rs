@@ -21,14 +21,16 @@ pub struct E(Result<&'static str, isize>);
 pub type F = Option<isize>;
 pub type G = usize;
 pub type H = &'static str;
+pub type I = Box<Fn()>;
 
-pub unsafe fn id_A() -> TypeId { TypeId::of::<A>() }
-pub unsafe fn id_B() -> TypeId { TypeId::of::<B>() }
-pub unsafe fn id_C() -> TypeId { TypeId::of::<C>() }
-pub unsafe fn id_D() -> TypeId { TypeId::of::<D>() }
-pub unsafe fn id_E() -> TypeId { TypeId::of::<E>() }
-pub unsafe fn id_F() -> TypeId { TypeId::of::<F>() }
-pub unsafe fn id_G() -> TypeId { TypeId::of::<G>() }
-pub unsafe fn id_H() -> TypeId { TypeId::of::<H>() }
+pub fn id_A() -> TypeId { TypeId::of::<A>() }
+pub fn id_B() -> TypeId { TypeId::of::<B>() }
+pub fn id_C() -> TypeId { TypeId::of::<C>() }
+pub fn id_D() -> TypeId { TypeId::of::<D>() }
+pub fn id_E() -> TypeId { TypeId::of::<E>() }
+pub fn id_F() -> TypeId { TypeId::of::<F>() }
+pub fn id_G() -> TypeId { TypeId::of::<G>() }
+pub fn id_H() -> TypeId { TypeId::of::<H>() }
+pub fn id_I() -> TypeId { TypeId::of::<I>() }
 
-pub unsafe fn foo<T:Any>() -> TypeId { TypeId::of::<T>() }
+pub fn foo<T: Any>() -> TypeId { TypeId::of::<T>() }
