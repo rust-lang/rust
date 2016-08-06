@@ -11,5 +11,6 @@
 #![feature(box_syntax)]
 
 const CON : Box<i32> = box 0; //~ ERROR E0010
+                              //~| NOTE allocation not allowed in
 
 fn main() {}
