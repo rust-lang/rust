@@ -16,5 +16,7 @@ struct Vec<T, A = Heap>(
     marker::PhantomData<(T,A)>);
 
 fn main() {
-    let _: Vec; //~ ERROR wrong number of type arguments: expected at least 1, found 0
+    let _: Vec;
+    //~^ ERROR E0243
+    //~| NOTE expected at least 1 type arguments, found 0
 }

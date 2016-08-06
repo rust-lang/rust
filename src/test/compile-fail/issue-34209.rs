@@ -15,7 +15,9 @@ enum S {
 fn bug(l: S) {
     match l {
         S::B{ } => { },
-        //~^ ERROR ambiguous associated type; specify the type using the syntax `<S as Trait>::B`
+        //~^ ERROR ambiguous associated type
+        //~| NOTE ambiguous associated type
+        //~| NOTE specify the type using the syntax `<S as Trait>::B`
     }
 }
 
