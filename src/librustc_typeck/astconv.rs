@@ -1211,10 +1211,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                         type_str: &str,
                                         trait_str: &str,
                                         name: &str) {
-        span_err!(self.tcx().sess, span, E0223,
-                  "ambiguous associated type; specify the type using the syntax \
-                   `<{} as {}>::{}`",
-                  type_str, trait_str, name);
+        struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type")
+            .span_label(span, &format!("ambiguous associated type"))
+            .note(&format!("specify the type using the syntax `<{} as {}>::{}`",
+                  type_str, trait_str, name))
+            .emit();
+
     }
 
     // Search for a bound on a type parameter which includes the associated item
