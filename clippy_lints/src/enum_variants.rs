@@ -44,9 +44,15 @@ declare_lint! {
     "finds type names prefixed/postfixed with their containing module's name"
 }
 
-#[derive(Default)]
 pub struct EnumVariantNames {
     modules: Vec<String>,
+    threshold: u64,
+}
+
+impl EnumVariantNames {
+    pub fn new(threshold: u64) -> EnumVariantNames {
+        EnumVariantNames { modules: Vec::new(), threshold: threshold }
+    }
 }
 
 impl LintPass for EnumVariantNames {
@@ -75,7 +81,11 @@ fn partial_rmatch(post: &str, name: &str) -> usize {
 
 // FIXME: #600
 #[allow(while_let_on_iterator)]
-fn check_variant(cx: &EarlyContext, def: &EnumDef, item_name: &str, item_name_chars: usize, span: Span) {
+fn check_variant(cx: &EarlyContext, threshold: u64, def: &EnumDef, item_name: &str,
+                 item_name_chars: usize, span: Span) {
+    if (def.variants.len() as u64) < threshold {
+        return;
+    }
     for var in &def.variants {
         let name = var2str(var);
         if partial_match(item_name, &name) == item_name_chars {
@@ -84,9 +94,6 @@ fn check_variant(cx: &EarlyContext, def: &EnumDef, item_name: &str, item_name_ch
         if partial_rmatch(item_name, &name) == item_name_chars {
             span_lint(cx, ENUM_VARIANT_NAMES, var.span, "Variant name ends with the enum's name");
         }
-    }
-    if def.variants.len() < 2 {
-        return;
     }
     let first = var2str(&def.variants[0]);
     let mut pre = &first[..camel_case_until(&*first)];
@@ -177,7 +184,7 @@ impl EarlyLintPass for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.node {
-            check_variant(cx, def, &item_name, item_name_chars, item.span);
+            check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span);
         }
         self.modules.push(item_camel);
     }

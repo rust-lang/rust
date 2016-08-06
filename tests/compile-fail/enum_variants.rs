@@ -13,6 +13,22 @@ enum FakeCallType2 {
 enum Foo {
     cFoo, //~ ERROR: Variant name ends with the enum's name
     cBar,
+    cBaz,
+}
+
+enum Fooo {
+    cFoo, // no error, threshold is 3 variants by default
+    cBar,
+}
+
+enum Food { //~ ERROR: All variants have the same prefix: `Food`
+    FoodGood, //~ ERROR: Variant name starts with the enum's name
+    FoodMiddle, //~ ERROR: Variant name starts with the enum's name
+    FoodBad, //~ ERROR: Variant name starts with the enum's name
+}
+
+enum Stuff {
+    StuffBad, // no error
 }
 
 enum BadCallType { //~ ERROR: All variants have the same prefix: `CallType`
@@ -21,7 +37,7 @@ enum BadCallType { //~ ERROR: All variants have the same prefix: `CallType`
     CallTypeDestroy,
 }
 
-enum TwoCallType { //~ ERROR: All variants have the same prefix: `CallType`
+enum TwoCallType { // no error
     CallTypeCall,
     CallTypeCreate,
 }
@@ -32,7 +48,7 @@ enum Consts { //~ ERROR: All variants have the same prefix: `Constant`
     ConstantLie,
 }
 
-enum Two { //~ ERROR: All variants have the same prefix: `Constant`
+enum Two { // no error here
     ConstantInt,
     ConstantInfer,
 }
@@ -61,20 +77,14 @@ enum Sealll {
 
 enum Seallll { //~ ERROR: All variants have the same prefix: `With`
     WithOutCake,
+    WithOutTea,
     WithOut,
 }
 
 enum NonCaps { //~ ERROR: All variants have the same prefix: `Prefix`
     Prefix的,
+    PrefixTea,
     PrefixCake,
-}
-
-enum Stuff {
-    BadStuff, //~ ERROR: Variant name ends with the enum's name
-}
-
-enum Food {
-    FoodGood, //~ ERROR: Variant name starts with the enum's name
 }
 
 fn main() {}

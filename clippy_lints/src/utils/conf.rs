@@ -160,6 +160,8 @@ define_Conf! {
     ("single-char-binding-names-threshold", max_single_char_names, 5 => u64),
     /// Lint: BOXED_LOCAL. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
     ("too-large-for-stack", too_large_for_stack, 200 => u64),
+    /// Lint: ENUM_VARIANT_NAMES. The minimum number of enum variants for the lints about variant names to trigger
+    ("enum-variant-name-threshold", enum_variant_name_threshold, 3 => u64),
 }
 
 /// Read the `toml` configuration file. The function will ignore “File not found” errors iif
