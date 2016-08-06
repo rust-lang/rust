@@ -147,10 +147,13 @@
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use default::Default;
-use marker::{Copy, Send, Sync, Sized, Unsize};
+use fmt::{self, Debug, Display};
+use marker::{Copy, PhantomData, Send, Sync, Sized, Unsize};
 use ops::{Deref, DerefMut, Drop, FnOnce, CoerceUnsized};
 use option::Option;
 use option::Option::{None, Some};
+use result::Result;
+use result::Result::{Ok, Err};
 
 /// A mutable memory location that admits only `Copy` data.
 ///
@@ -347,6 +350,46 @@ pub enum BorrowState {
     Unused,
 }
 
+/// An error returned by [`RefCell::try_borrow`](struct.RefCell.html#method.try_borrow).
+#[unstable(feature = "try_borrow", issue = "35070")]
+pub struct BorrowError<'a, T: 'a + ?Sized> {
+    marker: PhantomData<&'a RefCell<T>>,
+}
+
+#[unstable(feature = "try_borrow", issue = "35070")]
+impl<'a, T: ?Sized> Debug for BorrowError<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BorrowError").finish()
+    }
+}
+
+#[unstable(feature = "try_borrow", issue = "35070")]
+impl<'a, T: ?Sized> Display for BorrowError<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt("already mutably borrowed", f)
+    }
+}
+
+/// An error returned by [`RefCell::try_borrow_mut`](struct.RefCell.html#method.try_borrow_mut).
+#[unstable(feature = "try_borrow", issue = "35070")]
+pub struct BorrowMutError<'a, T: 'a + ?Sized> {
+    marker: PhantomData<&'a RefCell<T>>,
+}
+
+#[unstable(feature = "try_borrow", issue = "35070")]
+impl<'a, T: ?Sized> Debug for BorrowMutError<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BorrowMutError").finish()
+    }
+}
+
+#[unstable(feature = "try_borrow", issue = "35070")]
+impl<'a, T: ?Sized> Display for BorrowMutError<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt("already borrowed", f)
+    }
+}
+
 // Values [1, MAX-1] represent the number of `Ref` active
 // (will not outgrow its range since `usize` is the size of the address space)
 type BorrowFlag = usize;
@@ -432,7 +475,8 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is currently mutably borrowed.
+    /// Panics if the value is currently mutably borrowed. For a non-panicking variant, use
+    /// [`try_borrow`](#method.try_borrow).
     ///
     /// # Examples
     ///
@@ -463,12 +507,45 @@ impl<T: ?Sized> RefCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn borrow(&self) -> Ref<T> {
+        self.try_borrow().expect("already mutably borrowed")
+    }
+
+    /// Immutably borrows the wrapped value, returning an error if the value is currently mutably
+    /// borrowed.
+    ///
+    /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
+    /// taken out at the same time.
+    ///
+    /// This is the non-panicking variant of [`borrow`](#method.borrow).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_borrow)]
+    ///
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// {
+    ///     let m = c.borrow_mut();
+    ///     assert!(c.try_borrow().is_err());
+    /// }
+    ///
+    /// {
+    ///     let m = c.borrow();
+    ///     assert!(c.try_borrow().is_ok());
+    /// }
+    /// ```
+    #[unstable(feature = "try_borrow", issue = "35070")]
+    #[inline]
+    pub fn try_borrow(&self) -> Result<Ref<T>, BorrowError<T>> {
         match BorrowRef::new(&self.borrow) {
-            Some(b) => Ref {
+            Some(b) => Ok(Ref {
                 value: unsafe { &*self.value.get() },
                 borrow: b,
-            },
-            None => panic!("RefCell<T> already mutably borrowed"),
+            }),
+            None => Err(BorrowError { marker: PhantomData }),
         }
     }
 
@@ -479,7 +556,8 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is currently borrowed.
+    /// Panics if the value is currently borrowed. For a non-panicking variant, use
+    /// [`try_borrow_mut`](#method.try_borrow_mut).
     ///
     /// # Examples
     ///
@@ -511,12 +589,41 @@ impl<T: ?Sized> RefCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn borrow_mut(&self) -> RefMut<T> {
+        self.try_borrow_mut().expect("already borrowed")
+    }
+
+    /// Mutably borrows the wrapped value, returning an error if the value is currently borrowed.
+    ///
+    /// The borrow lasts until the returned `RefMut` exits scope. The value cannot be borrowed
+    /// while this borrow is active.
+    ///
+    /// This is the non-panicking variant of [`borrow_mut`](#method.borrow_mut).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_borrow)]
+    ///
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// {
+    ///     let m = c.borrow();
+    ///     assert!(c.try_borrow_mut().is_err());
+    /// }
+    ///
+    /// assert!(c.try_borrow_mut().is_ok());
+    /// ```
+    #[unstable(feature = "try_borrow", issue = "35070")]
+    #[inline]
+    pub fn try_borrow_mut(&self) -> Result<RefMut<T>, BorrowMutError<T>> {
         match BorrowRefMut::new(&self.borrow) {
-            Some(b) => RefMut {
+            Some(b) => Ok(RefMut {
                 value: unsafe { &mut *self.value.get() },
                 borrow: b,
-            },
-            None => panic!("RefCell<T> already borrowed"),
+            }),
+            None => Err(BorrowMutError { marker: PhantomData }),
         }
     }
 
