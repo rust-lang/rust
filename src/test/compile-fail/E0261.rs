@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> u8 {
-    return;
-    //~^ ERROR `return;` in a function whose return type is not `()`
-    //~| NOTE return type is not ()
+fn foo(x: &'a str) { } //~ ERROR E0261
+
+struct Foo {
+    x: &'a str, //~ ERROR E0261
 }
 
-fn main() {
-}
+fn main() {}

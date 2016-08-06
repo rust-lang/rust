@@ -27,7 +27,7 @@ use sys_common::{AsInner, FromInner};
 #[cfg(any(target_os = "linux", target_os = "emscripten"))]
 use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
 #[cfg(target_os = "android")]
-use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off64_t, lseek64,
+use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, lseek64,
            dirent as dirent64, open as open64};
 #[cfg(not(any(target_os = "linux",
               target_os = "emscripten",
@@ -485,9 +485,11 @@ impl File {
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         let (whence, pos) = match pos {
-            SeekFrom::Start(off) => (libc::SEEK_SET, off as off64_t),
-            SeekFrom::End(off) => (libc::SEEK_END, off as off64_t),
-            SeekFrom::Current(off) => (libc::SEEK_CUR, off as off64_t),
+            // Casting to `i64` is fine, too large values will end up as
+            // negative which will cause an error in `lseek64`.
+            SeekFrom::Start(off) => (libc::SEEK_SET, off as i64),
+            SeekFrom::End(off) => (libc::SEEK_END, off),
+            SeekFrom::Current(off) => (libc::SEEK_CUR, off),
         };
         let n = cvt(unsafe { lseek64(self.0.raw(), pos, whence) })?;
         Ok(n as u64)

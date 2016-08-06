@@ -310,8 +310,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             None => match rscope.anon_regions(default_span, 1) {
                 Ok(rs) => rs[0],
                 Err(params) => {
-                    let mut err = struct_span_err!(self.tcx().sess, default_span, E0106,
-                                                   "missing lifetime specifier");
+                    let ampersand_span = Span { hi: default_span.lo, ..default_span};
+
+                    let mut err = struct_span_err!(self.tcx().sess, ampersand_span, E0106,
+                                                 "missing lifetime specifier");
+                    err.span_label(ampersand_span, &format!("expected lifetime parameter"));
+
                     if let Some(params) = params {
                         report_elision_failure(&mut err, params);
                     }
@@ -2269,9 +2273,25 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
 }
 
 fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected: usize) {
-    span_err!(tcx.sess, span, E0107,
-              "wrong number of lifetime parameters: expected {}, found {}",
-              expected, number);
+    let label = if number < expected {
+        if expected == 1 {
+            format!("expected {} lifetime parameter", expected)
+        } else {
+            format!("expected {} lifetime parameters", expected)
+        }
+    } else {
+        let additional = number - expected;
+        if additional == 1 {
+            "unexpected lifetime parameter".to_string()
+        } else {
+            format!("{} unexpected lifetime parameters", additional)
+        }
+    };
+    struct_span_err!(tcx.sess, span, E0107,
+                     "wrong number of lifetime parameters: expected {}, found {}",
+                     expected, number)
+        .span_label(span, &label)
+        .emit();
 }
 
 // A helper struct for conveniently grouping a set of bounds which we pass to

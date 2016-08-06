@@ -16,5 +16,6 @@ fn main() {
     //~| expected type `usize`
     //~| found type `S`
     //~| expected usize, found struct `S`
-    //~| ERROR expected usize for repeat count, found struct
+    //~| ERROR expected `usize` for repeat count, found struct [E0306]
+    //~| expected `usize`
 }

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 struct Foo<'a>(&'a str);
+struct Buzz<'a, 'b>(&'a str, &'b str);
 
 enum Bar {
     A,
@@ -16,9 +17,19 @@ enum Bar {
     C,
 }
 
-struct Baz<'a> {
-    foo: Foo, //~ ERROR E0107
-    bar: Bar<'a>, //~ ERROR E0107
+struct Baz<'a, 'b, 'c> {
+    foo: Foo,
+    //~^ ERROR E0107
+    //~| expected 1 lifetime parameter
+    buzz: Buzz<'a>,
+    //~^ ERROR E0107
+    //~| expected 2 lifetime parameters
+    bar: Bar<'a>,
+    //~^ ERROR E0107
+    //~| unexpected lifetime parameter
+    foo2: Foo<'a, 'b, 'c>,
+    //~^ ERROR E0107
+    //~| 2 unexpected lifetime parameters
 }
 
 fn main() {

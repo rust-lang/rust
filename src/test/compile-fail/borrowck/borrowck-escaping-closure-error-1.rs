@@ -22,4 +22,6 @@ fn main() {
     let mut books = vec![1,2,3];
     spawn(|| books.push(4));
     //~^ ERROR E0373
+    //~| NOTE `books` is borrowed here
+    //~| NOTE may outlive borrowed value `books`
 }

@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> u8 {
-    return;
-    //~^ ERROR `return;` in a function whose return type is not `()`
-    //~| NOTE return type is not ()
+#![feature(lang_items)]
+
+extern "C" {
+    #[lang = "cake"]
+    fn cake(); //~ ERROR E0264
 }
 
-fn main() {
-}
+fn main() {}
