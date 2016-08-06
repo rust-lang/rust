@@ -37,6 +37,7 @@ static ENV_LOCK: Mutex = Mutex::new();
 
 
 extern {
+    #[cfg(not(target_os = "dragonfly"))]
     #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
                link_name = "__errno_location")]
     #[cfg_attr(any(target_os = "bitrig",
