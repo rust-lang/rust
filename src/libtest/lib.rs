@@ -596,7 +596,9 @@ impl<T: Write> ConsoleTestState<T> {
     }
 
     pub fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
-        self.write_plain(&format!("test {} has been running for over {} seconds\n", desc.name, TEST_WARN_TIMEOUT_S))
+        self.write_plain(&format!("test {} has been running for over {} seconds\n",
+                                  desc.name,
+                                  TEST_WARN_TIMEOUT_S))
     }
 
     pub fn write_log(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
@@ -879,7 +881,28 @@ fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> 
 
     let (tx, rx) = channel::<MonitorMsg>();
 
-    let mut running_tests: HashMap<TestDesc, Duration> = HashMap::new();
+    let mut running_tests: HashMap<TestDesc, Instant> = HashMap::new();
+
+    fn get_timed_out_tests(running_tests: &mut HashMap<TestDesc, Instant>) -> Vec<TestDesc> {
+        let now = Instant::now();
+        let timed_out = running_tests.iter()
+            .filter_map(|(desc, timeout)| if &now >= timeout { Some(desc.clone())} else { None })
+            .collect();
+        for test in &timed_out {
+            running_tests.remove(test);
+        }
+        timed_out
+    };
+
+    fn calc_timeout(running_tests: &HashMap<TestDesc, Instant>) -> Option<Duration> {
+        running_tests.values().min().map(|next_timeout| {
+            let now = Instant::now();
+            if *next_timeout >= now {
+                *next_timeout - now
+            } else {
+                Duration::new(0, 0)
+            }})
+    };
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
@@ -890,38 +913,26 @@ fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> 
                 // that hang forever.
                 callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
             }
-            running_tests.insert(test.desc.clone(), Duration::from_secs(TEST_WARN_TIMEOUT_S));
+            let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
+            running_tests.insert(test.desc.clone(), timeout);
             run_test(opts, !opts.run_tests, test, tx.clone());
             pending += 1;
         }
 
         let mut res;
-        if let Some(min_timeout) = running_tests.values().min().cloned() {
-            loop {
-                let before = Instant::now();
-                res = rx.recv_timeout(min_timeout);
-                let elapsed = Instant::now() - before;
-
-                let mut to_remove = Vec::new();
-                for (desc, time_left) in &mut running_tests {
-                    if *time_left >= elapsed {
-                        *time_left -= elapsed;
-                    } else {
-                        to_remove.push(desc.clone());
-                        callback(TeTimeout(desc.clone()))?;
-                    }
+        loop {
+            if let Some(timeout) = calc_timeout(&running_tests) {
+                res = rx.recv_timeout(timeout);
+                for test in get_timed_out_tests(&mut running_tests) {
+                    callback(TeTimeout(test))?;
                 }
-
-                for rem in to_remove {
-                    running_tests.remove(&rem);
-                }
-
                 if res != Err(RecvTimeoutError::Timeout) {
                     break;
                 }
+            } else {
+                res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
+                break;
             }
-        } else {
-            res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
         }
 
         let (desc, result, stdout) = res.unwrap();
