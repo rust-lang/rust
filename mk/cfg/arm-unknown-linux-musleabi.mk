@@ -8,8 +8,8 @@ CFG_LIB_NAME_arm-unknown-linux-musleabi=lib$(1).so
 CFG_STATIC_LIB_NAME_arm-unknown-linux-musleabi=lib$(1).a
 CFG_LIB_GLOB_arm-unknown-linux-musleabi=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-unknown-linux-musleabi=lib$(1)-*.dylib.dSYM
-CFG_JEMALLOC_CFLAGS_arm-unknown-linux-musleabi := -D__arm__ $(CFLAGS)
-CFG_GCCISH_CFLAGS_arm-unknown-linux-musleabi := -Wall -g -fPIC -D__arm__ $(CFLAGS)
+CFG_JEMALLOC_CFLAGS_arm-unknown-linux-musleabi := -D__arm__ -mfloat-abi=soft $(CFLAGS) -march=armv6 -marm
+CFG_GCCISH_CFLAGS_arm-unknown-linux-musleabi := -Wall -g -fPIC -D__arm__ -mfloat-abi=soft $(CFLAGS) -march=armv6 -marm
 CFG_GCCISH_CXXFLAGS_arm-unknown-linux-musleabi := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-musleabi := -shared -fPIC -g
 CFG_GCCISH_DEF_FLAG_arm-unknown-linux-musleabi := -Wl,--export-dynamic,--dynamic-list=
@@ -24,6 +24,3 @@ CFG_RUN_TARG_arm-unknown-linux-musleabi=$(call CFG_RUN_arm-unknown-linux-musleab
 RUSTC_FLAGS_arm-unknown-linux-musleabi :=
 RUSTC_CROSS_FLAGS_arm-unknown-linux-musleabi :=
 CFG_GNU_TRIPLE_arm-unknown-linux-musleabi := arm-unknown-linux-musleabi
-# This file is intentially left empty to indicate that, while this target is
-# supported, it's not supported using plain GNU Make builds. Use a --rustbuild
-# instead.
