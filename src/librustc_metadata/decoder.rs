@@ -1690,7 +1690,7 @@ fn item_def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
             let mut decoder = reader::Decoder::new(def_key_doc);
             let simple_key = def_key::DefKey::decode(&mut decoder).unwrap();
             let name = reader::maybe_get_doc(item_doc, tag_paths_data_name).map(|name| {
-                token::intern(name.as_str_slice())
+                token::intern(name.as_str_slice()).as_str()
             });
             def_key::recover_def_key(simple_key, name)
         }
