@@ -252,7 +252,8 @@ impl<T: Debug + PartialEq> TransitiveRelation<T> {
     }
 
     fn compute_closure(&self) -> BitMatrix {
-        let mut matrix = BitMatrix::new(self.elements.len());
+        let mut matrix = BitMatrix::new(self.elements.len(),
+                                        self.elements.len());
         let mut changed = true;
         while changed {
             changed = false;
