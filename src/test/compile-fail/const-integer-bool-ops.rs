@@ -25,17 +25,35 @@ const X3: usize = -42 && -39; //~ ERROR E0080
 const ARR3: [i32; X3] = [99; 6]; //~ NOTE: for array length here
 
 const Y: usize = 42.0 == 42.0;
-const ARRR: [i32; Y] = [99; 1]; //~ ERROR: expected usize for array length
+const ARRR: [i32; Y] = [99; 1];
+//~^ ERROR: expected `usize` for array length, found boolean [E0306]
+//~| NOTE expected `usize`
+
 const Y1: usize = 42.0 >= 42.0;
-const ARRR1: [i32; Y] = [99; 1]; //~ ERROR: expected usize for array length
+const ARRR1: [i32; Y] = [99; 1];
+//~^ ERROR: expected `usize` for array length, found boolean [E0306]
+//~| NOTE expected `usize`
+
 const Y2: usize = 42.0 <= 42.0;
-const ARRR2: [i32; Y] = [99; 1]; //~ ERROR: expected usize for array length
+const ARRR2: [i32; Y] = [99; 1];
+//~^ ERROR: expected `usize` for array length, found boolean [E0306]
+//~| NOTE expected `usize`
+
 const Y3: usize = 42.0 > 42.0;
-const ARRR3: [i32; Y] = [99; 0]; //~ ERROR: expected usize for array length
+const ARRR3: [i32; Y] = [99; 0];
+//~^ ERROR: expected `usize` for array length, found boolean [E0306]
+//~| NOTE expected `usize`
+
 const Y4: usize = 42.0 < 42.0;
-const ARRR4: [i32; Y] = [99; 0]; //~ ERROR: expected usize for array length
+const ARRR4: [i32; Y] = [99; 0];
+//~^ ERROR: expected `usize` for array length, found boolean [E0306]
+//~| NOTE expected `usize`
+
 const Y5: usize = 42.0 != 42.0;
-const ARRR5: [i32; Y] = [99; 0]; //~ ERROR: expected usize for array length
+const ARRR5: [i32; Y] = [99; 0];
+//~^ ERROR: expected `usize` for array length, found boolean [E0306]
+//~| NOTE expected `usize`
+
 
 fn main() {
     let _ = ARR;
