@@ -2273,9 +2273,25 @@ fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
 }
 
 fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected: usize) {
-    span_err!(tcx.sess, span, E0107,
-              "wrong number of lifetime parameters: expected {}, found {}",
-              expected, number);
+    let label = if number < expected {
+        if expected == 1 {
+            format!("expected {} lifetime parameter", expected)
+        } else {
+            format!("expected {} lifetime parameters", expected)
+        }
+    } else {
+        let additional = number - expected;
+        if additional == 1 {
+            "unexpected lifetime parameter".to_string()
+        } else {
+            format!("{} unexpected lifetime parameters", additional)
+        }
+    };
+    struct_span_err!(tcx.sess, span, E0107,
+                     "wrong number of lifetime parameters: expected {}, found {}",
+                     expected, number)
+        .span_label(span, &label)
+        .emit();
 }
 
 // A helper struct for conveniently grouping a set of bounds which we pass to
