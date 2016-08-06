@@ -11,7 +11,9 @@
 // Tests that a function with a ! annotation always actually fails
 
 fn bad_bang(i: usize) -> ! {
-    return 7; //~ ERROR `return` in a function declared as diverging [E0166]
+    return 7;
+    //~^ ERROR `return` in a function declared as diverging [E0166]
+    //~| NOTE diverging function cannot return
 }
 
 fn main() { bad_bang(5); }
