@@ -700,9 +700,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for field in variant.fields
                 .iter()
                 .filter(|field| !used_fields.contains_key(&field.name)) {
-                span_err!(tcx.sess, span, E0027,
-                    "pattern does not mention field `{}`",
-                    field.name);
+                struct_span_err!(tcx.sess, span, E0027,
+                                "pattern does not mention field `{}`",
+                                field.name)
+                                .span_label(span, &format!("missing field `{}`", field.name))
+                                .emit();
             }
         }
     }
