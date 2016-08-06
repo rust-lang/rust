@@ -832,7 +832,10 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
         constrained_by_input.visit_ty(&arg.ty);
     }
 
-    let mut appears_in_output = AllCollector { regions: FnvHashSet() };
+    let mut appears_in_output = AllCollector {
+        regions: FnvHashSet(),
+        impl_trait: false
+    };
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
 
     debug!("insert_late_bound_lifetimes: constrained_by_input={:?}",
@@ -842,7 +845,10 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     //
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
-    let mut appears_in_where_clause = AllCollector { regions: FnvHashSet() };
+    let mut appears_in_where_clause = AllCollector {
+        regions: FnvHashSet(),
+        impl_trait: false
+    };
     for ty_param in generics.ty_params.iter() {
         walk_list!(&mut appears_in_where_clause,
                    visit_ty_param_bound,
@@ -864,11 +870,15 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
     // Late bound regions are those that:
     // - appear in the inputs
     // - do not appear in the where-clauses
+    // - are not implicitly captured by `impl Trait`
     for lifetime in &generics.lifetimes {
         let name = lifetime.lifetime.name;
 
         // appears in the where clauses? early-bound.
         if appears_in_where_clause.regions.contains(&name) { continue; }
+
+        // any `impl Trait` in the return type? early-bound.
+        if appears_in_output.impl_trait { continue; }
 
         // does not appear in the inputs, but appears in the return
         // type? eventually this will be early-bound, but for now we
@@ -932,11 +942,19 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
 
     struct AllCollector {
         regions: FnvHashSet<ast::Name>,
+        impl_trait: bool
     }
 
     impl<'v> Visitor<'v> for AllCollector {
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
             self.regions.insert(lifetime_ref.name);
+        }
+
+        fn visit_ty(&mut self, ty: &hir::Ty) {
+            if let hir::TyImplTrait(_) = ty.node {
+                self.impl_trait = true;
+            }
+            intravisit::walk_ty(self, ty);
         }
     }
 }

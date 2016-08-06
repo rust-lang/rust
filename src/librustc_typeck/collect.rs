@@ -564,13 +564,17 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ty_generic_predicates =
         ty_generic_predicates_for_fn(ccx, &sig.generics, rcvr_ty_predicates);
 
-    let (fty, explicit_self_category) =
+    let (fty, explicit_self_category) = {
+        let anon_scope = match container {
+            ImplContainer(_) => Some(AnonTypeScope::new(&ty_generics)),
+            TraitContainer(_) => None
+        };
         AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                              sig,
-                              untransformed_rcvr_ty);
+                              sig, untransformed_rcvr_ty, anon_scope)
+    };
 
     let def_id = ccx.tcx.map.local_def_id(id);
-    let substs = mk_item_substs(ccx, &ty_generics);
+    let substs = mk_item_substs(ccx.tcx, &ty_generics);
 
     let ty_method = ty::Method::new(name,
                                     ty_generics,
@@ -961,7 +965,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 .map(|field| field.unsubst_ty())
                 .collect();
             let def_id = tcx.map.local_def_id(ctor_id);
-            let substs = mk_item_substs(ccx, &scheme.generics);
+            let substs = mk_item_substs(tcx, &scheme.generics);
             tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: abi::Abi::Rust,
@@ -1460,9 +1464,10 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
         hir::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
-            let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
+            let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl,
+                                              Some(AnonTypeScope::new(&ty_generics)));
             let def_id = ccx.tcx.map.local_def_id(it.id);
-            let substs = mk_item_substs(ccx, &ty_generics);
+            let substs = mk_item_substs(tcx, &ty_generics);
             let ty = tcx.mk_fn_def(def_id, substs, tofd);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
@@ -1474,14 +1479,14 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         hir::ItemEnum(ref ei, ref generics) => {
             let def = convert_enum_def(ccx, it, ei);
             let ty_generics = ty_generics_for_type(ccx, generics);
-            let substs = mk_item_substs(ccx, &ty_generics);
+            let substs = mk_item_substs(tcx, &ty_generics);
             let t = tcx.mk_enum(def, substs);
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         hir::ItemStruct(ref si, ref generics) => {
             let def = convert_struct_def(ccx, it, si);
             let ty_generics = ty_generics_for_type(ccx, generics);
-            let substs = mk_item_substs(ccx, &ty_generics);
+            let substs = mk_item_substs(tcx, &ty_generics);
             let t = tcx.mk_struct(def, substs);
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
@@ -2194,7 +2199,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
         }
     }
 
-    let substs = mk_item_substs(ccx, &ty_generics);
+    let substs = mk_item_substs(ccx.tcx, &ty_generics);
     let t_fn = ccx.tcx.mk_fn_def(id, substs, ccx.tcx.mk_bare_fn(ty::BareFnTy {
         abi: abi,
         unsafety: hir::Unsafety::Unsafe,
@@ -2209,19 +2214,19 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     }
 }
 
-fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                            ty_generics: &ty::Generics<'tcx>)
-                            -> &'tcx Substs<'tcx>
+pub fn mk_item_substs<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                      ty_generics: &ty::Generics)
+                                      -> &'tcx Substs<'tcx>
 {
     let types =
         ty_generics.types.map(
-            |def| ccx.tcx.mk_param_from_def(def));
+            |def| tcx.mk_param_from_def(def));
 
     let regions =
         ty_generics.regions.map(
             |def| def.to_early_bound_region());
 
-    ccx.tcx.mk_substs(Substs::new(types, regions))
+    tcx.mk_substs(Substs::new(types, regions))
 }
 
 /// Checks that all the type parameters on an impl

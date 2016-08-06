@@ -4084,4 +4084,6 @@ register_diagnostics! {
     E0513, // no type for local variable ..
     E0521, // redundant default implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant
+    E0562, // `impl Trait` not allowed outside of function
+           // and inherent method return types
 }
