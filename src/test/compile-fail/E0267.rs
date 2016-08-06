@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that a function with a ! annotation always actually fails
-
-fn bad_bang(i: usize) -> ! {
-    return 7;
-    //~^ ERROR `return` in a function declared as diverging [E0166]
-    //~| NOTE diverging function cannot return
+fn main() {
+    let w = || { break; }; //~ ERROR E0267
 }
-
-fn main() { bad_bang(5); }

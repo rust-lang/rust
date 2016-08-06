@@ -20,6 +20,8 @@ fn foo<'a>(x: &'a i32) -> Box<FnMut()+'a> {
     let mut books = vec![1,2,3];
     Box::new(|| books.push(4))
     //~^ ERROR E0373
+    //~| NOTE `books` is borrowed here
+    //~| NOTE may outlive borrowed value `books`
 }
 
 fn main() { }

@@ -770,9 +770,10 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0201,
                                                        "duplicate definitions with name `{}`:",
                                                        impl_item.name);
-                        span_note!(&mut err, *entry.get(),
-                                   "previous definition of `{}` here",
-                                   impl_item.name);
+                        err.span_label(*entry.get(),
+                                   &format!("previous definition of `{}` here",
+                                        impl_item.name));
+                        err.span_label(impl_item.span, &format!("duplicate definition"));
                         err.emit();
                     }
                     Vacant(entry) => {
@@ -2317,8 +2318,12 @@ fn report_unused_parameter(ccx: &CrateCtxt,
                            kind: &str,
                            name: &str)
 {
-    span_err!(ccx.tcx.sess, span, E0207,
-              "the {} parameter `{}` is not constrained by the \
-               impl trait, self type, or predicates",
-              kind, name);
+    struct_span_err!(
+        ccx.tcx.sess, span, E0207,
+        "the {} parameter `{}` is not constrained by the \
+        impl trait, self type, or predicates",
+        kind, name)
+        .span_label(span, &format!("unconstrained lifetime parameter"))
+        .emit();
+
 }
