@@ -47,8 +47,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn prohibit_projection(self, span: Span)
     {
-        span_err!(self.sess, span, E0229,
-                  "associated type bindings are not allowed here");
+        let mut err = struct_span_err!(self.sess, span, E0229,
+                                       "associated type bindings are not allowed here");
+        err.span_label(span, &format!("associate type not allowed here")).emit();
     }
 
     pub fn prim_ty_to_ty(self,
