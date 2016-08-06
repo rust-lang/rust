@@ -752,7 +752,10 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "struct"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
-
+            hir::ItemUnion(ref struct_def, ref generics) => {
+                self.head(&visibility_qualified(&item.vis, "union"))?;
+                self.print_struct(struct_def, generics, item.name, item.span, true)?;
+            }
             hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;

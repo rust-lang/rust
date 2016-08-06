@@ -80,7 +80,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
         debug!("visit_item item={}", tcx.map.node_to_string(item.id));
 
         match item.node {
-            hir::ItemEnum(..) | hir::ItemStruct(..) => {
+            hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemUnion(..) => {
                 let scheme = tcx.lookup_item_type(did);
 
                 // Not entirely obvious: constraints on structs/enums do not
