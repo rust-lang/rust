@@ -300,6 +300,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 }.lower(self.tcx));
             }
             Def::Struct(..) |
+            Def::Union(..) |
             Def::Enum(..) |
             Def::TyAlias(..) |
             Def::AssociatedTy(..) |
