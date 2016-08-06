@@ -2317,8 +2317,12 @@ fn report_unused_parameter(ccx: &CrateCtxt,
                            kind: &str,
                            name: &str)
 {
-    span_err!(ccx.tcx.sess, span, E0207,
-              "the {} parameter `{}` is not constrained by the \
-               impl trait, self type, or predicates",
-              kind, name);
+    struct_span_err!(
+        ccx.tcx.sess, span, E0207,
+        "the {} parameter `{}` is not constrained by the \
+        impl trait, self type, or predicates",
+        kind, name)
+        .span_label(span, &format!("unconstrained lifetime parameter"))
+        .emit();
+
 }
