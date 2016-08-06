@@ -98,7 +98,8 @@ pub fn check(build: &mut Build) {
         if target.contains("rumprun") ||
            target.contains("bitrig") ||
            target.contains("openbsd") ||
-           target.contains("msvc") {
+           target.contains("msvc") ||
+           target.contains("emscripten") {
             build.config.use_jemalloc = false;
         }
 
