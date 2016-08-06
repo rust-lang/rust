@@ -310,8 +310,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             None => match rscope.anon_regions(default_span, 1) {
                 Ok(rs) => rs[0],
                 Err(params) => {
-                    let mut err = struct_span_err!(self.tcx().sess, default_span, E0106,
-                                                   "missing lifetime specifier");
+                    let ampersand_span = Span { hi: default_span.lo, ..default_span};
+
+                    let mut err = struct_span_err!(self.tcx().sess, ampersand_span, E0106,
+                                                 "missing lifetime specifier");
+                    err.span_label(ampersand_span, &format!("expected lifetime parameter"));
+
                     if let Some(params) = params {
                         report_elision_failure(&mut err, params);
                     }
