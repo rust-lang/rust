@@ -144,7 +144,7 @@ mod svh_visitor {
         }
 
         fn hash_def_path(&mut self, path: &DefPath) {
-            path.to_string(self.tcx).hash(self.st);
+            path.deterministic_hash_to(self.tcx, self.st);
         }
     }
 
