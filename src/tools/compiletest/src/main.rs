@@ -310,6 +310,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
             Err(_) => false
         },
         color: test::AutoColor,
+        test_threads: None,
     }
 }
 
