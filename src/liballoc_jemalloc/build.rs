@@ -73,7 +73,16 @@ fn main() {
                    .replace("\\", "/"))
        .current_dir(&build_dir)
        .env("CC", compiler.path())
-       .env("EXTRA_CFLAGS", cflags)
+       .env("EXTRA_CFLAGS", cflags.clone())
+       // jemalloc generates Makefile deps using GCC's "-MM" flag. This means
+       // that GCC will run the preprocessor, and only the preprocessor, over
+       // jemalloc's source files. If we don't specify CPPFLAGS, then at least
+       // on ARM that step fails with a "Missing implementation for 32-bit
+       // atomic operations" error. This is because no "-march" flag will be
+       // passed to GCC, and then GCC won't define the
+       // "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4" macro that jemalloc needs to
+       // select an atomic operation implementation.
+       .env("CPPFLAGS", cflags.clone())
        .env("AR", &ar)
        .env("RANLIB", format!("{} s", ar.display()));
 

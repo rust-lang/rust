@@ -17,6 +17,7 @@ use rustc::middle::const_val::ConstVal;
 use ::{eval_const_expr, eval_const_expr_partial, compare_const_vals};
 use ::{const_expr_to_pat, lookup_const_by_id};
 use ::EvalHint::ExprTypeChecked;
+use eval::report_const_eval_err;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{DefId};
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
@@ -33,7 +34,7 @@ use std::iter::{FromIterator, IntoIterator, repeat};
 
 use rustc::hir;
 use rustc::hir::{Pat, PatKind};
-use rustc::hir::intravisit::{self, IdVisitor, IdVisitingOperation, Visitor, FnKind};
+use rustc::hir::intravisit::{self, Visitor, FnKind};
 use rustc_back::slice;
 
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
@@ -42,6 +43,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir::fold::{Folder, noop_fold_pat};
 use rustc::hir::print::pat_to_string;
 use syntax::ptr::P;
+use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::FnvHashMap;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
@@ -279,13 +281,7 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
                 Ok(_) => {}
 
                 Err(err) => {
-                    let mut diag = struct_span_err!(cx.tcx.sess, err.span, E0471,
-                                                    "constant evaluation error: {}",
-                                                    err.description());
-                    if !p.span.contains(err.span) {
-                        diag.span_note(p.span, "in pattern here");
-                    }
-                    diag.emit();
+                    report_const_eval_err(cx.tcx, &err, p.span, "pattern").emit();
                 }
             }
         }
@@ -339,6 +335,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                         hir::MatchSource::Normal => {
                             let mut err = struct_span_err!(cx.tcx.sess, pat.span, E0001,
                                                            "unreachable pattern");
+                            err.span_label(pat.span, &format!("this is an unreachable pattern"));
                             // if we had a catchall pattern, hint at that
                             for row in &seen.0 {
                                 if pat_is_catchall(&cx.tcx.def_map.borrow(), row[0].0) {
@@ -478,7 +475,7 @@ struct RenamingRecorder<'map> {
     renaming_map: &'map mut FnvHashMap<(NodeId, Span), NodeId>
 }
 
-impl<'map> IdVisitingOperation for RenamingRecorder<'map> {
+impl<'v, 'map> Visitor<'v> for RenamingRecorder<'map> {
     fn visit_id(&mut self, node_id: NodeId) {
         let key = (node_id, self.origin_span);
         self.renaming_map.insert(key, self.substituted_node_id);
@@ -533,9 +530,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                 renaming_map: renaming_map,
             };
 
-            let mut id_visitor = IdVisitor::new(&mut renaming_recorder);
-
-            id_visitor.visit_expr(const_expr);
+            renaming_recorder.visit_expr(const_expr);
         }
     }
 }
@@ -838,22 +833,19 @@ pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> us
     }
 }
 
-fn range_covered_by_constructor(ctor: &Constructor,
-                                from: &ConstVal, to: &ConstVal) -> Option<bool> {
+fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
+                                ctor: &Constructor,
+                                from: &ConstVal, to: &ConstVal)
+                                -> Result<bool, ErrorReported> {
     let (c_from, c_to) = match *ctor {
         ConstantValue(ref value)        => (value, value),
         ConstantRange(ref from, ref to) => (from, to),
-        Single                          => return Some(true),
+        Single                          => return Ok(true),
         _                               => bug!()
     };
-    let cmp_from = compare_const_vals(c_from, from);
-    let cmp_to = compare_const_vals(c_to, to);
-    match (cmp_from, cmp_to) {
-        (Some(cmp_from), Some(cmp_to)) => {
-            Some(cmp_from != Ordering::Less && cmp_to != Ordering::Greater)
-        }
-        _ => None
-    }
+    let cmp_from = compare_const_vals(tcx, span, c_from, from)?;
+    let cmp_to = compare_const_vals(tcx, span, c_to, to)?;
+    Ok(cmp_from != Ordering::Less && cmp_to != Ordering::Greater)
 }
 
 fn wrap_pat<'a, 'b, 'tcx>(cx: &MatchCheckCtxt<'b, 'tcx>,
@@ -965,13 +957,12 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Some(vec![(pat, Some(mt.ty))])
             } else {
                 let expr_value = eval_const_expr(cx.tcx, &expr);
-                match range_covered_by_constructor(constructor, &expr_value, &expr_value) {
-                    Some(true) => Some(vec![]),
-                    Some(false) => None,
-                    None => {
-                        span_err!(cx.tcx.sess, pat_span, E0298, "mismatched types between arms");
-                        None
-                    }
+                match range_covered_by_constructor(
+                    cx.tcx, expr.span, constructor, &expr_value, &expr_value
+                ) {
+                    Ok(true) => Some(vec![]),
+                    Ok(false) => None,
+                    Err(ErrorReported) => None,
                 }
             }
         }
@@ -979,13 +970,12 @@ pub fn specialize<'a, 'b, 'tcx>(
         PatKind::Range(ref from, ref to) => {
             let from_value = eval_const_expr(cx.tcx, &from);
             let to_value = eval_const_expr(cx.tcx, &to);
-            match range_covered_by_constructor(constructor, &from_value, &to_value) {
-                Some(true) => Some(vec![]),
-                Some(false) => None,
-                None => {
-                    span_err!(cx.tcx.sess, pat_span, E0299, "mismatched types between arms");
-                    None
-                }
+            match range_covered_by_constructor(
+                cx.tcx, pat_span, constructor, &from_value, &to_value
+            ) {
+                Ok(true) => Some(vec![]),
+                Ok(false) => None,
+                Err(ErrorReported) => None,
             }
         }
 
@@ -1058,7 +1048,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
         _ => cx.param_env = ParameterEnvironment::for_item(cx.tcx, fn_id),
     }
 
-    intravisit::walk_fn(cx, kind, decl, body, sp);
+    intravisit::walk_fn(cx, kind, decl, body, sp, fn_id);
 
     for input in &decl.inputs {
         check_irrefutable(cx, &input.pat, true);

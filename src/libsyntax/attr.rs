@@ -17,8 +17,8 @@ pub use self::IntType::*;
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaItemKind};
 use ast::{Expr, Item, Local, Stmt, StmtKind};
-use codemap::{spanned, dummy_spanned, Spanned};
-use syntax_pos::{Span, BytePos};
+use codemap::{respan, spanned, dummy_spanned, Spanned};
+use syntax_pos::{Span, BytePos, DUMMY_SP};
 use errors::Handler;
 use feature_gate::{Features, GatedCfg};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -92,6 +92,19 @@ pub trait AttrMetaMethods {
     /// Gets a list of inner meta items from a list MetaItem type.
     fn meta_item_list(&self) -> Option<&[P<MetaItem>]>;
 
+    /// Indicates if the attribute is a Word.
+    fn is_word(&self) -> bool;
+
+    /// Indicates if the attribute is a Value String.
+    fn is_value_str(&self) -> bool {
+        self.value_str().is_some()
+    }
+
+    /// Indicates if the attribute is a Meta-Item List.
+    fn is_meta_item_list(&self) -> bool {
+        self.meta_item_list().is_some()
+    }
+
     fn span(&self) -> Span;
 }
 
@@ -108,8 +121,11 @@ impl AttrMetaMethods for Attribute {
         self.meta().value_str()
     }
     fn meta_item_list(&self) -> Option<&[P<MetaItem>]> {
-        self.node.value.meta_item_list()
+        self.meta().meta_item_list()
     }
+
+    fn is_word(&self) -> bool { self.meta().is_word() }
+
     fn span(&self) -> Span { self.meta().span }
 }
 
@@ -140,6 +156,14 @@ impl AttrMetaMethods for MetaItem {
             _ => None
         }
     }
+
+    fn is_word(&self) -> bool {
+        match self.node {
+            MetaItemKind::Word(_) => true,
+            _ => false,
+        }
+    }
+
     fn span(&self) -> Span { self.span }
 }
 
@@ -150,6 +174,9 @@ impl AttrMetaMethods for P<MetaItem> {
     fn meta_item_list(&self) -> Option<&[P<MetaItem>]> {
         (**self).meta_item_list()
     }
+    fn is_word(&self) -> bool { (**self).is_word() }
+    fn is_value_str(&self) -> bool { (**self).is_value_str() }
+    fn is_meta_item_list(&self) -> bool { (**self).is_meta_item_list() }
     fn span(&self) -> Span { (**self).span() }
 }
 
@@ -194,21 +221,37 @@ impl AttributeMethods for Attribute {
 pub fn mk_name_value_item_str(name: InternedString, value: InternedString)
                               -> P<MetaItem> {
     let value_lit = dummy_spanned(ast::LitKind::Str(value, ast::StrStyle::Cooked));
-    mk_name_value_item(name, value_lit)
+    mk_spanned_name_value_item(DUMMY_SP, name, value_lit)
 }
 
 pub fn mk_name_value_item(name: InternedString, value: ast::Lit)
                           -> P<MetaItem> {
-    P(dummy_spanned(MetaItemKind::NameValue(name, value)))
+    mk_spanned_name_value_item(DUMMY_SP, name, value)
 }
 
 pub fn mk_list_item(name: InternedString, items: Vec<P<MetaItem>>) -> P<MetaItem> {
-    P(dummy_spanned(MetaItemKind::List(name, items)))
+    mk_spanned_list_item(DUMMY_SP, name, items)
 }
 
 pub fn mk_word_item(name: InternedString) -> P<MetaItem> {
-    P(dummy_spanned(MetaItemKind::Word(name)))
+    mk_spanned_word_item(DUMMY_SP, name)
 }
+
+pub fn mk_spanned_name_value_item(sp: Span, name: InternedString, value: ast::Lit)
+                          -> P<MetaItem> {
+    P(respan(sp, MetaItemKind::NameValue(name, value)))
+}
+
+pub fn mk_spanned_list_item(sp: Span, name: InternedString, items: Vec<P<MetaItem>>)
+                            -> P<MetaItem> {
+    P(respan(sp, MetaItemKind::List(name, items)))
+}
+
+pub fn mk_spanned_word_item(sp: Span, name: InternedString) -> P<MetaItem> {
+    P(respan(sp, MetaItemKind::Word(name)))
+}
+
+
 
 thread_local! { static NEXT_ATTR_ID: Cell<usize> = Cell::new(0) }
 
@@ -223,21 +266,43 @@ pub fn mk_attr_id() -> AttrId {
 
 /// Returns an inner attribute with the given value.
 pub fn mk_attr_inner(id: AttrId, item: P<MetaItem>) -> Attribute {
-    dummy_spanned(Attribute_ {
-        id: id,
-        style: ast::AttrStyle::Inner,
-        value: item,
-        is_sugared_doc: false,
-    })
+    mk_spanned_attr_inner(DUMMY_SP, id, item)
 }
+
+/// Returns an innter attribute with the given value and span.
+pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: P<MetaItem>) -> Attribute {
+    respan(sp,
+           Attribute_ {
+            id: id,
+            style: ast::AttrStyle::Inner,
+            value: item,
+            is_sugared_doc: false,
+          })
+}
+
 
 /// Returns an outer attribute with the given value.
 pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
+    mk_spanned_attr_outer(DUMMY_SP, id, item)
+}
+
+/// Returns an outer attribute with the given value and span.
+pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: P<MetaItem>) -> Attribute {
+    respan(sp,
+           Attribute_ {
+            id: id,
+            style: ast::AttrStyle::Outer,
+            value: item,
+            is_sugared_doc: false,
+          })
+}
+
+pub fn mk_doc_attr_outer(id: AttrId, item: P<MetaItem>, is_sugared_doc: bool) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
         style: ast::AttrStyle::Outer,
         value: item,
-        is_sugared_doc: false,
+        is_sugared_doc: is_sugared_doc,
     })
 }
 

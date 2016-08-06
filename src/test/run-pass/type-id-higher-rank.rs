@@ -12,7 +12,7 @@
 // Also acts as a regression test for an ICE (issue #19791)
 
 
-#![feature(unboxed_closures, core)]
+#![feature(core)]
 
 use std::any::{Any, TypeId};
 

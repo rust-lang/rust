@@ -14,7 +14,7 @@ fn main() {
     needlesArr.iter().fold(|x, y| {
     });
     //~^^ ERROR this function takes 2 parameters but 1 parameter was supplied
-    //~^^^ NOTE the following parameter types were expected
-    //
+    //~| NOTE the following parameter types were expected
+    //~| NOTE expected 2 parameters
     // the first error is, um, non-ideal.
 }

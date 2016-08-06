@@ -530,26 +530,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                 // FIXME Shouldn't need to manually trigger closure instantiations.
                 if let mir::AggregateKind::Closure(def_id, substs) = *kind {
-                    use rustc::hir;
-                    use syntax::ast::DUMMY_NODE_ID;
-                    use syntax::ptr::P;
                     use closure;
-
-                    closure::trans_closure_expr(closure::Dest::Ignore(self.ccx),
-                                                &hir::FnDecl {
-                                                    inputs: P::new(),
-                                                    output: hir::NoReturn(DUMMY_SP),
-                                                    variadic: false
-                                                },
-                                                &hir::Block {
-                                                    stmts: P::new(),
-                                                    expr: None,
-                                                    id: DUMMY_NODE_ID,
-                                                    rules: hir::DefaultBlock,
-                                                    span: DUMMY_SP
-                                                },
-                                                DUMMY_NODE_ID, def_id,
-                                                self.monomorphize(&substs));
+                    closure::trans_closure_body_via_mir(self.ccx,
+                                                        def_id,
+                                                        self.monomorphize(&substs));
                 }
 
                 let val = if let mir::AggregateKind::Adt(adt_def, index, _) = *kind {
@@ -840,11 +824,11 @@ pub fn const_scalar_binop(op: mir::BinOp,
             mir::BinOp::Gt | mir::BinOp::Ge => {
                 if is_float {
                     let cmp = base::bin_op_to_fcmp_predicate(op.to_hir_binop());
-                    llvm::ConstFCmp(cmp, lhs, rhs)
+                    llvm::LLVMConstFCmp(cmp, lhs, rhs)
                 } else {
                     let cmp = base::bin_op_to_icmp_predicate(op.to_hir_binop(),
                                                                 signed);
-                    llvm::ConstICmp(cmp, lhs, rhs)
+                    llvm::LLVMConstICmp(cmp, lhs, rhs)
                 }
             }
         }
@@ -925,7 +909,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
             Err(ConstEvalFailure::Runtime(err)) => {
                 span_bug!(constant.span,
-                          "MIR constant {:?} results in runtime panic: {}",
+                          "MIR constant {:?} results in runtime panic: {:?}",
                           constant, err.description())
             }
         }

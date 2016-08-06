@@ -704,15 +704,31 @@ fn test_escape_unicode() {
 }
 
 #[test]
+fn test_escape_debug() {
+    assert_eq!("abc".escape_debug(), "abc");
+    assert_eq!("a c".escape_debug(), "a c");
+    assert_eq!("éèê".escape_debug(), "éèê");
+    assert_eq!("\r\n\t".escape_debug(), "\\r\\n\\t");
+    assert_eq!("'\"\\".escape_debug(), "\\'\\\"\\\\");
+    assert_eq!("\u{7f}\u{ff}".escape_debug(), "\\u{7f}\u{ff}");
+    assert_eq!("\u{100}\u{ffff}".escape_debug(), "\u{100}\\u{ffff}");
+    assert_eq!("\u{10000}\u{10ffff}".escape_debug(), "\u{10000}\\u{10ffff}");
+    assert_eq!("ab\u{200b}".escape_debug(), "ab\\u{200b}");
+    assert_eq!("\u{10d4ea}\r".escape_debug(), "\\u{10d4ea}\\r");
+}
+
+#[test]
 fn test_escape_default() {
     assert_eq!("abc".escape_default(), "abc");
     assert_eq!("a c".escape_default(), "a c");
+    assert_eq!("éèê".escape_default(), "\\u{e9}\\u{e8}\\u{ea}");
     assert_eq!("\r\n\t".escape_default(), "\\r\\n\\t");
     assert_eq!("'\"\\".escape_default(), "\\'\\\"\\\\");
+    assert_eq!("\u{7f}\u{ff}".escape_default(), "\\u{7f}\\u{ff}");
     assert_eq!("\u{100}\u{ffff}".escape_default(), "\\u{100}\\u{ffff}");
     assert_eq!("\u{10000}\u{10ffff}".escape_default(), "\\u{10000}\\u{10ffff}");
-    assert_eq!("ab\u{fb00}".escape_default(), "ab\\u{fb00}");
-    assert_eq!("\u{1d4ea}\r".escape_default(), "\\u{1d4ea}\\r");
+    assert_eq!("ab\u{200b}".escape_default(), "ab\\u{200b}");
+    assert_eq!("\u{10d4ea}\r".escape_default(), "\\u{10d4ea}\\r");
 }
 
 #[test]

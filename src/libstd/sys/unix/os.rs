@@ -317,6 +317,10 @@ impl ExactSizeIterator for Args {
     fn len(&self) -> usize { self.iter.len() }
 }
 
+impl DoubleEndedIterator for Args {
+    fn next_back(&mut self) -> Option<OsString> { self.iter.next_back() }
+}
+
 /// Returns the command line arguments
 ///
 /// Returns a list of the command line arguments.

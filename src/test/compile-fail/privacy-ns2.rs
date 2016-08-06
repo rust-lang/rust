@@ -25,15 +25,15 @@ pub mod foo1 {
 }
 
 fn test_single1() {
-    use foo1::Bar;  //~ ERROR function `Bar` is private
+    use foo1::Bar;
 
-    Bar();
+    Bar(); //~ ERROR unresolved name `Bar`
 }
 
 fn test_list1() {
-    use foo1::{Bar,Baz};  //~ ERROR `Bar` is private
+    use foo1::{Bar,Baz};
 
-    Bar();
+    Bar(); //~ ERROR unresolved name `Bar`
 }
 
 // private type, public value
@@ -46,15 +46,15 @@ pub mod foo2 {
 }
 
 fn test_single2() {
-    use foo2::Bar;  //~ ERROR trait `Bar` is private
+    use foo2::Bar;
 
-    let _x : Box<Bar>;
+    let _x : Box<Bar>; //~ ERROR type name `Bar` is undefined
 }
 
 fn test_list2() {
-    use foo2::{Bar,Baz};  //~ ERROR `Bar` is private
+    use foo2::{Bar,Baz};
 
-    let _x: Box<Bar>;
+    let _x: Box<Bar>; //~ ERROR type name `Bar` is undefined
 }
 
 // neither public

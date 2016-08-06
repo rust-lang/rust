@@ -28,6 +28,7 @@ macro_rules! rtassert {
 
 pub mod args;
 pub mod at_exit_imp;
+#[cfg(any(not(cargobuild), feature = "backtrace"))]
 pub mod backtrace;
 pub mod condvar;
 pub mod io;
@@ -42,6 +43,7 @@ pub mod thread_local;
 pub mod util;
 pub mod wtf8;
 
+#[cfg(any(not(cargobuild), feature = "backtrace"))]
 #[cfg(any(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "emscripten"))),
           all(windows, target_env = "gnu")))]
 pub mod gnu;

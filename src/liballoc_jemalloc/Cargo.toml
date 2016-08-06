@@ -16,7 +16,7 @@ libc = { path = "../rustc/libc_shim" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-gcc = "0.3.17"
+gcc = "0.3.27"
 
 [features]
 debug = []

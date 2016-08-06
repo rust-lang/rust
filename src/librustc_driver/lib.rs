@@ -31,7 +31,6 @@
 #![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(question_mark)]
-#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate flate;
@@ -96,6 +95,7 @@ use std::thread;
 use rustc::session::early_error;
 
 use syntax::{ast, json};
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
@@ -187,7 +187,7 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
     let sopts = config::build_session_options(&matches);
 
     if sopts.debugging_opts.debug_llvm {
-        unsafe { llvm::LLVMSetDebug(1); }
+        unsafe { llvm::LLVMRustSetDebug(1); }
     }
 
     let descriptions = diagnostics_registry();
@@ -393,15 +393,12 @@ fn check_cfg(sopts: &config::Options,
 
     let mut saw_invalid_predicate = false;
     for item in sopts.cfg.iter() {
-        match item.node {
-            ast::MetaItemKind::List(ref pred, _) => {
-                saw_invalid_predicate = true;
-                handler.emit(&MultiSpan::new(),
-                             &format!("invalid predicate in --cfg command line argument: `{}`",
-                                      pred),
-                                errors::Level::Fatal);
-            }
-            _ => {},
+        if item.is_meta_item_list() {
+            saw_invalid_predicate = true;
+            handler.emit(&MultiSpan::new(),
+                         &format!("invalid predicate in --cfg command line argument: `{}`",
+                                  item.name()),
+                            errors::Level::Fatal);
         }
     }
 
@@ -610,7 +607,7 @@ impl RustcDefaultCalls {
         for req in &sess.opts.prints {
             match *req {
                 PrintRequest::TargetList => {
-                    let mut targets = rustc_back::target::TARGETS.to_vec();
+                    let mut targets = rustc_back::target::get_targets().collect::<Vec<String>>();
                     targets.sort();
                     println!("{}", targets.join("\n"));
                 },
@@ -650,20 +647,17 @@ impl RustcDefaultCalls {
                         if !allow_unstable_cfg && GatedCfg::gate(&*cfg).is_some() {
                             continue;
                         }
-                        match cfg.node {
-                            ast::MetaItemKind::Word(ref word) => println!("{}", word),
-                            ast::MetaItemKind::NameValue(ref name, ref value) => {
-                                println!("{}=\"{}\"", name, match value.node {
-                                    ast::LitKind::Str(ref s, _) => s,
-                                    _ => continue,
-                                });
+                        if cfg.is_word() {
+                            println!("{}", cfg.name());
+                        } else if cfg.is_value_str() {
+                            if let Some(s) = cfg.value_str() {
+                                println!("{}=\"{}\"", cfg.name(), s);
                             }
+                        } else if cfg.is_meta_item_list() {
                             // Right now there are not and should not be any
                             // MetaItemKind::List items in the configuration returned by
                             // `build_configuration`.
-                            ast::MetaItemKind::List(..) => {
-                                panic!("MetaItemKind::List encountered in default cfg")
-                            }
+                            panic!("MetaItemKind::List encountered in default cfg")
                         }
                     }
                 }

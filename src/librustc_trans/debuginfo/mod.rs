@@ -18,7 +18,7 @@ use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
 use self::namespace::mangled_name_of_item;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, diverging_type_metadata};
-use self::metadata::{file_metadata, scope_metadata, TypeMap, compile_unit_metadata};
+use self::metadata::{file_metadata, scope_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
@@ -32,6 +32,7 @@ use rustc::hir;
 
 use abi::Abi;
 use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block, BlockAndBuilder};
+use inline;
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -50,7 +51,7 @@ pub mod gdb;
 mod utils;
 mod namespace;
 mod type_names;
-mod metadata;
+pub mod metadata;
 mod create_scope_map;
 mod source_loc;
 
@@ -88,7 +89,7 @@ pub struct CrateDebugContext<'tcx> {
 impl<'tcx> CrateDebugContext<'tcx> {
     pub fn new(llmod: ModuleRef) -> CrateDebugContext<'tcx> {
         debug!("CrateDebugContext::new");
-        let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
+        let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
         return CrateDebugContext {
@@ -168,7 +169,6 @@ pub fn finalize(cx: &CrateContext) {
     }
 
     debug!("finalize");
-    let _ = compile_unit_metadata(cx);
 
     if gdb::needs_gdb_debug_scripts_section(cx) {
         // Add a .debug_gdb_scripts section to this compile-unit. This will
@@ -179,8 +179,8 @@ pub fn finalize(cx: &CrateContext) {
     }
 
     unsafe {
-        llvm::LLVMDIBuilderFinalize(DIB(cx));
-        llvm::LLVMDIBuilderDispose(DIB(cx));
+        llvm::LLVMRustDIBuilderFinalize(DIB(cx));
+        llvm::LLVMRustDIBuilderDispose(DIB(cx));
         // Debuginfo generation in LLVM by default uses a higher
         // version of dwarf than OS X currently understands. We can
         // instruct LLVM to emit an older version of dwarf, however,
@@ -239,6 +239,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // Do this here already, in case we do an early exit from this function.
     source_loc::set_debug_location(cx, None, UnknownLocation);
 
+    let instance = inline::maybe_inline_instance(cx, instance);
     let (containing_scope, span) = get_containing_scope_and_span(cx, instance);
 
     // This can be the case for functions inlined from another crate
@@ -251,7 +252,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let function_type_metadata = unsafe {
         let fn_signature = get_function_signature(cx, sig, abi);
-        llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
+        llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
     };
 
     // Find the enclosing function, in case this is a closure.
@@ -285,7 +286,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let linkage_name = CString::new(linkage_name).unwrap();
 
     let fn_metadata = unsafe {
-        llvm::LLVMDIBuilderCreateFunction(
+        llvm::LLVMRustDIBuilderCreateFunction(
             DIB(cx),
             containing_scope,
             function_name.as_ptr(),
@@ -389,7 +390,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                 let name = CString::new(param.name.as_str().as_bytes()).unwrap();
                 unsafe {
-                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                    llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
                         ptr::null_mut(),
                         name.as_ptr(),
@@ -439,10 +440,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         });
 
         // Try to get some span information, if we have an inlined item.
-        let definition_span = match cx.external().borrow().get(&instance.def) {
-            Some(&Some(node_id)) => cx.tcx().map.span(node_id),
-            _ => cx.tcx().map.def_id_span(instance.def, syntax_pos::DUMMY_SP)
-        };
+        let definition_span = cx.tcx()
+                                .map
+                                .def_id_span(instance.def, syntax_pos::DUMMY_SP);
 
         (containing_scope, definition_span)
     }
@@ -494,7 +494,7 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         (DirectVariable { alloca }, address_operations) |
         (IndirectVariable {alloca, address_operations}, _) => {
             let metadata = unsafe {
-                llvm::LLVMDIBuilderCreateVariable(
+                llvm::LLVMRustDIBuilderCreateVariable(
                     DIB(cx),
                     dwarf_tag,
                     scope_metadata,
@@ -512,7 +512,7 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
             unsafe {
                 let debug_loc = llvm::LLVMGetCurrentDebugLocation(cx.raw_builder());
-                let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+                let instr = llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
                     DIB(cx),
                     alloca,
                     metadata,

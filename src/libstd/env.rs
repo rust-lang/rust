@@ -493,6 +493,44 @@ pub fn temp_dir() -> PathBuf {
 /// that can fail for a good number of reasons. Some errors can include, but not
 /// be limited to, filesystem operations failing or general syscall failures.
 ///
+/// # Security
+///
+/// The output of this function should not be used in anything that might have
+/// security implications. For example:
+///
+/// ```
+/// fn main() {
+///     println!("{:?}", std::env::current_exe());
+/// }
+/// ```
+///
+/// On Linux systems, if this is compiled as `foo`:
+///
+/// ```bash
+/// $ rustc foo.rs
+/// $ ./foo
+/// Ok("/home/alex/foo")
+/// ```
+///
+/// And you make a symbolic link of the program:
+///
+/// ```bash
+/// $ ln foo bar
+/// ```
+///
+/// When you run it, you won't get the original executable, you'll get the
+/// symlink:
+///
+/// ```bash
+/// $ ./bar
+/// Ok("/home/alex/bar")
+/// ```
+///
+/// This sort of behavior has been known to [lead to privledge escalation] when
+/// used incorrectly, for example.
+///
+/// [lead to privledge escalation]: http://securityvulns.com/Wdocument183.html
+///
 /// # Examples
 ///
 /// ```
@@ -587,6 +625,13 @@ impl ExactSizeIterator for Args {
     fn len(&self) -> usize { self.inner.len() }
 }
 
+#[stable(feature = "env_iterators", since = "1.11.0")]
+impl DoubleEndedIterator for Args {
+    fn next_back(&mut self) -> Option<String> {
+        self.inner.next_back().map(|s| s.into_string().unwrap())
+    }
+}
+
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for ArgsOs {
     type Item = OsString;
@@ -599,6 +644,10 @@ impl ExactSizeIterator for ArgsOs {
     fn len(&self) -> usize { self.inner.len() }
 }
 
+#[stable(feature = "env_iterators", since = "1.11.0")]
+impl DoubleEndedIterator for ArgsOs {
+    fn next_back(&mut self) -> Option<OsString> { self.inner.next_back() }
+}
 /// Constants associated with the current target
 #[stable(feature = "env", since = "1.0.0")]
 pub mod consts {

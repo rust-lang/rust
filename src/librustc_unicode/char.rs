@@ -36,7 +36,7 @@ use tables::{conversions, derived_property, general_category, property};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{EncodeUtf16, EncodeUtf8, EscapeDefault, EscapeUnicode};
+pub use core::char::{EncodeUtf16, EncodeUtf8, EscapeDebug, EscapeDefault, EscapeUnicode};
 
 // unstable reexports
 #[unstable(feature = "decode_utf8", issue = "33906")]
@@ -269,6 +269,41 @@ impl char {
 
     /// Returns an iterator that yields the literal escape code of a `char`.
     ///
+    /// This will escape the characters similar to the `Debug` implementations
+    /// of `str` or `char`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// for i in '\n'.escape_default() {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// This prints:
+    ///
+    /// ```text
+    /// \
+    /// n
+    /// ```
+    ///
+    /// Collecting into a `String`:
+    ///
+    /// ```
+    /// let quote: String = '\n'.escape_default().collect();
+    ///
+    /// assert_eq!(quote, "\\n");
+    /// ```
+    #[unstable(feature = "char_escape_debug", issue = "35068")]
+    #[inline]
+    pub fn escape_debug(self) -> EscapeDebug {
+        C::escape_debug(self)
+    }
+
+    /// Returns an iterator that yields the literal escape code of a `char`.
+    ///
     /// The default is chosen with a bias toward producing literals that are
     /// legal in a variety of languages, including C++11 and similar C-family
     /// languages. The exact rules are:
@@ -392,7 +427,7 @@ impl char {
         C::len_utf16(self)
     }
 
-    /// Returns an interator over the bytes of this character as UTF-8.
+    /// Returns an iterator over the bytes of this character as UTF-8.
     ///
     /// The returned iterator also has an `as_slice()` method to view the
     /// encoded bytes as a byte slice.
@@ -415,7 +450,7 @@ impl char {
         C::encode_utf8(self)
     }
 
-    /// Returns an interator over the `u16` entries of this character as UTF-16.
+    /// Returns an iterator over the `u16` entries of this character as UTF-16.
     ///
     /// The returned iterator also has an `as_slice()` method to view the
     /// encoded form as a slice.

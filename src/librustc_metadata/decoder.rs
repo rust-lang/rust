@@ -30,7 +30,7 @@ use rustc::util::nodemap::FnvHashMap;
 use rustc::hir;
 use rustc::session::config::PanicStrategy;
 
-use middle::cstore::{FoundAst, InlinedItem, LinkagePreference};
+use middle::cstore::{InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex};
@@ -55,7 +55,6 @@ use rustc_serialize::Decodable;
 use syntax::attr;
 use syntax::parse::token;
 use syntax::ast;
-use syntax::abi::Abi;
 use syntax::codemap;
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -756,6 +755,12 @@ pub fn maybe_get_item_name(cdata: Cmd, id: DefIndex) -> Option<ast::Name> {
     maybe_item_name(cdata.lookup_item(id))
 }
 
+pub enum FoundAst<'ast> {
+    Found(&'ast InlinedItem),
+    FoundParent(DefId, &'ast hir::Item),
+    NotFound,
+}
+
 pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefIndex)
                                     -> FoundAst<'tcx> {
     debug!("Looking up item: {:?}", id);
@@ -1160,15 +1165,7 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
                 // an attribute
                 assert_eq!(meta_items.len(), 1);
                 let meta_item = meta_items.into_iter().nth(0).unwrap();
-                codemap::Spanned {
-                    node: ast::Attribute_ {
-                        id: attr::mk_attr_id(),
-                        style: ast::AttrStyle::Outer,
-                        value: meta_item,
-                        is_sugared_doc: is_sugared_doc,
-                    },
-                    span: syntax_pos::DUMMY_SP
-                }
+                attr::mk_doc_attr_outer(attr::mk_attr_id(), meta_item, is_sugared_doc)
             }).collect()
         },
         None => vec![],
@@ -1542,13 +1539,9 @@ pub fn is_extern_item<'a, 'tcx>(cdata: Cmd,
     let applicable = match item_family(item_doc) {
         ImmStatic | MutStatic => true,
         Fn => {
-            let ty::TypeScheme { generics, ty } = get_type(cdata, id, tcx);
+            let ty::TypeScheme { generics, .. } = get_type(cdata, id, tcx);
             let no_generics = generics.types.is_empty();
-            match ty.sty {
-                ty::TyFnDef(_, _, fn_ty) | ty::TyFnPtr(fn_ty)
-                    if fn_ty.abi != Abi::Rust => return no_generics,
-                _ => no_generics,
-            }
+            no_generics
         },
         _ => false,
     };

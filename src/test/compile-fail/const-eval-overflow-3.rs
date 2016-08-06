@@ -17,7 +17,7 @@
 // self-hosted and a cross-compiled setup; therefore resorting to
 // error-pattern for now.
 
-// error-pattern: expected constant integer for repeat count, but attempted to add with overflow
+// error-pattern: attempt to add with overflow
 
 #![allow(unused_imports)]
 

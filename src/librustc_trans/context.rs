@@ -10,7 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig};
+use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
@@ -34,9 +34,10 @@ use rustc::ty::subst::{Substs, VecPerParamSpace};
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
+use session::config;
 use symbol_map::SymbolMap;
 use util::sha2::Sha256;
-use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -95,16 +96,12 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
+    previous_work_product: Option<WorkProduct>,
     tn: TypeNames, // FIXME: This seems to be largely unused.
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
-    /// Track mapping of external ids to local items imported for inlining
-    external: RefCell<DefIdMap<Option<ast::NodeId>>>,
-    /// Backwards version of the `external` map (inlined items to where they
-    /// came from)
-    external_srcs: RefCell<NodeMap<DefId>>,
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FnvHashMap<Instance<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<usize>>,
@@ -198,24 +195,39 @@ pub struct CrateContextList<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
-
     pub fn new(shared_ccx: &'a SharedCrateContext<'a, 'tcx>,
                codegen_units: Vec<CodegenUnit<'tcx>>,
+               previous_work_products: Vec<Option<WorkProduct>>,
                symbol_map: Rc<SymbolMap<'tcx>>)
                -> CrateContextList<'a, 'tcx> {
         CrateContextList {
             shared: shared_ccx,
-            local_ccxs: codegen_units.into_iter().map(|codegen_unit| {
-                LocalCrateContext::new(shared_ccx, codegen_unit, symbol_map.clone())
+            local_ccxs: codegen_units.into_iter().zip(previous_work_products).map(|(cgu, wp)| {
+                LocalCrateContext::new(shared_ccx, cgu, wp, symbol_map.clone())
             }).collect()
         }
     }
 
-    pub fn iter<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
+    /// Iterate over all crate contexts, whether or not they need
+    /// translation.  That is, whether or not a `.o` file is available
+    /// for re-use from a previous incr. comp.).
+    pub fn iter_all<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
         CrateContextIterator {
             shared: self.shared,
             index: 0,
-            local_ccxs: &self.local_ccxs[..]
+            local_ccxs: &self.local_ccxs[..],
+            filter_to_previous_work_product_unavail: false,
+        }
+    }
+
+    /// Iterator over all CCX that need translation (cannot reuse results from
+    /// previous incr. comp.).
+    pub fn iter_need_trans<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
+        CrateContextIterator {
+            shared: self.shared,
+            index: 0,
+            local_ccxs: &self.local_ccxs[..],
+            filter_to_previous_work_product_unavail: true,
         }
     }
 
@@ -239,24 +251,38 @@ pub struct CrateContextIterator<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
     local_ccxs: &'a [LocalCrateContext<'tcx>],
     index: usize,
+
+    /// if true, only return results where `previous_work_product` is none
+    filter_to_previous_work_product_unavail: bool,
 }
 
 impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
     type Item = CrateContext<'a, 'tcx>;
 
     fn next(&mut self) -> Option<CrateContext<'a, 'tcx>> {
-        if self.index >= self.local_ccxs.len() {
-            return None;
+        loop {
+            if self.index >= self.local_ccxs.len() {
+                return None;
+            }
+
+            let index = self.index;
+            self.index += 1;
+
+            let ccx = CrateContext {
+                shared: self.shared,
+                index: index,
+                local_ccxs: self.local_ccxs,
+            };
+
+            if
+                self.filter_to_previous_work_product_unavail &&
+                ccx.previous_work_product().is_some()
+            {
+                continue;
+            }
+
+            return Some(ccx);
         }
-
-        let index = self.index;
-        self.index += 1;
-
-        Some(CrateContext {
-            shared: self.shared,
-            index: index,
-            local_ccxs: self.local_ccxs,
-        })
     }
 }
 
@@ -292,6 +318,36 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
     }
 }
 
+pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
+    let reloc_model_arg = match sess.opts.cg.relocation_model {
+        Some(ref s) => &s[..],
+        None => &sess.target.target.options.relocation_model[..],
+    };
+
+    match ::back::write::RELOC_MODEL_ARGS.iter().find(
+        |&&arg| arg.0 == reloc_model_arg) {
+        Some(x) => x.1,
+        _ => {
+            sess.err(&format!("{:?} is not a valid relocation mode",
+                             sess.opts
+                                 .cg
+                                 .code_model));
+            sess.abort_if_errors();
+            bug!();
+        }
+    }
+}
+
+fn is_any_library(sess: &Session) -> bool {
+    sess.crate_types.borrow().iter().any(|ty| {
+        *ty != config::CrateTypeExecutable
+    })
+}
+
+pub fn is_pie_binary(sess: &Session) -> bool {
+    !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
+}
+
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let mod_name = CString::new(mod_name).unwrap();
@@ -307,7 +363,25 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
         let data_layout = str::from_utf8(CStr::from_ptr(data_layout).to_bytes())
             .ok().expect("got a non-UTF8 data-layout from LLVM");
 
-        if sess.target.target.data_layout != data_layout {
+        // Unfortunately LLVM target specs change over time, and right now we
+        // don't have proper support to work with any more than one
+        // `data_layout` than the one that is in the rust-lang/rust repo. If
+        // this compiler is configured against a custom LLVM, we may have a
+        // differing data layout, even though we should update our own to use
+        // that one.
+        //
+        // As an interim hack, if CFG_LLVM_ROOT is not an empty string then we
+        // disable this check entirely as we may be configured with something
+        // that has a different target layout.
+        //
+        // Unsure if this will actually cause breakage when rustc is configured
+        // as such.
+        //
+        // FIXME(#34960)
+        let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
+        let custom_llvm_used = cfg_llvm_root.trim() != "";
+
+        if !custom_llvm_used && sess.target.target.data_layout != data_layout {
             bug!("data-layout for builtin `{}` target, `{}`, \
                   differs from LLVM default, `{}`",
                  sess.target.target.llvm_target,
@@ -322,6 +396,11 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let llvm_target = sess.target.target.llvm_target.as_bytes();
     let llvm_target = CString::new(llvm_target).unwrap();
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
+
+    if is_pie_binary(sess) {
+        llvm::LLVMRustSetModulePIELevel(llmod);
+    }
+
     (llcx, llmod)
 }
 
@@ -510,6 +589,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 impl<'tcx> LocalCrateContext<'tcx> {
     fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
                codegen_unit: CodegenUnit<'tcx>,
+               previous_work_product: Option<WorkProduct>,
                symbol_map: Rc<SymbolMap<'tcx>>)
            -> LocalCrateContext<'tcx> {
         unsafe {
@@ -521,13 +601,15 @@ impl<'tcx> LocalCrateContext<'tcx> {
             // crashes if the module identifier is same as other symbols
             // such as a function name in the module.
             // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-            let llmod_id = format!("{}.rs", codegen_unit.name);
+            let llmod_id = format!("{}.rs", codegen_unit.name());
 
             let (llcx, llmod) = create_context_and_module(&shared.tcx.sess,
                                                           &llmod_id[..]);
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
-                Some(debuginfo::CrateDebugContext::new(llmod))
+                let dctx = debuginfo::CrateDebugContext::new(llmod);
+                debuginfo::metadata::compile_unit_metadata(shared, &dctx, shared.tcx.sess);
+                Some(dctx)
             } else {
                 None
             };
@@ -535,13 +617,12 @@ impl<'tcx> LocalCrateContext<'tcx> {
             let local_ccx = LocalCrateContext {
                 llmod: llmod,
                 llcx: llcx,
+                previous_work_product: previous_work_product,
                 codegen_unit: codegen_unit,
                 tn: TypeNames::new(),
                 needs_unwind_cleanup_cache: RefCell::new(FnvHashMap()),
                 fn_pointer_shims: RefCell::new(FnvHashMap()),
                 drop_glues: RefCell::new(FnvHashMap()),
-                external: RefCell::new(DefIdMap()),
-                external_srcs: RefCell::new(NodeMap()),
                 instances: RefCell::new(FnvHashMap()),
                 monomorphizing: RefCell::new(DefIdMap()),
                 vtables: RefCell::new(FnvHashMap()),
@@ -694,6 +775,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local().llcx
     }
 
+    pub fn previous_work_product(&self) -> Option<&WorkProduct> {
+        self.local().previous_work_product.as_ref()
+    }
+
     pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
         &self.local().codegen_unit
     }
@@ -731,12 +816,12 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().drop_glues
     }
 
-    pub fn external<'a>(&'a self) -> &'a RefCell<DefIdMap<Option<ast::NodeId>>> {
-        &self.local().external
+    pub fn local_node_for_inlined_defid<'a>(&'a self, def_id: DefId) -> Option<ast::NodeId> {
+        self.sess().cstore.local_node_for_inlined_defid(def_id)
     }
 
-    pub fn external_srcs<'a>(&'a self) -> &'a RefCell<NodeMap<DefId>> {
-        &self.local().external_srcs
+    pub fn defid_for_inlined_node<'a>(&'a self, node_id: ast::NodeId) -> Option<DefId> {
+        self.sess().cstore.defid_for_inlined_node(node_id)
     }
 
     pub fn instances<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {

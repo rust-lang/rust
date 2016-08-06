@@ -13,7 +13,7 @@
 
 fn main() {
     fn bar<T>(_: T) {}
-    [0][0u8]; //~ ERROR: `[_]: std::ops::Index<u8>` is not satisfied
+    [0][0u8]; //~ ERROR: `[{integer}]: std::ops::Index<u8>` is not satisfied
 
     [0][0]; // should infer to be a usize
 

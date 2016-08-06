@@ -365,12 +365,28 @@ impl<T> VecDeque<T> {
 
 impl<T> VecDeque<T> {
     /// Creates an empty `VecDeque`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let vector: VecDeque<u32> = VecDeque::new();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> VecDeque<T> {
         VecDeque::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Creates an empty `VecDeque` with space for at least `n` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(n: usize) -> VecDeque<T> {
         // +1 since the ringbuffer always leaves one space empty
@@ -385,6 +401,8 @@ impl<T> VecDeque<T> {
     }
 
     /// Retrieves an element in the `VecDeque` by index.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Examples
     ///
@@ -408,6 +426,8 @@ impl<T> VecDeque<T> {
     }
 
     /// Retrieves an element in the `VecDeque` mutably by index.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Examples
     ///
@@ -439,6 +459,8 @@ impl<T> VecDeque<T> {
     /// `i` and `j` may be equal.
     ///
     /// Fails if there is no element with either index.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Examples
     ///
@@ -696,6 +718,25 @@ impl<T> VecDeque<T> {
 
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut vector: VecDeque<u32> = VecDeque::new();
+    ///
+    /// vector.push_back(0);
+    /// vector.push_back(1);
+    /// vector.push_back(2);
+    ///
+    /// assert_eq!(vector.as_slices(), (&[0u32, 1, 2] as &[u32], &[] as &[u32]));
+    ///
+    /// vector.push_front(10);
+    /// vector.push_front(9);
+    ///
+    /// assert_eq!(vector.as_slices(), (&[9u32, 10] as &[u32], &[0u32, 1, 2] as &[u32]));
+    /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
@@ -715,6 +756,24 @@ impl<T> VecDeque<T> {
 
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut vector: VecDeque<u32> = VecDeque::new();
+    ///
+    /// vector.push_back(0);
+    /// vector.push_back(1);
+    ///
+    /// vector.push_front(10);
+    /// vector.push_front(9);
+    ///
+    /// vector.as_mut_slices().0[0] = 42;
+    /// vector.as_mut_slices().1[0] = 24;
+    /// assert_eq!(vector.as_slices(), (&[42u32, 10] as &[u32], &[24u32, 1] as &[u32]));
+    /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
@@ -789,7 +848,7 @@ impl<T> VecDeque<T> {
     ///
     /// ```
     /// use std::collections::VecDeque;
-
+    ///
     /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
     /// assert_eq!(vec![3].into_iter().collect::<VecDeque<_>>(), v.drain(2..).collect());
     /// assert_eq!(vec![1, 2].into_iter().collect::<VecDeque<_>>(), v);
@@ -875,6 +934,22 @@ impl<T> VecDeque<T> {
 
     /// Returns `true` if the `VecDeque` contains an element equal to the
     /// given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_contains)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut vector: VecDeque<u32> = VecDeque::new();
+    ///
+    /// vector.push_back(0);
+    /// vector.push_back(1);
+    ///
+    /// assert_eq!(vector.contains(&1), true);
+    /// assert_eq!(vector.contains(&10), false);
+    /// ```
     #[unstable(feature = "vec_deque_contains", reason = "recently added",
                issue = "32630")]
     pub fn contains(&self, x: &T) -> bool
@@ -1111,6 +1186,8 @@ impl<T> VecDeque<T> {
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
+    /// Element at index 0 is the front of the queue.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1145,6 +1222,8 @@ impl<T> VecDeque<T> {
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
+    /// Element at index 0 is the front of the queue.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1175,6 +1254,8 @@ impl<T> VecDeque<T> {
     /// Inserts an element at `index` within the `VecDeque`. Whichever
     /// end is closer to the insertion point will be moved to make room,
     /// and all the affected elements will be moved to new positions.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Panics
     ///
@@ -1403,7 +1484,10 @@ impl<T> VecDeque<T> {
     /// room, and all the affected elements will be moved to new positions.
     /// Returns `None` if `index` is out of bounds.
     ///
+    /// Element at index 0 is the front of the queue.
+    ///
     /// # Examples
+    ///
     /// ```
     /// use std::collections::VecDeque;
     ///
@@ -1580,6 +1664,8 @@ impl<T> VecDeque<T> {
     /// and the returned `Self` contains elements `[at, len)`.
     ///
     /// Note that the capacity of `self` does not change.
+    ///
+    /// Element at index 0 is the front of the queue.
     ///
     /// # Panics
     ///

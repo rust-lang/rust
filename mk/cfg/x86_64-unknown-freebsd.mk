@@ -8,7 +8,7 @@ CFG_STATIC_LIB_NAME_x86_64-unknown-freebsd=lib$(1).a
 CFG_LIB_GLOB_x86_64-unknown-freebsd=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_x86_64-unknown-freebsd=$(1)-*.dylib.dSYM
 CFG_JEMALLOC_CFLAGS_x86_64-unknown-freebsd := -I/usr/local/include $(CFLAGS)
-CFG_GCCISH_CFLAGS_x86_64-unknown-freebsd := -Wall -Werror -g -fPIC -I/usr/local/include $(CFLAGS)
+CFG_GCCISH_CFLAGS_x86_64-unknown-freebsd :=  -g -fPIC -I/usr/local/include $(CFLAGS)
 CFG_GCCISH_LINK_FLAGS_x86_64-unknown-freebsd := -shared -fPIC -g -pthread  -lrt
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-freebsd := -Wl,--export-dynamic,--dynamic-list=
 CFG_LLC_FLAGS_x86_64-unknown-freebsd :=

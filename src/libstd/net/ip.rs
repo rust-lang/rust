@@ -59,6 +59,66 @@ pub enum Ipv6MulticastScope {
     Global
 }
 
+impl IpAddr {
+    /// Returns true for the special 'unspecified' address ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_unspecified
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_unspecified
+    #[unstable(feature="ip", issue="27709",
+               reason="recently added and depends on unstable Ipv4Addr.is_unspecified()")]
+    pub fn is_unspecified(&self) -> bool {
+        match *self {
+            IpAddr::V4(ref a) => a.is_unspecified(),
+            IpAddr::V6(ref a) => a.is_unspecified(),
+        }
+    }
+
+    /// Returns true if this is a loopback address ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_loopback
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_loopback
+    #[unstable(feature="ip", reason="recently added", issue="27709")]
+    pub fn is_loopback(&self) -> bool {
+        match *self {
+            IpAddr::V4(ref a) => a.is_loopback(),
+            IpAddr::V6(ref a) => a.is_loopback(),
+        }
+    }
+
+    /// Returns true if the address appears to be globally routable ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_global
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_global
+    #[unstable(feature="ip", issue="27709",
+               reason="recently added and depends on unstable Ip{v4,v6}Addr.is_global()")]
+    pub fn is_global(&self) -> bool {
+        match *self {
+            IpAddr::V4(ref a) => a.is_global(),
+            IpAddr::V6(ref a) => a.is_global(),
+        }
+    }
+
+    /// Returns true if this is a multicast address ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_multicast
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_multicast
+    #[unstable(feature="ip", reason="recently added", issue="27709")]
+    pub fn is_multicast(&self) -> bool {
+        match *self {
+            IpAddr::V4(ref a) => a.is_multicast(),
+            IpAddr::V6(ref a) => a.is_multicast(),
+        }
+    }
+
+    /// Returns true if this address is in a range designated for documentation ([IPv4], [IPv6]).
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_documentation
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_documentation
+    #[unstable(feature="ip", issue="27709",
+               reason="recently added and depends on unstable Ipv6Addr.is_documentation()")]
+    pub fn is_documentation(&self) -> bool {
+        match *self {
+            IpAddr::V4(ref a) => a.is_documentation(),
+            IpAddr::V6(ref a) => a.is_documentation(),
+        }
+    }
+}
+
 impl Ipv4Addr {
     /// Creates a new IPv4 address from four eight-bit octets.
     ///
@@ -758,6 +818,67 @@ mod tests {
                    Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78)));
         assert_eq!(Ipv6Addr::new(0, 0, 1, 0, 0, 0, 0x1234, 0x5678).to_ipv4(),
                    None);
+    }
+
+    #[test]
+    fn ip_properties() {
+        fn check4(octets: &[u8; 4], unspec: bool, loopback: bool,
+                  global: bool, multicast: bool, documentation: bool) {
+            let ip = IpAddr::V4(Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3]));
+            assert_eq!(ip.is_unspecified(), unspec);
+            assert_eq!(ip.is_loopback(), loopback);
+            assert_eq!(ip.is_global(), global);
+            assert_eq!(ip.is_multicast(), multicast);
+            assert_eq!(ip.is_documentation(), documentation);
+        }
+
+        fn check6(str_addr: &str, unspec: bool, loopback: bool,
+                  global: bool, u_doc: bool, mcast: bool) {
+            let ip = IpAddr::V6(str_addr.parse().unwrap());
+            assert_eq!(ip.is_unspecified(), unspec);
+            assert_eq!(ip.is_loopback(), loopback);
+            assert_eq!(ip.is_global(), global);
+            assert_eq!(ip.is_documentation(), u_doc);
+            assert_eq!(ip.is_multicast(), mcast);
+        }
+
+        //     address                unspec loopbk global multicast doc
+        check4(&[0, 0, 0, 0],         true,  false, false,  false,   false);
+        check4(&[0, 0, 0, 1],         false, false, true,   false,   false);
+        check4(&[0, 1, 0, 0],         false, false, true,   false,   false);
+        check4(&[10, 9, 8, 7],        false, false, false,  false,   false);
+        check4(&[127, 1, 2, 3],       false, true,  false,  false,   false);
+        check4(&[172, 31, 254, 253],  false, false, false,  false,   false);
+        check4(&[169, 254, 253, 242], false, false, false,  false,   false);
+        check4(&[192, 0, 2, 183],     false, false, false,  false,   true);
+        check4(&[192, 1, 2, 183],     false, false, true,   false,   false);
+        check4(&[192, 168, 254, 253], false, false, false,  false,   false);
+        check4(&[198, 51, 100, 0],    false, false, false,  false,   true);
+        check4(&[203, 0, 113, 0],     false, false, false,  false,   true);
+        check4(&[203, 2, 113, 0],     false, false, true,   false,   false);
+        check4(&[224, 0, 0, 0],       false, false, true,   true,    false);
+        check4(&[239, 255, 255, 255], false, false, true,   true,    false);
+        check4(&[255, 255, 255, 255], false, false, false,  false,   false);
+
+        //     address                            unspec loopbk global doc    mcast
+        check6("::",                              true,  false, false, false, false);
+        check6("::1",                             false, true,  false, false, false);
+        check6("::0.0.0.2",                       false, false, true,  false, false);
+        check6("1::",                             false, false, true,  false, false);
+        check6("fc00::",                          false, false, false, false, false);
+        check6("fdff:ffff::",                     false, false, false, false, false);
+        check6("fe80:ffff::",                     false, false, false, false, false);
+        check6("febf:ffff::",                     false, false, false, false, false);
+        check6("fec0::",                          false, false, false, false, false);
+        check6("ff01::",                          false, false, false, false, true);
+        check6("ff02::",                          false, false, false, false, true);
+        check6("ff03::",                          false, false, false, false, true);
+        check6("ff04::",                          false, false, false, false, true);
+        check6("ff05::",                          false, false, false, false, true);
+        check6("ff08::",                          false, false, false, false, true);
+        check6("ff0e::",                          false, false, true,  false, true);
+        check6("2001:db8:85a3::8a2e:370:7334",    false, false, false, true,  false);
+        check6("102:304:506:708:90a:b0c:d0e:f10", false, false, true,  false, false);
     }
 
     #[test]

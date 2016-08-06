@@ -28,4 +28,4 @@ log = { path = "../liblog" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-gcc = "0.3"
+gcc = "0.3.27"

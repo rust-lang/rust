@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overloaded_calls, unboxed_closures)]
-
 fn a<F:Fn(isize, isize) -> isize>(mut f: F) {
     let g = &mut f;
     f(1, 2);    //~ ERROR cannot borrow `f` as immutable

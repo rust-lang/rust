@@ -48,10 +48,7 @@
 //! case but `&a` in the second.  Basically, defaults that appear inside
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
-use middle::const_val::ConstVal;
-use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
-use rustc_const_eval::EvalHint::UncheckedExprHint;
-use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
+use rustc_const_eval::eval_length;
 use hir::{self, SelfKind};
 use hir::def::{Def, PathResolution};
 use hir::def_id::DefId;
@@ -70,7 +67,6 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::{NodeMap, FnvHashSet};
 
-use rustc_const_math::ConstInt;
 use std::cell::RefCell;
 use syntax::{abi, ast};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -1079,8 +1075,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         Ok((trait_ref, projection_bounds))
                     }
                     _ => {
-                        span_err!(self.tcx().sess, ty.span, E0172,
-                                  "expected a reference to a trait");
+                        struct_span_err!(self.tcx().sess, ty.span, E0172,
+                                  "expected a reference to a trait")
+                            .span_label(ty.span, &format!("expected a trait"))
+                            .emit();
                         Err(ErrorReported)
                     }
                 }
@@ -1090,6 +1088,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                "expected a path on the left-hand side \
                                                 of `+`, not `{}`",
                                                pprust::ty_to_string(ty));
+                err.span_label(ty.span, &format!("expected a path"));
                 let hi = bounds.iter().map(|x| match *x {
                     hir::TraitTyParamBound(ref tr, _) => tr.span.hi,
                     hir::RegionTyParamBound(ref r) => r.span.hi,
@@ -1317,6 +1316,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // item is declared.
         let bound = match (&ty.sty, ty_path_def) {
             (_, Def::SelfTy(Some(trait_did), Some(impl_id))) => {
+                // For Def::SelfTy() values inlined from another crate, the
+                // impl_id will be DUMMY_NODE_ID, which would cause problems
+                // here. But we should never run into an impl from another crate
+                // in this pass.
+                assert!(impl_id != ast::DUMMY_NODE_ID);
+
                 // `Self` in an impl of a trait - we have a concrete self type and a
                 // trait reference.
                 let trait_ref = tcx.impl_trait_ref(tcx.map.local_def_id(impl_id)).unwrap();
@@ -1522,6 +1527,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             Def::SelfTy(_, Some(impl_id)) => {
                 // Self in impl (we know the concrete type).
+
+                // For Def::SelfTy() values inlined from another crate, the
+                // impl_id will be DUMMY_NODE_ID, which would cause problems
+                // here. But we should never run into an impl from another crate
+                // in this pass.
+                assert!(impl_id != ast::DUMMY_NODE_ID);
+
                 tcx.prohibit_type_params(base_segments);
                 let ty = tcx.node_id_to_type(impl_id);
                 if let Some(free_substs) = self.get_free_substs() {
@@ -1741,33 +1753,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 ty
             }
             hir::TyFixedLengthVec(ref ty, ref e) => {
-                let hint = UncheckedExprHint(tcx.types.usize);
-                match eval_const_expr_partial(tcx.global_tcx(), &e, hint, None) {
-                    Ok(ConstVal::Integral(ConstInt::Usize(i))) => {
-                        let i = i.as_u64(tcx.sess.target.uint_type);
-                        assert_eq!(i as usize as u64, i);
-                        tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), i as usize)
-                    },
-                    Ok(val) => {
-                        span_err!(tcx.sess, ast_ty.span, E0249,
-                                  "expected usize value for array length, got {}",
-                                  val.description());
-                        self.tcx().types.err
-                    },
-                    // array length errors happen before the global constant check
-                    // so we need to report the real error
-                    Err(ConstEvalErr { kind: ErroneousReferencedConstant(box r), ..}) |
-                    Err(r) => {
-                        let mut err = struct_span_err!(tcx.sess, r.span, E0250,
-                                                       "array length constant \
-                                                        evaluation error: {}",
-                                                       r.description());
-                        if !ast_ty.span.contains(r.span) {
-                            span_note!(&mut err, ast_ty.span, "for array length here")
-                        }
-                        err.emit();
-                        self.tcx().types.err
-                    }
+                if let Ok(length) = eval_length(tcx.global_tcx(), &e, "array length") {
+                    tcx.mk_array(self.ast_ty_to_ty(rscope, &ty), length)
+                } else {
+                    self.tcx().types.err
                 }
             }
             hir::TyTypeof(ref _e) => {

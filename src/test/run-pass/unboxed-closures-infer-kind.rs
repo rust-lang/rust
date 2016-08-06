@@ -11,9 +11,6 @@
 // Test that we can infer the "kind" of an unboxed closure based on
 // the expected type.
 
-
-#![feature(unboxed_closures)]
-
 // Test by-ref capture of environment in unboxed closure types
 
 fn call_fn<F: Fn()>(f: F) {

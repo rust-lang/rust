@@ -504,7 +504,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn crate_disambiguator(self, cnum: ast::CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
-            self.sess.crate_disambiguator.get().as_str()
+            self.sess.local_crate_disambiguator()
         } else {
             self.sess.cstore.crate_disambiguator(cnum)
         }

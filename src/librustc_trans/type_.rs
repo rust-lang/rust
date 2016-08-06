@@ -36,7 +36,7 @@ pub struct Type {
 impl fmt::Debug for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&llvm::build_string(|s| unsafe {
-            llvm::LLVMWriteTypeToString(self.to_ref(), s);
+            llvm::LLVMRustWriteTypeToString(self.to_ref(), s);
         }).expect("non-UTF8 type description from LLVM"))
     }
 }
@@ -72,7 +72,7 @@ impl Type {
     }
 
     pub fn metadata(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMMetadataTypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMRustMetadataTypeInContext(ccx.llcx()))
     }
 
     pub fn i1(ccx: &CrateContext) -> Type {
@@ -208,7 +208,7 @@ impl Type {
 
     pub fn kind(&self) -> TypeKind {
         unsafe {
-            llvm::LLVMGetTypeKind(self.to_ref())
+            llvm::LLVMRustGetTypeKind(self.to_ref())
         }
     }
 

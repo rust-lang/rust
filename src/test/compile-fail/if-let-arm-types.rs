@@ -12,7 +12,7 @@ fn main() {
     if let Some(b) = None { //~ ERROR: `if let` arms have incompatible types
         //~^ expected (), found integral variable
         //~| expected type `()`
-        //~| found type `_`
+        //~| found type `{integer}`
         ()
     } else {                //~ NOTE: `if let` arm with an incompatible type
         1

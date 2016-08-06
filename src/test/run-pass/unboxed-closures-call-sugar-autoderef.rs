@@ -10,9 +10,6 @@
 
 // Test that the call operator autoderefs when calling a bounded type parameter.
 
-
-#![feature(unboxed_closures)]
-
 use std::ops::FnMut;
 
 fn call_with_2<F>(x: &mut F) -> isize

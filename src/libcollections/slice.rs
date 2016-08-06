@@ -544,14 +544,21 @@ impl<T> [T] {
     ///
     /// # Example
     ///
-    /// Print the adjacent pairs of a slice (i.e. `[1,2]`, `[2,3]`,
-    /// `[3,4]`):
+    /// ```
+    /// let slice = ['r', 'u', 's', 't'];
+    /// let mut iter = slice.windows(2);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'u']);
+    /// assert_eq!(iter.next().unwrap(), &['u', 's']);
+    /// assert_eq!(iter.next().unwrap(), &['s', 't']);
+    /// assert!(iter.next().is_none());
+    /// ```
     ///
-    /// ```rust
-    /// let v = &[1, 2, 3, 4];
-    /// for win in v.windows(2) {
-    ///     println!("{:?}", win);
-    /// }
+    /// If the slice is shorter than `size`:
+    ///
+    /// ```
+    /// let slice = ['f', 'o', 'o'];
+    /// let mut iter = slice.windows(4);
+    /// assert!(iter.next().is_none());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -570,15 +577,13 @@ impl<T> [T] {
     ///
     /// # Example
     ///
-    /// Print the slice two elements at a time (i.e. `[1,2]`,
-    /// `[3,4]`, `[5]`):
-    ///
-    /// ```rust
-    /// let v = &[1, 2, 3, 4, 5];
-    ///
-    /// for chunk in v.chunks(2) {
-    ///     println!("{:?}", chunk);
-    /// }
+    /// ```
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.chunks(2);
+    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
+    /// assert_eq!(iter.next().unwrap(), &['m']);
+    /// assert!(iter.next().is_none());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -684,15 +689,40 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// Print the slice split by numbers divisible by 3 (i.e. `[10, 40]`,
-    /// `[20]`, `[50]`):
+    /// ```
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.split(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[20]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// If the first element is matched, an empty slice will be the first item
+    /// returned by the iterator. Similarly, if the last element in the slice
+    /// is matched, an empty slice will be the last item returned by the
+    /// iterator:
     ///
     /// ```
-    /// let v = [10, 40, 30, 20, 60, 50];
+    /// let slice = [10, 40, 33];
+    /// let mut iter = slice.split(|num| num % 3 == 0);
     ///
-    /// for group in v.split(|num| *num % 3 == 0) {
-    ///     println!("{:?}", group);
-    /// }
+    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// If two matched elements are directly adjacent, an empty slice will be
+    /// present between them:
+    ///
+    /// ```
+    /// let slice = [10, 6, 33, 20];
+    /// let mut iter = slice.split(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10]);
+    /// assert_eq!(iter.next().unwrap(), &[]);
+    /// assert_eq!(iter.next().unwrap(), &[20]);
+    /// assert!(iter.next().is_none());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]

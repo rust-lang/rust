@@ -10,18 +10,21 @@
 
 use back::lto;
 use back::link::{get_linker, remove};
+use rustc_incremental::save_trans_partition;
 use session::config::{OutputFilenames, Passes, SomePasses, AllPasses};
 use session::Session;
 use session::config::{self, OutputType};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use llvm::SMDiagnosticRef;
-use {CrateTranslation, ModuleTranslation};
+use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
+use util::fs::link_or_copy;
 use errors::{self, Handler, Level, DiagnosticBuilder};
 use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
+use context::{is_pie_binary, get_reloc_model};
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -34,18 +37,18 @@ use std::thread;
 use libc::{c_uint, c_void};
 
 pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 4] = [
-    ("pic", llvm::RelocPIC),
-    ("static", llvm::RelocStatic),
-    ("default", llvm::RelocDefault),
-    ("dynamic-no-pic", llvm::RelocDynamicNoPic),
+    ("pic", llvm::RelocMode::PIC),
+    ("static", llvm::RelocMode::Static),
+    ("default", llvm::RelocMode::Default),
+    ("dynamic-no-pic", llvm::RelocMode::DynamicNoPic),
 ];
 
-pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeGenModel); 5] = [
-    ("default", llvm::CodeModelDefault),
-    ("small", llvm::CodeModelSmall),
-    ("kernel", llvm::CodeModelKernel),
-    ("medium", llvm::CodeModelMedium),
-    ("large", llvm::CodeModelLarge),
+pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
+    ("default", llvm::CodeModel::Default),
+    ("small", llvm::CodeModel::Small),
+    ("kernel", llvm::CodeModel::Kernel),
+    ("medium", llvm::CodeModel::Medium),
+    ("large", llvm::CodeModel::Large),
 ];
 
 pub fn llvm_err(handler: &errors::Handler, msg: String) -> ! {
@@ -66,7 +69,7 @@ pub fn write_output_file(
         let output_c = path2cstr(output);
         let result = llvm::LLVMRustWriteOutputFile(
                 target, pm, m, output_c.as_ptr(), file_type);
-        if !result {
+        if result.into_result().is_err() {
             llvm_err(handler, format!("could not write output to {}", output.display()));
         }
     }
@@ -150,11 +153,11 @@ fn target_feature(sess: &Session) -> String {
 
 fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
     match optimize {
-      config::OptLevel::No => llvm::CodeGenLevelNone,
-      config::OptLevel::Less => llvm::CodeGenLevelLess,
-      config::OptLevel::Default => llvm::CodeGenLevelDefault,
-      config::OptLevel::Aggressive => llvm::CodeGenLevelAggressive,
-      _ => llvm::CodeGenLevelDefault,
+      config::OptLevel::No => llvm::CodeGenOptLevel::None,
+      config::OptLevel::Less => llvm::CodeGenOptLevel::Less,
+      config::OptLevel::Default => llvm::CodeGenOptLevel::Default,
+      config::OptLevel::Aggressive => llvm::CodeGenOptLevel::Aggressive,
+      _ => llvm::CodeGenOptLevel::Default,
     }
 }
 
@@ -167,29 +170,10 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
 }
 
 pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
-    let reloc_model_arg = match sess.opts.cg.relocation_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.relocation_model[..],
-    };
-    let reloc_model = match RELOC_MODEL_ARGS.iter().find(
-        |&&arg| arg.0 == reloc_model_arg) {
-        Some(x) => x.1,
-        _ => {
-            sess.err(&format!("{:?} is not a valid relocation mode",
-                             sess.opts
-                                 .cg
-                                 .relocation_model));
-            sess.abort_if_errors();
-            bug!();
-        }
-    };
+    let reloc_model = get_reloc_model(sess);
 
     let opt_level = get_llvm_opt_level(sess.opts.optimize);
     let use_softfp = sess.opts.cg.soft_float;
-
-    let any_library = sess.crate_types.borrow().iter().any(|ty| {
-        *ty != config::CrateTypeExecutable
-    });
 
     let ffunction_sections = sess.target.target.options.function_sections;
     let fdata_sections = ffunction_sections;
@@ -228,7 +212,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
             reloc_model,
             opt_level,
             use_softfp,
-            !any_library && reloc_model == llvm::RelocPIC,
+            is_pie_binary(sess),
             ffunction_sections,
             fdata_sections,
         )
@@ -345,6 +329,8 @@ struct CodegenContext<'a> {
     remark: Passes,
     // Worker thread number
     worker: usize,
+    // Directory where incremental data is stored (if any)
+    incremental: Option<PathBuf>,
 }
 
 impl<'a> CodegenContext<'a> {
@@ -355,6 +341,7 @@ impl<'a> CodegenContext<'a> {
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
             worker: 0,
+            incremental: sess.opts.incremental.clone(),
         }
     }
 }
@@ -390,7 +377,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
                                         cookie: c_uint) {
     let HandlerFreeVars { cgcx, .. } = *(user as *const HandlerFreeVars);
 
-    let msg = llvm::build_string(|s| llvm::LLVMWriteSMDiagnosticToString(diag, s))
+    let msg = llvm::build_string(|s| llvm::LLVMRustWriteSMDiagnosticToString(diag, s))
         .expect("non-UTF8 SMDiagnostic");
 
     report_inline_asm(cgcx, &msg[..], cookie);
@@ -432,10 +419,11 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 // Unsafe due to LLVM calls.
 unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                mtrans: ModuleTranslation,
+                               mllvm: ModuleLlvm,
                                config: ModuleConfig,
                                output_names: OutputFilenames) {
-    let llmod = mtrans.llmod;
-    let llcx = mtrans.llcx;
+    let llmod = mllvm.llmod;
+    let llcx = mllvm.llcx;
     let tm = config.tm;
 
     // llcx doesn't outlive this function, so we can put this on the stack.
@@ -445,7 +433,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     };
     let fv = &fv as *const HandlerFreeVars as *mut c_void;
 
-    llvm::LLVMSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
+    llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
     llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, fv);
 
     let module_name = Some(&mtrans.name[..]);
@@ -473,9 +461,9 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 return false;
             }
             let pass_manager = match llvm::LLVMRustPassKind(pass) {
-                llvm::SupportedPassKind::Function => fpm,
-                llvm::SupportedPassKind::Module => mpm,
-                llvm::SupportedPassKind::Unsupported => {
+                llvm::PassKind::Function => fpm,
+                llvm::PassKind::Module => mpm,
+                llvm::PassKind::Other => {
                     cgcx.handler.err("Encountered LLVM pass kind we can't handle");
                     return true
                 },
@@ -603,7 +591,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(cgcx.handler, tm, cpm, llmod, &path,
-                                  llvm::AssemblyFileType);
+                                  llvm::FileType::AssemblyFile);
             });
             if config.emit_obj {
                 llvm::LLVMDisposeModule(llmod);
@@ -612,14 +600,15 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out, llvm::ObjectFileType);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out,
+                                  llvm::FileType::ObjectFile);
             });
         }
     });
 
     if copy_bc_to_obj {
         debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-        if let Err(e) = fs::copy(&bc_out, &obj_out) {
+        if let Err(e) = link_or_copy(&bc_out, &obj_out) {
             cgcx.handler.err(&format!("failed to copy bitcode to object file: {}", e));
         }
     }
@@ -638,8 +627,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 pub fn cleanup_llvm(trans: &CrateTranslation) {
     for module in trans.modules.iter() {
         unsafe {
-            llvm::LLVMDisposeModule(module.llmod);
-            llvm::LLVMContextDispose(module.llcx);
+            match module.source {
+                ModuleSource::Translated(llvm) => {
+                    llvm::LLVMDisposeModule(llvm.llmod);
+                    llvm::LLVMContextDispose(llvm.llcx);
+                }
+                ModuleSource::Preexisting(_) => {
+                }
+            }
         }
     }
 }
@@ -751,6 +746,23 @@ pub fn run_passes(sess: &Session,
         run_work_singlethreaded(sess, &trans.reachable, work_items);
     } else {
         run_work_multithreaded(sess, work_items, num_workers);
+    }
+
+    // If in incr. comp. mode, preserve the `.o` files for potential re-use
+    for mtrans in trans.modules.iter() {
+        let mut files = vec![];
+
+        if modules_config.emit_obj {
+            let path = crate_output.temp_path(OutputType::Object, Some(&mtrans.name));
+            files.push((OutputType::Object, path));
+        }
+
+        if modules_config.emit_bc {
+            let path = crate_output.temp_path(OutputType::Bitcode, Some(&mtrans.name));
+            files.push((OutputType::Bitcode, path));
+        }
+
+        save_trans_partition(sess, &mtrans.name, mtrans.symbol_name_hash, &files);
     }
 
     // All codegen is finished.
@@ -926,10 +938,37 @@ fn build_work_item(sess: &Session,
 fn execute_work_item(cgcx: &CodegenContext,
                      work_item: WorkItem) {
     unsafe {
-        optimize_and_codegen(cgcx,
-                             work_item.mtrans,
-                             work_item.config,
-                             work_item.output_names);
+        match work_item.mtrans.source {
+            ModuleSource::Translated(mllvm) => {
+                debug!("llvm-optimizing {:?}", work_item.mtrans.name);
+                optimize_and_codegen(cgcx,
+                                     work_item.mtrans,
+                                     mllvm,
+                                     work_item.config,
+                                     work_item.output_names);
+            }
+            ModuleSource::Preexisting(wp) => {
+                let incremental = cgcx.incremental.as_ref().unwrap();
+                let name = &work_item.mtrans.name;
+                for (kind, saved_file) in wp.saved_files {
+                    let obj_out = work_item.output_names.temp_path(kind, Some(name));
+                    let source_file = incremental.join(&saved_file);
+                    debug!("copying pre-existing module `{}` from {:?} to {}",
+                           work_item.mtrans.name,
+                           source_file,
+                           obj_out.display());
+                    match link_or_copy(&source_file, &obj_out) {
+                        Ok(()) => { }
+                        Err(err) => {
+                            cgcx.handler.err(&format!("unable to copy {} to {}: {}",
+                                                      source_file.display(),
+                                                      obj_out.display(),
+                                                      err));
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -965,6 +1004,8 @@ fn run_work_multithreaded(sess: &Session,
         let mut tx = Some(tx);
         futures.push(rx);
 
+        let incremental = sess.opts.incremental.clone();
+
         thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
             let diag_handler = Handler::with_emitter(true, false, box diag_emitter);
 
@@ -976,6 +1017,7 @@ fn run_work_multithreaded(sess: &Session,
                 plugin_passes: plugin_passes,
                 remark: remark,
                 worker: i,
+                incremental: incremental,
             };
 
             loop {
@@ -1049,7 +1091,7 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
     let builder = llvm::LLVMPassManagerBuilderCreate();
-    let opt_level = config.opt_level.unwrap_or(llvm::CodeGenLevelNone);
+    let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
     let opt_size = config.opt_size.unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
 
@@ -1073,7 +1115,7 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
         (_, _, Some(t)) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t as u32);
         }
-        (llvm::CodeGenLevelAggressive, _, _) => {
+        (llvm::CodeGenOptLevel::Aggressive, _, _) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);
         }
         (_, llvm::CodeGenOptSizeDefault, _) => {
@@ -1082,14 +1124,17 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
         (_, llvm::CodeGenOptSizeAggressive, _) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 25);
         }
-        (llvm::CodeGenLevelNone, _, _) => {
+        (llvm::CodeGenOptLevel::None, _, _) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, false);
         }
-        (llvm::CodeGenLevelLess, _, _) => {
+        (llvm::CodeGenOptLevel::Less, _, _) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, true);
         }
-        (llvm::CodeGenLevelDefault, _, _) => {
+        (llvm::CodeGenOptLevel::Default, _, _) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 225);
+        }
+        (llvm::CodeGenOptLevel::Other, _, _) => {
+            bug!("CodeGenOptLevel::Other selected")
         }
     }
 

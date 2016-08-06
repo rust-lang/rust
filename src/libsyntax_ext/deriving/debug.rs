@@ -12,19 +12,18 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast;
-use syntax::ast::{MetaItem, Expr};
-use syntax::ext::base::{ExtCtxt, Annotatable};
+use syntax::ast::{Expr, MetaItem};
+use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{DUMMY_SP, Span};
 
 pub fn expand_deriving_debug(cx: &mut ExtCtxt,
-                            span: Span,
-                            mitem: &MetaItem,
-                            item: &Annotatable,
-                            push: &mut FnMut(Annotatable))
-{
+                             span: Span,
+                             mitem: &MetaItem,
+                             item: &Annotatable,
+                             push: &mut FnMut(Annotatable)) {
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(Box::new(Literal(path_std!(cx, core::fmt::Formatter))),
                    Borrowed(None, ast::Mutability::Mutable));
@@ -36,57 +35,54 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
-        methods: vec![
-            MethodDef {
-                name: "fmt",
-                generics: LifetimeBounds::empty(),
-                explicit_self: borrowed_explicit_self(),
-                args: vec!(fmtr),
-                ret_ty: Literal(path_std!(cx, core::fmt::Result)),
-                attributes: Vec::new(),
-                is_unsafe: false,
-                unify_fieldless_variants: false,
-                combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                    show_substructure(a, b, c)
-                }))
-            }
-        ],
+        methods: vec![MethodDef {
+                          name: "fmt",
+                          generics: LifetimeBounds::empty(),
+                          explicit_self: borrowed_explicit_self(),
+                          args: vec![fmtr],
+                          ret_ty: Literal(path_std!(cx, core::fmt::Result)),
+                          attributes: Vec::new(),
+                          is_unsafe: false,
+                          unify_fieldless_variants: false,
+                          combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                              show_substructure(a, b, c)
+                          })),
+                      }],
         associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
 }
 
 /// We use the debug builders to do the heavy lifting here
-fn show_substructure(cx: &mut ExtCtxt, span: Span,
-                     substr: &Substructure) -> P<Expr> {
+fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
     // build fmt.debug_struct(<name>).field(<fieldname>, &<fieldval>)....build()
     // or fmt.debug_tuple(<name>).field(&<fieldval>)....build()
     // based on the "shape".
     let (ident, is_struct) = match *substr.fields {
         Struct(vdata, _) => (substr.type_ident, vdata.is_struct()),
         EnumMatching(_, v, _) => (v.node.name, v.node.data.is_struct()),
-        EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
-            cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
-        }
+        EnumNonMatchingCollapsed(..) |
+        StaticStruct(..) |
+        StaticEnum(..) => cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`"),
     };
 
     // We want to make sure we have the expn_id set so that we can use unstable methods
-    let span = Span { expn_id: cx.backtrace(), .. span };
-    let name = cx.expr_lit(span, ast::LitKind::Str(ident.name.as_str(), ast::StrStyle::Cooked));
+    let span = Span { expn_id: cx.backtrace(), ..span };
+    let name = cx.expr_lit(span,
+                           ast::LitKind::Str(ident.name.as_str(), ast::StrStyle::Cooked));
     let builder = token::str_to_ident("builder");
     let builder_expr = cx.expr_ident(span, builder.clone());
 
     let fmt = substr.nonself_args[0].clone();
 
     let mut stmts = match *substr.fields {
-        Struct(_, ref fields) | EnumMatching(_, _, ref fields) => {
+        Struct(_, ref fields) |
+        EnumMatching(_, _, ref fields) => {
             let mut stmts = vec![];
             if !is_struct {
                 // tuple struct/"normal" variant
-                let expr = cx.expr_method_call(span,
-                                               fmt,
-                                               token::str_to_ident("debug_tuple"),
-                                               vec![name]);
+                let expr =
+                    cx.expr_method_call(span, fmt, token::str_to_ident("debug_tuple"), vec![name]);
                 stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
                 for field in fields {
@@ -105,16 +101,14 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                 }
             } else {
                 // normal struct/struct variant
-                let expr = cx.expr_method_call(span,
-                                               fmt,
-                                               token::str_to_ident("debug_struct"),
-                                               vec![name]);
+                let expr =
+                    cx.expr_method_call(span, fmt, token::str_to_ident("debug_struct"), vec![name]);
                 stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
                 for field in fields {
-                    let name = cx.expr_lit(field.span, ast::LitKind::Str(
-                            field.name.unwrap().name.as_str(),
-                            ast::StrStyle::Cooked));
+                    let name = cx.expr_lit(field.span,
+                                           ast::LitKind::Str(field.name.unwrap().name.as_str(),
+                                                             ast::StrStyle::Cooked));
 
                     // Use double indirection to make sure this works for unsized types
                     let field = cx.expr_addr_of(field.span, field.self_.clone());
@@ -128,22 +122,17 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
             }
             stmts
         }
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
-    let expr = cx.expr_method_call(span,
-                                   builder_expr,
-                                   token::str_to_ident("finish"),
-                                   vec![]);
+    let expr = cx.expr_method_call(span, builder_expr, token::str_to_ident("finish"), vec![]);
 
     stmts.push(cx.stmt_expr(expr));
     let block = cx.block(span, stmts);
     cx.expr_block(block)
 }
 
-fn stmt_let_undescore(cx: &mut ExtCtxt,
-                      sp: Span,
-                      expr: P<ast::Expr>) -> ast::Stmt {
+fn stmt_let_undescore(cx: &mut ExtCtxt, sp: Span, expr: P<ast::Expr>) -> ast::Stmt {
     let local = P(ast::Local {
         pat: cx.pat_wild(sp),
         ty: None,

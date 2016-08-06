@@ -21,6 +21,8 @@ use std::sync::mpsc::channel;
 use std::time::Duration;
 use std::thread::{self, Builder};
 
+const TARGET_CNT: usize = 200;
+
 fn main() {
     // This test has a chance to time out, try to not let it time out
     thread::spawn(move|| -> () {
@@ -42,8 +44,9 @@ fn main() {
     });
 
     let (tx, rx) = channel();
+
     let mut spawned_cnt = 0;
-    for _ in 0..1000 {
+    for _ in 0..TARGET_CNT {
         let tx = tx.clone();
         let res = Builder::new().stack_size(64 * 1024).spawn(move|| {
             match TcpStream::connect(addr) {
@@ -66,6 +69,6 @@ fn main() {
     for _ in 0..spawned_cnt {
         rx.recv().unwrap();
     }
-    assert_eq!(spawned_cnt, 1000);
+    assert_eq!(spawned_cnt, TARGET_CNT);
     process::exit(0);
 }

@@ -10,8 +10,9 @@
 
 //! The data that we will serialize and deserialize.
 
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use rustc::hir::def_id::DefIndex;
+use std::sync::Arc;
 
 use super::directory::DefPathIndex;
 
@@ -53,6 +54,15 @@ pub struct SerializedHash {
 
     /// the hash itself, computed by `calculate_item_hash`
     pub hash: u64,
+}
+
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub struct SerializedWorkProduct {
+    /// node that produced the work-product
+    pub id: Arc<WorkProductId>,
+
+    /// work-product data itself
+    pub work_product: WorkProduct,
 }
 
 /// Data for use when downstream crates get recompiled.

@@ -44,7 +44,7 @@ use lint::{LintPass, LateLintPass};
 use std::collections::HashSet;
 
 use syntax::{ast};
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr::{self, AttrMetaMethods, AttributeMethods};
 use syntax_pos::{self, Span};
 
 use rustc::hir::{self, PatKind};
@@ -298,12 +298,7 @@ impl MissingDoc {
             }
         }
 
-        let has_doc = attrs.iter().any(|a| {
-            match a.node.value.node {
-                ast::MetaItemKind::NameValue(ref name, _) if *name == "doc" => true,
-                _ => false
-            }
-        });
+        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.name() == "doc");
         if !has_doc {
             cx.span_lint(MISSING_DOCS, sp,
                          &format!("missing documentation for {}", desc));
@@ -572,18 +567,36 @@ declare_lint! {
 }
 
 /// Checks for use of items with `#[deprecated]` or `#[rustc_deprecated]` attributes
-#[derive(Copy, Clone)]
-pub struct Deprecated;
+#[derive(Clone)]
+pub struct Deprecated {
+    /// Tracks the `NodeId` of the current item.
+    ///
+    /// This is required since not all node ids are present in the hir map.
+    current_item: ast::NodeId,
+}
 
 impl Deprecated {
+    pub fn new() -> Deprecated {
+        Deprecated {
+            current_item: ast::CRATE_NODE_ID,
+        }
+    }
+
     fn lint(&self, cx: &LateContext, _id: DefId, span: Span,
-            stability: &Option<&attr::Stability>, deprecation: &Option<attr::Deprecation>) {
+            stability: &Option<&attr::Stability>,
+            deprecation: &Option<stability::DeprecationEntry>) {
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(&attr::Stability{rustc_depr: Some(attr::RustcDeprecation{ref reason, ..}), ..})
                 = *stability {
             output(cx, DEPRECATED, span, Some(&reason))
-        } else if let Some(attr::Deprecation{ref note, ..}) = *deprecation {
-            output(cx, DEPRECATED, span, note.as_ref().map(|x| &**x))
+        } else if let Some(ref depr_entry) = *deprecation {
+            if let Some(parent_depr) = cx.tcx.lookup_deprecation_entry(self.parent_def(cx)) {
+                if parent_depr.same_origin(depr_entry) {
+                    return;
+                }
+            }
+
+            output(cx, DEPRECATED, span, depr_entry.attr.note.as_ref().map(|x| &**x))
         }
 
         fn output(cx: &LateContext, lint: &'static Lint, span: Span, note: Option<&str>) {
@@ -596,6 +609,19 @@ impl Deprecated {
             cx.span_lint(lint, span, &msg);
         }
     }
+
+    fn push_item(&mut self, item_id: ast::NodeId) {
+        self.current_item = item_id;
+    }
+
+    fn item_post(&mut self, cx: &LateContext, item_id: ast::NodeId) {
+        assert_eq!(self.current_item, item_id);
+        self.current_item = cx.tcx.map.get_parent(item_id);
+    }
+
+    fn parent_def(&self, cx: &LateContext) -> DefId {
+        cx.tcx.map.local_def_id(self.current_item)
+    }
 }
 
 impl LintPass for Deprecated {
@@ -606,9 +632,14 @@ impl LintPass for Deprecated {
 
 impl LateLintPass for Deprecated {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
+        self.push_item(item.id);
         stability::check_item(cx.tcx, item, false,
                               &mut |id, sp, stab, depr|
                                 self.lint(cx, id, sp, &stab, &depr));
+    }
+
+    fn check_item_post(&mut self, cx: &LateContext, item: &hir::Item) {
+        self.item_post(cx, item.id);
     }
 
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
@@ -633,6 +664,30 @@ impl LateLintPass for Deprecated {
         stability::check_pat(cx.tcx, pat,
                              &mut |id, sp, stab, depr|
                                 self.lint(cx, id, sp, &stab, &depr));
+    }
+
+    fn check_impl_item(&mut self, _: &LateContext, item: &hir::ImplItem) {
+        self.push_item(item.id);
+    }
+
+    fn check_impl_item_post(&mut self, cx: &LateContext, item: &hir::ImplItem) {
+        self.item_post(cx, item.id);
+    }
+
+    fn check_trait_item(&mut self, _: &LateContext, item: &hir::TraitItem) {
+        self.push_item(item.id);
+    }
+
+    fn check_trait_item_post(&mut self, cx: &LateContext, item: &hir::TraitItem) {
+        self.item_post(cx, item.id);
+    }
+
+    fn check_foreign_item(&mut self, _: &LateContext, item: &hir::ForeignItem) {
+        self.push_item(item.id);
+    }
+
+    fn check_foreign_item_post(&mut self, cx: &LateContext, item: &hir::ForeignItem) {
+        self.item_post(cx, item.id);
     }
 }
 
@@ -1094,10 +1149,10 @@ impl LintPass for UnstableFeatures {
 
 impl LateLintPass for UnstableFeatures {
     fn check_attribute(&mut self, ctx: &LateContext, attr: &ast::Attribute) {
-        if attr::contains_name(&[attr.node.value.clone()], "feature") {
-            if let Some(items) = attr.node.value.meta_item_list() {
+        if attr::contains_name(&[attr.meta().clone()], "feature") {
+            if let Some(items) = attr.meta().meta_item_list() {
                 for item in items {
-                    ctx.span_lint(UNSTABLE_FEATURES, item.span, "unstable feature");
+                    ctx.span_lint(UNSTABLE_FEATURES, item.span(), "unstable feature");
                 }
             }
         }

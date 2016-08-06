@@ -94,7 +94,7 @@
 * `|` (`|…| expr`): closures.  See [Closures].
 * `|=` (`var |= expr`): bitwise or & assignment. Overloadable (`BitOrAssign`).
 * `||` (`expr || expr`): logical or.
-* `_`: "ignored" pattern binding.  See [Patterns (Ignoring bindings)].
+* `_`: "ignored" pattern binding (see [Patterns (Ignoring bindings)]). Also used to make integer-literals readable (see [Reference (Integer literals)]).
 
 ## Other Syntax
 
@@ -231,6 +231,7 @@
 [Primitive Types (Tuples)]: primitive-types.html#tuples
 [Raw Pointers]: raw-pointers.html
 [Reference (Byte String Literals)]: ../reference.html#byte-string-literals
+[Reference (Integer literals)]: ../reference.html#integer-literals
 [Reference (Raw Byte String Literals)]: ../reference.html#raw-byte-string-literals
 [Reference (Raw String Literals)]: ../reference.html#raw-string-literals
 [References and Borrowing]: references-and-borrowing.html

@@ -14,6 +14,8 @@
 #![feature(plugin)]
 #![plugin(lint_plugin_test)]
 #![forbid(test_lint)]
+//~^ NOTE lint level defined here
+//~| NOTE `forbid` lint level set here
 
 fn lintme() { } //~ ERROR item is named 'lintme'
 

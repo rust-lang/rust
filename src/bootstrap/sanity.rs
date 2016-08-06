@@ -31,6 +31,15 @@ use Build;
 pub fn check(build: &mut Build) {
     let mut checked = HashSet::new();
     let path = env::var_os("PATH").unwrap_or(OsString::new());
+    // On Windows, quotes are invalid characters for filename paths, and if
+    // one is present as part of the PATH then that can lead to the system
+    // being unable to identify the files properly. See
+    // https://github.com/rust-lang/rust/issues/34959 for more details.
+    if cfg!(windows) {
+        if path.to_string_lossy().contains("\"") {
+            panic!("PATH contains invalid character '\"'");
+        }
+    }
     let mut need_cmd = |cmd: &OsStr| {
         if !checked.insert(cmd.to_owned()) {
             return
@@ -100,7 +109,7 @@ pub fn check(build: &mut Build) {
         }
 
         // Make sure musl-root is valid if specified
-        if target.contains("musl") && (target.contains("x86_64") || target.contains("i686")) {
+        if target.contains("musl") && !target.contains("mips") {
             match build.config.musl_root {
                 Some(ref root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs, unboxed_closures, fn_traits)]
+#![feature(rustc_attrs, fn_traits)]
 
 #[rustc_mir]
 fn test1(a: isize, b: (i32, i32), c: &[i32]) -> (isize, (i32, i32), &[i32]) {

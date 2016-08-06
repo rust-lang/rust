@@ -223,6 +223,7 @@ trait system to overload operators. Calling functions is no different. We have
 three separate traits to overload with:
 
 ```rust
+# #![feature(unboxed_closures)]
 # mod foo {
 pub trait Fn<Args> : FnMut<Args> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
@@ -291,9 +292,9 @@ isn’t interesting. The next part is:
 #   some_closure(1) }
 ```
 
-Because `Fn` is a trait, we can bound our generic with it. In this case, our
-closure takes a `i32` as an argument and returns an `i32`, and so the generic
-bound we use is `Fn(i32) -> i32`.
+Because `Fn` is a trait, we can use it as a bound for our generic type. In
+this case, our closure takes a `i32` as an argument and returns an `i32`, and
+so the generic bound we use is `Fn(i32) -> i32`.
 
 There’s one other key point here: because we’re bounding a generic with a
 trait, this will get monomorphized, and therefore, we’ll be doing static

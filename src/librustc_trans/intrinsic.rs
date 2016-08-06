@@ -19,7 +19,6 @@ use rustc::ty::subst;
 use rustc::ty::subst::FnSpace;
 use abi::{Abi, FnType};
 use adt;
-use attributes;
 use base::*;
 use build::*;
 use callee::{self, Callee};
@@ -37,13 +36,13 @@ use machine;
 use type_::Type;
 use rustc::ty::{self, Ty};
 use Disr;
-use rustc::ty::subst::Substs;
 use rustc::hir;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;
 
 use rustc::session::Session;
+use rustc_const_eval::fatal_const_eval_err;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
@@ -641,28 +640,30 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         (_, name) if name.starts_with("atomic_") => {
+            use llvm::AtomicOrdering::*;
+
             let split: Vec<&str> = name.split('_').collect();
 
             let is_cxchg = split[1] == "cxchg" || split[1] == "cxchgweak";
             let (order, failorder) = match split.len() {
-                2 => (llvm::SequentiallyConsistent, llvm::SequentiallyConsistent),
+                2 => (SequentiallyConsistent, SequentiallyConsistent),
                 3 => match split[2] {
-                    "unordered" => (llvm::Unordered, llvm::Unordered),
-                    "relaxed" => (llvm::Monotonic, llvm::Monotonic),
-                    "acq"     => (llvm::Acquire, llvm::Acquire),
-                    "rel"     => (llvm::Release, llvm::Monotonic),
-                    "acqrel"  => (llvm::AcquireRelease, llvm::Acquire),
+                    "unordered" => (Unordered, Unordered),
+                    "relaxed" => (Monotonic, Monotonic),
+                    "acq"     => (Acquire, Acquire),
+                    "rel"     => (Release, Monotonic),
+                    "acqrel"  => (AcquireRelease, Acquire),
                     "failrelaxed" if is_cxchg =>
-                        (llvm::SequentiallyConsistent, llvm::Monotonic),
+                        (SequentiallyConsistent, Monotonic),
                     "failacq" if is_cxchg =>
-                        (llvm::SequentiallyConsistent, llvm::Acquire),
+                        (SequentiallyConsistent, Acquire),
                     _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
                 },
                 4 => match (split[2], split[3]) {
                     ("acq", "failrelaxed") if is_cxchg =>
-                        (llvm::Acquire, llvm::Monotonic),
+                        (Acquire, Monotonic),
                     ("acqrel", "failrelaxed") if is_cxchg =>
-                        (llvm::AcquireRelease, llvm::Monotonic),
+                        (AcquireRelease, Monotonic),
                     _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
                 },
                 _ => ccx.sess().fatal("Atomic intrinsic not in correct format"),
@@ -715,12 +716,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 }
 
                 "fence" => {
-                    AtomicFence(bcx, order, llvm::CrossThread);
+                    AtomicFence(bcx, order, llvm::SynchronizationScope::CrossThread);
                     C_nil(ccx)
                 }
 
                 "singlethreadfence" => {
-                    AtomicFence(bcx, order, llvm::SingleThread);
+                    AtomicFence(bcx, order, llvm::SynchronizationScope::SingleThread);
                     C_nil(ccx)
                 }
 
@@ -1172,7 +1173,6 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dloc: DebugLoc) -> Block<'blk, 'tcx> {
     let llfn = get_rust_try_fn(bcx.fcx, &mut |bcx| {
         let ccx = bcx.ccx();
-        let tcx = ccx.tcx();
         let dloc = DebugLoc::None;
 
         // Translates the shims described above:
@@ -1192,14 +1192,6 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
 
-        attributes::emit_uwtable(bcx.fcx.llfn, true);
-        let catch_pers = match tcx.lang_items.eh_personality_catch() {
-            Some(did) => {
-                Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
-            }
-            None => bug!("eh_personality_catch not defined"),
-        };
-
         let then = bcx.fcx.new_temp_block("then");
         let catch = bcx.fcx.new_temp_block("catch");
 
@@ -1217,7 +1209,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // rust_try ignores the selector.
         let lpad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)],
                                     false);
-        let vals = LandingPad(catch, lpad_ty, catch_pers, 1);
+        let vals = LandingPad(catch, lpad_ty, bcx.fcx.eh_personality(), 1);
         AddClause(catch, vals, C_null(Type::i8p(ccx)));
         let ptr = ExtractValue(catch, vals, 0);
         Store(catch, ptr, BitCast(catch, local_ptr, Type::i8p(ccx).ptr_to()));
@@ -1408,7 +1400,10 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
                                          // this should probably help simd error reporting
                                          consts::TrueConst::Yes) {
                     Ok((vector, _)) => vector,
-                    Err(err) => bcx.sess().span_fatal(span, &err.description()),
+                    Err(err) => {
+                        fatal_const_eval_err(bcx.tcx(), err.as_inner(), span,
+                                             "shuffle indices");
+                    }
                 }
             }
             None => llargs[2]

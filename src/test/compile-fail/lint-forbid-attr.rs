@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![forbid(deprecated)]
+//~^ NOTE `forbid` lint level set here
 
 #[allow(deprecated)] //~ ERROR allow(deprecated) overruled by outer forbid(deprecated)
 fn main() {

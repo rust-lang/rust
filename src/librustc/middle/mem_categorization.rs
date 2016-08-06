@@ -259,6 +259,18 @@ impl ast_node for hir::Pat {
 #[derive(Copy, Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    options: MemCategorizationOptions,
+}
+
+#[derive(Copy, Clone, Default)]
+pub struct MemCategorizationOptions {
+    // If true, then when analyzing a closure upvar, if the closure
+    // has a missing kind, we treat it like a Fn closure. When false,
+    // we ICE if the closure has a missing kind. Should be false
+    // except during closure kind inference. It is used by the
+    // mem-categorization code to be able to have stricter assertions
+    // (which are always true except during upvar inference).
+    pub during_closure_kind_inference: bool,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -362,7 +374,16 @@ impl MutabilityCategory {
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext { infcx: infcx }
+        MemCategorizationContext::with_options(infcx, MemCategorizationOptions::default())
+    }
+
+    pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                        options: MemCategorizationOptions)
+                        -> MemCategorizationContext<'a, 'gcx, 'tcx> {
+        MemCategorizationContext {
+            infcx: infcx,
+            options: options,
+        }
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -584,10 +605,20 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                               self.cat_upvar(id, span, var_id, fn_node_id, kind)
                           }
                           None => {
-                              span_bug!(
-                                  span,
-                                  "No closure kind for {:?}",
-                                  closure_id);
+                              if !self.options.during_closure_kind_inference {
+                                  span_bug!(
+                                      span,
+                                      "No closure kind for {:?}",
+                                      closure_id);
+                              }
+
+                              // during closure kind inference, we
+                              // don't know the closure kind yet, but
+                              // it's ok because we detect that we are
+                              // accessing an upvar and handle that
+                              // case specially anyhow. Use Fn
+                              // arbitrarily.
+                              self.cat_upvar(id, span, var_id, fn_node_id, ty::ClosureKind::Fn)
                           }
                       }
                   }

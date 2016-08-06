@@ -58,6 +58,11 @@
 
 void LLVMRustSetLastError(const char*);
 
+enum class LLVMRustResult {
+    Success,
+    Failure
+};
+
 typedef struct OpaqueRustString *RustStringRef;
 typedef struct LLVMOpaqueTwine *LLVMTwineRef;
 typedef struct LLVMOpaqueDebugLoc *LLVMDebugLocRef;
