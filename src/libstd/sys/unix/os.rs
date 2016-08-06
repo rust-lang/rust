@@ -21,6 +21,7 @@ use fmt;
 use io;
 use iter;
 use libc::{self, c_int, c_char, c_void};
+use marker::PhantomData;
 use mem;
 use memchr;
 use path::{self, PathBuf};
@@ -304,7 +305,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 pub struct Args {
     iter: vec::IntoIter<OsString>,
-    _dont_send_or_sync_me: *mut (),
+    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
 impl Iterator for Args {
@@ -342,7 +343,7 @@ pub fn args() -> Args {
     };
     Args {
         iter: vec.into_iter(),
-        _dont_send_or_sync_me: ptr::null_mut(),
+        _dont_send_or_sync_me: PhantomData,
     }
 }
 
@@ -399,7 +400,7 @@ pub fn args() -> Args {
         }
     }
 
-    Args { iter: res.into_iter(), _dont_send_or_sync_me: ptr::null_mut() }
+    Args { iter: res.into_iter(), _dont_send_or_sync_me: PhantomData }
 }
 
 #[cfg(any(target_os = "linux",
@@ -418,12 +419,12 @@ pub fn args() -> Args {
     let v: Vec<OsString> = bytes.into_iter().map(|v| {
         OsStringExt::from_vec(v)
     }).collect();
-    Args { iter: v.into_iter(), _dont_send_or_sync_me: ptr::null_mut() }
+    Args { iter: v.into_iter(), _dont_send_or_sync_me: PhantomData }
 }
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
-    _dont_send_or_sync_me: *mut (),
+    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
 impl Iterator for Env {
@@ -464,7 +465,7 @@ pub fn env() -> Env {
         }
         let ret = Env {
             iter: result.into_iter(),
-            _dont_send_or_sync_me: ptr::null_mut(),
+            _dont_send_or_sync_me: PhantomData,
         };
         ENV_LOCK.unlock();
         return ret
