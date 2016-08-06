@@ -15,6 +15,7 @@ use mir::mir_map::MirMap;
 use mir::repr::{Mir, Promoted};
 use ty::TyCtxt;
 use syntax::ast::NodeId;
+use util::common::time;
 
 use std::fmt;
 
@@ -162,11 +163,9 @@ impl<'a, 'tcx> Passes {
     }
 
     pub fn run_passes(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, map: &mut MirMap<'tcx>) {
-        for pass in &mut self.plugin_passes {
-            pass.run_pass(tcx, map, &mut self.pass_hooks);
-        }
-        for pass in &mut self.passes {
-            pass.run_pass(tcx, map, &mut self.pass_hooks);
+        for pass in self.plugin_passes.iter_mut().chain(self.passes.iter_mut()) {
+            time(tcx.sess.time_passes(), pass.name(),
+                 || pass.run_pass(tcx, map, &mut self.pass_hooks));
         }
     }
 
