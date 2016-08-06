@@ -20,7 +20,7 @@ macro_rules! try_opt {
     )
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum DepNode<D: Clone + Debug> {
     // The `D` type is "how definitions are identified".
     // During compilation, it is always `DefId`, but when serializing
@@ -245,6 +245,6 @@ impl<D: Clone + Debug> DepNode<D> {
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct WorkProductId(pub String);
 
