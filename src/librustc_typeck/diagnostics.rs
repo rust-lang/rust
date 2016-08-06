@@ -2469,6 +2469,8 @@ extern crate collections;
 use collections::range::RangeArgument;
 
 impl<T> RangeArgument<T> for T { } // error
+
+fn main() {}
 ```
 
 To work around this, it can be covered with a local type, `MyType`:
@@ -3226,7 +3228,7 @@ E0370: r##"
 The maximum value of an enum was reached, so it cannot be automatically
 set in the next enum value. Erroneous code example:
 
-```compile_fail,E0370
+```compile_fail
 #[deny(overflowing_literals)]
 enum Foo {
     X = 0x7fffffffffffffff,
