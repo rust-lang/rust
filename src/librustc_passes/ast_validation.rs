@@ -38,16 +38,18 @@ impl<'a> AstValidator<'a> {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
         if label.name.as_str() == "'_" {
-            self.session.add_lint(
-                lint::builtin::LIFETIME_UNDERSCORE, id, span,
-                format!("invalid label name `{}`", label.name)
-            );
+            self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
+                                  id,
+                                  span,
+                                  format!("invalid label name `{}`", label.name));
         }
     }
 
     fn invalid_visibility(&self, vis: &Visibility, span: Span, note: Option<&str>) {
         if vis != &Visibility::Inherited {
-            let mut err = struct_span_err!(self.session, span, E0449,
+            let mut err = struct_span_err!(self.session,
+                                           span,
+                                           E0449,
                                            "unnecessary visibility qualifier");
             if let Some(note) = note {
                 err.span_note(span, note);
@@ -71,10 +73,10 @@ impl<'a> AstValidator<'a> {
 impl<'a> Visitor for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &Lifetime) {
         if lt.name.as_str() == "'_" {
-            self.session.add_lint(
-                lint::builtin::LIFETIME_UNDERSCORE, lt.id, lt.span,
-                format!("invalid lifetime name `{}`", lt.name)
-            );
+            self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
+                                  lt.id,
+                                  lt.span,
+                                  format!("invalid lifetime name `{}`", lt.name));
         }
 
         visit::walk_lifetime(self, lt)
@@ -82,9 +84,12 @@ impl<'a> Visitor for AstValidator<'a> {
 
     fn visit_expr(&mut self, expr: &Expr) {
         match expr.node {
-            ExprKind::While(_, _, Some(ident)) | ExprKind::Loop(_, Some(ident)) |
-            ExprKind::WhileLet(_, _, _, Some(ident)) | ExprKind::ForLoop(_, _, _, Some(ident)) |
-            ExprKind::Break(Some(ident)) | ExprKind::Continue(Some(ident)) => {
+            ExprKind::While(_, _, Some(ident)) |
+            ExprKind::Loop(_, Some(ident)) |
+            ExprKind::WhileLet(_, _, _, Some(ident)) |
+            ExprKind::ForLoop(_, _, _, Some(ident)) |
+            ExprKind::Break(Some(ident)) |
+            ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span, expr.id);
             }
             _ => {}
@@ -97,10 +102,13 @@ impl<'a> Visitor for AstValidator<'a> {
         match ty.node {
             TyKind::BareFn(ref bfty) => {
                 self.check_decl_no_pat(&bfty.decl, |span, _| {
-                    let mut err = struct_span_err!(self.session, span, E0561,
-                                            "patterns aren't allowed in function pointer types");
-                    err.span_note(span, "this is a recent error, see \
-                                         issue #35203 for more details");
+                    let mut err = struct_span_err!(self.session,
+                                                   span,
+                                                   E0561,
+                                                   "patterns aren't allowed in function pointer \
+                                                    types");
+                    err.span_note(span,
+                                  "this is a recent error, see issue #35203 for more details");
                     err.emit();
                 });
             }
@@ -114,10 +122,10 @@ impl<'a> Visitor for AstValidator<'a> {
         if path.global && path.segments.len() > 0 {
             let ident = path.segments[0].identifier;
             if token::Ident(ident).is_path_segment_keyword() {
-                self.session.add_lint(
-                    lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH, id, path.span,
-                    format!("global paths cannot start with `{}`", ident)
-                );
+                self.session.add_lint(lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH,
+                                      id,
+                                      path.span,
+                                      format!("global paths cannot start with `{}`", ident));
             }
         }
 
@@ -129,8 +137,8 @@ impl<'a> Visitor for AstValidator<'a> {
             ItemKind::Use(ref view_path) => {
                 let path = view_path.node.path();
                 if !path.segments.iter().all(|segment| segment.parameters.is_empty()) {
-                    self.err_handler().span_err(path.span, "type or lifetime parameters \
-                                                            in import path");
+                    self.err_handler()
+                        .span_err(path.span, "type or lifetime parameters in import path");
                 }
             }
             ItemKind::Impl(_, _, _, Some(..), _, ref impl_items) => {
@@ -140,15 +148,18 @@ impl<'a> Visitor for AstValidator<'a> {
                 }
             }
             ItemKind::Impl(_, _, _, None, _, _) => {
-                self.invalid_visibility(&item.vis, item.span, Some("place qualifiers on individual \
-                                                                    impl items instead"));
+                self.invalid_visibility(&item.vis,
+                                        item.span,
+                                        Some("place qualifiers on individual impl items instead"));
             }
             ItemKind::DefaultImpl(..) => {
                 self.invalid_visibility(&item.vis, item.span, None);
             }
             ItemKind::ForeignMod(..) => {
-                self.invalid_visibility(&item.vis, item.span, Some("place qualifiers on individual \
-                                                                    foreign items instead"));
+                self.invalid_visibility(&item.vis,
+                                        item.span,
+                                        Some("place qualifiers on individual foreign items \
+                                              instead"));
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
@@ -167,11 +178,14 @@ impl<'a> Visitor for AstValidator<'a> {
         match fi.node {
             ForeignItemKind::Fn(ref decl, _) => {
                 self.check_decl_no_pat(decl, |span, is_recent| {
-                    let mut err = struct_span_err!(self.session, span, E0130,
-                                        "patterns aren't allowed in foreign function declarations");
+                    let mut err = struct_span_err!(self.session,
+                                                   span,
+                                                   E0130,
+                                                   "patterns aren't allowed in foreign function \
+                                                    declarations");
                     if is_recent {
-                        err.span_note(span, "this is a recent error, see \
-                                             issue #35203 for more details");
+                        err.span_note(span,
+                                      "this is a recent error, see issue #35203 for more details");
                     }
                     err.emit();
                 });
@@ -182,16 +196,21 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_foreign_item(self, fi)
     }
 
-    fn visit_variant_data(&mut self, vdata: &VariantData, _: Ident,
-                          _: &Generics, _: NodeId, span: Span) {
+    fn visit_variant_data(&mut self,
+                          vdata: &VariantData,
+                          _: Ident,
+                          _: &Generics,
+                          _: NodeId,
+                          span: Span) {
         if vdata.fields().is_empty() {
             if vdata.is_tuple() {
-                self.err_handler().struct_span_err(span, "empty tuple structs and enum variants \
-                                                          are not allowed, use unit structs and \
-                                                          enum variants instead")
-                                         .span_help(span, "remove trailing `()` to make a unit \
-                                                           struct or unit enum variant")
-                                         .emit();
+                self.err_handler()
+                    .struct_span_err(span,
+                                     "empty tuple structs and enum variants are not allowed, use \
+                                      unit structs and enum variants instead")
+                    .span_help(span,
+                               "remove trailing `()` to make a unit struct or unit enum variant")
+                    .emit();
             }
         }
 
@@ -200,10 +219,10 @@ impl<'a> Visitor for AstValidator<'a> {
 
     fn visit_vis(&mut self, vis: &Visibility) {
         match *vis {
-            Visibility::Restricted{ref path, ..} => {
+            Visibility::Restricted { ref path, .. } => {
                 if !path.segments.iter().all(|segment| segment.parameters.is_empty()) {
-                    self.err_handler().span_err(path.span, "type or lifetime parameters \
-                                                            in visibility path");
+                    self.err_handler()
+                        .span_err(path.span, "type or lifetime parameters in visibility path");
                 }
             }
             _ => {}

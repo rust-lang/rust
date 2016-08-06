@@ -19,19 +19,24 @@ use syntax_pos::Span;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Context {
-    Normal, Loop, Closure
+    Normal,
+    Loop,
+    Closure,
 }
 
 #[derive(Copy, Clone)]
 struct CheckLoopVisitor<'a> {
     sess: &'a Session,
-    cx: Context
+    cx: Context,
 }
 
 pub fn check_crate(sess: &Session, map: &Map) {
     let _task = map.dep_graph.in_task(DepNode::CheckLoops);
     let krate = map.krate();
-    krate.visit_all_items(&mut CheckLoopVisitor { sess: sess, cx: Normal });
+    krate.visit_all_items(&mut CheckLoopVisitor {
+        sess: sess,
+        cx: Normal,
+    });
 }
 
 impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
@@ -53,14 +58,14 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
             }
             hir::ExprBreak(_) => self.require_loop("break", e.span),
             hir::ExprAgain(_) => self.require_loop("continue", e.span),
-            _ => intravisit::walk_expr(self, e)
+            _ => intravisit::walk_expr(self, e),
         }
     }
 }
 
 impl<'a> CheckLoopVisitor<'a> {
-    fn with_context<F>(&mut self, cx: Context, f: F) where
-        F: FnOnce(&mut CheckLoopVisitor<'a>),
+    fn with_context<F>(&mut self, cx: Context, f: F)
+        where F: FnOnce(&mut CheckLoopVisitor<'a>)
     {
         let old_cx = self.cx;
         self.cx = cx;
@@ -72,12 +77,10 @@ impl<'a> CheckLoopVisitor<'a> {
         match self.cx {
             Loop => {}
             Closure => {
-                span_err!(self.sess, span, E0267,
-                                   "`{}` inside of a closure", name);
+                span_err!(self.sess, span, E0267, "`{}` inside of a closure", name);
             }
             Normal => {
-                span_err!(self.sess, span, E0268,
-                                   "`{}` outside of loop", name);
+                span_err!(self.sess, span, E0268, "`{}` outside of loop", name);
             }
         }
     }
