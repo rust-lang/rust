@@ -1763,25 +1763,28 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 // Create the anonymized type.
                 let def_id = tcx.map.local_def_id(ast_ty.id);
-                let substs = if let Some(anon_scope) = rscope.anon_type_scope() {
-                    anon_scope.fresh_substs(tcx)
+                if let Some(anon_scope) = rscope.anon_type_scope() {
+                    let substs = anon_scope.fresh_substs(tcx);
+                    let ty = tcx.mk_anon(tcx.map.local_def_id(ast_ty.id), substs);
+
+                    // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
+                    let bounds = compute_bounds(self, ty, bounds,
+                                                SizedByDefault::Yes,
+                                                Some(anon_scope),
+                                                ast_ty.span);
+                    let predicates = bounds.predicates(tcx, ty);
+                    let predicates = tcx.lift_to_global(&predicates).unwrap();
+                    tcx.predicates.borrow_mut().insert(def_id, ty::GenericPredicates {
+                        predicates: VecPerParamSpace::new(vec![], vec![], predicates)
+                    });
+
+                    ty
                 } else {
                     span_err!(tcx.sess, ast_ty.span, E0562,
                               "`impl Trait` not allowed outside of function \
                                and inherent method return types");
-                    tcx.mk_substs(Substs::empty())
-                };
-                let ty = tcx.mk_anon(tcx.map.local_def_id(ast_ty.id), substs);
-
-                // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
-                let bounds = compute_bounds(self, ty, bounds, SizedByDefault::Yes, ast_ty.span);
-                let predicates = tcx.lift_to_global(&bounds.predicates(tcx, ty)).unwrap();
-                let predicates = ty::GenericPredicates {
-                    predicates: VecPerParamSpace::new(vec![], vec![], predicates)
-                };
-                tcx.predicates.borrow_mut().insert(def_id, predicates);
-
-                ty
+                    tcx.types.err
+                }
             }
             hir::TyPath(ref maybe_qself, ref path) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);

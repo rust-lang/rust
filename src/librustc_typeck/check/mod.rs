@@ -96,7 +96,7 @@ use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, Visibility};
 use rustc::ty::{MethodCall, MethodCallee};
 use rustc::ty::adjustment;
-use rustc::ty::fold::TypeFoldable;
+use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::util::{Representability, IntTypeExt};
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
@@ -172,6 +172,12 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolutionHandler<'gcx, 'tcx>>>>,
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
+
+    // Anonymized types found in explicit return types and their
+    // associated fresh inference variable. Writeback resolves these
+    // variables to get the concrete type, which can be used to
+    // deanonymize TyAnon, after typeck is done with all functions.
+    anon_types: RefCell<DefIdMap<Ty<'tcx>>>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -408,6 +414,7 @@ impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
                 locals: RefCell::new(NodeMap()),
                 deferred_call_resolutions: RefCell::new(DefIdMap()),
                 deferred_cast_checks: RefCell::new(Vec::new()),
+                anon_types: RefCell::new(DefIdMap()),
             })
         })
     }
@@ -631,32 +638,29 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             body: &'gcx hir::Block)
                             -> FnCtxt<'a, 'gcx, 'tcx>
 {
-    let arg_tys = &fn_sig.inputs;
-    let ret_ty = fn_sig.output;
+    let mut fn_sig = fn_sig.clone();
 
-    debug!("check_fn(arg_tys={:?}, ret_ty={:?}, fn_id={})",
-           arg_tys,
-           ret_ty,
-           fn_id);
+    debug!("check_fn(sig={:?}, fn_id={})", fn_sig, fn_id);
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
-    let fcx = FnCtxt::new(inherited, ret_ty, body.id);
+    let mut fcx = FnCtxt::new(inherited, fn_sig.output, body.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(unsafety, unsafety_id);
 
-    if let ty::FnConverging(ret_ty) = ret_ty {
-        fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
-    }
-
-    debug!("fn-sig-map: fn_id={} fn_sig={:?}", fn_id, fn_sig);
-
-    inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig.clone());
+    fn_sig.output = match fcx.ret_ty {
+        ty::FnConverging(orig_ret_ty) => {
+            fcx.require_type_is_sized(orig_ret_ty, decl.output.span(), traits::ReturnType);
+            ty::FnConverging(fcx.instantiate_anon_types(&orig_ret_ty))
+        }
+        ty::FnDiverging => ty::FnDiverging
+    };
+    fcx.ret_ty = fn_sig.output;
 
     {
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
 
         // Add formal parameters.
-        for (arg_ty, input) in arg_tys.iter().zip(&decl.inputs) {
+        for (arg_ty, input) in fn_sig.inputs.iter().zip(&decl.inputs) {
             // The type of the argument must be well-formed.
             //
             // NB -- this is now checked in wfcheck, but that
@@ -672,20 +676,19 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             });
 
             // Check the pattern.
-            fcx.check_pat(&input.pat, *arg_ty);
+            fcx.check_pat(&input.pat, arg_ty);
+            fcx.write_ty(input.id, arg_ty);
         }
 
         visit.visit_block(body);
     }
 
-    fcx.check_block_with_expected(body, match ret_ty {
+    inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
+
+    fcx.check_block_with_expected(body, match fcx.ret_ty {
         ty::FnConverging(result_type) => ExpectHasType(result_type),
         ty::FnDiverging => NoExpectation
     });
-
-    for (input, arg) in decl.inputs.iter().zip(arg_tys) {
-        fcx.write_ty(input.id, arg);
-    }
 
     fcx
 }
@@ -1623,6 +1626,41 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Replace all anonymized types with fresh inference variables
+    /// and record them for writeback.
+    fn instantiate_anon_types<T: TypeFoldable<'tcx>>(&self, value: &T) -> T {
+        value.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
+            if let ty::TyAnon(def_id, substs) = ty.sty {
+                // Use the same type variable if the exact same TyAnon appears more
+                // than once in the return type (e.g. if it's pased to a type alias).
+                if let Some(ty_var) = self.anon_types.borrow().get(&def_id) {
+                    return ty_var;
+                }
+                let ty_var = self.next_ty_var();
+                self.anon_types.borrow_mut().insert(def_id, ty_var);
+
+                let item_predicates = self.tcx.lookup_predicates(def_id);
+                let bounds = item_predicates.instantiate(self.tcx, substs);
+
+                let span = self.tcx.map.def_id_span(def_id, codemap::DUMMY_SP);
+                for predicate in bounds.predicates {
+                    // Change the predicate to refer to the type variable,
+                    // which will be the concrete type, instead of the TyAnon.
+                    // This also instantiates nested `impl Trait`.
+                    let predicate = self.instantiate_anon_types(&predicate);
+
+                    // Require that the predicate holds for the concrete type.
+                    let cause = traits::ObligationCause::new(span, self.body_id,
+                                                             traits::ReturnType);
+                    self.register_predicate(traits::Obligation::new(cause, predicate));
+                }
+
+                ty_var
+            } else {
+                ty
+            }
+        }})
+    }
 
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
         where T : TypeFoldable<'tcx>

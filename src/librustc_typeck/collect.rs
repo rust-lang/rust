@@ -1194,10 +1194,11 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
         let self_param_ty = tcx.mk_self_type();
         let superbounds1 = compute_bounds(&ccx.icx(scope),
-                                    self_param_ty,
-                                    bounds,
-                                    SizedByDefault::No,
-                                    item.span);
+                                          self_param_ty,
+                                          bounds,
+                                          SizedByDefault::No,
+                                          None,
+                                          item.span);
 
         let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
@@ -1407,6 +1408,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
                                         assoc_ty,
                                         bounds,
                                         SizedByDefault::Yes,
+                                        None,
                                         trait_item.span);
 
             bounds.predicates(ccx.tcx, assoc_ty).into_iter()
@@ -1780,6 +1782,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     param_ty,
                                     &param.bounds,
                                     SizedByDefault::Yes,
+                                    None,
                                     param.span);
         let predicates = bounds.predicates(ccx.tcx, param_ty);
         result.predicates.extend(space, predicates.into_iter());
@@ -2052,25 +2055,43 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         param_ty: ty::Ty<'tcx>,
                                         ast_bounds: &[hir::TyParamBound],
                                         sized_by_default: SizedByDefault,
+                                        anon_scope: Option<AnonTypeScope>,
                                         span: Span)
                                         -> Bounds<'tcx>
 {
-    let mut bounds =
-        conv_param_bounds(astconv,
-                          span,
-                          param_ty,
-                          ast_bounds);
+    let tcx = astconv.tcx();
+    let PartitionedBounds {
+        mut builtin_bounds,
+        trait_bounds,
+        region_bounds
+    } = partition_bounds(tcx, span, &ast_bounds);
 
     if let SizedByDefault::Yes = sized_by_default {
-        add_unsized_bound(astconv,
-                          &mut bounds.builtin_bounds,
-                          ast_bounds,
-                          span);
+        add_unsized_bound(astconv, &mut builtin_bounds, ast_bounds, span);
     }
 
-    bounds.trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
+    let mut projection_bounds = vec![];
 
-    bounds
+    let rscope = MaybeWithAnonTypes::new(ExplicitRscope, anon_scope);
+    let mut trait_bounds: Vec<_> = trait_bounds.iter().map(|&bound| {
+        astconv.instantiate_poly_trait_ref(&rscope,
+                                           bound,
+                                           Some(param_ty),
+                                           &mut projection_bounds)
+    }).collect();
+
+    let region_bounds = region_bounds.into_iter().map(|r| {
+        ast_region_to_region(tcx, r)
+    }).collect();
+
+    trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
+
+    Bounds {
+        region_bounds: region_bounds,
+        builtin_bounds: builtin_bounds,
+        trait_bounds: trait_bounds,
+        projection_bounds: projection_bounds,
+    }
 }
 
 /// Converts a specific TyParamBound from the AST into a set of
@@ -2114,42 +2135,6 @@ fn conv_poly_trait_ref<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         trait_ref,
                                         Some(param_ty),
                                         projections)
-}
-
-fn conv_param_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                       span: Span,
-                                       param_ty: ty::Ty<'tcx>,
-                                       ast_bounds: &[hir::TyParamBound])
-                                       -> Bounds<'tcx>
-{
-    let tcx = astconv.tcx();
-    let PartitionedBounds {
-        builtin_bounds,
-        trait_bounds,
-        region_bounds
-    } = partition_bounds(tcx, span, &ast_bounds);
-
-    let mut projection_bounds = Vec::new();
-
-    let trait_bounds: Vec<ty::PolyTraitRef> =
-        trait_bounds.iter()
-                    .map(|bound| conv_poly_trait_ref(astconv,
-                                                     param_ty,
-                                                     *bound,
-                                                     &mut projection_bounds))
-                    .collect();
-
-    let region_bounds: Vec<ty::Region> =
-        region_bounds.into_iter()
-                     .map(|r| ast_region_to_region(tcx, r))
-                     .collect();
-
-    Bounds {
-        region_bounds: region_bounds,
-        builtin_bounds: builtin_bounds,
-        trait_bounds: trait_bounds,
-        projection_bounds: projection_bounds,
-    }
 }
 
 fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
