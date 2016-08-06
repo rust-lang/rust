@@ -3406,8 +3406,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             // FIXME(#32730) propagate obligations
                             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()));
                         if eq_result.is_err() {
-                            span_err!(tcx.sess, expr.span, E0069,
-                                      "`return;` in a function whose return type is not `()`");
+                            struct_span_err!(tcx.sess, expr.span, E0069,
+                                     "`return;` in a function whose return type is not `()`")
+                                .span_label(expr.span, &format!("return type is not ()"))
+                                .emit();
                         }
                     }
                 }
