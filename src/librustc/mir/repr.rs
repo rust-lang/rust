@@ -21,6 +21,8 @@ use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use util::ppaux;
 use rustc_back::slice;
 use hir::InlineAsm;
+use hir::BinOp_ as HirBinOp;
+use hir::UnOp as HirUnOp;
 use std::ascii;
 use std::borrow::{Cow};
 use std::cell::Ref;
@@ -1020,6 +1022,27 @@ impl BinOp {
             _ => false
         }
     }
+
+    pub fn to_hir_binop(self) -> HirBinOp {
+        match self {
+            BinOp::Add => HirBinOp::BiAdd,
+            BinOp::Sub => HirBinOp::BiSub,
+            BinOp::Mul => HirBinOp::BiMul,
+            BinOp::Div => HirBinOp::BiDiv,
+            BinOp::Rem => HirBinOp::BiRem,
+            BinOp::BitXor => HirBinOp::BiBitXor,
+            BinOp::BitAnd => HirBinOp::BiBitAnd,
+            BinOp::BitOr => HirBinOp::BiBitOr,
+            BinOp::Shl => HirBinOp::BiShl,
+            BinOp::Shr => HirBinOp::BiShr,
+            BinOp::Eq => HirBinOp::BiEq,
+            BinOp::Ne => HirBinOp::BiNe,
+            BinOp::Lt => HirBinOp::BiLt,
+            BinOp::Gt => HirBinOp::BiGt,
+            BinOp::Le => HirBinOp::BiLe,
+            BinOp::Ge => HirBinOp::BiGe
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -1028,6 +1051,15 @@ pub enum UnOp {
     Not,
     /// The `-` operator for negation
     Neg,
+}
+
+impl UnOp {
+    pub fn to_hir_unop(self) -> HirUnOp {
+        match self {
+            UnOp::Not => HirUnOp::UnNot,
+            UnOp::Neg => HirUnOp::UnNeg,
+        }
+    }
 }
 
 impl<'tcx> Debug for Rvalue<'tcx> {

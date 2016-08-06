@@ -12,6 +12,7 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::mir::repr as mir;
+use rustc::mir::tcx::binop_ty;
 
 use asm;
 use base;

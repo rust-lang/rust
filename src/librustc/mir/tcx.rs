@@ -113,16 +113,26 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
     }
 }
 
-impl<'tcx> Lvalue<'tcx> {
-    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx> {
-        match self {
-            &Lvalue::Var(index) =>
-                LvalueTy::Ty { ty: mir.var_decls[index].ty },
-            &Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: mir.temp_decls[index].ty },
-            &Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: mir.arg_decls[index].ty },
-            &Lvalue::Static(def_id) =>
+impl<'a, 'gcx, 'tcx> Mir<'tcx> {
+    pub fn operand_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                      operand: &Operand<'tcx>)
+                      -> Ty<'tcx>
+    {
+        match *operand {
+            Operand::Consume(ref l) => self.lvalue_ty(tcx, l).to_ty(tcx),
+            Operand::Constant(ref c) => c.ty,
+        }
+    }
+
+    pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, lvalue: &Lvalue<'tcx>) -> LvalueTy<'tcx> {
+        match *lvalue {
+            Lvalue::Var(index) =>
+                LvalueTy::Ty { ty: self.var_decls[index].ty },
+            Lvalue::Temp(index) =>
+                LvalueTy::Ty { ty: self.temp_decls[index].ty },
+            Lvalue::Arg(index) =>
+                LvalueTy::Ty { ty: self.arg_decls[index].ty },
+            Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
             &Lvalue::ReturnPointer =>
                 LvalueTy::Ty { ty: mir.return_ty },
@@ -153,17 +163,17 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                 ))
             }
-            &Rvalue::Len(..) => Some(tcx.types.usize),
-            &Rvalue::Cast(_, _, ty) => Some(ty),
-            &Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
-                let lhs_ty = lhs.ty(mir, tcx);
-                let rhs_ty = rhs.ty(mir, tcx);
-                Some(op.ty(tcx, lhs_ty, rhs_ty))
+            Rvalue::Len(..) => Some(tcx.types.usize),
+            Rvalue::Cast(_, _, ty) => Some(ty),
+            Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = self.operand_ty(tcx, lhs);
+                let rhs_ty = self.operand_ty(tcx, rhs);
+                Some(binop_ty(tcx, op, lhs_ty, rhs_ty))
             }
-            &Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
-                let lhs_ty = lhs.ty(mir, tcx);
-                let rhs_ty = rhs.ty(mir, tcx);
-                let ty = op.ty(tcx, lhs_ty, rhs_ty);
+            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = self.operand_ty(tcx, lhs);
+                let rhs_ty = self.operand_ty(tcx, rhs);
+                let ty = binop_ty(tcx, op, lhs_ty, rhs_ty);
                 let ty = tcx.mk_tup(vec![ty, tcx.types.bool]);
                 Some(ty)
             }
@@ -244,29 +254,6 @@ impl BorrowKind {
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
             BorrowKind::Unique => hir::MutMutable,
-        }
-    }
-}
-
-impl BinOp {
-    pub fn to_hir_binop(self) -> hir::BinOp_ {
-        match self {
-            BinOp::Add => hir::BinOp_::BiAdd,
-            BinOp::Sub => hir::BinOp_::BiSub,
-            BinOp::Mul => hir::BinOp_::BiMul,
-            BinOp::Div => hir::BinOp_::BiDiv,
-            BinOp::Rem => hir::BinOp_::BiRem,
-            BinOp::BitXor => hir::BinOp_::BiBitXor,
-            BinOp::BitAnd => hir::BinOp_::BiBitAnd,
-            BinOp::BitOr => hir::BinOp_::BiBitOr,
-            BinOp::Shl => hir::BinOp_::BiShl,
-            BinOp::Shr => hir::BinOp_::BiShr,
-            BinOp::Eq => hir::BinOp_::BiEq,
-            BinOp::Ne => hir::BinOp_::BiNe,
-            BinOp::Lt => hir::BinOp_::BiLt,
-            BinOp::Gt => hir::BinOp_::BiGt,
-            BinOp::Le => hir::BinOp_::BiLe,
-            BinOp::Ge => hir::BinOp_::BiGe
         }
     }
 }
