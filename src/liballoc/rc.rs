@@ -182,6 +182,12 @@ struct RcBox<T: ?Sized> {
 /// A reference-counted pointer type over an immutable value.
 ///
 /// See the [module level documentation](./index.html) for more details.
+///
+/// Note: the inherent methods defined on `Rc<T>` are all associated functions,
+/// which means that you have to call them as e.g. `Rc::get_mut(&value)` instead
+/// of `value.get_mut()`.  This is so that there are no conflicts with methods
+/// on the inner type `T`, which are what you want to call in the majority of
+/// cases.
 #[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
