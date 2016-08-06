@@ -9,6 +9,8 @@
 // except according to those terms.
 
 //! Operations and constants for 32-bits floats (`f32` type)
+//!
+//! *[See also the `f32` primitive type](../../std/f32.t.html).*
 
 // FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
 #![allow(overflowing_literals)]

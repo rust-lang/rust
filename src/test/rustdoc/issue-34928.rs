@@ -12,5 +12,5 @@
 
 pub trait Bar {}
 
-// @has foo/struct.Foo.html '//pre' 'pub struct Foo<T>(pub T) where T: Bar;'
+// @has foo/Foo.t.html '//pre' 'pub struct Foo<T>(pub T) where T: Bar;'
 pub struct Foo<T>(pub T) where T: Bar;

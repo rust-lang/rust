@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @!has trait_self_link/trait.Foo.html //a/@href ../trait_self_link/trait.Foo.html
+// @!has trait_self_link/Foo.t.html //a/@href ../trait_self_link/Foo.t.html
 pub trait Foo {}
 
 pub struct Bar;

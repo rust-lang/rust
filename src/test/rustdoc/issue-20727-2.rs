@@ -13,7 +13,7 @@
 
 extern crate issue_20727;
 
-// @has issue_20727_2/trait.Add.html
+// @has issue_20727_2/Add.t.html
 pub trait Add<RHS = Self> {
     // @has - '//*[@class="rust trait"]' 'trait Add<RHS = Self> {'
     // @has - '//*[@class="rust trait"]' 'type Output;'
@@ -23,7 +23,7 @@ pub trait Add<RHS = Self> {
     fn add(self, rhs: RHS) -> Self::Output;
 }
 
-// @has issue_20727_2/reexport/trait.Add.html
+// @has issue_20727_2/reexport/Add.t.html
 pub mod reexport {
     // @has - '//*[@class="rust trait"]' 'trait Add<RHS = Self> {'
     // @has - '//*[@class="rust trait"]' 'type Output;'

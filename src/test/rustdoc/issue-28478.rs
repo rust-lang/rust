@@ -11,32 +11,32 @@
 #![feature(associated_type_defaults)]
 #![feature(associated_consts)]
 
-// @has issue_28478/trait.Bar.html
+// @has issue_28478/Bar.t.html
 pub trait Bar {
-    // @has - '//*[@id="associatedtype.Bar"]' 'type Bar = ()'
-    // @has - '//*[@href="#associatedtype.Bar"]' 'Bar'
+    // @has - '//*[@id="Bar.t"]' 'type Bar = ()'
+    // @has - '//*[@href="#Bar.t"]' 'Bar'
     type Bar = ();
-    // @has - '//*[@id="associatedconstant.Baz"]' 'const Baz: usize = 7'
-    // @has - '//*[@href="#associatedconstant.Baz"]' 'Baz'
+    // @has - '//*[@id="Baz.v"]' 'const Baz: usize = 7'
+    // @has - '//*[@href="#Baz.v"]' 'Baz'
     const Baz: usize = 7;
-    // @has - '//*[@id="tymethod.bar"]' 'fn bar'
+    // @has - '//*[@id="bar.v"]' 'fn bar'
     fn bar();
-    // @has - '//*[@id="method.baz"]' 'fn baz'
+    // @has - '//*[@id="baz.v"]' 'fn baz'
     fn baz() { }
 }
 
-// @has issue_28478/struct.Foo.html
+// @has issue_28478/Foo.t.html
 pub struct Foo;
 
 impl Foo {
-    // @has - '//*[@href="#method.foo"]' 'foo'
+    // @has - '//*[@href="#foo.v"]' 'foo'
     pub fn foo() {}
 }
 
 impl Bar for Foo {
-    // @has - '//*[@href="../issue_28478/trait.Bar.html#associatedtype.Bar"]' 'Bar'
-    // @has - '//*[@href="../issue_28478/trait.Bar.html#associatedconstant.Baz"]' 'Baz'
-    // @has - '//*[@href="../issue_28478/trait.Bar.html#tymethod.bar"]' 'bar'
+    // @has - '//*[@href="../issue_28478/Bar.t.html#Bar.t"]' 'Bar'
+    // @has - '//*[@href="../issue_28478/Bar.t.html#Baz.v"]' 'Baz'
+    // @has - '//*[@href="../issue_28478/Bar.t.html#bar.v"]' 'bar'
     fn bar() {}
-    // @has - '//*[@href="../issue_28478/trait.Bar.html#method.baz"]' 'baz'
+    // @has - '//*[@href="../issue_28478/Bar.t.html#baz.v"]' 'baz'
 }

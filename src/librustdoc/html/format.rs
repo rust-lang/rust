@@ -326,9 +326,9 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
             url.push_str("/index.html");
         }
         _ => {
-            url.push_str(shortty.to_static_str());
-            url.push_str(".");
             url.push_str(fqp.last().unwrap());
+            url.push_str(".");
+            url.push_str(shortty.name_space().to_static_str());
             url.push_str(".html");
         }
     }
@@ -382,7 +382,7 @@ fn primitive_link(f: &mut fmt::Formatter,
         Some(&LOCAL_CRATE) => {
             let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
             let len = if len == 0 {0} else {len - 1};
-            write!(f, "<a class='primitive' href='{}primitive.{}.html'>",
+            write!(f, "<a class='primitive' href='{}{}.t.html'>",
                    repeat("../").take(len).collect::<String>(),
                    prim.to_url_str())?;
             needs_termination = true;
@@ -397,7 +397,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                 (_, render::Unknown) => None,
             };
             if let Some((cname, root)) = loc {
-                write!(f, "<a class='primitive' href='{}{}/primitive.{}.html'>",
+                write!(f, "<a class='primitive' href='{}{}/{}.t.html'>",
                        root,
                        cname,
                        prim.to_url_str())?;
@@ -439,7 +439,7 @@ impl<'a> fmt::Display for HRef<'a> {
         match href(self.did) {
             Some((url, shortty, fqp)) => {
                 write!(f, "<a class='{}' href='{}' title='{}'>{}</a>",
-                       shortty, url, fqp.join("::"), self.text)
+                       shortty.css_class(), url, fqp.join("::"), self.text)
             }
             _ => write!(f, "{}", self.text),
         }

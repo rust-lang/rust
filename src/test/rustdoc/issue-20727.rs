@@ -13,7 +13,7 @@
 
 extern crate issue_20727;
 
-// @has issue_20727/trait.Deref.html
+// @has issue_20727/Deref.t.html
 pub trait Deref {
     // @has - '//*[@class="rust trait"]' 'trait Deref {'
     // @has - '//*[@class="rust trait"]' 'type Target: ?Sized;'
@@ -24,7 +24,7 @@ pub trait Deref {
     fn deref<'a>(&'a self) -> &'a Self::Target;
 }
 
-// @has issue_20727/reexport/trait.Deref.html
+// @has issue_20727/reexport/Deref.t.html
 pub mod reexport {
     // @has - '//*[@class="rust trait"]' 'trait Deref {'
     // @has - '//*[@class="rust trait"]' 'type Target: ?Sized;'

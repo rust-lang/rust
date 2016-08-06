@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has manual_impl/trait.T.html
+// @has manual_impl/T.t.html
 // @has  - '//*[@class="docblock"]' 'Docs associated with the trait definition.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the trait b_method definition.'
@@ -30,7 +30,7 @@ pub trait T {
     }
 }
 
-// @has manual_impl/struct.S1.html '//*[@class="trait"]' 'T'
+// @has manual_impl/S1.t.html '//*[@class="trait"]' 'T'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S1 trait implementation.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S1 trait a_method implementation.'
 // @!has - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'
@@ -49,7 +49,7 @@ impl T for S1 {
     }
 }
 
-// @has manual_impl/struct.S2.html '//*[@class="trait"]' 'T'
+// @has manual_impl/S2.t.html '//*[@class="trait"]' 'T'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S2 trait implementation.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S2 trait a_method implementation.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S2 trait c_method implementation.'
@@ -72,7 +72,7 @@ impl T for S2 {
     }
 }
 
-// @has manual_impl/struct.S3.html '//*[@class="trait"]' 'T'
+// @has manual_impl/S3.t.html '//*[@class="trait"]' 'T'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S3 trait implementation.'
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S3 trait b_method implementation.'
 // @has - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'

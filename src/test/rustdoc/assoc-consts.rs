@@ -11,16 +11,16 @@
 #![feature(associated_consts)]
 
 pub trait Foo {
-    // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
+    // @has assoc_consts/Foo.t.html '//*[@class="rust trait"]' \
     //      'const FOO: usize;'
-    // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO'
+    // @has - '//*[@id="FOO.v"]' 'const FOO'
     const FOO: usize;
 }
 
 pub struct Bar;
 
 impl Bar {
-    // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.BAR"]' \
+    // @has assoc_consts/Bar.t.html '//*[@id="BAR.v"]' \
     //      'const BAR: usize = 3'
     pub const BAR: usize = 3;
 }

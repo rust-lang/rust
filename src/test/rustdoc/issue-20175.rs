@@ -14,7 +14,7 @@ pub trait Foo {
 
 pub struct Bar;
 
-// @has issue_20175/struct.Bar.html \
-//      '//*[@id="method.foo"]' \
+// @has issue_20175/Bar.t.html \
+//      '//*[@id="foo.v"]' \
 //      'fn foo'
 impl<'a> Foo for &'a Bar {}

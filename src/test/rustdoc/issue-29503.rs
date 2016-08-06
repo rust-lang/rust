@@ -10,7 +10,7 @@
 
 use std::fmt;
 
-// @has issue_29503/trait.MyTrait.html
+// @has issue_29503/MyTrait.t.html
 pub trait MyTrait {
     fn my_string(&self) -> String;
 }

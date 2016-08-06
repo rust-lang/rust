@@ -10,7 +10,7 @@
 
 #![crate_name = "foo"]
 
-// @has foo/struct.Foo.html
+// @has foo/Foo.t.html
 pub struct Foo;
 
 impl Foo {
@@ -26,7 +26,7 @@ impl Foo {
     pub extern "system" fn system0() {}
 }
 
-// @has foo/trait.Bar.html
+// @has foo/Bar.t.html
 pub trait Bar {}
 
 // @has - '//code' 'impl Bar for fn()'

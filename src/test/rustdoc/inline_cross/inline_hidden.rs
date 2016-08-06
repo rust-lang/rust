@@ -17,6 +17,6 @@ extern crate rustdoc_hidden;
 #[doc(no_inline)]
 pub use rustdoc_hidden::Foo;
 
-// @has inline_hidden/fn.foo.html
+// @has inline_hidden/foo.v.html
 // @!has - '//a/@title' 'Foo'
 pub fn foo(_: Foo) {}

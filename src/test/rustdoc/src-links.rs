@@ -24,23 +24,23 @@ pub mod bar {
     // @has foo/bar/baz/index.html '//a/@href' '../../../src/foo/src-links.rs.html'
     pub mod baz {
         /// Dox
-        // @has foo/bar/baz/fn.baz.html '//a/@href' '../../../src/foo/src-links.rs.html'
+        // @has foo/bar/baz/baz.v.html '//a/@href' '../../../src/foo/src-links.rs.html'
         pub fn baz() { }
     }
 
     /// Dox
-    // @has foo/bar/trait.Foobar.html '//a/@href' '../../src/foo/src-links.rs.html'
+    // @has foo/bar/Foobar.t.html '//a/@href' '../../src/foo/src-links.rs.html'
     pub trait Foobar { fn dummy(&self) { } }
 
-    // @has foo/bar/struct.Foo.html '//a/@href' '../../src/foo/src-links.rs.html'
+    // @has foo/bar/Foo.t.html '//a/@href' '../../src/foo/src-links.rs.html'
     pub struct Foo { x: i32, y: u32 }
 
-    // @has foo/bar/fn.prawns.html '//a/@href' '../../src/foo/src-links.rs.html'
+    // @has foo/bar/prawns.v.html '//a/@href' '../../src/foo/src-links.rs.html'
     pub fn prawns((a, b): (i32, u32), Foo { x, y }: Foo) { }
 }
 
 /// Dox
-// @has foo/fn.modfn.html '//a/@href' '../src/foo/src-links.rs.html'
+// @has foo/modfn.v.html '//a/@href' '../src/foo/src-links.rs.html'
 pub fn modfn() { }
 
 // same hierarchy as above, but just for the submodule
@@ -49,8 +49,8 @@ pub fn modfn() { }
 // @has foo/qux/index.html '//a/@href' '../../src/foo/src-links/mod.rs.html'
 // @has foo/qux/bar/index.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
 // @has foo/qux/bar/baz/index.html '//a/@href' '../../../../src/foo/src-links/mod.rs.html'
-// @has foo/qux/bar/baz/fn.baz.html '//a/@href' '../../../../src/foo/src-links/mod.rs.html'
-// @has foo/qux/bar/trait.Foobar.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
-// @has foo/qux/bar/struct.Foo.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
-// @has foo/qux/bar/fn.prawns.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
-// @has foo/qux/fn.modfn.html '//a/@href' '../../src/foo/src-links/mod.rs.html'
+// @has foo/qux/bar/baz/baz.v.html '//a/@href' '../../../../src/foo/src-links/mod.rs.html'
+// @has foo/qux/bar/Foobar.t.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
+// @has foo/qux/bar/Foo.t.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
+// @has foo/qux/bar/prawns.v.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
+// @has foo/qux/modfn.v.html '//a/@href' '../../src/foo/src-links/mod.rs.html'

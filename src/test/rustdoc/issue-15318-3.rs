@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has issue_15318_3/primitive.pointer.html
+// @has issue_15318_3/pointer.t.html
 
 /// dox
 #[doc(primitive = "pointer")]

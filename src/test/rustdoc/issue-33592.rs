@@ -16,8 +16,8 @@ pub struct Bar;
 
 pub struct Baz;
 
-// @has foo/trait.Foo.html '//code' 'impl Foo<i32> for Bar'
+// @has foo/Foo.t.html '//code' 'impl Foo<i32> for Bar'
 impl Foo<i32> for Bar {}
 
-// @has foo/trait.Foo.html '//code' 'impl<T> Foo<T> for Baz'
+// @has foo/Foo.t.html '//code' 'impl<T> Foo<T> for Baz'
 impl<T> Foo<T> for Baz {}

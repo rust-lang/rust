@@ -15,7 +15,7 @@
 
 extern crate issue_15318;
 
-// @has issue_15318/fn.bar.html \
-//      '//*[@href="http://example.com/issue_15318/primitive.pointer.html"]' \
+// @has issue_15318/bar.v.html \
+//      '//*[@href="http://example.com/issue_15318/pointer.t.html"]' \
 //      '*mut T'
 pub fn bar<T>(ptr: *mut T) {}

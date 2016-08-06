@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @!has issue_32343/struct.Foo.html
+// @!has issue_32343/Foo.t.html
 // @has issue_32343/index.html
 // @has - '//code' 'pub use foo::Foo'
 // @!has - '//code/a' 'Foo'
 #[doc(no_inline)]
 pub use foo::Foo;
 
-// @!has issue_32343/struct.Bar.html
+// @!has issue_32343/Bar.t.html
 // @has issue_32343/index.html
 // @has - '//code' 'pub use foo::Bar'
 // @has - '//code/a' 'Bar'
@@ -27,7 +27,7 @@ mod foo {
     pub struct Bar;
 }
 
-pub mod bar {
-    // @has issue_32343/bar/struct.Bar.html
+pub mod baz {
+    // @has issue_32343/baz/Bar.t.html
     pub use ::foo::Bar;
 }

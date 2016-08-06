@@ -10,6 +10,6 @@
 
 // compile-flags:--no-defaults --passes collapse-docs --passes unindent-comments
 
-// @has issue_15347/fn.foo.html
+// @has issue_15347/foo.v.html
 #[doc(hidden)]
 pub fn foo() {}

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 //! Operations and constants for 64-bits floats (`f64` type)
+//!
+//! *[See also the `f64` primitive type](../../std/f64.t.html).*
 
 // FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
 #![allow(overflowing_literals)]

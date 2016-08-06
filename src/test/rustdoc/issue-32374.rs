@@ -16,7 +16,7 @@
 // @has issue_32374/index.html '//*[@class="docblock short"]' \
 //      '[Deprecated] [Unstable]'
 
-// @has issue_32374/struct.T.html '//*[@class="stab deprecated"]' \
+// @has issue_32374/T.t.html '//*[@class="stab deprecated"]' \
 //      'Deprecated since 1.0.0: text'
 // @has - '<code>test</code>'
 // @has - '<a href="http://issue_url/32374">#32374</a>'
