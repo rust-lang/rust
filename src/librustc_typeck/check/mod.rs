@@ -3415,8 +3415,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(ref e) = *expr_opt {
                         self.check_expr(&e);
                     }
-                    span_err!(tcx.sess, expr.span, E0166,
-                        "`return` in a function declared as diverging");
+                    struct_span_err!(tcx.sess, expr.span, E0166,
+                        "`return` in a function declared as diverging")
+                        .span_label(expr.span, &format!("diverging function cannot return"))
+                        .emit();
                 }
             }
             self.write_ty(id, self.next_diverging_ty_var());
