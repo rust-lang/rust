@@ -17,5 +17,5 @@ struct Foo<'a, T:'a> {
 
 pub fn main() {
     let c: Foo<_, usize> = Foo { r: &5 };
-    //~^ ERROR wrong number of type arguments: expected 1, found 2
+    //~^ ERROR wrong number of generic type arguments: expected 1, found 2
 }
