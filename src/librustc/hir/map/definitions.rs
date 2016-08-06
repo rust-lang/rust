@@ -177,31 +177,31 @@ pub enum DefPathData {
     /// An impl
     Impl,
     /// Something in the type NS
-    TypeNs(ast::Name),
+    TypeNs(InternedString),
     /// Something in the value NS
-    ValueNs(ast::Name),
+    ValueNs(InternedString),
     /// A module declaration
-    Module(ast::Name),
+    Module(InternedString),
     /// A macro rule
-    MacroDef(ast::Name),
+    MacroDef(InternedString),
     /// A closure expression
     ClosureExpr,
 
     // Subportions of items
     /// A type parameter (generic parameter)
-    TypeParam(ast::Name),
+    TypeParam(InternedString),
     /// A lifetime definition
-    LifetimeDef(ast::Name),
+    LifetimeDef(InternedString),
     /// A variant of a enum
-    EnumVariant(ast::Name),
+    EnumVariant(InternedString),
     /// A struct field
-    Field(ast::Name),
+    Field(InternedString),
     /// Implicit ctor for a tuple-like struct
     StructCtor,
     /// Initializer for a const
     Initializer,
     /// Pattern binding
-    Binding(ast::Name),
+    Binding(InternedString),
 }
 
 impl Definitions {
@@ -315,16 +315,16 @@ impl DefPathData {
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) |
-            ValueNs(name) |
-            Module(name) |
-            MacroDef(name) |
-            TypeParam(name) |
-            LifetimeDef(name) |
-            EnumVariant(name) |
-            Binding(name) |
-            Field(name) => {
-                name.as_str()
+            TypeNs(ref name) |
+            ValueNs(ref name) |
+            Module(ref name) |
+            MacroDef(ref name) |
+            TypeParam(ref name) |
+            LifetimeDef(ref name) |
+            EnumVariant(ref name) |
+            Binding(ref name) |
+            Field(ref name) => {
+                name.clone()
             }
 
             Impl => {

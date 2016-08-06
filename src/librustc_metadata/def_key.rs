@@ -10,7 +10,7 @@
 
 use rustc::hir::def_id::DefIndex;
 use rustc::hir::map as hir_map;
-use syntax::ast::Name;
+use syntax::parse::token::InternedString;
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct DefKey {
@@ -75,7 +75,7 @@ fn simplify_def_path_data(data: hir_map::DefPathData) -> DefPathData {
     }
 }
 
-pub fn recover_def_key(key: DefKey, name: Option<Name>) -> hir_map::DefKey {
+pub fn recover_def_key(key: DefKey, name: Option<InternedString>) -> hir_map::DefKey {
     let data = hir_map::DisambiguatedDefPathData {
         data: recover_def_path_data(key.disambiguated_data.data, name),
         disambiguator: key.disambiguated_data.disambiguator,
@@ -86,7 +86,7 @@ pub fn recover_def_key(key: DefKey, name: Option<Name>) -> hir_map::DefKey {
     }
 }
 
-fn recover_def_path_data(data: DefPathData, name: Option<Name>) -> hir_map::DefPathData {
+fn recover_def_path_data(data: DefPathData, name: Option<InternedString>) -> hir_map::DefPathData {
     match data {
         DefPathData::CrateRoot => hir_map::DefPathData::CrateRoot,
         DefPathData::Misc => hir_map::DefPathData::Misc,
