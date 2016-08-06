@@ -942,8 +942,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                           but it borrows {}, \
                           which is owned by the current function",
                          cmt_path_or_string)
-            .span_note(capture_span,
+            .span_label(capture_span,
                        &format!("{} is borrowed here",
+                                cmt_path_or_string))
+            .span_label(err.span,
+                       &format!("may outlive borrowed value {}",
                                 cmt_path_or_string))
             .span_suggestion(err.span,
                              &format!("to force the closure to take ownership of {} \

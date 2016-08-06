@@ -12,13 +12,18 @@ const N: isize = 1;
 
 enum Foo {
     A = 1,
-    B = 1, //~ ERROR discriminant value `1isize` already exists
-    //~^^ NOTE conflicting
+    //~^ NOTE first use
+    //~| NOTE first use
+    //~| NOTE first use
+    B = 1, //~ ERROR discriminant value
+    //~^ NOTE enum already
     C = 0,
-    D, //~ ERROR discriminant value `1isize` already exists
-    //~^^^^^ NOTE conflicting
-    E = N, //~ ERROR discriminant value `1isize` already exists
-    //~^^^^^^^ NOTE conflicting
+    D, //~ ERROR discriminant value
+    //~^ NOTE enum already
+
+    E = N, //~ ERROR discriminant value
+    //~^ NOTE enum already
+
 }
 
 fn main() {}

@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> u8 {
-    return;
-    //~^ ERROR `return;` in a function whose return type is not `()`
-    //~| NOTE return type is not ()
-}
+extern crate collections;
+extern crate libc as collections; //~ ERROR E0259
 
-fn main() {
-}
+fn main() {}

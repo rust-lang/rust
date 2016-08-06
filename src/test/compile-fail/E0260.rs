@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> u8 {
-    return;
-    //~^ ERROR `return;` in a function whose return type is not `()`
-    //~| NOTE return type is not ()
+extern crate collections;
+
+mod collections { //~ ERROR E0260
+    pub trait MyTrait {
+        fn do_something();
+    }
 }
 
-fn main() {
-}
+fn main() {}

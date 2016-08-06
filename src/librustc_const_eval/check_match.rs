@@ -424,10 +424,15 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
                             format!("`{}` and {} more", head.join("`, `"), tail.len())
                         }
                     };
-                    span_err!(cx.tcx.sess, sp, E0004,
+
+                    let label_text = match pattern_strings.len(){
+                        1 => format!("pattern {} not covered", joined_patterns),
+                        _ => format!("patterns {} not covered", joined_patterns)
+                    };
+                    struct_span_err!(cx.tcx.sess, sp, E0004,
                         "non-exhaustive patterns: {} not covered",
                         joined_patterns
-                    );
+                    ).span_label(sp, &label_text).emit();
                 },
             }
         }
