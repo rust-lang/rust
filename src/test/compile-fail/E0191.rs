@@ -13,6 +13,7 @@ trait Trait {
 }
 
 type Foo = Trait; //~ ERROR E0191
+                  //~| NOTE missing associated type `Bar` value
 
 fn main() {
 }

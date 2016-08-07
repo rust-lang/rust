@@ -37,6 +37,7 @@ fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
     //~| ERROR the value of the associated type `Color` (from the trait `Vehicle`) must be specified
     //~| NOTE could derive from `Vehicle`
     //~| NOTE could derive from `Box`
+    //~| NOTE missing associated type `Color` value
 }
 
 fn paint<C:BoxCar>(c: C, d: C::Color) {

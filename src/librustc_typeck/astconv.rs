@@ -360,8 +360,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.convert_angle_bracketed_parameters(rscope, span, decl_generics, data)
             }
             hir::ParenthesizedParameters(..) => {
-                span_err!(tcx.sess, span, E0214,
-                          "parenthesized parameters may only be used with a trait");
+                struct_span_err!(tcx.sess, span, E0214,
+                          "parenthesized parameters may only be used with a trait")
+                    .span_label(span, &format!("only traits may use parentheses"))
+                    .emit();
+
                 let ty_param_defs = decl_generics.types.get_slice(TypeSpace);
                 (Substs::empty(),
                  ty_param_defs.iter().map(|_| tcx.types.err).collect(),
@@ -1201,10 +1204,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         for (trait_def_id, name) in associated_types {
-            span_err!(tcx.sess, span, E0191,
+            struct_span_err!(tcx.sess, span, E0191,
                 "the value of the associated type `{}` (from the trait `{}`) must be specified",
                         name,
-                        tcx.item_path_str(trait_def_id));
+                        tcx.item_path_str(trait_def_id))
+                        .span_label(span, &format!(
+                            "missing associated type `{}` value", name))
+                        .emit();
         }
 
         tcx.mk_trait(object.principal, object.bounds)
@@ -1584,9 +1590,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return self.tcx().types.err;
             }
             _ => {
-                span_err!(tcx.sess, span, E0248,
-                          "found value `{}` used as a type",
-                          tcx.item_path_str(def.def_id()));
+                struct_span_err!(tcx.sess, span, E0248,
+                           "found value `{}` used as a type",
+                            tcx.item_path_str(def.def_id()))
+                           .span_label(span, &format!("value used as a type"))
+                           .emit();
                 return self.tcx().types.err;
             }
         }
