@@ -79,7 +79,7 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
 use ast;
-use ast::{Name, Ident};
+use ast::Ident;
 use syntax_pos::{self, BytePos, mk_sp, Span};
 use codemap::Spanned;
 use errors::FatalError;
@@ -202,9 +202,9 @@ pub enum NamedMatch {
 }
 
 pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
-            -> ParseResult<HashMap<Name, Rc<NamedMatch>>> {
+            -> ParseResult<HashMap<Ident, Rc<NamedMatch>>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
-             ret_val: &mut HashMap<Name, Rc<NamedMatch>>, idx: &mut usize)
+             ret_val: &mut HashMap<Ident, Rc<NamedMatch>>, idx: &mut usize)
              -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
@@ -218,7 +218,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                 }
             }
             TokenTree::Token(sp, MatchNt(bind_name, _)) => {
-                match ret_val.entry(bind_name.name) {
+                match ret_val.entry(bind_name) {
                     Vacant(spot) => {
                         spot.insert(res[*idx].clone());
                         *idx += 1;
@@ -257,7 +257,7 @@ pub enum ParseResult<T> {
     Error(syntax_pos::Span, String)
 }
 
-pub type NamedParseResult = ParseResult<HashMap<Name, Rc<NamedMatch>>>;
+pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
 pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
 
 /// Perform a token equality check, ignoring syntax context (that is, an
