@@ -9,7 +9,9 @@
 // except according to those terms.
 
 struct Foo<T> { x: T }
-struct Bar { x: Foo } //~ ERROR E0243
+struct Bar { x: Foo }
+                //~^ ERROR E0243
+                //~| NOTE expected 1 type arguments, found 0
 
 fn main() {
 }
