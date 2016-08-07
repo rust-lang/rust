@@ -13,9 +13,14 @@ enum Foo {
     Baz,
 }
 
-impl Copy for Foo { } //~ ERROR E0205
+impl Copy for Foo { }
+//~^ ERROR E0205
+//~| NOTE variant `Bar` does not implement `Copy`
 
-#[derive(Copy)] //~ ERROR E0205
+#[derive(Copy)]
+//~^ ERROR E0205
+//~| NOTE variant `Bar` does not implement `Copy`
+//~| NOTE in this expansion of #[derive(Copy)]
 enum Foo2<'a> {
     Bar(&'a mut bool),
     Baz,
