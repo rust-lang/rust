@@ -10,4 +10,5 @@
 
 fn main() {
     break; //~ ERROR E0268
+    //~| NOTE cannot break outside of a loop
 }
