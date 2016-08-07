@@ -1714,6 +1714,27 @@ pub struct IntoIter<T> {
     end: *const T,
 }
 
+impl<T> IntoIter<T> {
+    /// Returns the remaining items of this iterator as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #![feature(vec_into_iter_as_slice)]
+    /// let vec = vec!['a', 'b', 'c'];
+    /// let mut into_iter = vec.into_iter();
+    /// assert_eq!(into_iter.as_slice(), &['a', 'b', 'c']);
+    /// let _ = into_iter.next().unwrap();
+    /// assert_eq!(into_iter.as_slice(), &['b', 'c']);
+    /// ```
+    #[unstable(feature = "vec_into_iter_as_slice", issue = "35601")]
+    pub fn as_slice(&self) -> &[T] {
+        unsafe {
+            slice::from_raw_parts(self.ptr, self.len())
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for IntoIter<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1796,9 +1817,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone> Clone for IntoIter<T> {
     fn clone(&self) -> IntoIter<T> {
-        unsafe {
-            slice::from_raw_parts(self.ptr, self.len()).to_owned().into_iter()
-        }
+        self.as_slice().to_owned().into_iter()
     }
 }
 
