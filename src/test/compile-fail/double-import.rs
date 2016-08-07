@@ -7,8 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(no_core)]
-#![no_core]
 
 // This tests that conflicting imports shows both `use` lines
 // when reporting the error.
@@ -23,5 +21,6 @@ mod sub2 {
 
 use sub1::foo; //~ NOTE previous import of `foo` here
 use sub2::foo; //~ ERROR a value named `foo` has already been imported in this module [E0252]
+               //~| NOTE already imported
 
 fn main() {}
