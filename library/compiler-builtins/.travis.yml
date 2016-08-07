@@ -59,6 +59,10 @@ install:
 script:
   - bash ci/script.sh
 
+branches:
+  only:
+    - master
+
 notifications:
   email:
     on_success: never
