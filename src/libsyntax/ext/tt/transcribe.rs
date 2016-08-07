@@ -9,7 +9,7 @@
 // except according to those terms.
 use self::LockstepIterSize::*;
 
-use ast::{Ident, Name};
+use ast::Ident;
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{Handler, DiagnosticBuilder};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
@@ -38,7 +38,7 @@ pub struct TtReader<'a> {
     /// the unzipped tree:
     stack: Vec<TtFrame>,
     /* for MBE-style macro transcription */
-    interpolations: HashMap<Name, Rc<NamedMatch>>,
+    interpolations: HashMap<Ident, Rc<NamedMatch>>,
     imported_from: Option<Ident>,
 
     // Some => return imported_from as the next token
@@ -57,7 +57,7 @@ pub struct TtReader<'a> {
 /// `src` contains no `TokenTree::Sequence`s, `MatchNt`s or `SubstNt`s, `interp` can
 /// (and should) be None.
 pub fn new_tt_reader(sp_diag: &Handler,
-                     interp: Option<HashMap<Name, Rc<NamedMatch>>>,
+                     interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                      imported_from: Option<Ident>,
                      src: Vec<tokenstream::TokenTree>)
                      -> TtReader {
@@ -71,7 +71,7 @@ pub fn new_tt_reader(sp_diag: &Handler,
 /// `src` contains no `TokenTree::Sequence`s, `MatchNt`s or `SubstNt`s, `interp` can
 /// (and should) be None.
 pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
-                                   interp: Option<HashMap<Name, Rc<NamedMatch>>>,
+                                   interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                                    imported_from: Option<Ident>,
                                    src: Vec<tokenstream::TokenTree>,
                                    desugar_doc_comments: bool)
@@ -119,7 +119,7 @@ fn lookup_cur_matched_by_matched(r: &TtReader, start: Rc<NamedMatch>) -> Rc<Name
 }
 
 fn lookup_cur_matched(r: &TtReader, name: Ident) -> Option<Rc<NamedMatch>> {
-    let matched_opt = r.interpolations.get(&name.name).cloned();
+    let matched_opt = r.interpolations.get(&name).cloned();
     matched_opt.map(|s| lookup_cur_matched_by_matched(r, s))
 }
 
