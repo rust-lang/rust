@@ -1215,10 +1215,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                         type_str: &str,
                                         trait_str: &str,
                                         name: &str) {
-        span_err!(self.tcx().sess, span, E0223,
-                  "ambiguous associated type; specify the type using the syntax \
-                   `<{} as {}>::{}`",
-                  type_str, trait_str, name);
+        struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type")
+            .span_label(span, &format!("ambiguous associated type"))
+            .note(&format!("specify the type using the syntax `<{} as {}>::{}`",
+                  type_str, trait_str, name))
+            .emit();
+
     }
 
     // Search for a bound on a type parameter which includes the associated item
@@ -2095,8 +2097,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         if !trait_bounds.is_empty() {
             let b = &trait_bounds[0];
-            span_err!(self.tcx().sess, b.trait_ref.path.span, E0225,
-                      "only the builtin traits can be used as closure or object bounds");
+            let span = b.trait_ref.path.span;
+            struct_span_err!(self.tcx().sess, span, E0225,
+                             "only the builtin traits can be used as closure or object bounds")
+                .span_label(span, &format!("non-builtin trait used as bounds"))
+                .emit();
         }
 
         let region_bound =
