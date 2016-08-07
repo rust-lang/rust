@@ -686,8 +686,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Box(_) => {
                 self.add(Qualif::NOT_CONST);
                 if self.mode != Mode::Fn {
-                    span_err!(self.tcx.sess, self.span, E0010,
-                              "allocations are not allowed in {}s", self.mode);
+                    struct_span_err!(self.tcx.sess, self.span, E0010,
+                                     "allocations are not allowed in {}s", self.mode)
+                        .span_label(self.span, &format!("allocation not allowed in {}s", self.mode))
+                        .emit();
                 }
             }
 

@@ -93,13 +93,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         end.span
                     };
 
-                    // Note: spacing here is intentional, we want a space before "start" and "end".
-                    span_err!(tcx.sess, span, E0029,
-                              "only char and numeric types are allowed in range patterns\n \
-                               start type: {}\n end type: {}",
-                              self.ty_to_string(lhs_ty),
-                              self.ty_to_string(rhs_ty)
-                    );
+                    struct_span_err!(tcx.sess, span, E0029,
+                        "only char and numeric types are allowed in range patterns")
+                        .span_label(span, &format!("ranges require char or numeric types"))
+                        .note(&format!("start type: {}", self.ty_to_string(lhs_ty)))
+                        .note(&format!("end type: {}", self.ty_to_string(rhs_ty)))
+                        .emit();
                     return;
                 }
 
@@ -700,9 +699,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for field in variant.fields
                 .iter()
                 .filter(|field| !used_fields.contains_key(&field.name)) {
-                span_err!(tcx.sess, span, E0027,
-                    "pattern does not mention field `{}`",
-                    field.name);
+                struct_span_err!(tcx.sess, span, E0027,
+                                "pattern does not mention field `{}`",
+                                field.name)
+                                .span_label(span, &format!("missing field `{}`", field.name))
+                                .emit();
             }
         }
     }

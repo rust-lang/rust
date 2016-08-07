@@ -548,7 +548,7 @@ pub trait ExactSizeIterator: Iterator {
     /// assert_eq!(one_element.next(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "exact_size_is_empty", issue = "0")]
+    #[unstable(feature = "exact_size_is_empty", issue = "35428")]
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
