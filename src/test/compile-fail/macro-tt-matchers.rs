@@ -16,5 +16,16 @@ macro_rules! foo {
 
 foo!(Box);
 
+macro_rules! bar {
+    ($x:tt) => {
+        macro_rules! baz {
+            ($x:tt, $y:tt) => { ($x, $y) }
+        }
+    }
+}
+
 #[rustc_error]
-fn main() {} //~ ERROR compilation successful
+fn main() { //~ ERROR compilation successful
+    bar!($y);
+    let _: (i8, i16) = baz!(0i8, 0i16);
+}
