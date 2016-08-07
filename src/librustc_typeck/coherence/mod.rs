@@ -311,18 +311,23 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             match param_env.can_type_implement_copy(tcx, self_type, span) {
                 Ok(()) => {}
                 Err(CopyImplementationError::InfrigingField(name)) => {
-                       span_err!(tcx.sess, span, E0204,
-                                 "the trait `Copy` may not be \
-                                          implemented for this type; field \
-                                          `{}` does not implement `Copy`",
-                                         name)
+                       struct_span_err!(tcx.sess, span, E0204,
+                                 "the trait `Copy` may not be implemented for \
+                                 this type")
+                           .span_label(span, &format!(
+                                 "field `{}` does not implement `Copy`", name)
+                               )
+                           .emit()
+
                 }
                 Err(CopyImplementationError::InfrigingVariant(name)) => {
-                       span_err!(tcx.sess, span, E0205,
+                       struct_span_err!(tcx.sess, span, E0205,
                                  "the trait `Copy` may not be \
-                                          implemented for this type; variant \
+                                          implemented for this type")
+                           .span_label(span, &format!("variant \
                                           `{}` does not implement `Copy`",
-                                         name)
+                                         name))
+                           .emit()
                 }
                 Err(CopyImplementationError::NotAnAdt) => {
                        span_err!(tcx.sess, span, E0206,
