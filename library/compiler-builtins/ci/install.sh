@@ -2,21 +2,21 @@ set -ex
 
 . $(dirname $0)/env.sh
 
-install_c_toolchain() {
-    case $TARGET in
-        aarch64-unknown-linux-gnu)
-            sudo apt-get install -y --no-install-recommends \
-                 gcc-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
+install_binutils() {
+    case $TRAVIS_OS_NAME in
+        osx)
+            brew install binutils
             ;;
         *)
             ;;
     esac
 }
 
-install_binutils() {
-    case $TRAVIS_OS_NAME in
-        osx)
-            brew install binutils
+install_c_toolchain() {
+    case $TARGET in
+        aarch64-unknown-linux-gnu)
+            sudo apt-get install -y --no-install-recommends \
+                 gcc-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
             ;;
         *)
             ;;
@@ -49,6 +49,7 @@ EOF
 }
 
 main() {
+    install_binutils
     install_c_toolchain
     install_rust
     add_rustup_target
