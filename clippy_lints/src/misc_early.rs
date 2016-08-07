@@ -1,9 +1,10 @@
 use rustc::lint::*;
 use std::collections::HashMap;
+use std::char;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use utils::{span_lint, span_help_and_lint, snippet, span_lint_and_then};
+use utils::{span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
 /// **What it does:** This lint checks for structure field patterns bound to wildcards.
 ///
 /// **Why is this bad?** Using `..` instead is shorter and leaves the focus on the fields that are actually bound.
@@ -64,13 +65,44 @@ declare_lint! {
     "`--x` is a double negation of `x` and not a pre-decrement as in C or C++"
 }
 
+/// **What it does:** Warns on hexadecimal literals with mixed-case letter digits.
+///
+/// **Why is this bad?** It looks confusing.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let y = 0x1a9BAcD;
+/// ```
+declare_lint! {
+    pub MIXED_CASE_HEX_LITERALS, Warn,
+    "letter digits in hex literals should be either completely upper- or lowercased"
+}
+
+/// **What it does:** Warns if literal suffixes are not separated by an underscore.
+///
+/// **Why is this bad?** It is much less readable.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let y = 123832i32;
+/// ```
+declare_lint! {
+    pub UNSEPARATED_LITERAL_SUFFIX, Allow,
+    "literal suffixes should be separated with an underscore"
+}
+
 
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
 
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL, DOUBLE_NEG)
+        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL,
+                    DOUBLE_NEG, MIXED_CASE_HEX_LITERALS, UNSEPARATED_LITERAL_SUFFIX)
     }
 }
 
@@ -174,7 +206,60 @@ impl EarlyLintPass for MiscEarly {
                               DOUBLE_NEG,
                               expr.span,
                               "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op");
-    }
+                }
+            }
+            ExprKind::Lit(ref lit) => {
+                if_let_chain! {[
+                    let LitKind::Int(..) = lit.node,
+                    let Some(src) = snippet_opt(cx, lit.span),
+                    let Some(firstch) = src.chars().next(),
+                    char::to_digit(firstch, 10).is_some()
+                ], {
+                    let mut prev = '\0';
+                    for ch in src.chars() {
+                        if ch == 'i' || ch == 'u' {
+                            if prev != '_' {
+                                span_lint(cx, UNSEPARATED_LITERAL_SUFFIX, lit.span,
+                                          "integer type suffix should be separated by an underscore");
+                            }
+                            break;
+                        }
+                        prev = ch;
+                    }
+                    if src.starts_with("0x") {
+                        let mut seen = (false, false);
+                        for ch in src.chars() {
+                            match ch {
+                                'a' ... 'f' => seen.0 = true,
+                                'A' ... 'F' => seen.1 = true,
+                                'i' | 'u'   => break,   // start of suffix already
+                                _ => ()
+                            }
+                        }
+                        if seen.0 && seen.1 {
+                            span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
+                                      "inconsistent casing in hexadecimal literal");
+                        }
+                    }
+                }}
+                if_let_chain! {[
+                    let LitKind::Float(..) = lit.node,
+                    let Some(src) = snippet_opt(cx, lit.span),
+                    let Some(firstch) = src.chars().next(),
+                    char::to_digit(firstch, 10).is_some()
+                ], {
+                    let mut prev = '\0';
+                    for ch in src.chars() {
+                        if ch == 'f' {
+                            if prev != '_' {
+                                span_lint(cx, UNSEPARATED_LITERAL_SUFFIX, lit.span,
+                                          "float type suffix should be separated by an underscore");
+                            }
+                            break;
+                        }
+                        prev = ch;
+                    }
+                }}
             }
             _ => ()
         }

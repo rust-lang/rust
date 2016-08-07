@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 160 lints included in this crate:
+There are 162 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -98,6 +98,7 @@ name                                                                            
 [mem_forget](https://github.com/Manishearth/rust-clippy/wiki#mem_forget)                                             | allow   | `mem::forget` usage on `Drop` types is likely to cause memory leaks
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                                   | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [misrefactored_assign_op](https://github.com/Manishearth/rust-clippy/wiki#misrefactored_assign_op)                   | warn    | having a variable on both sides of an assign op
+[mixed_case_hex_literals](https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals)                   | warn    | letter digits in hex literals should be either completely upper- or lowercased
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                                             | warn    | taking a number modulo 1, which always returns 0
 [mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                                   | allow   | usage of double-mut refs, e.g. `&mut &mut ...`
 [mutex_atomic](https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic)                                         | warn    | using a mutex where an atomic value could be used instead
@@ -165,6 +166,7 @@ name                                                                            
 [unnecessary_operation](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation)                       | warn    | outer expressions with no effect
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                     | warn    | Struct fields are bound to a wildcard instead of using `..`
 [unsafe_removed_from_name](https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name)                 | warn    | unsafe removed from name
+[unseparated_literal_suffix](https://github.com/Manishearth/rust-clippy/wiki#unseparated_literal_suffix)             | allow   | literal suffixes should be separated with an underscore
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                                     | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
 [unused_label](https://github.com/Manishearth/rust-clippy/wiki#unused_label)                                         | warn    | unused label
 [unused_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes)                                 | warn    | unused lifetimes in function definitions

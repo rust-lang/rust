@@ -20,7 +20,7 @@ fn main() {
     let y = 1;
     let x = y; //~ERROR `x` is shadowed by `y`
 
-    let o = Some(1u8);
+    let o = Some(1_u8);
 
     if let Some(p) = o { assert_eq!(1, p); }
     match o {

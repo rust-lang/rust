@@ -211,6 +211,7 @@ All notable changes to this project will be documented in this file.
 [`mem_forget`]: https://github.com/Manishearth/rust-clippy/wiki#mem_forget
 [`min_max`]: https://github.com/Manishearth/rust-clippy/wiki#min_max
 [`misrefactored_assign_op`]: https://github.com/Manishearth/rust-clippy/wiki#misrefactored_assign_op
+[`mixed_case_hex_literals`]: https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals
 [`modulo_one`]: https://github.com/Manishearth/rust-clippy/wiki#modulo_one
 [`mut_mut`]: https://github.com/Manishearth/rust-clippy/wiki#mut_mut
 [`mutex_atomic`]: https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic
@@ -280,6 +281,7 @@ All notable changes to this project will be documented in this file.
 [`unnecessary_operation`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation
 [`unneeded_field_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern
 [`unsafe_removed_from_name`]: https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name
+[`unseparated_literal_suffix`]: https://github.com/Manishearth/rust-clippy/wiki#unseparated_literal_suffix
 [`unstable_as_mut_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice
 [`unstable_as_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice
 [`unused_collect`]: https://github.com/Manishearth/rust-clippy/wiki#unused_collect
