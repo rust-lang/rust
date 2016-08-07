@@ -18,7 +18,8 @@ fn main() {
         }
 
         impl Iterator for Recurrence {
-            //~^ ERROR not all trait items implemented, missing: `Item` [E0046]
+            //~^ ERROR E0046
+            //~| NOTE missing `Item` in implementation
             #[inline]
             fn next(&mut self) -> Option<u64> {
                 if self.pos < 2 {

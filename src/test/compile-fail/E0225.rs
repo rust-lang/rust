@@ -9,5 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let _: Box<std::io::Read + std::io::Write>; //~ ERROR E0225
+    let _: Box<std::io::Read + std::io::Write>;
+    //~^ ERROR only the builtin traits can be used as closure or object bounds [E0225]
+    //~| NOTE non-builtin trait used as bounds
 }
