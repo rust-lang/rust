@@ -2,30 +2,47 @@ set -ex
 
 . $(dirname $0)/env.sh
 
-build() {
-    cargo build --target $TARGET
-    cargo build --target $TARGET --release
+install_c_toolchain() {
+    case $TARGET in
+        aarch64-unknown-linux-gnu)
+            sudo apt-get install -y --no-install-recommends \
+                 gcc-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
+            ;;
+        *)
+            ;;
+    esac
 }
 
-run_tests() {
-    if [[ $QEMU_LD_PREFIX ]]; then
-        export RUST_TEST_THREADS=1
+install_rust() {
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain=nightly
+
+    rustc -V
+    cargo -V
+}
+
+add_rustup_target() {
+    if [[ $TARGET != $HOST ]]; then
+        rustup target add $TARGET
     fi
-
-    cargo test --target $TARGET
-    cargo test --target $TARGET --release
 }
 
-inspect() {
-    ${PREFIX}nm -g --defined-only target/**/debug/*.rlib
-    ${PREFIX}objdump target/**/debug/*.rlib
-    ${PREFIX}objdump target/**/release/*.rlib
+configure_cargo() {
+    if [[ $PREFIX ]]; then
+        ${PREFIX}gcc -v
+
+        mkdir -p .cargo
+        cat >>.cargo/config <<EOF
+[target.$TARGET]
+linker = "${PREFIX}gcc"
+EOF
+    fi
 }
 
 main() {
-    build
-    run_tests
-    inspect
+    install_c_toolchain
+    install_rust
+    add_rustup_target
+    configure_cargo
 }
 
 main
