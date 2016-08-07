@@ -59,19 +59,33 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         (&ty::ExplicitSelfCategory::Static,
          &ty::ExplicitSelfCategory::Static) => {}
         (&ty::ExplicitSelfCategory::Static, _) => {
-            span_err!(tcx.sess, impl_m_span, E0185,
+            let mut err = struct_span_err!(tcx.sess, impl_m_span, E0185,
                 "method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
                         trait_m.name,
                         impl_m.explicit_self);
+            err.span_label(impl_m_span, &format!("`{}` used in impl",
+                                                 impl_m.explicit_self));
+            if let Some(span) = tcx.map.span_if_local(trait_m.def_id) {
+                err.span_label(span, &format!("trait declared without `{}`",
+                                              impl_m.explicit_self));
+            }
+            err.emit();
             return;
         }
         (_, &ty::ExplicitSelfCategory::Static) => {
-            span_err!(tcx.sess, impl_m_span, E0186,
+            let mut err = struct_span_err!(tcx.sess, impl_m_span, E0186,
                 "method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
                         trait_m.name,
                         trait_m.explicit_self);
+            err.span_label(impl_m_span, &format!("expected `{}` in impl",
+                                                  trait_m.explicit_self));
+            if let Some(span) = tcx.map.span_if_local(trait_m.def_id) {
+                err.span_label(span, & format!("`{}` used in trait",
+                                               trait_m.explicit_self));
+            }
+            err.emit();
             return;
         }
         _ => {
