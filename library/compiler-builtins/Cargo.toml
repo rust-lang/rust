@@ -1,0 +1,4 @@
+[package]
+authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+name = "rustc_builtins"
+version = "0.1.0"
