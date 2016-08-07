@@ -1062,6 +1062,23 @@ impl UnOp {
     }
 }
 
+impl<'tcx> Rvalue<'tcx> {
+    pub fn is_pure(&self) -> bool {
+        use self::Rvalue::*;
+        match *self {
+            // Arbitrary side effects
+            InlineAsm { .. } |
+            // Side effect: allocation
+            Box(_) |
+            // Side effect: assertion
+            CheckedBinaryOp(..) => false,
+            // No side effects
+            Use(_) | Repeat(..) | Len(_) | Cast(..) | BinaryOp(..) | UnaryOp(..) |
+            Ref(..) | Aggregate(..) => true
+        }
+    }
+}
+
 impl<'tcx> Debug for Rvalue<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::Rvalue::*;
