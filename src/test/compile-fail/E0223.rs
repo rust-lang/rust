@@ -11,5 +11,8 @@
 trait MyTrait { type X; }
 
 fn main() {
-    let foo: MyTrait::X; //~ ERROR E0223
+    let foo: MyTrait::X;
+    //~^ ERROR ambiguous associated type
+    //~| NOTE ambiguous associated type
+    //~| NOTE specify the type using the syntax `<Type as MyTrait>::X`
 }
