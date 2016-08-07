@@ -20,6 +20,7 @@ matrix:
             - binfmt-support
             - gcc-arm-linux-gnueabi
             - libc6-armel-cross
+            - libc6-dev-armel-cross
             - qemu-user-static
     - env: TARGET=arm-unknown-linux-gnueabihf
       os: linux
@@ -30,6 +31,7 @@ matrix:
             - binfmt-support
             - gcc-arm-linux-gnueabihf
             - libc6-armhf-cross
+            - libc6-dev-armhf-cross
             - qemu-user-static
     - env: TARGET=armv7-unknown-linux-gnueabihf
       os: linux
