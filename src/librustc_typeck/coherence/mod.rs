@@ -330,10 +330,17 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                            .emit()
                 }
                 Err(CopyImplementationError::NotAnAdt) => {
-                       span_err!(tcx.sess, span, E0206,
-                                 "the trait `Copy` may not be implemented \
-                                  for this type; type is not a structure or \
-                                  enumeration")
+                    let item = tcx.map.expect_item(impl_node_id);
+                    let span = if let ItemImpl(_, _, _, _, ref ty, _) = item.node {
+                        ty.span
+                    } else {
+                        span
+                    };
+
+                    struct_span_err!(tcx.sess, span, E0206,
+                                     "the trait `Copy` may not be implemented for this type")
+                        .span_label(span, &format!("type is not a structure or enumeration"))
+                        .emit();
                 }
                 Err(CopyImplementationError::HasDestructor) => {
                     span_err!(tcx.sess, span, E0184,
