@@ -373,6 +373,15 @@ impl NulError {
 
     /// Consumes this error, returning the underlying vector of bytes which
     /// generated the error in the first place.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let nul_error = CString::new("foo\0bar").unwrap_err();
+    /// assert_eq!(nul_error.into_vec(), b"foo\0bar");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_vec(self) -> Vec<u8> { self.1 }
 }
