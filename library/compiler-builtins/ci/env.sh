@@ -1,9 +1,13 @@
 case $TRAVIS_OS_NAME in
     linux)
         export HOST=x86_64-unknown-linux-gnu
+        export NM=nm
+        export OBJDUMP=objdump
         ;;
     osx)
         export HOST=x86_64-apple-darwin
+        export NM=gnm
+        export OBJDUMP=gobjdump
         ;;
 esac
 
