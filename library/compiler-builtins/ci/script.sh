@@ -17,7 +17,7 @@ run_tests() {
 }
 
 inspect() {
-    ${PREFIX}nm -g --defined-only target/**/debug/*.rlib
+    ${PREFIX}nm -g target/**/debug/*.rlib
     set +e
     ${PREFIX}objdump -Cd target/**/debug/*.rlib
     ${PREFIX}objdump -Cd target/**/release/*.rlib
