@@ -13,6 +13,16 @@ install_c_toolchain() {
     esac
 }
 
+install_binutils() {
+    case $TRAVIS_OS_NAME in
+        osx)
+            brew install binutils
+            ;;
+        *)
+            ;;
+    esac
+}
+
 install_rust() {
     curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain=nightly
 
