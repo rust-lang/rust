@@ -9,5 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x = []; //~ ERROR E0102
+    let x = [];
+    //~^ ERROR E0102
+    //~| NOTE cannot resolve type of variable
 }
