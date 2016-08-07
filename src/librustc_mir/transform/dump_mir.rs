@@ -26,7 +26,7 @@ impl<'b, 'tcx> MirPass<'tcx> for Marker<'b> {
 }
 
 impl<'b> Pass for Marker<'b> {
-    fn name(&self) -> &str { self.0 }
+    fn name(&self) -> ::std::borrow::Cow<'static, str> { String::from(self.0).into() }
 }
 
 pub struct Disambiguator<'a> {

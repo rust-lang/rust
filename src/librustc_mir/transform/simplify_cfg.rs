@@ -64,7 +64,7 @@ impl<'l> Pass for SimplifyCfg<'l> {
     }
 
     // avoid calling `type_name` - it contains `<'static>`
-    fn name(&self) -> &str { "SimplifyCfg" }
+    fn name(&self) -> ::std::borrow::Cow<'static, str> { "SimplifyCfg".into() }
 }
 
 pub struct CfgSimplifier<'a, 'tcx: 'a> {

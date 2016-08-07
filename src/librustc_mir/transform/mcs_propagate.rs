@@ -12,9 +12,7 @@ use super::dataflow::*;
 
 pub struct McsPropagate;
 
-impl Pass for McsPropagate {
-    fn name(&self) -> &'static str { "McsPropagate" }
-}
+impl Pass for McsPropagate {}
 
 impl<'tcx> MirPass<'tcx> for McsPropagate {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {

@@ -9,9 +9,7 @@ use super::dataflow::*;
 
 pub struct LocalLivenessAnalysis;
 
-impl Pass for LocalLivenessAnalysis {
-    fn name(&self) -> &'static str { "LocalLivenessAnalysis" }
-}
+impl Pass for LocalLivenessAnalysis {}
 
 impl<'tcx> MirPass<'tcx> for LocalLivenessAnalysis {
     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {

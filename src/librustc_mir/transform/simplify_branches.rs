@@ -62,5 +62,5 @@ impl<'l> Pass for SimplifyBranches<'l> {
     }
 
     // avoid calling `type_name` - it contains `<'static>`
-    fn name(&self) -> &str { "SimplifyBranches" }
+    fn name(&self) -> ::std::borrow::Cow<'static, str> { "SimplifyBranches".into() }
 }
