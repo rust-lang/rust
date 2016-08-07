@@ -18,8 +18,8 @@ run_tests() {
 
 inspect() {
     ${PREFIX}nm -g --defined-only target/**/debug/*.rlib
-    ${PREFIX}objdump target/**/debug/*.rlib
-    ${PREFIX}objdump target/**/release/*.rlib
+    ${PREFIX}objdump -Cd target/**/debug/*.rlib
+    ${PREFIX}objdump -Cd target/**/release/*.rlib
 }
 
 main() {
