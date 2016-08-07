@@ -367,8 +367,13 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
                 _substs: Option<&mut Substs<'tcx>>,
                 _space: Option<ParamSpace>,
                 span: Span) -> Ty<'tcx> {
-        span_err!(self.tcx().sess, span, E0121,
-                  "the type placeholder `_` is not allowed within types on item signatures");
+        struct_span_err!(
+            self.tcx().sess,
+            span,
+            E0121,
+            "the type placeholder `_` is not allowed within types on item signatures"
+        ).span_label(span, &format!("not allowed in type signatures"))
+        .emit();
         self.tcx().types.err
     }
 
