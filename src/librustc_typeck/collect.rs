@@ -770,9 +770,10 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0201,
                                                        "duplicate definitions with name `{}`:",
                                                        impl_item.name);
-                        span_note!(&mut err, *entry.get(),
-                                   "previous definition of `{}` here",
-                                   impl_item.name);
+                        err.span_label(*entry.get(),
+                                   &format!("previous definition of `{}` here",
+                                        impl_item.name));
+                        err.span_label(impl_item.span, &format!("duplicate definition"));
                         err.emit();
                     }
                     Vacant(entry) => {

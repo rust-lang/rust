@@ -12,7 +12,9 @@ struct Foo;
 
 impl Foo {
     fn orange(&self) {} //~ NOTE previous definition of `orange` here
-    fn orange(&self) {} //~ ERROR duplicate definitions with name `orange`
+    fn orange(&self) {}
+    //~^ ERROR duplicate definition
+    //~| NOTE duplicate definition
 }
 
 fn main() {}
