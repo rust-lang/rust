@@ -211,7 +211,20 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
 
         // Man pages
         t!(fs::create_dir_all(image.join("share/man/man1")));
-        cp_r(&build.src.join("man"), &image.join("share/man/man1"));
+        //cp_r(&build.src.join("man"), &image.join("share/man/man1"));
+        for man_page_source in t!(build.src.join("man").read_dir()).map(|e| t!(e)) {
+          let os_filename = entry.file_name();
+          let filename = t!(os_filename.into_string());
+
+          // Match all source files
+          if filename.ends_with(".1.in") {
+            // TODO generate header somehow
+          }
+          // Match all generated files
+          if filename.ends_with(".1") {
+            // TODO copy them
+          }
+        }
 
         // Debugger scripts
         debugger_scripts(build, &image, host);
