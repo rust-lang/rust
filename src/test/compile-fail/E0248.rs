@@ -13,6 +13,6 @@ enum Foo {
 }
 
 fn do_something(x: Foo::Bar) { } //~ ERROR E0248
-
+                //~| NOTE value used as a type
 fn main() {
 }
