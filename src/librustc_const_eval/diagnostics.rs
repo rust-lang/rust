@@ -25,8 +25,8 @@ one is too specific or the ordering is incorrect.
 
 For example, the following `match` block has too many arms:
 
-```compile_fail
-match foo {
+```compile_fail,E0001
+match Some(0) {
     Some(bar) => {/* ... */}
     None => {/* ... */}
     _ => {/* ... */} // All possible cases have already been handled
@@ -108,7 +108,7 @@ one or more possible inputs to a match expression. Guaranteed matches are
 required in order to assign values to match expressions, or alternatively,
 determine the flow of execution. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0004
 enum Terminator {
     HastaLaVistaBaby,
     TalkToMyHand,
@@ -153,7 +153,7 @@ E0005: r##"
 Patterns used to bind names must be irrefutable, that is, they must guarantee
 that a name will be extracted in all cases. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0005
 let x = Some(1);
 let Some(y) = x;
 // error: refutable pattern in local binding: `None` not covered
@@ -187,7 +187,7 @@ like the following is invalid as it requires the entire `Option<String>` to be
 moved into a variable called `op_string` while simultaneously requiring the
 inner `String` to be moved into a variable called `s`.
 
-```compile_fail
+```compile_fail,E0007
 let x = Some("s".to_string());
 
 match x {
@@ -205,7 +205,7 @@ name is bound by move in a pattern, it should also be moved to wherever it is
 referenced in the pattern guard code. Doing so however would prevent the name
 from being available in the body of the match arm. Consider the following:
 
-```compile_fail
+```compile_fail,E0008
 match Some("hi".to_string()) {
     Some(s) if s.len() == 0 => {}, // use s.
     _ => {},
@@ -229,7 +229,7 @@ match Some("hi".to_string()) {
 Though this example seems innocuous and easy to solve, the problem becomes clear
 when it encounters functions which consume the value:
 
-```compile_fail
+```compile_fail,E0008
 struct A{}
 
 impl A {
@@ -283,7 +283,7 @@ This limitation may be removed in a future version of Rust.
 
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0009
 struct X { x: (), }
 
 let x = Some((X { x: () }, X { x: () }));
@@ -351,25 +351,25 @@ An if-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding instead. For instance:
 
-```compile_fail
+```compile_fail,E0162
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
 // This fails to compile because the match is irrefutable.
 if let Irrefutable(x) = irr {
     // This body will always be executed.
-    foo(x);
+    // ...
 }
 ```
 
 Try this instead:
 
-```ignore
+```
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
 let Irrefutable(x) = irr;
-foo(x);
+println!("{}", x);
 ```
 "##,
 
@@ -378,7 +378,7 @@ A while-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding inside a `loop` instead. For instance:
 
-```compile_fail
+```compile_fail,E0165
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -455,7 +455,7 @@ that a name will be extracted in all cases. Instead of pattern matching the
 loop variable, consider using a `match` or `if let` inside the loop body. For
 instance:
 
-```compile_fail
+```compile_fail,E0297
 let xs : Vec<Option<i32>> = vec!(Some(1), None);
 
 // This fails because `None` is not covered.
@@ -497,7 +497,7 @@ on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if mutable
 borrows were allowed:
 
-```compile_fail
+```compile_fail,E0301
 match Some(()) {
     None => { },
     option if option.take().is_none() => {
@@ -515,10 +515,10 @@ on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if assignments
 were allowed:
 
-```compile_fail
+```compile_fail,E0302
 match Some(()) {
     None => { },
-    option if { option = None; false } { },
+    option if { option = None; false } => { },
     Some(_) => { } // When the previous match failed, the option became `None`.
 }
 ```
@@ -529,14 +529,18 @@ In certain cases it is possible for sub-bindings to violate memory safety.
 Updates to the borrow checker in a future version of Rust may remove this
 restriction, but for now patterns must be rewritten without sub-bindings.
 
-```ignore
-// Before.
+Before:
+
+```compile_fail,E0303
 match Some("hi".to_string()) {
     ref op_string_ref @ Some(s) => {},
     None => {},
 }
+```
 
-// After.
+After:
+
+```
 match Some("hi".to_string()) {
     Some(ref s) => {
         let op_string_ref = &Some(s);
@@ -556,7 +560,7 @@ This error indicates that the compiler was unable to sensibly evaluate an
 constant expression that had to be evaluated. Attempting to divide by 0
 or causing integer overflow are two ways to induce this error. For example:
 
-```compile_fail
+```compile_fail,E0080
 enum Enum {
     X = (1 << 500),
     Y = (1 / 0)
@@ -575,7 +579,7 @@ E0306: r##"
 In an array literal `[x; N]`, `N` is the number of elements in the array. This
 must be an unsigned integer. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0306
 let x = [0i32; true]; // error: expected positive integer for repeat count,
                       //        found boolean
 ```

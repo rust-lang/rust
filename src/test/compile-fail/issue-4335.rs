@@ -14,7 +14,10 @@ fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     id(Box::new(|| *v))
         //~^ ERROR E0373
-        //~| ERROR cannot move out of borrowed content
+        //~| NOTE `v` is borrowed here
+        //~| NOTE may outlive borrowed value `v`
+        //~| ERROR E0507
+        //~| NOTE cannot move out of borrowed content
 }
 
 fn main() {

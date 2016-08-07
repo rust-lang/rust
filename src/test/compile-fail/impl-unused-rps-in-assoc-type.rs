@@ -19,6 +19,7 @@ trait Fun {
 struct Holder { x: String }
 
 impl<'a> Fun for Holder { //~ ERROR E0207
+                          //~| NOTE unconstrained lifetime parameter
     type Output = &'a str;
     fn call<'b>(&'b self) -> &'b str {
         &self.x[..]

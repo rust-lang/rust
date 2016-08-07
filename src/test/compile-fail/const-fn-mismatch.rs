@@ -20,7 +20,9 @@ trait Foo {
 }
 
 impl Foo for u32 {
-    const fn f() -> u32 { 22 } //~ ERROR E0379
+    const fn f() -> u32 { 22 }
+    //~^ ERROR E0379
+    //~| NOTE trait fns cannot be const
 }
 
 fn main() { }

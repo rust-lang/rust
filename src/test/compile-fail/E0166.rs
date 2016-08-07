@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> ! { return; } //~ ERROR E0166
+fn foo() -> ! { return; }
+    //~^ ERROR E0166
+    //~| NOTE diverging function cannot return
 
 fn main() {
 }
