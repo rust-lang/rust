@@ -109,14 +109,14 @@ struct Point {
     y: i32,
 }
 
-let origin = Point { x: 0, y: 0 };
+let point = Point { x: 2, y: 3 };
 
-match origin {
+match point {
     Point { x, .. } => println!("x is {}", x),
 }
 ```
 
-This prints `x is 0`.
+This prints `x is 2`.
 
 You can do this kind of match on any member, not only the first:
 
@@ -126,14 +126,14 @@ struct Point {
     y: i32,
 }
 
-let origin = Point { x: 0, y: 0 };
+let point = Point { x: 2, y: 3 };
 
-match origin {
+match point {
     Point { y, .. } => println!("y is {}", y),
 }
 ```
 
-This prints `y is 0`.
+This prints `y is 3`.
 
 This ‘destructuring’ behavior works on any compound data type, like
 [tuples][tuples] or [enums][enums].
