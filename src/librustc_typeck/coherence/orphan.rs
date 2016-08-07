@@ -33,10 +33,12 @@ struct OrphanChecker<'cx, 'tcx:'cx> {
 impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     fn check_def_id(&self, item: &hir::Item, def_id: DefId) {
         if def_id.krate != LOCAL_CRATE {
-            span_err!(self.tcx.sess, item.span, E0116,
+            struct_span_err!(self.tcx.sess, item.span, E0116,
                       "cannot define inherent `impl` for a type outside of the \
-                       crate where the type is defined; define and implement \
-                       a trait or new type instead");
+                       crate where the type is defined")
+                .span_label(item.span, &format!("impl for type defined outside of crate."))
+                .span_note(item.span, &format!("define and implement a trait or new type instead"))
+                .emit();
         }
     }
 
