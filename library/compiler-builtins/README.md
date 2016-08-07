@@ -6,6 +6,10 @@
 
 > [WIP] Porting `compiler-rt` intrinsics to Rust
 
+See [rust-lang/rust#35437][0].
+
+[0]: https://github.com/rust-lang/rust/issues/35437
+
 ## License
 
 Licensed under either of
