@@ -2097,8 +2097,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         if !trait_bounds.is_empty() {
             let b = &trait_bounds[0];
-            span_err!(self.tcx().sess, b.trait_ref.path.span, E0225,
-                      "only the builtin traits can be used as closure or object bounds");
+            let span = b.trait_ref.path.span;
+            struct_span_err!(self.tcx().sess, span, E0225,
+                             "only the builtin traits can be used as closure or object bounds")
+                .span_label(span, &format!("non-builtin trait used as bounds"))
+                .emit();
         }
 
         let region_bound =
