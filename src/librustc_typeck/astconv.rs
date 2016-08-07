@@ -360,8 +360,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.convert_angle_bracketed_parameters(rscope, span, decl_generics, data)
             }
             hir::ParenthesizedParameters(..) => {
-                span_err!(tcx.sess, span, E0214,
-                          "parenthesized parameters may only be used with a trait");
+                struct_span_err!(tcx.sess, span, E0214,
+                          "parenthesized parameters may only be used with a trait")
+                    .span_label(span, &format!("only traits may use parentheses"))
+                    .emit();
+
                 let ty_param_defs = decl_generics.types.get_slice(TypeSpace);
                 (Substs::empty(),
                  ty_param_defs.iter().map(|_| tcx.types.err).collect(),
