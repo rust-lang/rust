@@ -27,22 +27,27 @@ impl Clone for TestE { fn clone(&self) -> Self { *self } }
 impl Copy for MyType {}
 
 impl Copy for &'static mut MyType {}
-//~^ ERROR E0206
+//~^ ERROR the trait `Copy` may not be implemented for this type
+//~| NOTE type is not a structure or enumeration
 impl Clone for MyType { fn clone(&self) -> Self { *self } }
 
 impl Copy for (MyType, MyType) {}
-//~^ ERROR E0206
+//~^ ERROR the trait `Copy` may not be implemented for this type
+//~| NOTE type is not a structure or enumeration
 //~| ERROR E0117
 
 impl Copy for &'static NotSync {}
-//~^ ERROR E0206
+//~^ ERROR the trait `Copy` may not be implemented for this type
+//~| NOTE type is not a structure or enumeration
 
 impl Copy for [MyType] {}
-//~^ ERROR E0206
+//~^ ERROR the trait `Copy` may not be implemented for this type
+//~| NOTE type is not a structure or enumeration
 //~| ERROR E0117
 
 impl Copy for &'static [NotSync] {}
-//~^ ERROR E0206
+//~^ ERROR the trait `Copy` may not be implemented for this type
+//~| NOTE type is not a structure or enumeration
 //~| ERROR E0117
 
 fn main() {
