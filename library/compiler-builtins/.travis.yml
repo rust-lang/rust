@@ -1,0 +1,61 @@
+language: generic
+
+matrix:
+  include:
+    - env: TARGET=aarch64-unknown-linux-gnu
+      os: linux
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - binfmt-support
+            - qemu-user-static
+    - env: TARGET=arm-unknown-linux-gnueabi
+      os: linux
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - binfmt-support
+            - gcc-arm-linux-gnueabi
+            - libc6-armel-cross
+            - qemu-user-static
+    - env: TARGET=arm-unknown-linux-gnueabihf
+      os: linux
+      sudo: required
+      addons:
+        apt:
+          packages: &armhf
+            - binfmt-support
+            - gcc-arm-linux-gnueabihf
+            - libc6-armhf-cross
+            - qemu-user-static
+    - env: TARGET=armv7-unknown-linux-gnueabihf
+      os: linux
+      sudo: required
+      addons:
+        apt:
+          packages: *armhf
+    - env: TARGET=i686-apple-darwin
+      os: osx
+    - env: TARGET=i686-unknown-linux-gnu
+      os: linux
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+    - env: TARGET=x86_64-unknown-linux-gnu
+      os: linux
+
+install:
+  - bash ci/install.sh
+
+script:
+  - bash ci/script.sh
+
+notifications:
+  email:
+    on_success: never
