@@ -441,13 +441,19 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
         if !self.tcx.sess.has_errors() {
             match self.reason {
                 ResolvingExpr(span) => {
-                    span_err!(self.tcx.sess, span, E0101,
-                        "cannot determine a type for this expression: {}", e);
+                    struct_span_err!(
+                        self.tcx.sess, span, E0101,
+                        "cannot determine a type for this expression: {}", e)
+                        .span_label(span, &format!("cannot resolve type of expression"))
+                        .emit();
                 }
 
                 ResolvingLocal(span) => {
-                    span_err!(self.tcx.sess, span, E0102,
-                        "cannot determine a type for this local variable: {}", e);
+                    struct_span_err!(
+                        self.tcx.sess, span, E0102,
+                        "cannot determine a type for this local variable: {}", e)
+                        .span_label(span, &format!("cannot resolve type of variable"))
+                        .emit();
                 }
 
                 ResolvingPattern(span) => {
