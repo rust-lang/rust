@@ -9,6 +9,8 @@
 // except according to those terms.
 
 impl (u8, u8) { //~ ERROR E0118
+//~^ NOTE impl requires a base type
+//~| NOTE either implement a trait on it or create a newtype to wrap it instead
     fn get_state(&self) -> String {
         String::new()
     }
