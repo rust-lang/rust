@@ -1504,6 +1504,7 @@ pub enum PrimitiveType {
     Array,
     PrimitiveTuple,
     PrimitiveRawPointer,
+    PrimitiveRef,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1582,6 +1583,7 @@ impl PrimitiveType {
             "slice" => Some(Slice),
             "tuple" => Some(PrimitiveTuple),
             "pointer" => Some(PrimitiveRawPointer),
+            "ref" => Some(PrimitiveRef),
             _ => None,
         }
     }
@@ -1620,6 +1622,7 @@ impl PrimitiveType {
             Slice => "slice",
             PrimitiveTuple => "tuple",
             PrimitiveRawPointer => "pointer",
+            PrimitiveRef => "ref",
         }
     }
 
@@ -2370,6 +2373,7 @@ fn build_deref_target_impls(cx: &DocContext,
             Array => tcx.lang_items.slice_impl(),
             PrimitiveTuple => None,
             PrimitiveRawPointer => tcx.lang_items.const_ptr_impl(),
+            PrimitiveRef => None,
         };
         if let Some(did) = did {
             if !did.is_local() {
