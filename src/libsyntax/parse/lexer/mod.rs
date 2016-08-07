@@ -1685,9 +1685,7 @@ mod tests {
     fn mk_sh(cm: Rc<CodeMap>) -> errors::Handler {
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
-                                                None,
-                                                Some(cm),
-                                                errors::snippet::FormatMode::EnvironmentSelected);
+                                                Some(cm));
         errors::Handler::with_emitter(true, false, Box::new(emitter))
     }
 
