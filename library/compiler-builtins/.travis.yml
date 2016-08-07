@@ -1,4 +1,5 @@
 language: generic
+sudo: false
 
 matrix:
   include:
