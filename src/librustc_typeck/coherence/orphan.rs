@@ -228,12 +228,14 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => { }
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
-                        span_err!(
+                        struct_span_err!(
                             self.tcx.sess, item.span, E0117,
-                            "the impl does not reference any \
-                             types defined in this crate; \
-                             only traits defined in the current crate can be \
-                             implemented for arbitrary types");
+                             "only traits defined in the current crate can be \
+                             implemented for arbitrary types")
+                        .span_label(item.span, &format!("impl doesn't use types inside crate"))
+                        .note(&format!("the impl does not reference any \
+                                        types defined in this crate"))
+                        .emit();
                         return;
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
