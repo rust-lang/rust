@@ -22,6 +22,7 @@ As an example, let’s make a *phrases* crate, which will give us various phrase
 in different languages. To keep things simple, we’ll stick to ‘greetings’ and
 ‘farewells’ as two kinds of phrases, and use English and Japanese (日本語) as
 two languages for those phrases to be in. We’ll use this module layout:
+
 ```text
                                     +-----------+
                                 +---| greetings |
