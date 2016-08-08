@@ -649,7 +649,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = self.mir.operand_ty(self.tcx, operand);
+                let operand_ty = operand.ty(self.mir, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
@@ -667,7 +667,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::TyRawPtr(_) = self.mir.operand_ty(self.tcx, lhs).sty {
+                if let ty::TyRawPtr(_) = lhs.ty(self.mir, self.tcx).sty {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt);
@@ -697,7 +697,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
 
                     if Some(def.did) == self.tcx.lang_items.unsafe_cell_type() {
-                        let ty = self.mir.rvalue_ty(self.tcx, rvalue).unwrap();
+                        let ty = rvalue.ty(self.mir, self.tcx).unwrap();
                         self.add_type(ty);
                         assert!(self.qualif.intersects(Qualif::MUTABLE_INTERIOR));
                         // Even if the value inside may not need dropping,
@@ -719,7 +719,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
             self.visit_operand(func);
 
-            let fn_ty = self.mir.operand_ty(self.tcx, func);
+            let fn_ty = func.ty(self.mir, self.tcx);
             let (is_shuffle, is_const_fn) = match fn_ty.sty {
                 ty::TyFnDef(def_id, _, f) => {
                     (f.abi == Abi::PlatformIntrinsic &&

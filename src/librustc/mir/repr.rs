@@ -32,8 +32,6 @@ use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
 use super::cache::Cache;
-use super::super::ty::TyCtxt;
-use super::tcx::LvalueTy;
 
 macro_rules! newtype_index {
     ($name:ident, $debug_name:expr) => (
@@ -811,28 +809,7 @@ impl<'tcx> Lvalue<'tcx> {
             elem: elem,
         }))
     }
-
-    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx>
-    {
-        match self {
-            &Lvalue::Var(index) =>
-                LvalueTy::Ty { ty: mir.var_decls[index].ty },
-            &Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: mir.temp_decls[index].ty },
-            &Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: mir.arg_decls[index].ty },
-            &Lvalue::Static(def_id) =>
-                LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
-            &Lvalue::ReturnPointer =>
-                LvalueTy::Ty { ty: mir.return_ty.unwrap() },
-            &Lvalue::Projection(ref proj) =>
-                proj.base.ty(mir, tcx).projection_ty(tcx, &proj.elem),
-        }
-    }
 }
-
-
-
 
 impl<'tcx> Debug for Lvalue<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {

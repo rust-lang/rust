@@ -353,7 +353,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 let terminator = mir[bb].terminator();
                 let ty = match terminator.kind {
                     TerminatorKind::Call { ref args, .. } => {
-                        mir.operand_ty(tcx, &args[2])
+                        args[2].ty(mir, tcx)
                     }
                     _ => {
                         span_bug!(terminator.source_info.span,
