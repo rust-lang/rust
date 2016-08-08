@@ -1,24 +1,10 @@
 extern "C" {
-    fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
     fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
     fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
     fn memset(dest: *mut u8, c: i32, n: usize) -> *mut u8;
 }
 
 // FIXME: The `*4` and `*8` variants should be defined as aliases.
-
-#[no_mangle]
-pub unsafe extern "aapcs" fn __aeabi_memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
-    memcmp(s1, s2, n)
-}
-#[no_mangle]
-pub unsafe extern "aapcs" fn __aeabi_memcmp4(s1: *const u8, s2: *const u8, n: usize) -> i32 {
-    memcmp(s1, s2, n)
-}
-#[no_mangle]
-pub unsafe extern "aapcs" fn __aeabi_memcmp8(s1: *const u8, s2: *const u8, n: usize) -> i32 {
-    memcmp(s1, s2, n)
-}
 
 #[no_mangle]
 pub unsafe extern "aapcs" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize) {

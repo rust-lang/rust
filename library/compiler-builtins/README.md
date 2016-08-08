@@ -26,34 +26,16 @@ See [rust-lang/rust#35437][0].
 
 ## Progress
 
-- [ ] absvdi2.c
-- [ ] absvsi2.c
-- [ ] absvti2.c
 - [ ] adddf3.c
 - [ ] addsf3.c
-- [ ] addvdi3.c
-- [ ] addvsi3.c
-- [ ] addvti3.c
 - [ ] arm/adddf3vfp.S
 - [ ] arm/addsf3vfp.S
-- [ ] arm/aeabi_cdcmp.S
-- [ ] arm/aeabi_cdcmpeq_check_nan.c
-- [ ] arm/aeabi_cfcmp.S
-- [ ] arm/aeabi_cfcmpeq_check_nan.c
 - [ ] arm/aeabi_dcmp.S
-- [ ] arm/aeabi_div0.c
-- [ ] arm/aeabi_drsub.c
 - [ ] arm/aeabi_fcmp.S
-- [ ] arm/aeabi_frsub.c
 - [ ] arm/aeabi_idivmod.S
 - [ ] arm/aeabi_ldivmod.S
 - [ ] arm/aeabi_uidivmod.S
 - [ ] arm/aeabi_uldivmod.S
-- [ ] arm/bswapdi2.S
-- [ ] arm/bswapsi2.S
-- [ ] arm/clzdi2.S
-- [ ] arm/clzsi2.S
-- [ ] arm/comparesf2.S
 - [ ] arm/divdf3vfp.S
 - [ ] arm/divmodsi4.S
 - [ ] arm/divsf3vfp.S
@@ -84,15 +66,9 @@ See [rust-lang/rust#35437][0].
 - [ ] arm/negdf2vfp.S
 - [ ] arm/negsf2vfp.S
 - [ ] arm/nesf2vfp.S
-- [ ] arm/restore_vfp_d8_d15_regs.S
-- [ ] arm/save_vfp_d8_d15_regs.S
 - [ ] arm/softfloat-alias.list
 - [ ] arm/subdf3vfp.S
 - [ ] arm/subsf3vfp.S
-- [ ] arm/switch16.S
-- [ ] arm/switch32.S
-- [ ] arm/switch8.S
-- [ ] arm/switchu8.S
 - [ ] arm/truncdfsf2vfp.S
 - [ ] arm/udivmodsi4.S
 - [ ] arm/udivsi3.S
@@ -103,27 +79,13 @@ See [rust-lang/rust#35437][0].
 - [ ] ashlti3.c
 - [ ] ashrdi3.c
 - [ ] ashrti3.c
-- [ ] clzdi2.c
-- [ ] clzsi2.c
-- [ ] clzti2.c
-- [ ] cmpdi2.c
-- [ ] cmpti2.c
-- [ ] comparedf2.c
-- [ ] comparesf2.c
-- [ ] ctzdi2.c
-- [ ] ctzsi2.c
-- [ ] ctzti2.c
 - [ ] divdf3.c
 - [ ] divdi3.c
-- [ ] divmoddi4.c
-- [ ] divmodsi4.c
 - [ ] divsf3.c
 - [ ] divsi3.c
 - [ ] divti3.c
 - [ ] extendhfsf2.c
 - [ ] extendsfdf2.c
-- [ ] ffsdi2.c
-- [ ] ffsti2.c
 - [ ] fixdfdi.c
 - [ ] fixdfsi.c
 - [ ] fixdfti.c
@@ -174,44 +136,14 @@ See [rust-lang/rust#35437][0].
 - [ ] muloti4.c
 - [ ] mulsf3.c
 - [ ] multi3.c
-- [ ] mulvdi3.c
-- [ ] mulvsi3.c
-- [ ] mulvti3.c
-- [ ] negdf2.c
-- [ ] negdi2.c
-- [ ] negsf2.c
-- [ ] negti2.c
-- [ ] negvdi2.c
-- [ ] negvsi2.c
-- [ ] negvti2.c
-- [ ] paritydi2.c
-- [ ] paritysi2.c
-- [ ] parityti2.c
-- [ ] popcountdi2.c
-- [ ] popcountsi2.c
-- [ ] popcountti2.c
 - [ ] powidf2.c
 - [ ] powisf2.c
-- [ ] ppc/gcc_qadd.c
-- [ ] ppc/gcc_qdiv.c
-- [ ] ppc/gcc_qmul.c
-- [ ] ppc/gcc_qsub.c
-- [ ] ppc/restFP.S
-- [ ] ppc/saveFP.S
 - [ ] subdf3.c
 - [ ] subsf3.c
-- [ ] subvdi3.c
-- [ ] subvsi3.c
-- [ ] subvti3.c
 - [ ] truncdfhf2.c
 - [ ] truncdfsf2.c
 - [ ] truncsfhf2.c
-- [ ] ucmpdi2.c
-- [ ] ucmpti2.c
 - [ ] udivdi3.c
-- [ ] udivmoddi4.c
-- [ ] udivmodsi4.c
-- [ ] udivmodti4.c
 - [ ] udivsi3.c
 - [ ] udivti3.c
 - [ ] umoddi3.c
@@ -221,7 +153,6 @@ See [rust-lang/rust#35437][0].
 - [ ] x86_64/chkstk2.S
 - [ ] x86_64/floatundidf.S
 - [ ] x86_64/floatundisf.S
-- [x] arm/aeabi_memcmp.S
 - [x] arm/aeabi_memcpy.S
 - [x] arm/aeabi_memmove.S
 - [x] arm/aeabi_memset.S
@@ -274,12 +205,84 @@ These builtins involve floating-point types ("`f128`", "`f80`" and complex numbe
 - ~~ppc/fixunstfdi.c~~
 - ~~ppc/floatditf.c~~
 - ~~ppc/floatunditf.c~~
+- ~~ppc/gcc_qadd.c~~
+- ~~ppc/gcc_qdiv.c~~
+- ~~ppc/gcc_qmul.c~~
+- ~~ppc/gcc_qsub.c~~
 - ~~ppc/multc3.c~~
 - ~~subtf3.c~~
 - ~~trunctfdf2.c~~
 - ~~trunctfsf2.c~~
 - ~~x86_64/floatdixf.c~~
 - ~~x86_64/floatundixf.S~~
+
+These builtins are never called by LLVM.
+
+- ~~absvdi2.c~~
+- ~~absvsi2.c~~
+- ~~absvti2.c~~
+- ~~addvdi3.c~~
+- ~~addvsi3.c~~
+- ~~addvti3.c~~
+- ~~arm/aeabi_cdcmp.S~~
+- ~~arm/aeabi_cdcmpeq_check_nan.c~~
+- ~~arm/aeabi_cfcmp.S~~
+- ~~arm/aeabi_cfcmpeq_check_nan.c~~
+- ~~arm/aeabi_div0.c~~
+- ~~arm/aeabi_drsub.c~~
+- ~~arm/aeabi_frsub.c~~
+- ~~arm/aeabi_memcmp.S~~
+- ~~arm/bswapdi2.S~~
+- ~~arm/bswapsi2.S~~
+- ~~arm/clzdi2.S~~
+- ~~arm/clzsi2.S~~
+- ~~arm/comparesf2.S~~
+- ~~arm/restore_vfp_d8_d15_regs.S~~
+- ~~arm/save_vfp_d8_d15_regs.S~~
+- ~~arm/switch16.S~~
+- ~~arm/switch32.S~~
+- ~~arm/switch8.S~~
+- ~~arm/switchu8.S~~
+- ~~clzdi2.c~~
+- ~~clzsi2.c~~
+- ~~clzti2.c~~
+- ~~cmpdi2.c~~
+- ~~cmpti2.c~~
+- ~~comparedf2.c~~
+- ~~comparesf2.c~~
+- ~~ctzdi2.c~~
+- ~~ctzsi2.c~~
+- ~~ctzti2.c~~
+- ~~divmoddi4.c~~
+- ~~divmodsi4.c~~
+- ~~ffsdi2.c~~
+- ~~ffsti2.c~~
+- ~~mulvdi3.c~~
+- ~~mulvsi3.c~~
+- ~~mulvti3.c~~
+- ~~negdf2.c~~
+- ~~negdi2.c~~
+- ~~negsf2.c~~
+- ~~negti2.c~~
+- ~~negvdi2.c~~
+- ~~negvsi2.c~~
+- ~~negvti2.c~~
+- ~~paritydi2.c~~
+- ~~paritysi2.c~~
+- ~~parityti2.c~~
+- ~~popcountdi2.c~~
+- ~~popcountsi2.c~~
+- ~~popcountti2.c~~
+- ~~ppc/restFP.S~~
+- ~~ppc/saveFP.S~~
+- ~~subvdi3.c~~
+- ~~subvsi3.c~~
+- ~~subvti3.c~~
+- ~~ucmpdi2.c~~
+- ~~ucmpti2.c~~
+- ~~udivmoddi4.c~~
+- ~~udivmodsi4.c~~
+- ~~udivmodti4.c~~
 
 Rust only exposes atomic types on platforms that support them, and therefore does not need to fall back to software implementations.
 
