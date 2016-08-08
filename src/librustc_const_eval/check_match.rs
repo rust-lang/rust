@@ -235,7 +235,12 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 .flat_map(|arm| &arm.0)
                 .map(|pat| vec![wrap_pat(cx, &pat)])
                 .collect();
-            check_exhaustive(cx, ex.span, &matrix, source);
+            let match_span = Span {
+                lo: ex.span.lo,
+                hi: scrut.span.hi,
+                expn_id: ex.span.expn_id
+            };
+            check_exhaustive(cx, match_span, &matrix, source);
         },
         _ => ()
     }
