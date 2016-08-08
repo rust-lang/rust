@@ -48,7 +48,11 @@ pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        -> T
     where T: TransNormalize<'tcx>
 {
+    debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
     let substituted = value.subst(tcx, param_substs);
+    debug!("apply_param_substs: substituted={:?}{}",
+           substituted,
+           if substituted.has_projection_types() { " [needs projection]" } else { "" });
     tcx.normalize_associated_type(&substituted)
 }
 

@@ -1028,7 +1028,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
 
-        fulfill_cx.select_all_or_error(infcx).is_ok()
+        fulfill_cx.select_all_or_error(&infcx).is_ok()
     })
 }
 

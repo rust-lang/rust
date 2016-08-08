@@ -670,6 +670,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
     }
 
+    /// Finishes processes any obligations that remain in the
+    /// fulfillment context, and then returns the result with all type
+    /// variables removed and regions erased. Because this is intended
+    /// for use after type-check has completed, if any errors occur,
+    /// it will panic. It is used during normalization and other cases
+    /// where processing the obligations in `fulfill_cx` may cause
+    /// type inference variables that appear in `result` to be
+    /// unified, and hence we need to process those obligations to get
+    /// the complete picture of the type.
     pub fn drain_fulfillment_cx_or_panic<T>(&self,
                                             span: Span,
                                             fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
@@ -679,45 +688,26 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("drain_fulfillment_cx_or_panic()");
 
-        let when = "resolving bounds after type-checking";
-        let v = match self.drain_fulfillment_cx(fulfill_cx, result) {
-            Ok(v) => v,
-            Err(errors) => {
-                span_bug!(span, "Encountered errors `{:?}` {}", errors, when);
-            }
-        };
-
-        match self.tcx.lift_to_global(&v) {
-            Some(v) => v,
-            None => {
-                span_bug!(span, "Uninferred types/regions in `{:?}` {}", v, when);
-            }
-        }
-    }
-
-    /// Finishes processes any obligations that remain in the fulfillment
-    /// context, and then "freshens" and returns `result`. This is
-    /// primarily used during normalization and other cases where
-    /// processing the obligations in `fulfill_cx` may cause type
-    /// inference variables that appear in `result` to be unified, and
-    /// hence we need to process those obligations to get the complete
-    /// picture of the type.
-    pub fn drain_fulfillment_cx<T>(&self,
-                                   fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                   result: &T)
-                                   -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
-        where T : TypeFoldable<'tcx>
-    {
-        debug!("drain_fulfillment_cx(result={:?})",
-               result);
-
         // In principle, we only need to do this so long as `result`
         // contains unbound type parameters. It could be a slight
         // optimization to stop iterating early.
-        fulfill_cx.select_all_or_error(self)?;
+        match fulfill_cx.select_all_or_error(self) {
+            Ok(()) => { }
+            Err(errors) => {
+                span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
+                          errors);
+            }
+        }
 
         let result = self.resolve_type_vars_if_possible(result);
-        Ok(self.tcx.erase_regions(&result))
+        let result = self.tcx.erase_regions(&result);
+
+        match self.tcx.lift_to_global(&result) {
+            Some(result) => result,
+            None => {
+                span_bug!(span, "Uninferred types/regions in `{:?}`", result);
+            }
+        }
     }
 
     pub fn projection_mode(&self) -> Reveal {
