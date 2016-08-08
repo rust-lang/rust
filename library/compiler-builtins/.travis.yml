@@ -52,6 +52,10 @@ matrix:
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
       os: linux
+  allow_failures:
+    # FIXME(#2)
+    - env: TARGET=armv7-unknown-linux-gnueabihf
+      os: linux
 
 before_install:
   - export PATH="$PATH:$HOME/.cargo/bin"
