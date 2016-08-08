@@ -4,6 +4,7 @@ use rustc::ty;
 use rustc::lint::*;
 use std::collections::HashSet;
 use syntax::ast;
+use syntax::abi::Abi;
 use syntax::codemap::Span;
 use utils::{span_lint, type_is_unsafe_function};
 
@@ -85,7 +86,12 @@ impl LateLintPass for Functions {
 
         // don't warn for implementations, it's not their fault
         if !is_impl {
-            self.check_arg_number(cx, decl, span);
+            // don't lint extern functions decls, it's not their fault either
+            match kind {
+                hir::intravisit::FnKind::Method(_, &hir::MethodSig { abi: Abi::Rust, .. }, _, _) |
+                hir::intravisit::FnKind::ItemFn(_, _, _, _, Abi::Rust, _, _) => self.check_arg_number(cx, decl, span),
+                _ => {},
+            }
         }
 
         self.check_raw_ptr(cx, unsafety, decl, block, nodeid);
@@ -93,7 +99,10 @@ impl LateLintPass for Functions {
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
         if let hir::MethodTraitItem(ref sig, ref block) = item.node {
-            self.check_arg_number(cx, &sig.decl, item.span);
+            // don't lint extern functions decls, it's not their fault
+            if sig.abi == Abi::Rust {
+                self.check_arg_number(cx, &sig.decl, item.span);
+            }
 
             if let Some(ref block) = *block {
                 self.check_raw_ptr(cx, sig.unsafety, &sig.decl, block, item.id);

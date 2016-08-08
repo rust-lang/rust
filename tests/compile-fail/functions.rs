@@ -12,6 +12,9 @@ fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _
     //~^ ERROR: this function has too many arguments (8/7)
 }
 
+// don't lint extern fns
+extern fn extern_fn(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
+
 pub trait Foo {
     fn good(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool);
     fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ());
