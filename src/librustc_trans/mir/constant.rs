@@ -327,7 +327,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 }
 
                 mir::TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
-                    let fn_ty = self.mir.operand_ty(tcx, func);
+                    let fn_ty = func.ty(self.mir, tcx);
                     let fn_ty = self.monomorphize(&fn_ty);
                     let instance = match fn_ty.sty {
                         ty::TyFnDef(def_id, substs, _) => {
@@ -723,7 +723,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let lhs = self.const_operand(lhs, span)?;
                 let rhs = self.const_operand(rhs, span)?;
                 let ty = lhs.ty;
-                let binop_ty = self.mir.binop_ty(tcx, op, lhs.ty, rhs.ty);
+                let binop_ty = op.ty(tcx, lhs.ty, rhs.ty);
                 let (lhs, rhs) = (lhs.llval, rhs.llval);
                 Const::new(const_scalar_binop(op, lhs, rhs, ty), binop_ty)
             }
@@ -732,7 +732,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let lhs = self.const_operand(lhs, span)?;
                 let rhs = self.const_operand(rhs, span)?;
                 let ty = lhs.ty;
-                let val_ty = self.mir.binop_ty(tcx, op, lhs.ty, rhs.ty);
+                let val_ty = op.ty(tcx, lhs.ty, rhs.ty);
                 let binop_ty = tcx.mk_tup(vec![val_ty, tcx.types.bool]);
                 let (lhs, rhs) = (lhs.llval, rhs.llval);
                 assert!(!ty.is_fp());

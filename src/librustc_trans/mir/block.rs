@@ -433,7 +433,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 let extra_args = &args[sig.inputs.len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
-                    let op_ty = self.mir.operand_ty(bcx.tcx(), op_arg);
+                    let op_ty = op_arg.ty(&self.mir, bcx.tcx());
                     bcx.monomorphize(&op_ty)
                 }).collect::<Vec<_>>();
                 let fn_ty = callee.direct_fn_type(bcx.ccx(), &extra_args);

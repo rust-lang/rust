@@ -81,7 +81,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
         self.super_rvalue(rvalue);
-        if let Some(ty) = self.mir.rvalue_ty(self.tcx(), rvalue) {
+        if let Some(ty) = rvalue.ty(self.mir, self.tcx()) {
             self.sanitize_type(rvalue, ty);
         }
     }
@@ -180,7 +180,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             }
             ProjectionElem::Index(ref i) => {
                 self.visit_operand(i);
-                let index_ty = self.mir.operand_ty(tcx, i);
+                let index_ty = i.ty(self.mir, tcx);
                 if index_ty != tcx.types.usize {
                     LvalueTy::Ty {
                         ty: span_mirbug_and_err!(self, i, "index by non-usize {:?}", i)
@@ -356,7 +356,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match stmt.kind {
             StatementKind::Assign(ref lv, ref rv) => {
                 let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
-                let rv_ty = mir.rvalue_ty(tcx, rv);
+                let rv_ty = rv.ty(mir, tcx);
                 if let Some(rv_ty) = rv_ty {
                     if let Err(terr) = self.sub_types(self.last_span, rv_ty, lv_ty) {
                         span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
@@ -391,7 +391,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 ..
             } => {
                 let lv_ty = location.ty(mir, tcx).to_ty(tcx);
-                let rv_ty = mir.operand_ty(tcx, value);
+                let rv_ty = value.ty(mir, tcx);
                 if let Err(terr) = self.sub_types(self.last_span, rv_ty, lv_ty) {
                     span_mirbug!(self, term, "bad DropAndReplace ({:?} = {:?}): {:?}",
                                  lv_ty, rv_ty, terr);
@@ -399,7 +399,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
 
             TerminatorKind::If { ref cond, .. } => {
-                let cond_ty = mir.operand_ty(tcx, cond);
+                let cond_ty = cond.ty(mir, tcx);
                 match cond_ty.sty {
                     ty::TyBool => {}
                     _ => {
@@ -433,7 +433,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
-                let func_ty = mir.operand_ty(tcx, func);
+                let func_ty = func.ty(mir, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
                 let func_ty = match func_ty.sty {
                     ty::TyFnDef(_, _, func_ty) | ty::TyFnPtr(func_ty) => func_ty,
@@ -453,16 +453,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             TerminatorKind::Assert { ref cond, ref msg, .. } => {
-                let cond_ty = mir.operand_ty(tcx, cond);
+                let cond_ty = cond.ty(mir, tcx);
                 if cond_ty != tcx.types.bool {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
                 if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                    if mir.operand_ty(tcx, len) != tcx.types.usize {
+                    if len.ty(mir, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
-                    if mir.operand_ty(tcx, index) != tcx.types.usize {
+                    if index.ty(mir, tcx) != tcx.types.usize {
                         span_mirbug!(self, index, "bounds-check index non-usize {:?}", index)
                     }
                 }
@@ -507,7 +507,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
         for (n, (fn_arg, op_arg)) in sig.inputs.iter().zip(args).enumerate() {
-            let op_arg_ty = mir.operand_ty(self.tcx(), op_arg);
+            let op_arg_ty = op_arg.ty(mir, self.tcx());
             if let Err(terr) = self.sub_types(self.last_span, op_arg_ty, fn_arg) {
                 span_mirbug!(self, term, "bad arg #{:?} ({:?} <- {:?}): {:?}",
                              n, fn_arg, op_arg_ty, terr);
@@ -554,7 +554,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let arg_ty = match mir.operand_ty(self.tcx(), &args[0]).sty {
+        let arg_ty = match args[0].ty(mir, self.tcx()).sty {
             ty::TyRawPtr(mt) => mt.ty,
             ty::TyBox(ty) => ty,
             _ => {
