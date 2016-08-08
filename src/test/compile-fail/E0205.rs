@@ -14,11 +14,11 @@ enum Foo {
 }
 
 impl Copy for Foo { }
-//~^ ERROR E0205
+//~^ ERROR the trait `Copy` may not be implemented for this type
 //~| NOTE variant `Bar` does not implement `Copy`
 
 #[derive(Copy)]
-//~^ ERROR E0205
+//~^ ERROR the trait `Copy` may not be implemented for this type
 //~| NOTE variant `Bar` does not implement `Copy`
 //~| NOTE in this expansion of #[derive(Copy)]
 enum Foo2<'a> {
