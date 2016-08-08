@@ -1,7 +1,10 @@
 language: rust
 rust: nightly
 sudo: false
-cache: cargo
+cache:
+  cargo: true
+  directories:
+  - clippy_lints/target
 
 env:
  global:
