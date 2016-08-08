@@ -4637,9 +4637,11 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     for (i, b) in tps_used.iter().enumerate() {
         if !*b {
-            span_err!(ccx.tcx.sess, tps[i].span, E0091,
+            struct_span_err!(ccx.tcx.sess, tps[i].span, E0091,
                 "type parameter `{}` is unused",
-                tps[i].name);
+                tps[i].name)
+                .span_label(tps[i].span, &format!("unused type parameter"))
+                .emit();
         }
     }
 }
