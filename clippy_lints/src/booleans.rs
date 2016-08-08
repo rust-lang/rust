@@ -19,6 +19,7 @@ use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 /// ```rust
 /// if a && true  // should be: if a
 /// if !(a == b)  // should be: if a != b
+/// ```
 declare_lint! {
     pub NONMINIMAL_BOOL,
     Allow,
