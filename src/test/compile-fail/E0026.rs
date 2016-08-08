@@ -16,6 +16,8 @@ struct Thing {
 fn main() {
     let thing = Thing { x: 0, y: 0 };
     match thing {
-        Thing { x, y, z } => {} //~ ERROR E0026
+        Thing { x, y, z } => {}
+        //~^ ERROR struct `Thing` does not have a field named `z` [E0026]
+        //~| NOTE struct `Thing` does not have field `z`
     }
 }
