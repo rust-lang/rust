@@ -1321,6 +1321,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyStruct(def, substs))
     }
 
+    pub fn mk_union(self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        // take a copy of substs so that we own the vectors inside
+        self.mk_ty(TyUnion(def, substs))
+    }
+
     pub fn mk_closure(self,
                       closure_id: DefId,
                       substs: &'tcx Substs<'tcx>,

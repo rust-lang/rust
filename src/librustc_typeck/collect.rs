@@ -1069,6 +1069,16 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     adt
 }
 
+fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                it: &hir::Item,
+                                def: &hir::VariantData)
+                                -> ty::AdtDefMaster<'tcx>
+{
+    let did = ccx.tcx.map.local_def_id(it.id);
+    let variants = vec![convert_struct_variant(ccx, did, it.name, ConstInt::Infer(0), def)];
+    ccx.tcx.intern_adt_def(did, ty::AdtKind::Union, variants)
+}
+
     fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, e: &hir::Expr)
                           -> Option<ty::Disr> {
         debug!("disr expr, checking {}", pprust::expr_to_string(e));
