@@ -20,7 +20,8 @@ pub enum V {
 
 fn main() {
     match (T::T1(()), V::V2(true)) {
-    //~^ ERROR non-exhaustive patterns: `(T1(()), V2(_))` not covered
+        //~^ ERROR non-exhaustive patterns
+        //~| `(T1(()), V2(_))` not covered
         (T::T1(()), V::V1(i)) => (),
         (T::T2(()), V::V2(b)) => ()
     }

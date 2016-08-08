@@ -23,6 +23,7 @@ fn main() {
     match x {
         double_option::some2(ref _y, _z) => { },
         //~^ ERROR cannot bind by-move and by-ref in the same pattern
+        //~| invalid by-move binding here
         double_option::none2 => panic!()
     }
 }

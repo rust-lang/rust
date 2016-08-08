@@ -22,7 +22,8 @@ const TRUE_TRUE: (bool, bool) = (true, true);
 
 fn nonexhaustive_1() {
     match (true, false) {
-    //~^ ERROR non-exhaustive patterns: `(true, false)` not covered
+    //~^ ERROR non-exhaustive patterns
+    //~| `(true, false)` not covered
         TRUE_TRUE => (),
         (false, false) => (),
         (false, true) => ()
@@ -45,7 +46,8 @@ const EAST: Direction = East;
 
 fn nonexhaustive_2() {
     match Some(Some(North)) {
-    //~^ ERROR non-exhaustive patterns: `Some(Some(West))` not covered
+    //~^ ERROR non-exhaustive patterns
+    //~| `Some(Some(West))` not covered
         Some(NONE) => (),
         Some(Some(North)) => (),
         Some(Some(EAST)) => (),
@@ -77,7 +79,8 @@ const STATIC_FOO: Foo = Foo { bar: None, baz: NEW_FALSE };
 
 fn nonexhaustive_3() {
     match (Foo { bar: Some(North), baz: NewBool(true) }) {
-    //~^ ERROR non-exhaustive patterns: `Foo { bar: Some(North), baz: NewBool(true) }`
+    //~^ ERROR non-exhaustive patterns
+    //~| `Foo { bar: Some(North), baz: NewBool(true) }`
         Foo { bar: None, baz: NewBool(true) } => (),
         Foo { bar: _, baz: NEW_FALSE } => (),
         Foo { bar: Some(West), baz: NewBool(true) } => (),

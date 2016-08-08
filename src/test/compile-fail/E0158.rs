@@ -28,8 +28,10 @@ impl Foo for Def {
 
 pub fn test<A: Foo, B: Foo>(arg: EFoo) {
     match arg {
-        A::X => println!("A::X"), //~ error: statics cannot be referenced in patterns [E0158]
-        B::X => println!("B::X"), //~ error: statics cannot be referenced in patterns [E0158]
+        A::X => println!("A::X"), //~ ERROR E0158
+        //~| unresolvable constant here
+        B::X => println!("B::X"), //~ ERROR E0158
+        //~| unresolvable constant here
         _ => (),
     }
 }

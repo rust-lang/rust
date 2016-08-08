@@ -16,5 +16,6 @@ enum Thing {
 
 fn main() {
     let Thing::Foo(y) = Thing::Foo(1);
-    //~^ ERROR refutable pattern in local binding: `Bar` not covered
+    //~^ ERROR refutable pattern in local binding
+    //~| `Bar` not covered
 }

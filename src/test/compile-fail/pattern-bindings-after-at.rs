@@ -15,8 +15,11 @@ enum Option<T> {
 
 fn main() {
     match &mut Some(1) {
-        ref mut z @ &mut Some(ref a) => {
-        //~^ ERROR pattern bindings are not allowed after an `@`
+        ref mut z
+        //~^ NOTE within this binding
+            @ &mut Some(ref a) => {
+            //~^ ERROR nested pattern bindings are invalid
+            //~| invalid nested binding here
             **z = None;
             println!("{}", *a);
         }

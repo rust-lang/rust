@@ -9,9 +9,15 @@
 // except according to those terms.
 
 fn main() {
-    match Some(()) {
-        None => { },
-        option if { option = None; false } => { }, //~ ERROR E0302
-        Some(_) => { }
+    let ref mut x = Some(4);
+    match x {
+        &mut None => {}
+        &mut Some(_) if
+        {
+            *x = None; //~ ERROR E0302
+            false
+        }
+            => {}
+        &mut Some(_) => {}
     }
 }

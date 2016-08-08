@@ -17,6 +17,7 @@ fn main() {
     match x {
         Some(z) if z.recv().unwrap() => { panic!() },
             //~^ ERROR cannot bind by-move into a pattern guard
+            //~| invalid by-move binding here
         Some(z) => { assert!(!z.recv().unwrap()); },
         None => panic!()
     }

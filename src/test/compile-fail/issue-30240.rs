@@ -9,11 +9,13 @@
 // except according to those terms.
 
 fn main() {
-    match "world" { //~ ERROR non-exhaustive patterns: `&_`
+    match "world" { //~ ERROR non-exhaustive patterns
+                    //~| `&_` not covered
         "hello" => {}
     }
 
-    match "world" { //~ ERROR non-exhaustive patterns: `&_`
+    match "world" { //~ ERROR non-exhaustive patterns
+                    //~| `&_` not covered
         ref _x if false => {}
         "hello" => {}
         "hello" => {} //~ ERROR unreachable pattern

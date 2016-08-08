@@ -9,9 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    match Some("hi".to_string()) {
-        ref op_string_ref @ Some(s) => {}, //~ ERROR E0303
-                                           //~^ ERROR E0009
-        None => {},
+    match 0 {
+        ref mut x @ y //~ ERROR E0303
+            => {}
     }
 }
