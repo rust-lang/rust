@@ -1281,10 +1281,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         if bounds.len() > 1 {
-            let mut err = struct_span_err!(self.tcx().sess, span, E0221,
-                                           "ambiguous associated type `{}` in bounds of `{}`",
-                                           assoc_name,
-                                           ty_param_name);
+            let mut err = struct_span_err!(
+                self.tcx().sess, span, E0221,
+                "ambiguous associated type `{}` in bounds of `{}`",
+                assoc_name,
+                ty_param_name);
+            err.span_label(span, &format!("ambiguous associated type `{}`", assoc_name));
 
             for bound in &bounds {
                 span_note!(&mut err, span,
