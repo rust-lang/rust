@@ -1590,9 +1590,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return self.tcx().types.err;
             }
             _ => {
-                span_err!(tcx.sess, span, E0248,
-                          "found value `{}` used as a type",
-                          tcx.item_path_str(def.def_id()));
+                struct_span_err!(tcx.sess, span, E0248,
+                           "found value `{}` used as a type",
+                            tcx.item_path_str(def.def_id()))
+                           .span_label(span, &format!("value used as a type"))
+                           .emit();
                 return self.tcx().types.err;
             }
         }
