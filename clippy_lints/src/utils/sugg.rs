@@ -161,7 +161,13 @@ impl<'a> Sugg<'a> {
     pub fn maybe_par(self) -> Self {
         match self {
             Sugg::NonParen(..) => self,
-            Sugg::MaybeParen(sugg) | Sugg::BinOp(_, sugg) => Sugg::NonParen(format!("({})", sugg).into()),
+            // (x) and (x).y() both don't need additional parens
+            Sugg::MaybeParen(sugg) => if sugg.starts_with('(') && sugg.ends_with(')') {
+                Sugg::MaybeParen(sugg)
+            } else {
+                Sugg::NonParen(format!("({})", sugg).into())
+            },
+            Sugg::BinOp(_, sugg) => Sugg::NonParen(format!("({})", sugg).into()),
         }
     }
 }

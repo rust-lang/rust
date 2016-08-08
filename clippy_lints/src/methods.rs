@@ -514,8 +514,7 @@ impl LateLintPass for Pass {
 
                 let self_ty = cx.tcx.expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && name.node.as_str() == "clone" {
-                    lint_clone_on_copy(cx, expr);
-                    lint_clone_double_ref(cx, expr, &args[0], self_ty);
+                    lint_clone_on_copy(cx, expr, &args[0], self_ty);
                 }
 
                 match self_ty.sty {
@@ -703,19 +702,11 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[P<hi
 }
 
 /// Checks for the `CLONE_ON_COPY` lint.
-fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr) {
+fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_ty: ty::Ty) {
     let ty = cx.tcx.expr_ty(expr);
     let parent = cx.tcx.map.get_parent(expr.id);
     let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, parent);
-
-    if !ty.moves_by_default(cx.tcx.global_tcx(), &parameter_environment, expr.span) {
-        span_lint(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type");
-    }
-}
-
-/// Checks for the `CLONE_DOUBLE_REF` lint.
-fn lint_clone_double_ref(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, ty: ty::Ty) {
-    if let ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) = ty.sty {
+    if let ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) = arg_ty.sty {
         if let ty::TyRef(..) = inner.sty {
             span_lint_and_then(cx,
                                CLONE_DOUBLE_REF,
@@ -725,7 +716,22 @@ fn lint_clone_double_ref(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, ty
                                |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                                    db.span_suggestion(expr.span, "try dereferencing it", format!("({}).clone()", snip.deref()));
                                });
+            return; // don't report clone_on_copy
         }
+    }
+
+    if !ty.moves_by_default(cx.tcx.global_tcx(), &parameter_environment, expr.span) {
+        span_lint_and_then(cx,
+                           CLONE_ON_COPY,
+                           expr.span,
+                           "using `clone` on a `Copy` type",
+                           |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
+                               if let ty::TyRef(..) = cx.tcx.expr_ty(arg).sty {
+                                   db.span_suggestion(expr.span, "try dereferencing it", format!("{}", snip.deref()));
+                               } else {
+                                   db.span_suggestion(expr.span, "try removing the `clone` call", format!("{}", snip));
+                               }
+                           });
     }
 }
 
