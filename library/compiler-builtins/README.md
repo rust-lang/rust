@@ -26,19 +26,14 @@ See [rust-lang/rust#35437][0].
 
 ## Progress
 
-The intrinsics that involve quadruple precision floating point numbers ("`f128`") has been crossed
-off because Rust doesn't support them.
-
 - [ ] absvdi2.c
 - [ ] absvsi2.c
 - [ ] absvti2.c
 - [ ] adddf3.c
 - [ ] addsf3.c
-- [ ] addtf3.c
 - [ ] addvdi3.c
 - [ ] addvsi3.c
 - [ ] addvti3.c
-- [ ] apple_versioning.c
 - [ ] arm/adddf3vfp.S
 - [ ] arm/addsf3vfp.S
 - [ ] arm/aeabi_cdcmp.S
@@ -98,27 +93,6 @@ off because Rust doesn't support them.
 - [ ] arm/switch32.S
 - [ ] arm/switch8.S
 - [ ] arm/switchu8.S
-- [ ] arm/sync_fetch_and_add_4.S
-- [ ] arm/sync_fetch_and_add_8.S
-- [ ] arm/sync_fetch_and_and_4.S
-- [ ] arm/sync_fetch_and_and_8.S
-- [ ] arm/sync_fetch_and_max_4.S
-- [ ] arm/sync_fetch_and_max_8.S
-- [ ] arm/sync_fetch_and_min_4.S
-- [ ] arm/sync_fetch_and_min_8.S
-- [ ] arm/sync_fetch_and_nand_4.S
-- [ ] arm/sync_fetch_and_nand_8.S
-- [ ] arm/sync_fetch_and_or_4.S
-- [ ] arm/sync_fetch_and_or_8.S
-- [ ] arm/sync_fetch_and_sub_4.S
-- [ ] arm/sync_fetch_and_sub_8.S
-- [ ] arm/sync_fetch_and_umax_4.S
-- [ ] arm/sync_fetch_and_umax_8.S
-- [ ] arm/sync_fetch_and_umin_4.S
-- [ ] arm/sync_fetch_and_umin_8.S
-- [ ] arm/sync_fetch_and_xor_4.S
-- [ ] arm/sync_fetch_and_xor_8.S
-- [ ] arm/sync_synchronize.S
 - [ ] arm/truncdfsf2vfp.S
 - [ ] arm/udivmodsi4.S
 - [ ] arm/udivsi3.S
@@ -129,14 +103,6 @@ off because Rust doesn't support them.
 - [ ] ashlti3.c
 - [ ] ashrdi3.c
 - [ ] ashrti3.c
-- [ ] atomic.c
-- [ ] atomic_flag_clear.c
-- [ ] atomic_flag_clear_explicit.c
-- [ ] atomic_flag_test_and_set.c
-- [ ] atomic_flag_test_and_set_explicit.c
-- [ ] atomic_signal_fence.c
-- [ ] atomic_thread_fence.c
-- [ ] clear_cache.c
 - [ ] clzdi2.c
 - [ ] clzsi2.c
 - [ ] clzti2.c
@@ -144,30 +110,18 @@ off because Rust doesn't support them.
 - [ ] cmpti2.c
 - [ ] comparedf2.c
 - [ ] comparesf2.c
-- [ ] comparetf2.c
-- [ ] cpu_model.c
 - [ ] ctzdi2.c
 - [ ] ctzsi2.c
 - [ ] ctzti2.c
-- [ ] divdc3.c
 - [ ] divdf3.c
 - [ ] divdi3.c
 - [ ] divmoddi4.c
 - [ ] divmodsi4.c
-- [ ] divsc3.c
 - [ ] divsf3.c
 - [ ] divsi3.c
-- [ ] divtc3.c
-- [ ] divtf3.c
 - [ ] divti3.c
-- [ ] divxc3.c
-- [ ] emutls.c
-- [ ] enable_execute_stack.c
-- [ ] eprintf.c
-- [ ] extenddftf2.c
 - [ ] extendhfsf2.c
 - [ ] extendsfdf2.c
-- [ ] extendsftf2.c
 - [ ] ffsdi2.c
 - [ ] ffsti2.c
 - [ ] fixdfdi.c
@@ -176,35 +130,24 @@ off because Rust doesn't support them.
 - [ ] fixsfdi.c
 - [ ] fixsfsi.c
 - [ ] fixsfti.c
-- [ ] fixtfdi.c
-- [ ] fixtfsi.c
-- [ ] fixtfti.c
 - [ ] fixunsdfdi.c
 - [ ] fixunsdfsi.c
 - [ ] fixunsdfti.c
 - [ ] fixunssfdi.c
 - [ ] fixunssfsi.c
 - [ ] fixunssfti.c
-- [ ] fixunstfdi.c
-- [ ] fixunstfsi.c
-- [ ] fixunstfti.c
 - [ ] floatdidf.c
 - [ ] floatdisf.c
-- [ ] floatditf.c
 - [ ] floatsidf.c
 - [ ] floatsisf.c
-- [ ] floatsitf.c
 - [ ] floattidf.c
 - [ ] floattisf.c
 - [ ] floatundidf.c
 - [ ] floatundisf.c
-- [ ] floatunditf.c
 - [ ] floatunsidf.c
 - [ ] floatunsisf.c
-- [ ] floatunsitf.c
 - [ ] floatuntidf.c
 - [ ] floatuntisf.c
-- [ ] gcc_personality_v0.c
 - [ ] i386/ashldi3.S
 - [ ] i386/ashrdi3.S
 - [ ] i386/chkstk.S
@@ -219,27 +162,21 @@ off because Rust doesn't support them.
 - [ ] i386/muldi3.S
 - [ ] i386/udivdi3.S
 - [ ] i386/umoddi3.S
-- [ ] int_util.c
 - [ ] lshrdi3.c
 - [ ] lshrti3.c
 - [ ] moddi3.c
 - [ ] modsi3.c
 - [ ] modti3.c
-- [ ] muldc3.c
 - [ ] muldf3.c
 - [ ] muldi3.c
 - [ ] mulodi4.c
 - [ ] mulosi4.c
 - [ ] muloti4.c
-- [ ] mulsc3.c
 - [ ] mulsf3.c
-- [ ] multc3.c
-- [ ] multf3.c
 - [ ] multi3.c
 - [ ] mulvdi3.c
 - [ ] mulvsi3.c
 - [ ] mulvti3.c
-- [ ] mulxc3.c
 - [ ] negdf2.c
 - [ ] negdi2.c
 - [ ] negsf2.c
@@ -255,31 +192,20 @@ off because Rust doesn't support them.
 - [ ] popcountti2.c
 - [ ] powidf2.c
 - [ ] powisf2.c
-- [ ] powitf2.c
-- [ ] ppc/divtc3.c
-- [ ] ppc/fixtfdi.c
-- [ ] ppc/fixunstfdi.c
-- [ ] ppc/floatditf.c
-- [ ] ppc/floatunditf.c
 - [ ] ppc/gcc_qadd.c
 - [ ] ppc/gcc_qdiv.c
 - [ ] ppc/gcc_qmul.c
 - [ ] ppc/gcc_qsub.c
-- [ ] ppc/multc3.c
 - [ ] ppc/restFP.S
 - [ ] ppc/saveFP.S
 - [ ] subdf3.c
 - [ ] subsf3.c
-- [ ] subtf3.c
 - [ ] subvdi3.c
 - [ ] subvsi3.c
 - [ ] subvti3.c
-- [ ] trampoline_setup.c
 - [ ] truncdfhf2.c
 - [ ] truncdfsf2.c
 - [ ] truncsfhf2.c
-- [ ] trunctfdf2.c
-- [ ] trunctfsf2.c
 - [ ] ucmpdi2.c
 - [ ] ucmpti2.c
 - [ ] udivdi3.c
@@ -301,20 +227,100 @@ off because Rust doesn't support them.
 - [x] arm/aeabi_memset.S
 - [x] x86_64/floatdidf.c
 - [x] x86_64/floatdisf.c
+
+## Unimplemented functions
+
+These builtins involve floating-point types ("`f128`", "`f80`" and complex numbers) that are not supported by Rust.
+
+- ~~addtf3.c~~
+- ~~comparetf2.c~~
+- ~~divdc3.c~~
+- ~~divsc3.c~~
+- ~~divtc3.c~~
+- ~~divtf3.c~~
+- ~~divxc3.c~~
+- ~~extenddftf2.c~~
+- ~~extendsftf2.c~~
+- ~~fixtfdi.c~~
+- ~~fixtfsi.c~~
+- ~~fixtfti.c~~
+- ~~fixunstfdi.c~~
+- ~~fixunstfsi.c~~
+- ~~fixunstfti.c~~
 - ~~fixunsxfdi.c~~
 - ~~fixunsxfsi.c~~
 - ~~fixunsxfti.c~~
 - ~~fixxfdi.c~~
 - ~~fixxfti.c~~
+- ~~floatditf.c~~
 - ~~floatdixf.c~~
+- ~~floatsitf.c~~
 - ~~floattixf.c~~
+- ~~floatunditf.c~~
 - ~~floatundixf.c~~
+- ~~floatunsitf.c~~
 - ~~floatuntixf.c~~
 - ~~i386/floatdixf.S~~
 - ~~i386/floatundixf.S~~
+- ~~muldc3.c~~
+- ~~mulsc3.c~~
+- ~~multc3.c~~
+- ~~multf3.c~~
+- ~~mulxc3.c~~
+- ~~powitf2.c~~
 - ~~powixf2.c~~
+- ~~ppc/divtc3.c~~
+- ~~ppc/fixtfdi.c~~
+- ~~ppc/fixunstfdi.c~~
+- ~~ppc/floatditf.c~~
+- ~~ppc/floatunditf.c~~
+- ~~ppc/multc3.c~~
+- ~~subtf3.c~~
+- ~~trunctfdf2.c~~
+- ~~trunctfsf2.c~~
 - ~~x86_64/floatdixf.c~~
 - ~~x86_64/floatundixf.S~~
+
+Rust only exposes atomic types on platforms that support them, and therefore does not need to fall back to software implementations.
+
+- ~~arm/sync_fetch_and_add_4.S~~
+- ~~arm/sync_fetch_and_add_8.S~~
+- ~~arm/sync_fetch_and_and_4.S~~
+- ~~arm/sync_fetch_and_and_8.S~~
+- ~~arm/sync_fetch_and_max_4.S~~
+- ~~arm/sync_fetch_and_max_8.S~~
+- ~~arm/sync_fetch_and_min_4.S~~
+- ~~arm/sync_fetch_and_min_8.S~~
+- ~~arm/sync_fetch_and_nand_4.S~~
+- ~~arm/sync_fetch_and_nand_8.S~~
+- ~~arm/sync_fetch_and_or_4.S~~
+- ~~arm/sync_fetch_and_or_8.S~~
+- ~~arm/sync_fetch_and_sub_4.S~~
+- ~~arm/sync_fetch_and_sub_8.S~~
+- ~~arm/sync_fetch_and_umax_4.S~~
+- ~~arm/sync_fetch_and_umax_8.S~~
+- ~~arm/sync_fetch_and_umin_4.S~~
+- ~~arm/sync_fetch_and_umin_8.S~~
+- ~~arm/sync_fetch_and_xor_4.S~~
+- ~~arm/sync_fetch_and_xor_8.S~~
+- ~~arm/sync_synchronize.S~~
+- ~~atomic.c~~
+- ~~atomic_flag_clear.c~~
+- ~~atomic_flag_clear_explicit.c~~
+- ~~atomic_flag_test_and_set.c~~
+- ~~atomic_flag_test_and_set_explicit.c~~
+- ~~atomic_signal_fence.c~~
+- ~~atomic_thread_fence.c~~
+
+Miscellaneous functionality that is not used by Rust.
+
+- ~~apple_versioning.c~~
+- ~~clear_cache.c~~
+- ~~emutls.c~~
+- ~~enable_execute_stack.c~~
+- ~~eprintf.c~~
+- ~~gcc_personality_v0.c~~
+- ~~trampoline_setup.c~~
 
 ## License
 
