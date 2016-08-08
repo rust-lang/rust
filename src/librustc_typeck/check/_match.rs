@@ -347,9 +347,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let ty::TyTrait(..) = mt.ty.sty {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
-                    span_err!(self.tcx.sess, span, E0033,
-                              "type `{}` cannot be dereferenced",
-                              self.ty_to_string(expected));
+                    let type_str = self.ty_to_string(expected);
+                    struct_span_err!(self.tcx.sess, span, E0033,
+                              "type `{}` cannot be dereferenced", type_str)
+                        .span_label(span, &format!("type `{}` cannot be dereferenced", type_str))
+                        .emit();
                     return false
                 }
             }
