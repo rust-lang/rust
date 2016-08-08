@@ -38,18 +38,18 @@ pub struct DefIdDirectory {
 
     // For each crate, saves the crate-name/disambiguator so that
     // later we can match crate-numbers up again.
-    krates: Vec<KrateInfo>,
+    krates: Vec<CrateInfo>,
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct KrateInfo {
+pub struct CrateInfo {
     krate: ast::CrateNum,
     name: String,
     disambiguator: String,
 }
 
 impl DefIdDirectory {
-    pub fn new(krates: Vec<KrateInfo>) -> DefIdDirectory {
+    pub fn new(krates: Vec<CrateInfo>) -> DefIdDirectory {
         DefIdDirectory { paths: vec![], krates: krates }
     }
 
@@ -139,7 +139,7 @@ impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
             once(LOCAL_CRATE)
             .chain(tcx.sess.cstore.crates())
             .map(|krate| {
-                KrateInfo {
+                CrateInfo {
                     krate: krate,
                     name: tcx.crate_name(krate).to_string(),
                     disambiguator: tcx.crate_disambiguator(krate).to_string()
