@@ -11,6 +11,7 @@
 // ignore-windows
 // exec-env:RUST_LOG=debug
 // compile-flags:-C debug-assertions=y
+// ignore-emscripten: FIXME(#31622)
 
 #![feature(rustc_private)]
 
