@@ -15,6 +15,7 @@ consistent and controlled path for new features to enter the language
 and standard libraries, so that all stakeholders can be confident about
 the direction the language is evolving in.
 
+
 ## Active RFC List
 [Active RFC List]: #active-rfc-list
 
@@ -24,6 +25,7 @@ the direction the language is evolving in.
 * [0107-pattern-guards-with-bind-by-move.md](text/0107-pattern-guards-with-bind-by-move.md)
 * [0135-where.md](text/0135-where.md)
 * [0213-defaulted-type-params.md](text/0213-defaulted-type-params.md)
+* [0243-trait-based-exception-handling.md](text/0243-trait-based-exception-handling.md)
 * [0401-coercions.md](text/0401-coercions.md)
 * [0495-array-pattern-changes.md](text/0495-array-pattern-changes.md)
 * [0501-consistent_no_prelude_attributes.md](text/0501-consistent_no_prelude_attributes.md)
@@ -34,9 +36,51 @@ the direction the language is evolving in.
 * [0911-const-fn.md](text/0911-const-fn.md)
 * [0982-dst-coercion.md](text/0982-dst-coercion.md)
 * [1131-likely-intrinsic.md](text/1131-likely-intrinsic.md)
+* [1183-swap-out-jemalloc.md](text/1183-swap-out-jemalloc.md)
+* [1192-inclusive-ranges.md](text/1192-inclusive-ranges.md)
+* [1199-simd-infrastructure.md](text/1199-simd-infrastructure.md)
+* [1201-naked-fns.md](text/1201-naked-fns.md)
+* [1210-impl-specialization.md](text/1210-impl-specialization.md)
+* [1211-mir.md](text/1211-mir.md)
 * [1214-projections-lifetimes-and-wf.md](text/1214-projections-lifetimes-and-wf.md)
+* [1216-bang-type.md](text/1216-bang-type.md)
 * [1228-placement-left-arrow.md](text/1228-placement-left-arrow.md)
+* [1229-compile-time-asserts.md](text/1229-compile-time-asserts.md)
+* [1238-nonparametric-dropck.md](text/1238-nonparametric-dropck.md)
+* [1240-repr-packed-unsafe-ref.md](text/1240-repr-packed-unsafe-ref.md)
 * [1260-main-reexport.md](text/1260-main-reexport.md)
+* [1268-allow-overlapping-impls-on-marker-traits.md](text/1268-allow-overlapping-impls-on-marker-traits.md)
+* [1298-incremental-compilation.md](text/1298-incremental-compilation.md)
+* [1317-ide.md](text/1317-ide.md)
+* [1327-dropck-param-eyepatch.md](text/1327-dropck-param-eyepatch.md)
+* [1331-grammar-is-canonical.md](text/1331-grammar-is-canonical.md)
+* [1358-repr-align.md](text/1358-repr-align.md)
+* [1359-process-ext-unix.md](text/1359-process-ext-unix.md)
+* [1398-kinds-of-allocators.md](text/1398-kinds-of-allocators.md)
+* [1399-repr-pack.md](text/1399-repr-pack.md)
+* [1422-pub-restricted.md](text/1422-pub-restricted.md)
+* [1432-replace-slice.md](text/1432-replace-slice.md)
+* [1434-contains-method-for-ranges.md](text/1434-contains-method-for-ranges.md)
+* [1440-drop-types-in-const.md](text/1440-drop-types-in-const.md)
+* [1444-union.md](text/1444-union.md)
+* [1445-restrict-constants-in-patterns.md](text/1445-restrict-constants-in-patterns.md)
+* [1492-dotdot-in-patterns.md](text/1492-dotdot-in-patterns.md)
+* [1498-ipv6addr-octets.md](text/1498-ipv6addr-octets.md)
+* [1504-int128.md](text/1504-int128.md)
+* [1513-less-unwinding.md](text/1513-less-unwinding.md)
+* [1522-conservative-impl-trait.md](text/1522-conservative-impl-trait.md)
+* [1535-stable-overflow-checks.md](text/1535-stable-overflow-checks.md)
+* [1542-try-from.md](text/1542-try-from.md)
+* [1543-integer_atomics.md](text/1543-integer_atomics.md)
+* [1548-global-asm.md](text/1548-global-asm.md)
+* [1552-contains-method-for-various-collections.md](text/1552-contains-method-for-various-collections.md)
+* [1559-attributes-with-literals.md](text/1559-attributes-with-literals.md)
+* [1560-name-resolution.md](text/1560-name-resolution.md)
+* [1590-macro-lifetimes.md](text/1590-macro-lifetimes.md)
+* [1644-default-and-expanded-rustc-errors.md](text/1644-default-and-expanded-rustc-errors.md)
+* [1653-assert_ne.md](text/1653-assert_ne.md)
+* [1660-try-borrow.md](text/1660-try-borrow.md)
+
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
