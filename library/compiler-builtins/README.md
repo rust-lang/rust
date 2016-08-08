@@ -34,6 +34,9 @@ See [rust-lang/rust#35437][0].
 - [ ] arm/aeabi_fcmp.S
 - [ ] arm/aeabi_idivmod.S
 - [ ] arm/aeabi_ldivmod.S
+- [x] arm/aeabi_memcpy.S
+- [x] arm/aeabi_memmove.S
+- [x] arm/aeabi_memset.S
 - [ ] arm/aeabi_uidivmod.S
 - [ ] arm/aeabi_uldivmod.S
 - [ ] arm/divdf3vfp.S
@@ -115,10 +118,6 @@ See [rust-lang/rust#35437][0].
 - [ ] i386/chkstk.S
 - [ ] i386/chkstk2.S
 - [ ] i386/divdi3.S
-- [ ] i386/floatdidf.S
-- [ ] i386/floatdisf.S
-- [ ] i386/floatundidf.S
-- [ ] i386/floatundisf.S
 - [ ] i386/lshrdi3.S
 - [ ] i386/moddi3.S
 - [ ] i386/muldi3.S
@@ -151,13 +150,6 @@ See [rust-lang/rust#35437][0].
 - [ ] umodti3.c
 - [ ] x86_64/chkstk.S
 - [ ] x86_64/chkstk2.S
-- [ ] x86_64/floatundidf.S
-- [ ] x86_64/floatundisf.S
-- [x] arm/aeabi_memcpy.S
-- [x] arm/aeabi_memmove.S
-- [x] arm/aeabi_memset.S
-- [x] x86_64/floatdidf.c
-- [x] x86_64/floatdisf.c
 
 ## Unimplemented functions
 
@@ -324,6 +316,17 @@ Miscellaneous functionality that is not used by Rust.
 - ~~eprintf.c~~
 - ~~gcc_personality_v0.c~~
 - ~~trampoline_setup.c~~
+
+Floating-point implementations of builtins that are only called from soft-float code. It would be better to simply use the generic soft-float versions in this case.
+
+- ~~i386/floatdidf.S~~
+- ~~i386/floatdisf.S~~
+- ~~i386/floatundidf.S~~
+- ~~i386/floatundisf.S~~
+- ~~x86_64/floatundidf.S~~
+- ~~x86_64/floatundisf.S~~
+- ~~x86_64/floatdidf.c~~
+- ~~x86_64/floatdisf.c~~
 
 ## License
 
