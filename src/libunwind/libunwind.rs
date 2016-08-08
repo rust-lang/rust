@@ -60,7 +60,6 @@ pub const unwinder_private_data_size: usize = 2;
 pub const unwinder_private_data_size: usize = 2;
 
 #[cfg(target_arch = "asmjs")]
-// FIXME: Copied from arm. Need to confirm.
 pub const unwinder_private_data_size: usize = 20;
 
 #[repr(C)]

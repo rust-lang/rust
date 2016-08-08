@@ -83,11 +83,11 @@ pub fn init() {
         }
     }
 
-    #[cfg(not(target_os = "nacl"))]
+    #[cfg(not(any(target_os = "nacl", target_os = "emscripten")))]
     unsafe fn reset_sigpipe() {
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
     }
-    #[cfg(target_os = "nacl")]
+    #[cfg(any(target_os = "nacl", target_os = "emscripten"))]
     unsafe fn reset_sigpipe() {}
 }
 
