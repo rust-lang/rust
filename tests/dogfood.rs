@@ -5,12 +5,19 @@
 extern crate compiletest_rs as compiletest;
 extern crate test;
 
-use std::env::{var, set_var, temp_dir};
+use std::env::{var, set_var};
 use std::path::PathBuf;
 use test::TestPaths;
 
 #[test]
 fn dogfood() {
+    // don't run dogfood on travis, cargo-clippy already runs clippy on itself
+    if let Ok(travis) = var("TRAVIS") {
+        if travis == "true" {
+            return;
+        }
+    }
+
     let mut config = compiletest::default_config();
 
     let cfg_mode = "run-fail".parse().expect("Invalid mode");
@@ -21,11 +28,6 @@ fn dogfood() {
     config.target_rustcflags = Some(s);
     if let Ok(name) = var("TESTNAME") {
         config.filter = Some(name.to_owned())
-    }
-
-    if cfg!(windows) {
-        // work around https://github.com/laumann/compiletest-rs/issues/35 on msvc windows
-        config.build_base = temp_dir();
     }
 
     config.mode = cfg_mode;
