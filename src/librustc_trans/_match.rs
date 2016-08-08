@@ -895,7 +895,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            &format!("comparison of `{}`", rhs_t),
                            StrEqFnLangItem);
         let args = [lhs_data, lhs_len, rhs_data, rhs_len];
-        Callee::def(bcx.ccx(), did, bcx.tcx().mk_substs(Substs::empty()))
+        Callee::def(bcx.ccx(), did, Substs::empty(bcx.tcx()))
             .call(bcx, debug_loc, ArgVals(&args), None)
     }
 

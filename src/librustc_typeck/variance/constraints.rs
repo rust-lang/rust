@@ -16,8 +16,7 @@
 use dep_graph::DepTrackingMapConfig;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use rustc::ty::subst;
-use rustc::ty::subst::ParamSpace;
+use rustc::ty::subst::{self, ParamSpace, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::ItemVariances;
 use rustc::hir::map as hir_map;
@@ -370,8 +369,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_substs(
                     generics,
                     def.did,
-                    item_type.generics.types.get_slice(subst::TypeSpace),
-                    item_type.generics.regions.get_slice(subst::TypeSpace),
+                    item_type.generics.types.as_full_slice(),
+                    item_type.generics.regions.as_full_slice(),
                     substs,
                     variance);
             }
@@ -449,7 +448,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    def_id: DefId,
                                    type_param_defs: &[ty::TypeParameterDef<'tcx>],
                                    region_param_defs: &[ty::RegionParameterDef],
-                                   substs: &subst::Substs<'tcx>,
+                                   substs: &Substs<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?}, substs={:?}, variance={:?})",
                def_id,

@@ -16,8 +16,7 @@ use super::suggest;
 use check::{FnCtxt};
 use hir::def_id::DefId;
 use hir::def::Def;
-use rustc::ty::subst;
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{self, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::infer::{InferOk, TypeOrigin};
@@ -80,9 +79,9 @@ struct Candidate<'tcx> {
 
 #[derive(Debug)]
 enum CandidateKind<'tcx> {
-    InherentImplCandidate(subst::Substs<'tcx>,
+    InherentImplCandidate(&'tcx Substs<'tcx>,
                           /* Normalize obligations */ Vec<traits::PredicateObligation<'tcx>>),
-    ExtensionImplCandidate(/* Impl */ DefId, subst::Substs<'tcx>,
+    ExtensionImplCandidate(/* Impl */ DefId, &'tcx Substs<'tcx>,
                            /* Normalize obligations */ Vec<traits::PredicateObligation<'tcx>>),
     ObjectCandidate,
     TraitCandidate,
@@ -421,10 +420,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         }
 
         let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-        let impl_ty = impl_ty.subst(self.tcx, &impl_substs);
+        let impl_ty = impl_ty.subst(self.tcx, impl_substs);
 
         // Determine the receiver type that the method itself expects.
-        let xform_self_ty = self.xform_self_ty(&item, impl_ty, &impl_substs);
+        let xform_self_ty = self.xform_self_ty(&item, impl_ty, impl_substs);
 
         // We can't use normalize_associated_types_in as it will pollute the
         // fcx's fulfillment context after this probe is over.
@@ -519,14 +518,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                        trait_ref,
                        trait_ref.substs,
                        m);
-                assert_eq!(m.generics.types.get_slice(subst::TypeSpace).len(),
-                           trait_ref.substs.types.get_slice(subst::TypeSpace).len());
-                assert_eq!(m.generics.regions.get_slice(subst::TypeSpace).len(),
-                           trait_ref.substs.regions.get_slice(subst::TypeSpace).len());
-                assert_eq!(m.generics.types.get_slice(subst::SelfSpace).len(),
-                           trait_ref.substs.types.get_slice(subst::SelfSpace).len());
-                assert_eq!(m.generics.regions.get_slice(subst::SelfSpace).len(),
-                           trait_ref.substs.regions.get_slice(subst::SelfSpace).len());
+                assert_eq!(m.generics.types.len(subst::TypeSpace),
+                           trait_ref.substs.types.len(subst::TypeSpace));
+                assert_eq!(m.generics.regions.len(subst::TypeSpace),
+                           trait_ref.substs.regions.len(subst::TypeSpace));
+                assert_eq!(m.generics.types.len(subst::SelfSpace),
+                           trait_ref.substs.types.len(subst::SelfSpace));
+                assert_eq!(m.generics.regions.len(subst::SelfSpace),
+                           trait_ref.substs.regions.len(subst::SelfSpace));
             }
 
             // Because this trait derives from a where-clause, it
@@ -665,7 +664,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let impl_trait_ref =
                 self.tcx.impl_trait_ref(impl_def_id)
                 .unwrap() // we know this is a trait impl
-                .subst(self.tcx, &impl_substs);
+                .subst(self.tcx, impl_substs);
 
             debug!("impl_trait_ref={:?}", impl_trait_ref);
 
@@ -753,14 +752,21 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // for the purposes of our method lookup, we only take
             // receiver type into account, so we can just substitute
             // fresh types here to use during substitution and subtyping.
-            let trait_def = self.tcx.lookup_trait_def(trait_def_id);
-            let substs = self.fresh_substs_for_trait(self.span,
-                                                     &trait_def.generics,
-                                                     step.self_ty);
+            let substs = Substs::for_item(self.tcx, trait_def_id, |def, _| {
+                self.region_var_for_def(self.span, def)
+            }, |def, substs| {
+                if def.space == subst::SelfSpace {
+                    assert_eq!(def.index, 0);
+                    step.self_ty
+                } else {
+                    assert_eq!(def.space, subst::TypeSpace);
+                    self.type_var_for_def(self.span, def, substs)
+                }
+            });
 
             let xform_self_ty = self.xform_self_ty(&item,
                                                    step.self_ty,
-                                                   &substs);
+                                                   substs);
             self.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 item: item.clone(),
@@ -1192,7 +1198,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn xform_self_ty(&self,
                      item: &ty::ImplOrTraitItem<'tcx>,
                      impl_ty: Ty<'tcx>,
-                     substs: &subst::Substs<'tcx>)
+                     substs: &Substs<'tcx>)
                      -> Ty<'tcx>
     {
         match item.as_opt_method() {
@@ -1205,7 +1211,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn xform_method_self_ty(&self,
                             method: &Rc<ty::Method<'tcx>>,
                             impl_ty: Ty<'tcx>,
-                            substs: &subst::Substs<'tcx>)
+                            substs: &Substs<'tcx>)
                             -> Ty<'tcx>
     {
         debug!("xform_self_ty(impl_ty={:?}, self_ty={:?}, substs={:?})",
@@ -1236,7 +1242,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
            method.generics.regions.is_empty_in(subst::FnSpace) {
             xform_self_ty.subst(self.tcx, substs)
         } else {
-            let substs = subst::Substs::from_generics(&method.generics, |def, _| {
+            let substs = Substs::for_item(self.tcx, method.def_id, |def, _| {
                 if def.space != subst::FnSpace {
                     substs.region_for_def(def)
                 } else {
@@ -1251,14 +1257,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     self.type_var_for_def(self.span, def, cur_substs)
                 }
             });
-            xform_self_ty.subst(self.tcx, &substs)
+            xform_self_ty.subst(self.tcx, substs)
         }
     }
 
     /// Get the type of an impl and generate substitutions with placeholders.
     fn impl_ty_and_substs(&self,
                           impl_def_id: DefId)
-                          -> (Ty<'tcx>, subst::Substs<'tcx>)
+                          -> (Ty<'tcx>, &'tcx Substs<'tcx>)
     {
         let impl_pty = self.tcx.lookup_item_type(impl_def_id);
 
@@ -1270,8 +1276,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             impl_pty.generics.regions.map(
                 |_| ty::ReErased); // see erase_late_bound_regions() for an expl of why 'erased
 
-        let substs = subst::Substs::new(type_vars, region_placeholders);
-        (impl_pty.ty, substs)
+        (impl_pty.ty, Substs::new(self.tcx, type_vars, region_placeholders))
     }
 
     /// Replace late-bound-regions bound by `value` with `'static` using

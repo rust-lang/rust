@@ -41,7 +41,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::fold::Folder;
 use rustc::hir::print as pprust;
-use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
+use rustc::ty::subst::{self, ParamSpace, Substs, VecPerParamSpace};
 use rustc::ty;
 use rustc::middle::stability;
 
@@ -631,7 +631,7 @@ impl Clean<TyParamBound> for hir::TyParamBound {
 }
 
 fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
-                        bindings: Vec<TypeBinding>, substs: &subst::Substs) -> PathParameters {
+                        bindings: Vec<TypeBinding>, substs: &Substs) -> PathParameters {
     let lifetimes = substs.regions.get_slice(subst::TypeSpace)
                     .iter()
                     .filter_map(|v| v.clean(cx))
@@ -676,7 +676,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
 fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>,
-                 bindings: Vec<TypeBinding>, substs: &subst::Substs) -> Path {
+                 bindings: Vec<TypeBinding>, substs: &Substs) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
@@ -692,20 +692,20 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
             Some(tcx) => tcx,
             None => return RegionBound(Lifetime::statik())
         };
-        let empty = subst::Substs::empty();
+        let empty = Substs::empty(tcx);
         let (did, path) = match *self {
             ty::BoundSend =>
                 (tcx.lang_items.send_trait().unwrap(),
-                 external_path(cx, "Send", None, vec![], &empty)),
+                 external_path(cx, "Send", None, vec![], empty)),
             ty::BoundSized =>
                 (tcx.lang_items.sized_trait().unwrap(),
-                 external_path(cx, "Sized", None, vec![], &empty)),
+                 external_path(cx, "Sized", None, vec![], empty)),
             ty::BoundCopy =>
                 (tcx.lang_items.copy_trait().unwrap(),
-                 external_path(cx, "Copy", None, vec![], &empty)),
+                 external_path(cx, "Copy", None, vec![], empty)),
             ty::BoundSync =>
                 (tcx.lang_items.sync_trait().unwrap(),
-                 external_path(cx, "Sync", None, vec![], &empty)),
+                 external_path(cx, "Sync", None, vec![], empty)),
         };
         inline::record_extern_fqn(cx, did, TypeTrait);
         TraitBound(PolyTrait {
@@ -765,7 +765,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
+impl<'tcx> Clean<Option<Vec<TyParamBound>>> for Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
         v.extend(self.regions.as_full_slice().iter().filter_map(|r| r.clean(cx))
@@ -891,7 +891,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
 impl<'a> Clean<WherePredicate> for ty::TraitPredicate<'a> {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
         WherePredicate::BoundPredicate {
-            ty: self.trait_ref.substs.self_ty().clean(cx).unwrap(),
+            ty: self.trait_ref.self_ty().clean(cx),
             bounds: vec![self.trait_ref.clean(cx)]
         }
     }
@@ -1353,7 +1353,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             predicates: self.predicates.predicates[method_start..].to_vec()
         };
 
-        let generics = (&self.generics, &method_predicates,
+        let generics = (self.generics, &method_predicates,
                         subst::FnSpace).clean(cx);
         let mut decl = (self.def_id, &self.fty.sig).clean(cx);
         match self.explicit_self {
@@ -2923,7 +2923,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             // applied to this associated type in question.
             let def = cx.tcx().lookup_trait_def(did);
             let predicates = cx.tcx().lookup_predicates(did);
-            let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
+            let generics = (def.generics, &predicates, subst::TypeSpace).clean(cx);
             generics.where_predicates.iter().filter_map(|pred| {
                 let (name, self_type, trait_, bounds) = match *pred {
                     WherePredicate::BoundPredicate {

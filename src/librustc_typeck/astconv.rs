@@ -81,6 +81,10 @@ pub trait AstConv<'gcx, 'tcx> {
     /// A cache used for the result of `ast_ty_to_ty_cache`
     fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>>;
 
+    /// Returns the generic type and lifetime parameters for an item.
+    fn get_generics(&self, span: Span, id: DefId)
+                    -> Result<&'tcx ty::Generics<'tcx>, ErrorReported>;
+
     /// Identify the type scheme for an item with a type, like a type
     /// alias, fn, or struct. This allows you to figure out the set of
     /// type parameters defined on the item.
@@ -348,7 +352,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         rscope: &RegionScope,
         span: Span,
         param_mode: PathParamMode,
-        decl_generics: &ty::Generics<'tcx>,
+        def_id: DefId,
         item_segment: &hir::PathSegment)
         -> &'tcx Substs<'tcx>
     {
@@ -362,11 +366,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     .span_label(span, &format!("only traits may use parentheses"))
                     .emit();
 
-                return tcx.mk_substs(Substs::from_generics(decl_generics, |_, _| {
+                return Substs::for_item(tcx, def_id, |_, _| {
                     ty::ReStatic
                 }, |_, _| {
                     tcx.types.err
-                }));
+                });
             }
         }
 
@@ -374,7 +378,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             self.create_substs_for_ast_path(rscope,
                                             span,
                                             param_mode,
-                                            decl_generics,
+                                            def_id,
                                             &item_segment.parameters,
                                             None);
 
@@ -392,16 +396,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         rscope: &RegionScope,
         span: Span,
         param_mode: PathParamMode,
-        decl_generics: &ty::Generics<'tcx>,
+        def_id: DefId,
         parameters: &hir::PathParameters,
         self_ty: Option<Ty<'tcx>>)
         -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>)
     {
         let tcx = self.tcx();
 
-        debug!("create_substs_for_ast_path(decl_generics={:?}, self_ty={:?}, \
+        debug!("create_substs_for_ast_path(def_id={:?}, self_ty={:?}, \
                parameters={:?})",
-               decl_generics, self_ty, parameters);
+               def_id, self_ty, parameters);
 
         let (lifetimes, num_types_provided) = match *parameters {
             hir::AngleBracketedParameters(ref data) => {
@@ -417,6 +421,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
+        let decl_generics = match self.get_generics(span, def_id) {
+            Ok(generics) => generics,
+            Err(ErrorReported) => {
+                // No convenient way to recover from a cycle here. Just bail. Sorry!
+                self.tcx().sess.abort_if_errors();
+                bug!("ErrorReported returned, but no errors reports?")
+            }
+        };
         let expected_num_region_params = decl_generics.regions.len(TypeSpace);
         let supplied_num_region_params = lifetimes.len();
         let regions = if expected_num_region_params == supplied_num_region_params {
@@ -438,7 +450,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         // If a self-type was declared, one should be provided.
-        assert_eq!(decl_generics.types.get_self().is_some(), self_ty.is_some());
+        assert_eq!(decl_generics.has_self, self_ty.is_some());
 
         // Check the number of type parameters supplied by the user.
         if let Some(num_provided) = num_types_provided {
@@ -460,7 +472,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let mut output_assoc_binding = None;
-        let substs = Substs::from_generics(decl_generics, |def, _| {
+        let substs = Substs::for_item(tcx, def_id, |def, _| {
             assert_eq!(def.space, TypeSpace);
             regions[def.index as usize]
         }, |def, substs| {
@@ -532,7 +544,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 vec![output_assoc_binding.unwrap_or_else(|| {
                     // This is an error condition, but we should
                     // get the associated type binding anyway.
-                    self.convert_parenthesized_parameters(rscope, &substs, data).1
+                    self.convert_parenthesized_parameters(rscope, substs, data).1
                 })]
             }
         };
@@ -540,7 +552,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("create_substs_for_ast_path(decl_generics={:?}, self_ty={:?}) -> {:?}",
                decl_generics, self_ty, substs);
 
-        (tcx.mk_substs(substs), assoc_bindings)
+        (substs, assoc_bindings)
     }
 
     /// Returns the appropriate lifetime to use for any output lifetimes
@@ -803,7 +815,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self.create_substs_for_ast_path(rscope,
                                         span,
                                         param_mode,
-                                        &trait_def.generics,
+                                        trait_def_id,
                                         &trait_segment.parameters,
                                         Some(self_ty))
     }
@@ -910,10 +922,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> Ty<'tcx>
     {
         let tcx = self.tcx();
-        let (generics, decl_ty) = match self.get_item_type_scheme(span, did) {
-            Ok(ty::TypeScheme { generics,  ty: decl_ty }) => {
-                (generics, decl_ty)
-            }
+        let decl_ty = match self.get_item_type_scheme(span, did) {
+            Ok(type_scheme) => type_scheme.ty,
             Err(ErrorReported) => {
                 return tcx.types.err;
             }
@@ -922,7 +932,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let substs = self.ast_path_substs_for_ty(rscope,
                                                  span,
                                                  param_mode,
-                                                 &generics,
+                                                 did,
                                                  item_segment);
 
         // FIXME(#12938): This is a hack until we have full support for DST.
@@ -1682,7 +1692,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Create the anonymized type.
                 let def_id = tcx.map.local_def_id(ast_ty.id);
                 if let Some(anon_scope) = rscope.anon_type_scope() {
-                    let substs = anon_scope.fresh_substs(tcx);
+                    let substs = anon_scope.fresh_substs(self, ast_ty.span);
                     let ty = tcx.mk_anon(tcx.map.local_def_id(ast_ty.id), substs);
 
                     // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.

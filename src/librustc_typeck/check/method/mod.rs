@@ -13,7 +13,7 @@
 use check::FnCtxt;
 use hir::def::Def;
 use hir::def_id::DefId;
-use rustc::ty::subst;
+use rustc::ty::subst::{self, Substs};
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
@@ -189,7 +189,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(trait_def.generics.regions.is_empty());
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let substs = subst::Substs::from_generics(&trait_def.generics, |def, _| {
+        let substs = Substs::for_item(self.tcx, trait_def_id, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, substs| {
             if def.space == subst::SelfSpace {
@@ -201,7 +201,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        let trait_ref = ty::TraitRef::new(trait_def_id, self.tcx.mk_substs(substs));
+        let trait_ref = ty::TraitRef::new(trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = trait_ref.to_poly_trait_ref();

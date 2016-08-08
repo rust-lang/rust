@@ -173,15 +173,14 @@ impl<'a, 'gcx, 'tcx> ImplHeader<'tcx> {
                               -> ImplHeader<'tcx>
     {
         let tcx = selcx.tcx();
-        let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
-        let impl_substs = selcx.infcx().fresh_substs_for_generics(DUMMY_SP, &impl_generics);
+        let impl_substs = selcx.infcx().fresh_substs_for_item(DUMMY_SP, impl_def_id);
 
         let header = ImplHeader {
             impl_def_id: impl_def_id,
             self_ty: tcx.lookup_item_type(impl_def_id).ty,
             trait_ref: tcx.impl_trait_ref(impl_def_id),
             predicates: tcx.lookup_predicates(impl_def_id).predicates
-        }.subst(tcx, &impl_substs);
+        }.subst(tcx, impl_substs);
 
         let traits::Normalized { value: mut header, obligations } =
             traits::normalize(selcx, traits::ObligationCause::dummy(), &header);
@@ -348,7 +347,7 @@ impl Visibility {
 #[derive(Clone, Debug)]
 pub struct Method<'tcx> {
     pub name: Name,
-    pub generics: Generics<'tcx>,
+    pub generics: &'tcx Generics<'tcx>,
     pub predicates: GenericPredicates<'tcx>,
     pub fty: &'tcx BareFnTy<'tcx>,
     pub explicit_self: ExplicitSelfCategory,
@@ -360,7 +359,7 @@ pub struct Method<'tcx> {
 
 impl<'tcx> Method<'tcx> {
     pub fn new(name: Name,
-               generics: ty::Generics<'tcx>,
+               generics: &'tcx ty::Generics<'tcx>,
                predicates: GenericPredicates<'tcx>,
                fty: &'tcx BareFnTy<'tcx>,
                explicit_self: ExplicitSelfCategory,
@@ -453,7 +452,7 @@ pub struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: DefId,
     pub ty: Ty<'tcx>,
-    pub substs: &'tcx subst::Substs<'tcx>
+    pub substs: &'tcx Substs<'tcx>
 }
 
 /// With method calls, we store some extra information in
@@ -760,6 +759,7 @@ impl RegionParameterDef {
 pub struct Generics<'tcx> {
     pub types: VecPerParamSpace<TypeParameterDef<'tcx>>,
     pub regions: VecPerParamSpace<RegionParameterDef>,
+    pub has_self: bool,
 }
 
 impl<'tcx> Generics<'tcx> {
@@ -767,6 +767,7 @@ impl<'tcx> Generics<'tcx> {
         Generics {
             types: VecPerParamSpace::empty(),
             regions: VecPerParamSpace::empty(),
+            has_self: false,
         }
     }
 
@@ -1224,7 +1225,7 @@ impl<'tcx> TraitRef<'tcx> {
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
-        self.substs.self_ty().unwrap()
+        *self.substs.types.get(subst::SelfSpace, 0)
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
@@ -1298,23 +1299,17 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         // so for now just grab environment for the impl
                         let impl_id = tcx.map.get_parent(id);
                         let impl_def_id = tcx.map.local_def_id(impl_id);
-                        let scheme = tcx.lookup_item_type(impl_def_id);
-                        let predicates = tcx.lookup_predicates(impl_def_id);
                         tcx.construct_parameter_environment(impl_item.span,
-                                                            &scheme.generics,
-                                                            &predicates,
+                                                            impl_def_id,
                                                             tcx.region_maps.item_extent(id))
                     }
                     hir::ImplItemKind::Method(_, ref body) => {
                         let method_def_id = tcx.map.local_def_id(id);
                         match tcx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
-                                let method_generics = &method_ty.generics;
-                                let method_bounds = &method_ty.predicates;
                                 tcx.construct_parameter_environment(
                                     impl_item.span,
-                                    method_generics,
-                                    method_bounds,
+                                    method_ty.def_id,
                                     tcx.region_maps.call_site_extent(id, body.id))
                             }
                             _ => {
@@ -1332,11 +1327,8 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         // so for now just grab environment for the trait
                         let trait_id = tcx.map.get_parent(id);
                         let trait_def_id = tcx.map.local_def_id(trait_id);
-                        let trait_def = tcx.lookup_trait_def(trait_def_id);
-                        let predicates = tcx.lookup_predicates(trait_def_id);
                         tcx.construct_parameter_environment(trait_item.span,
-                                                            &trait_def.generics,
-                                                            &predicates,
+                                                            trait_def_id,
                                                             tcx.region_maps.item_extent(id))
                     }
                     hir::MethodTraitItem(_, ref body) => {
@@ -1346,8 +1338,6 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         let method_def_id = tcx.map.local_def_id(id);
                         match tcx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
-                                let method_generics = &method_ty.generics;
-                                let method_bounds = &method_ty.predicates;
                                 let extent = if let Some(ref body) = *body {
                                     // default impl: use call_site extent as free_id_outlive bound.
                                     tcx.region_maps.call_site_extent(id, body.id)
@@ -1357,8 +1347,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                                 };
                                 tcx.construct_parameter_environment(
                                     trait_item.span,
-                                    method_generics,
-                                    method_bounds,
+                                    method_ty.def_id,
                                     extent)
                             }
                             _ => {
@@ -1375,13 +1364,10 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     hir::ItemFn(_, _, _, _, _, ref body) => {
                         // We assume this is a function.
                         let fn_def_id = tcx.map.local_def_id(id);
-                        let fn_scheme = tcx.lookup_item_type(fn_def_id);
-                        let fn_predicates = tcx.lookup_predicates(fn_def_id);
 
                         tcx.construct_parameter_environment(
                             item.span,
-                            &fn_scheme.generics,
-                            &fn_predicates,
+                            fn_def_id,
                             tcx.region_maps.call_site_extent(id, body.id))
                     }
                     hir::ItemEnum(..) |
@@ -1391,20 +1377,14 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     hir::ItemConst(..) |
                     hir::ItemStatic(..) => {
                         let def_id = tcx.map.local_def_id(id);
-                        let scheme = tcx.lookup_item_type(def_id);
-                        let predicates = tcx.lookup_predicates(def_id);
                         tcx.construct_parameter_environment(item.span,
-                                                            &scheme.generics,
-                                                            &predicates,
+                                                            def_id,
                                                             tcx.region_maps.item_extent(id))
                     }
                     hir::ItemTrait(..) => {
                         let def_id = tcx.map.local_def_id(id);
-                        let trait_def = tcx.lookup_trait_def(def_id);
-                        let predicates = tcx.lookup_predicates(def_id);
                         tcx.construct_parameter_environment(item.span,
-                                                            &trait_def.generics,
-                                                            &predicates,
+                                                            def_id,
                                                             tcx.region_maps.item_extent(id))
                     }
                     _ => {
@@ -1425,11 +1405,8 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             }
             Some(ast_map::NodeForeignItem(item)) => {
                 let def_id = tcx.map.local_def_id(id);
-                let scheme = tcx.lookup_item_type(def_id);
-                let predicates = tcx.lookup_predicates(def_id);
                 tcx.construct_parameter_environment(item.span,
-                                                    &scheme.generics,
-                                                    &predicates,
+                                                    def_id,
                                                     ROOT_CODE_EXTENT)
             }
             _ => {
@@ -1462,7 +1439,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
 /// `lookup_predicates`.
 #[derive(Clone, Debug)]
 pub struct TypeScheme<'tcx> {
-    pub generics: Generics<'tcx>,
+    pub generics: &'tcx Generics<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
@@ -1917,9 +1894,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                 };
                 let sized_predicate = Binder(TraitRef {
                     def_id: sized_trait,
-                    substs: tcx.mk_substs(Substs::new_trait(
-                        vec![], vec![], ty
-                    ))
+                    substs: Substs::new_trait(tcx, vec![], vec![], ty)
                 }).to_predicate();
                 let predicates = tcx.lookup_predicates(self.did).predicates;
                 if predicates.into_iter().any(|p| p == sized_predicate) {
@@ -2170,7 +2145,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn node_id_item_substs(self, id: NodeId) -> ItemSubsts<'gcx> {
         match self.tables.borrow().item_substs.get(&id) {
             None => ItemSubsts {
-                substs: self.global_tcx().mk_substs(Substs::empty())
+                substs: Substs::empty(self.global_tcx())
             },
             Some(ts) => ts.clone(),
         }
@@ -2508,27 +2483,36 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Register a given item type
-    pub fn register_item_type(self, did: DefId, ty: TypeScheme<'gcx>) {
-        self.tcache.borrow_mut().insert(did, ty);
+    pub fn register_item_type(self, did: DefId, scheme: TypeScheme<'gcx>) {
+        self.tcache.borrow_mut().insert(did, scheme.ty);
+        self.generics.borrow_mut().insert(did, scheme.generics);
     }
 
     // If the given item is in an external crate, looks up its type and adds it to
     // the type cache. Returns the type parameters and type.
     pub fn lookup_item_type(self, did: DefId) -> TypeScheme<'gcx> {
-        lookup_locally_or_in_crate_store(
+        let ty = lookup_locally_or_in_crate_store(
             "tcache", did, &self.tcache,
-            || self.sess.cstore.item_type(self.global_tcx(), did))
+            || self.sess.cstore.item_type(self.global_tcx(), did));
+
+        TypeScheme {
+            ty: ty,
+            generics: self.lookup_generics(did)
+        }
     }
 
     pub fn opt_lookup_item_type(self, did: DefId) -> Option<TypeScheme<'gcx>> {
-        if let Some(scheme) = self.tcache.borrow_mut().get(&did) {
-            return Some(scheme.clone());
+        if did.krate != LOCAL_CRATE {
+            return Some(self.lookup_item_type(did));
         }
 
-        if did.krate == LOCAL_CRATE {
-            None
+        if let Some(ty) = self.tcache.borrow().get(&did).cloned() {
+            Some(TypeScheme {
+                ty: ty,
+                generics: self.lookup_generics(did)
+            })
         } else {
-            Some(self.sess.cstore.item_type(self.global_tcx(), did))
+            None
         }
     }
 
@@ -2555,6 +2539,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // when reverse-variance goes away, a transmute::<AdtDefMaster,AdtDef>
         // would be needed here.
         self.lookup_adt_def_master(did)
+    }
+
+    /// Given the did of an item, returns its generics.
+    pub fn lookup_generics(self, did: DefId) -> &'gcx Generics<'gcx> {
+        lookup_locally_or_in_crate_store(
+            "generics", did, &self.generics,
+            || self.sess.cstore.item_generics(self.global_tcx(), did))
     }
 
     /// Given the did of an item, returns its full set of predicates.
@@ -2812,18 +2803,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// If the given def ID describes an item belonging to a trait (either a
-    /// default method or an implementation of a trait method), return the ID of
-    /// the trait that the method belongs to. Otherwise, return `None`.
+    /// If the given def ID describes an item belonging to a trait,
+    /// return the ID of the trait that the trait item belongs to.
+    /// Otherwise, return `None`.
     pub fn trait_of_item(self, def_id: DefId) -> Option<DefId> {
         if def_id.krate != LOCAL_CRATE {
-            return self.sess.cstore.trait_of_item(self.global_tcx(), def_id);
+            return self.sess.cstore.trait_of_item(def_id);
         }
-        match self.impl_or_trait_items.borrow().get(&def_id).cloned() {
+        match self.impl_or_trait_items.borrow().get(&def_id) {
             Some(impl_or_trait_item) => {
                 match impl_or_trait_item.container() {
                     TraitContainer(def_id) => Some(def_id),
-                    ImplContainer(def_id) => self.trait_id_of_impl(def_id),
+                    ImplContainer(_) => None
                 }
             }
             None => None
@@ -2837,18 +2828,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// the same).
     /// Otherwise, return `None`.
     pub fn trait_item_of_item(self, def_id: DefId) -> Option<ImplOrTraitItemId> {
-        let impl_item = match self.impl_or_trait_items.borrow().get(&def_id) {
+        let impl_or_trait_item = match self.impl_or_trait_items.borrow().get(&def_id) {
             Some(m) => m.clone(),
             None => return None,
         };
-        let name = impl_item.name();
-        match self.trait_of_item(def_id) {
-            Some(trait_did) => {
-                self.trait_items(trait_did).iter()
-                    .find(|item| item.name() == name)
-                    .map(|item| item.id())
+        match impl_or_trait_item.container() {
+            TraitContainer(_) => Some(impl_or_trait_item.id()),
+            ImplContainer(def_id) => {
+                self.trait_id_of_impl(def_id).and_then(|trait_did| {
+                    let name = impl_or_trait_item.name();
+                    self.trait_items(trait_did).iter()
+                        .find(|item| item.name() == name)
+                        .map(|item| item.id())
+                })
             }
-            None => None
         }
     }
 
@@ -2860,7 +2853,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // regions, so it shouldn't matter what we use for the free id
         let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
         ty::ParameterEnvironment {
-            free_substs: self.mk_substs(Substs::empty()),
+            free_substs: Substs::empty(self),
             caller_bounds: Vec::new(),
             implicit_region_bound: ty::ReEmpty,
             free_id_outlive: free_id_outlive
@@ -2872,28 +2865,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// In general, this means converting from bound parameters to
     /// free parameters. Since we currently represent bound/free type
     /// parameters in the same way, this only has an effect on regions.
-    pub fn construct_free_substs(self, generics: &Generics<'gcx>,
-                                 free_id_outlive: CodeExtent) -> Substs<'gcx> {
-        // map T => T
-        let types = generics.types.map(|def| {
-            debug!("construct_parameter_environment(): push_types_from_defs: def={:?}",
-                    def);
+    pub fn construct_free_substs(self, def_id: DefId,
+                                 free_id_outlive: CodeExtent)
+                                 -> &'gcx Substs<'gcx> {
+
+        let substs = Substs::for_item(self.global_tcx(), def_id, |def, _| {
+            // map bound 'a => free 'a
+            ReFree(FreeRegion { scope: free_id_outlive,
+                                bound_region: def.to_bound_region() })
+        }, |def, _| {
+            // map T => T
             self.global_tcx().mk_param_from_def(def)
         });
 
-        // map bound 'a => free 'a
-        let regions = generics.regions.map(|def| {
-            let region =
-                ReFree(FreeRegion { scope: free_id_outlive,
-                                    bound_region: def.to_bound_region() });
-            debug!("push_region_params {:?}", region);
-            region
-        });
-
-        Substs {
-            types: types,
-            regions: regions,
-        }
+        debug!("construct_parameter_environment: {:?}", substs);
+        substs
     }
 
     /// See `ParameterEnvironment` struct def'n for details.
@@ -2901,8 +2887,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// for the `free_id_outlive` parameter. (But note that that is not always quite right.)
     pub fn construct_parameter_environment(self,
                                            span: Span,
-                                           generics: &ty::Generics<'gcx>,
-                                           generic_predicates: &ty::GenericPredicates<'gcx>,
+                                           def_id: DefId,
                                            free_id_outlive: CodeExtent)
                                            -> ParameterEnvironment<'gcx>
     {
@@ -2910,14 +2895,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Construct the free substs.
         //
 
-        let free_substs = self.construct_free_substs(generics, free_id_outlive);
+        let free_substs = self.construct_free_substs(def_id, free_id_outlive);
 
         //
         // Compute the bounds on Self and the type parameters.
         //
 
         let tcx = self.global_tcx();
-        let bounds = generic_predicates.instantiate(tcx, &free_substs);
+        let generic_predicates = tcx.lookup_predicates(def_id);
+        let bounds = generic_predicates.instantiate(tcx, free_substs);
         let bounds = tcx.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
         let predicates = bounds.predicates;
 
@@ -2935,7 +2921,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //
 
         let unnormalized_env = ty::ParameterEnvironment {
-            free_substs: tcx.mk_substs(free_substs),
+            free_substs: free_substs,
             implicit_region_bound: ty::ReScope(free_id_outlive),
             caller_bounds: predicates,
             free_id_outlive: free_id_outlive,

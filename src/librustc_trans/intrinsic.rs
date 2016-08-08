@@ -15,8 +15,7 @@ use intrinsics::{self, Intrinsic};
 use libc;
 use llvm;
 use llvm::{ValueRef, TypeKind};
-use rustc::ty::subst;
-use rustc::ty::subst::FnSpace;
+use rustc::ty::subst::{FnSpace, Substs};
 use abi::{Abi, FnType};
 use adt;
 use base::*;
@@ -1284,7 +1283,7 @@ fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
 fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     (bcx: Block<'blk, 'tcx>,
      name: &str,
-     substs: &'tcx subst::Substs<'tcx>,
+     substs: &'tcx Substs<'tcx>,
      callee_ty: Ty<'tcx>,
      args: Option<&[P<hir::Expr>]>,
      llargs: &[ValueRef],

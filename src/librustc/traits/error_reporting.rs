@@ -221,9 +221,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.lookup_trait_def(trait_ref.def_id)
             .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
-                let ity = tcx.lookup_item_type(def_id);
-                let impl_substs = self.fresh_substs_for_generics(obligation.cause.span,
-                                                                 &ity.generics);
+                let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
                 let impl_trait_ref = tcx
                     .impl_trait_ref(def_id)
                     .unwrap()

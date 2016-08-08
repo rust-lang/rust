@@ -16,6 +16,7 @@
 //! inferred is then written into the `variance_map` in the tcx.
 
 use rustc::ty;
+use rustc::ty::subst;
 use std::rc::Rc;
 
 use super::constraints::*;
@@ -108,7 +109,9 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         let num_inferred = self.terms_cx.num_inferred();
         while index < num_inferred {
             let item_id = inferred_infos[index].item_id;
-            let mut item_variances = ty::ItemVariances::empty();
+
+            let (mut rs, mut rt, mut rf) = (vec![], vec![], vec![]);
+            let (mut ts, mut tt, mut tf) = (vec![], vec![], vec![]);
 
             while index < num_inferred && inferred_infos[index].item_id == item_id {
                 let info = &inferred_infos[index];
@@ -116,12 +119,33 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 debug!("Index {} Info {} / {:?} / {:?} Variance {:?}",
                        index, info.index, info.kind, info.space, variance);
                 match info.kind {
-                    TypeParam => { item_variances.types.push(info.space, variance); }
-                    RegionParam => { item_variances.regions.push(info.space, variance); }
+                    TypeParam => {
+                        let types = match info.space {
+                            subst::SelfSpace => &mut ts,
+                            subst::TypeSpace => &mut tt,
+                            subst::FnSpace => &mut tf
+                        };
+                        assert_eq!(types.len(), info.index);
+                        types.push(variance);
+                    }
+                    RegionParam => {
+                        let regions = match info.space {
+                            subst::SelfSpace => &mut rs,
+                            subst::TypeSpace => &mut rt,
+                            subst::FnSpace => &mut rf
+                        };
+                        assert_eq!(regions.len(), info.index);
+                        regions.push(variance);
+                    }
                 }
 
                 index += 1;
             }
+
+            let item_variances = ty::ItemVariances {
+                regions: subst::VecPerParamSpace::new(rs, rt, rf),
+                types: subst::VecPerParamSpace::new(ts, tt, tf)
+            };
 
             debug!("item_id={} item_variances={:?}",
                     item_id,

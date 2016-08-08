@@ -732,7 +732,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             create_fn_trans_item(scx.tcx(),
                                  exchange_free_fn_def_id,
                                  fn_substs,
-                                 scx.tcx().mk_substs(Substs::empty()));
+                                 Substs::empty(scx.tcx()));
 
         output.push(exchange_free_fn_trans_item);
     }
@@ -753,8 +753,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                    .drop_trait()
                                    .unwrap();
 
-        let self_type_substs = scx.tcx().mk_substs(
-            Substs::empty().with_self_ty(ty));
+        let self_type_substs = Substs::new_trait(scx.tcx(), vec![], vec![], ty);
 
         let trait_ref = ty::TraitRef {
             def_id: drop_trait_def_id,
@@ -770,7 +769,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             let trans_item = create_fn_trans_item(scx.tcx(),
                                                   destructor_did,
                                                   substs,
-                                                  scx.tcx().mk_substs(Substs::empty()));
+                                                  Substs::empty(scx.tcx()));
             output.push(trans_item);
         }
 
@@ -854,26 +853,15 @@ fn do_static_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
            fn_substs,
            param_substs);
 
-    let is_trait_method = scx.tcx().trait_of_item(fn_def_id).is_some();
-
-    if is_trait_method {
+    if let Some(trait_def_id) = scx.tcx().trait_of_item(fn_def_id) {
         match scx.tcx().impl_or_trait_item(fn_def_id) {
             ty::MethodTraitItem(ref method) => {
-                match method.container {
-                    ty::TraitContainer(trait_def_id) => {
-                        debug!(" => trait method, attempting to find impl");
-                        do_static_trait_method_dispatch(scx,
-                                                        method,
-                                                        trait_def_id,
-                                                        fn_substs,
-                                                        param_substs)
-                    }
-                    ty::ImplContainer(_) => {
-                        // This is already a concrete implementation
-                        debug!(" => impl method");
-                        Some((fn_def_id, fn_substs))
-                    }
-                }
+                debug!(" => trait method, attempting to find impl");
+                do_static_trait_method_dispatch(scx,
+                                                method,
+                                                trait_def_id,
+                                                fn_substs,
+                                                param_substs)
             }
             _ => bug!()
         }
@@ -903,13 +891,12 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
            callee_substs,
            param_substs);
 
+
     let rcvr_substs = monomorphize::apply_param_substs(tcx,
                                                        param_substs,
                                                        &callee_substs);
-
-    let trait_ref = ty::Binder(rcvr_substs.to_trait_ref(tcx, trait_id));
-    let trait_ref = tcx.normalize_associated_type(&trait_ref);
-    let vtbl = fulfill_obligation(scx, DUMMY_SP, trait_ref);
+    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
+    let vtbl = fulfill_obligation(scx, DUMMY_SP, ty::Binder(trait_ref));
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -919,10 +906,10 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             substs: impl_substs,
             nested: _ }) =>
         {
-            let callee_substs = impl_substs.with_method_from(&rcvr_substs);
             let impl_method = meth::get_impl_method(tcx,
+                                                    rcvr_substs,
                                                     impl_did,
-                                                    tcx.mk_substs(callee_substs),
+                                                    impl_substs,
                                                     trait_method.name);
             Some((impl_method.method.def_id, &impl_method.substs))
         }
@@ -1076,7 +1063,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                                 Some(create_fn_trans_item(scx.tcx(),
                                     impl_method.method.def_id,
                                     impl_method.substs,
-                                    scx.tcx().mk_substs(Substs::empty())))
+                                    Substs::empty(scx.tcx())))
                             } else {
                                 None
                             }
@@ -1248,9 +1235,13 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                     // The substitutions we have are on the impl, so we grab
                     // the method type from the impl to substitute into.
+                    let impl_substs = Substs::for_item(tcx, impl_def_id,
+                                                       |_, _| ty::ReErased,
+                                                       |_, _| tcx.types.err);
                     let mth = meth::get_impl_method(tcx,
-                                                    impl_def_id,
                                                     callee_substs,
+                                                    impl_def_id,
+                                                    impl_substs,
                                                     default_impl.name);
 
                     assert!(mth.is_provided);

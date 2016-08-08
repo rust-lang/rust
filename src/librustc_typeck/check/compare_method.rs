@@ -194,10 +194,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs =
-        trait_to_impl_substs
-        .subst(tcx, impl_to_skol_substs).clone()
-        .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                     impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
+        impl_to_skol_substs.rebase_onto(tcx, impl_m.container_id(),
+                                        trait_to_impl_substs.subst(tcx, impl_to_skol_substs));
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
            trait_to_skol_substs);
 
@@ -208,7 +206,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                            impl_m,
                                            &trait_m.generics,
                                            &impl_m.generics,
-                                           &trait_to_skol_substs,
+                                           trait_to_skol_substs,
                                            impl_to_skol_substs) {
         return;
     }
@@ -226,7 +224,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
         // Normalize the associated types in the trait_bounds.
-        let trait_bounds = trait_m.predicates.instantiate(tcx, &trait_to_skol_substs);
+        let trait_bounds = trait_m.predicates.instantiate(tcx, trait_to_skol_substs);
 
         // Create obligations for each predicate declared by the impl
         // definition in the context of the trait's parameter
@@ -323,7 +321,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             infcx.parameter_environment.free_id_outlive,
             &trait_m.fty.sig);
         let trait_sig =
-            trait_sig.subst(tcx, &trait_to_skol_substs);
+            trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
             assoc::normalize_associated_types_in(&infcx,
                                                  &mut fulfillment_cx,
@@ -454,16 +452,14 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         // Create mapping from trait to skolemized.
         let trait_to_skol_substs =
-            trait_to_impl_substs
-            .subst(tcx, impl_to_skol_substs).clone()
-            .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                         impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
+            impl_to_skol_substs.rebase_onto(tcx, impl_c.container.id(),
+                                            trait_to_impl_substs.subst(tcx, impl_to_skol_substs));
         debug!("compare_const_impl: trait_to_skol_substs={:?}",
             trait_to_skol_substs);
 
         // Compute skolemized form of impl and trait const tys.
         let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
-        let trait_ty = trait_c.ty.subst(tcx, &trait_to_skol_substs);
+        let trait_ty = trait_c.ty.subst(tcx, trait_to_skol_substs);
         let mut origin = TypeOrigin::Misc(impl_c_span);
 
         let err = infcx.commit_if_ok(|_| {

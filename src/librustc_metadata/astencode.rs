@@ -34,7 +34,7 @@ use middle::const_qualif::ConstQualif;
 use rustc::hir::def::{self, Def};
 use rustc::hir::def_id::DefId;
 use middle::region;
-use rustc::ty::subst;
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 
 use syntax::ast;
@@ -507,7 +507,7 @@ impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
                     Ok(this.read_ty(dcx))
                 }).unwrap(),
                 substs: this.read_struct_field("substs", 3, |this| {
-                    Ok(dcx.tcx.mk_substs(this.read_substs(dcx)))
+                    Ok(this.read_substs(dcx))
                 }).unwrap()
             }))
         }).unwrap()
@@ -525,7 +525,7 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
     fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                       substs: &subst::Substs<'tcx>);
+                       substs: &Substs<'tcx>);
     fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture);
     fn emit_auto_adjustment<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                 adj: &adjustment::AutoAdjustment<'tcx>);
@@ -569,7 +569,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     }
 
     fn emit_substs<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                       substs: &subst::Substs<'tcx>) {
+                       substs: &Substs<'tcx>) {
         self.emit_opaque(|this| Ok(tyencode::enc_substs(&mut this.cursor,
                                                         &ecx.ty_str_ctxt(),
                                                         substs)));
@@ -839,7 +839,7 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                               -> ty::Predicate<'tcx>;
     fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                           -> subst::Substs<'tcx>;
+                           -> &'tcx Substs<'tcx>;
     fn read_upvar_capture(&mut self, dcx: &DecodeContext)
                           -> ty::UpvarCapture;
     fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -859,7 +859,7 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                           cdata: &cstore::CrateMetadata) -> Vec<Ty<'tcx>>;
     fn read_substs_nodcx<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              cdata: &cstore::CrateMetadata)
-                             -> subst::Substs<'tcx>;
+                             -> &'tcx Substs<'tcx>;
 }
 
 impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
@@ -884,7 +884,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
     fn read_substs_nodcx<'b>(&mut self, tcx: TyCtxt<'b, 'tcx, 'tcx>,
                              cdata: &cstore::CrateMetadata)
-                             -> subst::Substs<'tcx>
+                             -> &'tcx Substs<'tcx>
     {
         self.read_opaque(|_, doc| {
             Ok(
@@ -946,7 +946,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     }
 
     fn read_substs<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                           -> subst::Substs<'tcx> {
+                           -> &'tcx Substs<'tcx> {
         self.read_opaque(|_, doc| {
             Ok(tydecode::TyDecoder::with_doc(dcx.tcx, dcx.cdata.cnum, doc,
                                              &mut |d| convert_def_id(dcx, d))
@@ -1140,7 +1140,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     }
                     c::tag_table_item_subst => {
                         let item_substs = ty::ItemSubsts {
-                            substs: dcx.tcx.mk_substs(val_dsr.read_substs(dcx))
+                            substs: val_dsr.read_substs(dcx)
                         };
                         dcx.tcx.tables.borrow_mut().item_substs.insert(
                             id, item_substs);

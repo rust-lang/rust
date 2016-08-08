@@ -154,7 +154,7 @@ pub trait CrateStore<'tcx> {
     fn item_variances(&self, def: DefId) -> ty::ItemVariances;
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                     -> ty::TypeScheme<'tcx>;
+                     -> Ty<'tcx>;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
     fn item_name(&self, def: DefId) -> ast::Name;
     fn opt_item_name(&self, def: DefId) -> Option<ast::Name>;
@@ -162,6 +162,8 @@ pub trait CrateStore<'tcx> {
                            -> ty::GenericPredicates<'tcx>;
     fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                                  -> ty::GenericPredicates<'tcx>;
+    fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                         -> &'tcx ty::Generics<'tcx>;
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>;
     fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>;
@@ -187,8 +189,7 @@ pub trait CrateStore<'tcx> {
     fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
-    fn trait_of_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                         -> Option<DefId>;
+    fn trait_of_item(&self, def_id: DefId) -> Option<DefId>;
     fn impl_or_trait_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                               -> Option<ty::ImplOrTraitItem<'tcx>>;
 
@@ -334,7 +335,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn item_variances(&self, def: DefId) -> ty::ItemVariances { bug!("item_variances") }
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { bug!("repr_attrs") }
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                     -> ty::TypeScheme<'tcx> { bug!("item_type") }
+                     -> Ty<'tcx> { bug!("item_type") }
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
@@ -344,6 +345,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                            -> ty::GenericPredicates<'tcx> { bug!("item_predicates") }
     fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                                  -> ty::GenericPredicates<'tcx> { bug!("item_super_predicates") }
+    fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                         -> &'tcx ty::Generics<'tcx> { bug!("item_generics") }
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>
         { bug!("trait_def") }
@@ -379,8 +382,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
 
     // trait/impl-item info
-    fn trait_of_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                         -> Option<DefId> { bug!("trait_of_item") }
+    fn trait_of_item(&self, def_id: DefId) -> Option<DefId> { bug!("trait_of_item") }
     fn impl_or_trait_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                               -> Option<ty::ImplOrTraitItem<'tcx>> { bug!("impl_or_trait_item") }
 
@@ -583,7 +585,7 @@ pub mod tls {
     pub trait DecodingContext<'tcx> {
         fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
         fn decode_ty(&self, decoder: &mut OpaqueDecoder) -> ty::Ty<'tcx>;
-        fn decode_substs(&self, decoder: &mut OpaqueDecoder) -> Substs<'tcx>;
+        fn decode_substs(&self, decoder: &mut OpaqueDecoder) -> &'tcx Substs<'tcx>;
         fn translate_def_id(&self, def_id: DefId) -> DefId;
     }
 

@@ -859,10 +859,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let unit_temp = Lvalue::Temp(self.patch.new_temp(tcx.mk_nil()));
         let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
             .unwrap_or_else(|e| tcx.sess.fatal(&e));
-        let substs = tcx.mk_substs(Substs::new(
+        let substs = Substs::new(tcx,
             VecPerParamSpace::new(vec![], vec![], vec![ty]),
-            VecPerParamSpace::new(vec![], vec![], vec![])
-        ));
+            VecPerParamSpace::new(vec![], vec![], vec![]));
         let fty = tcx.lookup_item_type(free_func).ty.subst(tcx, substs);
 
         self.patch.new_block(BasicBlockData {

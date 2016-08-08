@@ -10,7 +10,7 @@
 
 
 use hir::def_id::DefId;
-use ty::subst::{self, Subst};
+use ty::subst::{self, Subst, Substs};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyStruct, TyEnum};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
@@ -65,69 +65,57 @@ pub enum Ns {
 fn number_of_supplied_defaults<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                substs: &subst::Substs,
                                                space: subst::ParamSpace,
-                                               generics: ty::Generics<'tcx>)
+                                               generics: &ty::Generics<'tcx>)
                                                -> usize
 {
-    let has_self = substs.self_ty().is_some();
     let ty_params = generics.types.get_slice(space);
     let tps = substs.types.get_slice(space);
     if ty_params.last().map_or(false, |def| def.default.is_some()) {
         let substs = tcx.lift(&substs);
         ty_params.iter().zip(tps).rev().take_while(|&(def, &actual)| {
-            match def.default {
-                Some(default) => {
-                    if !has_self && default.has_self_ty() {
-                        // In an object type, there is no `Self`, and
-                        // thus if the default value references Self,
-                        // the user will be required to give an
-                        // explicit value. We can't even do the
-                        // substitution below to check without causing
-                        // an ICE. (#18956).
-                        false
-                    } else {
-                        let default = tcx.lift(&default);
-                        substs.and_then(|substs| default.subst(tcx, substs))
-                            == Some(actual)
-                    }
-                }
-                None => false
-            }
+            substs.and_then(|substs| def.default.subst(tcx, substs))
+                == Some(actual)
         }).count()
     } else {
         0
     }
 }
 
-pub fn parameterized<GG>(f: &mut fmt::Formatter,
-                         substs: &subst::Substs,
-                         did: DefId,
-                         ns: Ns,
-                         projections: &[ty::ProjectionPredicate],
-                         get_generics: GG)
-                         -> fmt::Result
-    where GG: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>)
-                                         -> Option<ty::Generics<'tcx>>
-{
-    if let (Ns::Value, Some(self_ty)) = (ns, substs.self_ty()) {
-        write!(f, "<{} as ", self_ty)?;
-    }
+pub fn parameterized(f: &mut fmt::Formatter,
+                     substs: &subst::Substs,
+                     did: DefId,
+                     ns: Ns,
+                     projections: &[ty::ProjectionPredicate])
+                     -> fmt::Result {
+    let (fn_trait_kind, verbose, item_name, is_in_trait) = ty::tls::with(|tcx| {
+        let is_in_trait = ns == Ns::Value && tcx.trait_of_item(did).is_some();
+        if is_in_trait {
+            write!(f, "<{} as ", substs.types.get(subst::SelfSpace, 0))?;
+        }
 
-    let (fn_trait_kind, verbose, item_name) = ty::tls::with(|tcx| {
         let (did, item_name) = if ns == Ns::Value {
             // Try to get the impl/trait parent, if this is an
             // associated value item (method or constant).
-            tcx.trait_of_item(did).or_else(|| tcx.impl_of_method(did))
-               .map_or((did, None), |parent| (parent, Some(tcx.item_name(did))))
+            tcx.trait_of_item(did).or_else(|| {
+                // An impl could be a trait impl or an inherent one.
+                tcx.impl_of_method(did).map(|impl_def_id| {
+                    tcx.trait_id_of_impl(impl_def_id)
+                       .unwrap_or(impl_def_id)
+                })
+            }).map_or((did, None), |parent| (parent, Some(tcx.item_name(did))))
         } else {
             (did, None)
         };
         write!(f, "{}", tcx.item_path_str(did))?;
-        Ok((tcx.lang_items.fn_trait_kind(did), tcx.sess.verbose(), item_name))
+        Ok((tcx.lang_items.fn_trait_kind(did),
+            tcx.sess.verbose(),
+            item_name,
+            is_in_trait))
     })?;
 
     if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
         let projection_ty = projections[0].ty;
-        if let TyTuple(ref args) = substs.types.get_slice(subst::TypeSpace)[0].sty {
+        if let TyTuple(ref args) = substs.types.get(subst::TypeSpace, 0).sty {
             return fn_sig(f, args, false, projection_ty);
         }
     }
@@ -176,11 +164,8 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
         0
     } else {
         ty::tls::with(|tcx| {
-            if let Some(generics) = get_generics(tcx) {
-                number_of_supplied_defaults(tcx, substs, subst::TypeSpace, generics)
-            } else {
-                0
-            }
+            let generics = tcx.lookup_generics(did);
+            number_of_supplied_defaults(tcx, substs, subst::TypeSpace, generics)
         })
     };
 
@@ -204,7 +189,7 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     if ns == Ns::Value {
         empty.set(true);
 
-        if substs.self_ty().is_some() {
+        if is_in_trait {
             write!(f, ">")?;
         }
 
@@ -288,7 +273,7 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
 /// projection bounds, so we just stuff them altogether. But in
 /// reality we should eventually sort things out better.
 #[derive(Clone, Debug)]
-struct TraitAndProjections<'tcx>(ty::ExistentialTraitRef<'tcx>,
+struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>,
                                  Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
@@ -307,8 +292,7 @@ impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {
         parameterized(f, trait_ref.substs,
                       trait_ref.def_id,
                       Ns::Type,
-                      projection_bounds,
-                      |tcx| Some(tcx.lookup_trait_def(trait_ref.def_id).generics.clone()))
+                      projection_bounds)
     }
 }
 
@@ -316,12 +300,16 @@ impl<'tcx> fmt::Display for ty::TraitObject<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Generate the main trait ref, including associated types.
         ty::tls::with(|tcx| {
-            let principal = tcx.lift(&self.principal.0)
-                               .expect("could not lift TraitRef for printing");
+            // Use a type that can't appear in defaults of type parameters.
+            let dummy_self = tcx.mk_infer(ty::FreshTy(0));
+
+            let principal = tcx.lift(&self.principal)
+                               .expect("could not lift TraitRef for printing")
+                               .with_self_ty(tcx, dummy_self).0;
             let projections = self.projection_bounds.iter().map(|p| {
-                let projection = tcx.lift(p)
-                                    .expect("could not lift projection for printing");
-                projection.with_self_ty(tcx, tcx.types.err).0
+                tcx.lift(p)
+                    .expect("could not lift projection for printing")
+                    .with_self_ty(tcx, dummy_self).0
             }).collect();
 
             let tap = ty::Binder(TraitAndProjections(principal, projections));
@@ -380,7 +368,7 @@ impl<'tcx> fmt::Display for ty::TypeAndMut<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for subst::Substs<'tcx> {
+impl<'tcx> fmt::Debug for Substs<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Substs[types={:?}, regions={:?}]",
                self.types, self.regions)
@@ -404,7 +392,14 @@ impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", *self)
+        ty::tls::with(|tcx| {
+            let dummy_self = tcx.mk_infer(ty::FreshTy(0));
+
+            let trait_ref = tcx.lift(&ty::Binder(*self))
+                               .expect("could not lift TraitRef for printing")
+                               .with_self_ty(tcx, dummy_self).0;
+            parameterized(f, trait_ref.substs, trait_ref.def_id, Ns::Type, &[])
+        })
     }
 }
 
@@ -813,15 +808,7 @@ impl fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region, ty::Region>> 
 
 impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        parameterized(f, self.substs, self.def_id, Ns::Type, &[],
-                      |tcx| Some(tcx.lookup_trait_def(self.def_id).generics.clone()))
-    }
-}
-
-impl<'tcx> fmt::Display for ty::ExistentialTraitRef<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        parameterized(f, self.substs, self.def_id, Ns::Type, &[],
-                      |tcx| Some(tcx.lookup_trait_def(self.def_id).generics.clone()))
+        parameterized(f, self.substs, self.def_id, Ns::Type, &[])
     }
 }
 
@@ -874,9 +861,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
 
                 write!(f, "{} {{", bare_fn.sig.0)?;
-                parameterized(
-                    f, substs, def_id, Ns::Value, &[],
-                    |tcx| tcx.opt_lookup_item_type(def_id).map(|t| t.generics))?;
+                parameterized(f, substs, def_id, Ns::Value, &[])?;
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
@@ -899,12 +884,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                           !tcx.tcache.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
-                        parameterized(
-                            f, substs, def.did, Ns::Type, &[],
-                            |tcx| {
-                                tcx.opt_lookup_item_type(def.did).
-                                    map(|t| t.generics)
-                            })
+                        parameterized(f, substs, def.did, Ns::Type, &[])
                     }
                 })
             }
@@ -916,7 +896,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     // by looking up the projections associated with the def_id.
                     let item_predicates = tcx.lookup_predicates(def_id);
                     let substs = tcx.lift(&substs).unwrap_or_else(|| {
-                        tcx.mk_substs(subst::Substs::empty())
+                        Substs::empty(tcx)
                     });
                     let bounds = item_predicates.instantiate(tcx, substs);
 

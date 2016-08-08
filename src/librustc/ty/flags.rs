@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ty::subst;
+use ty::subst::{self, Substs};
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
 pub struct FlagComputation {
@@ -207,7 +207,7 @@ impl FlagComputation {
         self.add_substs(projection_ty.trait_ref.substs);
     }
 
-    fn add_substs(&mut self, substs: &subst::Substs) {
+    fn add_substs(&mut self, substs: &Substs) {
         self.add_tys(substs.types.as_full_slice());
         for &r in substs.regions.as_full_slice() {
             self.add_region(r);

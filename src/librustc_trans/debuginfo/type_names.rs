@@ -12,7 +12,7 @@
 
 use common::CrateContext;
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst;
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 
 use rustc::hir;
@@ -173,7 +173,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
     fn push_type_params<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                  substs: &subst::Substs<'tcx>,
+                                  substs: &Substs<'tcx>,
                                   output: &mut String) {
         if substs.types.is_empty() {
             return;

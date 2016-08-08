@@ -266,7 +266,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let generics = cx.tcx().lookup_item_type(fn_def_id).generics;
+    let generics = cx.tcx().lookup_generics(fn_def_id);
     let template_parameters = get_template_parameters(cx,
                                                       &generics,
                                                       instance.substs,

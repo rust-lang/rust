@@ -90,7 +90,6 @@ use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
 use rustc::ty::subst::{self, Subst, Substs};
 use rustc::traits::{self, Reveal};
-use rustc::ty::{GenericPredicates, TypeScheme};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, Visibility};
@@ -745,26 +744,20 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           match ccx.tcx.impl_trait_ref(impl_def_id) {
               Some(impl_trait_ref) => {
-                  let trait_def_id = impl_trait_ref.def_id;
-
                   check_impl_items_against_trait(ccx,
                                                  it.span,
                                                  impl_def_id,
                                                  &impl_trait_ref,
                                                  impl_items);
-                  check_on_unimplemented(
-                      ccx,
-                      &ccx.tcx.lookup_trait_def(trait_def_id).generics,
-                      it,
-                      ccx.tcx.item_name(trait_def_id));
+                  let trait_def_id = impl_trait_ref.def_id;
+                  check_on_unimplemented(ccx, trait_def_id, it);
               }
               None => { }
           }
       }
       hir::ItemTrait(..) => {
         let def_id = ccx.tcx.map.local_def_id(it.id);
-        let generics = &ccx.tcx.lookup_trait_def(def_id).generics;
-        check_on_unimplemented(ccx, generics, it, it.name);
+        check_on_unimplemented(ccx, def_id, it);
       }
       hir::ItemStruct(..) => {
         check_struct(ccx, it.id, it.span);
@@ -872,9 +865,9 @@ fn check_trait_fn_not_const<'a,'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                    generics: &ty::Generics,
-                                    item: &hir::Item,
-                                    name: ast::Name) {
+                                    def_id: DefId,
+                                    item: &hir::Item) {
+    let generics = ccx.tcx.lookup_generics(def_id);
     if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
@@ -894,6 +887,7 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         }) {
                             Some(_) => (),
                             None => {
+                                let name = ccx.tcx.item_name(def_id);
                                 span_err!(ccx.tcx.sess, attr.span, E0230,
                                                  "there is no type parameter \
                                                           {} on trait {}",
@@ -1301,6 +1295,12 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         &self.ast_ty_to_ty_cache
     }
 
+    fn get_generics(&self, _: Span, id: DefId)
+                    -> Result<&'tcx ty::Generics<'tcx>, ErrorReported>
+    {
+        Ok(self.tcx().lookup_generics(id))
+    }
+
     fn get_item_type_scheme(&self, _: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>
     {
@@ -1364,7 +1364,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
 
     fn ty_infer_for_def(&self,
                         ty_param_def: &ty::TypeParameterDef<'tcx>,
-                        substs: &subst::Substs<'tcx>,
+                        substs: &Substs<'tcx>,
                         span: Span) -> Ty<'tcx> {
         self.type_var_for_def(span, ty_param_def, substs)
     }
@@ -1690,25 +1690,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  node_id: ast::NodeId)
                                  -> Ty<'tcx> {
         debug!("instantiate_type_path(did={:?}, path={:?})", did, path);
-        let mut type_scheme = self.tcx.lookup_item_type(did);
-        if type_scheme.ty.is_fn() {
+        let mut ty = self.tcx.lookup_item_type(did).ty;
+        if ty.is_fn() {
             // Tuple variants have fn type even in type namespace, extract true variant type from it
-            let fn_ret = self.tcx.no_late_bound_regions(&type_scheme.ty.fn_ret()).unwrap();
-            type_scheme = ty::TypeScheme { ty: fn_ret, generics: type_scheme.generics }
+            ty = self.tcx.no_late_bound_regions(&type_scheme.ty.fn_ret()).unwrap();
         }
         let type_predicates = self.tcx.lookup_predicates(did);
         let substs = AstConv::ast_path_substs_for_ty(self, self,
                                                      path.span,
                                                      PathParamMode::Optional,
-                                                     &type_scheme.generics,
+                                                     did,
                                                      path.segments.last().unwrap());
-        debug!("instantiate_type_path: ty={:?} substs={:?}", &type_scheme.ty, substs);
+        debug!("instantiate_type_path: ty={:?} substs={:?}", ty, substs);
         let bounds = self.instantiate_bounds(path.span, substs, &type_predicates);
         let cause = traits::ObligationCause::new(path.span, self.body_id,
                                                  traits::ItemObligation(did));
         self.add_obligations_for_parameters(cause, &bounds);
 
-        let ty_substituted = self.instantiate_type_scheme(path.span, substs, &type_scheme.ty);
+        let ty_substituted = self.instantiate_type_scheme(path.span, substs, &ty);
         self.write_ty(node_id, ty_substituted);
         self.write_substs(node_id, ty::ItemSubsts {
             substs: substs
@@ -2775,7 +2774,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ity = self.tcx.lookup_item_type(did);
         debug!("impl_self_ty: ity={:?}", ity);
 
-        let substs = self.fresh_substs_for_generics(span, &ity.generics);
+        let substs = self.fresh_substs_for_item(span, did);
         let substd_ty = self.instantiate_type_scheme(span, &substs, &ity.ty);
 
         TypeAndSubsts { substs: substs, ty: substd_ty }
@@ -3443,10 +3442,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(opt_self_ty, path,
                                                                          expr.id, expr.span);
               if def != Def::Err {
-                  let (scheme, predicates) = self.type_scheme_and_predicates_for_def(expr.span,
-                                                                                     def);
-                  self.instantiate_value_path(segments, scheme, &predicates,
-                                              opt_ty, def, expr.span, id);
+                  self.instantiate_value_path(segments, opt_ty, def, expr.span, id);
               } else {
                   self.set_tainted_by_errors();
                   self.write_error(id);
@@ -4036,54 +4032,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         *self.ps.borrow_mut() = prev;
     }
 
-    // Returns the type parameter count and the type for the given definition.
-    fn type_scheme_and_predicates_for_def(&self,
-                                          sp: Span,
-                                          defn: Def)
-                                          -> (TypeScheme<'tcx>, GenericPredicates<'tcx>) {
-        match defn {
-            Def::Local(_, nid) | Def::Upvar(_, nid, _, _) => {
-                let typ = self.local_ty(sp, nid);
-                (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
-                 ty::GenericPredicates::empty())
-            }
-            Def::Fn(id) | Def::Method(id) |
-            Def::Static(id, _) | Def::Variant(_, id) |
-            Def::Struct(id) | Def::Const(id) | Def::AssociatedConst(id) => {
-                (self.tcx.lookup_item_type(id), self.tcx.lookup_predicates(id))
-            }
-            Def::Trait(_) |
-            Def::Enum(..) |
-            Def::TyAlias(..) |
-            Def::AssociatedTy(..) |
-            Def::PrimTy(_) |
-            Def::TyParam(..) |
-            Def::Mod(..) |
-            Def::ForeignMod(..) |
-            Def::Label(..) |
-            Def::SelfTy(..) |
-            Def::Err => {
-                span_bug!(sp, "expected value, found {:?}", defn);
-            }
-        }
-    }
-
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     pub fn instantiate_value_path(&self,
                                   segments: &[hir::PathSegment],
-                                  type_scheme: TypeScheme<'tcx>,
-                                  type_predicates: &ty::GenericPredicates<'tcx>,
                                   opt_self_ty: Option<Ty<'tcx>>,
                                   def: Def,
                                   span: Span,
                                   node_id: ast::NodeId)
                                   -> Ty<'tcx> {
-        debug!("instantiate_value_path(path={:?}, def={:?}, node_id={}, type_scheme={:?})",
+        debug!("instantiate_value_path(path={:?}, def={:?}, node_id={})",
                segments,
                def,
-               node_id,
-               type_scheme);
+               node_id);
 
         // We need to extract the type parameters supplied by the user in
         // the path `path`. Due to the current setup, this is a bit of a
@@ -4210,11 +4171,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::ForeignMod(..) |
             Def::Local(..) |
             Def::Label(..) |
-            Def::Upvar(..) => {}
-
-            Def::Err => {
-                self.set_tainted_by_errors();
-            }
+            Def::Upvar(..) |
+            Def::Err => {}
         }
 
         // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but
@@ -4232,6 +4190,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             fn_segment.is_some() as usize;
         self.tcx.prohibit_type_params(&segments[..segments.len() - poly_segments]);
 
+        match def {
+            Def::Local(_, nid) | Def::Upvar(_, nid, _, _) => {
+                let ty = self.local_ty(span, nid);
+                let ty = self.normalize_associated_types_in(span, &ty);
+                self.write_ty(node_id, ty);
+                self.write_substs(node_id, ty::ItemSubsts {
+                    substs: Substs::empty(self.tcx)
+                });
+                return ty;
+            }
+            _ => {}
+        }
+        let scheme = self.tcx.lookup_item_type(def.def_id());
+        let type_predicates = self.tcx.lookup_predicates(def.def_id());
+
         // Now we have to compare the types that the user *actually*
         // provided against the types that were *expected*. If the user
         // did not provide any types, then we want to substitute inference
@@ -4240,16 +4213,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // a problem.
         self.check_path_parameter_count(subst::TypeSpace,
                                         span,
-                                        &type_scheme.generics,
+                                        scheme.generics,
                                         !require_type_space,
                                         &mut type_segment);
         self.check_path_parameter_count(subst::FnSpace,
                                         span,
-                                        &type_scheme.generics,
+                                        scheme.generics,
                                         true,
                                         &mut fn_segment);
 
-        let substs = Substs::from_generics(&type_scheme.generics, |def, _| {
+        let substs = Substs::for_item(self.tcx, def.def_id(), |def, _| {
             let i = def.index as usize;
             let segment = match def.space {
                 subst::SelfSpace => None,
@@ -4307,9 +4280,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
-        let substs = self.tcx.mk_substs(substs);
         assert!(!substs.has_escaping_regions());
-        assert!(!type_scheme.has_escaping_regions());
+        assert!(!scheme.ty.has_escaping_regions());
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
@@ -4320,7 +4292,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
-        let ty_substituted = self.instantiate_type_scheme(span, &substs, &type_scheme.ty);
+        let ty_substituted = self.instantiate_type_scheme(span, &substs, &scheme.ty);
 
 
         if let Some((ty::ImplContainer(impl_def_id), self_ty)) = ufcs_associated {

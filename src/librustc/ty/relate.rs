@@ -14,7 +14,7 @@
 //! type equality, etc.
 
 use hir::def_id::DefId;
-use ty::subst::{ParamSpace, Substs};
+use ty::subst::Substs;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;
@@ -145,82 +145,44 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
                                         -> RelateResult<'tcx, &'tcx Substs<'tcx>>
     where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
 {
-    let mut substs = Substs::empty();
+    let tcx = relation.tcx();
+    let mut result = Ok(());
 
-    for &space in &ParamSpace::all() {
-        let a_tps = a_subst.types.get_slice(space);
-        let b_tps = b_subst.types.get_slice(space);
-        let t_variances = variances.map(|v| v.types.get_slice(space));
-        let tps = relate_type_params(relation, t_variances, a_tps, b_tps)?;
-        substs.types.replace(space, tps);
-    }
+    let types = a_subst.types.map_enumerated(|(space, i, a_ty)| {
+        if result.is_err() { return tcx.types.err; }
 
-    for &space in &ParamSpace::all() {
-        let a_regions = a_subst.regions.get_slice(space);
-        let b_regions = b_subst.regions.get_slice(space);
-        let r_variances = variances.map(|v| v.regions.get_slice(space));
-        let regions = relate_region_params(relation,
-                                           r_variances,
-                                           a_regions,
-                                           b_regions)?;
-        substs.regions.replace(space, regions);
-    }
+        let b_ty = b_subst.types.get(space, i);
+        let variance = variances.map_or(ty::Invariant, |v| {
+            *v.types.get(space, i)
+        });
+        match relation.relate_with_variance(variance, a_ty, b_ty) {
+            Ok(ty) => ty,
+            Err(e) => {
+                result = Err(e);
+                tcx.types.err
+            }
+        }
+    });
+    result?;
 
-    Ok(relation.tcx().mk_substs(substs))
-}
+    let regions = a_subst.regions.map_enumerated(|(space, i, a_r)| {
+        if result.is_err() { return ty::ReStatic; }
 
-fn relate_type_params<'a, 'gcx, 'tcx, R>(relation: &mut R,
-                                         variances: Option<&[ty::Variance]>,
-                                         a_tys: &[Ty<'tcx>],
-                                         b_tys: &[Ty<'tcx>])
-                                         -> RelateResult<'tcx, Vec<Ty<'tcx>>>
-    where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-{
-    if a_tys.len() != b_tys.len() {
-        return Err(TypeError::TyParamSize(expected_found(relation,
-                                                         &a_tys.len(),
-                                                         &b_tys.len())));
-    }
+        let b_r = b_subst.regions.get(space, i);
+        let variance = variances.map_or(ty::Invariant, |v| {
+            *v.regions.get(space, i)
+        });
+        match relation.relate_with_variance(variance, a_r, b_r) {
+            Ok(r) => r,
+            Err(e) => {
+                result = Err(e);
+                ty::ReStatic
+            }
+        }
+    });
+    result?;
 
-    (0 .. a_tys.len())
-        .map(|i| {
-            let a_ty = a_tys[i];
-            let b_ty = b_tys[i];
-            let v = variances.map_or(ty::Invariant, |v| v[i]);
-            relation.relate_with_variance(v, &a_ty, &b_ty)
-        })
-        .collect()
-}
-
-fn relate_region_params<'a, 'gcx, 'tcx, R>(relation: &mut R,
-                                           variances: Option<&[ty::Variance]>,
-                                           a_rs: &[ty::Region],
-                                           b_rs: &[ty::Region])
-                                           -> RelateResult<'tcx, Vec<ty::Region>>
-    where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-{
-    let num_region_params = a_rs.len();
-
-    debug!("relate_region_params(a_rs={:?}, \
-            b_rs={:?}, variances={:?})",
-           a_rs,
-           b_rs,
-           variances);
-
-    assert_eq!(num_region_params,
-               variances.map_or(num_region_params,
-                                |v| v.len()));
-
-    assert_eq!(num_region_params, b_rs.len());
-
-    (0..a_rs.len())
-        .map(|i| {
-            let a_r = a_rs[i];
-            let b_r = b_rs[i];
-            let variance = variances.map_or(ty::Invariant, |v| v[i]);
-            relation.relate_with_variance(variance, &a_r, &b_r)
-        })
-        .collect()
+    Ok(Substs::new(tcx, types, regions))
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::BareFnTy<'tcx> {

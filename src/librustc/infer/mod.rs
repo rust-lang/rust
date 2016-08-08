@@ -25,9 +25,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
 use mir::tcx::LvalueTy;
-use ty::subst;
-use ty::subst::Substs;
-use ty::subst::Subst;
+use ty::subst::{Subst, Substs};
 use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
@@ -1236,43 +1234,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
-    pub fn fresh_substs_for_generics(&self,
-                                     span: Span,
-                                     generics: &ty::Generics<'tcx>)
-                                     -> &'tcx subst::Substs<'tcx>
-    {
-        let substs = Substs::from_generics(generics, |def, _| {
+    pub fn fresh_substs_for_item(&self,
+                                 span: Span,
+                                 def_id: DefId)
+                                 -> &'tcx Substs<'tcx> {
+        Substs::for_item(self.tcx, def_id, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, substs| {
             self.type_var_for_def(span, def, substs)
-        });
-
-        self.tcx.mk_substs(substs)
-    }
-
-    /// Given a set of generics defined on a trait, returns a substitution mapping each output
-    /// type/region parameter to a fresh inference variable, and mapping the self type to
-    /// `self_ty`.
-    pub fn fresh_substs_for_trait(&self,
-                                  span: Span,
-                                  generics: &ty::Generics<'tcx>,
-                                  self_ty: Ty<'tcx>)
-                                  -> &'tcx subst::Substs<'tcx>
-    {
-        assert!(generics.types.len(subst::SelfSpace) == 1);
-        assert!(generics.types.len(subst::FnSpace) == 0);
-
-        let substs = Substs::from_generics(generics, |def, _| {
-            self.region_var_for_def(span, def)
-        }, |def, substs| {
-            if def.space == subst::SelfSpace {
-                self_ty
-            } else {
-                self.type_var_for_def(span, def, substs)
-            }
-        });
-
-        self.tcx.mk_substs(substs)
+        })
     }
 
     pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {

@@ -359,18 +359,7 @@ pub struct ExistentialTraitRef<'tcx> {
     pub substs: &'tcx Substs<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
-    pub fn erase_self_ty(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         trait_ref: ty::TraitRef<'tcx>)
-                         -> ty::ExistentialTraitRef<'tcx> {
-        let mut substs = trait_ref.substs.clone();
-        substs.types.pop(subst::SelfSpace);
-        ty::ExistentialTraitRef {
-            def_id: trait_ref.def_id,
-            substs: tcx.mk_substs(substs)
-        }
-    }
-
+impl<'tcx> ExistentialTraitRef<'tcx> {
     pub fn input_types(&self) -> &[Ty<'tcx>] {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
@@ -382,7 +371,7 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
 
 pub type PolyExistentialTraitRef<'tcx> = Binder<ExistentialTraitRef<'tcx>>;
 
-impl<'a, 'gcx, 'tcx> PolyExistentialTraitRef<'tcx> {
+impl<'tcx> PolyExistentialTraitRef<'tcx> {
     pub fn def_id(&self) -> DefId {
         self.0.def_id
     }
@@ -390,23 +379,6 @@ impl<'a, 'gcx, 'tcx> PolyExistentialTraitRef<'tcx> {
     pub fn input_types(&self) -> &[Ty<'tcx>] {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
-    }
-
-    /// Object types don't have a self-type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self-type. A common choice is `mk_err()`
-    /// or some skolemized type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                        self_ty: Ty<'tcx>)
-                        -> ty::PolyTraitRef<'tcx>
-    {
-        // otherwise the escaping regions would be captured by the binder
-        assert!(!self_ty.has_escaping_regions());
-
-        self.map_bound(|trait_ref| TraitRef {
-            def_id: trait_ref.def_id,
-            substs: tcx.mk_substs(trait_ref.substs.with_self_ty(self_ty)),
-        })
     }
 }
 

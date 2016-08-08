@@ -15,7 +15,7 @@ use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use rustc::infer;
 use middle::region;
-use rustc::ty::subst::{self, Subst};
+use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, Reveal};
 use util::nodemap::FnvHashSet;
@@ -41,16 +41,14 @@ use syntax_pos::{self, Span};
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
 pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> {
-    let ty::TypeScheme { generics: ref dtor_generics,
-                         ty: dtor_self_type } = ccx.tcx.lookup_item_type(drop_impl_did);
+    let dtor_self_type = ccx.tcx.lookup_item_type(drop_impl_did).ty;
     let dtor_predicates = ccx.tcx.lookup_predicates(drop_impl_did);
     match dtor_self_type.sty {
         ty::TyEnum(adt_def, self_to_impl_substs) |
         ty::TyStruct(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(ccx,
                                                           drop_impl_did,
-                                                          dtor_generics,
-                                                          &dtor_self_type,
+                                                          dtor_self_type,
                                                           adt_def.did)?;
 
             ensure_drop_predicates_are_implied_by_item_defn(ccx,
@@ -73,8 +71,7 @@ pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> 
 fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     ccx: &CrateCtxt<'a, 'tcx>,
     drop_impl_did: DefId,
-    drop_impl_generics: &ty::Generics<'tcx>,
-    drop_impl_ty: &ty::Ty<'tcx>,
+    drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId) -> Result<(), ()>
 {
     let tcx = ccx.tcx;
@@ -93,8 +90,8 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 
         let drop_impl_span = tcx.map.def_id_span(drop_impl_did, syntax_pos::DUMMY_SP);
         let fresh_impl_substs =
-            infcx.fresh_substs_for_generics(drop_impl_span, drop_impl_generics);
-        let fresh_impl_self_ty = drop_impl_ty.subst(tcx, &fresh_impl_substs);
+            infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
+        let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
         if let Err(_) = infcx.eq_types(true, infer::TypeOrigin::Misc(drop_impl_span),
                                        named_type, fresh_impl_self_ty) {
@@ -131,7 +128,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
-    self_to_impl_substs: &subst::Substs<'tcx>) -> Result<(), ()> {
+    self_to_impl_substs: &Substs<'tcx>) -> Result<(), ()> {
 
     // Here is an example, analogous to that from
     // `compare_impl_method`.
