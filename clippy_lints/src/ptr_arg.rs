@@ -7,14 +7,14 @@ use rustc::ty;
 use syntax::ast::NodeId;
 use utils::{match_type, paths, span_lint};
 
-/// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless
-/// the references are mutable.
+/// **What it does:** Checks for function arguments of type `&String` or `&Vec`
+/// unless the references are mutable.
 ///
-/// **Why is this bad?** Requiring the argument to be of the specific size makes the function less
-/// useful for no benefit; slices in the form of `&[T]` or `&str` usually suffice and can be
-/// obtained from other types, too.
+/// **Why is this bad?** Requiring the argument to be of the specific size makes
+/// the function less useful for no benefit; slices in the form of `&[T]` or
+/// `&str` usually suffice and can be obtained from other types, too.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -23,8 +23,7 @@ use utils::{match_type, paths, span_lint};
 declare_lint! {
     pub PTR_ARG,
     Warn,
-    "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
-     instead, respectively"
+    "arguments of the type `&Vec<...>` (instead of `&[...]`) or `&String` (instead of `&str`)"
 }
 
 #[derive(Copy,Clone)]

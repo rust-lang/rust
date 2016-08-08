@@ -6,28 +6,41 @@ use syntax::codemap::{DUMMY_SP, dummy_spanned};
 use syntax::util::ThinVec;
 use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 
-/// **What it does:** This lint checks for boolean expressions that can be written more concisely.
+/// **What it does:** Checks for boolean expressions that can be written more
+/// concisely.
 ///
-/// **Why is this bad?** Readability of boolean expressions suffers from unnecessary duplication.
+/// **Why is this bad?** Readability of boolean expressions suffers from
+/// unnecessary duplication.
 ///
-/// **Known problems:** Ignores short circuiting behavior of `||` and `&&`. Ignores `|`, `&` and `^`.
+/// **Known problems:** Ignores short circuiting behavior of `||` and
+/// `&&`. Ignores `|`, `&` and `^`.
 ///
-/// **Example:** `if a && true` should be `if a` and `!(a == b)` should be `a != b`
+/// **Example:**
+/// ```rust
+/// if a && true  // should be: if a
+/// if !(a == b)  // should be: if a != b
 declare_lint! {
-    pub NONMINIMAL_BOOL, Allow,
-    "checks for boolean expressions that can be written more concisely"
+    pub NONMINIMAL_BOOL,
+    Allow,
+    "boolean expressions that can be written more concisely"
 }
 
-/// **What it does:** This lint checks for boolean expressions that contain terminals that can be eliminated.
+/// **What it does:** Checks for boolean expressions that contain terminals that
+/// can be eliminated.
 ///
 /// **Why is this bad?** This is most likely a logic bug.
 ///
 /// **Known problems:** Ignores short circuiting behavior.
 ///
-/// **Example:** The `b` in `if a && b || a` is unnecessary because the expression is equivalent to `if a`
+/// **Example:**
+/// ```rust
+/// if a && b || a { ... }
+/// ```
+/// The `b` is unnecessary, the expression is equivalent to `if a`.
 declare_lint! {
-    pub LOGIC_BUG, Warn,
-    "checks for boolean expressions that contain terminals which can be eliminated"
+    pub LOGIC_BUG,
+    Warn,
+    "boolean expressions that contain terminals which can be eliminated"
 }
 
 #[derive(Copy,Clone)]

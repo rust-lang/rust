@@ -3,18 +3,13 @@ use rustc::lint::*;
 use rustc::hir::*;
 use utils::span_help_and_lint;
 
-/// `Pass` is a pass that checks for a binary expression that consists
-/// `of 0.0/0.0`, which is always `NaN`. It is more clear to replace instances of
-/// `0.0/0.0` with `std::f32::NaN` or `std::f64::NaN`, depending on the precision.
-pub struct Pass;
-
-/// **What it does:** This lint checks for `0.0 / 0.0`.
+/// **What it does:** Checks for `0.0 / 0.0`.
 ///
-/// **Why is this bad?** It's less readable than `std::f32::NAN` or `std::f64::NAN`
+/// **Why is this bad?** It's less readable than `std::f32::NAN` or `std::f64::NAN`.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example**
+/// **Example:**
 /// ```rust
 /// 0.0f32 / 0.0
 /// ```
@@ -23,6 +18,8 @@ declare_lint! {
     Warn,
     "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN"
 }
+
+pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {

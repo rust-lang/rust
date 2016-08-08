@@ -5,9 +5,11 @@ use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
 use utils::{span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
-/// **What it does:** This lint checks for structure field patterns bound to wildcards.
+
+/// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
-/// **Why is this bad?** Using `..` instead is shorter and leaves the focus on the fields that are actually bound.
+/// **Why is this bad?** Using `..` instead is shorter and leaves the focus on
+/// the fields that are actually bound.
 ///
 /// **Known problems:** None.
 ///
@@ -16,13 +18,15 @@ use utils::{span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_t
 /// let { a: _, b: ref b, c: _ } = ..
 /// ```
 declare_lint! {
-    pub UNNEEDED_FIELD_PATTERN, Warn,
-    "Struct fields are bound to a wildcard instead of using `..`"
+    pub UNNEEDED_FIELD_PATTERN,
+    Warn,
+    "struct fields bound to a wildcard instead of using `..`"
 }
 
-/// **What it does:** This lint checks for function arguments having the similar names differing by an underscore
+/// **What it does:** Checks for function arguments having the similar names
+/// differing by an underscore.
 ///
-/// **Why is this bad?** It affects code readability
+/// **Why is this bad?** It affects code readability.
 ///
 /// **Known problems:** None.
 ///
@@ -31,11 +35,12 @@ declare_lint! {
 /// fn foo(a: i32, _a: i32) {}
 /// ```
 declare_lint! {
-    pub DUPLICATE_UNDERSCORE_ARGUMENT, Warn,
-    "Function arguments having names which only differ by an underscore"
+    pub DUPLICATE_UNDERSCORE_ARGUMENT,
+    Warn,
+    "function arguments having names which only differ by an underscore"
 }
 
-/// **What it does:** This lint detects closures called in the same expression where they are defined.
+/// **What it does:** Detects closures called in the same expression where they are defined.
 ///
 /// **Why is this bad?** It is unnecessarily adding to the expression's complexity.
 ///
@@ -46,13 +51,15 @@ declare_lint! {
 /// (|| 42)()
 /// ```
 declare_lint! {
-    pub REDUNDANT_CLOSURE_CALL, Warn,
-    "Closures should not be called in the expression they are defined"
+    pub REDUNDANT_CLOSURE_CALL,
+    Warn,
+    "throwaway closures called in the expression they are defined"
 }
 
-/// **What it does:** This lint detects expressions of the form `--x`
+/// **What it does:** Detects expressions of the form `--x`.
 ///
-/// **Why is this bad?** It can mislead C/C++ programmers to think `x` was decremented.
+/// **Why is this bad?** It can mislead C/C++ programmers to think `x` was
+/// decremented.
 ///
 /// **Known problems:** None.
 ///
@@ -61,8 +68,9 @@ declare_lint! {
 /// --x;
 /// ```
 declare_lint! {
-    pub DOUBLE_NEG, Warn,
-    "`--x` is a double negation of `x` and not a pre-decrement as in C or C++"
+    pub DOUBLE_NEG,
+    Warn,
+    "`--x`, which is a double negation of `x` and not a pre-decrement as in C/C++"
 }
 
 /// **What it does:** Warns on hexadecimal literals with mixed-case letter digits.
@@ -76,8 +84,9 @@ declare_lint! {
 /// let y = 0x1a9BAcD;
 /// ```
 declare_lint! {
-    pub MIXED_CASE_HEX_LITERALS, Warn,
-    "letter digits in hex literals should be either completely upper- or lowercased"
+    pub MIXED_CASE_HEX_LITERALS,
+    Warn,
+    "hex literals whose letter digits are not consistently upper- or lowercased"
 }
 
 /// **What it does:** Warns if literal suffixes are not separated by an underscore.
@@ -91,8 +100,9 @@ declare_lint! {
 /// let y = 123832i32;
 /// ```
 declare_lint! {
-    pub UNSEPARATED_LITERAL_SUFFIX, Allow,
-    "literal suffixes should be separated with an underscore"
+    pub UNSEPARATED_LITERAL_SUFFIX,
+    Allow,
+    "literals whose suffix is not separated by an underscore"
 }
 
 

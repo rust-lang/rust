@@ -9,13 +9,15 @@ use rustc::hir::Expr;
 use syntax::ast;
 use utils::{match_type, paths, span_lint};
 
-/// **What it does:** This lint checks for usages of `Mutex<X>` where an atomic will do.
+/// **What it does:** Checks for usages of `Mutex<X>` where an atomic will do.
 ///
-/// **Why is this bad?** Using a mutex just to make access to a plain bool or reference sequential
-/// is shooting flies with cannons. `std::atomic::AtomicBool` and `std::atomic::AtomicPtr` are
-/// leaner and faster.
+/// **Why is this bad?** Using a mutex just to make access to a plain bool or
+/// reference sequential is shooting flies with cannons.
+/// `std::atomic::AtomicBool` and `std::atomic::AtomicPtr` are leaner and
+/// faster.
 ///
-/// **Known problems:** This lint cannot detect if the mutex is actually used for waiting before a critical section.
+/// **Known problems:** This lint cannot detect if the mutex is actually used
+/// for waiting before a critical section.
 ///
 /// **Example:**
 /// ```rust
@@ -27,12 +29,13 @@ declare_lint! {
     "using a mutex where an atomic value could be used instead"
 }
 
-/// **What it does:** This lint checks for usages of `Mutex<X>` where `X` is an integral type.
+/// **What it does:** Checks for usages of `Mutex<X>` where `X` is an integral type.
 ///
 /// **Why is this bad?** Using a mutex just to make access to a plain integer sequential is
 /// shooting flies with cannons. `std::atomic::usize` is leaner and faster.
 ///
-/// **Known problems:** This lint cannot detect if the mutex is actually used for waiting before a critical section.
+/// **Known problems:** This lint cannot detect if the mutex is actually used
+/// for waiting before a critical section.
 ///
 /// **Example:**
 /// ```rust

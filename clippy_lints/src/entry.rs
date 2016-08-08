@@ -5,8 +5,8 @@ use syntax::codemap::Span;
 use utils::SpanlessEq;
 use utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty};
 
-/// **What it does:** This lint checks for uses of `contains_key` + `insert` on `HashMap` or
-/// `BTreeMap`.
+/// **What it does:** Checks for uses of `contains_key` + `insert` on `HashMap`
+/// or `BTreeMap`.
 ///
 /// **Why is this bad?** Using `entry` is more efficient.
 ///

@@ -4,13 +4,13 @@ use rustc::lint::*;
 use syntax::ast::*;
 use utils::{in_macro, span_lint};
 
-/// **What it does:** This lints checks for items declared after some statement in a block
+/// **What it does:** Checks for items declared after some statement in a block.
 ///
-/// **Why is this bad?** Items live for the entire scope they are declared in. But statements are
-/// processed in order. This might cause confusion as it's hard to figure out which item is meant
-/// in a statement.
+/// **Why is this bad?** Items live for the entire scope they are declared
+/// in. But statements are processed in order. This might cause confusion as
+/// it's hard to figure out which item is meant in a statement.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -29,7 +29,7 @@ use utils::{in_macro, span_lint};
 declare_lint! {
     pub ITEMS_AFTER_STATEMENTS,
     Allow,
-    "finds blocks where an item comes after a statement"
+    "blocks where an item comes after a statement"
 }
 
 pub struct ItemsAfterStatements;

@@ -3,17 +3,24 @@ use rustc::lint::*;
 use syntax::ast::LitKind;
 use utils::{is_direct_expn_of, match_path, paths, span_lint};
 
-/// **What it does:** This lint checks for missing parameters in `panic!`.
+/// **What it does:** Checks for missing parameters in `panic!`.
 ///
-/// **Known problems:** Should you want to use curly brackets in `panic!` without any parameter,
-/// this lint will warn.
+/// **Why is this bad?** Contrary to the `format!` family of macros, there are
+/// two forms of `panic!`: if there are no parameters given, the first argument
+/// is not a format string and used literally. So while `format!("{}")` will
+/// fail to compile, `panic!("{}")` will not.
+///
+/// **Known problems:** Should you want to use curly brackets in `panic!`
+/// without any parameter, this lint will warn.
 ///
 /// **Example:**
 /// ```rust
 /// panic!("This `panic!` is probably missing a parameter there: {}");
 /// ```
 declare_lint! {
-    pub PANIC_PARAMS, Warn, "missing parameters in `panic!`"
+    pub PANIC_PARAMS,
+    Warn,
+    "missing parameters in `panic!` calls"
 }
 
 #[allow(missing_copy_implementations)]

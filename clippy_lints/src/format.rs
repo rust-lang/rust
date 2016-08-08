@@ -6,17 +6,22 @@ use syntax::ast::LitKind;
 use utils::paths;
 use utils::{is_expn_of, match_path, match_type, span_lint, walk_ptrs_ty};
 
-/// **What it does:** This lints about use of `format!("string literal with no argument")` and
-/// `format!("{}", foo)` where `foo` is a string.
+/// **What it does:** Checks for the use of `format!("string literal with no
+/// argument")` and `format!("{}", foo)` where `foo` is a string.
 ///
-/// **Why is this bad?** There is no point of doing that. `format!("too")` can be replaced by
-/// `"foo".to_owned()` if you really need a `String`. The even worse `&format!("foo")` is often
-/// encountered in the wild. `format!("{}", foo)` can be replaced by `foo.clone()` if `foo: String`
-/// or `foo.to_owned()` is `foo: &str`.
+/// **Why is this bad?** There is no point of doing that. `format!("too")` can
+/// be replaced by `"foo".to_owned()` if you really need a `String`. The even
+/// worse `&format!("foo")` is often encountered in the wild. `format!("{}",
+/// foo)` can be replaced by `foo.clone()` if `foo: String` or `foo.to_owned()`
+/// is `foo: &str`.
 ///
 /// **Known problems:** None.
 ///
-/// **Examples:** `format!("foo")` and `format!("{}", foo)`
+/// **Examples:**
+/// ```rust
+/// format!("foo")
+/// format!("{}", foo)
+/// ```
 declare_lint! {
     pub USELESS_FORMAT,
     Warn,

@@ -8,12 +8,13 @@ use rustc::ty::TyRef;
 use utils::{span_lint, in_macro};
 use rustc::ty::adjustment::AutoAdjustment::AdjustDerefRef;
 
-/// **What it does:** This lint checks for address of operations (`&`) that are going to be
-/// dereferenced immediately by the compiler
+/// **What it does:** Checks for address of operations (`&`) that are going to
+/// be dereferenced immediately by the compiler.
 ///
-/// **Why is this bad?** Suggests that the receiver of the expression borrows the expression.
+/// **Why is this bad?** Suggests that the receiver of the expression borrows
+/// the expression.
 ///
-/// **Known problems:**
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust

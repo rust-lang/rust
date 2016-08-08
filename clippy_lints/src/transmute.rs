@@ -5,12 +5,13 @@ use rustc::hir::*;
 use utils::{match_def_path, paths, span_lint, span_lint_and_then};
 use utils::sugg;
 
-/// **What it does:** This lint checks for transmutes that can't ever be correct on any architecture
+/// **What it does:** Checks for transmutes that can't ever be correct on any
+/// architecture.
 ///
-/// **Why is this bad?** It's basically guaranteed to be undefined behaviour
+/// **Why is this bad?** It's basically guaranteed to be undefined behaviour.
 ///
-/// **Known problems:** When accessing C, users might want to store pointer sized objects in
-/// `extradata` arguments to save an allocation.
+/// **Known problems:** When accessing C, users might want to store pointer
+/// sized objects in `extradata` arguments to save an allocation.
 ///
 /// **Example:**
 /// ```rust
@@ -22,11 +23,11 @@ declare_lint! {
     "transmutes that are confusing at best, undefined behaviour at worst and always useless"
 }
 
-/// **What it does:** This lint checks for transmutes to the original type of the object and
-/// transmutes that could be a cast.
+/// **What it does:** Checks for transmutes to the original type of the object
+/// and transmutes that could be a cast.
 ///
-/// **Why is this bad?** Readability. The code tricks people into thinking that something complex
-/// is going on
+/// **Why is this bad?** Readability. The code tricks people into thinking that
+/// something complex is going on.
 ///
 /// **Known problems:** None.
 ///
@@ -40,9 +41,10 @@ declare_lint! {
     "transmutes that have the same to and from types or could be a cast/coercion"
 }
 
-/// **What it does:*** This lint checks for transmutes between a type `T` and `*T`.
+/// **What it does:** Checks for transmutes between a type `T` and `*T`.
 ///
-/// **Why is this bad?** It's easy to mistakenly transmute between a type and a pointer to that type.
+/// **Why is this bad?** It's easy to mistakenly transmute between a type and a
+/// pointer to that type.
 ///
 /// **Known problems:** None.
 ///
@@ -56,7 +58,7 @@ declare_lint! {
     "transmutes that have to or from types that are a pointer to the other"
 }
 
-/// **What it does:*** This lint checks for transmutes from a pointer to a reference.
+/// **What it does:** Checks for transmutes from a pointer to a reference.
 ///
 /// **Why is this bad?** This can always be rewritten with `&` and `*`.
 ///

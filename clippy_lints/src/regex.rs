@@ -11,8 +11,8 @@ use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
 use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_and_lint};
 
-/// **What it does:** This lint checks [regex] creation (with `Regex::new`, `RegexBuilder::new` or
-/// `RegexSet::new`) for correct regex syntax.
+/// **What it does:** Checks [regex] creation (with `Regex::new`,
+/// `RegexBuilder::new` or `RegexSet::new`) for correct regex syntax.
 ///
 /// [regex]: https://crates.io/crates/regex
 ///
@@ -27,16 +27,17 @@ use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_
 declare_lint! {
     pub INVALID_REGEX,
     Deny,
-    "finds invalid regular expressions"
+    "invalid regular expressions"
 }
 
-/// **What it does:** This lint checks for trivial [regex] creation (with `Regex::new`,
+/// **What it does:** Checks for trivial [regex] creation (with `Regex::new`,
 /// `RegexBuilder::new` or `RegexSet::new`).
 ///
 /// [regex]: https://crates.io/crates/regex
 ///
-/// **Why is this bad?** This can likely be replaced by `==` or `str::starts_with`,
-/// `str::ends_with` or `std::contains` or other `str` methods.
+/// **Why is this bad?** Matching the regex can likely be replaced by `==` or
+/// `str::starts_with`, `str::ends_with` or `std::contains` or other `str`
+/// methods.
 ///
 /// **Known problems:** None.
 ///
@@ -47,16 +48,17 @@ declare_lint! {
 declare_lint! {
     pub TRIVIAL_REGEX,
     Warn,
-    "finds trivial regular expressions"
+    "trivial regular expressions"
 }
 
-/// **What it does:** This lint checks for usage of `regex!(_)` which as of now is usually slower
-/// than `Regex::new(_)` unless called in a loop (which is a bad idea anyway).
+/// **What it does:** Checks for usage of `regex!(_)` which (as of now) is
+/// usually slower than `Regex::new(_)` unless called in a loop (which is a bad
+/// idea anyway).
 ///
-/// **Why is this bad?** Performance, at least for now. The macro version is likely to catch up
-/// long-term, but for now the dynamic version is faster.
+/// **Why is this bad?** Performance, at least for now. The macro version is
+/// likely to catch up long-term, but for now the dynamic version is faster.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -65,7 +67,7 @@ declare_lint! {
 declare_lint! {
     pub REGEX_MACRO,
     Warn,
-    "finds use of `regex!(_)`, suggests `Regex::new(_)` instead"
+    "use of `regex!(_)` instead of `Regex::new(_)`"
 }
 
 #[derive(Clone, Default)]

@@ -7,33 +7,37 @@ use syntax::codemap::{Span, Spanned};
 use syntax::ptr::P;
 use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_then, walk_ptrs_ty};
 
-/// **What it does:** This lint checks for getting the length of something via `.len()` just to
-/// compare to zero, and suggests using `.is_empty()` where applicable.
+/// **What it does:** Checks for getting the length of something via `.len()`
+/// just to compare to zero, and suggests using `.is_empty()` where applicable.
 ///
-/// **Why is this bad?** Some structures can answer `.is_empty()` much faster than calculating
-/// their length. So it is good to get into the habit of using `.is_empty()`, and having it is
-/// cheap. Besides, it makes the intent clearer than a comparison.
+/// **Why is this bad?** Some structures can answer `.is_empty()` much faster
+/// than calculating their length. So it is good to get into the habit of using
+/// `.is_empty()`, and having it is cheap. Besides, it makes the intent clearer
+/// than a comparison.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
 /// if x.len() == 0 { .. }
 /// ```
 declare_lint! {
-    pub LEN_ZERO, Warn,
+    pub LEN_ZERO,
+    Warn,
     "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` \
      could be used instead"
 }
 
-/// **What it does:** This lint checks for items that implement `.len()` but not `.is_empty()`.
+/// **What it does:** Checks for items that implement `.len()` but not
+/// `.is_empty()`.
 ///
-/// **Why is this bad?** It is good custom to have both methods, because for some data structures,
-/// asking about the length will be a costly operation, whereas `.is_empty()` can usually answer in
-/// constant time. Also it used to lead to false positives on the [`len_zero`](#len_zero) lint –
-/// currently that lint will ignore such entities.
+/// **Why is this bad?** It is good custom to have both methods, because for
+/// some data structures, asking about the length will be a costly operation,
+/// whereas `.is_empty()` can usually answer in constant time. Also it used to
+/// lead to false positives on the [`len_zero`](#len_zero) lint – currently that
+/// lint will ignore such entities.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -42,7 +46,8 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub LEN_WITHOUT_IS_EMPTY, Warn,
+    pub LEN_WITHOUT_IS_EMPTY,
+    Warn,
     "traits and impls that have `.len()` but not `.is_empty()`"
 }
 

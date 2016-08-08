@@ -3,26 +3,30 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, walk_expr};
 use utils::*;
 
-/// **What it does:** This lint checks for `if` conditions that use blocks to contain an expression.
+/// **What it does:** Checks for `if` conditions that use blocks to contain an
+/// expression.
 ///
-/// **Why is this bad?** It isn't really rust style, same as using parentheses to contain expressions.
+/// **Why is this bad?** It isn't really Rust style, same as using parentheses
+/// to contain expressions.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
 /// if { true } ..
 /// ```
 declare_lint! {
-    pub BLOCK_IN_IF_CONDITION_EXPR, Warn,
-    "braces can be eliminated in conditions that are expressions, e.g `if { true } ...`"
+    pub BLOCK_IN_IF_CONDITION_EXPR,
+    Warn,
+    "braces that can be eliminated in conditions, e.g `if { true } ...`"
 }
 
-/// **What it does:** This lint checks for `if` conditions that use blocks containing statements, or conditions that use closures with blocks.
+/// **What it does:** Checks for `if` conditions that use blocks containing
+/// statements, or conditions that use closures with blocks.
 ///
 /// **Why is this bad?** Using blocks in the condition makes it hard to read.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -31,9 +35,9 @@ declare_lint! {
 /// if somefunc(|x| { x == 47 }) ..
 /// ```
 declare_lint! {
-    pub BLOCK_IN_IF_CONDITION_STMT, Warn,
-    "avoid complex blocks in conditions, instead move the block higher and bind it \
-    with 'let'; e.g: `if { let x = true; x } ...`"
+    pub BLOCK_IN_IF_CONDITION_STMT,
+    Warn,
+    "complex blocks in conditions, e.g. `if { let x = true; x } ...`"
 }
 
 #[derive(Copy,Clone)]

@@ -4,11 +4,11 @@ use rustc::lint::*;
 use utils::paths;
 use utils::{is_expn_of, match_path, span_lint};
 
-/// **What it does:** This lint warns whenever you print on *stdout*. The purpose of this lint is
-/// to catch debugging remnants.
+/// **What it does:** Checks for printing on *stdout*. The purpose of this lint
+/// is to catch debugging remnants.
 ///
-/// **Why is this bad?** People often print on *stdout* while debugging an application and might
-/// forget to remove those prints afterward.
+/// **Why is this bad?** People often print on *stdout* while debugging an
+/// application and might forget to remove those prints afterward.
 ///
 /// **Known problems:** Only catches `print!` and `println!` calls.
 ///
@@ -22,11 +22,11 @@ declare_lint! {
     "printing on stdout"
 }
 
-/// **What it does:** This lint warns whenever you use `Debug` formatting. The purpose of this lint
-/// is to catch debugging remnants.
+/// **What it does:** Checks for use of `Debug` formatting. The purpose of this
+/// lint is to catch debugging remnants.
 ///
-/// **Why is this bad?** The purpose of the `Debug` trait is to facilitate debugging Rust code. It
-/// should not be used in in user-facing output.
+/// **Why is this bad?** The purpose of the `Debug` trait is to facilitate
+/// debugging Rust code. It should not be used in in user-facing output.
 ///
 /// **Example:**
 /// ```rust
@@ -35,7 +35,7 @@ declare_lint! {
 declare_lint! {
     pub USE_DEBUG,
     Allow,
-    "use `Debug`-based formatting"
+    "use of `Debug`-based formatting"
 }
 
 #[derive(Copy, Clone, Debug)]

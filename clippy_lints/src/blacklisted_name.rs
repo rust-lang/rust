@@ -2,9 +2,11 @@ use rustc::lint::*;
 use rustc::hir::*;
 use utils::span_lint;
 
-/// **What it does:** This lints about usage of blacklisted names.
+/// **What it does:** Checks for usage of blacklisted names for variables, such
+/// as `foo`.
 ///
-/// **Why is this bad?** These names are usually placeholder names and should be avoided.
+/// **Why is this bad?** These names are usually placeholder names and should be
+/// avoided.
 ///
 /// **Known problems:** None.
 ///

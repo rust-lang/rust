@@ -5,37 +5,43 @@ use syntax::visit::FnKind;
 
 use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast, in_external_macro};
 
-/// **What it does:** This lint checks for return statements at the end of a block.
+/// **What it does:** Checks for return statements at the end of a block.
 ///
-/// **Why is this bad?** Removing the `return` and semicolon will make the code more rusty.
+/// **Why is this bad?** Removing the `return` and semicolon will make the code
+/// more rusty.
 ///
-/// **Known problems:** Following this lint's advice may currently run afoul of Rust issue
-/// [#31439](https://github.com/rust-lang/rust/issues/31439), so if you get lifetime errors, please
-/// roll back the change until that issue is fixed.
+/// **Known problems:** Following this lint's advice may currently run afoul of
+/// Rust issue [#31439](https://github.com/rust-lang/rust/issues/31439), so if
+/// you get lifetime errors, please roll back the change until that issue is
+/// fixed.
 ///
 /// **Example:**
 /// ```rust
 /// fn foo(x: usize) { return x; }
 /// ```
 declare_lint! {
-    pub NEEDLESS_RETURN, Warn,
+    pub NEEDLESS_RETURN,
+    Warn,
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
-/// **What it does:** This lint checks for `let`-bindings, which are subsequently returned.
+/// **What it does:** Checks for `let`-bindings, which are subsequently returned.
 ///
-/// **Why is this bad?** It is just extraneous code. Remove it to make your code more rusty.
+/// **Why is this bad?** It is just extraneous code. Remove it to make your code
+/// more rusty.
 ///
-/// **Known problems:** Following this lint's advice may currently run afoul of Rust issue
-/// [#31439](https://github.com/rust-lang/rust/issues/31439), so if you get lifetime errors, please
-/// roll back the change until that issue is fixed.
+/// **Known problems:** Following this lint's advice may currently run afoul of
+/// Rust issue [#31439](https://github.com/rust-lang/rust/issues/31439), so if
+/// you get lifetime errors, please roll back the change until that issue is
+/// fixed.
 ///
 /// **Example:**
 /// ```rust
 /// { let x = ..; x }
 /// ```
 declare_lint! {
-    pub LET_AND_RETURN, Warn,
+    pub LET_AND_RETURN,
+    Warn,
     "creating a let-binding and then immediately returning it like `let x = expr; x` at \
      the end of a block"
 }

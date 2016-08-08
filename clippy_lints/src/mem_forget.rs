@@ -2,10 +2,10 @@ use rustc::lint::*;
 use rustc::hir::{Expr, ExprCall, ExprPath};
 use utils::{match_def_path, paths, span_lint};
 
-/// **What it does:** This lint checks for usage of `std::mem::forget(t)` where `t` is `Drop`.
+/// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is `Drop`.
 ///
-/// **Why is this bad?** `std::mem::forget(t)` prevents `t` from running its destructor, possibly
-/// causing leaks
+/// **Why is this bad?** `std::mem::forget(t)` prevents `t` from running its
+/// destructor, possibly causing leaks.
 ///
 /// **Known problems:** None.
 ///
@@ -16,7 +16,7 @@ use utils::{match_def_path, paths, span_lint};
 declare_lint! {
     pub MEM_FORGET,
     Allow,
-    "`mem::forget` usage on `Drop` types is likely to cause memory leaks"
+    "`mem::forget` usage on `Drop` types, likely to cause memory leaks"
 }
 
 pub struct MemForget;

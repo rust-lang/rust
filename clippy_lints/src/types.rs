@@ -14,12 +14,13 @@ use utils::paths;
 #[allow(missing_copy_implementations)]
 pub struct TypePass;
 
-/// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code.
+/// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
 ///
-/// **Why is this bad?** `Vec` already keeps its contents in a separate area on the heap. So if you
-/// `Box` it, you just add another level of indirection without any benefit whatsoever.
+/// **Why is this bad?** `Vec` already keeps its contents in a separate area on
+/// the heap. So if you `Box` it, you just add another level of indirection
+/// without any benefit whatsoever.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -28,12 +29,13 @@ pub struct TypePass;
 /// }
 /// ```
 declare_lint! {
-    pub BOX_VEC, Warn,
+    pub BOX_VEC,
+    Warn,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
-/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or
-/// a `VecDeque` (formerly called `RingBuf`).
+/// **What it does:** Checks for usage of any `LinkedList`, suggesting to use a
+/// `Vec` or a `VecDeque` (formerly called `RingBuf`).
 ///
 /// **Why is this bad?** Gankro says:
 ///
@@ -47,15 +49,16 @@ declare_lint! {
 /// > if you're doing a lot of insertion in the middle of the list, `RingBuf` can still be better
 /// > because of how expensive it is to seek to the middle of a `LinkedList`.
 ///
-/// **Known problems:** False positives – the instances where using a `LinkedList` makes sense are
-/// few and far between, but they can still happen.
+/// **Known problems:** False positives – the instances where using a
+/// `LinkedList` makes sense are few and far between, but they can still happen.
 ///
 /// **Example:**
 /// ```rust
 /// let x = LinkedList::new();
 /// ```
 declare_lint! {
-    pub LINKEDLIST, Warn,
+    pub LINKEDLIST,
+    Warn,
     "usage of LinkedList, usually a vector is faster, or a more specialized data \
      structure like a VecDeque"
 }
@@ -104,15 +107,20 @@ impl LateLintPass for TypePass {
 #[allow(missing_copy_implementations)]
 pub struct LetPass;
 
-/// **What it does:** This lint checks for binding a unit value.
+/// **What it does:** Checks for binding a unit value.
 ///
-/// **Why is this bad?** A unit value cannot usefully be used anywhere. So binding one is kind of pointless.
+/// **Why is this bad?** A unit value cannot usefully be used anywhere. So
+/// binding one is kind of pointless.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `let x = { 1; };`
+/// **Example:**
+/// ```rust
+/// let x = { 1; };
+/// ```
 declare_lint! {
-    pub LET_UNIT_VALUE, Warn,
+    pub LET_UNIT_VALUE,
+    Warn,
     "creating a let binding to a value of unit type, which usually can't be used afterwards"
 }
 
@@ -147,16 +155,26 @@ impl LateLintPass for LetPass {
     }
 }
 
-/// **What it does:** This lint checks for comparisons to unit.
+/// **What it does:** Checks for comparisons to unit.
 ///
-/// **Why is this bad?** Unit is always equal to itself, and thus is just a clumsily written constant. Mostly this happens when someone accidentally adds semicolons at the end of the operands.
+/// **Why is this bad?** Unit is always equal to itself, and thus is just a
+/// clumsily written constant. Mostly this happens when someone accidentally
+/// adds semicolons at the end of the operands.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `if { foo(); } == { bar(); } { baz(); }` is equal to `{ foo(); bar(); baz(); }`
+/// **Example:**
+/// ```rust
+/// if { foo(); } == { bar(); } { baz(); }
+/// ```
+/// is equal to
+/// ```rust
+/// { foo(); bar(); baz(); }
+/// ```
 declare_lint! {
-    pub UNIT_CMP, Warn,
-    "comparing unit values (which is always `true` or `false`, respectively)"
+    pub UNIT_CMP,
+    Warn,
+    "comparing unit values"
 }
 
 #[allow(missing_copy_implementations)]
@@ -194,54 +212,94 @@ impl LateLintPass for UnitCmp {
 
 pub struct CastPass;
 
-/// **What it does:** This lint checks for casts from any numerical to a float type where the receiving type cannot store all values from the original type without rounding errors. This possible rounding is to be expected, so this lint is `Allow` by default.
+/// **What it does:** Checks for casts from any numerical to a float type where
+/// the receiving type cannot store all values from the original type without
+/// rounding errors. This possible rounding is to be expected, so this lint is
+/// `Allow` by default.
 ///
-/// Basically, this warns on casting any integer with 32 or more bits to `f32` or any 64-bit integer to `f64`.
+/// Basically, this warns on casting any integer with 32 or more bits to `f32`
+/// or any 64-bit integer to `f64`.
 ///
-/// **Why is this bad?** It's not bad at all. But in some applications it can be helpful to know where precision loss can take place. This lint can help find those places in the code.
+/// **Why is this bad?** It's not bad at all. But in some applications it can be
+/// helpful to know where precision loss can take place. This lint can help find
+/// those places in the code.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `let x = u64::MAX; x as f64`
+/// **Example:**
+/// ```rust
+/// let x = u64::MAX; x as f64
+/// ```
 declare_lint! {
-    pub CAST_PRECISION_LOSS, Allow,
+    pub CAST_PRECISION_LOSS,
+    Allow,
     "casts that cause loss of precision, e.g `x as f32` where `x: u64`"
 }
 
-/// **What it does:** This lint checks for casts from a signed to an unsigned numerical type. In this case, negative values wrap around to large positive values, which can be quite surprising in practice. However, as the cast works as defined, this lint is `Allow` by default.
+/// **What it does:** Checks for casts from a signed to an unsigned numerical
+/// type. In this case, negative values wrap around to large positive values,
+/// which can be quite surprising in practice. However, as the cast works as
+/// defined, this lint is `Allow` by default.
 ///
-/// **Why is this bad?** Possibly surprising results. You can activate this lint as a one-time check to see where numerical wrapping can arise.
+/// **Why is this bad?** Possibly surprising results. You can activate this lint
+/// as a one-time check to see where numerical wrapping can arise.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `let y : i8 = -1; y as u64` will return 18446744073709551615
+/// **Example:**
+/// ```rust
+/// let y: i8 = -1;
+/// y as u64  // will return 18446744073709551615
+/// ```
 declare_lint! {
-    pub CAST_SIGN_LOSS, Allow,
+    pub CAST_SIGN_LOSS,
+    Allow,
     "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`"
 }
 
-/// **What it does:** This lint checks for on casts between numerical types that may truncate large values. This is expected behavior, so the cast is `Allow` by default.
+/// **What it does:** Checks for on casts between numerical types that may
+/// truncate large values. This is expected behavior, so the cast is `Allow` by
+/// default.
 ///
-/// **Why is this bad?** In some problem domains, it is good practice to avoid truncation. This lint can be activated to help assess where additional checks could be beneficial.
+/// **Why is this bad?** In some problem domains, it is good practice to avoid
+/// truncation. This lint can be activated to help assess where additional
+/// checks could be beneficial.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `fn as_u8(x: u64) -> u8 { x as u8 }`
+/// **Example:**
+/// ```rust
+/// fn as_u8(x: u64) -> u8 { x as u8 }
+/// ```
 declare_lint! {
-    pub CAST_POSSIBLE_TRUNCATION, Allow,
-    "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`"
+    pub CAST_POSSIBLE_TRUNCATION,
+    Allow,
+    "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, \
+     or `x as i32` where `x: f32`"
 }
 
-/// **What it does:** This lint checks for casts from an unsigned type to a signed type of the same size. Performing such a cast is a 'no-op' for the compiler, i.e. nothing is changed at the bit level, and the binary representation of the value is reinterpreted. This can cause wrapping if the value is too big for the target signed type. However, the cast works as defined, so this lint is `Allow` by default.
+/// **What it does:** Checks for casts from an unsigned type to a signed type of
+/// the same size. Performing such a cast is a 'no-op' for the compiler,
+/// i.e. nothing is changed at the bit level, and the binary representation of
+/// the value is reinterpreted. This can cause wrapping if the value is too big
+/// for the target signed type. However, the cast works as defined, so this lint
+/// is `Allow` by default.
 ///
-/// **Why is this bad?** While such a cast is not bad in itself, the results can be surprising when this is not the intended behavior, as demonstrated by the example below.
+/// **Why is this bad?** While such a cast is not bad in itself, the results can
+/// be surprising when this is not the intended behavior, as demonstrated by the
+/// example below.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `u32::MAX as i32` will yield a value of `-1`.
+/// **Example:**
+/// ```rust
+/// u32::MAX as i32  // will yield a value of `-1`
+/// ```
 declare_lint! {
-    pub CAST_POSSIBLE_WRAP, Allow,
-    "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`"
+    pub CAST_POSSIBLE_WRAP,
+    Allow,
+    "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` \
+     and `x > i32::MAX`"
 }
 
 /// Returns the size in bits of an integral type.
@@ -433,16 +491,22 @@ impl LateLintPass for CastPass {
     }
 }
 
-/// **What it does:** This lint checks for types used in structs, parameters and `let` declarations above a certain complexity threshold.
+/// **What it does:** Checks for types used in structs, parameters and `let`
+/// declarations above a certain complexity threshold.
 ///
-/// **Why is this bad?** Too complex types make the code less readable. Consider using a `type` definition to simplify them.
+/// **Why is this bad?** Too complex types make the code less readable. Consider
+/// using a `type` definition to simplify them.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `struct Foo { inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>> }`
+/// **Example:**
+/// ```rust
+/// struct Foo { inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>> }
+/// ```
 declare_lint! {
-    pub TYPE_COMPLEXITY, Warn,
-    "usage of very complex types; recommends factoring out parts into `type` definitions"
+    pub TYPE_COMPLEXITY,
+    Warn,
+    "usage of very complex types that might be better factored into `type` definitions"
 }
 
 #[allow(missing_copy_implementations)]
@@ -575,16 +639,25 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
     }
 }
 
-/// **What it does:** This lint points out expressions where a character literal is casted to `u8` and suggests using a byte literal instead.
+/// **What it does:** Checks for expressions where a character literal is cast
+/// to `u8` and suggests using a byte literal instead.
 ///
-/// **Why is this bad?** In general, casting values to smaller types is error-prone and should be avoided where possible. In the particular case of converting a character literal to u8, it is easy to avoid by just using a byte literal instead. As an added bonus, `b'a'` is even slightly shorter than `'a' as u8`.
+/// **Why is this bad?** In general, casting values to smaller types is
+/// error-prone and should be avoided where possible. In the particular case of
+/// converting a character literal to u8, it is easy to avoid by just using a
+/// byte literal instead. As an added bonus, `b'a'` is even slightly shorter
+/// than `'a' as u8`.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `'x' as u8`
+/// **Example:**
+/// ```rust
+/// 'x' as u8
+/// ```
 declare_lint! {
-    pub CHAR_LIT_AS_U8, Warn,
-    "Casting a character literal to u8"
+    pub CHAR_LIT_AS_U8,
+    Warn,
+    "casting a character literal to u8"
 }
 
 pub struct CharLitAsU8;
@@ -617,17 +690,26 @@ impl LateLintPass for CharLitAsU8 {
     }
 }
 
-/// **What it does:** This lint checks for comparisons where one side of the relation is either the minimum or maximum value for its type and warns if it involves a case that is always true or always false. Only integer and boolean types are checked.
+/// **What it does:** Checks for comparisons where one side of the relation is
+/// either the minimum or maximum value for its type and warns if it involves a
+/// case that is always true or always false. Only integer and boolean types are
+/// checked.
 ///
-/// **Why is this bad?** An expression like `min <= x` may misleadingly imply that is is possible for `x` to be less than the minimum. Expressions like `max < x` are probably mistakes.
+/// **Why is this bad?** An expression like `min <= x` may misleadingly imply
+/// that is is possible for `x` to be less than the minimum. Expressions like
+/// `max < x` are probably mistakes.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
-/// **Example:** `vec.len() <= 0`, `100 > std::i32::MAX`
+/// **Example:**
+/// ```rust
+/// vec.len() <= 0
+/// 100 > std::i32::MAX
+/// ```
 declare_lint! {
-    pub ABSURD_EXTREME_COMPARISONS, Warn,
-    "a comparison involving a maximum or minimum value involves a case that is always \
-    true or always false"
+    pub ABSURD_EXTREME_COMPARISONS,
+    Warn,
+    "a comparison with a maximum or minimum value that is always true or false"
 }
 
 pub struct AbsurdExtremeComparisons;
@@ -787,15 +869,23 @@ impl LateLintPass for AbsurdExtremeComparisons {
     }
 }
 
-/// **What it does:** This lint checks for comparisons where the relation is always either true or false, but where one side has been upcast so that the comparison is necessary. Only integer types are checked.
+/// **What it does:** Checks for comparisons where the relation is always either
+/// true or false, but where one side has been upcast so that the comparison is
+/// necessary. Only integer types are checked.
 ///
-/// **Why is this bad?** An expression like `let x : u8 = ...; (x as u32) > 300` will mistakenly imply that it is possible for `x` to be outside the range of `u8`.
+/// **Why is this bad?** An expression like `let x : u8 = ...; (x as u32) > 300`
+/// will mistakenly imply that it is possible for `x` to be outside the range of
+/// `u8`.
 ///
 /// **Known problems:** https://github.com/Manishearth/rust-clippy/issues/886
 ///
-/// **Example:** `let x : u8 = ...; (x as u32) > 300`
+/// **Example:**
+/// ```rust
+/// let x : u8 = ...; (x as u32) > 300
+/// ```
 declare_lint! {
-    pub INVALID_UPCAST_COMPARISONS, Allow,
+    pub INVALID_UPCAST_COMPARISONS,
+    Allow,
     "a comparison involving an upcast which is always true or false"
 }
 

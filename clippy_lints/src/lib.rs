@@ -260,11 +260,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
+        array_indexing::INDEXING_SLICING,
         assign_ops::ASSIGN_OPS,
     ]);
 
     reg.register_lint_group("clippy_pedantic", vec![
-        array_indexing::INDEXING_SLICING,
         booleans::NONMINIMAL_BOOL,
         enum_glob_use::ENUM_GLOB_USE,
         enum_variants::STUTTER,

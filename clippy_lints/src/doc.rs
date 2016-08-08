@@ -3,14 +3,16 @@ use syntax::ast;
 use syntax::codemap::{Span, BytePos};
 use utils::span_lint;
 
-/// **What it does:** This lint checks for the presence of `_`, `::` or camel-case words outside
-/// ticks in documentation.
+/// **What it does:** Checks for the presence of `_`, `::` or camel-case words
+/// outside ticks in documentation.
 ///
-/// **Why is this bad?** *Rustdoc* supports markdown formatting, `_`, `::` and camel-case probably
-/// indicates some code which should be included between ticks. `_` can also be used for empasis in
-/// markdown, this lint tries to consider that.
+/// **Why is this bad?** *Rustdoc* supports markdown formatting, `_`, `::` and
+/// camel-case probably indicates some code which should be included between
+/// ticks. `_` can also be used for empasis in markdown, this lint tries to
+/// consider that.
 ///
-/// **Known problems:** Lots of bad docs won’t be fixed, what the lint checks for is limited.
+/// **Known problems:** Lots of bad docs won’t be fixed, what the lint checks
+/// for is limited, and there are still false positives.
 ///
 /// **Examples:**
 /// ```rust
@@ -19,8 +21,9 @@ use utils::span_lint;
 /// fn doit(foo_bar) { .. }
 /// ```
 declare_lint! {
-    pub DOC_MARKDOWN, Warn,
-    "checks for the presence of `_`, `::` or camel-case outside ticks in documentation"
+    pub DOC_MARKDOWN,
+    Warn,
+    "presence of `_`, `::` or camel-case outside backticks in documentation"
 }
 
 #[derive(Clone)]

@@ -4,35 +4,37 @@ use syntax::codemap::Spanned;
 use utils::{is_integer_literal, match_type, paths, snippet, span_lint};
 use utils::higher;
 
-/// **What it does:** This lint checks for iterating over ranges with a `.step_by(0)`, which never
-/// terminates.
+/// **What it does:** Checks for iterating over ranges with a `.step_by(0)`,
+/// which never terminates.
 ///
-/// **Why is this bad?** This very much looks like an oversight, since with `loop { .. }` there is
-/// an obvious better way to endlessly loop.
+/// **Why is this bad?** This very much looks like an oversight, since with
+/// `loop { .. }` there is an obvious better way to endlessly loop.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
 /// for x in (5..5).step_by(0) { .. }
 /// ```
 declare_lint! {
-    pub RANGE_STEP_BY_ZERO, Warn,
-    "using Range::step_by(0), which produces an infinite iterator"
+    pub RANGE_STEP_BY_ZERO,
+    Warn,
+    "using `Range::step_by(0)`, which produces an infinite iterator"
 }
-/// **What it does:** This lint checks for zipping a collection with the range of `0.._.len()`.
+/// **What it does:** Checks for zipping a collection with the range of `0.._.len()`.
 ///
 /// **Why is this bad?** The code is better expressed with `.enumerate()`.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
 /// x.iter().zip(0..x.len())
 /// ```
 declare_lint! {
-    pub RANGE_ZIP_WITH_LEN, Warn,
-    "zipping iterator with a range when enumerate() would do"
+    pub RANGE_ZIP_WITH_LEN,
+    Warn,
+    "zipping iterator with a range when `enumerate()` would do"
 }
 
 #[derive(Copy,Clone)]

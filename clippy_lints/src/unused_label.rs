@@ -7,10 +7,10 @@ use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use utils::{in_macro, span_lint};
 
-/// **What it does:** This lint checks for unused labels.
+/// **What it does:** Checks for unused labels.
 ///
-/// **Why is this bad?** Maybe the label should be used in which case there is an error in the
-/// code or it should be removed.
+/// **Why is this bad?** Maybe the label should be used in which case there is
+/// an error in the code or it should be removed.
 ///
 /// **Known problems:** Hopefully none.
 ///
@@ -24,7 +24,7 @@ use utils::{in_macro, span_lint};
 declare_lint! {
     pub UNUSED_LABEL,
     Warn,
-    "unused label"
+    "unused labels"
 }
 
 pub struct UnusedLabel;

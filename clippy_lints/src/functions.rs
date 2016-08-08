@@ -7,16 +7,15 @@ use syntax::ast;
 use syntax::codemap::Span;
 use utils::{span_lint, type_is_unsafe_function};
 
-/// **What it does:** Check for functions with too many parameters.
+/// **What it does:** Checks for functions with too many parameters.
 ///
-/// **Why is this bad?** Functions with lots of parameters are considered bad style and reduce
-/// readability (“what does the 5th parameter mean?”). Consider grouping some parameters into a
-/// new type.
+/// **Why is this bad?** Functions with lots of parameters are considered bad
+/// style and reduce readability (“what does the 5th parameter mean?”). Consider
+/// grouping some parameters into a new type.
 ///
 /// **Known problems:** None.
 ///
 /// **Example:**
-///
 /// ```rust
 /// fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b: f32) { .. }
 /// ```
@@ -26,21 +25,22 @@ declare_lint! {
     "functions with too many arguments"
 }
 
-/// **What it does:** Check for public functions that dereferences raw pointer arguments but are
-/// not marked unsafe.
+/// **What it does:** Checks for public functions that dereferences raw pointer
+/// arguments but are not marked unsafe.
 ///
-/// **Why is this bad?** The function should probably be marked `unsafe`, since for an arbitrary
-/// raw pointer, there is no way of telling for sure if it is valid.
+/// **Why is this bad?** The function should probably be marked `unsafe`, since
+/// for an arbitrary raw pointer, there is no way of telling for sure if it is
+/// valid.
 ///
 /// **Known problems:**
 ///
-/// * It does not check functions recursively so if the pointer is passed to a private non-
-/// `unsafe` function which does the dereferencing, the lint won't trigger.
-/// * It only checks for arguments whose type are raw pointers, not raw pointers got from an
-/// argument in some other way (`fn foo(bar: &[*const u8])` or `some_argument.get_raw_ptr()`).
+/// * It does not check functions recursively so if the pointer is passed to a
+/// private non-`unsafe` function which does the dereferencing, the lint won't trigger.
+/// * It only checks for arguments whose type are raw pointers, not raw pointers
+/// got from an argument in some other way (`fn foo(bar: &[*const u8])` or
+/// `some_argument.get_raw_ptr()`).
 ///
 /// **Example:**
-///
 /// ```rust
 /// pub fn foo(x: *const u8) { println!("{}", unsafe { *x }); }
 /// ```

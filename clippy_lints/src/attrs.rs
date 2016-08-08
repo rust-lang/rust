@@ -9,13 +9,20 @@ use syntax::codemap::Span;
 use utils::{in_macro, match_path, span_lint};
 use utils::paths;
 
-/// **What it does:** This lint checks for items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
+/// **What it does:** Checks for items annotated with `#[inline(always)]`,
+/// unless the annotated function is empty or simply panics.
 ///
-/// **Why is this bad?** While there are valid uses of this annotation (and once you know when to use it, by all means `allow` this lint), it's a common newbie-mistake to pepper one's code with it.
+/// **Why is this bad?** While there are valid uses of this annotation (and once
+/// you know when to use it, by all means `allow` this lint), it's a common
+/// newbie-mistake to pepper one's code with it.
 ///
-/// As a rule of thumb, before slapping `#[inline(always)]` on a function, measure if that additional function call really affects your runtime profile sufficiently to make up for the increase in compile time.
+/// As a rule of thumb, before slapping `#[inline(always)]` on a function,
+/// measure if that additional function call really affects your runtime profile
+/// sufficiently to make up for the increase in compile time.
 ///
-/// **Known problems:** False positives, big time. This lint is meant to be deactivated by everyone doing serious performance work. This means having done the measurement.
+/// **Known problems:** False positives, big time. This lint is meant to be
+/// deactivated by everyone doing serious performance work. This means having
+/// done the measurement.
 ///
 /// **Example:**
 /// ```rust
@@ -23,15 +30,18 @@ use utils::paths;
 /// fn not_quite_hot_code(..) { ... }
 /// ```
 declare_lint! {
-    pub INLINE_ALWAYS, Warn,
-    "`#[inline(always)]` is a bad idea in most cases"
+    pub INLINE_ALWAYS,
+    Warn,
+    "use of `#[inline(always)]`"
 }
 
-/// **What it does:** This lint checks for `#[deprecated]` annotations with a `since` field that is not a valid semantic version..
+/// **What it does:** Checks for `#[deprecated]` annotations with a `since`
+/// field that is not a valid semantic version.
 ///
-/// **Why is this bad?** For checking the version of the deprecation, it must be valid semver. Failing that, the contained information is useless.
+/// **Why is this bad?** For checking the version of the deprecation, it must be
+/// a valid semver. Failing that, the contained information is useless.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -39,8 +49,9 @@ declare_lint! {
 /// fn something_else(..) { ... }
 /// ```
 declare_lint! {
-    pub DEPRECATED_SEMVER, Warn,
-    "`Warn` on `#[deprecated(since = \"x\")]` where x is not semver"
+    pub DEPRECATED_SEMVER,
+    Warn,
+    "use of `#[deprecated(since = \"x\")]` where x is not semver"
 }
 
 #[derive(Copy,Clone)]

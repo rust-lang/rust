@@ -12,12 +12,12 @@ use utils::paths;
 use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 use utils::sugg::Sugg;
 
-/// **What it does:** This lint checks for matches with a single arm where an `if let` will usually
-/// suffice.
+/// **What it does:** Checks for matches with a single arm where an `if let`
+/// will usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -27,17 +27,18 @@ use utils::sugg::Sugg;
 /// }
 /// ```
 declare_lint! {
-    pub SINGLE_MATCH, Warn,
+    pub SINGLE_MATCH,
+    Warn,
     "a match statement with a single nontrivial arm (i.e, where the other arm \
-     is `_ => {}`) is used; recommends `if let` instead"
+     is `_ => {}`) instead of `if let`"
 }
 
-/// **What it does:** This lint checks for matches with a two arms where an `if let` will usually
-/// suffice.
+/// **What it does:** Checks for matches with a two arms where an `if let` will
+/// usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
 ///
-/// **Known problems:** Personal style preferences may differ
+/// **Known problems:** Personal style preferences may differ.
 ///
 /// **Example:**
 /// ```rust
@@ -47,22 +48,22 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub SINGLE_MATCH_ELSE, Allow,
-    "a match statement with a two arms where the second arm's pattern is a wildcard; \
-     recommends `if let` instead"
+    pub SINGLE_MATCH_ELSE,
+    Allow,
+    "a match statement with a two arms where the second arm's pattern is a wildcard \
+     instead of `if let`"
 }
 
-/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to
-/// remove the reference and deref the matched expression instead. It also checks for `if let &foo
-/// = bar` blocks.
+/// **What it does:** Checks for matches where all arms match a reference,
+/// suggesting to remove the reference and deref the matched expression
+/// instead. It also checks for `if let &foo = bar` blocks.
 ///
-/// **Why is this bad?** It just makes the code less readable. That reference destructuring adds
-/// nothing to the code.
+/// **Why is this bad?** It just makes the code less readable. That reference
+/// destructuring adds nothing to the code.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
-///
 /// ```rust
 /// match x {
 ///     &A(ref y) => foo(y),
@@ -71,20 +72,19 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub MATCH_REF_PATS, Warn,
-    "a match or `if let` has all arms prefixed with `&`; the match expression can be \
-     dereferenced instead"
+    pub MATCH_REF_PATS,
+    Warn,
+    "a match or `if let` with all arms prefixed with `&` instead of deref-ing the match expression"
 }
 
-/// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests
-/// to replace the expression with an `if...else` block.
+/// **What it does:** Checks for matches where match expression is a `bool`. It
+/// suggests to replace the expression with an `if...else` block.
 ///
 /// **Why is this bad?** It makes the code less readable.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
-///
 /// ```rust
 /// let condition: bool = true;
 /// match condition {
@@ -93,18 +93,19 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub MATCH_BOOL, Warn,
-    "a match on boolean expression; recommends `if..else` block instead"
+    pub MATCH_BOOL,
+    Warn,
+    "a match on a boolean expression instead of an `if..else` block"
 }
 
-/// **What it does:** This lint checks for overlapping match arms.
+/// **What it does:** Checks for overlapping match arms.
 ///
-/// **Why is this bad?** It is likely to be an error and if not, makes the code less obvious.
+/// **Why is this bad?** It is likely to be an error and if not, makes the code
+/// less obvious.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
-///
 /// ```rust
 /// let x = 5;
 /// match x {
@@ -114,7 +115,9 @@ declare_lint! {
 /// }
 /// ```
 declare_lint! {
-    pub MATCH_OVERLAPPING_ARM, Warn, "a match has overlapping arms"
+    pub MATCH_OVERLAPPING_ARM,
+    Warn,
+    "a match with overlapping arms"
 }
 
 #[allow(missing_copy_implementations)]

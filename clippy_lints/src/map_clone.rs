@@ -4,20 +4,21 @@ use syntax::ast;
 use utils::{is_adjusted, match_path, match_trait_method, match_type, paths, snippet,
             span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 
-/// **What it does:** This lint checks for mapping clone() over an iterator.
+/// **What it does:** Checks for mapping `clone()` over an iterator.
 ///
-/// **Why is this bad?** It makes the code less readable.
+/// **Why is this bad?** It makes the code less readable than using the
+/// `.cloned()` adapter.
 ///
-/// **Known problems:** None
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
 /// x.map(|e| e.clone());
 /// ```
 declare_lint! {
-    pub MAP_CLONE, Warn,
-    "using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends \
-     `.cloned()` instead)"
+    pub MAP_CLONE,
+    Warn,
+    "using `.map(|x| x.clone())` to clone an iterator or option's contents"
 }
 
 #[derive(Copy, Clone)]

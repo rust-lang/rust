@@ -3,7 +3,7 @@ use rustc::hir;
 use syntax::codemap;
 use utils::{snippet, span_lint_and_then};
 
-/// **What it does:** This lint checks for variable declarations immediately followed by a
+/// **What it does:** Checks for variable declarations immediately followed by a
 /// conditional affectation.
 ///
 /// **Why is this bad?** This is not idiomatic Rust.
@@ -45,7 +45,7 @@ use utils::{snippet, span_lint_and_then};
 declare_lint! {
     pub USELESS_LET_IF_SEQ,
     Warn,
-    "Checks for unidiomatic `let mut` declaration followed by initialization in `if`"
+    "unidiomatic `let mut` declaration followed by initialization in `if`"
 }
 
 #[derive(Copy,Clone)]
