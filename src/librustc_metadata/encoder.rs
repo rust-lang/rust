@@ -743,7 +743,8 @@ fn encode_repr_attrs(rbml_w: &mut Encoder,
 }
 
 fn encode_mir(ecx: &EncodeContext, rbml_w: &mut Encoder, node_id: NodeId) {
-    if let Some(mir) = ecx.mir_map.map.get(&node_id) {
+    let def_id = ecx.tcx.map.local_def_id(node_id);
+    if let Some(mir) = ecx.mir_map.map.get(&def_id) {
         rbml_w.start_tag(tag_mir as usize);
         rbml_w.emit_opaque(|opaque_encoder| {
             tls::enter_encoding_context(ecx, opaque_encoder, |_, opaque_encoder| {
@@ -1361,7 +1362,7 @@ fn my_visit_expr(expr: &hir::Expr,
             ecx.tcx.closure_kind(def_id).encode(rbml_w).unwrap();
             rbml_w.end_tag();
 
-            assert!(ecx.mir_map.map.contains_key(&expr.id));
+            assert!(ecx.mir_map.map.contains_key(&def_id));
             encode_mir(ecx, rbml_w, expr.id);
 
             rbml_w.end_tag();

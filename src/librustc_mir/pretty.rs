@@ -10,7 +10,9 @@
 
 use build::{Location, ScopeAuxiliaryVec, ScopeId};
 use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc::mir::repr::*;
+use rustc::mir::mir_map::MirMap;
 use rustc::mir::transform::MirSource;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
@@ -18,7 +20,6 @@ use rustc_data_structures::indexed_vec::{Idx};
 use std::fmt::Display;
 use std::fs;
 use std::io::{self, Write};
-use syntax::ast::NodeId;
 use std::path::{PathBuf, Path};
 
 const INDENT: &'static str = "    ";
@@ -89,12 +90,15 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Write out a human-readable textual representation for the given MIR.
 pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                                          iter: I,
+                                         mir_map: &MirMap<'tcx>,
                                          w: &mut Write)
                                          -> io::Result<()>
-    where I: Iterator<Item=(&'a NodeId, &'a Mir<'tcx>)>, 'tcx: 'a
+    where I: Iterator<Item=DefId>, 'tcx: 'a
 {
     let mut first = true;
-    for (&id, mir) in iter {
+    for def_id in iter {
+        let mir = &mir_map.map[&def_id];
+
         if first {
             first = false;
         } else {
@@ -102,6 +106,7 @@ pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
             writeln!(w, "")?;
         }
 
+        let id = tcx.map.as_local_node_id(def_id).unwrap();
         let src = MirSource::from_node(tcx, id);
         write_mir_fn(tcx, src, mir, w, None)?;
 

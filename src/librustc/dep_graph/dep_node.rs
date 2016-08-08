@@ -82,9 +82,11 @@ pub enum DepNode<D: Clone + Debug> {
     Privacy,
     IntrinsicCheck(D),
     MatchCheck(D),
-    MirMapConstruction(D),
-    MirPass(D),
-    MirTypeck(D),
+
+    // Represents the MIR for a fn; also used as the task node for
+    // things read/modify that MIR.
+    Mir(D),
+
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
@@ -214,9 +216,7 @@ impl<D: Clone + Debug> DepNode<D> {
             CheckConst(ref d) => op(d).map(CheckConst),
             IntrinsicCheck(ref d) => op(d).map(IntrinsicCheck),
             MatchCheck(ref d) => op(d).map(MatchCheck),
-            MirMapConstruction(ref d) => op(d).map(MirMapConstruction),
-            MirPass(ref d) => op(d).map(MirPass),
-            MirTypeck(ref d) => op(d).map(MirTypeck),
+            Mir(ref d) => op(d).map(Mir),
             BorrowCheck(ref d) => op(d).map(BorrowCheck),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
