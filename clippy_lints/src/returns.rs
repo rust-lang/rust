@@ -10,10 +10,7 @@ use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast,
 /// **Why is this bad?** Removing the `return` and semicolon will make the code
 /// more rusty.
 ///
-/// **Known problems:** Following this lint's advice may currently run afoul of
-/// Rust issue [#31439](https://github.com/rust-lang/rust/issues/31439), so if
-/// you get lifetime errors, please roll back the change until that issue is
-/// fixed.
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
@@ -30,10 +27,7 @@ declare_lint! {
 /// **Why is this bad?** It is just extraneous code. Remove it to make your code
 /// more rusty.
 ///
-/// **Known problems:** Following this lint's advice may currently run afoul of
-/// Rust issue [#31439](https://github.com/rust-lang/rust/issues/31439), so if
-/// you get lifetime errors, please roll back the change until that issue is
-/// fixed.
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
