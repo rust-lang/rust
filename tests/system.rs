@@ -205,7 +205,11 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
 
 fn read_config(filename: &str) -> Config {
     let sig_comments = read_significant_comments(&filename);
-    let mut config = get_config(sig_comments.get("config").map(|x| &(*x)[..]));
+    let mut config = if !sig_comments.is_empty() {
+        get_config(sig_comments.get("config").map(|x| &(*x)[..]))
+    } else {
+        get_config(Path::new(filename).with_extension("toml").file_name().and_then(std::ffi::OsStr::to_str))
+    }; 
 
     for (key, val) in &sig_comments {
         if key != "target" && key != "config" {
@@ -253,6 +257,9 @@ fn get_config(config_file: Option<&str>) -> Config {
         Some(file_name) => {
             let mut full_path = "tests/config/".to_owned();
             full_path.push_str(&file_name);
+            if !Path::new(&full_path).exists() {
+                return Default::default();
+            };
             full_path
         }
     };
