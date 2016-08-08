@@ -1514,7 +1514,7 @@ impl<'tcx> Decodable for AdtDef<'tcx> {
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum AdtKind { Struct, Enum }
+pub enum AdtKind { Struct, Union, Enum }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum VariantKind { Struct, Tuple, Unit }
@@ -1545,8 +1545,10 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
         if Some(did) == tcx.lang_items.phantom_data() {
             flags = flags | AdtFlags::IS_PHANTOM_DATA;
         }
-        if let AdtKind::Enum = kind {
-            flags = flags | AdtFlags::IS_ENUM;
+        match kind {
+            AdtKind::Enum => flags = flags | AdtFlags::IS_ENUM,
+            AdtKind::Union => flags = flags | AdtFlags::IS_UNION,
+            AdtKind::Struct => {}
         }
         AdtDefData {
             did: did,
@@ -1569,6 +1571,8 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     pub fn adt_kind(&self) -> AdtKind {
         if self.flags.get().intersects(AdtFlags::IS_ENUM) {
             AdtKind::Enum
+        } else if self.flags.get().intersects(AdtFlags::IS_UNION) {
+            AdtKind::Union
         } else {
             AdtKind::Struct
         }
