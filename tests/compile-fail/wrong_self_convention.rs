@@ -23,6 +23,9 @@ impl Foo {
     pub fn is_i64(self) {}
     pub fn to_i64(self) {}
     pub fn from_i64(self) {} //~ERROR: methods called `from_*` usually take no self
+    // check whether the lint can be allowed at the function level
+    #[allow(wrong_self_convention)]
+    pub fn from_cake(self) {}
 
 }
 

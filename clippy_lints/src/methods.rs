@@ -538,68 +538,66 @@ impl LateLintPass for Pass {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        if in_external_macro(cx, item.span) {
+    fn check_impl_item(&mut self, cx: &LateContext, implitem: &hir::ImplItem) {
+        if in_external_macro(cx, implitem.span) {
             return;
         }
+        let name = implitem.name;
+        let parent = cx.tcx.map.get_parent(implitem.id);
+        let item = cx.tcx.map.expect_item(parent);
+        if_let_chain! {[
+            let hir::ImplItemKind::Method(ref sig, _) = implitem.node,
+            let Some(explicit_self) = sig.decl.inputs.get(0).and_then(hir::Arg::to_self),
+            let hir::ItemImpl(_, _, _, None, _, _) = item.node,
+        ], {
+            // check missing trait implementations
+            for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                if name.as_str() == method_name &&
+                   sig.decl.inputs.len() == n_args &&
+                   out_type.matches(&sig.decl.output) &&
+                   self_kind.matches(&explicit_self, false) {
+                    span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
+                        "defining a method called `{}` on this type; consider implementing \
+                         the `{}` trait or choosing a less ambiguous name", name, trait_name));
+                }
+            }
 
-        if let hir::ItemImpl(_, _, _, None, _, ref items) = item.node {
-            for implitem in items {
-                let name = implitem.name;
+            // check conventions w.r.t. conversion method names and predicates
+            let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
+            let is_copy = is_copy(cx, ty, item.id);
+            for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
-                    let hir::ImplItemKind::Method(ref sig, _) = implitem.node,
+                    conv.check(&name.as_str()),
                     let Some(explicit_self) = sig.decl.inputs.get(0).and_then(hir::Arg::to_self),
+                    !self_kinds.iter().any(|k| k.matches(&explicit_self, is_copy)),
                 ], {
-                    // check missing trait implementations
-                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                        if name.as_str() == method_name &&
-                           sig.decl.inputs.len() == n_args &&
-                           out_type.matches(&sig.decl.output) &&
-                           self_kind.matches(&explicit_self, false) {
-                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
-                                "defining a method called `{}` on this type; consider implementing \
-                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
-                        }
-                    }
-
-                    // check conventions w.r.t. conversion method names and predicates
-                    let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
-                    let is_copy = is_copy(cx, ty, item.id);
-                    for &(ref conv, self_kinds) in &CONVENTIONS {
-                        if_let_chain! {[
-                            conv.check(&name.as_str()),
-                            let Some(explicit_self) = sig.decl.inputs.get(0).and_then(hir::Arg::to_self),
-                            !self_kinds.iter().any(|k| k.matches(&explicit_self, is_copy)),
-                        ], {
-                            let lint = if item.vis == hir::Visibility::Public {
-                                WRONG_PUB_SELF_CONVENTION
-                            } else {
-                                WRONG_SELF_CONVENTION
-                            };
-                            span_lint(cx,
-                                      lint,
-                                      explicit_self.span,
-                                      &format!("methods called `{}` usually take {}; consider choosing a less \
-                                                ambiguous name",
-                                               conv,
-                                               &self_kinds.iter()
-                                                          .map(|k| k.description())
-                                                          .collect::<Vec<_>>()
-                                                          .join(" or ")));
-                        }}
-                    }
-
-                    let ret_ty = return_ty(cx, implitem.id);
-                    if &name.as_str() == &"new" &&
-                       !ret_ty.map_or(false, |ret_ty| ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id))) {
-                        span_lint(cx,
-                                  NEW_RET_NO_SELF,
-                                  explicit_self.span,
-                                  "methods called `new` usually return `Self`");
-                    }
+                    let lint = if item.vis == hir::Visibility::Public {
+                        WRONG_PUB_SELF_CONVENTION
+                    } else {
+                        WRONG_SELF_CONVENTION
+                    };
+                    span_lint(cx,
+                              lint,
+                              explicit_self.span,
+                              &format!("methods called `{}` usually take {}; consider choosing a less \
+                                        ambiguous name",
+                                       conv,
+                                       &self_kinds.iter()
+                                                  .map(|k| k.description())
+                                                  .collect::<Vec<_>>()
+                                                  .join(" or ")));
                 }}
             }
-        }
+
+            let ret_ty = return_ty(cx, implitem.id);
+            if &name.as_str() == &"new" &&
+               !ret_ty.map_or(false, |ret_ty| ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id))) {
+                span_lint(cx,
+                          NEW_RET_NO_SELF,
+                          explicit_self.span,
+                          "methods called `new` usually return `Self`");
+            }
+        }}
     }
 }
 
