@@ -42,6 +42,7 @@ use traits;
 use ty::fast_reject;
 use ty::relate::TypeRelation;
 
+use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::snapshot_vec::{SnapshotVecDelegate, SnapshotVec};
 use std::cell::RefCell;
 use std::fmt;
@@ -1935,7 +1936,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             // for `PhantomData<T>`, we pass `T`
             ty::TyStruct(def, substs) if def.is_phantom_data() => {
-                substs.types.get_slice(TypeSpace).to_vec()
+                substs.types.as_full_slice().to_vec()
             }
 
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
@@ -2584,17 +2585,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 } else {
                     return Err(Unimplemented);
                 };
-                let mut ty_params = vec![];
+                let mut ty_params = BitVector::new(substs_a.types.len(TypeSpace));
+                let mut found = false;
                 for ty in field.walk() {
                     if let ty::TyParam(p) = ty.sty {
                         assert!(p.space == TypeSpace);
-                        let idx = p.idx as usize;
-                        if !ty_params.contains(&idx) {
-                            ty_params.push(idx);
-                        }
+                        ty_params.insert(p.idx as usize);
+                        found = true;
                     }
                 }
-                if ty_params.is_empty() {
+                if !found {
                     return Err(Unimplemented);
                 }
 
@@ -2602,12 +2602,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // TyError and ensure they do not affect any other fields.
                 // This could be checked after type collection for any struct
                 // with a potentially unsized trailing field.
-                let mut new_substs = substs_a.clone();
-                for &i in &ty_params {
-                    new_substs.types.get_mut_slice(TypeSpace)[i] = tcx.types.err;
-                }
+                let types = substs_a.types.map_enumerated(|(_, i, ty)| {
+                    if ty_params.contains(i) {
+                        tcx.types.err
+                    } else {
+                        ty
+                    }
+                });
+                let substs = Substs::new(tcx, types, substs_a.regions.clone());
                 for &ty in fields.split_last().unwrap().1 {
-                    if ty.subst(tcx, &new_substs).references_error() {
+                    if ty.subst(tcx, substs).references_error() {
                         return Err(Unimplemented);
                     }
                 }
@@ -2618,11 +2622,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 // Check that the source structure with the target's
                 // type parameters is a subtype of the target.
-                for &i in &ty_params {
-                    let param_b = *substs_b.types.get(TypeSpace, i);
-                    new_substs.types.get_mut_slice(TypeSpace)[i] = param_b;
-                }
-                let new_struct = tcx.mk_struct(def, tcx.mk_substs(new_substs));
+                let types = substs_a.types.map_enumerated(|(_, i, ty)| {
+                    if ty_params.contains(i) {
+                        *substs_b.types.get(TypeSpace, i)
+                    } else {
+                        ty
+                    }
+                });
+                let substs = Substs::new(tcx, types, substs_a.regions.clone());
+                let new_struct = tcx.mk_struct(def, substs);
                 let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, origin, new_struct, target)
@@ -2691,12 +2699,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             snapshot);
         let skol_obligation_trait_ref = skol_obligation.trait_ref;
 
-        let impl_substs = util::fresh_type_vars_for_impl(self.infcx,
-                                                         obligation.cause.span,
-                                                         impl_def_id);
+        let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span,
+                                                           impl_def_id);
 
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(),
-                                                  &impl_substs);
+                                                  impl_substs);
 
         let impl_trait_ref =
             project::normalize_with_depth(self,

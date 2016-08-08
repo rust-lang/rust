@@ -12,7 +12,7 @@ use super::probe;
 
 use check::{FnCtxt, callee};
 use hir::def_id::DefId;
-use rustc::ty::subst::{self};
+use rustc::ty::subst::{self, Substs};
 use rustc::traits;
 use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
@@ -41,10 +41,6 @@ struct InstantiatedMethodSig<'tcx> {
     /// Function signature of the method being invoked. The 0th
     /// argument is the receiver.
     method_sig: ty::FnSig<'tcx>,
-
-    /// Substitutions for all types/early-bound-regions declared on
-    /// the method.
-    all_substs: subst::Substs<'tcx>,
 
     /// Generic bounds on the method's parameters which must be added
     /// as pending obligations.
@@ -105,9 +101,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Create the final signature for the method, replacing late-bound regions.
         let InstantiatedMethodSig {
-            method_sig, all_substs, method_predicates
+            method_sig, method_predicates
         } = self.instantiate_method_sig(&pick, all_substs);
-        let all_substs = self.tcx.mk_substs(all_substs);
         let method_self_ty = method_sig.inputs[0];
 
         // Unify the (adjusted) self type with what the method expects.
@@ -198,7 +193,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn fresh_receiver_substs(&mut self,
                              self_ty: Ty<'tcx>,
                              pick: &probe::Pick<'tcx>)
-                             -> &'tcx subst::Substs<'tcx>
+                             -> &'tcx Substs<'tcx>
     {
         match pick.kind {
             probe::InherentImplPick => {
@@ -256,16 +251,13 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
             probe::TraitPick => {
                 let trait_def_id = pick.item.container().id();
-                let trait_def = self.tcx.lookup_trait_def(trait_def_id);
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
                 // consisting entirely of type variables. Later on in
                 // the process we will unify the transformed-self-type
                 // of the method with the actual type in order to
                 // unify some of these variables.
-                self.fresh_substs_for_trait(self.span,
-                                            &trait_def.generics,
-                                            self.next_ty_var())
+                self.fresh_substs_for_item(self.span, trait_def_id)
             }
 
             probe::WhereClausePick(ref poly_trait_ref) => {
@@ -308,8 +300,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn instantiate_method_substs(&mut self,
                                  pick: &probe::Pick<'tcx>,
                                  mut supplied_method_types: Vec<Ty<'tcx>>,
-                                 substs: &subst::Substs<'tcx>)
-                                 -> subst::Substs<'tcx>
+                                 substs: &Substs<'tcx>)
+                                 -> &'tcx Substs<'tcx>
     {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -335,7 +327,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // parameters from the type and those from the method.
         //
         // FIXME -- permit users to manually specify lifetimes
-        subst::Substs::from_generics(&method.generics, |def, _| {
+        Substs::for_item(self.tcx, method.def_id, |def, _| {
             if def.space != subst::FnSpace {
                 substs.region_for_def(def)
             } else {
@@ -376,7 +368,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
     fn instantiate_method_sig(&mut self,
                               pick: &probe::Pick<'tcx>,
-                              all_substs: subst::Substs<'tcx>)
+                              all_substs: &'tcx Substs<'tcx>)
                               -> InstantiatedMethodSig<'tcx>
     {
         debug!("instantiate_method_sig(pick={:?}, all_substs={:?})",
@@ -387,7 +379,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // type/early-bound-regions substitutions performed. There can
         // be no late-bound regions appearing here.
         let method_predicates = pick.item.as_opt_method().unwrap()
-                                    .predicates.instantiate(self.tcx, &all_substs);
+                                    .predicates.instantiate(self.tcx, all_substs);
         let method_predicates = self.normalize_associated_types_in(self.span,
                                                                    &method_predicates);
 
@@ -405,20 +397,19 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         debug!("late-bound lifetimes from method instantiated, method_sig={:?}",
                method_sig);
 
-        let method_sig = self.instantiate_type_scheme(self.span, &all_substs, &method_sig);
+        let method_sig = self.instantiate_type_scheme(self.span, all_substs, &method_sig);
         debug!("type scheme substituted, method_sig={:?}",
                method_sig);
 
         InstantiatedMethodSig {
             method_sig: method_sig,
-            all_substs: all_substs,
             method_predicates: method_predicates,
         }
     }
 
     fn add_obligations(&mut self,
                        fty: Ty<'tcx>,
-                       all_substs: &subst::Substs<'tcx>,
+                       all_substs: &Substs<'tcx>,
                        method_predicates: &ty::InstantiatedPredicates<'tcx>) {
         debug!("add_obligations: fty={:?} all_substs={:?} method_predicates={:?}",
                fty,

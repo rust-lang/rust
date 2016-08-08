@@ -11,7 +11,6 @@
 #![allow(non_camel_case_types)]
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst;
 use abi::FnType;
 use adt;
 use common::*;
@@ -257,7 +256,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           // avoids creating more than one copy of the enum when one
           // of the enum's variants refers to the enum itself.
           let repr = adt::represent_type(cx, t);
-          let tps = substs.types.get_slice(subst::TypeSpace);
+          let tps = substs.types.as_full_slice();
           let name = llvm_type_name(cx, def.did, tps);
           adt::incomplete_type_of(cx, &repr, &name[..])
       }
@@ -336,7 +335,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
               // in *after* placing it into the type cache. This prevents
               // infinite recursion with recursive struct types.
               let repr = adt::represent_type(cx, t);
-              let tps = substs.types.get_slice(subst::TypeSpace);
+              let tps = substs.types.as_full_slice();
               let name = llvm_type_name(cx, def.did, tps);
               adt::incomplete_type_of(cx, &repr, &name[..])
           }

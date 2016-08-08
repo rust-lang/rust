@@ -160,10 +160,9 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
             // We can resolve the `impl Trait` to its concrete type.
             if let Some(ty_scheme) = tcx.opt_lookup_item_type(def_id) {
                 let concrete_ty = ty_scheme.ty.subst(tcx, substs);
-                let concrete_substs = Substs::new_trait(vec![], vec![], concrete_ty);
                 let predicate = ty::TraitRef {
                     def_id: self.predicate.def_id(),
-                    substs: tcx.mk_substs(concrete_substs)
+                    substs: Substs::new_trait(tcx, vec![], vec![], concrete_ty)
                 }.to_predicate();
 
                 let original_obligation = Obligation::new(self.cause.clone(),

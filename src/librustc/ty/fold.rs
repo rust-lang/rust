@@ -40,7 +40,7 @@
 //! and does not need to visit anything else.
 
 use middle::region;
-use ty::subst;
+use ty::subst::Substs;
 use ty::adjustment;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
@@ -145,8 +145,8 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
     }
 
     fn fold_substs(&mut self,
-                   substs: &'tcx subst::Substs<'tcx>)
-                   -> &'tcx subst::Substs<'tcx> {
+                   substs: &'tcx Substs<'tcx>)
+                   -> &'tcx Substs<'tcx> {
         substs.super_fold_with(self)
     }
 

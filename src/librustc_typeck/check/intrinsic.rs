@@ -36,11 +36,11 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let def_id = tcx.map.local_def_id(it.id);
     let i_ty = tcx.lookup_item_type(def_id);
 
-    let mut substs = Substs::empty();
-    substs.types = i_ty.generics.types.map(|def| tcx.mk_param_from_def(def));
+    let substs = Substs::for_item(tcx, def_id,
+                                  |_, _| ty::ReErased,
+                                  |def, _| tcx.mk_param_from_def(def));
 
-    let fty = tcx.mk_fn_def(def_id, tcx.mk_substs(substs),
-                            tcx.mk_bare_fn(ty::BareFnTy {
+    let fty = tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: abi,
         sig: ty::Binder(FnSig {

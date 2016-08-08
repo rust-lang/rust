@@ -28,7 +28,7 @@ use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::subst;
+use rustc::ty::subst::{Substs, VecPerParamSpace};
 use rustc_const_eval::fatal_const_eval_err;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
@@ -352,8 +352,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             },
             TransItem::Static(node_id) => {
                 let def_id = hir_map.local_def_id(node_id);
-                let instance = Instance::new(def_id,
-                                             tcx.mk_substs(subst::Substs::empty()));
+                let instance = Instance::new(def_id, Substs::empty(tcx));
                 to_string_internal(tcx, "static ", instance)
             },
         };
@@ -561,7 +560,7 @@ fn push_item_name(tcx: TyCtxt,
 }
 
 fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              types: &'tcx subst::VecPerParamSpace<Ty<'tcx>>,
+                              types: &'tcx VecPerParamSpace<Ty<'tcx>>,
                               projections: &[ty::PolyExistentialProjection<'tcx>],
                               output: &mut String) {
     if types.is_empty() && projections.is_empty() {

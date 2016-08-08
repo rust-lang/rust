@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use infer::type_variable;
-use ty::subst::{self, VecPerParamSpace};
+use ty::subst::{Substs, VecPerParamSpace};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
@@ -702,13 +702,11 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Region {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx subst::Substs<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let substs = subst::Substs {
-            regions: self.regions.fold_with(folder),
-            types: self.types.fold_with(folder)
-        };
-        folder.tcx().mk_substs(substs)
+        let types = self.types.fold_with(folder);
+        let regions = self.regions.fold_with(folder);
+        Substs::new(folder.tcx(), types, regions)
     }
 
     fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
@@ -839,6 +837,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
         ty::Generics {
             types: self.types.fold_with(folder),
             regions: self.regions.fold_with(folder),
+            has_self: self.has_self
         }
     }
 
@@ -1015,19 +1014,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'tcx> {
         self.free_substs.visit_with(visitor) ||
             self.implicit_region_bound.visit_with(visitor) ||
             self.caller_bounds.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::TypeScheme<'tcx>  {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::TypeScheme {
-            generics: self.generics.fold_with(folder),
-            ty: self.ty.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.generics.visit_with(visitor) || self.ty.visit_with(visitor)
     }
 }
 

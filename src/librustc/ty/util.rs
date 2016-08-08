@@ -11,7 +11,6 @@
 //! misc. type-system utilities too small to deserve their own file
 
 use hir::def_id::DefId;
-use ty::subst;
 use infer::InferCtxt;
 use hir::pat_util;
 use traits::{self, Reveal};
@@ -695,12 +694,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         return false;
                     }
 
-                    let types_a = substs_a.types.get_slice(subst::TypeSpace);
-                    let types_b = substs_b.types.get_slice(subst::TypeSpace);
+                    let types_a = substs_a.types.as_full_slice();
+                    let types_b = substs_b.types.as_full_slice();
 
-                    let mut pairs = types_a.iter().zip(types_b);
-
-                    pairs.all(|(&a, &b)| same_type(a, b))
+                    types_a.iter().zip(types_b).all(|(&a, &b)| same_type(a, b))
                 }
                 _ => {
                     a == b

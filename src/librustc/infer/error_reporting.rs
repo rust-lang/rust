@@ -1366,7 +1366,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 hir::TyPath(ref maybe_qself, ref path) => {
                     match self.tcx.expect_def(cur_ty.id) {
                         Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
-                            let generics = self.tcx.lookup_item_type(did).generics;
+                            let generics = self.tcx.lookup_generics(did);
 
                             let expected =
                                 generics.regions.len(subst::TypeSpace) as u32;

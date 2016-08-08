@@ -63,6 +63,7 @@ pub struct CtxtArenas<'tcx> {
     layout: TypedArena<Layout>,
 
     // references
+    generics: TypedArena<ty::Generics<'tcx>>,
     trait_defs: TypedArena<ty::TraitDef<'tcx>>,
     adt_defs: TypedArena<ty::AdtDefData<'tcx, 'tcx>>,
 }
@@ -78,6 +79,7 @@ impl<'tcx> CtxtArenas<'tcx> {
             stability: TypedArena::new(),
             layout: TypedArena::new(),
 
+            generics: TypedArena::new(),
             trait_defs: TypedArena::new(),
             adt_defs: TypedArena::new()
         }
@@ -341,7 +343,8 @@ pub struct GlobalCtxt<'tcx> {
     pub adt_defs: RefCell<DepTrackingMap<maps::AdtDefs<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
-    /// associated predicates.
+    /// associated generics and predicates.
+    pub generics: RefCell<DepTrackingMap<maps::Generics<'tcx>>>,
     pub predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
 
     /// Maps from the def-id of a trait to the list of
@@ -583,13 +586,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow_mut().node_types.insert(id, ty);
     }
 
+    pub fn alloc_generics(self, generics: ty::Generics<'gcx>)
+                          -> &'gcx ty::Generics<'gcx> {
+        self.global_interners.arenas.generics.alloc(generics)
+    }
+
     pub fn intern_trait_def(self, def: ty::TraitDef<'gcx>)
                             -> &'gcx ty::TraitDef<'gcx> {
         let did = def.trait_ref.def_id;
-        let interned = self.global_interners.arenas.trait_defs.alloc(def);
+        let interned = self.alloc_trait_def(def);
         if let Some(prev) = self.trait_defs.borrow_mut().insert(did, interned) {
             bug!("Tried to overwrite interned TraitDef: {:?}", prev)
         }
+        self.generics.borrow_mut().insert(did, interned.generics);
         interned
     }
 
@@ -711,6 +720,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             impl_trait_refs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             adt_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            generics: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             super_predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
