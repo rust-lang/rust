@@ -39,7 +39,10 @@ main() {
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
                -v $(pwd):/mnt \
                ubuntu:16.04 \
-               sh -c "cd /mnt; bash ci/install.sh; bash ci/script.sh"
+               sh -c 'cd /mnt;
+                      export PATH="$PATH:$HOME/.cargo/bin";
+                      bash ci/install.sh;
+                      bash ci/script.sh'
     else
         build
         run_tests
