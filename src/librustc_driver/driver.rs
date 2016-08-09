@@ -990,7 +990,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("no-landing-pads"));
 
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
-        passes.push_pass(box mir::transform::mcs_propagate::McsPropagate);
+
+        passes.push_pass(box mir::transform::deaggregator::Deaggregator);
+        passes.push_pass(box mir::transform::cs_propagate::CsPropagate);
+        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("ccs-propagate"));
         passes.push_pass(box mir::transform::liveness::LocalLivenessAnalysis);
 
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
@@ -998,7 +1001,6 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops"));
 
-        passes.push_pass(box mir::transform::deaggregator::Deaggregator);
 
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box mir::transform::dump_mir::Marker("PreTrans"));

@@ -58,7 +58,7 @@ impl<'tcx> MirPassHook<'tcx> for DumpMir {
     {
         pretty::dump_mir(
             tcx,
-            pass.name(),
+            &*pass.name(),
             &Disambiguator {
                 pass: pass,
                 is_after: is_after

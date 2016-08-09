@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This is Move-Constant-Simplify propagation pass. This is a composition of three distinct
+//! This is Constant-Simplify propagation pass. This is a composition of three distinct
 //! dataflow passes: alias-propagation, constant-propagation and terminator simplification.
 //!
 //! All these are very similar in their nature:
 //!
-//!                  | Constant  |  Move    | Simplify  |
-//! |----------------|-----------|----------|-----------|
-//! | Lattice Domain | Lvalue    | Lvalue   | Lvalue    |
-//! | Lattice Value  | Constant  | Lvalue   | Constant  |
-//! | Transfer       | x = const | x = lval | x = const |
-//! | Rewrite        | x → const | x → lval | T(x) → T' |
-//! | Bottom         | {}        | {}       | {}        |
-//! | Join           | intersect | intersec | intersect |
+//!                  | Constant  | Simplify  |
+//! |----------------|-----------|-----------|
+//! | Lattice Domain | Lvalue    | Lvalue    |
+//! | Lattice Value  | Constant  | Constant  |
+//! | Transfer       | x = const | x = const |
+//! | Rewrite        | x → const | T(x) → T' |
+//! | Bottom         | {}        | {}        |
+//! | Join           | intersect | intersect |
 //!
 //! For all of them we will be using a lattice of `HashMap<Lvalue, Either<Lvalue, Constant, Top>>`.
 
@@ -29,19 +29,20 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir::repr::*;
 use rustc::mir::tcx::binop_ty;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
-use rustc::mir::visit::{MutVisitor, LvalueContext};
+use rustc::mir::visit::{MutVisitor};
 use rustc::ty::TyCtxt;
 use rustc_const_eval::{eval_const_binop, eval_const_unop, cast_const};
+use std::collections::hash_map::Entry;
 
 use super::dataflow::*;
 
-pub struct McsPropagate;
+pub struct CsPropagate;
 
-impl Pass for McsPropagate {}
+impl Pass for CsPropagate {}
 
-impl<'tcx> MirPass<'tcx> for McsPropagate {
+impl<'tcx> MirPass<'tcx> for CsPropagate {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
-        *mir = Dataflow::forward(mir, McsTransfer { tcx: tcx },
+        *mir = Dataflow::forward(mir, CsTransfer { tcx: tcx },
                                  ConstRewrite { tcx: tcx }.and_then(SimplifyRewrite));
     }
 }
@@ -53,18 +54,34 @@ enum Either<'tcx> {
     Top
 }
 
+impl<'tcx> Lattice for Either<'tcx> {
+    fn bottom() -> Self { unimplemented!() }
+    fn join(&mut self, other: Self) -> bool {
+        if !other.eq(self) {
+            if Either::Top.eq(self) {
+                false
+            } else {
+                *self = Either::Top;
+                true
+            }
+        } else {
+            false
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-struct McsLattice<'tcx> {
+struct CsLattice<'tcx> {
     values: FnvHashMap<Lvalue<'tcx>, Either<'tcx>>
 }
 
-impl<'tcx> McsLattice<'tcx> {
-    fn insert(&mut self, key: &Lvalue<'tcx>, val: Either<'tcx>) -> Option<Either<'tcx>> {
+impl<'tcx> CsLattice<'tcx> {
+    fn insert(&mut self, key: &Lvalue<'tcx>, val: Either<'tcx>) {
         // FIXME: HashMap has no way to insert stuff without cloning the key even if it exists
         // already.
         match *key {
             // Do not bother with statics – global state.
-            Lvalue::Static(_) => return None,
+            Lvalue::Static(_) => {}
             // I feel like this could be handled, but needs special care. For example in code like
             // this:
             //
@@ -74,11 +91,19 @@ impl<'tcx> McsLattice<'tcx> {
             // assert!(var.field);
             // ```
             //
-            // taking a reference to var should invalidate knowledge about all the projections of
-            // var and not just var itself. Currently we handle this by not keeping any knowledge
-            // about projections at all, but I think eventually we want to do so.
-            Lvalue::Projection(_) => return None,
-            _ => self.values.insert(key.clone(), val)
+            // taking a reference to var should invalidate knowledge about all the
+            // projections of var and not just var itself. Currently we handle this by not
+            // keeping any knowledge about projections at all, but I think eventually we
+            // want to do so.
+            Lvalue::Projection(_) => {},
+            _ => match self.values.entry(key.clone()) {
+                Entry::Vacant(e) => {
+                    e.insert(val);
+                }
+                Entry::Occupied(mut e) => {
+                    e.get_mut().join(val);
+                }
+            }
         }
     }
     fn remove(&mut self, key: &Lvalue<'tcx>) -> Option<Either<'tcx>> {
@@ -89,8 +114,8 @@ impl<'tcx> McsLattice<'tcx> {
     }
 }
 
-impl<'tcx> Lattice for McsLattice<'tcx> {
-    fn bottom() -> Self { McsLattice { values: FnvHashMap() } }
+impl<'tcx> Lattice for CsLattice<'tcx> {
+    fn bottom() -> Self { CsLattice { values: FnvHashMap() } }
     fn join(&mut self, mut other: Self) -> bool {
         // Calculate inteersection this way:
         let mut changed = false;
@@ -119,12 +144,12 @@ impl<'tcx> Lattice for McsLattice<'tcx> {
     }
 }
 
-struct McsTransfer<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
+struct CsTransfer<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> Transfer<'tcx> for McsTransfer<'a, 'tcx> {
-    type Lattice = McsLattice<'tcx>;
+impl<'a, 'tcx> Transfer<'tcx> for CsTransfer<'a, 'tcx> {
+    type Lattice = CsLattice<'tcx>;
     type TerminatorReturn = Vec<Self::Lattice>;
 
     fn stmt(&self, s: &Statement<'tcx>, mut lat: Self::Lattice)
@@ -134,6 +159,7 @@ impl<'a, 'tcx> Transfer<'tcx> for McsTransfer<'a, 'tcx> {
         match *rval {
             Rvalue::Use(Operand::Consume(ref nlval)) => {
                 lat.insert(lval, Either::Lvalue(nlval.clone()));
+                // Consider moved.
                 lat.remove(nlval);
             },
             Rvalue::Use(Operand::Constant(ref cnst)) => {
@@ -264,9 +290,8 @@ impl<'a, 'tcx> Transfer<'tcx> for McsTransfer<'a, 'tcx> {
 struct ConstRewrite<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
-
 impl<'a, 'tcx, T> Rewrite<'tcx, T> for ConstRewrite<'a, 'tcx>
-where T: Transfer<'tcx, Lattice=McsLattice<'tcx>>
+where T: Transfer<'tcx, Lattice=CsLattice<'tcx>>
 {
     fn stmt(&self, stmt: &Statement<'tcx>, fact: &T::Lattice) -> StatementChange<'tcx> {
         let mut stmt = stmt.clone();

@@ -186,7 +186,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 LocalRef::Lvalue(..) => {
                     // use path below
                 }
-                LocalRef::Unused => span_bug!("reference to unused local {:?}", lvalue),
+                LocalRef::Unused => bug!("reference to unused local"),
             }
         }
 
