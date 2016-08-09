@@ -144,23 +144,6 @@ fn merge_error() -> Result<i32, Error> {
     Ok(s.parse::<i32>()? + 1)
 }
 
-fn option() -> Option<i32> {
-    let x = Some(42);
-    let y = x?;
-    Some(y + 2)
-}
-
-fn bool() -> bool {
-    let x = true;
-    let y = false;
-    let z = true;
-
-    (x || y)?;
-    let a: () = z?;
-    x?;
-    true
-}
-
 fn main() {
     assert_eq!(Ok(3), on_method());
 
