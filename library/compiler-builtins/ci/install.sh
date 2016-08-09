@@ -12,9 +12,9 @@ install_deps() {
 
 install_qemu() {
     case $TARGET in
-        powerpc64-unknown-linux-gnu)
-            sudo apt-get install -y --no-install-recommends \
-                 qemu-user
+        powerpc64le-unknown-linux-gnu)
+            apt-get install -y --no-install-recommends \
+                    qemu-user
             ;;
     esac
 }
