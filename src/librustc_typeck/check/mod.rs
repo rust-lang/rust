@@ -1750,13 +1750,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.require_type_meets(ty, span, code, ty::BoundSized);
     }
 
-    pub fn require_expr_have_sized_type(&self,
-                                        expr: &hir::Expr,
-                                        code: traits::ObligationCauseCode<'tcx>)
-    {
-        self.require_type_is_sized(self.expr_ty(expr), expr.span, code);
-    }
-
     pub fn register_builtin_bound(&self,
                                   ty: Ty<'tcx>,
                                   builtin_bound: ty::BuiltinBound,
@@ -1801,7 +1794,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
                           -> Ty<'tcx>
     {
-        let raw_ty = self.expr_ty(expr);
+        let raw_ty = self.node_ty(expr.id);
         let raw_ty = self.shallow_resolve(raw_ty);
         let resolve_ty = |ty: Ty<'tcx>| self.resolve_type_vars_if_possible(&ty);
         raw_ty.adjust(self.tcx, expr.span, expr.id, adjustment, |method_call| {
@@ -2623,12 +2616,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // arguments which we skipped above.
         if variadic {
             for arg in args.iter().skip(expected_arg_count) {
-                self.check_expr(&arg);
+                let arg_ty = self.check_expr(&arg);
 
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
                 let arg_ty = self.structurally_resolved_type(arg.span,
-                                                             self.expr_ty(&arg));
+                                                             arg_ty);
                 match arg_ty.sty {
                     ty::TyFloat(ast::FloatTy::F32) => {
                         self.type_error_message(arg.span, |t| {
@@ -2718,15 +2711,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_eq_type(&self,
                           expr: &'gcx hir::Expr,
                           expected: Ty<'tcx>) {
-        self.check_expr_with_hint(expr, expected);
-        self.demand_eqtype(expr.span, expected, self.expr_ty(expr));
+        let ty = self.check_expr_with_hint(expr, expected);
+        self.demand_eqtype(expr.span, expected, ty);
     }
 
     pub fn check_expr_has_type(&self,
                                expr: &'gcx hir::Expr,
                                expected: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.check_expr_with_hint(expr, expected);
-        self.demand_suptype(expr.span, expected, self.expr_ty(expr));
+        self.demand_suptype(expr.span, expected, ty);
         ty
     }
 
@@ -2821,10 +2814,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          expected: Expectation<'tcx>,
                          lvalue_pref: LvaluePreference) -> Ty<'tcx> {
         let rcvr = &args[0];
-        self.check_expr_with_lvalue_pref(&rcvr, lvalue_pref);
+        let rcvr_t = self.check_expr_with_lvalue_pref(&rcvr, lvalue_pref);
 
         // no need to check for bot/err -- callee does that
-        let expr_t = self.structurally_resolved_type(expr.span, self.expr_ty(&rcvr));
+        let expr_t = self.structurally_resolved_type(expr.span, rcvr_t);
 
         let tps = tps.iter().map(|ast_ty| self.to_ty(&ast_ty)).collect::<Vec<_>>();
         let fn_ty = match self.lookup_method(method_name.span,
@@ -2867,7 +2860,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        id: ast::NodeId,
                        sp: Span,
                        expected: Expectation<'tcx>) -> Ty<'tcx> {
-        self.check_expr_has_type(cond_expr, self.tcx.types.bool);
+        let cond_ty = self.check_expr_has_type(cond_expr, self.tcx.types.bool);
 
         let expected = expected.adjust_for_branches(self);
         self.check_block_with_expected(then_blk, expected);
@@ -2876,8 +2869,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let unit = self.tcx.mk_nil();
         let (origin, expected, found, result) =
         if let Some(else_expr) = opt_else_expr {
-            self.check_expr_with_expectation(else_expr, expected);
-            let else_ty = self.expr_ty(else_expr);
+            let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let origin = TypeOrigin::IfExpression(sp);
 
             // Only try to coerce-unify if we have a then expression
@@ -2919,7 +2911,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let if_ty = match result {
             Ok(ty) => {
-                if self.expr_ty(cond_expr).references_error() {
+                if cond_ty.references_error() {
                     self.tcx.types.err
                 } else {
                     ty
@@ -2940,9 +2932,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                    lvalue_pref: LvaluePreference,
                    base: &'gcx hir::Expr,
                    field: &Spanned<ast::Name>) -> Ty<'tcx> {
-        self.check_expr_with_lvalue_pref(base, lvalue_pref);
+        let expr_t = self.check_expr_with_lvalue_pref(base, lvalue_pref);
         let expr_t = self.structurally_resolved_type(expr.span,
-                                                     self.expr_ty(base));
+                                                     expr_t);
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, autoderefs)) = autoderef.next() {
@@ -3038,9 +3030,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        lvalue_pref: LvaluePreference,
                        base: &'gcx hir::Expr,
                        idx: codemap::Spanned<usize>) -> Ty<'tcx> {
-        self.check_expr_with_lvalue_pref(base, lvalue_pref);
+        let expr_t = self.check_expr_with_lvalue_pref(base, lvalue_pref);
         let expr_t = self.structurally_resolved_type(expr.span,
-                                                     self.expr_ty(base));
+                                                     expr_t);
         let mut private_candidate = None;
         let mut tuple_like = false;
         let mut autoderef = self.autoderef(expr.span, expr_t);
@@ -3272,18 +3264,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
     {
         // Find the relevant variant
-        let (variant, expr_ty) = if let Some(variant_ty) = self.check_struct_path(path, expr.id,
+        let (variant, expr_t) = if let Some(variant_ty) = self.check_struct_path(path, expr.id,
                                                                                   expr.span) {
             variant_ty
         } else {
             return self.check_struct_fields_on_error(expr.id, fields, base_expr);
         };
 
-        self.check_expr_struct_fields(expr_ty, path.span, variant, fields,
+        self.check_expr_struct_fields(expr_t, path.span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
-            self.check_expr_has_type(base_expr, expr_ty);
-            match expr_ty.sty {
+            self.check_expr_has_type(base_expr, expr_t);
+            match expr_t.sty {
                 ty::TyStruct(adt, substs) => {
                     self.tables.borrow_mut().fru_field_types.insert(
                         expr.id,
@@ -3300,7 +3292,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
-        expr_ty
+        expr_t
     }
 
 
@@ -3331,8 +3323,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => NoExpectation
                 }
             });
-            self.check_expr_with_expectation(subexpr, expected_inner);
-            let referent_ty = self.expr_ty(&subexpr);
+            let referent_ty = self.check_expr_with_expectation(subexpr, expected_inner);
             self.write_ty(id, tcx.mk_box(referent_ty))
           }
 
@@ -3510,7 +3501,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
 
-            self.require_expr_have_sized_type(&lhs, traits::AssignmentLhsSized);
+            self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
             if lhs_ty.references_error() || rhs_ty.references_error() {
                 self.write_error(id)
@@ -3523,9 +3514,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  id, expr.span, expected)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
-            self.check_expr_has_type(&cond, tcx.types.bool);
+            let cond_ty = self.check_expr_has_type(&cond, tcx.types.bool);
             self.check_block_no_value(&body);
-            let cond_ty = self.expr_ty(&cond);
             let body_ty = self.node_ty(body.id);
             if cond_ty.references_error() || body_ty.references_error() {
                 self.write_error(id)
@@ -3714,7 +3704,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprStruct(ref path, ref fields, ref base_expr) => {
             let ty = self.check_expr_struct(expr, path, fields, base_expr);
 
-            self.require_expr_have_sized_type(expr, traits::StructInitializerSized);
+            self.require_type_is_sized(ty, expr.span, traits::StructInitializerSized);
             ty
           }
           hir::ExprField(ref base, ref field) => {
@@ -3735,8 +3725,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   let base_t = self.structurally_resolved_type(expr.span, base_t);
                   match self.lookup_indexing(expr, base, base_t, idx_t, lvalue_pref) {
                       Some((index_ty, element_ty)) => {
-                          let idx_expr_ty = self.expr_ty(idx);
-                          self.demand_eqtype(expr.span, index_ty, idx_expr_ty);
+                          self.demand_eqtype(expr.span, index_ty, idx_t);
                           self.write_ty(id, element_ty)
                       }
                       None => {
@@ -3865,7 +3854,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn check_decl_initializer(&self,
                                   local: &'gcx hir::Local,
-                                  init: &'gcx hir::Expr)
+                                  init: &'gcx hir::Expr) -> Ty<'tcx>
     {
         let ref_bindings = self.tcx.pat_contains_ref_binding(&local.pat);
 
@@ -3884,7 +3873,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             init_ty
         } else {
             self.check_expr_coercable_to_type(init, local_ty)
-        };
+        }
     }
 
     pub fn check_decl_local(&self, local: &'gcx hir::Local)  {
@@ -3892,8 +3881,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.write_ty(local.id, t);
 
         if let Some(ref init) = local.init {
-            self.check_decl_initializer(local, &init);
-            let init_ty = self.expr_ty(&init);
+            let init_ty = self.check_decl_initializer(local, &init);
             if init_ty.references_error() {
                 self.write_ty(local.id, init_ty);
             }
@@ -3926,17 +3914,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::StmtExpr(ref expr, id) => {
             node_id = id;
             // Check with expected type of ()
-            self.check_expr_has_type(&expr, self.tcx.mk_nil());
-            let expr_ty = self.expr_ty(&expr);
-            saw_bot = saw_bot || self.type_var_diverges(expr_ty);
-            saw_err = saw_err || expr_ty.references_error();
+            let expr_t = self.check_expr_has_type(&expr, self.tcx.mk_nil());
+            saw_bot = saw_bot || self.type_var_diverges(expr_t);
+            saw_err = saw_err || expr_t.references_error();
           }
           hir::StmtSemi(ref expr, id) => {
             node_id = id;
-            self.check_expr(&expr);
-            let expr_ty = self.expr_ty(&expr);
-            saw_bot |= self.type_var_diverges(expr_ty);
-            saw_err |= expr_ty.references_error();
+            let expr_t = self.check_expr(&expr);
+            saw_bot |= self.type_var_diverges(expr_t);
+            saw_err |= expr_t.references_error();
           }
         }
         if saw_bot {
@@ -4023,8 +4009,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         ety
                     }
                     _ => {
-                        self.check_expr_with_expectation(&e, expected);
-                        self.expr_ty(&e)
+                        self.check_expr_with_expectation(&e, expected)
                     }
                 };
 
