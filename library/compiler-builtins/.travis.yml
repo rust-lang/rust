@@ -48,6 +48,10 @@ matrix:
         apt:
           packages:
             - gcc-multilib
+    - env: TARGET=mips-unknown-linux-gnu
+      os: linux
+      services: docker
+      sudo: required
     - env: TARGET=powerpc-unknown-linux-gnu
       os: linux
       dist: trusty
@@ -71,6 +75,9 @@ matrix:
   allow_failures:
     # FIXME(#2)
     - env: TARGET=armv7-unknown-linux-gnueabihf
+      os: linux
+    # FIXME QEMU blows up
+    - env: TARGET=mips-unknown-linux-gnu
       os: linux
     # FIXME QEMU blows up
     - env: TARGET=powerpc64le-unknown-linux-gnu
