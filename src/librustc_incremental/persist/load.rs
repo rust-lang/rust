@@ -113,10 +113,28 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // TODO -- this could be more efficient if we integrated the `DefIdDirectory` and
     // pred set more deeply
 
-    // Compute the set of Hir nodes whose data has changed or which have been removed.
+    // Compute the set of Hir nodes whose data has changed or which
+    // have been removed.  These are "raw" source nodes, which means
+    // that they still use the original `DefPathIndex` values from the
+    // encoding, rather than having been retraced to a `DefId`. The
+    // reason for this is that this way we can include nodes that have
+    // been removed (which no longer have a `DefId` in the current
+    // compilation).
     let dirty_raw_source_nodes = dirty_nodes(tcx, &serialized_dep_graph.hashes, &retraced);
 
-    // Create a (maybe smaller) list of
+    // Create a list of (raw-source-node ->
+    // retracted-target-node) edges. In the process of retracing the
+    // target nodes, we may discover some of them def-paths no longer exist,
+    // in which case there is no need to mark the corresopnding nodes as dirty
+    // (they are just not present). So this list may be smaller than the original.
+    //
+    // Note though that in the common case the target nodes are
+    // `DepNode::WorkProduct` instances, and those don't have a
+    // def-id, so they will never be considered to not exist. Instead,
+    // we do a secondary hashing step (later, in trans) when we know
+    // the set of symbols that go into a work-product: if any symbols
+    // have been removed (or added) the hash will be different and
+    // we'll ignore the work-product then.
     let retraced_edges: Vec<_> =
         serialized_dep_graph.edges.iter()
                                   .filter_map(|&(ref raw_source_node, ref raw_target_node)| {
@@ -125,7 +143,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   })
                                   .collect();
 
-    // Compute which work-products have changed.
+    // Compute which work-products have an input that has changed or
+    // been removed. Put the dirty ones into a set.
     let mut dirty_target_nodes = FnvHashSet();
     for &(raw_source_node, ref target_node) in &retraced_edges {
         if dirty_raw_source_nodes.contains(raw_source_node) {
