@@ -24,6 +24,7 @@ extern crate rustc_errors as errors;
 use rustc::session::Session;
 use rustc::session::config::{self, Input};
 use rustc_driver::{driver, CompilerCalls, Compilation};
+use syntax::ast;
 
 use std::path::PathBuf;
 
@@ -35,6 +36,7 @@ impl<'a> CompilerCalls<'a> for TestCalls {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &config::Options,
+                      _: &ast::CrateConfig,
                       _: &errors::registry::Registry,
                       _: config::ErrorOutputType)
                       -> Compilation {
@@ -45,6 +47,7 @@ impl<'a> CompilerCalls<'a> for TestCalls {
     fn late_callback(&mut self,
                      _: &getopts::Matches,
                      _: &Session,
+                     _: &ast::CrateConfig,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
@@ -62,6 +65,7 @@ impl<'a> CompilerCalls<'a> for TestCalls {
     fn no_input(&mut self,
                 _: &getopts::Matches,
                 _: &config::Options,
+                _: &ast::CrateConfig,
                 _: &Option<PathBuf>,
                 _: &Option<PathBuf>,
                 _: &errors::registry::Registry)

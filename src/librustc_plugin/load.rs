@@ -49,7 +49,7 @@ pub fn load_plugins(sess: &Session,
                     krate: &ast::Crate,
                     crate_name: &str,
                     addl_plugins: Option<Vec<String>>) -> Vec<PluginRegistrar> {
-    let mut loader = PluginLoader::new(sess, cstore, crate_name);
+    let mut loader = PluginLoader::new(sess, cstore, crate_name, krate.config.clone());
 
     // do not report any error now. since crate attributes are
     // not touched by expansion, every use of plugin without
@@ -90,10 +90,14 @@ pub fn load_plugins(sess: &Session,
 }
 
 impl<'a> PluginLoader<'a> {
-    fn new(sess: &'a Session, cstore: &'a CStore, crate_name: &str) -> PluginLoader<'a> {
+    fn new(sess: &'a Session,
+           cstore: &'a CStore,
+           crate_name: &str,
+           crate_config: ast::CrateConfig)
+            -> PluginLoader<'a> {
         PluginLoader {
             sess: sess,
-            reader: CrateReader::new(sess, cstore, crate_name),
+            reader: CrateReader::new(sess, cstore, crate_name, crate_config),
             plugins: vec![],
         }
     }

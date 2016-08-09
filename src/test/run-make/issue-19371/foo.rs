@@ -52,7 +52,7 @@ fn main() {
 
 fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
     let mut opts = basic_options();
-    opts.output_types = OutputTypes::new([(OutputType::Exe, None)]);
+    opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
     opts.maybe_sysroot = Some(sysroot);
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
@@ -65,7 +65,7 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let (sess, cstore) = basic_sess(sysroot);
-    let cfg = build_configuration(&sess);
+    let cfg = build_configuration(&sess, vec![]);
     let control = CompileController::basic();
 
     compile_input(&sess, &cstore,

@@ -667,7 +667,10 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
         };
-        let mut loader = macro_import::MacroLoader::new(sess, &cstore, crate_name);
+        let mut loader = macro_import::MacroLoader::new(sess,
+                                                        &cstore,
+                                                        crate_name,
+                                                        krate.config.clone());
         let mut ecx = syntax::ext::base::ExtCtxt::new(&sess.parse_sess,
                                                       krate.config.clone(),
                                                       cfg,

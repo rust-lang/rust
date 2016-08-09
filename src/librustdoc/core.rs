@@ -119,7 +119,6 @@ pub fn run_core(search_paths: SearchPaths,
         lint_cap: Some(lint::Allow),
         externs: externs,
         target_triple: triple.unwrap_or(config::host_triple().to_string()),
-        cfg: config::parse_cfgspecs(cfgs),
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         ..config::basic_options().clone()
@@ -138,7 +137,7 @@ pub fn run_core(search_paths: SearchPaths,
                                        codemap, cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-    let mut cfg = config::build_configuration(&sess);
+    let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
     target_features::add_configuration(&mut cfg, &sess);
 
     let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
