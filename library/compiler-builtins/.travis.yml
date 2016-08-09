@@ -44,11 +44,8 @@ matrix:
       os: osx
     - env: TARGET=i586-unknown-linux-gnu
       os: linux
-      dist: trusty
-      addons:
-        apt:
-          packages:
-            - gcc-multilib
+      services: docker
+      sudo: required
     - env: TARGET=i686-unknown-linux-gnu
       os: linux
       addons:
