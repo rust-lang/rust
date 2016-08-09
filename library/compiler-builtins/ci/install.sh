@@ -25,7 +25,11 @@ install_c_toolchain() {
     case $TARGET in
         aarch64-unknown-linux-gnu)
             sudo apt-get install -y --no-install-recommends \
-                 gcc-aarch64-linux-gnu libc6-arm64-cross libc6-dev-arm64-cross
+                 gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+            ;;
+        powerpc64-unknown-linux-gnu)
+            sudo apt-get install -y --no-install-recommends \
+                 gcc-powerpc64le-linux-gnu libc6-dev-ppc64le-cross
             ;;
         *)
             ;;

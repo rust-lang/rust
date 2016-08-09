@@ -36,9 +36,9 @@ main() {
         docker run \
                -e TARGET=$TARGET \
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
-               -v $(pwd)/ci:/mnt \
+               -v $(pwd):/mnt \
                ubuntu:16.04 \
-               sh -c "bash /mnt/install.sh; bash /mnt/script.sh"
+               sh -c "cd /mnt; bash ci/install.sh; bash ci/script.sh"
     else
         build
         run_tests
