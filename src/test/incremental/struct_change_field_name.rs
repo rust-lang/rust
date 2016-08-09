@@ -12,6 +12,7 @@
 // in between revisions (hashing should be stable).
 
 // revisions:rpass1 cfail2
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 

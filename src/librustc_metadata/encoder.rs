@@ -743,7 +743,8 @@ fn encode_repr_attrs(rbml_w: &mut Encoder,
 }
 
 fn encode_mir(ecx: &EncodeContext, rbml_w: &mut Encoder, node_id: NodeId) {
-    if let Some(mir) = ecx.mir_map.map.get(&node_id) {
+    let def_id = ecx.tcx.map.local_def_id(node_id);
+    if let Some(mir) = ecx.mir_map.map.get(&def_id) {
         rbml_w.start_tag(tag_mir as usize);
         rbml_w.emit_opaque(|opaque_encoder| {
             tls::enter_encoding_context(ecx, opaque_encoder, |_, opaque_encoder| {
@@ -861,7 +862,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_bounds_and_type_for_item(rbml_w, ecx, index, item.id);
         encode_name(rbml_w, item.name);
         encode_attributes(rbml_w, &item.attrs);
-        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
+        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
         encode_mir(ecx, rbml_w, item.id);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
@@ -879,7 +880,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &item.attrs);
         let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
         if needs_inline || constness == hir::Constness::Const {
-            encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
+            encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
             encode_mir(ecx, rbml_w, item.id);
         }
         encode_constness(rbml_w, constness);
@@ -942,7 +943,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         for v in &enum_definition.variants {
             encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.data.id()));
         }
-        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
+        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
         encode_mir(ecx, rbml_w, item.id);
 
         // Encode inherent implementations for this enumeration.
@@ -989,7 +990,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         needs to know*/
         encode_struct_fields(rbml_w, variant);
 
-        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
+        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
         encode_mir(ecx, rbml_w, item.id);
 
         // Encode inherent implementations for this structure.
@@ -1311,7 +1312,7 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_bounds_and_type_for_item(rbml_w, ecx, index, nitem.id);
         encode_name(rbml_w, nitem.name);
         if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-            encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
+            encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(def_id, nitem));
             encode_mir(ecx, rbml_w, nitem.id);
         }
         encode_attributes(rbml_w, &nitem.attrs);
@@ -1361,7 +1362,7 @@ fn my_visit_expr(expr: &hir::Expr,
             ecx.tcx.closure_kind(def_id).encode(rbml_w).unwrap();
             rbml_w.end_tag();
 
-            assert!(ecx.mir_map.map.contains_key(&expr.id));
+            assert!(ecx.mir_map.map.contains_key(&def_id));
             encode_mir(ecx, rbml_w, expr.id);
 
             rbml_w.end_tag();

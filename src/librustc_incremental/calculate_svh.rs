@@ -14,6 +14,7 @@
 use syntax::attr::AttributeMethods;
 use std::hash::{Hash, SipHasher, Hasher};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::map::{NodeItem, NodeForeignItem};
 use rustc::hir::svh::Svh;
 use rustc::ty::TyCtxt;
 use rustc::hir::intravisit::{self, Visitor};
@@ -92,8 +93,12 @@ impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
                 intravisit::walk_crate(&mut visit, krate);
             } else {
                 let node_id = self.map.as_local_node_id(def_id).unwrap();
-                let item = self.map.expect_item(node_id);
-                visit.visit_item(item);
+                match self.map.find(node_id) {
+                    Some(NodeItem(item)) => visit.visit_item(item),
+                    Some(NodeForeignItem(item)) => visit.visit_foreign_item(item),
+                    r => bug!("calculate_item_hash: expected an item for node {} not {:?}",
+                              node_id, r),
+                }
             }
         }
 
@@ -139,12 +144,7 @@ mod svh_visitor {
         }
 
         fn hash_def_path(&mut self, path: &DefPath) {
-            self.tcx.crate_name(path.krate).hash(self.st);
-            self.tcx.crate_disambiguator(path.krate).hash(self.st);
-            for data in &path.data {
-                data.data.as_interned_str().hash(self.st);
-                data.disambiguator.hash(self.st);
-            }
+            path.deterministic_hash_to(self.tcx, self.st);
         }
     }
 

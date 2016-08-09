@@ -725,6 +725,10 @@ pub fn run_passes(sess: &Session,
         work_items.push(work);
     }
 
+    if sess.opts.debugging_opts.incremental_info {
+        dump_incremental_data(&trans);
+    }
+
     // Process the work items, optionally using worker threads.
     // NOTE: This code is not really adapted to incremental compilation where
     //       the compiler decides the number of codegen units (and will
@@ -900,6 +904,17 @@ pub fn run_passes(sess: &Session,
     if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
         unsafe { llvm::LLVMRustPrintPassTimings(); }
     }
+}
+
+fn dump_incremental_data(trans: &CrateTranslation) {
+    let mut reuse = 0;
+    for mtrans in trans.modules.iter() {
+        match mtrans.source {
+            ModuleSource::Preexisting(..) => reuse += 1,
+            ModuleSource::Translated(..) => (),
+        }
+    }
+    println!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
 }
 
 struct WorkItem {

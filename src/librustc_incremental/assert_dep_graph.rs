@@ -71,6 +71,13 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         dump_graph(tcx);
     }
 
+    // if the `rustc_attrs` feature is not enabled, then the
+    // attributes we are interested in cannot be present anyway, so
+    // skip the walk.
+    if !tcx.sess.features.borrow().rustc_attrs {
+        return;
+    }
+
     // Find annotations supplied by user (if any).
     let (if_this_changed, then_this_would_need) = {
         let mut visitor = IfThisChanged { tcx: tcx,

@@ -20,7 +20,7 @@ macro_rules! try_opt {
     )
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum DepNode<D: Clone + Debug> {
     // The `D` type is "how definitions are identified".
     // During compilation, it is always `DefId`, but when serializing
@@ -82,9 +82,11 @@ pub enum DepNode<D: Clone + Debug> {
     Privacy,
     IntrinsicCheck(D),
     MatchCheck(D),
-    MirMapConstruction(D),
-    MirPass(D),
-    MirTypeck(D),
+
+    // Represents the MIR for a fn; also used as the task node for
+    // things read/modify that MIR.
+    Mir(D),
+
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
@@ -214,9 +216,7 @@ impl<D: Clone + Debug> DepNode<D> {
             CheckConst(ref d) => op(d).map(CheckConst),
             IntrinsicCheck(ref d) => op(d).map(IntrinsicCheck),
             MatchCheck(ref d) => op(d).map(MatchCheck),
-            MirMapConstruction(ref d) => op(d).map(MirMapConstruction),
-            MirPass(ref d) => op(d).map(MirPass),
-            MirTypeck(ref d) => op(d).map(MirTypeck),
+            Mir(ref d) => op(d).map(Mir),
             BorrowCheck(ref d) => op(d).map(BorrowCheck),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
@@ -245,6 +245,6 @@ impl<D: Clone + Debug> DepNode<D> {
 /// some independent path or string that persists between runs without
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct WorkProductId(pub String);
 

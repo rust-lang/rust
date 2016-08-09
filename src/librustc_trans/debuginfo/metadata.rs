@@ -326,7 +326,7 @@ impl<'tcx> TypeMap<'tcx> {
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
             let def_id = if let Some(node_id) = cx.tcx().map.as_local_node_id(def_id) {
-                if cx.tcx().map.is_inlined(node_id) {
+                if cx.tcx().map.is_inlined_node_id(node_id) {
                     // The given def_id identifies the inlined copy of a
                     // type definition, let's take the source of the copy.
                     cx.defid_for_inlined_node(node_id).unwrap()
@@ -1846,7 +1846,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     // crate should already contain debuginfo for it. More importantly, the
     // global might not even exist in un-inlined form anywhere which would lead
     // to a linker errors.
-    if cx.tcx().map.is_inlined(node_id) {
+    if cx.tcx().map.is_inlined_node_id(node_id) {
         return;
     }
 

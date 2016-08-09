@@ -11,7 +11,6 @@
 use dep_graph::DepNode;
 use hir;
 use hir::map::DefPathData;
-use hir::def_id::DefId;
 use mir::mir_map::MirMap;
 use mir::repr::{Mir, Promoted};
 use ty::TyCtxt;
@@ -73,9 +72,6 @@ impl<'a, 'tcx> MirSource {
 /// Various information about pass.
 pub trait Pass {
     // fn should_run(Session) to check if pass should run?
-    fn dep_node(&self, def_id: DefId) -> DepNode<DefId> {
-        DepNode::MirPass(def_id)
-    }
     fn name(&self) -> &str {
         let name = unsafe { ::std::intrinsics::type_name::<Self>() };
         if let Some(tail) = name.rfind(":") {
@@ -119,10 +115,11 @@ impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
                     map: &mut MirMap<'tcx>,
                     hooks: &mut [Box<for<'s> MirPassHook<'s>>])
     {
-        for (&id, mir) in &mut map.map {
-            let def_id = tcx.map.local_def_id(id);
-            let _task = tcx.dep_graph.in_task(self.dep_node(def_id));
-
+        let def_ids = map.map.keys();
+        for def_id in def_ids {
+            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
+            let mir = map.map.get_mut(&def_id).unwrap();
+            let id = tcx.map.as_local_node_id(def_id).unwrap();
             let src = MirSource::from_node(tcx, id);
 
             for hook in &mut *hooks {

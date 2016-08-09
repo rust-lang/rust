@@ -17,6 +17,7 @@ mod directory;
 mod dirty_clean;
 mod hash;
 mod load;
+mod preds;
 mod save;
 mod util;
 mod work_product;

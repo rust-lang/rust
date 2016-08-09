@@ -525,7 +525,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn retrace_path(self, path: &DefPath) -> Option<DefId> {
-        debug!("retrace_path(path={:?})", path);
+        debug!("retrace_path(path={:?}, krate={:?})", path, self.crate_name(path.krate));
 
         let root_key = DefKey {
             parent: None,

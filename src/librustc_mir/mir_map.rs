@@ -18,6 +18,7 @@
 
 use build;
 use rustc::dep_graph::DepNode;
+use rustc::hir::def_id::DefId;
 use rustc::mir::repr::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
@@ -29,7 +30,6 @@ use rustc::infer::InferCtxtBuilder;
 use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
-use rustc::util::nodemap::NodeMap;
 use rustc::hir;
 use rustc::hir::intravisit::{self, FnKind, Visitor};
 use syntax::ast;
@@ -38,15 +38,13 @@ use syntax_pos::Span;
 use std::mem;
 
 pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MirMap<'tcx> {
-    let mut map = MirMap {
-        map: NodeMap(),
-    };
+    let mut map = MirMap::new(tcx.dep_graph.clone());
     {
         let mut dump = BuildMir {
             tcx: tcx,
             map: &mut map,
         };
-        tcx.visit_all_items_in_krate(DepNode::MirMapConstruction, &mut dump);
+        tcx.visit_all_items_in_krate(DepNode::Mir, &mut dump);
     }
     map
 }
@@ -94,6 +92,7 @@ struct BuildMir<'a, 'tcx: 'a> {
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(Cx<'b, 'gcx, 'tcx>).
 struct CxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     src: MirSource,
+    def_id: DefId,
     infcx: InferCtxtBuilder<'a, 'gcx, 'tcx>,
     map: &'a mut MirMap<'gcx>,
 }
@@ -101,9 +100,11 @@ struct CxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> BuildMir<'a, 'gcx> {
     fn cx<'b>(&'b mut self, src: MirSource) -> CxBuilder<'b, 'gcx, 'tcx> {
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, src.item_id());
+        let def_id = self.tcx.map.local_def_id(src.item_id());
         CxBuilder {
             src: src,
             infcx: self.tcx.infer_ctxt(None, Some(param_env), ProjectionMode::AnyFinal),
+            def_id: def_id,
             map: self.map
         }
     }
@@ -133,7 +134,7 @@ impl<'a, 'gcx, 'tcx> CxBuilder<'a, 'gcx, 'tcx> {
             mir
         });
 
-        assert!(self.map.map.insert(src.item_id(), mir).is_none())
+        assert!(self.map.map.insert(self.def_id, mir).is_none())
     }
 }
 

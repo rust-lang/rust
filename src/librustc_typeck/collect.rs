@@ -1442,6 +1442,7 @@ fn type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         // NB. Since the `memoized` function enters a new task, and we
         // are giving this task access to the item `item`, we must
         // register a read.
+        assert!(!ccx.tcx.map.is_inlined_def_id(item_def_id));
         ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id));
         compute_type_scheme_of_item(ccx, item)
     })
@@ -1569,6 +1570,7 @@ fn type_scheme_of_foreign_item<'a, 'tcx>(
         // NB. Since the `memoized` function enters a new task, and we
         // are giving this task access to the item `item`, we must
         // register a read.
+        assert!(!ccx.tcx.map.is_inlined_def_id(item_def_id));
         ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id));
         compute_type_scheme_of_foreign_item(ccx, item, abi)
     })
