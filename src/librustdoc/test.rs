@@ -90,8 +90,7 @@ pub fn run(input: &str,
                                        cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-    let mut cfg = config::build_configuration(&sess);
-    cfg.extend(config::parse_cfgspecs(cfgs.clone()));
+    let cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
     let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
     let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
@@ -247,8 +246,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     let mut control = driver::CompileController::basic();
-    let mut cfg = config::build_configuration(&sess);
-    cfg.extend(config::parse_cfgspecs(cfgs.clone()));
+    let cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
     let out = Some(outdir.lock().unwrap().path().to_path_buf());
 
     if no_run {

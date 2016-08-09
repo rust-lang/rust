@@ -56,6 +56,7 @@ pub struct CrateReader<'a> {
     next_crate_num: ast::CrateNum,
     foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
     local_crate_name: String,
+    local_crate_config: ast::CrateConfig,
 }
 
 impl<'a> visit::Visitor for LocalCrateReader<'a> {
@@ -152,13 +153,16 @@ enum LoadResult {
 impl<'a> CrateReader<'a> {
     pub fn new(sess: &'a Session,
                cstore: &'a CStore,
-               local_crate_name: &str) -> CrateReader<'a> {
+               local_crate_name: &str,
+               local_crate_config: ast::CrateConfig)
+               -> CrateReader<'a> {
         CrateReader {
             sess: sess,
             cstore: cstore,
             next_crate_num: cstore.next_crate_num(),
             foreign_item_map: FnvHashMap(),
             local_crate_name: local_crate_name.to_owned(),
+            local_crate_config: local_crate_config,
         }
     }
 
@@ -561,7 +565,7 @@ impl<'a> CrateReader<'a> {
                 // NB: Don't use parse::parse_tts_from_source_str because it parses with
                 // quote_depth > 0.
                 let mut p = parse::new_parser_from_source_str(&self.sess.parse_sess,
-                                                              self.sess.opts.cfg.clone(),
+                                                              self.local_crate_config.clone(),
                                                               source_name.clone(),
                                                               body);
                 let lo = p.span.lo;
@@ -863,7 +867,7 @@ impl<'a> LocalCrateReader<'a> {
         LocalCrateReader {
             sess: sess,
             cstore: cstore,
-            creader: CrateReader::new(sess, cstore, local_crate_name),
+            creader: CrateReader::new(sess, cstore, local_crate_name, krate.config.clone()),
             krate: krate,
             definitions: defs,
         }
