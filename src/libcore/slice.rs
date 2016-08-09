@@ -105,11 +105,11 @@ pub trait SliceExt {
     fn binary_search(&self, x: &Self::Item) -> Result<usize, usize>
         where Self::Item: Ord;
     #[stable(feature = "core", since = "1.6.0")]
-    fn binary_search_by<F>(&self, f: F) -> Result<usize, usize>
-        where F: FnMut(&Self::Item) -> Ordering;
+    fn binary_search_by<'a, F>(&'a self, f: F) -> Result<usize, usize>
+        where F: FnMut(&'a Self::Item) -> Ordering;
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
-    fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
-        where F: FnMut(&Self::Item) -> B,
+    fn binary_search_by_key<'a, B, F>(&'a self, b: &B, f: F) -> Result<usize, usize>
+        where F: FnMut(&'a Self::Item) -> B,
               B: Ord;
     #[stable(feature = "core", since = "1.6.0")]
     fn len(&self) -> usize;
@@ -301,8 +301,8 @@ impl<T> SliceExt for [T] {
         self as *const [T] as *const T
     }
 
-    fn binary_search_by<F>(&self, mut f: F) -> Result<usize, usize> where
-        F: FnMut(&T) -> Ordering
+    fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
+        where F: FnMut(&'a T) -> Ordering
     {
         let mut base = 0usize;
         let mut s = self;
@@ -514,8 +514,8 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn binary_search_by_key<B, F>(&self, b: &B, mut f: F) -> Result<usize, usize>
-        where F: FnMut(&Self::Item) -> B,
+    fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>
+        where F: FnMut(&'a Self::Item) -> B,
               B: Ord
     {
         self.binary_search_by(|k| f(k).cmp(b))
