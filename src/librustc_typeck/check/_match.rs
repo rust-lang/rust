@@ -37,12 +37,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.write_ty(pat.id, expected);
             }
             PatKind::Lit(ref lt) => {
-                self.check_expr(&lt);
-                let expr_ty = self.expr_ty(&lt);
+                let expr_t = self.check_expr(&lt);
 
                 // Byte string patterns behave the same way as array patterns
                 // They can denote both statically and dynamically sized byte arrays
-                let mut pat_ty = expr_ty;
+                let mut pat_ty = expr_t;
                 if let hir::ExprLit(ref lt) = lt.node {
                     if let ast::LitKind::ByteStr(_) = lt.node {
                         let expected_ty = self.structurally_resolved_type(pat.span, expected);
@@ -63,7 +62,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // relation at all but rather that there exists a LUB (so
                 // that they can be compared). However, in practice,
                 // constants are always scalars or strings.  For scalars
-                // subtyping is irrelevant, and for strings `expr_ty` is
+                // subtyping is irrelevant, and for strings `expr_t` is
                 // type is `&'static str`, so if we say that
                 //
                 //     &'static str <: expected
@@ -72,11 +71,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_suptype(pat.span, expected, pat_ty);
             }
             PatKind::Range(ref begin, ref end) => {
-                self.check_expr(begin);
-                self.check_expr(end);
-
-                let lhs_ty = self.expr_ty(begin);
-                let rhs_ty = self.expr_ty(end);
+                let lhs_ty = self.check_expr(begin);
+                let rhs_ty = self.check_expr(end);
 
                 // Check that both end-points are of numeric or char type.
                 let numeric_or_char = |ty: Ty| ty.is_numeric() || ty.is_char();
@@ -385,8 +381,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         });
         let discrim_ty;
         if let Some(m) = contains_ref_bindings {
-            self.check_expr_with_lvalue_pref(discrim, LvaluePreference::from_mutbl(m));
-            discrim_ty = self.expr_ty(discrim);
+            discrim_ty = self.check_expr_with_lvalue_pref(discrim, LvaluePreference::from_mutbl(m));
         } else {
             // ...but otherwise we want to use any supertype of the
             // discriminant. This is sort of a workaround, see note (*) in
@@ -429,8 +424,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if let Some(ref e) = arm.guard {
                 self.check_expr_has_type(e, tcx.types.bool);
             }
-            self.check_expr_with_expectation(&arm.body, expected);
-            let arm_ty = self.expr_ty(&arm.body);
+            let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
 
             if result_ty.references_error() || arm_ty.references_error() {
                 result_ty = tcx.types.err;

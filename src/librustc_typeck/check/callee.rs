@@ -47,8 +47,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       arg_exprs: &'gcx [P<hir::Expr>],
                       expected: Expectation<'tcx>) -> Ty<'tcx>
     {
-        self.check_expr(callee_expr);
-        let original_callee_ty = self.expr_ty(callee_expr);
+        let original_callee_ty = self.check_expr(callee_expr);
 
         let mut autoderef = self.autoderef(callee_expr.span, original_callee_ty);
         let result = autoderef.by_ref().flat_map(|(adj_ty, idx)| {

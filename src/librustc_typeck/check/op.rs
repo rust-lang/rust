@@ -25,9 +25,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               lhs_expr: &'gcx hir::Expr,
                               rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
     {
-        self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
+        let lhs_ty = self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
 
-        let lhs_ty = self.resolve_type_vars_with_obligations(self.expr_ty(lhs_expr));
+        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
         let (rhs_ty, return_ty) =
             self.check_overloaded_binop(expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::Yes);
         let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
@@ -69,8 +69,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                lhs_expr,
                rhs_expr);
 
-        self.check_expr(lhs_expr);
-        let lhs_ty = self.resolve_type_vars_with_obligations(self.expr_ty(lhs_expr));
+        let lhs_ty = self.check_expr(lhs_expr);
+        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
         let ty = match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
