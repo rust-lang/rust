@@ -24,12 +24,20 @@ case $TARGET in
         export PREFIX=arm-linux-gnueabihf-
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
         ;;
+    mips-unknown-linux-gnu)
+        # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
+        if [[ -z $DOCKER ]]; then
+            export DOCKER=y
+        fi
+        export PREFIX=mips-linux-gnu-
+        export QEMU=qemu-mips
+        export QEMU_LD_PREFIX=/usr/mips-linux-gnu
+        ;;
     powerpc-unknown-linux-gnu)
         export PREFIX=powerpc-linux-gnu-
         export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
         ;;
     powerpc64le-unknown-linux-gnu)
-        # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
         fi

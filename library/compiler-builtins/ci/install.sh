@@ -12,6 +12,7 @@ install_deps() {
 
 install_qemu() {
     case $TARGET in
+        mips-unknown-linux-gnu |
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
                     qemu-user
@@ -34,6 +35,10 @@ install_c_toolchain() {
         aarch64-unknown-linux-gnu)
             sudo apt-get install -y --no-install-recommends \
                  gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+            ;;
+        mips-unknown-linux-gnu)
+            apt-get install -y --no-install-recommends \
+                    gcc-mips-linux-gnu libc6-dev-mips-cross
             ;;
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \

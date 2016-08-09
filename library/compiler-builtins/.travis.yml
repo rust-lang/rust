@@ -48,6 +48,10 @@ matrix:
         apt:
           packages:
             - gcc-multilib
+    - env: TARGET=mips-unknown-linux-gnu
+      os: linux
+      services: docker
+      sudo: required
     - env: TARGET=powerpc-unknown-linux-gnu
       os: linux
       dist: trusty
