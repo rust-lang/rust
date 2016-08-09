@@ -21,7 +21,7 @@ run_tests() {
         if [[ -z $DONT_RUN_TESTS ]]; then
             $QEMU target/**/release/rustc_builtins-*
         fi
-    else
+    else if [[ -z $DONT_RUN_TESTS ]]; then
         cargo test --target $TARGET
         cargo test --target $TARGET --release
     fi
