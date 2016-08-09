@@ -1180,7 +1180,7 @@ impl String {
     #[inline]
     #[unstable(feature = "insert_str",
                reason = "recent addition",
-               issue = "0")]
+               issue = "35553")]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         let len = self.len();
         assert!(idx <= len);
