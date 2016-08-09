@@ -32,9 +32,19 @@ inspect() {
 }
 
 main() {
-    build
-    run_tests
-    inspect
+    if [[ $DOCKER ]]; then
+        docker run \
+               -e TARGET=$TARGET \
+               -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
+               -v $(pwd)/ci:/mnt \
+               ubuntu:16.04 \
+               sh -c "bash /mnt/install.sh; bash /mnt/script.sh"
+    else
+        build
+        run_tests
+        inspect
+    fi
+
 }
 
 main

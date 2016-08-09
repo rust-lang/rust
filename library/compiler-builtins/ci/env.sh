@@ -29,6 +29,7 @@ case $TARGET in
         export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
         ;;
     powerpc64le-unknown-linux-gnu)
+        export DOCKER=y
         export PREFIX=powerpc64le-linux-gnu-
         export QEMU=qemu-ppc64le
         export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu

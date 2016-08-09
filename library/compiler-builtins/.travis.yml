@@ -63,6 +63,7 @@ matrix:
     - env: TARGET=powerpc64le-unknown-linux-gnu
       os: linux
       dist: trusty
+      services: docker
       sudo: required
       addons:
         apt:

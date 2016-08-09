@@ -2,6 +2,15 @@ set -ex
 
 . $(dirname $0)/env.sh
 
+install_qemu() {
+    case $TARGET in
+        powerpc64-unknown-linux-gnu)
+            sudo apt-get install -y --no-install-recommends \
+                 qemu-user
+            ;;
+    esac
+}
+
 install_binutils() {
     case $TRAVIS_OS_NAME in
         osx)
@@ -49,11 +58,14 @@ EOF
 }
 
 main() {
-    install_binutils
-    install_c_toolchain
-    install_rust
-    add_rustup_target
-    configure_cargo
+    if [[ -z $DOCKER ]]; then
+        install_qemu
+        install_binutils
+        install_c_toolchain
+        install_rust
+        add_rustup_target
+        configure_cargo
+    fi
 }
 
 main
