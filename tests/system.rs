@@ -208,8 +208,11 @@ fn read_config(filename: &str) -> Config {
     let mut config = if !sig_comments.is_empty() {
         get_config(sig_comments.get("config").map(|x| &(*x)[..]))
     } else {
-        get_config(Path::new(filename).with_extension("toml").file_name().and_then(std::ffi::OsStr::to_str))
-    }; 
+        get_config(Path::new(filename)
+            .with_extension("toml")
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str))
+    };
 
     for (key, val) in &sig_comments {
         if key != "target" && key != "config" {
