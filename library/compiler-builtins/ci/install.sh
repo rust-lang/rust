@@ -2,6 +2,13 @@ set -ex
 
 . $(dirname $0)/env.sh
 
+install_deps() {
+    if [[ ${DOCKER} == "y" ]]; then
+        apt-get install -y --no-install-recommends \
+                ca-certificates curl
+    fi
+}
+
 install_qemu() {
     case $TARGET in
         powerpc64-unknown-linux-gnu)
@@ -63,6 +70,7 @@ EOF
 
 main() {
     if [[ ${DOCKER:-n} != "y" ]]; then
+        install_deps
         install_qemu
         install_binutils
         install_c_toolchain
