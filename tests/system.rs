@@ -205,6 +205,9 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
 
 fn read_config(filename: &str) -> Config {
     let sig_comments = read_significant_comments(&filename);
+    // Look for a config file... If there is a 'config' property in the significant comments, use
+    // that. Otherwise, if there are no significant comments at all, look for a config file with
+    // the same name as the test file.
     let mut config = if !sig_comments.is_empty() {
         get_config(sig_comments.get("config").map(|x| &(*x)[..]))
     } else {
@@ -253,7 +256,9 @@ pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String
     handle_result(write_result, target).map(|_| format_report)
 }
 
-// Reads test config file from comments and reads its contents.
+// Reads test config file using the supplied (optional) file name. If there's no file name or the
+// file doesn't exist, just return the default config. Otherwise, the file must be read
+// successfully.
 fn get_config(config_file: Option<&str>) -> Config {
     let config_file_name = match config_file {
         None => return Default::default(),
