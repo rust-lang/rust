@@ -14,9 +14,13 @@ run_tests() {
 
     if [[ $QEMU ]]; then
         cargo test --target $TARGET --no-run
-        $QEMU target/**/debug/rustc_builtins-*
+        if [[ -z $DONT_RUN_TESTS ]]; then
+           $QEMU target/**/debug/rustc_builtins-*
+        fi
         cargo test --target $TARGET --release --no-run
-        $QEMU target/**/release/rustc_builtins-*
+        if [[ -z $DONT_RUN_TESTS ]]; then
+            $QEMU target/**/release/rustc_builtins-*
+        fi
     else
         cargo test --target $TARGET
         cargo test --target $TARGET --release
