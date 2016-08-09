@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) { } //~ ERROR E0263
+fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) {
+    //~^ ERROR E0263
+    //~| NOTE declared twice
+    //~| NOTE previous declaration here
+}
 
 fn main() {}
