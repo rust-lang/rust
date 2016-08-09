@@ -45,7 +45,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       call_expr: &'gcx hir::Expr,
                       callee_expr: &'gcx hir::Expr,
                       arg_exprs: &'gcx [P<hir::Expr>],
-                      expected: Expectation<'tcx>)
+                      expected: Expectation<'tcx>) -> Ty<'tcx>
     {
         self.check_expr(callee_expr);
         let original_callee_ty = self.expr_ty(callee_expr);
@@ -60,20 +60,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match result {
             None => {
                 // this will report an error since original_callee_ty is not a fn
-                self.confirm_builtin_call(call_expr, original_callee_ty, arg_exprs, expected);
+                self.confirm_builtin_call(call_expr, original_callee_ty, arg_exprs, expected)
             }
 
             Some(CallStep::Builtin) => {
-                self.confirm_builtin_call(call_expr, callee_ty, arg_exprs, expected);
+                self.confirm_builtin_call(call_expr, callee_ty, arg_exprs, expected)
             }
 
             Some(CallStep::DeferredClosure(fn_sig)) => {
-                self.confirm_deferred_closure_call(call_expr, arg_exprs, expected, fn_sig);
+                self.confirm_deferred_closure_call(call_expr, arg_exprs, expected, fn_sig)
             }
 
             Some(CallStep::Overloaded(method_callee)) => {
                 self.confirm_overloaded_call(call_expr, callee_expr,
-                                             arg_exprs, expected, method_callee);
+                                             arg_exprs, expected, method_callee)
             }
         }
     }
@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             call_expr: &hir::Expr,
                             callee_ty: Ty<'tcx>,
                             arg_exprs: &'gcx [P<hir::Expr>],
-                            expected: Expectation<'tcx>)
+                            expected: Expectation<'tcx>) -> Ty<'tcx>
     {
         let error_fn_sig;
 
@@ -245,14 +245,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   fn_sig.variadic,
                                   TupleArgumentsFlag::DontTupleArguments);
 
-        self.write_call(call_expr, fn_sig.output);
+        self.write_ty(call_expr.id, fn_sig.output)
     }
 
     fn confirm_deferred_closure_call(&self,
                                      call_expr: &hir::Expr,
                                      arg_exprs: &'gcx [P<hir::Expr>],
                                      expected: Expectation<'tcx>,
-                                     fn_sig: ty::FnSig<'tcx>)
+                                     fn_sig: ty::FnSig<'tcx>) -> Ty<'tcx>
     {
         // `fn_sig` is the *signature* of the cosure being called. We
         // don't know the full details yet (`Fn` vs `FnMut` etc), but we
@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   fn_sig.variadic,
                                   TupleArgumentsFlag::TupleArguments);
 
-        self.write_call(call_expr, fn_sig.output);
+        self.write_ty(call_expr.id, fn_sig.output)
     }
 
     fn confirm_overloaded_call(&self,
@@ -280,7 +280,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                callee_expr: &'gcx hir::Expr,
                                arg_exprs: &'gcx [P<hir::Expr>],
                                expected: Expectation<'tcx>,
-                               method_callee: ty::MethodCallee<'tcx>)
+                               method_callee: ty::MethodCallee<'tcx>) -> Ty<'tcx>
     {
         let output_type =
             self.check_method_argument_types(call_expr.span,
@@ -289,9 +289,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              arg_exprs,
                                              TupleArgumentsFlag::TupleArguments,
                                              expected);
-        self.write_call(call_expr, output_type);
+        let ty = self.write_ty(call_expr.id, output_type);
 
         self.write_overloaded_call_method_map(call_expr, method_callee);
+        ty
     }
 
     fn write_overloaded_call_method_map(&self,

@@ -371,7 +371,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        discrim: &'gcx hir::Expr,
                        arms: &'gcx [hir::Arm],
                        expected: Expectation<'tcx>,
-                       match_src: hir::MatchSource) {
+                       match_src: hir::MatchSource) -> Ty<'tcx> {
         let tcx = self.tcx;
 
         // Not entirely obvious: if matches may create ref bindings, we
@@ -480,7 +480,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
         }
 
-        self.write_ty(expr.id, result_ty);
+        self.write_ty(expr.id, result_ty)
     }
 }
 
