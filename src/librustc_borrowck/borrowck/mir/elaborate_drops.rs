@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use indexed_set::IdxSetBuf;
-use super::gather_moves::{MoveData, MovePathIndex, MovePathContent, Location};
+use super::gather_moves::{MoveData, MovePathIndex, MovePathContent};
 use super::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use super::dataflow::{DataflowResults};
 use super::{drop_flag_effects_for_location, on_all_children_bits};
@@ -146,9 +146,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             dead: self.flow_uninits.sets().on_entry_set_for(loc.block.index())
                 .to_owned(),
         };
-        for stmt in 0..loc.index {
+        for stmt in 0..loc.statement_index {
             data.apply_location(self.tcx, self.mir, self.env,
-                                Location { block: loc.block, index: stmt });
+                                Location { block: loc.block, statement_index: stmt });
         }
         data
     }
@@ -226,7 +226,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
             let init_data = self.initialization_data_at(Location {
                 block: bb,
-                index: data.statements.len()
+                statement_index: data.statements.len()
             });
 
             let path = self.move_data().rev_lookup.find(location);
@@ -249,7 +249,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn elaborate_drops(&mut self)
     {
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
-            let loc = Location { block: bb, index: data.statements.len() };
+            let loc = Location { block: bb, statement_index: data.statements.len() };
             let terminator = data.terminator();
 
             let resume_block = self.patch.resume_block();
@@ -359,9 +359,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 unwind: Some(unwind)
             }, bb);
             on_all_children_bits(self.tcx, self.mir, self.move_data(), path, |child| {
-                self.set_drop_flag(Location { block: target, index: 0 },
+                self.set_drop_flag(Location { block: target, statement_index: 0 },
                                    child, DropFlagState::Present);
-                self.set_drop_flag(Location { block: unwind, index: 0 },
+                self.set_drop_flag(Location { block: unwind, statement_index: 0 },
                                    child, DropFlagState::Present);
             });
         }
@@ -741,7 +741,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let drop_block = self.drop_block(c);
         if update_drop_flag {
             self.set_drop_flag(
-                Location { block: drop_block, index: 0 },
+                Location { block: drop_block, statement_index: 0 },
                 c.path,
                 DropFlagState::Absent
             );
@@ -924,7 +924,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flags_on_init(&mut self) {
-        let loc = Location { block: START_BLOCK, index: 0 };
+        let loc = Location { block: START_BLOCK, statement_index: 0 };
         let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
@@ -939,7 +939,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             } = data.terminator().kind {
                 assert!(!self.patch.is_patched(bb));
 
-                let loc = Location { block: tgt, index: 0 };
+                let loc = Location { block: tgt, statement_index: 0 };
                 let path = self.move_data().rev_lookup.find(lv);
                 on_all_children_bits(
                     self.tcx, self.mir, self.move_data(), path,
@@ -950,7 +950,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flags_for_args(&mut self) {
-        let loc = Location { block: START_BLOCK, index: 0 };
+        let loc = Location { block: START_BLOCK, statement_index: 0 };
         super::drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.env, |path, ds| {
                 self.set_drop_flag(loc, path, ds);
@@ -990,7 +990,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         }
                     }
                 }
-                let loc = Location { block: bb, index: i };
+                let loc = Location { block: bb, statement_index: i };
                 super::drop_flag_effects_for_location(
                     self.tcx, self.mir, self.env, loc, |path, ds| {
                         if ds == DropFlagState::Absent || allow_initializations {
@@ -1008,7 +1008,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             } = data.terminator().kind {
                 assert!(!self.patch.is_patched(bb));
 
-                let loc = Location { block: bb, index: data.statements.len() };
+                let loc = Location { block: bb, statement_index: data.statements.len() };
                 let path = self.move_data().rev_lookup.find(lv);
                 on_all_children_bits(
                     self.tcx, self.mir, self.move_data(), path,

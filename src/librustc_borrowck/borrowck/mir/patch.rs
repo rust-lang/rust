@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::gather_moves::Location;
 use rustc::ty::Ty;
 use rustc::mir::repr::*;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -89,7 +88,7 @@ impl<'tcx> MirPatch<'tcx> {
         };
         Location {
             block: bb,
-            index: offset
+            statement_index: offset
         }
     }
 
@@ -149,12 +148,12 @@ impl<'tcx> MirPatch<'tcx> {
             }
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}",
                    stmt, loc, delta);
-            loc.index += delta;
+            loc.statement_index += delta;
             let source_info = Self::source_info_for_index(
                 &mir[loc.block], loc
             );
             mir[loc.block].statements.insert(
-                loc.index, Statement {
+                loc.statement_index, Statement {
                     source_info: source_info,
                     kind: stmt
                 });
@@ -163,7 +162,7 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn source_info_for_index(data: &BasicBlockData, loc: Location) -> SourceInfo {
-        match data.statements.get(loc.index) {
+        match data.statements.get(loc.statement_index) {
             Some(stmt) => stmt.source_info,
             None => data.terminator().source_info
         }

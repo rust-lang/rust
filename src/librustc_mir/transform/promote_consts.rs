@@ -28,11 +28,10 @@ use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
-use build::Location;
-
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use std::mem;
+use std::usize;
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -77,13 +76,12 @@ pub enum Candidate {
 
 struct TempCollector {
     temps: IndexVec<Temp, TempState>,
-    location: Location,
     span: Span
 }
 
 impl<'tcx> Visitor<'tcx> for TempCollector {
-    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext) {
-        self.super_lvalue(lvalue, context);
+    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext, location: Location) {
+        self.super_lvalue(lvalue, context, location);
         if let Lvalue::Temp(index) = *lvalue {
             // Ignore drops, if the temp gets promoted,
             // then it's constant and thus drop is noop.
@@ -101,7 +99,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector {
                     LvalueContext::Store |
                     LvalueContext::Call => {
                         *temp = TempState::Defined {
-                            location: self.location,
+                            location: location,
                             uses: 0
                         };
                         return;
@@ -126,27 +124,11 @@ impl<'tcx> Visitor<'tcx> for TempCollector {
     fn visit_source_info(&mut self, source_info: &SourceInfo) {
         self.span = source_info.span;
     }
-
-    fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>) {
-        assert_eq!(self.location.block, bb);
-        self.super_statement(bb, statement);
-        self.location.statement_index += 1;
-    }
-
-    fn visit_basic_block_data(&mut self, bb: BasicBlock, data: &BasicBlockData<'tcx>) {
-        self.location.statement_index = 0;
-        self.location.block = bb;
-        self.super_basic_block_data(bb, data);
-    }
 }
 
 pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> IndexVec<Temp, TempState> {
     let mut collector = TempCollector {
         temps: IndexVec::from_elem(TempState::Undefined, &mir.temp_decls),
-        location: Location {
-            block: START_BLOCK,
-            statement_index: 0
-        },
         span: mir.span
     };
     for (bb, data) in rpo {
@@ -266,9 +248,15 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // Then, recurse for components in the Rvalue or Call.
         if stmt_idx < no_stmts {
-            self.visit_rvalue(rvalue.as_mut().unwrap());
+            self.visit_rvalue(rvalue.as_mut().unwrap(), Location {
+                block: bb,
+                statement_index: stmt_idx
+            });
         } else {
-            self.visit_terminator_kind(bb, call.as_mut().unwrap());
+            self.visit_terminator_kind(bb, call.as_mut().unwrap(), Location {
+                block: bb,
+                statement_index: no_stmts
+            });
         }
 
         let new_temp = self.promoted.temp_decls.push(TempDecl {
@@ -327,7 +315,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 }
             }
         };
-        self.visit_rvalue(&mut rvalue);
+        self.visit_rvalue(&mut rvalue, Location{
+            block: BasicBlock::new(0),
+            statement_index: usize::MAX
+        });
         self.assign(Lvalue::ReturnPointer, rvalue, span);
         self.source.promoted.push(self.promoted);
     }
@@ -335,11 +326,14 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
 /// Replaces all temporaries with their promoted counterparts.
 impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
-    fn visit_lvalue(&mut self, lvalue: &mut Lvalue<'tcx>, context: LvalueContext) {
+    fn visit_lvalue(&mut self,
+                    lvalue: &mut Lvalue<'tcx>,
+                    context: LvalueContext,
+                    location: Location) {
         if let Lvalue::Temp(ref mut temp) = *lvalue {
             *temp = self.promote_temp(*temp);
         }
-        self.super_lvalue(lvalue, context);
+        self.super_lvalue(lvalue, context, location);
     }
 }
 

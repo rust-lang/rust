@@ -37,8 +37,6 @@ use syntax_pos::Span;
 use std::collections::hash_map::Entry;
 use std::fmt;
 
-use build::Location;
-
 use super::promote_consts::{self, Candidate, TempState};
 
 bitflags! {
@@ -147,7 +145,6 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     return_qualif: Option<Qualif>,
     qualif: Qualif,
     const_fn_arg_vars: BitVector,
-    location: Location,
     temp_promotion_state: IndexVec<Temp, TempState>,
     promotion_candidates: Vec<Candidate>
 }
@@ -178,10 +175,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return_qualif: None,
             qualif: Qualif::empty(),
             const_fn_arg_vars: BitVector::new(mir.var_decls.len()),
-            location: Location {
-                block: START_BLOCK,
-                statement_index: 0
-            },
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -293,7 +286,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Assign the current qualification to the given destination.
-    fn assign(&mut self, dest: &Lvalue<'tcx>) {
+    fn assign(&mut self, dest: &Lvalue<'tcx>, location: Location) {
         let qualif = self.qualif;
         let span = self.span;
         let store = |slot: &mut Option<Qualif>| {
@@ -331,7 +324,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             // This must be an explicit assignment.
             _ => {
                 // Catch more errors in the destination.
-                self.visit_lvalue(dest, LvalueContext::Store);
+                self.visit_lvalue(dest, LvalueContext::Store, location);
                 self.statement_like();
             }
         }
@@ -399,7 +392,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                     self.qualif = Qualif::NOT_CONST;
                     for index in 0..mir.var_decls.len() {
                         if !self.const_fn_arg_vars.contains(index) {
-                            self.assign(&Lvalue::Var(Var::new(index)));
+                            self.assign(&Lvalue::Var(Var::new(index)), Location {
+                                block: BasicBlock::new(0),
+                                statement_index: 0
+                            });
                         }
                     }
 
@@ -445,7 +441,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
 impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
-    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext) {
+    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext, location: Location) {
         match *lvalue {
             Lvalue::Arg(_) => {
                 self.add(Qualif::FN_ARGUMENT);
@@ -477,7 +473,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
             Lvalue::Projection(ref proj) => {
                 self.nest(|this| {
-                    this.super_lvalue(lvalue, context);
+                    this.super_lvalue(lvalue, context, location);
                     match proj.elem {
                         ProjectionElem::Deref => {
                             if !this.try_consume() {
@@ -523,11 +519,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn visit_operand(&mut self, operand: &Operand<'tcx>) {
+    fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         match *operand {
             Operand::Consume(_) => {
                 self.nest(|this| {
-                    this.super_operand(operand);
+                    this.super_operand(operand, location);
                     this.try_consume();
                 });
             }
@@ -566,9 +562,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         // Recurse through operands and lvalues.
-        self.super_rvalue(rvalue);
+        self.super_rvalue(rvalue, location);
 
         match *rvalue {
             Rvalue::Use(_) |
@@ -644,7 +640,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
 
                 // We might have a candidate for promotion.
-                let candidate = Candidate::Ref(self.location);
+                let candidate = Candidate::Ref(location);
                 if self.mode == Mode::Fn || self.mode == Mode::ConstFn {
                     if !self.qualif.intersects(Qualif::NEVER_PROMOTE) {
                         // We can only promote direct borrows of temps.
@@ -724,9 +720,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self, bb: BasicBlock, kind: &TerminatorKind<'tcx>) {
+    fn visit_terminator_kind(&mut self,
+                             bb: BasicBlock,
+                             kind: &TerminatorKind<'tcx>,
+                             location: Location) {
         if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
-            self.visit_operand(func);
+            self.visit_operand(func, location);
 
             let fn_ty = func.ty(self.mir, self.tcx);
             let (is_shuffle, is_const_fn) = match fn_ty.sty {
@@ -740,7 +739,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
             for (i, arg) in args.iter().enumerate() {
                 self.nest(|this| {
-                    this.visit_operand(arg);
+                    this.visit_operand(arg, location);
                     if is_shuffle && i == 2 && this.mode == Mode::Fn {
                         let candidate = Candidate::ShuffleIndices(bb);
                         if !this.qualif.intersects(Qualif::NEVER_PROMOTE) {
@@ -818,16 +817,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         self.deny_drop();
                     }
                 }
-                self.assign(dest);
+                self.assign(dest, location);
             }
         } else {
             // Qualify any operands inside other terminators.
-            self.super_terminator_kind(bb, kind);
+            self.super_terminator_kind(bb, kind, location);
         }
     }
 
-    fn visit_assign(&mut self, _: BasicBlock, dest: &Lvalue<'tcx>, rvalue: &Rvalue<'tcx>) {
-        self.visit_rvalue(rvalue);
+    fn visit_assign(&mut self,
+                    _: BasicBlock,
+                    dest: &Lvalue<'tcx>,
+                    rvalue: &Rvalue<'tcx>,
+                    location: Location) {
+        self.visit_rvalue(rvalue, location);
 
         // Check the allowed const fn argument forms.
         if let (Mode::ConstFn, &Lvalue::Var(index)) = (self.mode, dest) {
@@ -848,38 +851,22 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        self.assign(dest);
+        self.assign(dest, location);
     }
 
     fn visit_source_info(&mut self, source_info: &SourceInfo) {
         self.span = source_info.span;
     }
 
-    fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>) {
-        assert_eq!(self.location.block, bb);
-        self.nest(|this| {
-            this.visit_source_info(&statement.source_info);
-            match statement.kind {
-                StatementKind::Assign(ref lvalue, ref rvalue) => {
-                    this.visit_assign(bb, lvalue, rvalue);
-                }
-                StatementKind::SetDiscriminant { .. } |
-                StatementKind::StorageLive(_) |
-                StatementKind::StorageDead(_) => {}
-            }
-        });
-        self.location.statement_index += 1;
+    fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
+        self.nest(|this| this.super_statement(bb, statement, location));
     }
 
-    fn visit_terminator(&mut self, bb: BasicBlock, terminator: &Terminator<'tcx>) {
-        assert_eq!(self.location.block, bb);
-        self.nest(|this| this.super_terminator(bb, terminator));
-    }
-
-    fn visit_basic_block_data(&mut self, bb: BasicBlock, data: &BasicBlockData<'tcx>) {
-        self.location.statement_index = 0;
-        self.location.block = bb;
-        self.super_basic_block_data(bb, data);
+    fn visit_terminator(&mut self,
+                        bb: BasicBlock,
+                        terminator: &Terminator<'tcx>,
+                        location: Location) {
+        self.nest(|this| this.super_terminator(bb, terminator, location));
     }
 }
 

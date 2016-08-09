@@ -103,60 +103,70 @@ macro_rules! make_mir_visitor {
 
             fn visit_statement(&mut self,
                                block: BasicBlock,
-                               statement: & $($mutability)* Statement<'tcx>) {
-                self.super_statement(block, statement);
+                               statement: & $($mutability)* Statement<'tcx>,
+                               location: Location) {
+                self.super_statement(block, statement, location);
             }
 
             fn visit_assign(&mut self,
                             block: BasicBlock,
                             lvalue: & $($mutability)* Lvalue<'tcx>,
-                            rvalue: & $($mutability)* Rvalue<'tcx>) {
-                self.super_assign(block, lvalue, rvalue);
+                            rvalue: & $($mutability)* Rvalue<'tcx>,
+                            location: Location) {
+                self.super_assign(block, lvalue, rvalue, location);
             }
 
             fn visit_terminator(&mut self,
                                 block: BasicBlock,
-                                terminator: & $($mutability)* Terminator<'tcx>) {
-                self.super_terminator(block, terminator);
+                                terminator: & $($mutability)* Terminator<'tcx>,
+                                location: Location) {
+                self.super_terminator(block, terminator, location);
             }
 
             fn visit_terminator_kind(&mut self,
                                      block: BasicBlock,
-                                     kind: & $($mutability)* TerminatorKind<'tcx>) {
-                self.super_terminator_kind(block, kind);
+                                     kind: & $($mutability)* TerminatorKind<'tcx>,
+                                     location: Location) {
+                self.super_terminator_kind(block, kind, location);
             }
 
             fn visit_assert_message(&mut self,
-                                    msg: & $($mutability)* AssertMessage<'tcx>) {
-                self.super_assert_message(msg);
+                                    msg: & $($mutability)* AssertMessage<'tcx>,
+                                    location: Location) {
+                self.super_assert_message(msg, location);
             }
 
             fn visit_rvalue(&mut self,
-                            rvalue: & $($mutability)* Rvalue<'tcx>) {
-                self.super_rvalue(rvalue);
+                            rvalue: & $($mutability)* Rvalue<'tcx>,
+                            location: Location) {
+                self.super_rvalue(rvalue, location);
             }
 
             fn visit_operand(&mut self,
-                             operand: & $($mutability)* Operand<'tcx>) {
-                self.super_operand(operand);
+                             operand: & $($mutability)* Operand<'tcx>,
+                             location: Location) {
+                self.super_operand(operand, location);
             }
 
             fn visit_lvalue(&mut self,
                             lvalue: & $($mutability)* Lvalue<'tcx>,
-                            context: LvalueContext) {
-                self.super_lvalue(lvalue, context);
+                            context: LvalueContext,
+                            location: Location) {
+                self.super_lvalue(lvalue, context, location);
             }
 
             fn visit_projection(&mut self,
                                 lvalue: & $($mutability)* LvalueProjection<'tcx>,
-                                context: LvalueContext) {
-                self.super_projection(lvalue, context);
+                                context: LvalueContext,
+                                location: Location) {
+                self.super_projection(lvalue, context, location);
             }
 
             fn visit_projection_elem(&mut self,
                                      lvalue: & $($mutability)* LvalueElem<'tcx>,
-                                     context: LvalueContext) {
-                self.super_projection_elem(lvalue, context);
+                                     context: LvalueContext,
+                                     location: Location) {
+                self.super_projection_elem(lvalue, context, location);
             }
 
             fn visit_branch(&mut self,
@@ -166,17 +176,20 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_constant(&mut self,
-                              constant: & $($mutability)* Constant<'tcx>) {
-                self.super_constant(constant);
+                              constant: & $($mutability)* Constant<'tcx>,
+                              location: Location) {
+                self.super_constant(constant, location);
             }
 
             fn visit_literal(&mut self,
-                             literal: & $($mutability)* Literal<'tcx>) {
-                self.super_literal(literal);
+                             literal: & $($mutability)* Literal<'tcx>,
+                             location: Location) {
+                self.super_literal(literal, location);
             }
 
             fn visit_def_id(&mut self,
-                            def_id: & $($mutability)* DefId) {
+                            def_id: & $($mutability)* DefId,
+                            _: Location) {
                 self.super_def_id(def_id);
             }
 
@@ -206,18 +219,21 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_const_val(&mut self,
-                               const_val: & $($mutability)* ConstVal) {
+                               const_val: & $($mutability)* ConstVal,
+                               _: Location) {
                 self.super_const_val(const_val);
             }
 
             fn visit_const_usize(&mut self,
-                                 const_usize: & $($mutability)* ConstUsize) {
+                                 const_usize: & $($mutability)* ConstUsize,
+                                 _: Location) {
                 self.super_const_usize(const_usize);
             }
 
             fn visit_typed_const_val(&mut self,
-                                     val: & $($mutability)* TypedConstVal<'tcx>) {
-                self.super_typed_const_val(val);
+                                     val: & $($mutability)* TypedConstVal<'tcx>,
+                                     location: Location) {
+                self.super_typed_const_val(val, location);
             }
 
             fn visit_var_decl(&mut self,
@@ -280,12 +296,16 @@ macro_rules! make_mir_visitor {
                     is_cleanup: _
                 } = *data;
 
+                let mut index = 0;
                 for statement in statements {
-                    self.visit_statement(block, statement);
+                    let location = Location { block: block, statement_index: index };
+                    self.visit_statement(block, statement, location);
+                    index += 1;
                 }
 
                 if let Some(ref $($mutability)* terminator) = *terminator {
-                    self.visit_terminator(block, terminator);
+                    let location = Location { block: block, statement_index: index };
+                    self.visit_terminator(block, terminator, location);
                 }
             }
 
@@ -304,7 +324,8 @@ macro_rules! make_mir_visitor {
 
             fn super_statement(&mut self,
                                block: BasicBlock,
-                               statement: & $($mutability)* Statement<'tcx>) {
+                               statement: & $($mutability)* Statement<'tcx>,
+                               location: Location) {
                 let Statement {
                     ref $($mutability)* source_info,
                     ref $($mutability)* kind,
@@ -314,16 +335,16 @@ macro_rules! make_mir_visitor {
                 match *kind {
                     StatementKind::Assign(ref $($mutability)* lvalue,
                                           ref $($mutability)* rvalue) => {
-                        self.visit_assign(block, lvalue, rvalue);
+                        self.visit_assign(block, lvalue, rvalue, location);
                     }
                     StatementKind::SetDiscriminant{ ref $($mutability)* lvalue, .. } => {
-                        self.visit_lvalue(lvalue, LvalueContext::Store);
+                        self.visit_lvalue(lvalue, LvalueContext::Store, location);
                     }
                     StatementKind::StorageLive(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::StorageLive);
+                        self.visit_lvalue(lvalue, LvalueContext::StorageLive, location);
                     }
                     StatementKind::StorageDead(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::StorageDead);
+                        self.visit_lvalue(lvalue, LvalueContext::StorageDead, location);
                     }
                 }
             }
@@ -331,26 +352,29 @@ macro_rules! make_mir_visitor {
             fn super_assign(&mut self,
                             _block: BasicBlock,
                             lvalue: &$($mutability)* Lvalue<'tcx>,
-                            rvalue: &$($mutability)* Rvalue<'tcx>) {
-                self.visit_lvalue(lvalue, LvalueContext::Store);
-                self.visit_rvalue(rvalue);
+                            rvalue: &$($mutability)* Rvalue<'tcx>,
+                            location: Location) {
+                self.visit_lvalue(lvalue, LvalueContext::Store, location);
+                self.visit_rvalue(rvalue, location);
             }
 
             fn super_terminator(&mut self,
                                 block: BasicBlock,
-                                terminator: &$($mutability)* Terminator<'tcx>) {
+                                terminator: &$($mutability)* Terminator<'tcx>,
+                                location: Location) {
                 let Terminator {
                     ref $($mutability)* source_info,
                     ref $($mutability)* kind,
                 } = *terminator;
 
                 self.visit_source_info(source_info);
-                self.visit_terminator_kind(block, kind);
+                self.visit_terminator_kind(block, kind, location);
             }
 
             fn super_terminator_kind(&mut self,
                                      block: BasicBlock,
-                                     kind: & $($mutability)* TerminatorKind<'tcx>) {
+                                     kind: & $($mutability)* TerminatorKind<'tcx>,
+                                     source_location: Location) {
                 match *kind {
                     TerminatorKind::Goto { target } => {
                         self.visit_branch(block, target);
@@ -358,7 +382,7 @@ macro_rules! make_mir_visitor {
 
                     TerminatorKind::If { ref $($mutability)* cond,
                                          ref $($mutability)* targets } => {
-                        self.visit_operand(cond);
+                        self.visit_operand(cond, source_location);
                         for &target in targets.as_slice() {
                             self.visit_branch(block, target);
                         }
@@ -367,7 +391,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Switch { ref $($mutability)* discr,
                                              adt_def: _,
                                              ref targets } => {
-                        self.visit_lvalue(discr, LvalueContext::Inspect);
+                        self.visit_lvalue(discr, LvalueContext::Inspect, source_location);
                         for &target in targets {
                             self.visit_branch(block, target);
                         }
@@ -377,10 +401,10 @@ macro_rules! make_mir_visitor {
                                                 ref $($mutability)* switch_ty,
                                                 ref $($mutability)* values,
                                                 ref targets } => {
-                        self.visit_lvalue(discr, LvalueContext::Inspect);
+                        self.visit_lvalue(discr, LvalueContext::Inspect, source_location);
                         self.visit_ty(switch_ty);
                         for value in values {
-                            self.visit_const_val(value);
+                            self.visit_const_val(value, source_location);
                         }
                         for &target in targets {
                             self.visit_branch(block, target);
@@ -395,7 +419,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Drop { ref $($mutability)* location,
                                            target,
                                            unwind } => {
-                        self.visit_lvalue(location, LvalueContext::Drop);
+                        self.visit_lvalue(location, LvalueContext::Drop, source_location);
                         self.visit_branch(block, target);
                         unwind.map(|t| self.visit_branch(block, t));
                     }
@@ -404,8 +428,8 @@ macro_rules! make_mir_visitor {
                                                      ref $($mutability)* value,
                                                      target,
                                                      unwind } => {
-                        self.visit_lvalue(location, LvalueContext::Drop);
-                        self.visit_operand(value);
+                        self.visit_lvalue(location, LvalueContext::Drop, source_location);
+                        self.visit_operand(value, source_location);
                         self.visit_branch(block, target);
                         unwind.map(|t| self.visit_branch(block, t));
                     }
@@ -414,12 +438,12 @@ macro_rules! make_mir_visitor {
                                            ref $($mutability)* args,
                                            ref $($mutability)* destination,
                                            cleanup } => {
-                        self.visit_operand(func);
+                        self.visit_operand(func, source_location);
                         for arg in args {
-                            self.visit_operand(arg);
+                            self.visit_operand(arg, source_location);
                         }
                         if let Some((ref $($mutability)* destination, target)) = *destination {
-                            self.visit_lvalue(destination, LvalueContext::Call);
+                            self.visit_lvalue(destination, LvalueContext::Call, source_location);
                             self.visit_branch(block, target);
                         }
                         cleanup.map(|t| self.visit_branch(block, t));
@@ -430,8 +454,8 @@ macro_rules! make_mir_visitor {
                                              ref $($mutability)* msg,
                                              target,
                                              cleanup } => {
-                        self.visit_operand(cond);
-                        self.visit_assert_message(msg);
+                        self.visit_operand(cond, source_location);
+                        self.visit_assert_message(msg, source_location);
                         self.visit_branch(block, target);
                         cleanup.map(|t| self.visit_branch(block, t));
                     }
@@ -439,47 +463,49 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_assert_message(&mut self,
-                                    msg: & $($mutability)* AssertMessage<'tcx>) {
+                                    msg: & $($mutability)* AssertMessage<'tcx>,
+                                    location: Location) {
                 match *msg {
                     AssertMessage::BoundsCheck {
                         ref $($mutability)* len,
                         ref $($mutability)* index
                     } => {
-                        self.visit_operand(len);
-                        self.visit_operand(index);
+                        self.visit_operand(len, location);
+                        self.visit_operand(index, location);
                     }
                     AssertMessage::Math(_) => {}
                 }
             }
 
             fn super_rvalue(&mut self,
-                            rvalue: & $($mutability)* Rvalue<'tcx>) {
+                            rvalue: & $($mutability)* Rvalue<'tcx>,
+                            location: Location) {
                 match *rvalue {
                     Rvalue::Use(ref $($mutability)* operand) => {
-                        self.visit_operand(operand);
+                        self.visit_operand(operand, location);
                     }
 
                     Rvalue::Repeat(ref $($mutability)* value,
                                    ref $($mutability)* typed_const_val) => {
-                        self.visit_operand(value);
-                        self.visit_typed_const_val(typed_const_val);
+                        self.visit_operand(value, location);
+                        self.visit_typed_const_val(typed_const_val, location);
                     }
 
                     Rvalue::Ref(r, bk, ref $($mutability)* path) => {
                         self.visit_lvalue(path, LvalueContext::Borrow {
                             region: r,
                             kind: bk
-                        });
+                        }, location);
                     }
 
                     Rvalue::Len(ref $($mutability)* path) => {
-                        self.visit_lvalue(path, LvalueContext::Inspect);
+                        self.visit_lvalue(path, LvalueContext::Inspect, location);
                     }
 
                     Rvalue::Cast(_cast_kind,
                                  ref $($mutability)* operand,
                                  ref $($mutability)* ty) => {
-                        self.visit_operand(operand);
+                        self.visit_operand(operand, location);
                         self.visit_ty(ty);
                     }
 
@@ -489,12 +515,12 @@ macro_rules! make_mir_visitor {
                     Rvalue::CheckedBinaryOp(_bin_op,
                                      ref $($mutability)* lhs,
                                      ref $($mutability)* rhs) => {
-                        self.visit_operand(lhs);
-                        self.visit_operand(rhs);
+                        self.visit_operand(lhs, location);
+                        self.visit_operand(rhs, location);
                     }
 
                     Rvalue::UnaryOp(_un_op, ref $($mutability)* op) => {
-                        self.visit_operand(op);
+                        self.visit_operand(op, location);
                     }
 
                     Rvalue::Box(ref $($mutability)* ty) => {
@@ -515,13 +541,13 @@ macro_rules! make_mir_visitor {
                             }
                             AggregateKind::Closure(ref $($mutability)* def_id,
                                                    ref $($mutability)* closure_substs) => {
-                                self.visit_def_id(def_id);
+                                self.visit_def_id(def_id, location);
                                 self.visit_closure_substs(closure_substs);
                             }
                         }
 
                         for operand in operands {
-                            self.visit_operand(operand);
+                            self.visit_operand(operand, location);
                         }
                     }
 
@@ -529,30 +555,32 @@ macro_rules! make_mir_visitor {
                                         ref $($mutability)* inputs,
                                         asm: _ } => {
                         for output in & $($mutability)* outputs[..] {
-                            self.visit_lvalue(output, LvalueContext::Store);
+                            self.visit_lvalue(output, LvalueContext::Store, location);
                         }
                         for input in & $($mutability)* inputs[..] {
-                            self.visit_operand(input);
+                            self.visit_operand(input, location);
                         }
                     }
                 }
             }
 
             fn super_operand(&mut self,
-                             operand: & $($mutability)* Operand<'tcx>) {
+                             operand: & $($mutability)* Operand<'tcx>,
+                             location: Location) {
                 match *operand {
                     Operand::Consume(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::Consume);
+                        self.visit_lvalue(lvalue, LvalueContext::Consume, location);
                     }
                     Operand::Constant(ref $($mutability)* constant) => {
-                        self.visit_constant(constant);
+                        self.visit_constant(constant, location);
                     }
                 }
             }
 
             fn super_lvalue(&mut self,
                             lvalue: & $($mutability)* Lvalue<'tcx>,
-                            context: LvalueContext) {
+                            context: LvalueContext,
+                            location: Location) {
                 match *lvalue {
                     Lvalue::Var(_) |
                     Lvalue::Temp(_) |
@@ -560,28 +588,30 @@ macro_rules! make_mir_visitor {
                     Lvalue::ReturnPointer => {
                     }
                     Lvalue::Static(ref $($mutability)* def_id) => {
-                        self.visit_def_id(def_id);
+                        self.visit_def_id(def_id, location);
                     }
                     Lvalue::Projection(ref $($mutability)* proj) => {
-                        self.visit_projection(proj, context);
+                        self.visit_projection(proj, context, location);
                     }
                 }
             }
 
             fn super_projection(&mut self,
                                 proj: & $($mutability)* LvalueProjection<'tcx>,
-                                context: LvalueContext) {
+                                context: LvalueContext,
+                                location: Location) {
                 let Projection {
                     ref $($mutability)* base,
                     ref $($mutability)* elem,
                 } = *proj;
-                self.visit_lvalue(base, LvalueContext::Projection);
-                self.visit_projection_elem(elem, context);
+                self.visit_lvalue(base, LvalueContext::Projection, location);
+                self.visit_projection_elem(elem, context, location);
             }
 
             fn super_projection_elem(&mut self,
                                      proj: & $($mutability)* LvalueElem<'tcx>,
-                                     _context: LvalueContext) {
+                                     _context: LvalueContext,
+                                     location: Location) {
                 match *proj {
                     ProjectionElem::Deref => {
                     }
@@ -591,7 +621,7 @@ macro_rules! make_mir_visitor {
                         self.visit_ty(ty);
                     }
                     ProjectionElem::Index(ref $($mutability)* operand) => {
-                        self.visit_operand(operand);
+                        self.visit_operand(operand, location);
                     }
                     ProjectionElem::ConstantIndex { offset: _,
                                                     min_length: _,
@@ -645,7 +675,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_constant(&mut self,
-                              constant: & $($mutability)* Constant<'tcx>) {
+                              constant: & $($mutability)* Constant<'tcx>,
+                              location: Location) {
                 let Constant {
                     ref $($mutability)* span,
                     ref $($mutability)* ty,
@@ -654,11 +685,12 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(span);
                 self.visit_ty(ty);
-                self.visit_literal(literal);
+                self.visit_literal(literal, location);
             }
 
             fn super_typed_const_val(&mut self,
-                                     constant: & $($mutability)* TypedConstVal<'tcx>) {
+                                     constant: & $($mutability)* TypedConstVal<'tcx>,
+                                     location: Location) {
                 let TypedConstVal {
                     ref $($mutability)* span,
                     ref $($mutability)* ty,
@@ -667,19 +699,20 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(span);
                 self.visit_ty(ty);
-                self.visit_const_usize(value);
+                self.visit_const_usize(value, location);
             }
 
             fn super_literal(&mut self,
-                             literal: & $($mutability)* Literal<'tcx>) {
+                             literal: & $($mutability)* Literal<'tcx>,
+                             location: Location) {
                 match *literal {
                     Literal::Item { ref $($mutability)* def_id,
                                     ref $($mutability)* substs } => {
-                        self.visit_def_id(def_id);
+                        self.visit_def_id(def_id, location);
                         self.visit_substs(substs);
                     }
                     Literal::Value { ref $($mutability)* value } => {
-                        self.visit_const_val(value);
+                        self.visit_const_val(value, location);
                     }
                     Literal::Promoted { index: _ } => {}
                 }
