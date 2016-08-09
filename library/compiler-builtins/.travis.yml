@@ -48,6 +48,17 @@ matrix:
         apt:
           packages:
             - gcc-multilib
+    - env: TARGET=powerpc-unknown-linux-gnu
+      os: linux
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - binfmt-support
+            - gcc-powerpc-linux-gnu
+            - libc6-powerpc-cross
+            - libc6-dev-powerpc-cross
+            - qemu-user-static
     - env: TARGET=x86_64-apple-darwin
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
