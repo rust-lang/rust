@@ -10,8 +10,9 @@
 
 fn test() {
     let v: isize;
-    v = 2;  //~ NOTE prior assignment occurs here
+    v = 2;  //~ NOTE first assignment
     v += 1; //~ ERROR re-assignment of immutable variable
+            //~| NOTE re-assignment of immutable
     v.clone();
 }
 
