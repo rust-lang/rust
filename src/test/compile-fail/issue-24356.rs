@@ -28,7 +28,8 @@ fn main() {
 
         // Causes ICE
         impl Deref for Thing {
-            //~^ ERROR not all trait items implemented, missing: `Target` [E0046]
+            //~^ ERROR E0046
+            //~| NOTE missing `Target` in implementation
             fn deref(&self) -> i8 { self.0 }
         }
 

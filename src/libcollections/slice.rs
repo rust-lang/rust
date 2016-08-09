@@ -973,8 +973,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn binary_search_by<F>(&self, f: F) -> Result<usize, usize>
-        where F: FnMut(&T) -> Ordering
+    pub fn binary_search_by<'a, F>(&'a self, f: F) -> Result<usize, usize>
+        where F: FnMut(&'a T) -> Ordering
     {
         core_slice::SliceExt::binary_search_by(self, f)
     }
@@ -1009,8 +1009,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
-    pub fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
-        where F: FnMut(&T) -> B,
+    pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, f: F) -> Result<usize, usize>
+        where F: FnMut(&'a T) -> B,
               B: Ord
     {
         core_slice::SliceExt::binary_search_by_key(self, b, f)

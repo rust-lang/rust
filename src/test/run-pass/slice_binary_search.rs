@@ -8,13 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+// Test binary_search_by_key lifetime. Issue #34683
 
-trait Trait {}
+#[derive(Debug)]
+struct Assignment {
+    topic: String,
+    partition: i32,
+}
 
-fn f<F:Trait(isize) -> isize>(x: F) {}
-//~^ ERROR E0244
-//~| NOTE expected no type arguments, found 1
-//~| ERROR associated type `Output` not found
+fn main() {
+    let xs = vec![
+        Assignment { topic: "abc".into(), partition: 1 },
+        Assignment { topic: "def".into(), partition: 2 },
+        Assignment { topic: "ghi".into(), partition: 3 },
+    ];
 
-fn main() {}
+    let key: &str = "def";
+    let r = xs.binary_search_by_key(&key, |e| &e.topic);
+    assert_eq!(Ok(1), r.map(|i| i));
+}

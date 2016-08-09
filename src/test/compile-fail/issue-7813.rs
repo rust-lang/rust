@@ -10,5 +10,7 @@
 
 fn main() {
     let v = &[];
-    let it = v.iter(); //~ ERROR type annotations or generic parameter binding required
+    let it = v.iter(); //~ ERROR unable to infer enough type information about `_` [E0282]
+                       //~| NOTE cannot infer type for `_`
+                       //~| NOTE type annotations or generic parameter binding
 }

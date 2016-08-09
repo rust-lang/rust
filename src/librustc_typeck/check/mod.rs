@@ -1136,11 +1136,16 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     if !missing_items.is_empty() {
-        span_err!(tcx.sess, impl_span, E0046,
+        struct_span_err!(tcx.sess, impl_span, E0046,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
                   .map(|name| name.to_string())
                   .collect::<Vec<_>>().join("`, `"))
+            .span_label(impl_span, &format!("missing `{}` in implementation",
+                missing_items.iter()
+                    .map(|name| name.to_string())
+                    .collect::<Vec<_>>().join("`, `"))
+            ).emit();
     }
 
     if !invalidated_items.is_empty() {

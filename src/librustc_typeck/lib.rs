@@ -211,11 +211,15 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             match tcx.map.find(main_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
-                        hir::ItemFn(_, _, _, _, ref ps, _)
-                        if ps.is_parameterized() => {
-                            span_err!(ccx.tcx.sess, main_span, E0131,
-                                      "main function is not allowed to have type parameters");
-                            return;
+                        hir::ItemFn(_, _, _, _, ref generics, _) => {
+                            if let Some(gen_span) = generics.span() {
+                                struct_span_err!(ccx.tcx.sess, gen_span, E0131,
+                                         "main function is not allowed to have type parameters")
+                                    .span_label(gen_span,
+                                                &format!("main cannot have type parameters"))
+                                    .emit();
+                                return;
+                            }
                         }
                         _ => ()
                     }

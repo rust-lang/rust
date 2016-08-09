@@ -32,7 +32,7 @@ impl foo for Vec<isize> {
 fn m1() {
     // we couldn't infer the type of the vector just based on calling foo()...
     let mut x = Vec::new();
-    //~^ ERROR type annotations or generic parameter binding required
+    //~^ ERROR unable to infer enough type information about `_` [E0282]
     x.foo();
 }
 
