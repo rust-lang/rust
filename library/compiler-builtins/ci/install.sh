@@ -13,6 +13,7 @@ install_deps() {
 install_qemu() {
     case $TARGET in
         mips-unknown-linux-gnu | \
+        mipsel-unknown-linux-gnu | \
         powerpc64-unknown-linux-gnu | \
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
@@ -40,6 +41,10 @@ install_c_toolchain() {
         mips-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
                     gcc-mips-linux-gnu libc6-dev-mips-cross
+            ;;
+        mipsel-unknown-linux-gnu)
+            apt-get install -y --no-install-recommends \
+                    gcc-mipsel-linux-gnu libc6-dev-mipsel-cross
             ;;
         powerpc64-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
