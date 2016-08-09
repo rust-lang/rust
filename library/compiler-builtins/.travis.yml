@@ -42,6 +42,12 @@ matrix:
           packages: *armhf
     - env: TARGET=i686-apple-darwin
       os: osx
+    - env: TARGET=i586-unknown-linux-gnu
+      os: linux
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
     - env: TARGET=i686-unknown-linux-gnu
       os: linux
       addons:
