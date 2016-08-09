@@ -20,11 +20,19 @@ case $TARGET in
         export PREFIX=arm-linux-gnueabi-
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabi
         ;;
-    arm*-unknown-linux-gnueabihf)
+    arm-unknown-linux-gnueabihf)
+        export PREFIX=arm-linux-gnueabihf-
+        export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
+        ;;
+    armv7-unknown-linux-gnueabihf)
+        # See #2
+        export DONT_RUN_TESTS=y
         export PREFIX=arm-linux-gnueabihf-
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
         ;;
     mips-unknown-linux-gnu)
+        # See #2
+        export DONT_RUN_TESTS=y
         # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
@@ -34,7 +42,6 @@ case $TARGET in
         export QEMU_LD_PREFIX=/usr/mips-linux-gnu
         ;;
     mipsel-unknown-linux-gnu)
-        # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
         fi
@@ -47,6 +54,8 @@ case $TARGET in
         export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
         ;;
     powerpc64-unknown-linux-gnu)
+        # See #2
+        export DONT_RUN_TESTS=y
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
         fi
@@ -55,6 +64,8 @@ case $TARGET in
         export QEMU_LD_PREFIX=/usr/powerpc64-linux-gnu
         ;;
     powerpc64le-unknown-linux-gnu)
+        # See #2
+        export DONT_RUN_TESTS=y
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
         fi
