@@ -420,13 +420,11 @@ pub struct Handler {
 
 impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
-                            registry: Option<registry::Registry>,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
                             cm: Option<Rc<CodeMapper>>)
                             -> Handler {
-        let emitter = Box::new(EmitterWriter::stderr(color_config, registry, cm,
-                               snippet::FormatMode::EnvironmentSelected));
+        let emitter = Box::new(EmitterWriter::stderr(color_config, cm));
         Handler::with_emitter(can_emit_warnings, treat_err_as_bug, emitter)
     }
 
@@ -750,21 +748,4 @@ pub fn expect<T, M>(diag: &Handler, opt: Option<T>, msg: M) -> T where
         Some(t) => t,
         None => diag.bug(&msg()),
     }
-}
-
-/// True if we should use the old-skool error format style. This is
-/// the default setting until the new errors are deemed stable enough
-/// for general use.
-///
-/// FIXME(#33240)
-#[cfg(not(test))]
-pub fn check_old_school() -> bool {
-    use std::env;
-    env::var("RUST_NEW_ERROR_FORMAT").is_err()
-}
-
-/// For unit tests, use the new format.
-#[cfg(test)]
-pub fn check_old_school() -> bool {
-    false
 }

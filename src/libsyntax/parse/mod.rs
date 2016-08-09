@@ -51,7 +51,6 @@ impl ParseSess {
     pub fn new() -> ParseSess {
         let cm = Rc::new(CodeMap::new());
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
-                                                None,
                                                 true,
                                                 false,
                                                 Some(cm.clone()));

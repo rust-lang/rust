@@ -23,7 +23,6 @@ use mir::transform as mir_pass;
 use syntax::ast::{NodeId, Name};
 use errors::{self, DiagnosticBuilder};
 use errors::emitter::{Emitter, EmitterWriter};
-use errors::snippet::FormatMode;
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
@@ -369,9 +368,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
     let emitter: Box<Emitter> = match sopts.error_format {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config,
-                                           Some(registry),
-                                           Some(codemap.clone()),
-                                           errors::snippet::FormatMode::EnvironmentSelected))
+                                           Some(codemap.clone())))
         }
         config::ErrorOutputType::Json => {
             Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
@@ -509,9 +506,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config,
-                                           None,
-                                           None,
-                                           FormatMode::EnvironmentSelected))
+                                           None))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
@@ -524,9 +519,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config,
-                                           None,
-                                           None,
-                                           FormatMode::EnvironmentSelected))
+                                           None))
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };

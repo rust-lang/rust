@@ -6,4 +6,4 @@ all:
 	$(call REMOVE_RLIBS,crateA)
 	# Ensure crateC fails to compile since dependency crateA is missing
 	$(RUSTC) crateC.rs 2>&1 | \
-		grep "error: can't find crate for \`crateA\` which \`crateB\` depends on"
+		grep "can't find crate for \`crateA\` which \`crateB\` depends on"

@@ -44,7 +44,7 @@ use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
 
 use rustc_const_math::*;
-use rustc_errors::{DiagnosticBuilder, check_old_school};
+use rustc_errors::DiagnosticBuilder;
 
 macro_rules! math {
     ($e:expr, $op:expr) => {
@@ -378,11 +378,7 @@ pub fn note_const_eval_err<'a, 'tcx>(
 {
     match err.description() {
         ConstEvalErrDescription::Simple(message) => {
-            if check_old_school() {
-                diag.note(&message);
-            } else {
-                diag.span_label(err.span, &message);
-            }
+            diag.span_label(err.span, &message);
         }
     }
 

@@ -94,7 +94,7 @@ use syntax::ast;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::{self, Pos, Span};
-use errors::{DiagnosticBuilder, check_old_school};
+use errors::DiagnosticBuilder;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
@@ -541,25 +541,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let span = origin.span();
 
-        let mut is_simple_error = false;
-
         if let Some((expected, found)) = expected_found {
-            is_simple_error = if let &TypeError::Sorts(ref values) = terr {
+            let is_simple_error = if let &TypeError::Sorts(ref values) = terr {
                 values.expected.is_primitive() && values.found.is_primitive()
             } else {
                 false
             };
 
-            if !is_simple_error || check_old_school() {
+            if !is_simple_error {
                 diag.note_expected_found(&"type", &expected, &found);
             }
         }
 
-        if !is_simple_error && check_old_school() {
-            diag.span_note(span, &format!("{}", terr));
-        } else {
-            diag.span_label(span, &terr);
-        }
+        diag.span_label(span, &terr);
 
         self.note_error_origin(diag, &origin);
         self.check_and_note_conflicting_crates(diag, terr, span);
