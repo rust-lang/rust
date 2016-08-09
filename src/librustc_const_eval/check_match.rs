@@ -1112,7 +1112,10 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
         if sub.map_or(false, |p| pat_contains_bindings(&p)) {
-            span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings");
+            struct_span_err!(cx.tcx.sess, p.span, E0007,
+                             "cannot bind by-move with sub-bindings")
+                .span_label(p.span, &format!("binds an already bound by-move value by moving it"))
+                .emit();
         } else if has_guard {
             struct_span_err!(cx.tcx.sess, p.span, E0008,
                       "cannot bind by-move into a pattern guard")

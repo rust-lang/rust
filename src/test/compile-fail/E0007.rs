@@ -11,8 +11,10 @@
 fn main() {
     let x = Some("s".to_string());
     match x {
-        op_string @ Some(s) => {}, //~ ERROR E0007
-                                   //~| ERROR E0303
+        op_string @ Some(s) => {},
+        //~^ ERROR E0007
+        //~| NOTE binds an already bound by-move value by moving it
+        //~| ERROR E0303
         None => {},
     }
 }
