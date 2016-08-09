@@ -10,7 +10,9 @@
 
 #![feature(intrinsics)]
 extern "rust-intrinsic" {
-    fn foo(); //~ ERROR E0093
+    fn foo();
+    //~^ ERROR E0093
+    //~| NOTE unrecognized intrinsic
 }
 
 fn main() {
