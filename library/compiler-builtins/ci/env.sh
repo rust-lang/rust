@@ -30,10 +30,15 @@ case $TARGET in
         export PREFIX=arm-linux-gnueabihf-
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
         ;;
+    i586-unknown-linux-gnu)
+        # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
+        if [[ -z $DOCKER ]]; then
+            export DOCKER=y
+        fi
+        ;;
     mips-unknown-linux-gnu)
         # See #2
         export DONT_RUN_TESTS=y
-        # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
         fi

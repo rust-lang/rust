@@ -3,6 +3,10 @@ sudo: false
 
 matrix:
   include:
+    - env: TARGET=i586-unknown-linux-gnu
+      os: linux
+      services: docker
+      sudo: required
     - env: TARGET=aarch64-unknown-linux-gnu
       os: linux
       dist: trusty

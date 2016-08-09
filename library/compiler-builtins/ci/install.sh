@@ -38,6 +38,10 @@ install_c_toolchain() {
             sudo apt-get install -y --no-install-recommends \
                  gcc-aarch64-linux-gnu libc6-dev-arm64-cross
             ;;
+        i586-unknown-linux-gnu)
+            apt-get install -y --no-install-recommends \
+                    gcc libc6-dev-i386 lib32gcc-5-dev
+            ;;
         mips-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
                     gcc-mips-linux-gnu libc6-dev-mips-cross
