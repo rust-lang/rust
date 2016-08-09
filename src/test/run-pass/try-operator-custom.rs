@@ -33,8 +33,8 @@ impl<U, V> Carrier for MyResult<U, V> {
         where T: Carrier<Success=U, Error=V>
     {
         match self {
-            MyResult::Awesome(u) => T::from_success(u.into()),
-            MyResult::Terrible(e) => T::from_error(e.into()),
+            MyResult::Awesome(u) => T::from_success(u),
+            MyResult::Terrible(e) => T::from_error(e),
         }
     }
 }

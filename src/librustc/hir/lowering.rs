@@ -1531,11 +1531,11 @@ impl<'a> LoweringContext<'a> {
                                                               e.span,
                                                               hir::PopUnstableBlock,
                                                               ThinVec::new());
-    
+
                         let path = self.std_path(e.span, &["ops", "Carrier", "translate"]);
                         let path = self.expr_path(path, ThinVec::new());
                         let call = self.expr_call(e.span, path, hir_vec![sub_expr]);
-    
+
                         self.signal_block_expr(hir_vec![],
                                                call,
                                                e.span,
