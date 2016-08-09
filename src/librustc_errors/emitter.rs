@@ -10,16 +10,13 @@
 
 use self::Destination::*;
 
-use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, LineInfo, CharPos};
-use registry;
+use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
 
-use check_old_school;
 use {Level, CodeSuggestion, DiagnosticBuilder, CodeMapper};
 use RenderSpan::*;
-use snippet::{StyledString, Style, FormatMode, Annotation, Line};
+use snippet::{StyledString, Style, Annotation, Line};
 use styled_buffer::StyledBuffer;
 
-use std::cmp;
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
@@ -33,18 +30,7 @@ pub trait Emitter {
 
 impl Emitter for EmitterWriter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
-        // Pick old school mode either from env or let the test dictate the format
-        let old_school = match self.format_mode {
-            FormatMode::NewErrorFormat => false,
-            FormatMode::OriginalErrorFormat => true,
-            FormatMode::EnvironmentSelected => check_old_school()
-        };
-
-        if old_school {
-            self.emit_messages_old_school(db);
-        } else {
-            self.emit_messages_default(db);
-        }
+        self.emit_messages_default(db);
     }
 }
 
@@ -70,11 +56,7 @@ impl ColorConfig {
 
 pub struct EmitterWriter {
     dst: Destination,
-    registry: Option<registry::Registry>,
     cm: Option<Rc<CodeMapper>>,
-
-    // For now, allow an old-school mode while we transition
-    format_mode: FormatMode
 }
 
 struct FileWithAnnotatedLines {
@@ -99,33 +81,23 @@ macro_rules! println_maybe_styled {
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
-                  registry: Option<registry::Registry>,
-                  code_map: Option<Rc<CodeMapper>>,
-                  format_mode: FormatMode)
+                  code_map: Option<Rc<CodeMapper>>)
                   -> EmitterWriter {
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter { dst: dst,
-                            registry: registry,
-                            cm: code_map,
-                            format_mode: format_mode.clone() }
+                            cm: code_map}
         } else {
             EmitterWriter { dst: Raw(Box::new(io::stderr())),
-                            registry: registry,
-                            cm: code_map,
-                            format_mode: format_mode.clone() }
+                            cm: code_map}
         }
     }
 
     pub fn new(dst: Box<Write + Send>,
-               registry: Option<registry::Registry>,
-               code_map: Option<Rc<CodeMapper>>,
-               format_mode: FormatMode)
+               code_map: Option<Rc<CodeMapper>>)
                -> EmitterWriter {
         EmitterWriter { dst: Raw(dst),
-                        registry: registry,
-                        cm: code_map,
-                        format_mode: format_mode.clone() }
+                        cm: code_map}
     }
 
     fn preprocess_annotations(&self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
@@ -668,240 +640,6 @@ impl EmitterWriter {
             _ => ()
         }
     }
-    fn emit_message_old_school(&mut self,
-                               msp: &MultiSpan,
-                               msg: &str,
-                               code: &Option<String>,
-                               level: &Level,
-                               show_snippet: bool)
-                               -> io::Result<()> {
-        let mut buffer = StyledBuffer::new();
-
-        let loc = match msp.primary_span() {
-            Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
-            Some(ps) => if let Some(ref cm) = self.cm {
-                cm.span_to_string(ps)
-            } else {
-                "".to_string()
-            },
-            None => {
-                "".to_string()
-            }
-        };
-        if loc != "" {
-            buffer.append(0, &loc, Style::NoStyle);
-            buffer.append(0, " ", Style::NoStyle);
-        }
-        buffer.append(0, &level.to_string(), Style::Level(level.clone()));
-        buffer.append(0, ": ", Style::HeaderMsg);
-        buffer.append(0, msg, Style::HeaderMsg);
-        buffer.append(0, " ", Style::NoStyle);
-        match code {
-            &Some(ref code) => {
-                buffer.append(0, "[", Style::ErrorCode);
-                buffer.append(0, &code, Style::ErrorCode);
-                buffer.append(0, "]", Style::ErrorCode);
-            }
-            _ => {}
-        }
-
-        if !show_snippet {
-            emit_to_destination(&buffer.render(), level, &mut self.dst)?;
-            return Ok(());
-        }
-
-        // Watch out for various nasty special spans; don't try to
-        // print any filename or anything for those.
-        match msp.primary_span() {
-            Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => {
-                emit_to_destination(&buffer.render(), level, &mut self.dst)?;
-                return Ok(());
-            }
-            _ => { }
-        }
-
-        let annotated_files = self.preprocess_annotations(msp);
-
-        if let (Some(ref cm), Some(ann_file), Some(ref primary_span)) =
-            (self.cm.as_ref(), annotated_files.first(), msp.primary_span().as_ref()) {
-
-            // Next, print the source line and its squiggle
-            // for old school mode, we will render them to the buffer, then insert the file loc
-            // (or space the same amount) in front of the line and the squiggle
-            let source_string = ann_file.file.get_line(ann_file.lines[0].line_index - 1)
-                .unwrap_or("");
-
-            let line_offset = buffer.num_lines();
-
-            let lo = cm.lookup_char_pos(primary_span.lo);
-            //Before each secondary line in old skool-mode, print the label
-            //as an old-style note
-            let file_pos = format!("{}:{} ", lo.file.name.clone(), lo.line);
-            let file_pos_len = file_pos.len();
-
-            // First create the source line we will highlight.
-            buffer.puts(line_offset, 0, &file_pos, Style::FileNameStyle);
-            buffer.puts(line_offset, file_pos_len, &source_string, Style::Quotation);
-            // Sort the annotations by (start, end col)
-            let annotations = ann_file.lines[0].annotations.clone();
-
-            // Next, create the highlight line.
-            for annotation in &annotations {
-                for p in annotation.start_col..annotation.end_col {
-                    if p == annotation.start_col {
-                        buffer.putc(line_offset + 1,
-                                    file_pos_len + p,
-                                    '^',
-                                    if annotation.is_primary {
-                                        Style::UnderlinePrimary
-                                    } else {
-                                        Style::OldSchoolNote
-                                    });
-                    } else {
-                        buffer.putc(line_offset + 1,
-                                    file_pos_len + p,
-                                    '~',
-                                    if annotation.is_primary {
-                                        Style::UnderlinePrimary
-                                    } else {
-                                        Style::OldSchoolNote
-                                    });
-                    }
-                }
-            }
-        }
-        if let Some(ref primary_span) = msp.primary_span().as_ref() {
-            self.render_macro_backtrace_old_school(primary_span, &mut buffer)?;
-        }
-
-        match code {
-            &Some(ref code) if self.registry.as_ref()
-                                           .and_then(|registry| registry.find_description(code))
-                                           .is_some() => {
-                let msg = "run `rustc --explain ".to_string() + &code.to_string() +
-                    "` to see a detailed explanation";
-
-                let line_offset = buffer.num_lines();
-                buffer.append(line_offset, &loc, Style::NoStyle);
-                buffer.append(line_offset, " ", Style::NoStyle);
-                buffer.append(line_offset, &Level::Help.to_string(), Style::Level(Level::Help));
-                buffer.append(line_offset, ": ", Style::HeaderMsg);
-                buffer.append(line_offset, &msg, Style::HeaderMsg);
-            }
-            _ => ()
-        }
-
-        // final step: take our styled buffer, render it, then output it
-        emit_to_destination(&buffer.render(), level, &mut self.dst)?;
-        Ok(())
-    }
-    fn emit_suggestion_old_school(&mut self,
-                                  suggestion: &CodeSuggestion,
-                                  level: &Level,
-                                  msg: &str)
-                                  -> io::Result<()> {
-        use std::borrow::Borrow;
-
-        let primary_span = suggestion.msp.primary_span().unwrap();
-        if let Some(ref cm) = self.cm {
-            let mut buffer = StyledBuffer::new();
-
-            let loc = cm.span_to_string(primary_span);
-
-            if loc != "" {
-                buffer.append(0, &loc, Style::NoStyle);
-                buffer.append(0, " ", Style::NoStyle);
-            }
-
-            buffer.append(0, &level.to_string(), Style::Level(level.clone()));
-            buffer.append(0, ": ", Style::HeaderMsg);
-            buffer.append(0, msg, Style::HeaderMsg);
-
-            let lines = cm.span_to_lines(primary_span).unwrap();
-
-            assert!(!lines.lines.is_empty());
-
-            let complete = suggestion.splice_lines(cm.borrow());
-            let line_count = cmp::min(lines.lines.len(), MAX_HIGHLIGHT_LINES);
-            let display_lines = &lines.lines[..line_count];
-
-            let fm = &*lines.file;
-            // Calculate the widest number to format evenly
-            let max_digits = line_num_max_digits(display_lines.last().unwrap());
-
-            // print the suggestion without any line numbers, but leave
-            // space for them. This helps with lining up with previous
-            // snippets from the actual error being reported.
-            let mut lines = complete.lines();
-            let mut row_num = 1;
-            for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
-                buffer.append(row_num, &fm.name, Style::FileNameStyle);
-                for _ in 0..max_digits+2 {
-                    buffer.append(row_num, &" ", Style::NoStyle);
-                }
-                buffer.append(row_num, line, Style::NoStyle);
-                row_num += 1;
-            }
-
-            // if we elided some lines, add an ellipsis
-            if let Some(_) = lines.next() {
-                buffer.append(row_num, "...", Style::NoStyle);
-            }
-            emit_to_destination(&buffer.render(), level, &mut self.dst)?;
-        }
-        Ok(())
-    }
-
-    fn emit_messages_old_school(&mut self, db: &DiagnosticBuilder) {
-        match self.emit_message_old_school(&db.span,
-                                           &db.message,
-                                           &db.code,
-                                           &db.level,
-                                           true) {
-            Ok(()) => {
-                for child in &db.children {
-                    let (span, show_snippet) = if child.span.primary_spans().is_empty() {
-                        (db.span.clone(), false)
-                    } else {
-                        (child.span.clone(), true)
-                    };
-
-                    match child.render_span {
-                        Some(FullSpan(_)) => {
-                            match self.emit_message_old_school(&span,
-                                                               &child.message,
-                                                               &None,
-                                                               &child.level,
-                                                               show_snippet) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
-                            }
-                        },
-                        Some(Suggestion(ref cs)) => {
-                            match self.emit_suggestion_old_school(cs,
-                                                                  &child.level,
-                                                                  &child.message) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
-                            }
-                        },
-                        None => {
-                            match self.emit_message_old_school(&span,
-                                                               &child.message,
-                                                               &None,
-                                                               &child.level,
-                                                               show_snippet) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
-                            }
-                        }
-                    }
-                }
-            }
-            Err(e) => panic!("failed to emit error: {}", e)
-        }
-    }
-
     fn render_macro_backtrace_old_school(&mut self,
                                          sp: &Span,
                                          buffer: &mut StyledBuffer) -> io::Result<()> {
@@ -956,16 +694,6 @@ fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
         write!(dst, "\n")?;
     }
     Ok(())
-}
-
-fn line_num_max_digits(line: &LineInfo) -> usize {
-    let mut max_line_num = line.line_index + 1;
-    let mut digits = 0;
-    while max_line_num > 0 {
-        max_line_num /= 10;
-        digits += 1;
-    }
-    digits
 }
 
 #[cfg(unix)]

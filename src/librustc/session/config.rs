@@ -1057,7 +1057,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                      "NAME=PATH"),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi_ubnr("Z", "", "Set internal debugging options", "FLAG"),
-        opt::opt_ubnr("", "error-format",
+        opt::opt_s("", "error-format",
                       "How errors and other messages are produced",
                       "human|json"),
         opt::opt_s("", "color", "Configure coloring of output:
