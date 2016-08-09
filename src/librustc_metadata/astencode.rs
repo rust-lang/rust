@@ -1383,6 +1383,9 @@ fn test_more() {
 
 #[test]
 fn test_simplification() {
+    use middle::cstore::LOCAL_CRATE;
+    use rustc::hir::def_id::CRATE_DEF_INDEX;
+
     let cx = mk_ctxt();
     let item = quote_item!(&cx,
         fn new_int_alist<B>() -> alist<isize, B> {
@@ -1393,15 +1396,16 @@ fn test_simplification() {
     let cx = mk_ctxt();
     with_testing_context(|lcx| {
         let hir_item = lcx.lower_item(&item);
-        let item_in = InlinedItemRef::Item(&hir_item);
+        let def_id = DefId { krate: LOCAL_CRATE, index: CRATE_DEF_INDEX }; // dummy
+        let item_in = InlinedItemRef::Item(def_id, &hir_item);
         let (item_out, _) = simplify_ast(item_in);
-        let item_exp = InlinedItem::Item(P(lcx.lower_item(&quote_item!(&cx,
+        let item_exp = InlinedItem::Item(def_id, P(lcx.lower_item(&quote_item!(&cx,
             fn new_int_alist<B>() -> alist<isize, B> {
                 return alist {eq_fn: eq_int, data: Vec::new()};
             }
         ).unwrap())));
         match (item_out, item_exp) {
-            (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
+            (InlinedItem::Item(_, item_out), InlinedItem::Item(_, item_exp)) => {
                  assert!(pprust::item_to_string(&item_out) ==
                          pprust::item_to_string(&item_exp));
             }
