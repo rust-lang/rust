@@ -62,7 +62,7 @@ EOF
 }
 
 main() {
-    if [[ -z $DOCKER ]]; then
+    if [[ ${DOCKER:-n} != "y" ]]; then
         install_qemu
         install_binutils
         install_c_toolchain
