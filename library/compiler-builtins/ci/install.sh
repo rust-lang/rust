@@ -36,8 +36,8 @@ install_c_toolchain() {
                  gcc-aarch64-linux-gnu libc6-dev-arm64-cross
             ;;
         powerpc64le-unknown-linux-gnu)
-            sudo apt-get install -y --no-install-recommends \
-                 gcc-powerpc64le-linux-gnu libc6-dev-ppc64le-cross
+            apt-get install -y --no-install-recommends \
+                    gcc-powerpc64le-linux-gnu libc6-dev-ppc64le-cross
             ;;
         *)
             ;;
