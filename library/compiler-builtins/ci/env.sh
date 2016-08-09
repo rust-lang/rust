@@ -28,4 +28,13 @@ case $TARGET in
         export PREFIX=powerpc-linux-gnu-
         export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
         ;;
+    powerpc64le-unknown-linux-gnu)
+        # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
+        if [[ -z $DOCKER ]]; then
+            export DOCKER=y
+        fi
+        export PREFIX=powerpc64le-linux-gnu-
+        export QEMU=qemu-ppc64le
+        export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
+        ;;
 esac

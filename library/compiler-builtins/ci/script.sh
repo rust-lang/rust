@@ -12,8 +12,15 @@ run_tests() {
         export RUST_TEST_THREADS=1
     fi
 
-    cargo test --target $TARGET
-    cargo test --target $TARGET --release
+    if [[ $QEMU ]]; then
+        cargo test --target $TARGET --no-run
+        $QEMU target/**/debug/rustc_builtins-*
+        cargo test --target $TARGET --release --no-run
+        $QEMU target/**/release/rustc_builtins-*
+    else
+        cargo test --target $TARGET
+        cargo test --target $TARGET --release
+    fi
 }
 
 inspect() {
@@ -25,9 +32,23 @@ inspect() {
 }
 
 main() {
-    build
-    run_tests
-    inspect
+    if [[ $DOCKER == "y" ]]; then
+        docker run \
+               -e DOCKER=i \
+               -e TARGET=$TARGET \
+               -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
+               -v $(pwd):/mnt \
+               ubuntu:16.04 \
+               sh -c 'set -ex;
+                      cd /mnt;
+                      export PATH="$PATH:$HOME/.cargo/bin";
+                      bash ci/install.sh;
+                      bash ci/script.sh'
+    else
+        build
+        run_tests
+        inspect
+    fi
 }
 
 main
