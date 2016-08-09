@@ -3,7 +3,7 @@ set -ex
 . $(dirname $0)/env.sh
 
 install_deps() {
-    if [[ ${DOCKER} == "y" ]]; then
+    if [[ ${DOCKER} == "i" ]]; then
         apt-get install -y --no-install-recommends \
                 ca-certificates curl
     fi

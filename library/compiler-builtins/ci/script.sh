@@ -34,7 +34,7 @@ inspect() {
 main() {
     if [[ $DOCKER == "y" ]]; then
         docker run \
-               -e DOCKER=n \
+               -e DOCKER=i \
                -e TARGET=$TARGET \
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
                -v $(pwd):/mnt \
