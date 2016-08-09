@@ -140,7 +140,8 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     let dep_node_str = self.dep_node_str(&dep_node);
                     self.tcx.sess.span_err(
                         item.span,
-                        &format!("`{:?}` not found in dirty set, but should be dirty", dep_node_str));
+                        &format!("`{:?}` not found in dirty set, but should be dirty",
+                                 dep_node_str));
                 }
             }
             _ => {
@@ -166,7 +167,8 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     let dep_node_str = self.dep_node_str(&dep_node);
                     self.tcx.sess.span_err(
                         item.span,
-                        &format!("`{:?}` found in dirty-node set, but should be clean", dep_node_str));
+                        &format!("`{:?}` found in dirty-node set, but should be clean",
+                                 dep_node_str));
                 }
             }
             _ => {
@@ -175,7 +177,8 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     let dep_node_str = self.dep_node_str(&dep_node);
                     self.tcx.sess.span_err(
                         item.span,
-                        &format!("`{:?}` not found in dep graph, but should be clean", dep_node_str));
+                        &format!("`{:?}` not found in dep graph, but should be clean",
+                                 dep_node_str));
                 }
             }
         }
