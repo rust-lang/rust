@@ -3,6 +3,10 @@ sudo: false
 
 matrix:
   include:
+    - env: TARGET=i586-unknown-linux-gnu
+      os: linux
+      services: docker
+      sudo: required
     - env: TARGET=aarch64-unknown-linux-gnu
       os: linux
       dist: trusty
@@ -42,10 +46,6 @@ matrix:
           packages: *armhf
     - env: TARGET=i686-apple-darwin
       os: osx
-    - env: TARGET=i586-unknown-linux-gnu
-      os: linux
-      services: docker
-      sudo: required
     - env: TARGET=i686-unknown-linux-gnu
       os: linux
       addons:
