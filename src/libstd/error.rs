@@ -49,6 +49,7 @@
 
 use any::TypeId;
 use boxed::Box;
+use cell;
 use char;
 use fmt::{self, Debug, Display};
 use marker::{Send, Sync, Reflect};
@@ -286,6 +287,20 @@ impl<T: Error> Error for Box<T> {
 impl Error for fmt::Error {
     fn description(&self) -> &str {
         "an error occurred when formatting an argument"
+    }
+}
+
+#[unstable(feature = "try_borrow", issue = "35070")]
+impl<'a, T: ?Sized + Reflect> Error for cell::BorrowError<'a, T> {
+    fn description(&self) -> &str {
+        "already mutably borrowed"
+    }
+}
+
+#[unstable(feature = "try_borrow", issue = "35070")]
+impl<'a, T: ?Sized + Reflect> Error for cell::BorrowMutError<'a, T> {
+    fn description(&self) -> &str {
+        "already borrowed"
     }
 }
 
