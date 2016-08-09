@@ -33,6 +33,15 @@ case $TARGET in
         export QEMU=qemu-mips
         export QEMU_LD_PREFIX=/usr/mips-linux-gnu
         ;;
+    mipsel-unknown-linux-gnu)
+        # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
+        if [[ -z $DOCKER ]]; then
+            export DOCKER=y
+        fi
+        export PREFIX=mipsel-linux-gnu-
+        export QEMU=qemu-mipsel
+        export QEMU_LD_PREFIX=/usr/mipsel-linux-gnu
+        ;;
     powerpc-unknown-linux-gnu)
         export PREFIX=powerpc-linux-gnu-
         export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
