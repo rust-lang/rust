@@ -37,7 +37,7 @@ install_c_toolchain() {
             ;;
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
-                    gcc-powerpc64le-linux-gnu libc6-dev-ppc64le-cross
+                    gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross
             ;;
         *)
             ;;
