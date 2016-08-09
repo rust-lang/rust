@@ -28,4 +28,8 @@ case $TARGET in
         export PREFIX=powerpc-linux-gnu-
         export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
         ;;
+    powerpc64le-unknown-linux-gnu)
+        export PREFIX=powerpc64le-linux-gnu-
+        export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
+        ;;
 esac
