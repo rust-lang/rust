@@ -4,6 +4,7 @@ set -ex
 
 install_deps() {
     if [[ ${DOCKER} == "i" ]]; then
+        apt-get update
         apt-get install -y --no-install-recommends \
                 ca-certificates curl
     fi
