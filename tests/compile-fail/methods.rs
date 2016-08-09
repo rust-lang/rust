@@ -435,13 +435,22 @@ fn use_extend_from_slice() {
 
 fn clone_on_copy() {
     42.clone(); //~ERROR using `clone` on a `Copy` type
+                //~| HELP try removing the `clone` call
+                //~| SUGGESTION 42
     vec![1].clone(); // ok, not a Copy type
     Some(vec![1]).clone(); // ok, not a Copy type
+    (&42).clone(); //~ERROR using `clone` on a `Copy` type
+                   //~| HELP try dereferencing it
+                   //~| SUGGESTION *(&42)
 }
 
 fn clone_on_copy_generic<T: Copy>(t: T) {
     t.clone(); //~ERROR using `clone` on a `Copy` type
+               //~| HELP try removing the `clone` call
+               //~| SUGGESTION t
     Some(t).clone(); //~ERROR using `clone` on a `Copy` type
+                     //~| HELP try removing the `clone` call
+                     //~| SUGGESTION Some(t)
 }
 
 fn clone_on_double_ref() {
@@ -450,7 +459,6 @@ fn clone_on_double_ref() {
     let z: &Vec<_> = y.clone(); //~ERROR using `clone` on a double
                                 //~| HELP try dereferencing it
                                 //~| SUGGESTION let z: &Vec<_> = (*y).clone();
-                                //~^^^ERROR using `clone` on a `Copy` type
     println!("{:p} {:p}",*y, z);
 }
 
