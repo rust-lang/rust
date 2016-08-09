@@ -50,6 +50,7 @@ matrix:
             - gcc-multilib
     - env: TARGET=powerpc-unknown-linux-gnu
       os: linux
+      dist: trusty
       sudo: required
       addons:
         apt:
