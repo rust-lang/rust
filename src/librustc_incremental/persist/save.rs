@@ -110,7 +110,12 @@ pub fn encode_dep_graph(preds: &Predecessors,
     let mut edges = vec![];
     for (&target, sources) in &preds.inputs {
         match *target {
-            DepNode::MetaData(_) => continue, // see encode_metadata_hashes instead
+            DepNode::MetaData(ref def_id) => {
+                // Metadata *targets* are always local metadata nodes. We handle
+                // those in `encode_metadata_hashes`, which comes later.
+                assert!(def_id.is_local());
+                continue;
+            }
             _ => (),
         }
         let target = builder.map(target);
@@ -186,7 +191,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
         // Create a vector containing a pair of (source-id, hash).
         // The source-id is stored as a `DepNode<u64>`, where the u64
         // is the det. hash of the def-path. This is convenient
-        // because we can sort this to get a table ordering across
+        // because we can sort this to get a stable ordering across
         // compilations, even if the def-ids themselves have changed.
         let mut hashes: Vec<(DepNode<u64>, u64)> = sources.iter()
             .map(|dep_node| {
