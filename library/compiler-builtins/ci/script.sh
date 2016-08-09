@@ -32,8 +32,9 @@ inspect() {
 }
 
 main() {
-    if [[ $DOCKER ]]; then
+    if [[ $DOCKER == "y" ]]; then
         docker run \
+               -e DOCKER=n \
                -e TARGET=$TARGET \
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
                -v $(pwd):/mnt \
@@ -44,7 +45,6 @@ main() {
         run_tests
         inspect
     fi
-
 }
 
 main

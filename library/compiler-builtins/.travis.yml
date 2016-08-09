@@ -62,8 +62,7 @@ matrix:
             - qemu-user-static
     - env: TARGET=powerpc64le-unknown-linux-gnu
       os: linux
-      services:
-        - docker
+      services: docker
       sudo: required
     - env: TARGET=x86_64-apple-darwin
       os: osx
