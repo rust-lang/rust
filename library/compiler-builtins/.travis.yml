@@ -3,6 +3,10 @@ sudo: false
 
 matrix:
   include:
+    - env: TARGET=powerpc64le-unknown-linux-gnu
+      os: linux
+      services: docker
+      sudo: required
     - env: TARGET=aarch64-unknown-linux-gnu
       os: linux
       dist: trusty
@@ -60,10 +64,6 @@ matrix:
             - libc6-powerpc-cross
             - libc6-dev-powerpc-cross
             - qemu-user-static
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-      os: linux
-      services: docker
-      sudo: required
     - env: TARGET=x86_64-apple-darwin
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
