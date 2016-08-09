@@ -71,7 +71,7 @@ matrix:
             - gcc-powerpc64le-linux-gnu
             - libc6-ppc64el-cross
             - libc6-dev-ppc64el-cross
-            - qemu-user-static
+            - qemu-user
     - env: TARGET=x86_64-apple-darwin
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu

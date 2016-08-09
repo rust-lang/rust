@@ -30,6 +30,7 @@ case $TARGET in
         ;;
     powerpc64le-unknown-linux-gnu)
         export PREFIX=powerpc64le-linux-gnu-
+        export QEMU=qemu-ppc64le
         export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
         ;;
 esac

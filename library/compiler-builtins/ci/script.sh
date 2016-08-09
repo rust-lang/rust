@@ -12,8 +12,15 @@ run_tests() {
         export RUST_TEST_THREADS=1
     fi
 
-    cargo test --target $TARGET
-    cargo test --target $TARGET --release
+    if [[ $QEMU ]]; then
+        cargo test --target $TARGET --no-run
+        $QEMU target/**/debug/rustc_builtins-*
+        cargo test --target $TARGET --release --no-run
+        $QEMU target/**/release/rustc_builtins-*
+    else
+        cargo test --target $TARGET
+        cargo test --target $TARGET --release
+    fi
 }
 
 inspect() {
