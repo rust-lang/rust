@@ -13,7 +13,7 @@
 
 //! Routines for manipulating the control-flow graph.
 
-use build::{CFG, Location};
+use build::CFG;
 use rustc::mir::repr::*;
 
 impl<'tcx> CFG<'tcx> {
