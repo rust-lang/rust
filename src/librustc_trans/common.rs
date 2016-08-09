@@ -350,7 +350,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        monomorphize::apply_param_substs(self.ccx.tcx(),
+        monomorphize::apply_param_substs(self.ccx.shared(),
                                          self.param_substs,
                                          value)
     }
@@ -519,7 +519,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        monomorphize::apply_param_substs(self.tcx(),
+        monomorphize::apply_param_substs(self.fcx.ccx.shared(),
                                          self.fcx.param_substs,
                                          value)
     }

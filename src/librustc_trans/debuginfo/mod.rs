@@ -414,7 +414,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
                 let impl_self_ty = cx.tcx().lookup_item_type(impl_def_id).ty;
                 let impl_self_ty = cx.tcx().erase_regions(&impl_self_ty);
-                let impl_self_ty = monomorphize::apply_param_substs(cx.tcx(),
+                let impl_self_ty = monomorphize::apply_param_substs(cx.shared(),
                                                                     instance.substs,
                                                                     &impl_self_ty);
 
