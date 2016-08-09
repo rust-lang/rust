@@ -12,7 +12,7 @@ install_deps() {
 
 install_qemu() {
     case $TARGET in
-        mips-unknown-linux-gnu |
+        mips-unknown-linux-gnu | \
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
                     qemu-user
