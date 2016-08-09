@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(fn_traits)]
+
+use std::ops::Fn;
+
+fn say(x: u32, y: u32) {
+    println!("{} {}", x, y);
+}
+
 fn main() {
-    let x = |_| {};
-    //~^ ERROR E0101
-    //~| NOTE cannot resolve type of expression
+    Fn::call(&say, (1, 2));
 }

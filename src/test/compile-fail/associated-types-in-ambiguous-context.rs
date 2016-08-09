@@ -15,15 +15,21 @@ trait Get {
 
 fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
 //~^ ERROR ambiguous associated type
+//~| NOTE ambiguous associated type
+//~| NOTE specify the type using the syntax `<Type as Get>::Value`
 
 trait Grab {
     type Value;
     fn grab(&self) -> Grab::Value;
     //~^ ERROR ambiguous associated type
+    //~| NOTE ambiguous associated type
+    //~| NOTE specify the type using the syntax `<Type as Grab>::Value`
 }
 
 type X = std::ops::Deref::Target;
 //~^ ERROR ambiguous associated type
+//~| NOTE ambiguous associated type
+//~| NOTE specify the type using the syntax `<Type as std::ops::Deref>::Target`
 
 fn main() {
 }

@@ -33,10 +33,12 @@ struct OrphanChecker<'cx, 'tcx:'cx> {
 impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     fn check_def_id(&self, item: &hir::Item, def_id: DefId) {
         if def_id.krate != LOCAL_CRATE {
-            span_err!(self.tcx.sess, item.span, E0116,
+            struct_span_err!(self.tcx.sess, item.span, E0116,
                       "cannot define inherent `impl` for a type outside of the \
-                       crate where the type is defined; define and implement \
-                       a trait or new type instead");
+                       crate where the type is defined")
+                .span_label(item.span, &format!("impl for type defined outside of crate."))
+                .span_note(item.span, &format!("define and implement a trait or new type instead"))
+                .emit();
         }
     }
 
@@ -66,7 +68,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     fn check_item(&self, item: &hir::Item) {
         let def_id = self.tcx.map.local_def_id(item.id);
         match item.node {
-            hir::ItemImpl(_, _, _, None, _, _) => {
+            hir::ItemImpl(_, _, _, None, ref ty, _) => {
                 // For inherent impls, self type must be a nominal type
                 // defined in this crate.
                 debug!("coherence2::orphan check: inherent impl {}",
@@ -209,11 +211,11 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                         return;
                     }
                     _ => {
-                        struct_span_err!(self.tcx.sess, item.span, E0118,
+                        struct_span_err!(self.tcx.sess, ty.span, E0118,
                                          "no base type found for inherent implementation")
-                        .span_help(item.span,
-                                   "either implement a trait on it or create a newtype to wrap it \
-                                    instead")
+                        .span_label(ty.span, &format!("impl requires a base type"))
+                        .note(&format!("either implement a trait on it or create a newtype \
+                                        to wrap it instead"))
                         .emit();
                         return;
                     }
@@ -228,12 +230,14 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => { }
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
-                        span_err!(
+                        struct_span_err!(
                             self.tcx.sess, item.span, E0117,
-                            "the impl does not reference any \
-                             types defined in this crate; \
-                             only traits defined in the current crate can be \
-                             implemented for arbitrary types");
+                             "only traits defined in the current crate can be \
+                             implemented for arbitrary types")
+                        .span_label(item.span, &format!("impl doesn't use types inside crate"))
+                        .note(&format!("the impl does not reference any \
+                                        types defined in this crate"))
+                        .emit();
                         return;
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
