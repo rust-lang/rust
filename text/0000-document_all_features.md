@@ -9,6 +9,33 @@
 
 One of the major goals of Rust's development process is *stability without stagnation*. That means we add features regularly. However, it can be difficult to *use* those features if they are not publicly documented anywhere. Therefore, this RFC proposes requiring that all new language features and public standard library items must be documented before landing on the stable release branch (item documentation for the standard library; in the language reference for language features).
 
+
+## Outline
+[outline]: #outline
+
+-   [Summary](#summary)
+    -   [Outline](#outline)
+-   [Motivation](#motivation)
+    -   [The Current Situation](#the-current-situation)
+    -   [Precedent](#precedent)
+-   [Detailed design](#detailed-design)
+    -   [New RFC section: “How do we teach
+        this?”](#new-rfc-section-how-do-we-teach-this)
+    -   [New requirement to document changes before
+        stabilizing](#new-requirement-to-document-changes-before-stabilizing)
+        -   [Language features](#language-features)
+        -   [Standard library](#standard-library)
+    -   [Add an “Edit” link (optional)](#add-an-edit-link-optional)
+        -   [Support with infrastructure
+            change](#support-with-infrastructure-change)
+    -   [Visually Distinguish
+        Nightly (optional)](#visually-distinguish-nightly-optional)
+-   [How do we teach this?](#how-do-we-teach-this)
+-   [Drawbacks](#drawbacks)
+-   [Alternatives](#alternatives)
+-   [Unresolved questions](#unresolved-questions)
+
+
 # Motivation
 [motivation]: #motivation
 
@@ -86,6 +113,12 @@ The basic process of developing new language features will remain largely the sa
 
 - a new requirement that the changes themselves be properly documented before being merged to stable
 
+Additionally, we might make some content-level/infrastructural changes:
+
+- add an "edit" link to the documentation pages
+- visually distinguish nightly vs. stable build docs
+
+
 ## New RFC section: "How do we teach this?"
 [new-rfc-section]: #new-rfc-section-how-do-we-teach-this
 
@@ -106,14 +139,22 @@ For a great example of this in practice, see the (currently open) [Ember RFC: Mo
 
 [Ember RFC: Module Unification]: https://github.com/dgeb/rfcs/blob/module-unification/text/0000-module-unification.md#how-we-teach-this
 
-## Review before stabilization
+## New requirement to document changes before stabilizing
 
-Changes will now be reviewed for changes to the documentation prior to being merged.
+Changes will now be reviewed for changes to the documentation prior to being merged. This will proceed in the following places:
+
+- language features:
+    - in the reference
+    - in _The Rust Programming Language_
+    - in _Rust by Example_
+- the standard library: in the `std` API docs
 
 ### Language features
 [language-features]: #language-features
 
-In the case of language features, this will be a manual process, involving updates to the `reference.md` file. (It may at some point be sensible to break up the Reference file for easier maintenance; that is left aside as orthogonal to this discussion.)
+We will document *all* language features in the Rust Reference, as well as making some updates to _The Rust Programming Language_ and _Rust by Example_ as necessary.
+
+This will necessarily be a manual process, involving updates to the `reference.md` file. (It may at some point be sensible to break up the Reference file for easier maintenance; that is left aside as orthogonal to this discussion.)
 
 Note that the feature documentation does not need to be written by the feature author. In fact, this is one of the areas where the community may be most able to support core developers even if not themselves programming language theorists or compiler hackers. This may free up the compiler developers' time. It will also help communicate the features in a way that is accessible to ordinary Rust users.
 
@@ -128,6 +169,7 @@ When the core team discusses whether to stabilize a feature in a given release, 
 Given the current state of the reference, this may need to proceed in two steps:
 
 #### The current state of the reference.
+[refstate]: #the-current-state-of-the-reference
 
 Since the reference is currently fairly out of date in a number of areas, it may be worth creating a "strike team" to invest a couple months working on the reference: updating it, organizing it, and improving its presentation. (A single web page with *all* of this content is difficult to navigate at best.) This can proceed in parallel with the documentation of new features. It is probably a necessity for this proposal to be particularly effective in the long term.
 
@@ -145,7 +187,7 @@ Updating the reference could proceed stepwise:
 In the case of the standard library, this could conceivably be managed by setting the `#[forbid(missing_docs)]` attribute on the library roots. In lieu of that, manual code review and general discipline should continue to serve. However, if automated tools *can* be employed here, they should.
 
 
-## Add an "Edit" link
+## Add an "Edit" link (optional)
 [edit-link]: #add-an-edit-link
 
 To support its own change, the Ember team added an "edit this" icon to the top of every page in the guides (and plans to do so for the API documentation, pending infrastructure changes to support that). Each of _The Rust Programming Language_, _Rust by Example_, and the Rust Reference should do the same.
@@ -156,12 +198,12 @@ Making a similar change has some downsides (see below under [**Drawbacks**][draw
 
 2. It sends a quiet but real signal that the docs are up for editing. This makes it likelier that people will edit them!
 
-### Optional: Support with infrastructure change
+### Support with infrastructure change
 [edit-link-infrastructure]: #optional-support-with-infrastructure-change
 
 The links to edit the documentation could track against the release branch instead of against `master`. (Fixes to documentation would be analogous to bugfix releases in this sense.) Targeting the pull-request automatically would be straightforward. However, see below under [**Drawbacks**][drawbacks].
 
-## Optional: Visually Distinguish Nightly
+## Visually Distinguish Nightly (optional)
 [distinguish-nightly]: #optional-visually-distinguish-nightly
 
 It might be useful to visually distinguish the documentation for nightly Rust as being unstable and subject to change, even simply by setting a different default theme on _The Rust Programming Language_ book for nightly Rust.
