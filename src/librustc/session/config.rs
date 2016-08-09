@@ -258,13 +258,11 @@ top_level_options!(
         lint_cap: Option<lint::Level> [TRACKED],
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
-        // FIXME(mw): I'm not entirely sure if this can have any influence on
-        //            incremental compilation apart from what is already handled
-        //            by crate metadata hashes. Better track it.
+        // FIXME(mw): We track this for now but it actually doesn't make too
+        //            much sense: The search path can stay the same while the
+        //            things discovered there might have changed on disk.
         search_paths: SearchPaths [TRACKED],
-        // FIXME(mw): Might not need to do dep-tracking for `libs`?
         libs: Vec<(String, cstore::NativeLibraryKind)> [TRACKED],
-        // FIXME(mw): Might not need to do dep-tracking for `maybe_sysroot`?
         maybe_sysroot: Option<PathBuf> [TRACKED],
 
         target_triple: String [TRACKED],
@@ -280,8 +278,9 @@ top_level_options!(
         debugging_opts: DebuggingOptions [TRACKED],
         prints: Vec<PrintRequest> [UNTRACKED],
         cg: CodegenOptions [TRACKED],
-        // FIXME(mw): `externs` might not need to be tracked but let's err on
-        //            the side of caution for now.
+        // FIXME(mw): We track this for now but it actually doesn't make too
+        //            much sense: The value of this option can stay the same
+        //            while the files they refer to might have changed on disk.
         externs: Externs [TRACKED],
         crate_name: Option<String> [TRACKED],
         // An optional name to use as the crate for std during std injection,
@@ -1719,11 +1718,12 @@ mod dep_tracking {
         ($t:ty) => (
             impl DepTrackingHash for Vec<$t> {
                 fn hash(&self, hasher: &mut SipHasher, error_format: ErrorOutputType) {
-                    let mut elems = self.clone();
+                    let mut elems: Vec<&$t> = self.iter().collect();
                     elems.sort();
-                    for (i, e) in elems.iter().enumerate() {
-                        Hash::hash(&i, hasher);
-                        DepTrackingHash::hash(e, hasher, error_format);
+                    Hash::hash(&elems.len(), hasher);
+                    for (index, elem) in elems.iter().enumerate() {
+                        Hash::hash(&index, hasher);
+                        DepTrackingHash::hash(*elem, hasher, error_format);
                     }
                 }
             }
