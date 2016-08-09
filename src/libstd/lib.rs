@@ -269,6 +269,7 @@
 #![feature(str_utf16)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
+#![feature(try_borrow)]
 #![feature(try_from)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
