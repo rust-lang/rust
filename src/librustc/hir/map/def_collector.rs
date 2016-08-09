@@ -184,7 +184,8 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
-        let def = self.create_def(foreign_item.id, DefPathData::ValueNs(foreign_item.ident.name.as_str()));
+        let def = self.create_def(foreign_item.id,
+                                  DefPathData::ValueNs(foreign_item.ident.name.as_str()));
 
         self.with_parent(def, |this| {
             visit::walk_foreign_item(this, foreign_item);
@@ -345,7 +346,8 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'ast hir::ForeignItem) {
-        let def = self.create_def(foreign_item.id, DefPathData::ValueNs(foreign_item.name.as_str()));
+        let def = self.create_def(foreign_item.id,
+                                  DefPathData::ValueNs(foreign_item.name.as_str()));
 
         self.with_parent(def, |this| {
             intravisit::walk_foreign_item(this, foreign_item);

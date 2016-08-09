@@ -110,9 +110,6 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Retrace the paths in the directory to find their current location (if any).
     let retraced = directory.retrace(tcx);
 
-    // TODO -- this could be more efficient if we integrated the `DefIdDirectory` and
-    // pred set more deeply
-
     // Compute the set of Hir nodes whose data has changed or which
     // have been removed.  These are "raw" source nodes, which means
     // that they still use the original `DefPathIndex` values from the
