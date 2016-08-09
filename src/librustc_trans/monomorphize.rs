@@ -42,12 +42,13 @@ impl<'tcx> Instance<'tcx> {
 
 /// Monomorphizes a type from the AST by first applying the in-scope
 /// substitutions and then normalizing any associated types.
-pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn apply_param_substs<'a, 'tcx, T>(scx: &SharedCrateContext<'a, 'tcx>,
                                        param_substs: &Substs<'tcx>,
                                        value: &T)
                                        -> T
     where T: TransNormalize<'tcx>
 {
+    let tcx = scx.tcx();
     debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
     let substituted = value.subst(tcx, param_substs);
     debug!("apply_param_substs: substituted={:?}{}",
@@ -65,3 +66,4 @@ pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     tcx.normalize_associated_type(&f.ty(tcx, param_substs))
 }
+
