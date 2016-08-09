@@ -40,7 +40,7 @@ install_c_toolchain() {
             ;;
         i586-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
-                    gcc libc6-dev-i386 libgcc1
+                    gcc libc6-dev-i386 lib32gcc1
             ;;
         mips-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
