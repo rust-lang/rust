@@ -76,7 +76,6 @@ use cmp::PartialOrd;
 use fmt;
 use marker::{Sized, Unsize};
 use result::Result::{self, Ok, Err};
-use option::Option::{self, Some, None};
 
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
@@ -2203,75 +2202,23 @@ impl<U, V> Carrier for Result<U, V> {
     }
 }
 
-#[unstable(feature = "question_mark_carrier", issue = "31436")]
-impl<U> Carrier for Option<U> {
-    type Success = U;
-    type Error = ();
+struct _DummyErrorType;
 
-    fn from_success(u: U) -> Option<U> {
-        Some(u)
-    }
-
-    fn from_error(_: ()) -> Option<U> {
-        None
-    }
-
-    fn translate<T>(self) -> T
-        where T: Carrier<Success=U, Error=()>
-    {
-        match self {
-            Some(u) => T::from_success(u),
-            None => T::from_error(()),
-        }
-    }
-}
-
-// Implementing Carrier for bools means it's easy to write short-circuiting
-// functions. E.g.,
-// ```
-// fn foo() -> bool {
-//     if !(f() || g()) {
-//         return false;
-//     }
-//
-//     some_computation();
-//     if h() {
-//         return false;
-//     }
-//
-//     more_computation();
-//     i()
-// }
-// ```
-// becomes
-// ```
-// fn foo() -> bool {
-//     (f() || g())?;
-//     some_computation();
-//     (!h())?;
-//     more_computation();
-//     i()
-// }
-// ```
-#[unstable(feature = "question_mark_carrier", issue = "31436")]
-impl Carrier for bool {
+impl Carrier for _DummyErrorType {
     type Success = ();
     type Error = ();
 
-    fn from_success(_: ()) -> bool {
-        true
+    fn from_success(_: ()) -> _DummyErrorType {
+        _DummyErrorType
     }
 
-    fn from_error(_: ()) -> bool {
-        false
+    fn from_error(_: ()) -> _DummyErrorType {
+        _DummyErrorType
     }
 
     fn translate<T>(self) -> T
         where T: Carrier<Success=(), Error=()>
     {
-        match self {
-            true => T::from_success(()),
-            false => T::from_error(()),
-        }
+        T::from_success(())
     }
 }
