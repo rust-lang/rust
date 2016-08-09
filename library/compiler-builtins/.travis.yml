@@ -44,6 +44,7 @@ matrix:
       os: osx
     - env: TARGET=i586-unknown-linux-gnu
       os: linux
+      dist: trusty
       addons:
         apt:
           packages:
