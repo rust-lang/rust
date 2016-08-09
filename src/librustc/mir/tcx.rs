@@ -133,7 +133,7 @@ impl<'tcx> Lvalue<'tcx> {
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>> 
+    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>>
     {
         match self {
             &Rvalue::Use(ref operand) => Some(operand.ty(mir, tcx)),
@@ -207,7 +207,7 @@ impl<'tcx> Operand<'tcx> {
             &Operand::Consume(ref l) => l.ty(mir, tcx).to_ty(tcx),
             &Operand::Constant(ref c) => c.ty,
         }
-    }    
+    }
 }
 
 impl<'tcx> BinOp {
@@ -232,7 +232,7 @@ impl<'tcx> BinOp {
                 tcx.types.bool
             }
         }
-    }  
+    }
 }
 
 impl BorrowKind {
