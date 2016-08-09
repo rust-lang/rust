@@ -8,25 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:a.rs
-// revisions:rpass1 rpass2 rpass3
-// compile-flags: -Z query-dep-graph
+#![crate_type="rlib"]
 
-#![feature(rustc_attrs)]
+pub type X = u32;
 
-extern crate a;
-
-#[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
-#[rustc_clean(label="TypeckItemBody", cfg="rpass3")]
-pub fn use_X() -> u32 {
-    let x: a::X = 22;
-    x as u32
-}
-
-#[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
-#[rustc_clean(label="TypeckItemBody", cfg="rpass3")]
-pub fn use_Y() {
-    let x: a::Y = 'c';
-}
-
-pub fn main() { }

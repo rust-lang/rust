@@ -546,11 +546,13 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                     .borrow_mut()
                     .insert(def_id, None);
             }
-            decoder::FoundAst::Found(&InlinedItem::Item(ref item)) => {
+            decoder::FoundAst::Found(&InlinedItem::Item(d, ref item)) => {
+                assert_eq!(d, def_id);
                 let inlined_root_node_id = find_inlined_item_root(item.id);
                 cache_inlined_item(def_id, item.id, inlined_root_node_id);
             }
-            decoder::FoundAst::Found(&InlinedItem::Foreign(ref item)) => {
+            decoder::FoundAst::Found(&InlinedItem::Foreign(d, ref item)) => {
+                assert_eq!(d, def_id);
                 let inlined_root_node_id = find_inlined_item_root(item.id);
                 cache_inlined_item(def_id, item.id, inlined_root_node_id);
             }

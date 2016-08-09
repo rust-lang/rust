@@ -61,6 +61,12 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         self.map.get(k)
     }
 
+    pub fn get_mut(&mut self, k: &M::Key) -> Option<&mut M::Value> {
+        self.read(k);
+        self.write(k);
+        self.map.get_mut(k)
+    }
+
     pub fn insert(&mut self, k: M::Key, v: M::Value) -> Option<M::Value> {
         self.write(&k);
         self.map.insert(k, v)
@@ -69,6 +75,10 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
     pub fn contains_key(&self, k: &M::Key) -> bool {
         self.read(k);
         self.map.contains_key(k)
+    }
+
+    pub fn keys(&self) -> Vec<M::Key> {
+        self.map.keys().cloned().collect()
     }
 }
 

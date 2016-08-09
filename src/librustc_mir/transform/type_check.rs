@@ -11,8 +11,6 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
-use rustc::dep_graph::DepNode;
-use rustc::hir::def_id::DefId;
 use rustc::infer::{self, InferCtxt, InferOk};
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::fold::TypeFoldable;
@@ -714,7 +712,4 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
 }
 
 impl Pass for TypeckMir {
-    fn dep_node(&self, def_id: DefId) -> DepNode<DefId> {
-        DepNode::MirTypeck(def_id)
-    }
 }

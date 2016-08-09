@@ -135,11 +135,11 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
                 DefPathData::Impl,
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Trait(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
-                DefPathData::TypeNs(i.ident.name),
-            ItemKind::Mod(..) => DefPathData::Module(i.ident.name),
+                DefPathData::TypeNs(i.ident.name.as_str()),
+            ItemKind::Mod(..) => DefPathData::Module(i.ident.name.as_str()),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
-                DefPathData::ValueNs(i.ident.name),
-            ItemKind::Mac(..) => DefPathData::MacroDef(i.ident.name),
+                DefPathData::ValueNs(i.ident.name.as_str()),
+            ItemKind::Mac(..) => DefPathData::MacroDef(i.ident.name.as_str()),
             ItemKind::Use(..) => DefPathData::Misc,
         };
         let def = self.create_def(i.id, def_data);
@@ -150,12 +150,12 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
                     for v in &enum_definition.variants {
                         let variant_def_index =
                             this.create_def(v.node.data.id(),
-                                            DefPathData::EnumVariant(v.node.name.name));
+                                            DefPathData::EnumVariant(v.node.name.name.as_str()));
                         this.with_parent(variant_def_index, |this| {
                             for (index, field) in v.node.data.fields().iter().enumerate() {
                                 let name = field.ident.map(|ident| ident.name)
                                     .unwrap_or_else(|| token::intern(&index.to_string()));
-                                this.create_def(field.id, DefPathData::Field(name));
+                                this.create_def(field.id, DefPathData::Field(name.as_str()));
                             }
 
                             if let Some(ref expr) = v.node.disr_expr {
@@ -172,8 +172,8 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
                     }
 
                     for (index, field) in struct_def.fields().iter().enumerate() {
-                        let name = field.ident.map(|ident| ident.name)
-                            .unwrap_or(token::intern(&index.to_string()));
+                        let name = field.ident.map(|ident| ident.name.as_str())
+                            .unwrap_or(token::intern(&index.to_string()).as_str());
                         this.create_def(field.id, DefPathData::Field(name));
                     }
                 }
@@ -184,7 +184,8 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
-        let def = self.create_def(foreign_item.id, DefPathData::ValueNs(foreign_item.ident.name));
+        let def = self.create_def(foreign_item.id,
+                                  DefPathData::ValueNs(foreign_item.ident.name.as_str()));
 
         self.with_parent(def, |this| {
             visit::walk_foreign_item(this, foreign_item);
@@ -193,7 +194,7 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
 
     fn visit_generics(&mut self, generics: &Generics) {
         for ty_param in generics.ty_params.iter() {
-            self.create_def(ty_param.id, DefPathData::TypeParam(ty_param.ident.name));
+            self.create_def(ty_param.id, DefPathData::TypeParam(ty_param.ident.name.as_str()));
         }
 
         visit::walk_generics(self, generics);
@@ -202,9 +203,9 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
     fn visit_trait_item(&mut self, ti: &TraitItem) {
         let def_data = match ti.node {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
-                DefPathData::ValueNs(ti.ident.name),
-            TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.name),
-            TraitItemKind::Macro(..) => DefPathData::MacroDef(ti.ident.name),
+                DefPathData::ValueNs(ti.ident.name.as_str()),
+            TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.name.as_str()),
+            TraitItemKind::Macro(..) => DefPathData::MacroDef(ti.ident.name.as_str()),
         };
 
         let def = self.create_def(ti.id, def_data);
@@ -220,9 +221,9 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
     fn visit_impl_item(&mut self, ii: &ImplItem) {
         let def_data = match ii.node {
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
-                DefPathData::ValueNs(ii.ident.name),
-            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.name),
-            ImplItemKind::Macro(..) => DefPathData::MacroDef(ii.ident.name),
+                DefPathData::ValueNs(ii.ident.name.as_str()),
+            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.name.as_str()),
+            ImplItemKind::Macro(..) => DefPathData::MacroDef(ii.ident.name.as_str()),
         };
 
         let def = self.create_def(ii.id, def_data);
@@ -239,7 +240,7 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
         let parent_def = self.parent_def;
 
         if let PatKind::Ident(_, id, _) = pat.node {
-            let def = self.create_def(pat.id, DefPathData::Binding(id.node.name));
+            let def = self.create_def(pat.id, DefPathData::Binding(id.node.name.as_str()));
             self.parent_def = Some(def);
         }
 
@@ -271,11 +272,11 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
     }
 
     fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
-        self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name));
+        self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name.as_str()));
     }
 
     fn visit_macro_def(&mut self, macro_def: &MacroDef) {
-        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.ident.name));
+        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.ident.name.as_str()));
     }
 }
 
@@ -301,9 +302,9 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
             hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemTrait(..) |
             hir::ItemExternCrate(..) | hir::ItemMod(..) | hir::ItemForeignMod(..) |
             hir::ItemTy(..) =>
-                DefPathData::TypeNs(i.name),
+                DefPathData::TypeNs(i.name.as_str()),
             hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) =>
-                DefPathData::ValueNs(i.name),
+                DefPathData::ValueNs(i.name.as_str()),
             hir::ItemUse(..) => DefPathData::Misc,
         };
         let def = self.create_def(i.id, def_data);
@@ -314,12 +315,12 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
                     for v in &enum_definition.variants {
                         let variant_def_index =
                             this.create_def(v.node.data.id(),
-                                            DefPathData::EnumVariant(v.node.name));
+                                            DefPathData::EnumVariant(v.node.name.as_str()));
 
                         this.with_parent(variant_def_index, |this| {
                             for field in v.node.data.fields() {
                                 this.create_def(field.id,
-                                                DefPathData::Field(field.name));
+                                                DefPathData::Field(field.name.as_str()));
                             }
                             if let Some(ref expr) = v.node.disr_expr {
                                 this.visit_hir_const_integer(expr);
@@ -335,7 +336,7 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
                     }
 
                     for field in struct_def.fields() {
-                        this.create_def(field.id, DefPathData::Field(field.name));
+                        this.create_def(field.id, DefPathData::Field(field.name.as_str()));
                     }
                 }
                 _ => {}
@@ -345,7 +346,8 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'ast hir::ForeignItem) {
-        let def = self.create_def(foreign_item.id, DefPathData::ValueNs(foreign_item.name));
+        let def = self.create_def(foreign_item.id,
+                                  DefPathData::ValueNs(foreign_item.name.as_str()));
 
         self.with_parent(def, |this| {
             intravisit::walk_foreign_item(this, foreign_item);
@@ -354,7 +356,7 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
 
     fn visit_generics(&mut self, generics: &'ast hir::Generics) {
         for ty_param in generics.ty_params.iter() {
-            self.create_def(ty_param.id, DefPathData::TypeParam(ty_param.name));
+            self.create_def(ty_param.id, DefPathData::TypeParam(ty_param.name.as_str()));
         }
 
         intravisit::walk_generics(self, generics);
@@ -363,8 +365,8 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
         let def_data = match ti.node {
             hir::MethodTraitItem(..) | hir::ConstTraitItem(..) =>
-                DefPathData::ValueNs(ti.name),
-            hir::TypeTraitItem(..) => DefPathData::TypeNs(ti.name),
+                DefPathData::ValueNs(ti.name.as_str()),
+            hir::TypeTraitItem(..) => DefPathData::TypeNs(ti.name.as_str()),
         };
 
         let def = self.create_def(ti.id, def_data);
@@ -380,8 +382,8 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
         let def_data = match ii.node {
             hir::ImplItemKind::Method(..) | hir::ImplItemKind::Const(..) =>
-                DefPathData::ValueNs(ii.name),
-            hir::ImplItemKind::Type(..) => DefPathData::TypeNs(ii.name),
+                DefPathData::ValueNs(ii.name.as_str()),
+            hir::ImplItemKind::Type(..) => DefPathData::TypeNs(ii.name.as_str()),
         };
 
         let def = self.create_def(ii.id, def_data);
@@ -398,7 +400,7 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
         let parent_def = self.parent_def;
 
         if let hir::PatKind::Binding(_, name, _) = pat.node {
-            let def = self.create_def(pat.id, DefPathData::Binding(name.node));
+            let def = self.create_def(pat.id, DefPathData::Binding(name.node.as_str()));
             self.parent_def = Some(def);
         }
 
@@ -430,10 +432,10 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     }
 
     fn visit_lifetime_def(&mut self, def: &'ast hir::LifetimeDef) {
-        self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name));
+        self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name.as_str()));
     }
 
     fn visit_macro_def(&mut self, macro_def: &'ast hir::MacroDef) {
-        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.name));
+        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.name.as_str()));
     }
 }

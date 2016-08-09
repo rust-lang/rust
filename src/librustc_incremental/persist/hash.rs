@@ -39,12 +39,19 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<u64> {
+    pub fn is_hashable(dep_node: &DepNode<DefId>) -> bool {
+        match *dep_node {
+            DepNode::Hir(_) => true,
+            DepNode::MetaData(def_id) => !def_id.is_local(),
+            _ => false,
+        }
+    }
+
+    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<(DefId, u64)> {
         match *dep_node {
             // HIR nodes (which always come from our crate) are an input:
             DepNode::Hir(def_id) => {
-                assert!(def_id.is_local());
-                Some(self.hir_hash(def_id))
+                Some((def_id, self.hir_hash(def_id)))
             }
 
             // MetaData from other crates is an *input* to us.
@@ -52,7 +59,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // don't hash them, but we do compute a hash for them and
             // save it for others to use.
             DepNode::MetaData(def_id) if !def_id.is_local() => {
-                Some(self.metadata_hash(def_id))
+                Some((def_id, self.metadata_hash(def_id)))
             }
 
             _ => {
@@ -66,7 +73,16 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
     }
 
     fn hir_hash(&mut self, def_id: DefId) -> u64 {
-        assert!(def_id.is_local());
+        assert!(def_id.is_local(),
+                "cannot hash HIR for non-local def-id {:?} => {:?}",
+                def_id,
+                self.tcx.item_path_str(def_id));
+
+        assert!(!self.tcx.map.is_inlined_def_id(def_id),
+                "cannot hash HIR for inlined def-id {:?} => {:?}",
+                def_id,
+                self.tcx.item_path_str(def_id));
+
         // FIXME(#32753) -- should we use a distinct hash here
         self.tcx.calculate_item_hash(def_id)
     }

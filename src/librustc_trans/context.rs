@@ -81,7 +81,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     check_overflow: bool,
     check_drop_flag_for_sanity: bool,
     mir_map: &'a MirMap<'tcx>,
-    mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
+    mir_cache: RefCell<DepTrackingMap<MirCache<'tcx>>>,
 
     use_dll_storage_attrs: bool,
 
@@ -183,6 +183,19 @@ impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
     type Value = traits::Vtable<'tcx, ()>;
     fn to_dep_node(key: &ty::PolyTraitRef<'tcx>) -> DepNode<DefId> {
         key.to_poly_trait_predicate().dep_node()
+    }
+}
+
+// Cache for mir loaded from metadata
+struct MirCache<'tcx> {
+    data: PhantomData<&'tcx ()>
+}
+
+impl<'tcx> DepTrackingMapConfig for MirCache<'tcx> {
+    type Key = DefId;
+    type Value = Rc<mir::Mir<'tcx>>;
+    fn to_dep_node(key: &DefId) -> DepNode<DefId> {
+        DepNode::Mir(*key)
     }
 }
 
@@ -474,7 +487,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             symbol_hasher: RefCell::new(symbol_hasher),
             tcx: tcx,
             mir_map: mir_map,
-            mir_cache: RefCell::new(DefIdMap()),
+            mir_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
             stats: Stats {
                 n_glues_created: Cell::new(0),
                 n_null_glues: Cell::new(0),
@@ -538,8 +551,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn get_mir(&self, def_id: DefId) -> Option<CachedMir<'b, 'tcx>> {
         if def_id.is_local() {
-            let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
-            self.mir_map.map.get(&node_id).map(CachedMir::Ref)
+            self.mir_map.map.get(&def_id).map(CachedMir::Ref)
         } else {
             if let Some(mir) = self.mir_cache.borrow().get(&def_id).cloned() {
                 return Some(CachedMir::Owned(mir));

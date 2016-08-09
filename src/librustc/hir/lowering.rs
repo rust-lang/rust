@@ -1854,7 +1854,7 @@ impl<'a> LoweringContext<'a> {
 
         let parent_def = self.parent_def;
         let def = self.resolver.definitions().map(|defs| {
-            let def_path_data = DefPathData::Binding(name);
+            let def_path_data = DefPathData::Binding(name.as_str());
             let def_index = defs.create_def_with_parent(parent_def, pat.id, def_path_data);
             Def::Local(DefId::local(def_index), pat.id)
         }).unwrap_or(Def::Err);

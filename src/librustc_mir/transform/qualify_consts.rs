@@ -16,6 +16,7 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
@@ -883,8 +884,8 @@ fn qualify_const_item_cached<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let extern_mir;
     let param_env_and_mir = if def_id.is_local() {
-        let node_id = tcx.map.as_local_node_id(def_id).unwrap();
-        mir_map.and_then(|map| map.map.get(&node_id)).map(|mir| {
+        mir_map.and_then(|map| map.map.get(&def_id)).map(|mir| {
+            let node_id = tcx.map.as_local_node_id(def_id).unwrap();
             (ty::ParameterEnvironment::for_item(tcx, node_id), mir)
         })
     } else if let Some(mir) = tcx.sess.cstore.maybe_get_item_mir(tcx, def_id) {
@@ -919,9 +920,10 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
 
         // First, visit `const` items, potentially recursing, to get
         // accurate MUTABLE_INTERIOR and NEEDS_DROP qualifications.
-        for &id in map.map.keys() {
-            let def_id = tcx.map.local_def_id(id);
-            let _task = tcx.dep_graph.in_task(self.dep_node(def_id));
+        let keys = map.map.keys();
+        for &def_id in &keys {
+            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
+            let id = tcx.map.as_local_node_id(def_id).unwrap();
             let src = MirSource::from_node(tcx, id);
             if let MirSource::Const(_) = src {
                 qualify_const_item_cached(tcx, &mut qualif_map, Some(map), def_id);
@@ -931,9 +933,9 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
         // Then, handle everything else, without recursing,
         // as the MIR map is not shared, since promotion
         // in functions (including `const fn`) mutates it.
-        for (&id, mir) in &mut map.map {
-            let def_id = tcx.map.local_def_id(id);
-            let _task = tcx.dep_graph.in_task(self.dep_node(def_id));
+        for &def_id in &keys {
+            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
+            let id = tcx.map.as_local_node_id(def_id).unwrap();
             let src = MirSource::from_node(tcx, id);
             let mode = match src {
                 MirSource::Fn(_) => {
@@ -950,6 +952,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
             };
             let param_env = ty::ParameterEnvironment::for_item(tcx, id);
 
+            let mir = map.map.get_mut(&def_id).unwrap();
             for hook in &mut *hooks {
                 hook.on_mir_pass(tcx, src, mir, self, false);
             }

@@ -12,8 +12,11 @@ use middle::cstore::LOCAL_CRATE;
 use hir::def_id::{DefId, DefIndex};
 use hir::map::def_collector::DefCollector;
 use rustc_data_structures::fnv::FnvHashMap;
+use std::fmt::Write;
+use std::hash::{Hash, Hasher, SipHasher};
 use syntax::{ast, visit};
 use syntax::parse::token::InternedString;
+use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
 /// The definition table containing node definitions
@@ -109,6 +112,40 @@ impl DefPath {
         data.reverse();
         DefPath { data: data, krate: krate }
     }
+
+    pub fn to_string(&self, tcx: TyCtxt) -> String {
+        let mut s = String::with_capacity(self.data.len() * 16);
+
+        if self.krate == LOCAL_CRATE {
+            s.push_str(&tcx.crate_name(self.krate));
+        } else {
+            s.push_str(&tcx.sess.cstore.original_crate_name(self.krate));
+        }
+        s.push_str("/");
+        s.push_str(&tcx.crate_disambiguator(self.krate));
+
+        for component in &self.data {
+            write!(s,
+                   "::{}[{}]",
+                   component.data.as_interned_str(),
+                   component.disambiguator)
+                .unwrap();
+        }
+
+        s
+    }
+
+    pub fn deterministic_hash(&self, tcx: TyCtxt) -> u64 {
+        let mut state = SipHasher::new();
+        self.deterministic_hash_to(tcx, &mut state);
+        state.finish()
+    }
+
+    pub fn deterministic_hash_to<H: Hasher>(&self, tcx: TyCtxt, state: &mut H) {
+        tcx.crate_name(self.krate).hash(state);
+        tcx.crate_disambiguator(self.krate).hash(state);
+        self.data.hash(state);
+    }
 }
 
 /// Root of an inlined item. We track the `DefPath` of the item within
@@ -153,31 +190,31 @@ pub enum DefPathData {
     /// An impl
     Impl,
     /// Something in the type NS
-    TypeNs(ast::Name),
+    TypeNs(InternedString),
     /// Something in the value NS
-    ValueNs(ast::Name),
+    ValueNs(InternedString),
     /// A module declaration
-    Module(ast::Name),
+    Module(InternedString),
     /// A macro rule
-    MacroDef(ast::Name),
+    MacroDef(InternedString),
     /// A closure expression
     ClosureExpr,
 
     // Subportions of items
     /// A type parameter (generic parameter)
-    TypeParam(ast::Name),
+    TypeParam(InternedString),
     /// A lifetime definition
-    LifetimeDef(ast::Name),
+    LifetimeDef(InternedString),
     /// A variant of a enum
-    EnumVariant(ast::Name),
+    EnumVariant(InternedString),
     /// A struct field
-    Field(ast::Name),
+    Field(InternedString),
     /// Implicit ctor for a tuple-like struct
     StructCtor,
     /// Initializer for a const
     Initializer,
     /// Pattern binding
-    Binding(ast::Name),
+    Binding(InternedString),
 }
 
 impl Definitions {
@@ -291,16 +328,16 @@ impl DefPathData {
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) |
-            ValueNs(name) |
-            Module(name) |
-            MacroDef(name) |
-            TypeParam(name) |
-            LifetimeDef(name) |
-            EnumVariant(name) |
-            Binding(name) |
-            Field(name) => {
-                name.as_str()
+            TypeNs(ref name) |
+            ValueNs(ref name) |
+            Module(ref name) |
+            MacroDef(ref name) |
+            TypeParam(ref name) |
+            LifetimeDef(ref name) |
+            EnumVariant(ref name) |
+            Binding(ref name) |
+            Field(ref name) => {
+                name.clone()
             }
 
             Impl => {
