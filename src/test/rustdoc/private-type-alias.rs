@@ -21,6 +21,17 @@ pub fn get_result_pub() -> MyResultPub<u32> {
     panic!();
 }
 
+pub type PubRecursive = u16;
+type PrivRecursive3 = u8;
+type PrivRecursive2 = PubRecursive;
+type PrivRecursive1 = PrivRecursive3;
+
+// PrivRecursive1 is expanded twice and stops at u8
+// PrivRecursive2 is expanded once and stops at public type alias PubRecursive
+// @has private_type_alias/fn.get_result_recursive.html '//pre' '(u8, PubRecursive)'
+pub fn get_result_recursive() -> (PrivRecursive1, PrivRecursive2) {
+    panic!();
+}
 
 type MyLifetimePriv<'a> = &'a isize;
 
