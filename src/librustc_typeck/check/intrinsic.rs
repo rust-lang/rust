@@ -97,8 +97,10 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 (0, Vec::new(), tcx.mk_nil())
             }
             op => {
-                span_err!(tcx.sess, it.span, E0092,
-                    "unrecognized atomic operation function: `{}`", op);
+                struct_span_err!(tcx.sess, it.span, E0092,
+                      "unrecognized atomic operation function: `{}`", op)
+                  .span_label(it.span, &format!("unrecognized atomic operation"))
+                  .emit();
                 return;
             }
         };
