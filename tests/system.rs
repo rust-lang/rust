@@ -350,3 +350,9 @@ fn rustfmt_diff_make_diff_tests() {
                                     DiffLine::Context("d".into())],
                     }]);
 }
+
+#[test]
+fn rustfmt_diff_no_diff_test() {
+    let diff = make_diff("a\nb\nc\nd", "a\nb\nc\nd", 3);
+    assert_eq!(diff, vec![]);
+}
