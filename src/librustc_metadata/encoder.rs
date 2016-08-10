@@ -25,7 +25,7 @@ use middle::cstore::{LOCAL_CRATE, InlinedItemRef, LinkMeta, tls};
 use rustc::hir::def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
-use rustc::dep_graph::{DepGraph, DepNode, DepTask};
+use rustc::dep_graph::DepNode;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::util::IntTypeExt;
@@ -54,6 +54,8 @@ use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 use rustc::hir::map::DefKey;
 
+use super::index_builder::{CrateIndex, XRef};
+
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -68,35 +70,6 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx> EncodeContext<'a,'tcx> {
     fn local_id(&self, def_id: DefId) -> NodeId {
         self.tcx.map.as_local_node_id(def_id).unwrap()
-    }
-}
-
-/// "interned" entries referenced by id
-#[derive(PartialEq, Eq, Hash)]
-pub enum XRef<'tcx> { Predicate(ty::Predicate<'tcx>) }
-
-struct CrateIndex<'a, 'tcx> {
-    dep_graph: &'a DepGraph,
-    items: IndexData,
-    xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
-}
-
-impl<'a, 'tcx> CrateIndex<'a, 'tcx> {
-    /// Records that `id` is being emitted at the current offset.
-    /// This data is later used to construct the item index in the
-    /// metadata so we can quickly find the data for a given item.
-    ///
-    /// Returns a dep-graph task that you should keep live as long as
-    /// the data for this item is being emitted.
-    fn record(&mut self, id: DefId, rbml_w: &mut Encoder) -> DepTask<'a> {
-        let position = rbml_w.mark_stable_position();
-        self.items.record(id, position);
-        self.dep_graph.in_task(DepNode::MetaData(id))
-    }
-
-    fn add_xref(&mut self, xref: XRef<'tcx>) -> u32 {
-        let old_len = self.xrefs.len() as u32;
-        *self.xrefs.entry(xref).or_insert(old_len)
     }
 }
 
@@ -1380,11 +1353,7 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                    -> CrateIndex<'a, 'tcx> {
     let krate = ecx.tcx.map.krate();
 
-    let mut index = CrateIndex {
-        dep_graph: &ecx.tcx.dep_graph,
-        items: IndexData::new(ecx.tcx.map.num_local_def_ids()),
-        xrefs: FnvHashMap()
-    };
+    let mut index = CrateIndex::new(ecx);
     rbml_w.start_tag(tag_items_data);
 
     {
@@ -1929,12 +1898,14 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
     stats.item_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
     rbml_w.end_tag();
 
+    let (items, xrefs) = index.into_fields();
+
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
-    encode_item_index(rbml_w, index.items);
+    encode_item_index(rbml_w, items);
     stats.index_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
-    encode_xrefs(&ecx, rbml_w, index.xrefs);
+    encode_xrefs(&ecx, rbml_w, xrefs);
     stats.xref_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     encode_struct_field_attrs(&ecx, rbml_w, krate);
