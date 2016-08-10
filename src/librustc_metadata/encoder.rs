@@ -54,7 +54,7 @@ use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 use rustc::hir::map::DefKey;
 
-use super::index_builder::{CrateIndex, XRef};
+use super::index_builder::{IndexBuilder, XRef};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
@@ -134,7 +134,7 @@ fn encode_item_variances(rbml_w: &mut Encoder,
 
 fn encode_bounds_and_type_for_item<'a, 'tcx>(rbml_w: &mut Encoder,
                                              ecx: &EncodeContext<'a, 'tcx>,
-                                             index: &mut CrateIndex<'a, 'tcx>,
+                                             index: &mut IndexBuilder<'a, 'tcx>,
                                              id: NodeId) {
     encode_bounds_and_type(rbml_w,
                            ecx,
@@ -145,7 +145,7 @@ fn encode_bounds_and_type_for_item<'a, 'tcx>(rbml_w: &mut Encoder,
 
 fn encode_bounds_and_type<'a, 'tcx>(rbml_w: &mut Encoder,
                                     ecx: &EncodeContext<'a, 'tcx>,
-                                    index: &mut CrateIndex<'a, 'tcx>,
+                                    index: &mut IndexBuilder<'a, 'tcx>,
                                     scheme: &ty::TypeScheme<'tcx>,
                                     predicates: &ty::GenericPredicates<'tcx>) {
     encode_generics(rbml_w, ecx, index, &scheme.generics, &predicates);
@@ -204,7 +204,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                       rbml_w: &mut Encoder,
                                       did: DefId,
                                       vis: &hir::Visibility,
-                                      index: &mut CrateIndex<'a, 'tcx>) {
+                                      index: &mut IndexBuilder<'a, 'tcx>) {
     debug!("encode_enum_variant_info(did={:?})", did);
     let repr_hints = ecx.tcx.lookup_repr_hints(did);
     let repr_type = ecx.tcx.enum_repr_type(repr_hints.get(0));
@@ -424,7 +424,7 @@ fn encode_item_sort(rbml_w: &mut Encoder, sort: char) {
 fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           rbml_w: &mut Encoder,
                           field: ty::FieldDef<'tcx>,
-                          index: &mut CrateIndex<'a, 'tcx>) {
+                          index: &mut IndexBuilder<'a, 'tcx>) {
     let nm = field.name;
     let id = ecx.local_id(field.did);
 
@@ -448,7 +448,7 @@ fn encode_info_for_struct_ctor<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                          rbml_w: &mut Encoder,
                                          name: Name,
                                          struct_def: &hir::VariantData,
-                                         index: &mut CrateIndex<'a, 'tcx>,
+                                         index: &mut IndexBuilder<'a, 'tcx>,
                                          struct_id: NodeId) {
     let ctor_id = struct_def.id();
     let ctor_def_id = ecx.tcx.map.local_def_id(ctor_id);
@@ -480,7 +480,7 @@ fn encode_info_for_struct_ctor<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
 fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
                              ecx: &EncodeContext<'a, 'tcx>,
-                             index: &mut CrateIndex<'a, 'tcx>,
+                             index: &mut IndexBuilder<'a, 'tcx>,
                              generics: &ty::Generics<'tcx>,
                              predicates: &ty::GenericPredicates<'tcx>)
 {
@@ -493,7 +493,7 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
 }
 
 fn encode_predicates<'a,'tcx>(rbml_w: &mut Encoder,
-                              index: &mut CrateIndex<'a, 'tcx>,
+                              index: &mut IndexBuilder<'a, 'tcx>,
                               predicates: &ty::GenericPredicates<'tcx>,
                               tag: usize)
 {
@@ -510,7 +510,7 @@ fn encode_predicates<'a,'tcx>(rbml_w: &mut Encoder,
 
 fn encode_method_ty_fields<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                      rbml_w: &mut Encoder,
-                                     index: &mut CrateIndex<'a, 'tcx>,
+                                     index: &mut IndexBuilder<'a, 'tcx>,
                                      method_ty: &ty::Method<'tcx>) {
     encode_def_id_and_key(ecx, rbml_w, method_ty.def_id);
     encode_name(rbml_w, method_ty.name);
@@ -528,7 +528,7 @@ fn encode_method_ty_fields<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
 fn encode_info_for_associated_const<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                               rbml_w: &mut Encoder,
-                                              index: &mut CrateIndex<'a, 'tcx>,
+                                              index: &mut IndexBuilder<'a, 'tcx>,
                                               associated_const: &ty::AssociatedConst,
                                               parent_id: NodeId,
                                               impl_item_opt: Option<&hir::ImplItem>) {
@@ -570,7 +570,7 @@ fn encode_info_for_associated_const<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
 fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                     rbml_w: &mut Encoder,
-                                    index: &mut CrateIndex<'a, 'tcx>,
+                                    index: &mut IndexBuilder<'a, 'tcx>,
                                     m: &ty::Method<'tcx>,
                                     is_default_impl: bool,
                                     parent_id: NodeId,
@@ -618,7 +618,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
 fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                              rbml_w: &mut Encoder,
-                                             index: &mut CrateIndex<'a, 'tcx>,
+                                             index: &mut IndexBuilder<'a, 'tcx>,
                                              associated_type: &ty::AssociatedType<'tcx>,
                                              parent_id: NodeId,
                                              impl_item_opt: Option<&hir::ImplItem>) {
@@ -765,7 +765,7 @@ fn encode_xrefs<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                   rbml_w: &mut Encoder,
                                   item: &hir::Item,
-                                  index: &mut CrateIndex<'a, 'tcx>) {
+                                  index: &mut IndexBuilder<'a, 'tcx>) {
     let tcx = ecx.tcx;
 
     debug!("encoding info for item at {}",
@@ -1237,7 +1237,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                           rbml_w: &mut Encoder,
                                           nitem: &hir::ForeignItem,
-                                          index: &mut CrateIndex<'a, 'tcx>) {
+                                          index: &mut IndexBuilder<'a, 'tcx>) {
     debug!("writing foreign item {}", ecx.tcx.node_path_str(nitem.id));
     let def_id = ecx.tcx.map.local_def_id(nitem.id);
     let abi = ecx.tcx.map.get_foreign_abi(nitem.id);
@@ -1285,7 +1285,7 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 fn my_visit_expr(expr: &hir::Expr,
                  rbml_w: &mut Encoder,
                  ecx: &EncodeContext,
-                 index: &mut CrateIndex) {
+                 index: &mut IndexBuilder) {
     match expr.node {
         hir::ExprClosure(..) => {
             let def_id = ecx.tcx.map.local_def_id(expr.id);
@@ -1316,7 +1316,7 @@ fn my_visit_expr(expr: &hir::Expr,
 struct EncodeVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     rbml_w_for_visit_item: &'a mut Encoder<'b>,
     ecx: &'a EncodeContext<'c, 'tcx>,
-    index: &'a mut CrateIndex<'c, 'tcx>,
+    index: &'a mut IndexBuilder<'c, 'tcx>,
 }
 
 impl<'a, 'b, 'c, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
@@ -1350,10 +1350,10 @@ impl<'a, 'b, 'c, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
 
 fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                    rbml_w: &mut Encoder)
-                                   -> CrateIndex<'a, 'tcx> {
+                                   -> IndexBuilder<'a, 'tcx> {
     let krate = ecx.tcx.map.krate();
 
-    let mut index = CrateIndex::new(ecx);
+    let mut index = IndexBuilder::new(ecx);
     rbml_w.start_tag(tag_items_data);
 
     {

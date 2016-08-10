@@ -16,7 +16,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fnv::FnvHashMap;
 
-pub struct CrateIndex<'a, 'tcx> {
+pub struct IndexBuilder<'a, 'tcx> {
     dep_graph: &'a DepGraph,
     items: IndexData,
     xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
@@ -26,9 +26,9 @@ pub struct CrateIndex<'a, 'tcx> {
 #[derive(PartialEq, Eq, Hash)]
 pub enum XRef<'tcx> { Predicate(ty::Predicate<'tcx>) }
 
-impl<'a, 'tcx> CrateIndex<'a, 'tcx> {
+impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
     pub fn new(ecx: &EncodeContext<'a, 'tcx>) -> Self {
-        CrateIndex {
+        IndexBuilder {
             dep_graph: &ecx.tcx.dep_graph,
             items: IndexData::new(ecx.tcx.map.num_local_def_ids()),
             xrefs: FnvHashMap()
