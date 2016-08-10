@@ -32,24 +32,21 @@ impl EarlyProps {
             should_fail: false,
         };
 
-        iter_header(testfile, None, &mut |ln| {
+        iter_header(testfile,
+                    None,
+                    &mut |ln| {
             props.ignore =
-                props.ignore ||
-                parse_name_directive(ln, "ignore-test") ||
+                props.ignore || parse_name_directive(ln, "ignore-test") ||
                 parse_name_directive(ln, &ignore_target(config)) ||
                 parse_name_directive(ln, &ignore_architecture(config)) ||
                 parse_name_directive(ln, &ignore_stage(config)) ||
                 parse_name_directive(ln, &ignore_env(config)) ||
-                (config.mode == common::Pretty &&
-                 parse_name_directive(ln, "ignore-pretty")) ||
+                (config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) ||
                 (config.target != config.host &&
                  parse_name_directive(ln, "ignore-cross-compile")) ||
-                ignore_gdb(config, ln) ||
-                ignore_lldb(config, ln);
+                ignore_gdb(config, ln) || ignore_lldb(config, ln);
 
-            props.should_fail =
-                props.should_fail ||
-                parse_name_directive(ln, "should-fail");
+            props.should_fail = props.should_fail || parse_name_directive(ln, "should-fail");
         });
 
         return props;
@@ -61,11 +58,11 @@ impl EarlyProps {
             format!("ignore-{}", util::get_arch(&config.target))
         }
         fn ignore_stage(config: &Config) -> String {
-            format!("ignore-{}",
-                    config.stage_id.split('-').next().unwrap())
+            format!("ignore-{}", config.stage_id.split('-').next().unwrap())
         }
         fn ignore_env(config: &Config) -> String {
-            format!("ignore-{}", util::get_env(&config.target).unwrap_or("<unknown>"))
+            format!("ignore-{}",
+                    util::get_env(&config.target).unwrap_or("<unknown>"))
         }
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if config.mode != common::DebugInfoGdb {
@@ -79,13 +76,12 @@ impl EarlyProps {
             if let Some(ref actual_version) = config.gdb_version {
                 if line.contains("min-gdb-version") {
                     let min_version = line.trim()
-                                          .split(' ')
-                                          .last()
-                                          .expect("Malformed GDB version directive");
+                        .split(' ')
+                        .last()
+                        .expect("Malformed GDB version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    gdb_version_to_int(actual_version) <
-                        gdb_version_to_int(min_version)
+                    gdb_version_to_int(actual_version) < gdb_version_to_int(min_version)
                 } else {
                     false
                 }
@@ -106,13 +102,12 @@ impl EarlyProps {
             if let Some(ref actual_version) = config.lldb_version {
                 if line.contains("min-lldb-version") {
                     let min_version = line.trim()
-                                          .split(' ')
-                                          .last()
-                                          .expect("Malformed lldb version directive");
+                        .split(' ')
+                        .last()
+                        .expect("Malformed lldb version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    lldb_version_to_int(actual_version) <
-                        lldb_version_to_int(min_version)
+                    lldb_version_to_int(actual_version) < lldb_version_to_int(min_version)
                 } else {
                     false
                 }
@@ -126,7 +121,7 @@ impl EarlyProps {
 #[derive(Clone, Debug)]
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
-    pub error_patterns: Vec<String> ,
+    pub error_patterns: Vec<String>,
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
@@ -137,13 +132,13 @@ pub struct TestProps {
     // Other crates that should be compiled (typically from the same
     // directory as the test, but for backwards compatibility reasons
     // we also check the auxiliary directory)
-    pub aux_builds: Vec<String> ,
+    pub aux_builds: Vec<String>,
     // Environment settings to use for compiling
-    pub rustc_env: Vec<(String,String)> ,
+    pub rustc_env: Vec<(String, String)>,
     // Environment settings to use during execution
-    pub exec_env: Vec<(String,String)> ,
+    pub exec_env: Vec<(String, String)>,
     // Lines to check if they appear in the expected debugger output
-    pub check_lines: Vec<String> ,
+    pub check_lines: Vec<String>,
     // Build documentation for all specified aux-builds as well
     pub build_aux_docs: bool,
     // Flag to force a crate to be built with the host architecture
@@ -226,17 +221,17 @@ impl TestProps {
     /// tied to a particular revision `foo` (indicated by writing
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
-    pub fn load_from(&mut self, testfile: &Path, cfg: Option<&str>)  {
-        iter_header(testfile, cfg, &mut |ln| {
+    pub fn load_from(&mut self, testfile: &Path, cfg: Option<&str>) {
+        iter_header(testfile,
+                    cfg,
+                    &mut |ln| {
             if let Some(ep) = parse_error_pattern(ln) {
                 self.error_patterns.push(ep);
             }
 
             if let Some(flags) = parse_compile_flags(ln) {
-                self.compile_flags.extend(
-                    flags
-                        .split_whitespace()
-                        .map(|s| s.to_owned()));
+                self.compile_flags.extend(flags.split_whitespace()
+                    .map(|s| s.to_owned()));
             }
 
             if let Some(r) = parse_revisions(ln) {
@@ -279,7 +274,7 @@ impl TestProps {
                 self.pretty_compare_only = parse_pretty_compare_only(ln);
             }
 
-            if let  Some(ab) = parse_aux_build(ln) {
+            if let Some(ab) = parse_aux_build(ln) {
                 self.aux_builds.push(ab);
             }
 
@@ -291,7 +286,7 @@ impl TestProps {
                 self.rustc_env.push(ee);
             }
 
-            if let Some(cl) =  parse_check_line(ln) {
+            if let Some(cl) = parse_check_line(ln) {
                 self.check_lines.push(cl);
             }
 
@@ -302,21 +297,20 @@ impl TestProps {
 
         for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             match env::var(key) {
-                Ok(val) =>
+                Ok(val) => {
                     if self.exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
                         self.exec_env.push((key.to_owned(), val))
-                    },
+                    }
+                }
                 Err(..) => {}
             }
         }
     }
 }
 
-fn iter_header(testfile: &Path,
-               cfg: Option<&str>,
-               it: &mut FnMut(&str)) {
+fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
     if testfile.is_dir() {
-        return
+        return;
     }
     let rdr = BufReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
@@ -336,7 +330,7 @@ fn iter_header(testfile: &Path,
                     None => false,
                 };
                 if matches {
-                    it(&ln[close_brace+1..]);
+                    it(&ln[close_brace + 1..]);
                 }
             } else {
                 panic!("malformed condition directive: expected `//[foo]`, found `{}`",
@@ -409,18 +403,17 @@ fn parse_pretty_compare_only(line: &str) -> bool {
 fn parse_env(line: &str, name: &str) -> Option<(String, String)> {
     parse_name_value_directive(line, name).map(|nv| {
         // nv is either FOO or FOO=BAR
-        let mut strs: Vec<String> = nv
-                                      .splitn(2, '=')
-                                      .map(str::to_owned)
-                                      .collect();
+        let mut strs: Vec<String> = nv.splitn(2, '=')
+            .map(str::to_owned)
+            .collect();
 
         match strs.len() {
-          1 => (strs.pop().unwrap(), "".to_owned()),
-          2 => {
-              let end = strs.pop().unwrap();
-              (strs.pop().unwrap(), end)
-          }
-          n => panic!("Expected 1 or 2 strings, not {}", n)
+            1 => (strs.pop().unwrap(), "".to_owned()),
+            2 => {
+                let end = strs.pop().unwrap();
+                (strs.pop().unwrap(), end)
+            }
+            n => panic!("Expected 1 or 2 strings, not {}", n),
         }
     })
 }
@@ -442,11 +435,10 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
     line.contains(directive) && !line.contains(&("no-".to_owned() + directive))
 }
 
-pub fn parse_name_value_directive(line: &str, directive: &str)
-                                  -> Option<String> {
+pub fn parse_name_value_directive(line: &str, directive: &str) -> Option<String> {
     let keycolon = format!("{}:", directive);
     if let Some(colon) = line.find(&keycolon) {
-        let value = line[(colon + keycolon.len()) .. line.len()].to_owned();
+        let value = line[(colon + keycolon.len())..line.len()].to_owned();
         debug!("{}: {}", directive, value);
         Some(value)
     } else {
@@ -455,9 +447,8 @@ pub fn parse_name_value_directive(line: &str, directive: &str)
 }
 
 pub fn gdb_version_to_int(version_string: &str) -> isize {
-    let error_string = format!(
-        "Encountered GDB version string with unexpected format: {}",
-        version_string);
+    let error_string = format!("Encountered GDB version string with unexpected format: {}",
+                               version_string);
     let error_string = error_string;
 
     let components: Vec<&str> = version_string.trim().split('.').collect();
@@ -473,9 +464,8 @@ pub fn gdb_version_to_int(version_string: &str) -> isize {
 }
 
 pub fn lldb_version_to_int(version_string: &str) -> isize {
-    let error_string = format!(
-        "Encountered LLDB version string with unexpected format: {}",
-        version_string);
+    let error_string = format!("Encountered LLDB version string with unexpected format: {}",
+                               version_string);
     let error_string = error_string;
     let major: isize = version_string.parse().ok().expect(&error_string);
     return major;
