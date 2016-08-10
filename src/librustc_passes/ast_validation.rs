@@ -20,6 +20,7 @@ use rustc::lint;
 use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::codemap::Spanned;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -70,11 +71,12 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_trait_fn_not_const(&self, span: Span, constness: Constness) {
-        match constness {
+    fn check_trait_fn_not_const(&self, constness: Spanned<Constness>) {
+        match constness.node {
             Constness::Const => {
-                struct_span_err!(self.session, span, E0379, "trait fns cannot be declared const")
-                    .span_label(span, &format!("trait fns cannot be const"))
+                struct_span_err!(self.session, constness.span, E0379,
+                                 "trait fns cannot be declared const")
+                    .span_label(constness.span, &format!("trait fns cannot be const"))
                     .emit();
             }
             _ => {}
@@ -158,7 +160,7 @@ impl<'a> Visitor for AstValidator<'a> {
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, impl_item.span, None);
                     if let ImplItemKind::Method(ref sig, _) = impl_item.node {
-                        self.check_trait_fn_not_const(impl_item.span, sig.constness);
+                        self.check_trait_fn_not_const(sig.constness);
                     }
                 }
             }
@@ -186,7 +188,7 @@ impl<'a> Visitor for AstValidator<'a> {
             ItemKind::Trait(_, _, _, ref trait_items) => {
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, _) = trait_item.node {
-                        self.check_trait_fn_not_const(trait_item.span, sig.constness);
+                        self.check_trait_fn_not_const(sig.constness);
                     }
                 }
             }

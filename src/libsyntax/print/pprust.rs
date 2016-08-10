@@ -1184,7 +1184,7 @@ impl<'a> State<'a> {
                 try!(self.print_fn(
                     decl,
                     unsafety,
-                    constness,
+                    constness.node,
                     abi,
                     Some(item.ident),
                     typarams,
@@ -1518,7 +1518,7 @@ impl<'a> State<'a> {
                             -> io::Result<()> {
         self.print_fn(&m.decl,
                       m.unsafety,
-                      m.constness,
+                      m.constness.node,
                       m.abi,
                       Some(ident),
                       &m.generics,

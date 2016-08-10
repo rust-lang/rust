@@ -30,7 +30,7 @@ use ast::{NodeId, PatKind};
 use ast;
 use attr;
 use attr::AttrMetaMethods;
-use codemap::CodeMap;
+use codemap::{CodeMap, Spanned};
 use syntax_pos::Span;
 use errors::Handler;
 use visit::{self, FnKind, Visitor};
@@ -1046,7 +1046,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 _node_id: NodeId) {
         // check for const fn declarations
         match fn_kind {
-            FnKind::ItemFn(_, _, _, ast::Constness::Const, _, _) => {
+            FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _) => {
                 gate_feature_post!(&self, const_fn, span, "const fn is unstable");
             }
             _ => {
@@ -1078,7 +1078,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 if block.is_none() {
                     self.check_abi(sig.abi, ti.span);
                 }
-                if sig.constness == ast::Constness::Const {
+                if sig.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
                 }
             }
@@ -1105,7 +1105,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                                   "associated constants are experimental")
             }
             ast::ImplItemKind::Method(ref sig, _) => {
-                if sig.constness == ast::Constness::Const {
+                if sig.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ii.span, "const fn is unstable");
                 }
             }
