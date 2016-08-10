@@ -762,10 +762,10 @@ fn encode_xrefs<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     rbml_w.end_tag();
 }
 
-fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
-                                  rbml_w: &mut Encoder,
+fn encode_info_for_item<'a, 'tcx>(rbml_w: &mut Encoder,
                                   item: &hir::Item,
                                   index: &mut IndexBuilder<'a, 'tcx>) {
+    let ecx = index.ecx();
     let tcx = ecx.tcx;
 
     debug!("encoding info for item at {}",
@@ -1234,10 +1234,11 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     }
 }
 
-fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
-                                          rbml_w: &mut Encoder,
+fn encode_info_for_foreign_item<'a, 'tcx>(rbml_w: &mut Encoder,
                                           nitem: &hir::ForeignItem,
                                           index: &mut IndexBuilder<'a, 'tcx>) {
+    let ecx = index.ecx();
+
     debug!("writing foreign item {}", ecx.tcx.node_path_str(nitem.id));
     let def_id = ecx.tcx.map.local_def_id(nitem.id);
     let abi = ecx.tcx.map.get_foreign_abi(nitem.id);
@@ -1282,10 +1283,50 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     rbml_w.end_tag();
 }
 
-fn my_visit_expr(expr: &hir::Expr,
-                 rbml_w: &mut Encoder,
-                 ecx: &EncodeContext,
-                 index: &mut IndexBuilder) {
+struct EncodeVisitor<'a, 'data:'a, 'ecx: 'a, 'tcx: 'ecx> {
+    rbml_w_for_visit_item: &'a mut Encoder<'data>,
+    index: &'a mut IndexBuilder<'ecx, 'tcx>,
+}
+
+impl<'a, 'data, 'ecx, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'data, 'ecx, 'tcx> {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
+        intravisit::walk_expr(self, ex);
+        encode_info_for_expr(ex, self.rbml_w_for_visit_item, self.index);
+    }
+    fn visit_item(&mut self, i: &'tcx hir::Item) {
+        intravisit::walk_item(self, i);
+        encode_info_for_item(self.rbml_w_for_visit_item, i, self.index);
+    }
+    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
+        intravisit::walk_foreign_item(self, ni);
+        encode_info_for_foreign_item(self.rbml_w_for_visit_item, ni, self.index);
+    }
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+        intravisit::walk_ty(self, ty);
+        encode_info_for_ty(ty, self.rbml_w_for_visit_item, self.index);
+    }
+}
+
+fn encode_info_for_ty(ty: &hir::Ty,
+                      rbml_w: &mut Encoder,
+                      index: &mut IndexBuilder) {
+    let ecx = index.ecx();
+    if let hir::TyImplTrait(_) = ty.node {
+        let def_id = ecx.tcx.map.local_def_id(ty.id);
+        let _task = index.record(def_id, rbml_w);
+        rbml_w.start_tag(tag_items_data_item);
+        encode_def_id_and_key(ecx, rbml_w, def_id);
+        encode_family(rbml_w, 'y');
+        encode_bounds_and_type_for_item(rbml_w, ecx, index, ty.id);
+        rbml_w.end_tag();
+    }
+}
+
+fn encode_info_for_expr(expr: &hir::Expr,
+                        rbml_w: &mut Encoder,
+                        index: &mut IndexBuilder) {
+    let ecx = index.ecx();
+
     match expr.node {
         hir::ExprClosure(..) => {
             let def_id = ecx.tcx.map.local_def_id(expr.id);
@@ -1313,42 +1354,7 @@ fn my_visit_expr(expr: &hir::Expr,
     }
 }
 
-struct EncodeVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
-    rbml_w_for_visit_item: &'a mut Encoder<'b>,
-    ecx: &'a EncodeContext<'c, 'tcx>,
-    index: &'a mut IndexBuilder<'c, 'tcx>,
-}
-
-impl<'a, 'b, 'c, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
-        intravisit::walk_expr(self, ex);
-        my_visit_expr(ex, self.rbml_w_for_visit_item, self.ecx, self.index);
-    }
-    fn visit_item(&mut self, i: &'tcx hir::Item) {
-        intravisit::walk_item(self, i);
-        encode_info_for_item(self.ecx, self.rbml_w_for_visit_item, i, self.index);
-    }
-    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
-        intravisit::walk_foreign_item(self, ni);
-        encode_info_for_foreign_item(self.ecx, self.rbml_w_for_visit_item, ni, self.index);
-    }
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        intravisit::walk_ty(self, ty);
-
-        if let hir::TyImplTrait(_) = ty.node {
-            let rbml_w = &mut *self.rbml_w_for_visit_item;
-            let def_id = self.ecx.tcx.map.local_def_id(ty.id);
-            let _task = self.index.record(def_id, rbml_w);
-            rbml_w.start_tag(tag_items_data_item);
-            encode_def_id_and_key(self.ecx, rbml_w, def_id);
-            encode_family(rbml_w, 'y');
-            encode_bounds_and_type_for_item(rbml_w, self.ecx, self.index, ty.id);
-            rbml_w.end_tag();
-        }
-    }
-}
-
-fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+fn encode_info_for_items<'a, 'tcx>(ecx: &'a EncodeContext<'a, 'tcx>,
                                    rbml_w: &mut Encoder)
                                    -> IndexBuilder<'a, 'tcx> {
     let krate = ecx.tcx.map.krate();
@@ -1369,7 +1375,6 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
     krate.visit_all_items(&mut EncodeVisitor {
         index: &mut index,
-        ecx: ecx,
         rbml_w_for_visit_item: &mut *rbml_w,
     });
 

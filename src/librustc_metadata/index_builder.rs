@@ -11,12 +11,12 @@
 use encoder::EncodeContext;
 use index::IndexData;
 use rbml::writer::Encoder;
-use rustc::dep_graph::{DepGraph, DepNode, DepTask};
+use rustc::dep_graph::{DepNode, DepTask};
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fnv::FnvHashMap;
 
-pub struct IndexBuilder<'a, 'tcx> {
+pub struct IndexBuilder<'a, 'tcx: 'a> {
     ecx: &'a EncodeContext<'a, 'tcx>,
     items: IndexData,
     xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
@@ -27,7 +27,7 @@ pub struct IndexBuilder<'a, 'tcx> {
 pub enum XRef<'tcx> { Predicate(ty::Predicate<'tcx>) }
 
 impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
-    pub fn new(ecx: &EncodeContext<'a, 'tcx>) -> Self {
+    pub fn new(ecx: &'a EncodeContext<'a, 'tcx>) -> Self {
         IndexBuilder {
             ecx: ecx,
             items: IndexData::new(ecx.tcx.map.num_local_def_ids()),
@@ -35,7 +35,7 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
         }
     }
 
-    pub fn ecx(&self) {
+    pub fn ecx(&self) -> &'a EncodeContext<'a, 'tcx> {
         self.ecx
     }
 
