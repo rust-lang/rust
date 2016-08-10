@@ -17,7 +17,7 @@ use rustc::ty;
 use rustc_data_structures::fnv::FnvHashMap;
 
 pub struct IndexBuilder<'a, 'tcx> {
-    dep_graph: &'a DepGraph,
+    ecx: &'a EncodeContext<'a, 'tcx>,
     items: IndexData,
     xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
 }
@@ -29,10 +29,14 @@ pub enum XRef<'tcx> { Predicate(ty::Predicate<'tcx>) }
 impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
     pub fn new(ecx: &EncodeContext<'a, 'tcx>) -> Self {
         IndexBuilder {
-            dep_graph: &ecx.tcx.dep_graph,
+            ecx: ecx,
             items: IndexData::new(ecx.tcx.map.num_local_def_ids()),
             xrefs: FnvHashMap()
         }
+    }
+
+    pub fn ecx(&self) {
+        self.ecx
     }
 
     /// Records that `id` is being emitted at the current offset.
@@ -44,7 +48,7 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
     pub fn record(&mut self, id: DefId, rbml_w: &mut Encoder) -> DepTask<'a> {
         let position = rbml_w.mark_stable_position();
         self.items.record(id, position);
-        self.dep_graph.in_task(DepNode::MetaData(id))
+        self.ecx.tcx.dep_graph.in_task(DepNode::MetaData(id))
     }
 
     pub fn add_xref(&mut self, xref: XRef<'tcx>) -> u32 {
