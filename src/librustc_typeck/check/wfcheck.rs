@@ -142,6 +142,9 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
+            hir::ItemUnion(..) => {
+                unimplemented_unions!();
+            }
             hir::ItemEnum(ref enum_def, ref ast_generics) => {
                 self.check_type_defn(item, |fcx| {
                     fcx.enum_variants(enum_def)

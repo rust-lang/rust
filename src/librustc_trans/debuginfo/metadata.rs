@@ -184,6 +184,10 @@ impl<'tcx> TypeMap<'tcx> {
                 unique_type_id.push_str("struct ");
                 from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
             },
+            ty::TyUnion(def, substs) => {
+                unique_type_id.push_str("union ");
+                from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
+            },
             ty::TyTuple(component_types) if component_types.is_empty() => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
@@ -780,6 +784,9 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     t,
                                     unique_type_id,
                                     usage_site_span).finalize(cx)
+        }
+        ty::TyUnion(..) => {
+            unimplemented_unions!();
         }
         ty::TyTuple(ref elements) => {
             prepare_tuple_metadata(cx,

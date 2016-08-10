@@ -18,6 +18,7 @@ use syntax::visit::Visitor;
 enum Target {
     Fn,
     Struct,
+    Union,
     Enum,
     Other,
 }
@@ -27,6 +28,7 @@ impl Target {
         match item.node {
             ast::ItemKind::Fn(..) => Target::Fn,
             ast::ItemKind::Struct(..) => Target::Struct,
+            ast::ItemKind::Union(..) => Target::Union,
             ast::ItemKind::Enum(..) => Target::Enum,
             _ => Target::Other,
         }
@@ -62,8 +64,10 @@ impl<'a> CheckAttrVisitor<'a> {
             let message = match &*name {
                 "C" => {
                     conflicting_reprs += 1;
-                    if target != Target::Struct && target != Target::Enum {
-                        "attribute should be applied to struct or enum"
+                    if target != Target::Struct &&
+                            target != Target::Union &&
+                            target != Target::Enum {
+                        "attribute should be applied to struct, enum or union"
                     } else {
                         continue
                     }
@@ -71,8 +75,9 @@ impl<'a> CheckAttrVisitor<'a> {
                 "packed" => {
                     // Do not increment conflicting_reprs here, because "packed"
                     // can be used to modify another repr hint
-                    if target != Target::Struct {
-                        "attribute should be applied to struct"
+                    if target != Target::Struct &&
+                            target != Target::Union {
+                        "attribute should be applied to struct or union"
                     } else {
                         continue
                     }

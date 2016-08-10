@@ -510,7 +510,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Type check subpatterns.
         let substs = match pat_ty.sty {
-            ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
+            ty::TyStruct(_, substs) | ty::TyUnion(_, substs) | ty::TyEnum(_, substs) => substs,
             _ => span_bug!(pat.span, "struct variant is not an ADT")
         };
         self.check_struct_pat_fields(pat.span, fields, variant, substs, etc);

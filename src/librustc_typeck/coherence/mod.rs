@@ -242,7 +242,8 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             let self_type = tcx.lookup_item_type(impl_did);
             match self_type.ty.sty {
                 ty::TyEnum(type_def, _) |
-                ty::TyStruct(type_def, _) => {
+                ty::TyStruct(type_def, _) |
+                ty::TyUnion(type_def, _) => {
                     type_def.set_destructor(method_def_id.def_id());
                 }
                 _ => {

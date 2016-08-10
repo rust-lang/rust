@@ -709,7 +709,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn open_drop<'a>(&mut self, c: &DropCtxt<'a, 'tcx>) -> BasicBlock {
         let ty = c.lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
         match ty.sty {
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyStruct(def, substs) | ty::TyUnion(def, substs) | ty::TyEnum(def, substs) => {
                 self.open_drop_for_adt(c, def, substs)
             }
             ty::TyTuple(tys) | ty::TyClosure(_, ty::ClosureSubsts {
@@ -893,7 +893,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let ty = c.lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
 
         match ty.sty {
-            ty::TyStruct(def, _) | ty::TyEnum(def, _) => {
+            ty::TyStruct(def, _) | ty::TyUnion(def, _) | ty::TyEnum(def, _) => {
                 if def.has_dtor() {
                     self.tcx.sess.span_warn(
                         c.source_info.span,

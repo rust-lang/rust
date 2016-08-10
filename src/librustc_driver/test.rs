@@ -220,6 +220,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
                 hir::ItemEnum(..) |
                 hir::ItemStruct(..) |
+                hir::ItemUnion(..) |
                 hir::ItemTrait(..) |
                 hir::ItemImpl(..) |
                 hir::ItemDefaultImpl(..) => {

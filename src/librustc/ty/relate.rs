@@ -447,6 +447,13 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_struct(a_def, substs))
         }
 
+        (&ty::TyUnion(a_def, a_substs), &ty::TyUnion(b_def, b_substs))
+            if a_def == b_def =>
+        {
+            let substs = relate_item_substs(relation, a_def.did, a_substs, b_substs)?;
+            Ok(tcx.mk_union(a_def, substs))
+        }
+
         (&ty::TyClosure(a_id, a_substs),
          &ty::TyClosure(b_id, b_substs))
             if a_id == b_id =>

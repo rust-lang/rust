@@ -331,7 +331,8 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
                         });
                     }
                 }
-                hir::ItemStruct(ref struct_def, _) => {
+                hir::ItemStruct(ref struct_def, _) |
+                hir::ItemUnion(ref struct_def, _) => {
                     // If this is a tuple-like struct, register the constructor.
                     if !struct_def.is_struct() {
                         this.create_def(struct_def.id(),

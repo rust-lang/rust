@@ -931,7 +931,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             tcx.trait_item_def_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
                                                        trait_item_def_ids);
         },
-        hir::ItemStruct(ref struct_def, _) => {
+        hir::ItemStruct(ref struct_def, _) |
+        hir::ItemUnion(ref struct_def, _) => {
             let def_id = ccx.tcx.map.local_def_id(it.id);
             let scheme = type_scheme_of_def_id(ccx, def_id);
             let predicates = predicates_of_item(ccx, it);

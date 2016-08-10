@@ -419,6 +419,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             Def::AssociatedTy(..) |
             Def::TyParam(..) |
             Def::Struct(..) |
+            Def::Union(..) |
             Def::Trait(..) |
             Def::Method(..) |
             Def::Const(..) |

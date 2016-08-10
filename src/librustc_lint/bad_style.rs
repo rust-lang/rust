@@ -111,7 +111,7 @@ impl LateLintPass for NonCamelCaseTypes {
         }
 
         match it.node {
-            hir::ItemTy(..) | hir::ItemStruct(..) => {
+            hir::ItemTy(..) | hir::ItemStruct(..) | hir::ItemUnion(..) => {
                 self.check_case(cx, "type", it.name, it.span)
             }
             hir::ItemTrait(..) => {

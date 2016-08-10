@@ -762,6 +762,9 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       hir::ItemStruct(..) => {
         check_struct(ccx, it.id, it.span);
       }
+      hir::ItemUnion(..) => {
+        unimplemented_unions!();
+      }
       hir::ItemTy(_, ref generics) => {
         let pty_ty = ccx.tcx.node_id_to_type(it.id);
         check_bounds_are_used(ccx, generics, pty_ty);
@@ -2942,18 +2945,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, autoderefs)) = autoderef.next() {
-            if let ty::TyStruct(base_def, substs) = base_t.sty {
-                debug!("struct named {:?}",  base_t);
-                if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
-                    let field_ty = self.field_ty(expr.span, field, substs);
-                    if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
-                        autoderef.finalize(lvalue_pref, Some(base));
-                        self.write_ty(expr.id, field_ty);
-                        self.write_autoderef_adjustment(base.id, autoderefs);
-                        return;
+            match base_t.sty {
+                ty::TyStruct(base_def, substs) | ty::TyUnion(base_def, substs) => {
+                    debug!("struct named {:?}",  base_t);
+                    if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
+                        let field_ty = self.field_ty(expr.span, field, substs);
+                        if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
+                            autoderef.finalize(lvalue_pref, Some(base));
+                            self.write_ty(expr.id, field_ty);
+                            self.write_autoderef_adjustment(base.id, autoderefs);
+                            return;
+                        }
+                        private_candidate = Some((base_def.did, field_ty));
                     }
-                    private_candidate = Some((base_def.did, field_ty));
                 }
+                _ => {}
             }
         }
         autoderef.unambiguous_final_ty();
@@ -2986,12 +2992,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          but no field with that name was found",
                         field.node, actual)
             }, expr_t);
-            if let ty::TyRawPtr(..) = expr_t.sty {
-                err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
-                                  `(*{0}).{1}`", pprust::expr_to_string(base), field.node));
-            }
-            if let ty::TyStruct(def, _) = expr_t.sty {
-                Self::suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
+            match expr_t.sty {
+                ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                    Self::suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
+                }
+                ty::TyRawPtr(..) => {
+                    err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
+                                      `(*{0}).{1}`", pprust::expr_to_string(base), field.node));
+                }
+                _ => {}
             }
             err.emit();
             self.write_error(expr.id);
@@ -3125,7 +3134,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 check_completeness: bool) {
         let tcx = self.tcx;
         let substs = match adt_ty.sty {
-            ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
+            ty::TyStruct(_, substs) | ty::TyUnion(_, substs) | ty::TyEnum(_, substs) => substs,
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
@@ -3217,7 +3226,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Def::Variant(type_did, _) | Def::Struct(type_did) => {
+            Def::Variant(type_did, _) | Def::Struct(type_did) | Def::Union(type_did) => {
                 Some((type_did, self.tcx.expect_variant_def(def)))
             }
             Def::TyAlias(did) => {

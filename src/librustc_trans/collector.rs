@@ -744,6 +744,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     // monomorphized Drop::drop() implementation.
     let destructor_did = match ty.sty {
         ty::TyStruct(def, _) |
+        ty::TyUnion(def, _) |
         ty::TyEnum(def, _)   => def.destructor(),
         _ => None
     };

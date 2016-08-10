@@ -331,7 +331,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
     // If this was an enum or struct, fill in the type now.
     match t.sty {
-        ty::TyEnum(..) | ty::TyStruct(..) | ty::TyClosure(..)
+        ty::TyEnum(..) | ty::TyStruct(..) | ty::TyUnion(..) | ty::TyClosure(..)
                 if !t.is_simd() => {
             let repr = adt::represent_type(cx, t);
             adt::finish_type_of(cx, &repr, &mut llty);
