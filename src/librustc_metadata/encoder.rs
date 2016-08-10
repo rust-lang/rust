@@ -54,7 +54,7 @@ use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 use rustc::hir::map::DefKey;
 
-use super::index_builder::{IndexBuilder, XRef};
+use super::index_builder::{IndexBuilder, ItemContentBuilder, XRef};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
@@ -132,7 +132,7 @@ fn encode_item_variances(rbml_w: &mut Encoder,
     rbml_w.end_tag();
 }
 
-impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
+impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
     fn encode_bounds_and_type_for_item(&mut self,
                                        rbml_w: &mut Encoder,
                                        id: NodeId) {
@@ -164,7 +164,7 @@ fn write_closure_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     rbml_w.mark_stable_position();
 }
 
-impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
+impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
     fn encode_type(&mut self,
                    rbml_w: &mut Encoder,
                    typ: Ty<'tcx>) {
@@ -200,7 +200,9 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
             rbml_w.end_tag();
         }
     }
+}
 
+impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
     fn encode_enum_variant_info(&mut self,
                                 rbml_w: &mut Encoder,
                                 did: DefId,
@@ -302,7 +304,7 @@ fn encode_reexports(ecx: &EncodeContext,
     }
 }
 
-impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
+impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
     fn encode_info_for_mod(&mut self,
                            rbml_w: &mut Encoder,
                            md: &hir::Mod,
@@ -487,7 +489,9 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
 
         rbml_w.end_tag();
     }
+}
 
+impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
     fn encode_generics(&mut self,
                        rbml_w: &mut Encoder,
                        generics: &ty::Generics<'tcx>,
@@ -532,7 +536,9 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
             _ => encode_family(rbml_w, METHOD_FAMILY)
         }
     }
+}
 
+impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
     fn encode_info_for_associated_const(&mut self,
                                         rbml_w: &mut Encoder,
                                         associated_const: &ty::AssociatedConst,
@@ -680,7 +686,9 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
         }
         rbml_w.end_tag();
     }
+}
 
+impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
     fn encode_repr_attrs(&mut self,
                          rbml_w: &mut Encoder,
                          attrs: &[ast::Attribute]) {
@@ -1237,9 +1245,7 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
             }
         }
     }
-}
 
-impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
     fn encode_info_for_foreign_item(&mut self,
                                     rbml_w: &mut Encoder,
                                     nitem: &hir::ForeignItem) {
