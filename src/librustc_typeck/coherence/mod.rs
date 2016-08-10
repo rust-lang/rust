@@ -321,13 +321,18 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
                 }
                 Err(CopyImplementationError::InfrigingVariant(name)) => {
-                       struct_span_err!(tcx.sess, span, E0205,
-                                 "the trait `Copy` may not be \
-                                          implemented for this type")
-                           .span_label(span, &format!("variant \
-                                          `{}` does not implement `Copy`",
-                                         name))
-                           .emit()
+                    let item = tcx.map.expect_item(impl_node_id);
+                    let span = if let ItemImpl(_, _, _, Some(ref tr), _, _) = item.node {
+                        tr.path.span
+                    } else {
+                        span
+                    };
+
+                    struct_span_err!(tcx.sess, span, E0205,
+                                     "the trait `Copy` may not be implemented for this type")
+                        .span_label(span, &format!("variant `{}` does not implement `Copy`",
+                                                   name))
+                        .emit()
                 }
                 Err(CopyImplementationError::NotAnAdt) => {
                     let item = tcx.map.expect_item(impl_node_id);

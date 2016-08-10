@@ -633,10 +633,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_pat(&subpat, field_ty);
             }
         } else {
-            span_err!(tcx.sess, pat.span, E0023,
-                      "this pattern has {} field{s}, but the corresponding {} has {} field{s}",
-                      subpats.len(), def.kind_name(), variant.fields.len(),
-                      s = if variant.fields.len() == 1 {""} else {"s"});
+            let subpats_ending = if subpats.len() == 1 {
+                ""
+            } else {
+                "s"
+            };
+            let fields_ending = if variant.fields.len() == 1 {
+                ""
+            } else {
+                "s"
+            };
+            struct_span_err!(tcx.sess, pat.span, E0023,
+                             "this pattern has {} field{}, but the corresponding {} has {} field{}",
+                             subpats.len(), subpats_ending, def.kind_name(),
+                             variant.fields.len(),  fields_ending)
+                .span_label(pat.span, &format!("expected {} field{}, found {}",
+                                               variant.fields.len(), fields_ending, subpats.len()))
+                .emit();
             on_error();
         }
     }
@@ -682,10 +695,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     field_map.get(&field.name)
                         .map(|f| self.field_ty(span, f, substs))
                         .unwrap_or_else(|| {
-                            span_err!(tcx.sess, span, E0026,
-                                "struct `{}` does not have a field named `{}`",
-                                tcx.item_path_str(variant.did),
-                                field.name);
+                            struct_span_err!(tcx.sess, span, E0026,
+                                             "struct `{}` does not have a field named `{}`",
+                                             tcx.item_path_str(variant.did),
+                                             field.name)
+                                .span_label(span,
+                                            &format!("struct `{}` does not have field `{}`",
+                                                     tcx.item_path_str(variant.did),
+                                                     field.name))
+                                .emit();
+
                             tcx.types.err
                         })
                 }
