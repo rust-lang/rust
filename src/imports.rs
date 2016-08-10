@@ -16,7 +16,7 @@ use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
 use types::rewrite_path;
 use rewrite::{Rewrite, RewriteContext};
 use visitor::FmtVisitor;
-use std::cmp::Ordering;
+use std::cmp::{self, Ordering};
 
 use syntax::{ast, ptr};
 
@@ -159,29 +159,46 @@ impl Rewrite for ast::ViewPath {
 
 impl<'a> FmtVisitor<'a> {
     pub fn format_imports(&mut self, use_items: &[ptr::P<ast::Item>]) {
-        let mut last_pos = use_items.first()
-            .and_then(|p_i| p_i.span.lo.0.checked_sub(1))
-            .map(|span_lo| BytePos(span_lo))
+        // Find the location immediately before the first use item in the run. This must not lie
+        // before the current `self.last_pos`
+        let pos_before_first_use_item = use_items.first()
+            .map(|p_i| cmp::max(self.last_pos, p_i.span.lo))
             .unwrap_or(self.last_pos);
-        let prefix = codemap::mk_sp(self.last_pos, last_pos);
+        // Construct a list of pairs, each containing a `use` item and the start of span before
+        // that `use` item.
+        let mut last_pos_of_prev_use_item = pos_before_first_use_item;
         let mut ordered_use_items = use_items.iter()
             .map(|p_i| {
-                let new_item = (&*p_i, last_pos);
-                last_pos = p_i.span.hi;
+                let new_item = (&*p_i, last_pos_of_prev_use_item);
+                last_pos_of_prev_use_item = p_i.span.hi;
                 new_item
             })
             .collect::<Vec<_>>();
+        let pos_after_last_use_item = last_pos_of_prev_use_item;
         // Order the imports by view-path & other import path properties
         ordered_use_items.sort_by(|a, b| compare_use_items(a.0, b.0).unwrap());
         // First, output the span before the first import
-        self.format_missing(prefix.hi);
+        // Look for indent (the line part preceding the use is all whitespace) and excise that
+        // from the prefix
+        let prev_span_str = self.snippet(codemap::mk_sp(self.last_pos, pos_before_first_use_item));
+        let span_end = match prev_span_str.rfind('\n') {
+            Some(offset) => {
+                if prev_span_str[offset..].trim().is_empty() {
+                    self.last_pos + BytePos(offset as u32)
+                } else {
+                    pos_before_first_use_item
+                }
+            }
+            None => pos_before_first_use_item,
+        };
+        self.format_missing(span_end);
         for ordered in ordered_use_items {
             // Fake out the formatter by setting `self.last_pos` to the appropriate location before
             // each item before visiting it.
             self.last_pos = ordered.1;
             self.visit_item(&ordered.0);
         }
-        self.last_pos = last_pos;
+        self.last_pos = pos_after_last_use_item;
     }
 
     pub fn format_import(&mut self, vis: &ast::Visibility, vp: &ast::ViewPath, span: Span) {
