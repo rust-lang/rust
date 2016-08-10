@@ -139,9 +139,6 @@ pub struct TypeAndSubsts<'tcx> {
 pub struct CrateCtxt<'a, 'tcx: 'a> {
     ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
 
-    /// A mapping from method call sites to traits that have that method.
-    pub trait_map: hir::TraitMap,
-
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
     /// error reporting, and so is lazily initialised and generally
@@ -321,13 +318,11 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             trait_map: hir::TraitMap)
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                              -> CompileResult {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         ast_ty_to_ty_cache: RefCell::new(NodeMap()),
-        trait_map: trait_map,
         all_traits: RefCell::new(None),
         stack: RefCell::new(Vec::new()),
         tcx: tcx
