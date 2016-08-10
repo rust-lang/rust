@@ -1476,7 +1476,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                span,
                                                partition_bounds(tcx, span, &[]))
             }
-            Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
+            Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) | Def::Union(did) => {
                 tcx.prohibit_type_params(base_segments.split_last().unwrap().1);
                 self.ast_path_to_ty(rscope,
                                     span,

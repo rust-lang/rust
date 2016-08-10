@@ -258,7 +258,8 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 format!("floating point constants cannot be used in patterns"));
         }
         ty::TyEnum(adt_def, _) |
-        ty::TyStruct(adt_def, _) => {
+        ty::TyStruct(adt_def, _) |
+        ty::TyUnion(adt_def, _) => {
             if !tcx.has_attr(adt_def.did, "structural_match") {
                 tcx.sess.add_lint(
                     lint::builtin::ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,

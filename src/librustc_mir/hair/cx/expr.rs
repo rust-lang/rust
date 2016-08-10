@@ -477,6 +477,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         })
                     }
                 }
+                ty::TyUnion(..) => {
+                    unimplemented_unions!();
+                }
                 ty::TyEnum(adt, substs) => {
                     match cx.tcx.expect_def(expr.id) {
                         Def::Variant(enum_id, variant_id) => {
@@ -579,7 +582,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                              body: block::to_expr_ref(cx, body) },
         hir::ExprField(ref source, name) => {
             let index = match cx.tcx.expr_ty_adjusted(source).sty {
-                ty::TyStruct(adt_def, _) =>
+                ty::TyStruct(adt_def, _) | ty::TyUnion(adt_def, _) =>
                     adt_def.variants[0].index_of_field_named(name.node),
                 ref ty =>
                     span_bug!(

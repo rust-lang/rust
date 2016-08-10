@@ -224,7 +224,7 @@ fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
     match ty.sty {
         ty::TyBox(..) | ty::TyRef(..) =>
             true,
-        ty::TyEnum(def, _) | ty::TyStruct(def, _) =>
+        ty::TyEnum(def, _) | ty::TyStruct(def, _) | ty::TyUnion(def, _) =>
             def.is_fundamental(),
         ty::TyTrait(ref data) =>
             tcx.has_attr(data.principal.def_id(), "fundamental"),

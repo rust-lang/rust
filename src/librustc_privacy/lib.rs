@@ -174,7 +174,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     self.update(trait_item.id, item_level);
                 }
             }
-            hir::ItemStruct(ref def, _) => {
+            hir::ItemStruct(ref def, _) | hir::ItemUnion(ref def, _) => {
                 if !def.is_struct() {
                     self.update(def.id(), item_level);
                 }
@@ -321,8 +321,8 @@ impl<'b, 'a, 'tcx: 'a, 'v> Visitor<'v> for ReachEverythingInTheInterfaceVisitor<
         if let hir::TyPath(_, ref path) = ty.node {
             let def = self.ev.tcx.expect_def(ty.id);
             match def {
-                Def::Struct(def_id) | Def::Enum(def_id) | Def::TyAlias(def_id) |
-                Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
+                Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
+                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
                     if let Some(node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
                         let item = self.ev.tcx.map.expect_item(node_id);
                         if let Def::TyAlias(..) = def {
@@ -943,8 +943,8 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                     // free type aliases, but this isn't done yet.
                     return
                 }
-                Def::Struct(def_id) | Def::Enum(def_id) | Def::TyAlias(def_id) |
-                Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
+                Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
+                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
                     // Non-local means public (private items can't leave their crate, modulo bugs)
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                         let item = self.tcx.map.expect_item(node_id);

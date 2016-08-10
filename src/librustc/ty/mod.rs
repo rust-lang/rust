@@ -948,6 +948,7 @@ impl<'tcx> TraitPredicate<'tcx> {
                 .flat_map(|t| t.walk())
                 .filter_map(|t| match t.sty {
                     ty::TyStruct(adt_def, _) |
+                    ty::TyUnion(adt_def, _) |
                     ty::TyEnum(adt_def, _) =>
                         Some(adt_def.did),
                     _ =>
@@ -1341,6 +1342,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
+                    hir::ItemUnion(..) |
                     hir::ItemTy(..) |
                     hir::ItemImpl(..) |
                     hir::ItemConst(..) |
@@ -1615,7 +1617,8 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     /// Asserts this is a struct and returns the struct's unique
     /// variant.
     pub fn struct_variant(&self) -> &VariantDefData<'gcx, 'container> {
-        assert_eq!(self.adt_kind(), AdtKind::Struct);
+        let adt_kind = self.adt_kind();
+        assert!(adt_kind == AdtKind::Struct || adt_kind == AdtKind::Union);
         &self.variants[0]
     }
 
@@ -1674,7 +1677,8 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'gcx, 'container> {
         match def {
             Def::Variant(_, vid) => self.variant_with_id(vid),
-            Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => self.struct_variant(),
+            Def::Struct(..) | Def::Union(..) |
+            Def::TyAlias(..) | Def::AssociatedTy(..) => self.struct_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
     }
@@ -2413,7 +2417,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Def::Variant(enum_did, did) => {
                 self.lookup_adt_def(enum_did).variant_with_id(did)
             }
-            Def::Struct(did) => {
+            Def::Struct(did) | Def::Union(did) => {
                 self.lookup_adt_def(did).struct_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)

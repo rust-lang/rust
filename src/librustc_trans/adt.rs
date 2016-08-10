@@ -176,6 +176,9 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             Univariant(mk_struct(cx, &ftys[..], packed, t))
         }
+        ty::TyUnion(..) => {
+            unimplemented_unions!();
+        }
         ty::TyClosure(_, ref substs) => {
             Univariant(mk_struct(cx, &substs.upvar_tys, false, t))
         }

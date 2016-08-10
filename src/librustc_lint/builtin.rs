@@ -116,7 +116,8 @@ impl LateLintPass for BoxPointers {
             hir::ItemFn(..) |
             hir::ItemTy(..) |
             hir::ItemEnum(..) |
-            hir::ItemStruct(..) =>
+            hir::ItemStruct(..) |
+            hir::ItemUnion(..) =>
                 self.check_heap_type(cx, it.span,
                                      cx.tcx.node_id_to_type(it.id)),
             _ => ()
@@ -124,7 +125,8 @@ impl LateLintPass for BoxPointers {
 
         // If it's a struct, we also have to check the fields' types
         match it.node {
-            hir::ItemStruct(ref struct_def, _) => {
+            hir::ItemStruct(ref struct_def, _) |
+            hir::ItemUnion(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.node_id_to_type(struct_field.id));
@@ -348,6 +350,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemMod(..) => "a module",
             hir::ItemEnum(..) => "an enum",
             hir::ItemStruct(..) => "a struct",
+            hir::ItemUnion(..) => "a union",
             hir::ItemTrait(_, _, _, ref items) => {
                 // Issue #11592, traits are always considered exported, even when private.
                 if it.vis == hir::Visibility::Inherited {
@@ -467,6 +470,14 @@ impl LateLintPass for MissingCopyImplementations {
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
                 (def, cx.tcx.mk_struct(def, Substs::empty(cx.tcx)))
             }
+            hir::ItemUnion(_, ref ast_generics) => {
+                if ast_generics.is_parameterized() {
+                    return;
+                }
+                let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
+                (def, cx.tcx.mk_union(def,
+                                      cx.tcx.mk_substs(Substs::empty())))
+            }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
@@ -523,7 +534,7 @@ impl LateLintPass for MissingDebugImplementations {
         }
 
         match item.node {
-            hir::ItemStruct(..) | hir::ItemEnum(..) => {},
+            hir::ItemStruct(..) | hir::ItemUnion(..) | hir::ItemEnum(..) => {},
             _ => return,
         }
 

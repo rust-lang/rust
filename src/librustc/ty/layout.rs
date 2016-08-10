@@ -1256,6 +1256,9 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
                 }
             }
 
+            ty::TyUnion(..) => {
+                unimplemented_unions!();
+            }
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
                 if def.variants.is_empty() || def.variants.len() > 2 {

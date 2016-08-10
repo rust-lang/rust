@@ -470,6 +470,9 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
             }
         }
+        ty::TyUnion(..) => {
+            unimplemented_unions!();
+        }
         ty::TyTrait(..) => {
             // No support in vtable for distinguishing destroying with
             // versus without calling Drop::drop. Assert caller is

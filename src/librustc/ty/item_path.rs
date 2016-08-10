@@ -263,6 +263,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // anything other than a simple path.
         match self_ty.sty {
             ty::TyStruct(adt_def, substs) |
+            ty::TyUnion(adt_def, substs) |
             ty::TyEnum(adt_def, substs) => {
                 if substs.types().next().is_none() { // ignore regions
                     self.push_item_path(buffer, adt_def.did);

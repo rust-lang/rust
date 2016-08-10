@@ -185,6 +185,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                         hir::ItemTy(..) |
                         hir::ItemEnum(..) |
                         hir::ItemStruct(..) |
+                        hir::ItemUnion(..) |
                         hir::ItemTrait(..)   => is_inferred = true,
                         hir::ItemFn(..)      => is_inferred = false,
                         _                    => cannot_happen!(),
