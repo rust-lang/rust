@@ -150,6 +150,7 @@ impl<D: Clone + Debug> DepNode<D> {
         check! {
             CollectItem,
             BorrowCheck,
+            Hir,
             TransCrateItem,
             TypeckItemType,
             TypeckItemBody,

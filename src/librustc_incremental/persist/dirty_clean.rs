@@ -24,10 +24,13 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
+use super::directory::RetracedDefIdDirectory;
+use super::load::DirtyNodes;
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::Visitor;
+use rustc_data_structures::fnv::FnvHashSet;
 use syntax::ast::{self, Attribute, MetaItem};
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
@@ -38,19 +41,33 @@ const CLEAN: &'static str = "rustc_clean";
 const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
 
-pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                               dirty_inputs: &DirtyNodes,
+                                               retraced: &RetracedDefIdDirectory) {
+    // can't add `#[rustc_dirty]` etc without opting in to this feature
+    if !tcx.sess.features.borrow().rustc_attrs {
+        return;
+    }
+
     let _ignore = tcx.dep_graph.in_ignore();
+    let dirty_inputs: FnvHashSet<DepNode<DefId>> =
+        dirty_inputs.iter()
+                   .filter_map(|d| retraced.map(d))
+                   .collect();
     let query = tcx.dep_graph.query();
+    debug!("query-nodes: {:?}", query.nodes());
     let krate = tcx.map.krate();
     krate.visit_all_items(&mut DirtyCleanVisitor {
         tcx: tcx,
         query: &query,
+        dirty_inputs: dirty_inputs,
     });
 }
 
 pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     query: &'a DepGraphQuery<DefId>,
+    dirty_inputs: FnvHashSet<DepNode<DefId>>,
 }
 
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
@@ -81,10 +98,13 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                         return true;
                     }
                 }
+                return false;
             }
         }
-        debug!("check_config: no match found");
-        return false;
+
+        self.tcx.sess.span_fatal(
+            attr.span,
+            &format!("no cfg attribute"));
     }
 
     fn dep_node(&self, attr: &Attribute, def_id: DefId) -> DepNode<DefId> {
@@ -105,29 +125,62 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         self.tcx.sess.span_fatal(attr.span, "no `label` found");
     }
 
-    fn dep_node_str(&self, dep_node: DepNode<DefId>) -> DepNode<String> {
+    fn dep_node_str(&self, dep_node: &DepNode<DefId>) -> DepNode<String> {
         dep_node.map_def(|&def_id| Some(self.tcx.item_path_str(def_id))).unwrap()
     }
 
     fn assert_dirty(&self, item: &hir::Item, dep_node: DepNode<DefId>) {
         debug!("assert_dirty({:?})", dep_node);
 
-        if self.query.contains_node(&dep_node) {
-            let dep_node_str = self.dep_node_str(dep_node);
-            self.tcx.sess.span_err(
-                item.span,
-                &format!("`{:?}` found in dep graph, but should be dirty", dep_node_str));
+        match dep_node {
+            DepNode::Hir(_) => {
+                // HIR nodes are inputs, so if we are asserting that the HIR node is
+                // dirty, we check the dirty input set.
+                if !self.dirty_inputs.contains(&dep_node) {
+                    let dep_node_str = self.dep_node_str(&dep_node);
+                    self.tcx.sess.span_err(
+                        item.span,
+                        &format!("`{:?}` not found in dirty set, but should be dirty",
+                                 dep_node_str));
+                }
+            }
+            _ => {
+                // Other kinds of nodes would be targets, so check if
+                // the dep-graph contains the node.
+                if self.query.contains_node(&dep_node) {
+                    let dep_node_str = self.dep_node_str(&dep_node);
+                    self.tcx.sess.span_err(
+                        item.span,
+                        &format!("`{:?}` found in dep graph, but should be dirty", dep_node_str));
+                }
+            }
         }
     }
 
     fn assert_clean(&self, item: &hir::Item, dep_node: DepNode<DefId>) {
         debug!("assert_clean({:?})", dep_node);
 
-        if !self.query.contains_node(&dep_node) {
-            let dep_node_str = self.dep_node_str(dep_node);
-            self.tcx.sess.span_err(
-                item.span,
-                &format!("`{:?}` not found in dep graph, but should be clean", dep_node_str));
+        match dep_node {
+            DepNode::Hir(_) => {
+                // For HIR nodes, check the inputs.
+                if self.dirty_inputs.contains(&dep_node) {
+                    let dep_node_str = self.dep_node_str(&dep_node);
+                    self.tcx.sess.span_err(
+                        item.span,
+                        &format!("`{:?}` found in dirty-node set, but should be clean",
+                                 dep_node_str));
+                }
+            }
+            _ => {
+                // Otherwise, check if the dep-node exists.
+                if !self.query.contains_node(&dep_node) {
+                    let dep_node_str = self.dep_node_str(&dep_node);
+                    self.tcx.sess.span_err(
+                        item.span,
+                        &format!("`{:?}` not found in dep graph, but should be clean",
+                                 dep_node_str));
+                }
+            }
         }
     }
 }

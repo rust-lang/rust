@@ -580,7 +580,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                                          -> Result<(), MethodError<'tcx>>
     {
         let mut duplicates = HashSet::new();
-        let opt_applicable_traits = self.ccx.trait_map.get(&expr_id);
+        let opt_applicable_traits = self.tcx.trait_map.get(&expr_id);
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits {
                 let trait_did = trait_candidate.def_id;

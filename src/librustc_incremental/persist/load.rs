@@ -28,7 +28,7 @@ use super::dirty_clean;
 use super::hash::*;
 use super::util::*;
 
-type DirtyNodes = FnvHashSet<DepNode<DefPathIndex>>;
+pub type DirtyNodes = FnvHashSet<DepNode<DefPathIndex>>;
 
 type CleanEdges = Vec<(DepNode<DefId>, DepNode<DefId>)>;
 
@@ -45,7 +45,6 @@ pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let _ignore = tcx.dep_graph.in_ignore();
     load_dep_graph_if_exists(tcx);
-    dirty_clean::check_dirty_clean_annotations(tcx);
 }
 
 fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -62,7 +61,7 @@ fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     };
 
     match decode_dep_graph(tcx, &dep_graph_data, &work_products_data) {
-        Ok(()) => return,
+        Ok(dirty_nodes) => dirty_nodes,
         Err(err) => {
             tcx.sess.warn(
                 &format!("decoding error in dep-graph from `{}` and `{}`: {}",
@@ -183,6 +182,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut work_product_decoder = Decoder::new(work_products_data, 0);
     let work_products = try!(<Vec<SerializedWorkProduct>>::decode(&mut work_product_decoder));
     reconcile_work_products(tcx, work_products, &dirty_target_nodes);
+
+    dirty_clean::check_dirty_clean_annotations(tcx, &dirty_raw_source_nodes, &retraced);
 
     Ok(())
 }

@@ -41,8 +41,10 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
-    #[rustc_clean(label="TransCrateItem", cfg="rpass2")]
+    // FIXME(#35078) -- when body of `x` changes, we treat it as
+    // though signature changed.
+    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_dirty(label="TransCrateItem", cfg="rpass2")]
     pub fn y() {
         x::x();
     }
