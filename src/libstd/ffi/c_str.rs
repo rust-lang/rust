@@ -99,11 +99,9 @@ pub struct CString {
 ///
 /// extern { fn my_string() -> *const c_char; }
 ///
-/// fn main() {
-///     unsafe {
-///         let slice = CStr::from_ptr(my_string());
-///         println!("string length: {}", slice.to_bytes().len());
-///     }
+/// unsafe {
+///     let slice = CStr::from_ptr(my_string());
+///     println!("string length: {}", slice.to_bytes().len());
 /// }
 /// ```
 ///
@@ -119,10 +117,8 @@ pub struct CString {
 ///     unsafe { work_with(data.as_ptr()) }
 /// }
 ///
-/// fn main() {
-///     let s = CString::new("data data data data").unwrap();
-///     work(&s);
-/// }
+/// let s = CString::new("data data data data").unwrap();
+/// work(&s);
 /// ```
 ///
 /// Converting a foreign C string into a Rust `String`
@@ -139,9 +135,7 @@ pub struct CString {
 ///     }
 /// }
 ///
-/// fn main() {
-///     println!("string: {}", my_string_safe());
-/// }
+/// println!("string: {}", my_string_safe());
 /// ```
 #[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -188,11 +182,9 @@ impl CString {
     ///
     /// extern { fn puts(s: *const c_char); }
     ///
-    /// fn main() {
-    ///     let to_print = CString::new("Hello!").unwrap();
-    ///     unsafe {
-    ///         puts(to_print.as_ptr());
-    ///     }
+    /// let to_print = CString::new("Hello!").unwrap();
+    /// unsafe {
+    ///     puts(to_print.as_ptr());
     /// }
     /// ```
     ///

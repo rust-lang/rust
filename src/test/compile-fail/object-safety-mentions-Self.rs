@@ -27,12 +27,14 @@ trait Quux {
 fn make_bar<T:Bar>(t: &T) -> &Bar {
         //~^ ERROR E0038
         //~| NOTE method `bar` references the `Self` type in its arguments or return type
+        //~| NOTE the trait `Bar` cannot be made into an object
     loop { }
 }
 
 fn make_baz<T:Baz>(t: &T) -> &Baz {
         //~^ ERROR E0038
         //~| NOTE method `bar` references the `Self` type in its arguments or return type
+        //~| NOTE the trait `Baz` cannot be made into an object
     t
 }
 

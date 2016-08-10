@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Irrefutable(i32);
-
 fn main() {
-    let irr = Irrefutable(0);
-    if let Irrefutable(x) = irr { //~ ERROR E0162
-        //~| NOTE irrefutable pattern
-        println!("{}", x);
+    let x: &'static str = "x";
+
+    {
+        let y = "y".to_string();
+        let ref mut x = &*x;
+        *x = &*y;
     }
+
+    assert_eq!(x, "x");
 }

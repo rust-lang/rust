@@ -235,12 +235,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 .flat_map(|arm| &arm.0)
                 .map(|pat| vec![wrap_pat(cx, &pat)])
                 .collect();
-            let match_span = Span {
-                lo: ex.span.lo,
-                hi: scrut.span.hi,
-                expn_id: ex.span.expn_id
-            };
-            check_exhaustive(cx, match_span, &matrix, source);
+            check_exhaustive(cx, scrut.span, &matrix, source);
         },
         _ => ()
     }
@@ -316,7 +311,10 @@ fn check_arms(cx: &MatchCheckCtxt,
                                 let &(ref first_arm_pats, _) = &arms[0];
                                 let first_pat = &first_arm_pats[0];
                                 let span = first_pat.span;
-                                span_err!(cx.tcx.sess, span, E0162, "irrefutable if-let pattern");
+                                struct_span_err!(cx.tcx.sess, span, E0162,
+                                                "irrefutable if-let pattern")
+                                    .span_label(span, &format!("irrefutable pattern"))
+                                    .emit();
                                 printed_if_let_err = true;
                             }
                         },
@@ -1112,9 +1110,15 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
         if sub.map_or(false, |p| pat_contains_bindings(&p)) {
-            span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings");
+            struct_span_err!(cx.tcx.sess, p.span, E0007,
+                             "cannot bind by-move with sub-bindings")
+                .span_label(p.span, &format!("binds an already bound by-move value by moving it"))
+                .emit();
         } else if has_guard {
-            span_err!(cx.tcx.sess, p.span, E0008, "cannot bind by-move into a pattern guard");
+            struct_span_err!(cx.tcx.sess, p.span, E0008,
+                      "cannot bind by-move into a pattern guard")
+                .span_label(p.span, &format!("moves value into pattern guard"))
+                .emit();
         } else if by_ref_span.is_some() {
             let mut err = struct_span_err!(cx.tcx.sess, p.span, E0009,
                                            "cannot bind by-move and by-ref in the same pattern");
