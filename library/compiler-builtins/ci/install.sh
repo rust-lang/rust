@@ -13,12 +13,12 @@ install_deps() {
 install_qemu() {
     case $TARGET in
         mipsel-unknown-linux-gnu | \
-        powerpc64-unknown-linux-gnu | \
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
                     qemu-user
             ;;
-        mips-unknown-linux-gnu)
+        mips-unknown-linux-gnu | \
+            powerpc64-unknown-linux-gnu)
             dpkg --add-architecture i386
             apt-get update
             apt-get install -y --no-install-recommends \

@@ -57,8 +57,6 @@ case $TARGET in
         export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
         ;;
     powerpc64-unknown-linux-gnu)
-        # See #2
-        export DONT_RUN_TESTS=y
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
         fi
