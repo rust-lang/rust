@@ -94,7 +94,7 @@ macro_rules! supported_targets {
         pub fn get_targets() -> Box<Iterator<Item=String>> {
             Box::new(TARGETS.iter().filter_map(|t| -> Option<String> {
                 load_specific(t)
-                    .map(|t| t.llvm_target)
+                    .and(Ok(t.to_string()))
                     .ok()
             }))
         }
