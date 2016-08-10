@@ -336,7 +336,7 @@ pub struct TyParam {
     pub id: NodeId,
     pub bounds: TyParamBounds,
     pub default: Option<P<Ty>>,
-    pub span: Span
+    pub span: Span,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -346,6 +346,7 @@ pub struct Generics {
     pub lifetimes: Vec<LifetimeDef>,
     pub ty_params: P<[TyParam]>,
     pub where_clause: WhereClause,
+    pub span: Span,
 }
 
 impl Generics {
@@ -368,7 +369,8 @@ impl Default for Generics {
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
                 predicates: Vec::new(),
-            }
+            },
+            span: DUMMY_SP,
         }
     }
 }

@@ -216,10 +216,10 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(_, _, _, _, ref generics, _) => {
-                            if let Some(gen_span) = generics.span() {
-                                struct_span_err!(ccx.tcx.sess, gen_span, E0131,
+                            if generics.is_parameterized() {
+                                struct_span_err!(ccx.tcx.sess, generics.span, E0131,
                                          "main function is not allowed to have type parameters")
-                                    .span_label(gen_span,
+                                    .span_label(generics.span,
                                                 &format!("main cannot have type parameters"))
                                     .emit();
                                 return;
@@ -269,10 +269,9 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                     match it.node {
                         hir::ItemFn(_,_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
-                            let sp = if let Some(sp) = ps.span() { sp } else { start_span };
-                            struct_span_err!(tcx.sess, sp, E0132,
+                            struct_span_err!(tcx.sess, ps.span, E0132,
                                 "start function is not allowed to have type parameters")
-                                .span_label(sp,
+                                .span_label(ps.span,
                                             &format!("start function cannot have type parameters"))
                                 .emit();
                             return;

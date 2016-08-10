@@ -488,7 +488,7 @@ impl<'a> TraitDef<'a> {
             }
         });
 
-        let Generics { mut lifetimes, ty_params, mut where_clause } = self.generics
+        let Generics { mut lifetimes, ty_params, mut where_clause, span } = self.generics
             .to_generics(cx, self.span, type_ident, generics);
         let mut ty_params = ty_params.into_vec();
 
@@ -590,6 +590,7 @@ impl<'a> TraitDef<'a> {
             lifetimes: lifetimes,
             ty_params: P::from_vec(ty_params),
             where_clause: where_clause,
+            span: span,
         };
 
         // Create the reference to the trait.

@@ -674,7 +674,7 @@ pub fn integer_lit(s: &str,
 mod tests {
     use super::*;
     use std::rc::Rc;
-    use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
+    use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
     use codemap::Spanned;
     use ast::{self, PatKind};
     use abi::Abi;
@@ -945,7 +945,8 @@ mod tests {
                                         where_clause: ast::WhereClause {
                                             id: ast::DUMMY_NODE_ID,
                                             predicates: Vec::new(),
-                                        }
+                                        },
+                                        span: syntax_pos::DUMMY_SP,
                                     },
                                     P(ast::Block {
                                         stmts: vec!(ast::Stmt {
