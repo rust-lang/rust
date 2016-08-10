@@ -984,9 +984,9 @@ fn test_contains() {
     let baz_string = "baz".to_string();
 
     let mut v = vec![foo_string.clone(), bar_string.clone(), baz_string.clone()];
-    assert!(v.contains(foo_string));
-    assert!(v.contains(bar_string));
-    assert!(v.contains(baz_string));
+    assert!(v.contains(&foo_string));
+    assert!(v.contains(&bar_string));
+    assert!(v.contains(&baz_string));
 
 
     assert!(v.contains("foo"));
