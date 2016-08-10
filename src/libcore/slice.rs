@@ -37,6 +37,7 @@ use clone::Clone;
 use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord};
 use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
+use convert::AsRef;
 use default::Default;
 use fmt;
 use intrinsics::assume;
@@ -994,6 +995,13 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { ptr: self.ptr, end: self.end, _marker: self._marker } }
+}
+
+#[stable(feature = "slice_iter_as_ref", since = "1.12.0")]
+impl<'a, T> AsRef<[T]> for Iter<'a, T> {
+    fn as_ref(&self) -> &[T] {
+        self.as_slice()
+    }
 }
 
 /// Mutable slice iterator.
