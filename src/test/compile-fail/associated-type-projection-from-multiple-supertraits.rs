@@ -27,22 +27,24 @@ pub trait BoxCar : Box + Vehicle {
 }
 
 fn dent<C:BoxCar>(c: C, color: C::Color) {
-    //~^ ERROR ambiguous associated type `Color` in bounds of `C`
-    //~| NOTE could derive from `Vehicle`
-    //~| NOTE could derive from `Box`
+    //~^ ERROR E0221
+    //~| NOTE ambiguous associated type `Color`
+    //~| NOTE associated type `Color` could derive from `Vehicle`
+    //~| NOTE associated type `Color` could derive from `Box`
 }
 
 fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
-    //~^ ERROR ambiguous associated type
-    //~| ERROR the value of the associated type `Color` (from the trait `Vehicle`) must be specified
-    //~| NOTE could derive from `Vehicle`
-    //~| NOTE could derive from `Box`
+    //~^ ERROR E0221
+    //~| NOTE ambiguous associated type `Color`
+    //~| NOTE associated type `Color` could derive from `Vehicle`
+    //~| NOTE associated type `Color` could derive from `Box`
 }
 
 fn paint<C:BoxCar>(c: C, d: C::Color) {
-    //~^ ERROR ambiguous associated type `Color` in bounds of `C`
-    //~| NOTE could derive from `Vehicle`
-    //~| NOTE could derive from `Box`
+    //~^ ERROR E0221
+    //~| NOTE ambiguous associated type `Color`
+    //~| NOTE associated type `Color` could derive from `Vehicle`
+    //~| NOTE associated type `Color` could derive from `Box`
 }
 
 pub fn main() { }
