@@ -9,7 +9,9 @@
 // except according to those terms.
 
 type Foo<T> = u32; //~ ERROR E0091
+                   //~| NOTE unused type parameter
 type Foo2<A, B> = Box<A>; //~ ERROR E0091
+                          //~| NOTE unused type parameter
 
 fn main() {
 }
