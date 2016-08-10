@@ -82,7 +82,6 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use infer::{self, TypeOrigin};
 use middle::region;
-use ty::subst;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::{Region, ReFree};
 use ty::error::TypeError;
@@ -1369,7 +1368,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                             let generics = self.tcx.lookup_generics(did);
 
                             let expected =
-                                generics.regions.len(subst::TypeSpace) as u32;
+                                generics.regions.len() as u32;
                             let lifetimes =
                                 path.segments.last().unwrap().parameters.lifetimes();
                             let mut insert = Vec::new();

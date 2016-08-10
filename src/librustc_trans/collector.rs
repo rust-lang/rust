@@ -195,7 +195,7 @@ use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::{ExchangeFreeFnLangItem, ExchangeMallocFnLangItem};
 use rustc::traits;
-use rustc::ty::subst::{self, Substs, Subst};
+use rustc::ty::subst::{Substs, Subst};
 use rustc::ty::{self, TypeFoldable, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::repr as mir;
@@ -1219,17 +1219,16 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    def_id_to_string(tcx, impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
-                let default_impls = tcx.provided_trait_methods(trait_ref.def_id);
                 let callee_substs = tcx.erase_regions(&trait_ref.substs);
                 let overridden_methods: FnvHashSet<_> = items.iter()
                                                              .map(|item| item.name)
                                                              .collect();
-                for default_impl in default_impls {
-                    if overridden_methods.contains(&default_impl.name) {
+                for method in tcx.provided_trait_methods(trait_ref.def_id) {
+                    if overridden_methods.contains(&method.name) {
                         continue;
                     }
 
-                    if default_impl.generics.has_type_params(subst::FnSpace) {
+                    if !method.generics.types.is_empty() {
                         continue;
                     }
 
@@ -1242,7 +1241,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                     callee_substs,
                                                     impl_def_id,
                                                     impl_substs,
-                                                    default_impl.name);
+                                                    method.name);
 
                     assert!(mth.is_provided);
 
@@ -1251,10 +1250,10 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
-                    if can_have_local_instance(tcx, default_impl.def_id) {
+                    if can_have_local_instance(tcx, method.def_id) {
                         let empty_substs = tcx.erase_regions(&mth.substs);
                         let item = create_fn_trans_item(tcx,
-                                                        default_impl.def_id,
+                                                        method.def_id,
                                                         callee_substs,
                                                         empty_substs);
                         output.push(item);

@@ -73,13 +73,15 @@ pub fn parameterized(f: &mut fmt::Formatter,
     let mut has_self = false;
     let (fn_trait_kind, item_name) = ty::tls::with(|tcx| {
         verbose = tcx.sess.verbose();
-        let generics = tcx.lookup_generics(did);
+        let mut generics = tcx.lookup_generics(did);
+        if let Some(def_id) = generics.parent {
+            generics = tcx.lookup_generics(def_id);
+        }
         if !verbose {
-            let ty_params = generics.types.get_slice(subst::TypeSpace);
-            if ty_params.last().map_or(false, |def| def.default.is_some()) {
+            if generics.types.last().map_or(false, |def| def.default.is_some()) {
                 if let Some(substs) = tcx.lift(&substs) {
                     let tps = substs.types.get_slice(subst::TypeSpace);
-                    for (def, actual) in ty_params.iter().zip(tps).rev() {
+                    for (def, actual) in generics.types.iter().zip(tps).rev() {
                         if def.default.subst(tcx, substs) != Some(actual) {
                             break;
                         }

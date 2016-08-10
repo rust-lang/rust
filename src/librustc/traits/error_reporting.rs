@@ -271,14 +271,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let def = self.tcx.lookup_trait_def(trait_ref.def_id);
                 let trait_str = def.trait_ref.to_string();
                 if let Some(ref istring) = item.value_str() {
-                    let mut generic_map = def.generics.types.iter_enumerated()
-                                             .map(|(param, i, gen)| {
-                                                   (gen.name.as_str().to_string(),
-                                                    trait_ref.substs.types.get(param, i)
-                                                             .to_string())
-                                                  }).collect::<FnvHashMap<String, String>>();
-                    generic_map.insert("Self".to_string(),
-                                       trait_ref.self_ty().to_string());
+                    let generic_map = def.generics.types.iter().map(|param| {
+                        (param.name.as_str().to_string(),
+                         trait_ref.substs.type_for_def(param).to_string())
+                    }).collect::<FnvHashMap<String, String>>();
                     let parser = Parser::new(&istring);
                     let mut errored = false;
                     let err: String = parser.filter_map(|p| {

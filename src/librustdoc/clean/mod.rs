@@ -973,17 +973,16 @@ impl Clean<Generics> for hir::Generics {
 }
 
 impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
-                                    &'a ty::GenericPredicates<'tcx>,
-                                    subst::ParamSpace) {
+                                    &'a ty::GenericPredicates<'tcx>) {
     fn clean(&self, cx: &DocContext) -> Generics {
         use self::WherePredicate as WP;
 
-        let (gens, preds, space) = *self;
+        let (gens, preds) = *self;
 
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
-        let stripped_typarams = gens.types.get_slice(space).iter().filter_map(|tp| {
+        let stripped_typarams = gens.types.iter().filter_map(|tp| {
             if tp.name == keywords::SelfType.name() {
                 assert_eq!(tp.index, 0);
                 None
@@ -991,7 +990,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
                 Some(tp.clean(cx))
             }
         }).collect::<Vec<_>>();
-        let stripped_lifetimes = gens.regions.get_slice(space).iter().map(|rp| {
+        let stripped_lifetimes = gens.regions.iter().map(|rp| {
             let mut srp = rp.clone();
             srp.bounds = Vec::new();
             srp.clean(cx)
@@ -1359,8 +1358,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             predicates: self.predicates.predicates[method_start..].to_vec()
         };
 
-        let generics = (self.generics, &method_predicates,
-                        subst::FnSpace).clean(cx);
+        let generics = (self.generics, &method_predicates).clean(cx);
         let mut decl = (self.def_id, &self.fty.sig).clean(cx);
         match self.explicit_self {
             ty::ExplicitSelfCategory::ByValue => {
@@ -2929,7 +2927,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             // applied to this associated type in question.
             let def = cx.tcx().lookup_trait_def(did);
             let predicates = cx.tcx().lookup_predicates(did);
-            let generics = (def.generics, &predicates, subst::TypeSpace).clean(cx);
+            let generics = (def.generics, &predicates).clean(cx);
             generics.where_predicates.iter().filter_map(|pred| {
                 let (name, self_type, trait_, bounds) = match *pred {
                     WherePredicate::BoundPredicate {

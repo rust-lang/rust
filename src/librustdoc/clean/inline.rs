@@ -21,7 +21,6 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::subst;
 
 use rustc_const_eval::lookup_const_by_id;
 
@@ -161,7 +160,7 @@ pub fn build_external_trait<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tc
     let def = tcx.lookup_trait_def(did);
     let trait_items = tcx.trait_items(did).clean(cx);
     let predicates = tcx.lookup_predicates(did);
-    let generics = (def.generics, &predicates, subst::TypeSpace).clean(cx);
+    let generics = (def.generics, &predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     clean::Trait {
@@ -189,7 +188,7 @@ fn build_external_function<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx
     let predicates = tcx.lookup_predicates(did);
     clean::Function {
         decl: decl,
-        generics: (t.generics, &predicates, subst::FnSpace).clean(cx),
+        generics: (t.generics, &predicates).clean(cx),
         unsafety: style,
         constness: constness,
         abi: abi,
@@ -209,7 +208,7 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &[..] if variant.kind == ty::VariantKind::Tuple => doctree::Tuple,
             _ => doctree::Plain,
         },
-        generics: (t.generics, &predicates, subst::TypeSpace).clean(cx),
+        generics: (t.generics, &predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,
     }
@@ -222,7 +221,7 @@ fn build_type<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match t.ty.sty {
         ty::TyEnum(edef, _) if !tcx.sess.cstore.is_typedef(did) => {
             return clean::EnumItem(clean::Enum {
-                generics: (t.generics, &predicates, subst::TypeSpace).clean(cx),
+                generics: (t.generics, &predicates).clean(cx),
                 variants_stripped: false,
                 variants: edef.variants.clean(cx),
             })
@@ -232,7 +231,7 @@ fn build_type<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     clean::TypedefItem(clean::Typedef {
         type_: t.ty.clean(cx),
-        generics: (t.generics, &predicates, subst::TypeSpace).clean(cx),
+        generics: (t.generics, &predicates).clean(cx),
     }, false)
 }
 
@@ -393,9 +392,11 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                 // because an associated type won't have generics on the LHS
                 let typedef = clean::Typedef {
                     type_: assoc_ty.ty.unwrap().clean(cx),
-                    generics: (&ty::Generics::empty(),
-                               &ty::GenericPredicates::empty(),
-                               subst::TypeSpace).clean(cx)
+                    generics: clean::Generics {
+                        lifetimes: vec![],
+                        type_params: vec![],
+                        where_predicates: vec![]
+                    }
                 };
                 Some(clean::Item {
                     name: Some(assoc_ty.name.clean(cx)),
@@ -434,7 +435,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
             provided_trait_methods: provided,
             trait_: trait_,
             for_: for_,
-            generics: (ty.generics, &predicates, subst::TypeSpace).clean(cx),
+            generics: (ty.generics, &predicates).clean(cx),
             items: trait_items,
             polarity: polarity.map(|p| { p.clean(cx) }),
         }),

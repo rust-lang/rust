@@ -301,8 +301,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         self.add_constraints_from_substs(
             generics,
             trait_ref.def_id,
-            trait_def.generics.types.as_full_slice(),
-            trait_def.generics.regions.as_full_slice(),
+            &trait_def.generics.types,
+            &trait_def.generics.regions,
             trait_ref.substs,
             variance);
     }
@@ -359,16 +359,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // README.md for a discussion on dep-graph management.
                 self.tcx().dep_graph.read(ItemVariances::to_dep_node(&def.did));
 
-                // All type parameters on enums and structs should be
-                // in the TypeSpace.
-                assert!(item_type.generics.types.is_empty_in(subst::FnSpace));
-                assert!(item_type.generics.regions.is_empty_in(subst::FnSpace));
-
                 self.add_constraints_from_substs(
                     generics,
                     def.did,
-                    item_type.generics.types.as_full_slice(),
-                    item_type.generics.regions.as_full_slice(),
+                    &item_type.generics.types,
+                    &item_type.generics.regions,
                     substs,
                     variance);
             }
@@ -385,8 +380,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_substs(
                     generics,
                     trait_ref.def_id,
-                    trait_def.generics.types.as_full_slice(),
-                    trait_def.generics.regions.as_full_slice(),
+                    &trait_def.generics.types,
+                    &trait_def.generics.regions,
                     trait_ref.substs,
                     variance);
             }
@@ -406,7 +401,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyParam(ref data) => {
-                let def_id = generics.types.get(data.space, data.idx as usize).def_id;
+                assert_eq!(data.space, subst::TypeSpace);
+                assert_eq!(generics.parent, None);
+                let def_id = generics.types[data.idx as usize].def_id;
                 let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
                 match self.terms_cx.inferred_map.get(&node_id) {
                     Some(&index) => {
@@ -493,8 +490,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(ref data) => {
-                let def_id =
-                    generics.regions.get(data.space, data.index as usize).def_id;
+                assert_eq!(data.space, subst::TypeSpace);
+                assert_eq!(generics.parent, None);
+                let def_id = generics.regions[data.index as usize].def_id;
                 let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {
                     let index = self.inferred_index(node_id);

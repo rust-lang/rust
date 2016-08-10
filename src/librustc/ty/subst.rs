@@ -89,42 +89,55 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     where FR: FnMut(&ty::RegionParameterDef, &Substs<'tcx>) -> ty::Region,
           FT: FnMut(&ty::TypeParameterDef<'tcx>, &Substs<'tcx>) -> Ty<'tcx> {
         let defs = tcx.lookup_generics(def_id);
+        let num_regions = defs.parent_regions as usize + defs.regions.len();
+        let num_types = defs.parent_types as usize + defs.types.len();
         let mut substs = Substs {
-            types: VecPerParamSpace {
-                type_limit: 0,
-                content: Vec::with_capacity(defs.types.content.len())
-            },
             regions: VecPerParamSpace {
                 type_limit: 0,
-                content: Vec::with_capacity(defs.regions.content.len())
+                content: Vec::with_capacity(num_regions)
+            },
+            types: VecPerParamSpace {
+                type_limit: 0,
+                content: Vec::with_capacity(num_types)
             }
         };
 
-        for &space in &ParamSpace::all() {
-            for def in defs.regions.get_slice(space) {
-                assert_eq!(def.space, space);
+        substs.fill_item(tcx, defs, &mut mk_region, &mut mk_type);
 
-                let region = mk_region(def, &substs);
-                substs.regions.content.push(region);
+        Substs::new(tcx, substs.types, substs.regions)
+    }
 
-                if space == TypeSpace {
-                    substs.regions.type_limit += 1;
-                }
-            }
+    fn fill_item<FR, FT>(&mut self,
+                         tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                         defs: &ty::Generics<'tcx>,
+                         mk_region: &mut FR,
+                         mk_type: &mut FT)
+    where FR: FnMut(&ty::RegionParameterDef, &Substs<'tcx>) -> ty::Region,
+          FT: FnMut(&ty::TypeParameterDef<'tcx>, &Substs<'tcx>) -> Ty<'tcx> {
+        if let Some(def_id) = defs.parent {
+            let parent_defs = tcx.lookup_generics(def_id);
+            self.fill_item(tcx, parent_defs, mk_region, mk_type);
+        }
 
-            for def in defs.types.get_slice(space) {
-                assert_eq!(def.space, space);
+        for def in &defs.regions {
+            let region = mk_region(def, self);
+            self.regions.content.push(region);
 
-                let ty = mk_type(def, &substs);
-                substs.types.content.push(ty);
-
-                if space == TypeSpace {
-                    substs.types.type_limit += 1;
-                }
+            if def.space == TypeSpace {
+                self.regions.type_limit += 1;
+                assert_eq!(self.regions.content.len(), self.regions.type_limit);
             }
         }
 
-        Substs::new(tcx, substs.types, substs.regions)
+        for def in &defs.types {
+            let ty = mk_type(def, self);
+            self.types.content.push(ty);
+
+            if def.space == TypeSpace {
+                self.types.type_limit += 1;
+                assert_eq!(self.types.content.len(), self.types.type_limit);
+            }
+        }
     }
 
     pub fn is_noop(&self) -> bool {
@@ -149,16 +162,14 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                        target_substs: &Substs<'tcx>)
                        -> &'tcx Substs<'tcx> {
         let defs = tcx.lookup_generics(source_ancestor);
-        assert_eq!(self.types.len(TypeSpace), defs.types.len(TypeSpace));
+        assert_eq!(self.types.len(TypeSpace), defs.types.len());
         assert_eq!(target_substs.types.len(FnSpace), 0);
-        assert_eq!(defs.types.len(FnSpace), 0);
-        assert_eq!(self.regions.len(TypeSpace), defs.regions.len(TypeSpace));
+        assert_eq!(self.regions.len(TypeSpace), defs.regions.len());
         assert_eq!(target_substs.regions.len(FnSpace), 0);
-        assert_eq!(defs.regions.len(FnSpace), 0);
 
         let Substs { mut types, mut regions } = target_substs.clone();
-        types.content.extend(&self.types.as_full_slice()[defs.types.content.len()..]);
-        regions.content.extend(&self.regions.as_full_slice()[defs.regions.content.len()..]);
+        types.content.extend(&self.types.as_full_slice()[defs.types.len()..]);
+        regions.content.extend(&self.regions.as_full_slice()[defs.regions.len()..]);
         Substs::new(tcx, types, regions)
     }
 }
@@ -597,8 +608,8 @@ impl<'a, 'gcx, 'tcx> ty::TraitRef<'tcx> {
                        -> ty::TraitRef<'tcx> {
         let Substs { mut types, mut regions } = substs.clone();
         let defs = tcx.lookup_generics(trait_id);
-        types.content.truncate(defs.types.type_limit);
-        regions.content.truncate(defs.regions.type_limit);
+        types.content.truncate(defs.types.len());
+        regions.content.truncate(defs.regions.len());
 
         ty::TraitRef {
             def_id: trait_id,

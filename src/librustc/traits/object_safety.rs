@@ -20,7 +20,6 @@
 use super::elaborate_predicates;
 
 use hir::def_id::DefId;
-use ty::subst;
 use traits;
 use ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use std::rc::Rc;
@@ -266,7 +265,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.
-        if !method.generics.types.is_empty_in(subst::FnSpace) {
+        if !method.generics.types.is_empty() {
             return Some(MethodViolationCode::Generic);
         }
 

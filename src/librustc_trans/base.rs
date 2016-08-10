@@ -2470,8 +2470,8 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
             hir_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.map.local_def_id(id);
-                let scheme = tcx.lookup_item_type(def_id);
-                scheme.generics.types.is_empty()
+                let generics = tcx.lookup_generics(def_id);
+                generics.parent_types == 0 && generics.types.is_empty()
             }
 
             _ => false
