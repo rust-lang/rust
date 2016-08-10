@@ -36,7 +36,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use util::nodemap::{NodeMap, FnvHashSet};
 
-use syntax_pos::{BytePos, mk_sp, Span, ExpnId};
+use syntax_pos::{mk_sp, Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, respan, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
@@ -301,6 +301,7 @@ pub struct Generics {
     pub lifetimes: HirVec<LifetimeDef>,
     pub ty_params: HirVec<TyParam>,
     pub where_clause: WhereClause,
+    pub span: Span,
 }
 
 impl Generics {
@@ -312,6 +313,7 @@ impl Generics {
                 id: DUMMY_NODE_ID,
                 predicates: HirVec::new(),
             },
+            span: DUMMY_SP,
         }
     }
 
@@ -325,38 +327,6 @@ impl Generics {
 
     pub fn is_parameterized(&self) -> bool {
         self.is_lt_parameterized() || self.is_type_parameterized()
-    }
-
-    // Does return a span which includes lifetimes and type parameters,
-    // not where clause.
-    pub fn span(&self) -> Option<Span> {
-        if !self.is_parameterized() {
-            None
-        } else {
-            let mut span: Option<Span> = None;
-            for lifetime in self.lifetimes.iter() {
-                if let Some(ref mut span) = span {
-                    let life_span = lifetime.lifetime.span;
-                    span.hi = if span.hi > life_span.hi { span.hi } else { life_span.hi };
-                    span.lo = if span.lo < life_span.lo { span.lo } else { life_span.lo };
-                } else {
-                    span = Some(lifetime.lifetime.span.clone());
-                }
-            }
-            for ty_param in self.ty_params.iter() {
-                if let Some(ref mut span) = span {
-                    span.lo = if span.lo < ty_param.span.lo { span.lo } else { ty_param.span.lo };
-                    span.hi = if span.hi > ty_param.span.hi { span.hi } else { ty_param.span.hi };
-                } else {
-                    span = Some(ty_param.span.clone());
-                }
-            }
-            if let Some(ref mut span) = span {
-                span.lo = span.lo - BytePos(1);
-                span.hi = span.hi + BytePos(1);
-            }
-            span
-        }
     }
 }
 

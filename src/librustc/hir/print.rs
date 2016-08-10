@@ -523,6 +523,7 @@ impl<'a> State<'a> {
                         id: ast::DUMMY_NODE_ID,
                         predicates: hir::HirVec::new(),
                     },
+                    span: syntax_pos::DUMMY_SP,
                 };
                 self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics)?;
             }
@@ -2224,6 +2225,7 @@ impl<'a> State<'a> {
                 id: ast::DUMMY_NODE_ID,
                 predicates: hir::HirVec::new(),
             },
+            span: syntax_pos::DUMMY_SP,
         };
         self.print_fn(decl,
                       unsafety,

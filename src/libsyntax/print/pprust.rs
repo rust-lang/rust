@@ -1001,6 +1001,7 @@ impl<'a> State<'a> {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
                     },
+                    span: syntax_pos::DUMMY_SP,
                 };
                 try!(self.print_ty_fn(f.abi,
                                  f.unsafety,
@@ -2982,6 +2983,7 @@ impl<'a> State<'a> {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),
             },
+            span: syntax_pos::DUMMY_SP,
         };
         try!(self.print_fn(decl,
                       unsafety,

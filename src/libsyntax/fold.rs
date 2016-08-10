@@ -698,12 +698,13 @@ pub fn noop_fold_opt_lifetime<T: Folder>(o_lt: Option<Lifetime>, fld: &mut T)
     o_lt.map(|lt| fld.fold_lifetime(lt))
 }
 
-pub fn noop_fold_generics<T: Folder>(Generics {ty_params, lifetimes, where_clause}: Generics,
+pub fn noop_fold_generics<T: Folder>(Generics {ty_params, lifetimes, where_clause, span}: Generics,
                                      fld: &mut T) -> Generics {
     Generics {
         ty_params: fld.fold_ty_params(ty_params),
         lifetimes: fld.fold_lifetime_defs(lifetimes),
         where_clause: fld.fold_where_clause(where_clause),
+        span: fld.new_span(span),
     }
 }
 

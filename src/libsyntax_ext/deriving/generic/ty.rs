@@ -207,7 +207,8 @@ fn mk_ty_param(cx: &ExtCtxt,
     cx.typaram(span, cx.ident_of(name), bounds, None)
 }
 
-fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>) -> Generics {
+fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>, span: Span)
+               -> Generics {
     Generics {
         lifetimes: lifetimes,
         ty_params: P::from_vec(ty_params),
@@ -215,6 +216,7 @@ fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>) -
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
         },
+        span: span,
     }
 }
 
@@ -257,7 +259,7 @@ impl<'a> LifetimeBounds<'a> {
                 }
             })
             .collect();
-        mk_generics(lifetimes, ty_params)
+        mk_generics(lifetimes, ty_params, span)
     }
 }
 
