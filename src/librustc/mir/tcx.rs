@@ -214,8 +214,7 @@ impl<'tcx> BinOp {
       pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     lhs_ty: Ty<'tcx>,
                     rhs_ty: Ty<'tcx>)
-                    -> Ty<'tcx>
-    {
+                    -> Ty<'tcx> {
         // FIXME: handle SIMD correctly
         match self {
             &BinOp::Add | &BinOp::Sub | &BinOp::Mul | &BinOp::Div | &BinOp::Rem |
