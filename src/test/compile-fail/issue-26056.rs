@@ -28,6 +28,7 @@ impl<K> Map for K {
 fn main() {
     let _ = &()
         as &Map<Key=u32,MapValue=u32>;
-    //~^ ERROR the trait `Map` cannot be made into an object
+    //~^ ERROR E0038
     //~| NOTE the trait cannot use `Self` as a type parameter
+    //~| NOTE the trait `Map` cannot be made into an object
 }

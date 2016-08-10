@@ -15,10 +15,12 @@ fn f<T: Array>(x: &T) {
     //~^ ERROR `Array` cannot be made into an object
     //~| NOTE the trait cannot require that `Self : Sized`
     //~| NOTE requirements on the impl of `std::ops::CoerceUnsized<&Array>`
+    //~| NOTE the trait `Array` cannot be made into an object
     as
     &Array;
     //~^ ERROR `Array` cannot be made into an object
     //~| NOTE the trait cannot require that `Self : Sized`
+    //~| NOTE the trait `Array` cannot be made into an object
 }
 
 fn main() {}
