@@ -30,6 +30,7 @@ pub struct Module {
     pub extern_crates: Vec<ExternCrate>,
     pub imports: Vec<Import>,
     pub structs: Vec<Struct>,
+    pub unions: Vec<Union>,
     pub enums: Vec<Enum>,
     pub fns: Vec<Function>,
     pub mods: Vec<Module>,
@@ -62,6 +63,7 @@ impl Module {
             extern_crates: Vec::new(),
             imports    : Vec::new(),
             structs    : Vec::new(),
+            unions     : Vec::new(),
             enums      : Vec::new(),
             fns        : Vec::new(),
             mods       : Vec::new(),
@@ -96,6 +98,19 @@ pub enum TypeBound {
 }
 
 pub struct Struct {
+    pub vis: hir::Visibility,
+    pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
+    pub id: NodeId,
+    pub struct_type: StructType,
+    pub name: Name,
+    pub generics: hir::Generics,
+    pub attrs: hir::HirVec<ast::Attribute>,
+    pub fields: hir::HirVec<hir::StructField>,
+    pub whence: Span,
+}
+
+pub struct Union {
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,

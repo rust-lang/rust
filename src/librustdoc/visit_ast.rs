@@ -108,6 +108,25 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
+    pub fn visit_union_data(&mut self, item: &hir::Item,
+                            name: ast::Name, sd: &hir::VariantData,
+                            generics: &hir::Generics) -> Union {
+        debug!("Visiting union");
+        let struct_type = struct_type_from_def(&*sd);
+        Union {
+            id: item.id,
+            struct_type: struct_type,
+            name: name,
+            vis: item.vis.clone(),
+            stab: self.stability(item.id),
+            depr: self.deprecation(item.id),
+            attrs: item.attrs.clone(),
+            generics: generics.clone(),
+            fields: sd.fields().iter().cloned().collect(),
+            whence: item.span
+        }
+    }
+
     pub fn visit_enum_def(&mut self, it: &hir::Item,
                           name: ast::Name, def: &hir::EnumDef,
                           params: &hir::Generics) -> Enum {
@@ -258,6 +277,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             match def {
                 Def::Trait(did) |
                 Def::Struct(did) |
+                Def::Union(did) |
                 Def::Enum(did) |
                 Def::TyAlias(did) if !self_is_hidden => {
                     self.cx.access_levels.borrow_mut().map.insert(did, AccessLevel::Public);
@@ -365,8 +385,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.enums.push(self.visit_enum_def(item, name, ed, gen)),
             hir::ItemStruct(ref sd, ref gen) =>
                 om.structs.push(self.visit_variant_data(item, name, sd, gen)),
-            hir::ItemUnion(..) =>
-                unimplemented_unions!(),
+            hir::ItemUnion(ref sd, ref gen) =>
+                om.unions.push(self.visit_union_data(item, name, sd, gen)),
             hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, _) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
                                           constness, abi, gen)),
