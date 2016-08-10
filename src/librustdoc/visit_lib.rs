@@ -73,6 +73,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
                     Def::ForeignMod(did) |
                     Def::Trait(did) |
                     Def::Struct(did) |
+                    Def::Union(did) |
                     Def::Enum(did) |
                     Def::TyAlias(did) |
                     Def::Fn(did) |
