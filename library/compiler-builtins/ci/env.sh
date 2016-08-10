@@ -37,8 +37,6 @@ case $TARGET in
         fi
         ;;
     mips-unknown-linux-gnu)
-        # See #2
-        export DONT_RUN_TESTS=y
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
         fi

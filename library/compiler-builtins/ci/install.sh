@@ -12,12 +12,17 @@ install_deps() {
 
 install_qemu() {
     case $TARGET in
-        mips-unknown-linux-gnu | \
         mipsel-unknown-linux-gnu | \
         powerpc64-unknown-linux-gnu | \
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
                     qemu-user
+            ;;
+        mips-unknown-linux-gnu)
+            dpkg --add-architecture i386
+            apt-get update
+            apt-get install -y --no-install-recommends \
+                    qemu-user:i386
             ;;
     esac
 }
@@ -57,8 +62,6 @@ install_c_toolchain() {
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
                     gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross
-            ;;
-        *)
             ;;
     esac
 }
