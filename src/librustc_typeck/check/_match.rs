@@ -695,10 +695,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     field_map.get(&field.name)
                         .map(|f| self.field_ty(span, f, substs))
                         .unwrap_or_else(|| {
-                            span_err!(tcx.sess, span, E0026,
-                                "struct `{}` does not have a field named `{}`",
-                                tcx.item_path_str(variant.did),
-                                field.name);
+                            struct_span_err!(tcx.sess, span, E0026,
+                                             "struct `{}` does not have a field named `{}`",
+                                             tcx.item_path_str(variant.did),
+                                             field.name)
+                                .span_label(span,
+                                            &format!("struct `{}` does not have field `{}`",
+                                                     tcx.item_path_str(variant.did),
+                                                     field.name))
+                                .emit();
+
                             tcx.types.err
                         })
                 }
