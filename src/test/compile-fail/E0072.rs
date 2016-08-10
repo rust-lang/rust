@@ -9,6 +9,7 @@
 // except according to those terms.
 
 struct ListNode { //~ ERROR E0072
+                  //~| NOTE recursive type has infinite size
     head: u8,
     tail: Option<ListNode>,
 }
