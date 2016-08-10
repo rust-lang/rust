@@ -518,9 +518,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                        trait_ref,
                        trait_ref.substs,
                        m);
-                assert_eq!(m.generics.types.len(subst::TypeSpace),
+                assert_eq!(m.generics.parent_types as usize,
                            trait_ref.substs.types.len(subst::TypeSpace));
-                assert_eq!(m.generics.regions.len(subst::TypeSpace),
+                assert_eq!(m.generics.parent_regions as usize,
                            trait_ref.substs.regions.len(subst::TypeSpace));
             }
 
@@ -1232,8 +1232,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let xform_self_ty = method.fty.sig.input(0);
         let xform_self_ty = self.erase_late_bound_regions(&xform_self_ty);
 
-        if method.generics.types.is_empty_in(subst::FnSpace) &&
-           method.generics.regions.is_empty_in(subst::FnSpace) {
+        if method.generics.types.is_empty() && method.generics.regions.is_empty() {
             xform_self_ty.subst(self.tcx, substs)
         } else {
             let substs = Substs::for_item(self.tcx, method.def_id, |def, _| {
@@ -1260,17 +1259,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                           impl_def_id: DefId)
                           -> (Ty<'tcx>, &'tcx Substs<'tcx>)
     {
-        let impl_pty = self.tcx.lookup_item_type(impl_def_id);
+        let impl_ty = self.tcx.lookup_item_type(impl_def_id).ty;
 
-        let type_vars =
-            impl_pty.generics.types.map(
-                |_| self.next_ty_var());
+        let substs = Substs::for_item(self.tcx, impl_def_id,
+                                      |_, _| ty::ReErased,
+                                      |_, _| self.next_ty_var());
 
-        let region_placeholders =
-            impl_pty.generics.regions.map(
-                |_| ty::ReErased); // see erase_late_bound_regions() for an expl of why 'erased
-
-        (impl_pty.ty, Substs::new(self.tcx, type_vars, region_placeholders))
+        (impl_ty, substs)
     }
 
     /// Replace late-bound-regions bound by `value` with `'static` using

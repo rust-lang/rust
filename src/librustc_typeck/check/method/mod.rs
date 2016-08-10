@@ -183,15 +183,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let trait_def = self.tcx.lookup_trait_def(trait_def_id);
 
         if let Some(ref input_types) = opt_input_types {
-            assert_eq!(trait_def.generics.types.len(subst::TypeSpace) - 1, input_types.len());
+            assert_eq!(trait_def.generics.types.len() - 1, input_types.len());
         }
-        assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
         assert!(trait_def.generics.regions.is_empty());
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = Substs::for_item(self.tcx, trait_def_id, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, substs| {
+            assert_eq!(def.space, subst::TypeSpace);
             if def.index == 0 {
                 self_ty
             } else if let Some(ref input_types) = opt_input_types {
@@ -221,8 +221,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let method_item = self.trait_item(trait_def_id, m_name).unwrap();
         let method_ty = method_item.as_opt_method().unwrap();
-        assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
-        assert_eq!(method_ty.generics.regions.len(subst::FnSpace), 0);
+        assert_eq!(method_ty.generics.types.len(), 0);
+        assert_eq!(method_ty.generics.regions.len(), 0);
 
         debug!("lookup_in_trait_adjusted: method_item={:?} method_ty={:?}",
                method_item, method_ty);

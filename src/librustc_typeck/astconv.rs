@@ -429,7 +429,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 bug!("ErrorReported returned, but no errors reports?")
             }
         };
-        let expected_num_region_params = decl_generics.regions.len(TypeSpace);
+        let expected_num_region_params = decl_generics.regions.len();
         let supplied_num_region_params = lifetimes.len();
         let regions = if expected_num_region_params == supplied_num_region_params {
             lifetimes.iter().map(|l| ast_region_to_region(tcx, l)).collect()
@@ -454,8 +454,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Check the number of type parameters supplied by the user.
         if let Some(num_provided) = num_types_provided {
-            let ty_param_defs = decl_generics.types.get_slice(TypeSpace);
-            let ty_param_defs = &ty_param_defs[self_ty.is_some() as usize..];
+            let ty_param_defs = &decl_generics.types[self_ty.is_some() as usize..];
             check_type_argument_count(tcx, span, num_provided, ty_param_defs);
         }
 

@@ -65,7 +65,7 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
-use rustc::ty::subst::{Substs, FnSpace, ParamSpace, TypeSpace, VecPerParamSpace};
+use rustc::ty::subst::{Substs, FnSpace, ParamSpace, TypeSpace};
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use rustc::ty::{VariantKind};
@@ -793,9 +793,11 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 }
 
                 if let hir::ImplItemKind::Const(ref ty, _) = impl_item.node {
+                    let const_def_id = ccx.tcx.map.local_def_id(impl_item.id);
+                    let ty_generics = generics_of_def_id(ccx, const_def_id);
                     let ty = ccx.icx(&ty_predicates)
                                 .to_ty(&ExplicitRscope, &ty);
-                    tcx.register_item_type(ccx.tcx.map.local_def_id(impl_item.id),
+                    tcx.register_item_type(const_def_id,
                                            TypeScheme {
                                                generics: ty_generics,
                                                ty: ty,
@@ -858,11 +860,13 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             // Convert all the associated constants.
             for trait_item in trait_items {
                 if let hir::ConstTraitItem(ref ty, ref default) = trait_item.node {
+                    let const_def_id = ccx.tcx.map.local_def_id(trait_item.id);
+                    let ty_generics = generics_of_def_id(ccx, const_def_id);
                     let ty = ccx.icx(&trait_predicates)
                         .to_ty(&ExplicitRscope, ty);
-                    tcx.register_item_type(ccx.tcx.map.local_def_id(trait_item.id),
+                    tcx.register_item_type(const_def_id,
                                            TypeScheme {
-                                               generics: trait_def.generics,
+                                               generics: ty_generics,
                                                ty: ty,
                                            });
                     convert_associated_const(ccx,
@@ -957,7 +961,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   predicates: ty::GenericPredicates<'tcx>) {
     let tcx = ccx.tcx;
     let def_id = tcx.map.local_def_id(ctor_id);
-    tcx.generics.borrow_mut().insert(def_id, scheme.generics);
+    generics_of_def_id(ccx, def_id);
     let ctor_ty = match variant.kind {
         VariantKind::Unit | VariantKind::Struct => scheme.ty,
         VariantKind::Tuple => {
@@ -1389,24 +1393,35 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         use rustc::hir::map::*;
         use rustc::hir::*;
 
+        let node = tcx.map.get(node_id);
+        let parent_def_id = match node {
+            NodeImplItem(_) |
+            NodeTraitItem(_) |
+            NodeVariant(_) |
+            NodeStructCtor(_) => {
+                let parent_id = tcx.map.get_parent(node_id);
+                Some(tcx.map.local_def_id(parent_id))
+            }
+            _ => None
+        };
+
         let mut opt_self = None;
-        let mut base_def_id = None;
         let mut allow_defaults = false;
 
         let no_generics = hir::Generics::empty();
-        let (space, ast_generics) = match tcx.map.get(node_id) {
-            NodeImplItem(&ImplItem { node: ImplItemKind::Method(ref sig, _), .. }) |
-            NodeTraitItem(&TraitItem { node: MethodTraitItem(ref sig, _), .. }) => {
-                let parent_id = tcx.map.get_parent(node_id);
-                base_def_id = Some(tcx.map.local_def_id(parent_id));
-                (FnSpace, &sig.generics)
+        let (space, ast_generics) = match node {
+            NodeTraitItem(item) => {
+                match item.node {
+                    MethodTraitItem(ref sig, _) => (FnSpace, &sig.generics),
+                    _ => (FnSpace, &no_generics)
+                }
             }
 
-            NodeImplItem(_) |
-            NodeTraitItem(_) => {
-                let parent_id = tcx.map.get_parent(node_id);
-                base_def_id = Some(tcx.map.local_def_id(parent_id));
-                (FnSpace, &no_generics)
+            NodeImplItem(item) => {
+                match item.node {
+                    ImplItemKind::Method(ref sig, _) => (FnSpace, &sig.generics),
+                    _ => (FnSpace, &no_generics)
+                }
             }
 
             NodeItem(item) => {
@@ -1457,9 +1472,16 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             _ => (TypeSpace, &no_generics)
         };
 
-        let empty_generics = ty::Generics::empty();
-        let base_generics = base_def_id.map_or(&empty_generics, |def_id| {
-            generics_of_def_id(ccx, def_id)
+        let has_self = opt_self.is_some();
+        let mut parent_has_self = false;
+        let (parent_regions, parent_types) = parent_def_id.map_or((0, 0), |def_id| {
+            let generics = generics_of_def_id(ccx, def_id);
+            assert_eq!(generics.parent, None);
+            assert_eq!(generics.parent_regions, 0);
+            assert_eq!(generics.parent_types, 0);
+            assert_eq!(has_self, false);
+            parent_has_self = generics.has_self;
+            (generics.regions.len(), generics.types.len())
         });
 
         let early_lifetimes = early_bound_lifetimes_from_generics(ccx, ast_generics);
@@ -1477,32 +1499,15 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         // Now create the real type parameters.
         let types = ast_generics.ty_params.iter().enumerate().map(|(i, p)| {
-            let i = opt_self.is_some() as u32 + i as u32;
+            let i = has_self as u32 + i as u32;
             get_or_create_type_parameter_def(ccx, ast_generics, space, i, p, allow_defaults)
-        }).collect();
-
-        let has_self = base_generics.has_self || opt_self.is_some();
-        let (regions, types) = match space {
-            TypeSpace => {
-                assert_eq!(base_generics.regions.as_full_slice().len(), 0);
-                assert_eq!(base_generics.types.as_full_slice().len(), 0);
-                (VecPerParamSpace::new(regions, vec![]),
-                 VecPerParamSpace::new(opt_self.into_iter().chain(types).collect(), vec![]))
-            }
-            FnSpace => {
-                assert_eq!(base_generics.regions.len(FnSpace), 0);
-                assert_eq!(base_generics.types.len(FnSpace), 0);
-                (VecPerParamSpace::new(base_generics.regions.get_slice(TypeSpace).to_vec(),
-                                       regions),
-                 VecPerParamSpace::new(base_generics.types.get_slice(TypeSpace).to_vec(),
-                                       types))
-            }
-        };
+        });
+        let types: Vec<_> = opt_self.into_iter().chain(types).collect();
 
         // Debugging aid.
         if tcx.has_attr(def_id, "rustc_object_lifetime_default") {
             let object_lifetime_default_reprs: String =
-                types.as_full_slice().iter().map(|t| {
+                types.iter().map(|t| {
                     match t.object_lifetime_default {
                         ty::ObjectLifetimeDefault::Specific(r) => r.to_string(),
                         d => format!("{:?}", d),
@@ -1512,9 +1517,12 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }
 
         tcx.alloc_generics(ty::Generics {
+            parent: parent_def_id,
+            parent_regions: parent_regions as u32,
+            parent_types: parent_types as u32,
             regions: regions,
             types: types,
-            has_self: has_self
+            has_self: has_self || parent_has_self
         })
     })
 }
@@ -2148,7 +2156,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                        &mut input_parameters);
 
     let ty_generics = generics_of_def_id(ccx, impl_def_id);
-    for (ty_param, param) in ty_generics.types.as_full_slice().iter().zip(&generics.ty_params) {
+    for (ty_param, param) in ty_generics.types.iter().zip(&generics.ty_params) {
         let param_ty = ty::ParamTy::for_def(ty_param);
         if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
             report_unused_parameter(ccx, param.span, "type", &param_ty.to_string());

@@ -49,7 +49,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             variadic: false,
         }),
     }));
-    let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
+    let i_n_tps = i_ty.generics.types.len();
     if i_n_tps != n_tps {
         struct_span_err!(tcx.sess, it.span, E0094,
             "intrinsic has wrong number of type \
@@ -321,7 +321,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
 
     let tcx = ccx.tcx;
     let i_ty = tcx.lookup_item_type(tcx.map.local_def_id(it.id));
-    let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
+    let i_n_tps = i_ty.generics.types.len();
     let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {

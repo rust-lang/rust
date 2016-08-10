@@ -881,8 +881,7 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         // `{Self}` is allowed
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
-                        Position::ArgumentNamed(s) => match types.as_full_slice()
-                                                                 .iter().find(|t| {
+                        Position::ArgumentNamed(s) => match types.iter().find(|t| {
                             t.name.as_str() == s
                         }) {
                             Some(_) => (),
@@ -1693,7 +1692,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut ty = self.tcx.lookup_item_type(did).ty;
         if ty.is_fn() {
             // Tuple variants have fn type even in type namespace, extract true variant type from it
-            ty = self.tcx.no_late_bound_regions(&type_scheme.ty.fn_ret()).unwrap();
+            ty = self.tcx.no_late_bound_regions(&ty.fn_ret()).unwrap();
         }
         let type_predicates = self.tcx.lookup_predicates(did);
         let substs = AstConv::ast_path_substs_for_ty(self, self,
@@ -3222,13 +3221,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Def::Variant(..) | Def::Struct(..) => {
-                Some(self.tcx.expect_variant_def(def))
+            Def::Variant(type_did, _) | Def::Struct(type_did) => {
+                Some((type_did, self.tcx.expect_variant_def(def)))
             }
-            Def::TyAlias(did) | Def::AssociatedTy(_, did) => {
+            Def::TyAlias(did) => {
                 if let Some(&ty::TyStruct(adt, _)) = self.tcx.opt_lookup_item_type(did)
                                                              .map(|scheme| &scheme.ty.sty) {
-                    Some(adt.struct_variant())
+                    Some((did, adt.struct_variant()))
                 } else {
                     None
                 }
@@ -3236,14 +3235,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => None
         };
 
-        if let Some(variant) = variant {
+        if let Some((def_id, variant)) = variant {
             if variant.kind == ty::VariantKind::Tuple &&
                     !self.tcx.sess.features.borrow().relaxed_adts {
                 emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
                                  "relaxed_adts", span, GateIssue::Language,
                                  "tuple structs and variants in struct patterns are unstable");
             }
-            let ty = self.instantiate_type_path(def.def_id(), path, node_id);
+            let ty = self.instantiate_type_path(def_id, path, node_id);
             Some((variant, ty))
         } else {
             struct_span_err!(self.tcx.sess, path.span, E0071,
@@ -4122,25 +4121,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut fn_segment = None;
         match def {
             // Case 1 and 1b. Reference to a *type* or *enum variant*.
-            Def::SelfTy(..) |
-            Def::Struct(..) |
-            Def::Variant(..) |
-            Def::Enum(..) |
-            Def::TyAlias(..) |
-            Def::AssociatedTy(..) |
-            Def::Trait(..) |
-            Def::PrimTy(..) |
-            Def::TyParam(..) => {
+            Def::Struct(def_id) |
+            Def::Variant(_, def_id) |
+            Def::Enum(def_id) |
+            Def::TyAlias(def_id) |
+            Def::AssociatedTy(_, def_id) |
+            Def::Trait(def_id) => {
                 // Everything but the final segment should have no
                 // parameters at all.
-                type_segment = segments.last();
+                let mut generics = self.tcx.lookup_generics(def_id);
+                if let Some(def_id) = generics.parent {
+                    // Variant and struct constructors use the
+                    // generics of their parent type definition.
+                    generics = self.tcx.lookup_generics(def_id);
+                }
+                type_segment = Some((segments.last().unwrap(), generics));
             }
 
             // Case 2. Reference to a top-level value.
-            Def::Fn(..) |
-            Def::Const(..) |
-            Def::Static(..) => {
-                fn_segment = segments.last();
+            Def::Fn(def_id) |
+            Def::Const(def_id) |
+            Def::Static(def_id, _) => {
+                fn_segment = Some((segments.last().unwrap(),
+                                   self.tcx.lookup_generics(def_id)));
             }
 
             // Case 3. Reference to a method or associated const.
@@ -4154,14 +4157,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::ImplContainer(_) => {}
                 }
 
+                let generics = self.tcx.lookup_generics(def_id);
                 if segments.len() >= 2 {
-                    type_segment = Some(&segments[segments.len() - 2]);
+                    let parent_generics = self.tcx.lookup_generics(generics.parent.unwrap());
+                    type_segment = Some((&segments[segments.len() - 2], parent_generics));
                 } else {
                     // `<T>::assoc` will end up here, and so can `T::assoc`.
                     let self_ty = opt_self_ty.expect("UFCS sugared assoc missing Self");
                     ufcs_associated = Some((container, self_ty));
                 }
-                fn_segment = segments.last();
+                fn_segment = Some((segments.last().unwrap(), generics));
             }
 
             // Other cases. Various nonsense that really shouldn't show up
@@ -4169,6 +4174,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // elsewhere. (I hope)
             Def::Mod(..) |
             Def::ForeignMod(..) |
+            Def::PrimTy(..) |
+            Def::SelfTy(..) |
+            Def::TyParam(..) |
             Def::Local(..) |
             Def::Label(..) |
             Def::Upvar(..) |
@@ -4213,12 +4221,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // a problem.
         self.check_path_parameter_count(subst::TypeSpace,
                                         span,
-                                        scheme.generics,
                                         !require_type_space,
                                         &mut type_segment);
         self.check_path_parameter_count(subst::FnSpace,
                                         span,
-                                        scheme.generics,
                                         true,
                                         &mut fn_segment);
 
@@ -4228,7 +4234,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 subst::TypeSpace => type_segment,
                 subst::FnSpace => fn_segment
             };
-            let lifetimes = match segment.map(|s| &s.parameters) {
+            let lifetimes = match segment.map(|(s, _)| &s.parameters) {
                 Some(&hir::AngleBracketedParameters(ref data)) => &data.lifetimes[..],
                 Some(&hir::ParenthesizedParameters(_)) => bug!(),
                 None => &[]
@@ -4242,24 +4248,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }, |def, substs| {
             let mut i = def.index as usize;
             let segment = match def.space {
-                subst::TypeSpace => type_segment,
+                subst::TypeSpace => {
+                    // Handle Self first, so we can adjust the index to match the AST.
+                    match (type_segment, fn_segment) {
+                        (Some((_, generics)), _) | (_, Some((_, generics))) => {
+                            if generics.has_self {
+                                if i == 0 {
+                                    return opt_self_ty.unwrap_or_else(|| {
+                                        self.type_var_for_def(span, def, substs)
+                                    });
+                                }
+                                i -= 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                    type_segment
+                }
                 subst::FnSpace => fn_segment
             };
-            let types = match segment.map(|s| &s.parameters) {
+            let types = match segment.map(|(s, _)| &s.parameters) {
                 Some(&hir::AngleBracketedParameters(ref data)) => &data.types[..],
                 Some(&hir::ParenthesizedParameters(_)) => bug!(),
                 None => &[]
             };
-
-            // Handle Self first, so we can adjust the index to match the AST.
-            if scheme.generics.has_self && def.space == subst::TypeSpace {
-                if i == 0 {
-                    return opt_self_ty.unwrap_or_else(|| {
-                        self.type_var_for_def(span, def, substs)
-                    });
-                }
-                i -= 1;
-            }
 
             let can_omit = def.space != subst::TypeSpace || !require_type_space;
             let default = if can_omit && types.len() == 0 {
@@ -4306,9 +4318,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // with the substituted impl type.
             let impl_scheme = self.tcx.lookup_item_type(impl_def_id);
             assert_eq!(substs.types.len(subst::TypeSpace),
-                       impl_scheme.generics.types.len(subst::TypeSpace));
+                       impl_scheme.generics.types.len());
             assert_eq!(substs.regions.len(subst::TypeSpace),
-                       impl_scheme.generics.regions.len(subst::TypeSpace));
+                       impl_scheme.generics.regions.len());
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
             match self.sub_types(false, TypeOrigin::Misc(span), self_ty, impl_ty) {
@@ -4339,10 +4351,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_path_parameter_count(&self,
                                   space: subst::ParamSpace,
                                   span: Span,
-                                  generics: &ty::Generics<'tcx>,
                                   can_omit: bool,
-                                  segment: &mut Option<&hir::PathSegment>) {
-        let (lifetimes, types, bindings) = match segment.map(|s| &s.parameters) {
+                                  segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
+        let (lifetimes, types, bindings) = match segment.map(|(s, _)| &s.parameters) {
             Some(&hir::AngleBracketedParameters(ref data)) => {
                 (&data.lifetimes[..], &data.types[..], &data.bindings[..])
             }
@@ -4357,7 +4368,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Check provided lifetime parameters.
-        let lifetime_defs = generics.regions.get_slice(space);
+        let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
         if lifetimes.len() > lifetime_defs.len() {
             let span = lifetimes[lifetime_defs.len()].span;
             span_err!(self.tcx.sess, span, E0088,
@@ -4374,12 +4385,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Check provided type parameters.
-        let type_defs = generics.types.get_slice(space);
-        let type_defs = if space == subst::TypeSpace {
-            &type_defs[generics.has_self as usize..]
-        } else {
-            type_defs
-        };
+        let type_defs = segment.map_or(&[][..], |(_, generics)| {
+            if space == subst::TypeSpace {
+                &generics.types[generics.has_self as usize..]
+            } else {
+                &generics.types
+            }
+        });
         let required_len = type_defs.iter()
                                     .take_while(|d| d.default.is_none())
                                     .count();

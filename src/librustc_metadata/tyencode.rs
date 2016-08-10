@@ -274,10 +274,21 @@ pub fn enc_substs<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
 
 pub fn enc_generics<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                               generics: &ty::Generics<'tcx>) {
-    enc_vec_per_param_space(w, cx, &generics.regions,
-                            |w, cx, r| enc_region_param_def(w, cx, r));
-    enc_vec_per_param_space(w, cx, &generics.types,
-                            |w, cx, ty| enc_type_param_def(w, cx, ty));
+    enc_opt(w, generics.parent, |w, def_id| {
+        write!(w, "{}|", (cx.ds)(cx.tcx, def_id));
+    });
+    write!(w, "{}|{}[",
+           generics.parent_regions,
+           generics.parent_types);
+
+    for r in &generics.regions {
+        enc_region_param_def(w, cx, r)
+    }
+    write!(w, "][");
+    for t in &generics.types {
+        enc_type_param_def(w, cx, t);
+    }
+    write!(w, "]");
 
     if generics.has_self {
         write!(w, "S");

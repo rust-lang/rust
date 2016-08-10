@@ -149,9 +149,29 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     pub fn parse_generics(&mut self) -> &'tcx ty::Generics<'tcx> {
-        let regions = self.parse_vec_per_param_space(|this| this.parse_region_param_def());
-        let types = self.parse_vec_per_param_space(|this| this.parse_type_param_def());
+        let parent = self.parse_opt(|this| this.parse_def());
+        let parent_regions = self.parse_u32();
+        assert_eq!(self.next(), '|');
+        let parent_types = self.parse_u32();
+
+        let mut regions = vec![];
+        assert_eq!(self.next(), '[');
+        while self.peek() != ']' {
+            regions.push(self.parse_region_param_def());
+        }
+        assert_eq!(self.next(), ']');
+
+        let mut types = vec![];
+        assert_eq!(self.next(), '[');
+        while self.peek() != ']' {
+            types.push(self.parse_type_param_def());
+        }
+        assert_eq!(self.next(), ']');
+
         self.tcx.alloc_generics(ty::Generics {
+            parent: parent,
+            parent_regions: parent_regions,
+            parent_types: parent_types,
             regions: regions,
             types: types,
             has_self: self.next() == 'S'

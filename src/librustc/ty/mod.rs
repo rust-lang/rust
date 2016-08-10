@@ -757,31 +757,12 @@ impl RegionParameterDef {
 /// with an item or method. Analogous to hir::Generics.
 #[derive(Clone, Debug)]
 pub struct Generics<'tcx> {
-    pub types: VecPerParamSpace<TypeParameterDef<'tcx>>,
-    pub regions: VecPerParamSpace<RegionParameterDef>,
+    pub parent: Option<DefId>,
+    pub parent_regions: u32,
+    pub parent_types: u32,
+    pub regions: Vec<RegionParameterDef>,
+    pub types: Vec<TypeParameterDef<'tcx>>,
     pub has_self: bool,
-}
-
-impl<'tcx> Generics<'tcx> {
-    pub fn empty() -> Generics<'tcx> {
-        Generics {
-            types: VecPerParamSpace::empty(),
-            regions: VecPerParamSpace::empty(),
-            has_self: false,
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.types.is_empty() && self.regions.is_empty()
-    }
-
-    pub fn has_type_params(&self, space: subst::ParamSpace) -> bool {
-        !self.types.is_empty_in(space)
-    }
-
-    pub fn has_region_params(&self, space: subst::ParamSpace) -> bool {
-        !self.regions.is_empty_in(space)
-    }
 }
 
 /// Bounds on generics.

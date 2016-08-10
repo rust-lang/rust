@@ -13,7 +13,7 @@ use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty;
 use rustc::traits::{self, Reveal};
 use rustc::ty::error::ExpectedFound;
-use rustc::ty::subst::{self, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::hir::map::Node;
 use rustc::hir::{ImplItemKind, TraitItem_};
 
@@ -95,8 +95,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }
     }
 
-    let num_impl_m_type_params = impl_m.generics.types.len(subst::FnSpace);
-    let num_trait_m_type_params = trait_m.generics.types.len(subst::FnSpace);
+    let num_impl_m_type_params = impl_m.generics.types.len();
+    let num_trait_m_type_params = trait_m.generics.types.len();
     if num_impl_m_type_params != num_trait_m_type_params {
         span_err!(tcx.sess, impl_m_span, E0049,
             "method `{}` has {} type parameter{} \
@@ -389,8 +389,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                     -> bool
     {
 
-        let trait_params = trait_generics.regions.get_slice(subst::FnSpace);
-        let impl_params = impl_generics.regions.get_slice(subst::FnSpace);
+        let trait_params = &trait_generics.regions[..];
+        let impl_params = &impl_generics.regions[..];
 
         debug!("check_region_bounds_on_impl_method: \
                trait_generics={:?} \

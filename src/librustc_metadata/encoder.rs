@@ -620,9 +620,9 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     if let Some(impl_item) = impl_item_opt {
         if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
             encode_attributes(rbml_w, &impl_item.attrs);
-            let scheme = ecx.tcx.lookup_item_type(m.def_id);
-            let any_types = !scheme.generics.types.is_empty();
-            let needs_inline = any_types || is_default_impl ||
+            let generics = ecx.tcx.lookup_generics(m.def_id);
+            let types = generics.parent_types as usize + generics.types.len();
+            let needs_inline = types > 0 || is_default_impl ||
                                attr::requests_inline(&impl_item.attrs);
             if needs_inline || sig.constness == hir::Constness::Const {
                 encode_inlined_item(ecx,

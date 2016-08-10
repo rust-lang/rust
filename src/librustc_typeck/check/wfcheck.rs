@@ -523,10 +523,10 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 }
 
 fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, generics: &ty::Generics) {
-    let impl_params = generics.types.get_slice(subst::TypeSpace).iter()
-        .map(|tp| tp.name).collect::<HashSet<_>>();
+    let parent = tcx.lookup_generics(generics.parent.unwrap());
+    let impl_params: HashSet<_> = parent.types.iter().map(|tp| tp.name).collect();
 
-    for method_param in generics.types.get_slice(subst::FnSpace) {
+    for method_param in &generics.types {
         if impl_params.contains(&method_param.name) {
             error_194(tcx, span, method_param.name);
         }

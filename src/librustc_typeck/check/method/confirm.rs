@@ -308,7 +308,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // variables.
         let num_supplied_types = supplied_method_types.len();
         let method = pick.item.as_opt_method().unwrap();
-        let num_method_types = method.generics.types.len(subst::FnSpace);
+        let num_method_types = method.generics.types.len();
 
         if num_supplied_types > 0 && num_supplied_types != num_method_types {
             if num_method_types == 0 {
