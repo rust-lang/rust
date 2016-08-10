@@ -978,6 +978,23 @@ fn test_shrink_to_fit() {
 }
 
 #[test]
+fn test_contains() {
+    let foo_string = "foo".to_string();
+    let bar_string = "bar".to_string();
+    let baz_string = "baz".to_string();
+
+    let mut v = vec![foo_string.clone(), bar_string.clone(), baz_string.clone()];
+    assert!(v.contains(foo_string));
+    assert!(v.contains(bar_string));
+    assert!(v.contains(baz_string));
+
+
+    assert!(v.contains("foo"));
+    assert!(v.contains("bar"));
+    assert!(v.contains("baz"));
+}
+
+#[test]
 fn test_starts_with() {
     assert!(b"foobar".starts_with(b"foo"));
     assert!(!b"foobar".starts_with(b"oob"));
