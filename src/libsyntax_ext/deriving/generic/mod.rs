@@ -197,7 +197,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{self, respan};
+use syntax::codemap::{self, dummy_spanned, respan};
 use syntax::util::move_map::MoveMap;
 use syntax::parse::token::{InternedString, keywords};
 use syntax::ptr::P;
@@ -901,7 +901,8 @@ impl<'a> MethodDef<'a> {
                                                 generics: fn_generics,
                                                 abi: abi,
                                                 unsafety: unsafety,
-                                                constness: ast::Constness::NotConst,
+                                                constness:
+                                                    dummy_spanned(ast::Constness::NotConst),
                                                 decl: fn_decl,
                                             },
                                             body_block),

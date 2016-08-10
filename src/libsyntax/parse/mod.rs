@@ -937,7 +937,10 @@ mod tests {
                                 variadic: false
                             }),
                                     ast::Unsafety::Normal,
-                                    ast::Constness::NotConst,
+                                    Spanned {
+                                        span: sp(0,2),
+                                        node: ast::Constness::NotConst,
+                                    },
                                     Abi::Rust,
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),

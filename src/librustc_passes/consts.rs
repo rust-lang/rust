@@ -147,7 +147,8 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         }
 
         let mode = match fk {
-            FnKind::ItemFn(_, _, _, hir::Constness::Const, _, _, _) => Mode::ConstFn,
+            FnKind::ItemFn(_, _, _, hir::Constness::Const, _, _, _)
+                => Mode::ConstFn,
             FnKind::Method(_, m, _, _) => {
                 if m.constness == hir::Constness::Const {
                     Mode::ConstFn
