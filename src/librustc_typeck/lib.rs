@@ -262,9 +262,10 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                     match it.node {
                         hir::ItemFn(_,_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
-                            struct_span_err!(tcx.sess, start_span, E0132,
+                            let sp = if let Some(sp) = ps.span() { sp } else { start_span };
+                            struct_span_err!(tcx.sess, sp, E0132,
                                 "start function is not allowed to have type parameters")
-                                .span_label(ps.span().unwrap(),
+                                .span_label(sp,
                                             &format!("start function cannot have type parameters"))
                                 .emit();
                             return;

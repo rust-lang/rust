@@ -4372,14 +4372,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if i < type_count {
                     substs.types.push(space, t);
                 } else if i == type_count {
-                    span_err!(self.tcx.sess, typ.span, E0087,
-                        "too many type parameters provided: \
-                         expected at most {} parameter{}, \
-                         found {} parameter{}",
-                         type_count,
-                         if type_count == 1 {""} else {"s"},
-                         data.types.len(),
-                         if data.types.len() == 1 {""} else {"s"});
+                    struct_span_err!(self.tcx.sess, typ.span, E0087,
+                                     "too many type parameters provided: \
+                                      expected at most {} parameter{}, \
+                                      found {} parameter{}",
+                                     type_count,
+                                     if type_count == 1 {""} else {"s"},
+                                     data.types.len(),
+                                     if data.types.len() == 1 {""} else {"s"})
+                        .span_label(typ.span , &format!("expected {} parameter{}",
+                                    type_count,
+                                    if type_count == 1 {""} else {"s"})).emit();
                     substs.types.truncate(space, 0);
                     break;
                 }

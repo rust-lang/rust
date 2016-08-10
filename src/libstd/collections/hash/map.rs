@@ -199,13 +199,12 @@ fn test_resize_policy() {
 /// A hash map implementation which uses linear probing with Robin
 /// Hood bucket stealing.
 ///
-/// The hashes are all keyed by the thread-local random number generator
-/// on creation by default. This means that the ordering of the keys is
-/// randomized, but makes the tables more resistant to
-/// denial-of-service attacks (Hash DoS). No guarantees are made to the
-/// quality of the random data. The implementation uses the best available
-/// random data from your platform at the time of creation. This behavior
-/// can be overridden with one of the constructors.
+/// By default, HashMap uses a somewhat slow hashing algorithm which can provide resistance
+/// to DoS attacks. Rust makes a best attempt at acquiring random numbers without IO
+/// blocking from your system. Because of this HashMap is not guaranteed to provide
+/// DoS resistance since the numbers generated might not be truly random. If you do
+/// require this behavior you can create your own hashing function using
+/// [BuildHasherDefault](../hash/struct.BuildHasherDefault.html).
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
