@@ -1,13 +1,13 @@
 [package]
 
 name = "rustfmt"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "Marcus Klaas <mail@marcusklaas.nl>", "The Rustfmt contributors"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang-nursery/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
-include = ["src/*.rs", "Cargo.toml"]
+include = ["src/*.rs", "Cargo.toml", "build.rs"]
 build = "build.rs"
 
 [features]
