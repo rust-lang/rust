@@ -697,9 +697,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     }
 
     fn unresolved_lifetime_ref(&self, lifetime_ref: &hir::Lifetime) {
-        span_err!(self.sess, lifetime_ref.span, E0261,
-            "use of undeclared lifetime name `{}`",
-                    lifetime_ref.name);
+        struct_span_err!(self.sess, lifetime_ref.span, E0261,
+            "use of undeclared lifetime name `{}`", lifetime_ref.name)
+            .span_label(lifetime_ref.span, &format!("undeclared lifetime"))
+            .emit();
     }
 
     fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &[hir::LifetimeDef]) {
@@ -708,8 +709,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             for lifetime in lifetimes {
                 if lifetime.lifetime.name == keywords::StaticLifetime.name() {
-                    span_err!(self.sess, lifetime.lifetime.span, E0262,
-                        "invalid lifetime parameter name: `{}`", lifetime.lifetime.name);
+                    let lifetime = lifetime.lifetime;
+                    let mut err = struct_span_err!(self.sess, lifetime.span, E0262,
+                                  "invalid lifetime parameter name: `{}`", lifetime.name);
+                    err.span_label(lifetime.span,
+                                   &format!("{} is a reserved lifetime name", lifetime.name));
+                    err.emit();
                 }
             }
 
