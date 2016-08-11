@@ -42,7 +42,6 @@
 #![feature(staged_api)]
 #![feature(question_mark)]
 #![feature(panic_unwind)]
-#![feature(mpsc_recv_timeout)]
 
 extern crate getopts;
 extern crate term;

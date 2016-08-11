@@ -114,7 +114,7 @@ impl CommandExt for process::Command {
 pub trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
     /// a process.
-    #[unstable(feature = "exit_status_from", issue = "32713")]
+    #[stable(feature = "exit_status_from", since = "1.12.0")]
     fn from_raw(raw: i32) -> Self;
 
     /// If the process was terminated by a signal, returns that signal.
