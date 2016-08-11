@@ -83,10 +83,11 @@ impl IntoRawHandle for process::ChildStderr {
 }
 
 /// Windows-specific extensions to `std::process::ExitStatus`
-#[unstable(feature = "exit_status_from", issue = "32713")]
+#[stable(feature = "exit_status_from", since = "1.12.0")]
 pub trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `u32` return value of
     /// a process.
+    #[stable(feature = "exit_status_from", since = "1.12.0")]
     fn from_raw(raw: u32) -> Self;
 }
 

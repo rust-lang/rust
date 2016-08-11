@@ -233,8 +233,26 @@ impl<T:Copy> Cell<T> {
     /// ```
     #[inline]
     #[unstable(feature = "as_unsafe_cell", issue = "27708")]
+    #[rustc_deprecated(since = "1.12.0", reason = "renamed to as_ptr")]
     pub fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
         &self.value
+    }
+
+    /// Returns a raw pointer to the underlying data in this cell.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let ptr = c.as_ptr();
+    /// ```
+    #[inline]
+    #[stable(feature = "cell_as_ptr", since = "1.12.0")]
+    pub fn as_ptr(&self) -> *mut T {
+        self.value.get()
     }
 
     /// Returns a mutable reference to the underlying data.
@@ -653,8 +671,26 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[inline]
     #[unstable(feature = "as_unsafe_cell", issue = "27708")]
+    #[rustc_deprecated(since = "1.12.0", reason = "renamed to as_ptr")]
     pub unsafe fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
         &self.value
+    }
+
+    /// Returns a raw pointer to the underlying data in this cell.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// let ptr = c.as_ptr();
+    /// ```
+    #[inline]
+    #[stable(feature = "cell_as_ptr", since = "1.12.0")]
+    pub fn as_ptr(&self) -> *mut T {
+        self.value.get()
     }
 
     /// Returns a mutable reference to the underlying data.
