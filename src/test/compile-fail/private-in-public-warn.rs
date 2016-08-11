@@ -205,11 +205,10 @@ mod aliases_pub {
     }
 
     pub fn f1(arg: PrivUseAlias) {} // OK
+    pub fn f2(arg: PrivAlias) {} // OK
 
     pub trait Tr1: PrivUseAliasTr {} // OK
-    // This should be OK, if type aliases are substituted
-    pub trait Tr2: PrivUseAliasTr<PrivAlias> {} //~ WARN private type in public interface
-        //~^ WARNING hard error
+    pub trait Tr2: PrivUseAliasTr<PrivAlias> {} // OK
 
     impl PrivAlias {
         pub fn f(arg: Priv) {} //~ WARN private type in public interface
@@ -285,6 +284,8 @@ mod aliases_params {
     struct Priv;
     type PrivAliasGeneric<T = Priv> = T;
     type Result<T> = ::std::result::Result<T, Priv>;
+
+    pub fn f1(arg: PrivAliasGeneric<u8>) {} // OK, not an error
 }
 
 #[rustc_error]

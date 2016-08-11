@@ -1744,6 +1744,7 @@ impl<'a> Resolver<'a> {
                     let def_id = self.definitions.local_def_id(type_parameter.id);
                     let def = Def::TyParam(space, index as u32, def_id, name);
                     function_type_rib.bindings.insert(ast::Ident::with_empty_ctxt(name), def);
+                    self.record_def(type_parameter.id, PathResolution::new(def));
                 }
                 self.type_ribs.push(function_type_rib);
             }
