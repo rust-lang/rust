@@ -529,7 +529,7 @@ pub fn temp_dir() -> PathBuf {
 /// This sort of behavior has been known to [lead to privilege escalation] when
 /// used incorrectly, for example.
 ///
-/// [lead to privledge escalation]: http://securityvulns.com/Wdocument183.html
+/// [lead to privilege escalation]: http://securityvulns.com/Wdocument183.html
 ///
 /// # Examples
 ///
