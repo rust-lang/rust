@@ -1,18 +1,33 @@
-use core::mem;
+use core::intrinsics;
 
-#[repr(C)]
-pub struct u64x2 {
-    a: u64,
-    b: u64,
+// TODO use `global_asm!`
+#[naked]
+#[no_mangle]
+pub unsafe extern "aapcs" fn __aeabi_uidivmod() {
+    asm!("push    { lr }
+          sub     sp, sp, #4
+          mov     r2, sp
+          bl      __udivmodsi4
+          ldr     r1, [sp]
+          add     sp, sp, #4
+          pop     { pc }");
+    intrinsics::unreachable();
 }
 
+// TODO use `global_asm!`
+#[naked]
 #[no_mangle]
-pub unsafe extern "aapcs" fn __aeabi_uldivmod(num: u64, den: u64) -> u64x2 {
-
-    let mut rem = mem::uninitialized();
-    let quot = ::__udivmoddi4(num, den, &mut rem);
-
-    u64x2 { a: quot, b: rem }
+pub unsafe extern "aapcs" fn __aeabi_uldivmod() {
+    asm!("push	{r11, lr}
+          sub	sp, sp, #16
+          add	r12, sp, #8
+          str	r12, [sp]
+          bl	__udivmoddi4
+          ldr	r2, [sp, #8]
+          ldr	r3, [sp, #12]
+          add	sp, sp, #16
+          pop	{r11, pc}");
+    intrinsics::unreachable();
 }
 
 extern "C" {

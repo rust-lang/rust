@@ -352,3 +352,64 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
     }
     q.u64()
 }
+
+#[no_mangle]
+pub extern "C" fn __udivmodsi4(a: u32, b: u32, rem: *mut u32) -> u32 {
+    let d = __udivsi3(a, b);
+    if let Some(rem) = unsafe {rem.as_mut()} {
+        *rem = a - (d*b);
+    }
+    return d;
+}
+
+#[no_mangle]
+pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
+    let u32_bits = u32::bits() as u32;
+
+    // Special cases
+    if d == 0 {
+        return 0; // ?!
+    }
+
+    if n == 0 {
+        return 0;
+    }
+
+    let mut sr = d.leading_zeros().wrapping_sub(n.leading_zeros());
+
+    // d > n
+    if sr > u32_bits - 1 {
+        return 0;
+    }
+
+    // d == 1
+    if sr == u32_bits - 1 {
+        return n;
+    }
+
+    sr = sr + 1;
+
+    // 1 <= sr <= u32_bits - 1
+    let mut q = n << (u32_bits - sr);
+    let mut r = n >> sr;
+
+    let mut carry = 0;
+    for _ in 0..sr {
+        // r:q = ((r:q) << 1) | carry
+        r = (r << 1) | (q >> (u32_bits - 1));
+        q = (q << 1) | carry;
+
+        // carry = 0;
+        // if r > d {
+        //     r -= d;
+        //     carry = 1;
+        // }
+
+        let s = (d.wrapping_sub(r).wrapping_sub(1)) as i32 >> (u32_bits - 1);
+        carry = (s & 1) as u32;
+        r -= d & s as u32;
+    }
+
+    q = (q << 1) | carry;
+    q
+}

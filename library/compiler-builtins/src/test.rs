@@ -42,3 +42,16 @@ quickcheck! {
         }
     }
 }
+
+quickcheck! {
+    fn udivmodsi4(a: u32, b: u32) -> TestResult {
+        if b == 0 {
+            TestResult::discard()
+        } else {
+            let mut r = 0;
+            let q = ::__udivmodsi4(a, b, &mut r);
+
+            TestResult::from_bool(q * b + r == a)
+        }
+    }
+}
