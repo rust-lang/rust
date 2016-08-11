@@ -525,6 +525,9 @@ fn encode_predicates<'a,'tcx>(rbml_w: &mut Encoder,
                               tag: usize)
 {
     rbml_w.start_tag(tag);
+    if let Some(def_id) = predicates.parent {
+        rbml_w.wr_tagged_u64(tag_items_data_parent_item, def_to_u64(def_id));
+    }
     for predicate in &predicates.predicates {
         rbml_w.wr_tagged_u32(tag_predicate,
             index.add_xref(XRef::Predicate(predicate.clone())));

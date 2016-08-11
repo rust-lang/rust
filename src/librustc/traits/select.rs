@@ -2897,20 +2897,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.
-        let predicates = tcx
-            .lookup_predicates(def_id)
-            .predicates.iter()
-            .flat_map(|predicate| {
-                let predicate =
-                    normalize_with_depth(self, cause.clone(), recursion_depth,
-                                         &predicate.subst(tcx, substs));
-                predicate.obligations.into_iter().chain(
-                    Some(Obligation {
-                        cause: cause.clone(),
-                        recursion_depth: recursion_depth,
-                        predicate: predicate.value
-                    }))
-            }).collect();
+        let predicates = tcx.lookup_predicates(def_id);
+        assert_eq!(predicates.parent, None);
+        let predicates = predicates.predicates.iter().flat_map(|predicate| {
+            let predicate = normalize_with_depth(self, cause.clone(), recursion_depth,
+                                                 &predicate.subst(tcx, substs));
+            predicate.obligations.into_iter().chain(
+                Some(Obligation {
+                    cause: cause.clone(),
+                    recursion_depth: recursion_depth,
+                    predicate: predicate.value
+                }))
+        }).collect();
         self.infcx().plug_leaks(skol_map, snapshot, &predicates)
     }
 }
