@@ -1,3 +1,20 @@
+use core::mem;
+
+#[repr(C)]
+pub struct u64x2 {
+    a: u64,
+    b: u64,
+}
+
+#[no_mangle]
+pub unsafe extern "aapcs" fn __aeabi_uldivmod(num: u64, den: u64) -> u64x2 {
+
+    let mut rem = mem::uninitialized();
+    let quot = ::__udivmoddi4(num, den, &mut rem);
+
+    u64x2 { a: quot, b: rem }
+}
+
 extern "C" {
     fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
     fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8;
