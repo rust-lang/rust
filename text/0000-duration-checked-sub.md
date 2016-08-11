@@ -6,8 +6,8 @@
 # Summary
 [summary]: #summary
 
-This RFC adds `checked_sub()` already known from various primitive types to the
-`Duration` *struct*.
+This RFC adds the `checked_*` methods already known from primitives like
+`usize` to `Duration`.
 
 # Motivation
 [motivation]: #motivation
@@ -42,6 +42,9 @@ fn render() {
 }
 ```
 
+Of course it is also suitable to not introduce `panic!()`s when adding
+`Duration`s.
+
 # Detailed design
 [design]: #detailed-design
 
@@ -73,21 +76,27 @@ impl Duration {
 }
 ```
 
+The same accounts for all other added methods, namely:
+
+- `checked_add()`
+- `checked_sub()`
+- `checked_mul()`
+- `checked_div()`
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
-This proposal adds another `checked_*` method to *libstd*.
-One could ask why no `CheckedSub` trait if there is a `Sub` trait.
+`None`.
 
 # Alternatives
 [alternatives]: #alternatives
 
 The alternatives are simply not doing this and forcing the programmer to code
 the check on their behalf.
+This is not what you want.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Should all functions of the form
-`(checked|saturating|overflowing|wrapping)_(add|sub|mul|div)` be added?
+`None`.
 
