@@ -718,10 +718,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 let lifetime_j = &lifetimes[j];
 
                 if lifetime_i.lifetime.name == lifetime_j.lifetime.name {
-                    span_err!(self.sess, lifetime_j.lifetime.span, E0263,
-                        "lifetime name `{}` declared twice in \
-                                the same scope",
-                                lifetime_j.lifetime.name);
+                    struct_span_err!(self.sess, lifetime_j.lifetime.span, E0263,
+                                     "lifetime name `{}` declared twice in the same scope",
+                                     lifetime_j.lifetime.name)
+                        .span_label(lifetime_j.lifetime.span,
+                                    &format!("declared twice"))
+                        .span_label(lifetime_i.lifetime.span,
+                                   &format!("previous declaration here"))
+                        .emit();
                 }
             }
 
