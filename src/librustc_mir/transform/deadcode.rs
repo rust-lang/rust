@@ -16,27 +16,27 @@ use rustc::ty::TyCtxt;
 
 use super::dataflow::*;
 
-pub struct LocalLivenessAnalysis;
+pub struct DeadCode;
 
-impl Pass for LocalLivenessAnalysis {}
+impl Pass for DeadCode {}
 
-impl<'tcx> MirPass<'tcx> for LocalLivenessAnalysis {
+impl<'tcx> MirPass<'tcx> for DeadCode {
     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
-        let new_mir = Dataflow::backward(mir, LiveValueTransfer, LiveValueRewrite);
+        let new_mir = Dataflow::backward(mir, DeadCodeTransfer, DeadCodeRewrite);
         *mir = new_mir;
     }
 }
 
 #[derive(Debug, Clone)]
-struct LiveValueLattice {
+struct DeadCodeLattice {
     vars: BitVector,
     args: BitVector,
     tmps: BitVector,
 }
 
-impl Lattice for LiveValueLattice {
+impl Lattice for DeadCodeLattice {
     fn bottom() -> Self {
-        LiveValueLattice {
+        DeadCodeLattice {
             vars: BitVector::new(0),
             tmps: BitVector::new(0),
             args: BitVector::new(0)
@@ -53,7 +53,7 @@ impl Lattice for LiveValueLattice {
     }
 }
 
-impl LiveValueLattice {
+impl DeadCodeLattice {
     fn set_lvalue_live<'a>(&mut self, l: &Lvalue<'a>) {
         match *l {
             Lvalue::Arg(a) => {
@@ -82,29 +82,29 @@ impl LiveValueLattice {
     }
 }
 
-struct LiveValueTransfer;
-impl<'tcx> Transfer<'tcx> for LiveValueTransfer {
-    type Lattice = LiveValueLattice;
-    type TerminatorReturn = LiveValueLattice;
+struct DeadCodeTransfer;
+impl<'tcx> Transfer<'tcx> for DeadCodeTransfer {
+    type Lattice = DeadCodeLattice;
+    type TerminatorReturn = DeadCodeLattice;
 
-    fn stmt(&self, s: &Statement<'tcx>, lat: LiveValueLattice) -> LiveValueLattice {
-        let mut vis = LiveValueVisitor(lat);
+    fn stmt(&self, s: &Statement<'tcx>, lat: DeadCodeLattice) -> DeadCodeLattice {
+        let mut vis = DeadCodeVisitor(lat);
         vis.visit_statement(START_BLOCK, s);
         vis.0
     }
 
-    fn term(&self, t: &Terminator<'tcx>, lat: LiveValueLattice) -> LiveValueLattice {
-        let mut vis = LiveValueVisitor(lat);
+    fn term(&self, t: &Terminator<'tcx>, lat: DeadCodeLattice) -> DeadCodeLattice {
+        let mut vis = DeadCodeVisitor(lat);
         vis.visit_terminator(START_BLOCK, t);
         vis.0
     }
 }
 
-struct LiveValueRewrite;
-impl<'tcx, T> Rewrite<'tcx, T> for LiveValueRewrite
-where T: Transfer<'tcx, Lattice=LiveValueLattice>
+struct DeadCodeRewrite;
+impl<'tcx, T> Rewrite<'tcx, T> for DeadCodeRewrite
+where T: Transfer<'tcx, Lattice=DeadCodeLattice>
 {
-    fn stmt(&self, s: &Statement<'tcx>, lat: &LiveValueLattice)
+    fn stmt(&self, s: &Statement<'tcx>, lat: &DeadCodeLattice)
     -> StatementChange<'tcx>
     {
         let StatementKind::Assign(ref lval, ref rval) = s.kind;
@@ -121,15 +121,15 @@ where T: Transfer<'tcx, Lattice=LiveValueLattice>
         }
     }
 
-    fn term(&self, t: &Terminator<'tcx>, _: &LiveValueLattice)
+    fn term(&self, t: &Terminator<'tcx>, _: &DeadCodeLattice)
     -> TerminatorChange<'tcx>
     {
         TerminatorChange::Terminator(t.clone())
     }
 }
 
-struct LiveValueVisitor(LiveValueLattice);
-impl<'tcx> Visitor<'tcx> for LiveValueVisitor {
+struct DeadCodeVisitor(DeadCodeLattice);
+impl<'tcx> Visitor<'tcx> for DeadCodeVisitor {
     fn visit_lvalue(&mut self, lval: &Lvalue<'tcx>, ctx: LvalueContext) {
         if ctx == LvalueContext::Store || ctx == LvalueContext::CallStore {
             match *lval {
