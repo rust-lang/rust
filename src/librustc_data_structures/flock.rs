@@ -136,6 +136,7 @@ mod imp {
         pub const F_SETLKW: libc::c_int = 7;
     }
 
+    #[derive(Debug)]
     pub struct Lock {
         fd: libc::c_int,
     }
@@ -251,6 +252,7 @@ mod imp {
                       lpOverlapped: LPOVERLAPPED) -> BOOL;
     }
 
+    #[derive(Debug)]
     pub struct Lock {
         _file: File,
     }
