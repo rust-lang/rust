@@ -7,7 +7,7 @@ pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
 
     // Special cases
     if d == 0 {
-        return 0; // ?!
+        panic!("Division by zero");
     }
 
     if n == 0 {
@@ -49,8 +49,7 @@ pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
         r -= d & s as u32;
     }
 
-    q = (q << 1) | carry;
-    q
+    (q << 1) | carry
 }
 
 /// Returns `n / d` and sets `*rem = n % d`
@@ -105,13 +104,7 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
             // ---
             // 0 0
 
-            // NOTE copied verbatim from compiler-rt. This probably lets the intrinsic decide how to
-            // handle the division by zero (SIGFPE, 0, etc.). But this part shouldn't be reachable
-            // from safe code.
-            if let Some(rem) = rem {
-                *rem = u64::from(n.high() % d.low());
-            }
-            return u64::from(n.high() / d.low());
+            panic!("Division by zero");
         }
 
         // d.high() != 0
