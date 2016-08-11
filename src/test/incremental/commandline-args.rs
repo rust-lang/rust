@@ -26,5 +26,5 @@
 //[rpass3] compile-flags: -C debuginfo=2 --verbose
 
 pub fn main() {
-    println!("hello world");
+    // empty
 }
