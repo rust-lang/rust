@@ -170,6 +170,7 @@ All notable changes to this project will be documented in this file.
 [`enum_glob_use`]: https://github.com/Manishearth/rust-clippy/wiki#enum_glob_use
 [`enum_variant_names`]: https://github.com/Manishearth/rust-clippy/wiki#enum_variant_names
 [`eq_op`]: https://github.com/Manishearth/rust-clippy/wiki#eq_op
+[`eval_order_dependence`]: https://github.com/Manishearth/rust-clippy/wiki#eval_order_dependence
 [`expl_impl_clone_on_copy`]: https://github.com/Manishearth/rust-clippy/wiki#expl_impl_clone_on_copy
 [`explicit_counter_loop`]: https://github.com/Manishearth/rust-clippy/wiki#explicit_counter_loop
 [`explicit_iter_loop`]: https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop

@@ -78,6 +78,7 @@ pub mod enum_variants;
 pub mod eq_op;
 pub mod escape;
 pub mod eta_reduction;
+pub mod eval_order_dependence;
 pub mod format;
 pub mod formatting;
 pub mod functions;
@@ -256,6 +257,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
     reg.register_late_lint_pass(box assign_ops::AssignOps);
     reg.register_late_lint_pass(box let_if_seq::LetIfSeq);
+    reg.register_late_lint_pass(box eval_order_dependence::EvalOrderDependence);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -325,6 +327,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
+        eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         format::USELESS_FORMAT,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
