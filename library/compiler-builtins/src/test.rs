@@ -36,7 +36,7 @@ quickcheck! {
             TestResult::discard()
         } else {
             let mut r = 0;
-            let q = ::__udivmoddi4(a, b, &mut r);
+            let q = ::__udivmoddi4(a, b, Some(&mut r));
 
             TestResult::from_bool(q * b + r == a)
         }
@@ -49,7 +49,7 @@ quickcheck! {
             TestResult::discard()
         } else {
             let mut r = 0;
-            let q = ::__udivmodsi4(a, b, &mut r);
+            let q = ::__udivmodsi4(a, b, Some(&mut r));
 
             TestResult::from_bool(q * b + r == a)
         }

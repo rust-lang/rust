@@ -100,7 +100,7 @@ absv_i2!(__absvdi2: i64);
 // absv_i2!(__absvti2, i128);
 
 #[no_mangle]
-pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
+pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: Option<&mut u64>) -> u64 {
     #[cfg(target_endian = "little")]
     #[repr(C)]
     #[derive(Debug)]
@@ -146,7 +146,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
             // ---
             // 0 X
 
-            if let Some(rem) = unsafe { rem.as_mut() } {
+            if let Some(rem) = rem {
                 *rem = u64::from(n.low % d.low);
             }
             u64::from(n.low / d.low)
@@ -157,7 +157,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
             // ---
             // K X
 
-            if let Some(rem) = unsafe { rem.as_mut() } {
+            if let Some(rem) = rem {
                 *rem = u64::from(n.low);
             }
             0
@@ -179,7 +179,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
             // 0 0
 
             // NOTE copied verbatim from compiler-rt, but does division by zero even make sense?
-            if let Some(rem) = unsafe { rem.as_mut() } {
+            if let Some(rem) = rem {
                 *rem = u64::from(n.high % d.low);
             }
             return u64::from(n.high / d.low);
@@ -191,7 +191,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
             // ---
             // K 0
 
-            if let Some(rem) = unsafe { rem.as_mut() } {
+            if let Some(rem) = rem {
                 *rem = words {
                         low: 0,
                         high: n.high % d.high,
@@ -207,7 +207,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
         // K 0
 
         if d.high.is_power_of_two() {
-            if let Some(rem) = unsafe { rem.as_mut() } {
+            if let Some(rem) = rem {
                 *rem = words {
                         low: n.low,
                         high: n.high & (d.high - 1),
@@ -222,7 +222,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
 
         // D > N
         if sr > u32_bits - 2 {
-            if let Some(rem) = unsafe { rem.as_mut() } {
+            if let Some(rem) = rem {
                 *rem = n.u64();
             }
             return 0;
@@ -245,7 +245,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
             // ---
             // 0 K
             if d.low.is_power_of_two() {
-                if let Some(rem) = unsafe { rem.as_mut() } {
+                if let Some(rem) = rem {
                     *rem = u64::from(n.low & (d.low - 1));
                 }
 
@@ -298,7 +298,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
 
             // D > N
             if sr > u32_bits - 1 {
-                if let Some(rem) = unsafe { rem.as_mut() } {
+                if let Some(rem) = rem {
                     *rem = a;
                     return 0;
                 }
@@ -347,16 +347,16 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: *mut u64) -> u64 {
     }
 
     *q.all() = (q.u64() << 1) | carry as u64;
-    if let Some(rem) = unsafe { rem.as_mut() } {
+    if let Some(rem) = rem {
         *rem = r.u64();
     }
     q.u64()
 }
 
 #[no_mangle]
-pub extern "C" fn __udivmodsi4(a: u32, b: u32, rem: *mut u32) -> u32 {
+pub extern "C" fn __udivmodsi4(a: u32, b: u32, rem: Option<&mut u32>) -> u32 {
     let d = __udivsi3(a, b);
-    if let Some(rem) = unsafe {rem.as_mut()} {
+    if let Some(rem) = rem {
         *rem = a - (d*b);
     }
     return d;
