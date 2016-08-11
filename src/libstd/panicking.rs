@@ -21,7 +21,6 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use any::Any;
-use cell::Cell;
 use cell::RefCell;
 use fmt;
 use intrinsics;
@@ -38,8 +37,6 @@ thread_local! {
         RefCell::new(None)
     }
 }
-
-thread_local! { pub static PANIC_COUNT: Cell<usize> = Cell::new(0) }
 
 // Binary interface to the panic runtime that the standard library depends on.
 //
@@ -187,7 +184,7 @@ fn default_hook(info: &PanicInfo) {
     // for this panic. Otherwise only print it if logging is enabled.
     #[cfg(any(not(cargobuild), feature = "backtrace"))]
     let log_backtrace = {
-        let panics = PANIC_COUNT.with(|c| c.get());
+        let panics = update_panic_count(0);
 
         panics >= 2 || backtrace::log_enabled()
     };
@@ -238,14 +235,31 @@ fn default_hook(info: &PanicInfo) {
     }
 }
 
+
+#[cfg(not(test))]
+#[doc(hidden)]
+#[unstable(feature = "update_panic_count", issue = "0")]
+pub fn update_panic_count(amt: isize) -> usize {
+    use cell::Cell;
+    thread_local! { static PANIC_COUNT: Cell<usize> = Cell::new(0) }
+
+    PANIC_COUNT.with(|c| {
+        let next = (c.get() as isize + amt) as usize;
+        c.set(next);
+        return next
+    })
+}
+
+#[cfg(test)]
+pub use realstd::rt::update_panic_count;
+
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
     let mut slot = None;
     let mut f = Some(f);
-    let ret = PANIC_COUNT.with(|s| {
-        let prev = s.get();
-        s.set(0);
+    let ret;
 
+    {
         let mut to_run = || {
             slot = Some(f.take().unwrap()());
         };
@@ -258,18 +272,18 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
                                          dataptr,
                                          &mut any_data,
                                          &mut any_vtable);
-        s.set(prev);
-
         if r == 0 {
-            Ok(())
+            ret = Ok(());
         } else {
-            Err(mem::transmute(raw::TraitObject {
+            update_panic_count(-1);
+            ret = Err(mem::transmute(raw::TraitObject {
                 data: any_data as *mut _,
                 vtable: any_vtable as *mut _,
-            }))
+            }));
         }
-    });
+    }
 
+    debug_assert!(update_panic_count(0) == 0);
     return ret.map(|()| {
         slot.take().unwrap()
     });
@@ -285,7 +299,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
 
 /// Determines whether the current thread is unwinding because of panic.
 pub fn panicking() -> bool {
-    PANIC_COUNT.with(|c| c.get() != 0)
+    update_panic_count(0) != 0
 }
 
 /// Entry point of panic from the libcore crate.
@@ -350,18 +364,14 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
                         file_line: &(&'static str, u32)) -> ! {
     let (file, line) = *file_line;
 
-    let panics = PANIC_COUNT.with(|c| {
-        let prev = c.get();
-        c.set(prev + 1);
-        prev
-    });
+    let panics = update_panic_count(1);
 
     // If this is the third nested call (e.g. panics == 2, this is 0-indexed),
     // the panic hook probably triggered the last panic, otherwise the
     // double-panic check would have aborted the process. In this case abort the
     // process real quickly as we don't want to try calling it again as it'll
     // probably just panic again.
-    if panics > 1 {
+    if panics > 2 {
         util::dumb_print(format_args!("thread panicked while processing \
                                        panic. aborting.\n"));
         unsafe { intrinsics::abort() }
@@ -383,7 +393,7 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
         HOOK_LOCK.read_unlock();
     }
 
-    if panics > 0 {
+    if panics > 1 {
         // If a thread panics while it's already unwinding then we
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
@@ -393,6 +403,12 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
         unsafe { intrinsics::abort() }
     }
 
+    rust_panic(msg)
+}
+
+/// Shim around rust_panic. Called by resume_unwind.
+pub fn update_count_then_panic(msg: Box<Any + Send>) -> ! {
+    update_panic_count(1);
     rust_panic(msg)
 }
 
