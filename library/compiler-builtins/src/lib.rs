@@ -141,7 +141,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: Option<&mut u64>) -> u64 {
 
     // NOTE X is unknown, K != 0
     if n.high == 0 {
-        return if d.high == 0 {
+        if d.high == 0 {
             // 0 X
             // ---
             // 0 X
@@ -149,7 +149,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: Option<&mut u64>) -> u64 {
             if let Some(rem) = rem {
                 *rem = u64::from(n.low % d.low);
             }
-            u64::from(n.low / d.low)
+            return u64::from(n.low / d.low);
         } else
                // d.high != 0
                {
@@ -160,7 +160,7 @@ pub extern "C" fn __udivmoddi4(a: u64, b: u64, rem: Option<&mut u64>) -> u64 {
             if let Some(rem) = rem {
                 *rem = u64::from(n.low);
             }
-            0
+            return 0;
         };
     }
 
