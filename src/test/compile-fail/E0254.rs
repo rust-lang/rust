@@ -17,7 +17,7 @@ mod foo {
     }
 }
 
-use foo::collections; 
+use foo::collections;
 //~^ ERROR E0254
 //~| NOTE already imported
 
