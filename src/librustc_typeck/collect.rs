@@ -1903,9 +1903,12 @@ fn convert_default_type_parameter<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     for leaf_ty in ty.walk() {
         if let ty::TyParam(p) = leaf_ty.sty {
             if p.space == space && p.idx >= index {
-                span_err!(ccx.tcx.sess, path.span, E0128,
-                          "type parameters with a default cannot use \
-                           forward declared identifiers");
+                struct_span_err!(ccx.tcx.sess, path.span, E0128,
+                                 "type parameters with a default cannot use \
+                                 forward declared identifiers")
+                    .span_label(path.span, &format!("defaulted type parameters \
+                                                    cannot be forward declared"))
+                    .emit();
 
                 return ccx.tcx.types.err
             }
