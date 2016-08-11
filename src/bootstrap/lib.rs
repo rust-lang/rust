@@ -727,6 +727,16 @@ impl Build {
         self.out.join(target).join("llvm")
     }
 
+    /// Returns true if no custom `llvm-config` is set for the specified target.
+    ///
+    /// If no custom `llvm-config` was specified then Rust's llvm will be used.
+    fn is_rust_llvm(&self, target: &str) -> bool {
+        match self.config.target_config.get(target) {
+            Some(ref c) => c.llvm_config.is_none(),
+            None => true
+        }
+    }
+
     /// Returns the path to `llvm-config` for the specified target.
     ///
     /// If a custom `llvm-config` was specified for target then that's returned

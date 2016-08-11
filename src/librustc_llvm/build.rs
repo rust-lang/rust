@@ -112,6 +112,10 @@ fn main() {
         cfg.flag(&flag);
     }
 
+    if env::var_os("LLVM_RUSTLLVM").is_some() {
+        cfg.flag("-DLLVM_RUSTLLVM");
+    }
+
     cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
        .file("../rustllvm/ArchiveWrapper.cpp")

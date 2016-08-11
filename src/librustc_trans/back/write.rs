@@ -36,6 +36,21 @@ use std::sync::mpsc::channel;
 use std::thread;
 use libc::{c_uint, c_void};
 
+pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 4] = [
+    ("pic", llvm::RelocMode::PIC),
+    ("static", llvm::RelocMode::Static),
+    ("default", llvm::RelocMode::Default),
+    ("dynamic-no-pic", llvm::RelocMode::DynamicNoPic),
+];
+
+pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
+    ("default", llvm::CodeModel::Default),
+    ("small", llvm::CodeModel::Small),
+    ("kernel", llvm::CodeModel::Kernel),
+    ("medium", llvm::CodeModel::Medium),
+    ("large", llvm::CodeModel::Large),
+];
+
 pub fn llvm_err(handler: &errors::Handler, msg: String) -> ! {
     match llvm::last_error() {
         Some(err) => panic!(handler.fatal(&format!("{}: {}", msg, err))),
@@ -168,12 +183,9 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
         None => &sess.target.target.options.code_model[..],
     };
 
-    let code_model = match code_model_arg {
-        "default" => llvm::CodeModel::Default,
-        "small" => llvm::CodeModel::Small,
-        "kernel" => llvm::CodeModel::Kernel,
-        "medium" => llvm::CodeModel::Medium,
-        "large" => llvm::CodeModel::Large,
+    let code_model = match CODE_GEN_MODEL_ARGS.iter().find(
+        |&&arg| arg.0 == code_model_arg) {
+        Some(x) => x.1,
         _ => {
             sess.err(&format!("{:?} is not a valid code model",
                              sess.opts
