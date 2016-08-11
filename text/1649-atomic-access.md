@@ -1,7 +1,7 @@
 q- Feature Name: atomic_access
 - Start Date: 2016-06-15
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1649](https://github.com/rust-lang/rfcs/pull/1649)
+- Rust Issue: [rust-lang/rust#35603](https://github.com/rust-lang/rust/issues/35603)
 
 # Summary
 [summary]: #summary
