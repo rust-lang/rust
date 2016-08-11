@@ -402,8 +402,8 @@ impl<T, E> Result<T, E> {
     /// ```
     /// fn mutate(r: &mut Result<i32, i32>) {
     ///     match r.as_mut() {
-    ///         Ok(&mut ref mut v) => *v = 42,
-    ///         Err(&mut ref mut e) => *e = 0,
+    ///         Ok(v) => *v = 42,
+    ///         Err(e) => *e = 0,
     ///     }
     /// }
     ///

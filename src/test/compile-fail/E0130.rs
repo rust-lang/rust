@@ -9,7 +9,9 @@
 // except according to those terms.
 
 extern {
-    fn foo((a, b): (u32, u32)); //~ ERROR E0130
+    fn foo((a, b): (u32, u32));
+    //~^ ERROR E0130
+    //~| NOTE pattern not allowed in foreign function
 }
 
 fn main() {

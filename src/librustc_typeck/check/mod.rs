@@ -1272,13 +1272,21 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
             // Check for duplicate discriminant values
             if let Some(i) = disr_vals.iter().position(|&x| x == current_disr_val) {
-                let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0081,
-                    "discriminant value `{}` already exists", disr_vals[i]);
                 let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
-                err.span_label(ccx.tcx.map.span(variant_i_node_id),
-                               &format!("first use of `{}`", disr_vals[i]));
-                err.span_label(v.span , &format!("enum already has `{}`", disr_vals[i]));
-                err.emit();
+                let variant_i = ccx.tcx.map.expect_variant(variant_i_node_id);
+                let i_span = match variant_i.node.disr_expr {
+                    Some(ref expr) => expr.span,
+                    None => ccx.tcx.map.span(variant_i_node_id)
+                };
+                let span = match v.node.disr_expr {
+                    Some(ref expr) => expr.span,
+                    None => v.span
+                };
+                struct_span_err!(ccx.tcx.sess, span, E0081,
+                                 "discriminant value `{}` already exists", disr_vals[i])
+                    .span_label(i_span, &format!("first use of `{}`", disr_vals[i]))
+                    .span_label(span , &format!("enum already has `{}`", disr_vals[i]))
+                    .emit();
             }
             disr_vals.push(current_disr_val);
         }
@@ -4640,9 +4648,11 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     for (i, b) in tps_used.iter().enumerate() {
         if !*b {
-            span_err!(ccx.tcx.sess, tps[i].span, E0091,
+            struct_span_err!(ccx.tcx.sess, tps[i].span, E0091,
                 "type parameter `{}` is unused",
-                tps[i].name);
+                tps[i].name)
+                .span_label(tps[i].span, &format!("unused type parameter"))
+                .emit();
         }
     }
 }
