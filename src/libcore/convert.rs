@@ -278,3 +278,10 @@ impl AsRef<str> for str {
         self
     }
 }
+
+#[stable(feature = "from_unit", since = "1.12.0")]
+impl<T> From<T> for () {
+    fn from(_: T) -> () {
+        ()
+    }
+}
