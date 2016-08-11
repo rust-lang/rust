@@ -32,8 +32,8 @@ See [rust-lang/rust#35437][0].
 - [ ] arm/addsf3vfp.S
 - [ ] arm/aeabi_dcmp.S
 - [ ] arm/aeabi_fcmp.S
-- [ ] arm/aeabi_idivmod.S
-- [ ] arm/aeabi_ldivmod.S
+- [x] arm/aeabi_idivmod.S
+- [x] arm/aeabi_ldivmod.S
 - [x] arm/aeabi_memcpy.S
 - [x] arm/aeabi_memmove.S
 - [x] arm/aeabi_memset.S
@@ -143,6 +143,8 @@ See [rust-lang/rust#35437][0].
 - [ ] truncdfsf2.c
 - [ ] truncsfhf2.c
 - [ ] udivdi3.c
+- [x] udivmoddi4.c
+- [x] udivmodsi4.c
 - [ ] udivsi3.c
 - [ ] udivti3.c
 - [ ] umoddi3.c
@@ -272,8 +274,6 @@ These builtins are never called by LLVM.
 - ~~subvti3.c~~
 - ~~ucmpdi2.c~~
 - ~~ucmpti2.c~~
-- ~~udivmoddi4.c~~
-- ~~udivmodsi4.c~~
 - ~~udivmodti4.c~~
 
 Rust only exposes atomic types on platforms that support them, and therefore does not need to fall back to software implementations.
