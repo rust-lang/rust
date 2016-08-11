@@ -49,19 +49,19 @@ install_c_toolchain() {
             ;;
         mips-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
-                    gcc-mips-linux-gnu libc6-dev-mips-cross
+                    gcc gcc-mips-linux-gnu libc6-dev-mips-cross
             ;;
         mipsel-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
-                    gcc-mipsel-linux-gnu libc6-dev-mipsel-cross
+                    gcc gcc-mipsel-linux-gnu libc6-dev-mipsel-cross
             ;;
         powerpc64-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
-                    gcc-powerpc64-linux-gnu libc6-dev-ppc64-cross
+                    gcc gcc-powerpc64-linux-gnu libc6-dev-ppc64-cross
             ;;
         powerpc64le-unknown-linux-gnu)
             apt-get install -y --no-install-recommends \
-                    gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross
+                    gcc gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross
             ;;
     esac
 }
