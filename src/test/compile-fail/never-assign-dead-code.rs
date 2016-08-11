@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that an assignment of type ! makes the rest of the block dead code.
+
 #![feature(never_type)]
 #![deny(unused, unreachable_code)]
 

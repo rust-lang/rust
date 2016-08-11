@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that diverging types default to () (with feature(never_type) disabled).
+
 trait Balls: Sized {
     fn smeg() -> Result<Self, ()>;
 }

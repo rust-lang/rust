@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that having something of type ! doesn't screw up type-checking and that it coerces to the
+// LUB type of the other match arms.
+
 fn main() {
     let v: Vec<u32> = Vec::new();
     match 0u32 {

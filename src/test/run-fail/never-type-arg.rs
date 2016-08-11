@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that we can use ! as an argument to a trait impl.
+
 // error-pattern:oh no!
 
 #![feature(never_type)]

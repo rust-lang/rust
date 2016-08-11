@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that ! errors when used in illegal positions with feature(never_type) disabled
+
 trait Foo {
     type Wub;
 }

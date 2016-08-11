@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that diverging types default to ! when feature(never_type) is enabled. This test is the
+// same as run-pass/unit-fallback.rs except that ! is enabled.
+
 #![feature(never_type)]
 
 trait Balls: Sized {

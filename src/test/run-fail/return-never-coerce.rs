@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that ! coerces to other types.
+
 // error-pattern:aah!
 
 fn call_another_fn<T, F: FnOnce() -> T>(f: F) -> T {

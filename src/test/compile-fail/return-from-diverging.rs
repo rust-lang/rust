@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that return another type in place of ! raises a type mismatch.
+
 fn fail() -> ! {
     return "wow"; //~ ERROR mismatched types
 }
