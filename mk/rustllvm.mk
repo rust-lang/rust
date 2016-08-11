@@ -32,6 +32,11 @@ RUSTLLVM_INCS_$(1) = $$(LLVM_EXTRA_INCDIRS_$(1)) \
                      $$(call CFG_CC_INCLUDE_$(1),$$(S)src/rustllvm/include)
 RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=$(1)/rustllvm/%.o)
 
+# Flag that we are building with Rust's llvm fork
+ifeq ($(CFG_LLVM_ROOT),)
+RUSTLLVM_CXXFLAGS_$(1) := -DLLVM_RUSTLLVM
+endif
+
 # Note that we appease `cl.exe` and its need for some sort of exception
 # handling flag with the `EHsc` argument here as well.
 ifeq ($$(findstring msvc,$(1)),msvc)
@@ -55,6 +60,7 @@ $(1)/rustllvm/%.o: $(S)src/rustllvm/%.cpp $$(MKFILE_DEPS) $$(LLVM_CONFIG_$(1))
 	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@,) \
 		$$(subst  /,//,$$(LLVM_CXXFLAGS_$(1))) \
 		$$(RUSTLLVM_COMPONENTS_$(1)) \
+		$$(RUSTLLVM_CXXFLAGS_$(1)) \
 		$$(EXTRA_RUSTLLVM_CXXFLAGS_$(1)) \
 		$$(RUSTLLVM_INCS_$(1)) \
 		$$<

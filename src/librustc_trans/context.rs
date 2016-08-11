@@ -337,16 +337,14 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
         None => &sess.target.target.options.relocation_model[..],
     };
 
-    match reloc_model_arg {
-        "pic" => llvm::RelocMode::PIC,
-        "static" => llvm::RelocMode::Static,
-        "default" => llvm::RelocMode::Default,
-        "dynamic-no-pic" => llvm::RelocMode::DynamicNoPic,
+    match ::back::write::RELOC_MODEL_ARGS.iter().find(
+        |&&arg| arg.0 == reloc_model_arg) {
+        Some(x) => x.1,
         _ => {
             sess.err(&format!("{:?} is not a valid relocation mode",
                              sess.opts
                                  .cg
-                                 .relocation_model));
+                                 .code_model));
             sess.abort_if_errors();
             bug!();
         }

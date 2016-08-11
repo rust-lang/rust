@@ -198,6 +198,10 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     if !build.unstable_features {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
+    // Flag that rust llvm is in use
+    if build.is_rust_llvm(target) {
+        cargo.env("LLVM_RUSTLLVM", "1");
+    }
     cargo.env("LLVM_CONFIG", build.llvm_config(target));
     if build.config.llvm_static_stdcpp {
         cargo.env("LLVM_STATIC_STDCPP",
