@@ -642,7 +642,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 apply(&mut coerce, &|| Some(expr), source, target)?;
             if !adjustment.is_identity() {
                 debug!("Success, coerced with {:?}", adjustment);
-                assert!(!self.tables.borrow().adjustments.contains_key(&expr.id));
+                match self.tables.borrow().adjustments.get(&expr.id) {
+                    None | Some(&AdjustNeverToAny(..)) => (),
+                    _ => bug!("expr already has an adjustment on it!"),
+                };
                 self.write_adjustment(expr.id, adjustment);
             }
             Ok(ty)
