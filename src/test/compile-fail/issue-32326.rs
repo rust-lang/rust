@@ -13,6 +13,7 @@
 // too big.
 
 enum Expr { //~ ERROR E0072
+            //~| NOTE recursive type has infinite size
     Plus(Expr, Expr),
     Literal(i64),
 }

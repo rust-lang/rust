@@ -13,24 +13,23 @@
 
 pub fn diff_lines(actual: &str, expected: &str) -> Vec<String> {
     // mega simplistic diff algorithm that just prints the things added/removed
-    zip_all(actual.lines(), expected.lines()).enumerate().filter_map(|(i, (a,e))| {
-        match (a, e) {
-            (Some(a), Some(e)) => {
-                if lines_match(e, a) {
-                    None
-                } else {
-                    Some(format!("{:3} - |{}|\n    + |{}|\n", i, e, a))
+    zip_all(actual.lines(), expected.lines())
+        .enumerate()
+        .filter_map(|(i, (a, e))| {
+            match (a, e) {
+                (Some(a), Some(e)) => {
+                    if lines_match(e, a) {
+                        None
+                    } else {
+                        Some(format!("{:3} - |{}|\n    + |{}|\n", i, e, a))
+                    }
                 }
-            },
-            (Some(a), None) => {
-                Some(format!("{:3} -\n    + |{}|\n", i, a))
-            },
-            (None, Some(e)) => {
-                Some(format!("{:3} - |{}|\n    +\n", i, e))
-            },
-            (None, None) => panic!("Cannot get here")
-        }
-    }).collect()
+                (Some(a), None) => Some(format!("{:3} -\n    + |{}|\n", i, a)),
+                (None, Some(e)) => Some(format!("{:3} - |{}|\n    +\n", i, e)),
+                (None, None) => panic!("Cannot get here"),
+            }
+        })
+        .collect()
 }
 
 fn lines_match(expected: &str, mut actual: &str) -> bool {
@@ -38,13 +37,11 @@ fn lines_match(expected: &str, mut actual: &str) -> bool {
         match actual.find(part) {
             Some(j) => {
                 if i == 0 && j != 0 {
-                    return false
+                    return false;
                 }
                 actual = &actual[j + part.len()..];
             }
-            None => {
-                return false
-            }
+            None => return false,
         }
     }
     actual.is_empty() || expected.ends_with("[..]")
@@ -55,7 +52,7 @@ struct ZipAll<I1: Iterator, I2: Iterator> {
     second: I2,
 }
 
-impl<T, I1: Iterator<Item=T>, I2: Iterator<Item=T>> Iterator for ZipAll<I1, I2> {
+impl<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Iterator for ZipAll<I1, I2> {
     type Item = (Option<T>, Option<T>);
     fn next(&mut self) -> Option<(Option<T>, Option<T>)> {
         let first = self.first.next();
@@ -63,12 +60,12 @@ impl<T, I1: Iterator<Item=T>, I2: Iterator<Item=T>> Iterator for ZipAll<I1, I2> 
 
         match (first, second) {
             (None, None) => None,
-            (a, b) => Some((a, b))
+            (a, b) => Some((a, b)),
         }
     }
 }
 
-fn zip_all<T, I1: Iterator<Item=T>, I2: Iterator<Item=T>>(a: I1, b: I2) -> ZipAll<I1, I2> {
+fn zip_all<T, I1: Iterator<Item = T>, I2: Iterator<Item = T>>(a: I1, b: I2) -> ZipAll<I1, I2> {
     ZipAll {
         first: a,
         second: b,

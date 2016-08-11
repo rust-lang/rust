@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type Foo<T> = u32; //~ ERROR E0091
-                   //~| NOTE unused type parameter
-type Foo2<A, B> = Box<A>; //~ ERROR E0091
-                          //~| NOTE unused type parameter
-
 fn main() {
+    let x: &'static str = "x";
+
+    {
+        let y = "y".to_string();
+        let ref mut x = &*x;
+        *x = &*y;
+    }
+
+    assert_eq!(x, "x");
 }

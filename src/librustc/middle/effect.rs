@@ -63,9 +63,11 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
         match self.unsafe_context.root {
             SafeContext => {
                 // Report an error.
-                span_err!(self.tcx.sess, span, E0133,
-                          "{} requires unsafe function or block",
-                          description);
+                struct_span_err!(
+                    self.tcx.sess, span, E0133,
+                    "{} requires unsafe function or block", description)
+                    .span_label(span, &format!("unsafe call requires unsafe function or block"))
+                    .emit();
             }
             UnsafeBlock(block_id) => {
                 // OK, but record this.

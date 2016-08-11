@@ -10,10 +10,13 @@
 
 extern {
     fn f1(mut arg: u8); //~ ERROR patterns aren't allowed in foreign function declarations
-                        //~^ NOTE this is a recent error
+                        //~^ NOTE pattern not allowed in foreign function
+                        //~| NOTE this is a recent error
     fn f2(&arg: u8); //~ ERROR patterns aren't allowed in foreign function declarations
+                     //~^ NOTE pattern not allowed in foreign function
     fn f3(arg @ _: u8); //~ ERROR patterns aren't allowed in foreign function declarations
-                        //~^ NOTE this is a recent error
+                        //~^ NOTE pattern not allowed in foreign function
+                        //~| NOTE this is a recent error
     fn g1(arg: u8); // OK
     fn g2(_: u8); // OK
     // fn g3(u8); // Not yet

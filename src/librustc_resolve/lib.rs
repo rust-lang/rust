@@ -412,7 +412,10 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             struct_span_err!(resolver.session, span, E0432, "{}", msg)
         }
         ResolutionError::FailedToResolve(msg) => {
-            struct_span_err!(resolver.session, span, E0433, "failed to resolve. {}", msg)
+            let mut err = struct_span_err!(resolver.session, span, E0433,
+                                           "failed to resolve. {}", msg);
+            err.span_label(span, &msg);
+            err
         }
         ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
             struct_span_err!(resolver.session,

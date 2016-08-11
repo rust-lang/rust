@@ -615,9 +615,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if !allow {
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
-                            span_err!(self.tcx.sess, self.span, E0017,
-                                      "references in {}s may only refer \
-                                       to immutable values", self.mode);
+                            struct_span_err!(self.tcx.sess,  self.span, E0017,
+                                             "references in {}s may only refer \
+                                              to immutable values", self.mode)
+                                .span_label(self.span, &format!("{}s require immutable values",
+                                                                self.mode))
+                                .emit();
                         }
                     }
                 } else {
