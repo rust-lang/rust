@@ -9,6 +9,7 @@
 // except according to those terms.
 
 struct Foo<T=U, U=()> { //~ ERROR E0128
+                        //~| NOTE defaulted type parameters cannot be forward declared
     field1: T,
     field2: U,
 }
