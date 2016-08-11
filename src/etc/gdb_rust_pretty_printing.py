@@ -36,7 +36,7 @@ class GdbType(rustpp.Type):
         if tag is None:
             return tag
 
-        return tag.replace("&'static ", "&")
+        return rustpp.extract_type_name(tag).replace("&'static ", "&")
 
     def get_dwarf_type_kind(self):
         if self.ty.code == gdb.TYPE_CODE_STRUCT:

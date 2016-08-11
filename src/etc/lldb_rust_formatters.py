@@ -29,7 +29,7 @@ class LldbType(rustpp.Type):
         if qualified_name is None:
             return qualified_name
 
-        return extract_type_name(qualified_name).replace("&'static ", "&")
+        return rustpp.extract_type_name(qualified_name).replace("&'static ", "&")
 
     def get_dwarf_type_kind(self):
         type_class = self.ty.GetTypeClass()
@@ -204,7 +204,7 @@ def print_struct_val(val, internal_dict, omit_first_field, omit_type_name, is_tu
             # LLDB is not good at handling zero-sized values, so we have to help
             # it a little
             if field.GetType().GetByteSize() == 0:
-                return this + extract_type_name(field.GetType().GetName())
+                return this + rustpp.extract_type_name(field.GetType().GetName())
             else:
                 return this + "<invalid value>"
 
@@ -273,23 +273,6 @@ def print_std_string_val(val, internal_dict):
 #=--------------------------------------------------------------------------------------------------
 # Helper Functions
 #=--------------------------------------------------------------------------------------------------
-
-UNQUALIFIED_TYPE_MARKERS = frozenset(["(", "[", "&", "*"])
-
-def extract_type_name(qualified_type_name):
-    '''Extracts the type name from a fully qualified path'''
-    if qualified_type_name[0] in UNQUALIFIED_TYPE_MARKERS:
-        return qualified_type_name
-
-    end_of_search = qualified_type_name.find("<")
-    if end_of_search < 0:
-        end_of_search = len(qualified_type_name)
-
-    index = qualified_type_name.rfind("::", 0, end_of_search)
-    if index < 0:
-        return qualified_type_name
-    else:
-        return qualified_type_name[index + 2:]
 
 def print_array_of_values(array_name, data_ptr_val, length, internal_dict):
     '''Prints a contigous memory range, interpreting it as values of the
