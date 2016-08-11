@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 162 lints included in this crate:
+There are 163 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -57,6 +57,7 @@ name                                                                            
 [enum_glob_use](https://github.com/Manishearth/rust-clippy/wiki#enum_glob_use)                                       | allow   | use items that import all variants of an enum
 [enum_variant_names](https://github.com/Manishearth/rust-clippy/wiki#enum_variant_names)                             | warn    | enums where all variants share a prefix/postfix
 [eq_op](https://github.com/Manishearth/rust-clippy/wiki#eq_op)                                                       | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
+[eval_order_dependence](https://github.com/Manishearth/rust-clippy/wiki#eval_order_dependence)                       | warn    | whether a variable read occurs before a write depends on sub-expression evaluation order
 [expl_impl_clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#expl_impl_clone_on_copy)                   | warn    | implementing `Clone` explicitly on `Copy` types
 [explicit_counter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_counter_loop)                       | warn    | for-looping with an explicit counter when `_.enumerate()` would do
 [explicit_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop)                             | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
