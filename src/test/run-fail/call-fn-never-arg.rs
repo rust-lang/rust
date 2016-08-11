@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that we can use a ! for an argument of type !
+
 // error-pattern:wowzers!
 
 #![feature(never_type)]

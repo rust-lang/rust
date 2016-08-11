@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that we can't pass other types for !
+
 #![feature(never_type)]
 
 fn foo(x: !) -> ! {

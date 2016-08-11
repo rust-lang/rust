@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that a variable of type ! can coerce to another type.
+
 #![feature(never_type)]
 
 // error-pattern:explicit
