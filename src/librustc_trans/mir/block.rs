@@ -230,7 +230,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let ty = mir.lvalue_ty(bcx.tcx(), location).to_ty(bcx.tcx());
+                let ty = location.ty(&mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = bcx.monomorphize(&ty);
 
                 // Double check for necessity to drop
@@ -433,7 +433,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 let extra_args = &args[sig.inputs.len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
-                    let op_ty = self.mir.operand_ty(bcx.tcx(), op_arg);
+                    let op_ty = op_arg.ty(&self.mir, bcx.tcx());
                     bcx.monomorphize(&op_ty)
                 }).collect::<Vec<_>>();
                 let fn_ty = callee.direct_fn_type(bcx.ccx(), &extra_args);
@@ -828,7 +828,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             return ReturnDest::Nothing;
         }
         let dest = if let Some(index) = self.mir.local_index(dest) {
-            let ret_ty = self.lvalue_ty(dest);
+            let ret_ty = self.monomorphized_lvalue_ty(dest);
             match self.locals[index] {
                 LocalRef::Lvalue(dest) => dest,
                 LocalRef::Operand(None) => {

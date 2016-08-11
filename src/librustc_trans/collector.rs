@@ -478,7 +478,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let target_ty = monomorphize::apply_param_substs(self.scx.tcx(),
                                                                  self.param_substs,
                                                                  &target_ty);
-                let source_ty = self.mir.operand_ty(self.scx.tcx(), operand);
+                let source_ty = operand.ty(self.mir, self.scx.tcx());
                 let source_ty = monomorphize::apply_param_substs(self.scx.tcx(),
                                                                  self.param_substs,
                                                                  &source_ty);
@@ -525,8 +525,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         debug!("visiting lvalue {:?}", *lvalue);
 
         if let mir_visit::LvalueContext::Drop = context {
-            let ty = self.mir.lvalue_ty(self.scx.tcx(), lvalue)
-                             .to_ty(self.scx.tcx());
+            let ty = lvalue.ty(self.mir, self.scx.tcx())
+                           .to_ty(self.scx.tcx());
 
             let ty = monomorphize::apply_param_substs(self.scx.tcx(),
                                                       self.param_substs,
@@ -627,7 +627,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 match constant.ty.sty {
                     ty::TyFnDef(def_id, _, bare_fn_ty)
                         if is_drop_in_place_intrinsic(tcx, def_id, bare_fn_ty) => {
-                        let operand_ty = self.mir.operand_ty(tcx, &args[0]);
+                        let operand_ty = args[0].ty(self.mir, tcx);
                         if let ty::TyRawPtr(mt) = operand_ty.sty {
                             let operand_ty = monomorphize::apply_param_substs(tcx,
                                                                               self.param_substs,
