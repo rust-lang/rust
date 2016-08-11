@@ -184,6 +184,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     // 'a:'b and T:'b into region inference constraints. It is simpler
     // just to look for all the predicates directly.
 
+    assert_eq!(dtor_predicates.parent, None);
     for predicate in &dtor_predicates.predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced

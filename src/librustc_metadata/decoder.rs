@@ -1591,6 +1591,7 @@ fn doc_predicates<'a, 'tcx>(base_doc: rbml::Doc,
     let doc = reader::get_doc(base_doc, tag);
 
     ty::GenericPredicates {
+        parent: item_parent_item(cdata, doc),
         predicates: reader::tagged_docs(doc, tag_predicate).map(|predicate_doc| {
             doc_predicate(cdata, predicate_doc, tcx)
         }).collect()

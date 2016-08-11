@@ -1612,8 +1612,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           bounds: &ty::GenericPredicates<'tcx>)
                           -> ty::InstantiatedPredicates<'tcx>
     {
+        let result = bounds.instantiate(self.tcx, substs);
+        let result = self.normalize_associated_types_in(span, &result.predicates);
+        debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
+               bounds,
+               substs,
+               result);
         ty::InstantiatedPredicates {
-            predicates: self.instantiate_type_scheme(span, substs, &bounds.predicates)
+            predicates: result
         }
     }
 
@@ -4210,8 +4216,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             _ => {}
         }
-        let scheme = self.tcx.lookup_item_type(def.def_id());
-        let type_predicates = self.tcx.lookup_predicates(def.def_id());
 
         // Now we have to compare the types that the user *actually*
         // provided against the types that were *expected*. If the user
@@ -4296,6 +4300,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
+        let scheme = self.tcx.lookup_item_type(def.def_id());
+        let type_predicates = self.tcx.lookup_predicates(def.def_id());
         assert!(!substs.has_escaping_regions());
         assert!(!scheme.ty.has_escaping_regions());
 

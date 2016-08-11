@@ -768,27 +768,38 @@ pub struct Generics<'tcx> {
 /// Bounds on generics.
 #[derive(Clone)]
 pub struct GenericPredicates<'tcx> {
+    pub parent: Option<DefId>,
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
-    pub fn empty() -> GenericPredicates<'tcx> {
-        GenericPredicates {
-            predicates: vec![]
+    pub fn instantiate(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
+                       -> InstantiatedPredicates<'tcx> {
+        let mut instantiated = InstantiatedPredicates::empty();
+        self.instantiate_into(tcx, &mut instantiated, substs);
+        instantiated
+    }
+    pub fn instantiate_own(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
+                           -> InstantiatedPredicates<'tcx> {
+        InstantiatedPredicates {
+            predicates: self.predicates.subst(tcx, substs)
         }
     }
 
-    pub fn instantiate(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
-                       -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates {
-            predicates: self.predicates.subst(tcx, substs),
+    fn instantiate_into(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                        instantiated: &mut InstantiatedPredicates<'tcx>,
+                        substs: &Substs<'tcx>) {
+        if let Some(def_id) = self.parent {
+            tcx.lookup_predicates(def_id).instantiate_into(tcx, instantiated, substs);
         }
+        instantiated.predicates.extend(self.predicates.iter().map(|p| p.subst(tcx, substs)))
     }
 
     pub fn instantiate_supertrait(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   poly_trait_ref: &ty::PolyTraitRef<'tcx>)
                                   -> InstantiatedPredicates<'tcx>
     {
+        assert_eq!(self.parent, None);
         InstantiatedPredicates {
             predicates: self.predicates.iter().map(|pred| {
                 pred.subst_supertrait(tcx, poly_trait_ref)

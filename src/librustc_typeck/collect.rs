@@ -459,35 +459,38 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for () {
 impl<'tcx> GetTypeParameterBounds<'tcx> for ty::GenericPredicates<'tcx> {
     fn get_type_parameter_bounds(&self,
                                  astconv: &AstConv<'tcx, 'tcx>,
-                                 _span: Span,
+                                 span: Span,
                                  node_id: ast::NodeId)
                                  -> Vec<ty::Predicate<'tcx>>
     {
         let def = astconv.tcx().type_parameter_def(node_id);
 
-        self.predicates
-            .iter()
-            .filter(|predicate| {
-                match **predicate {
-                    ty::Predicate::Trait(ref data) => {
-                        data.skip_binder().self_ty().is_param(def.space, def.index)
-                    }
-                    ty::Predicate::TypeOutlives(ref data) => {
-                        data.skip_binder().0.is_param(def.space, def.index)
-                    }
-                    ty::Predicate::Rfc1592(..) |
-                    ty::Predicate::Equate(..) |
-                    ty::Predicate::RegionOutlives(..) |
-                    ty::Predicate::WellFormed(..) |
-                    ty::Predicate::ObjectSafe(..) |
-                    ty::Predicate::ClosureKind(..) |
-                    ty::Predicate::Projection(..) => {
-                        false
-                    }
+        let mut results = self.parent.map_or(vec![], |def_id| {
+            let parent = astconv.tcx().lookup_predicates(def_id);
+            parent.get_type_parameter_bounds(astconv, span, node_id)
+        });
+
+        results.extend(self.predicates.iter().filter(|predicate| {
+            match **predicate {
+                ty::Predicate::Trait(ref data) => {
+                    data.skip_binder().self_ty().is_param(def.space, def.index)
                 }
-            })
-            .cloned()
-            .collect()
+                ty::Predicate::TypeOutlives(ref data) => {
+                    data.skip_binder().0.is_param(def.space, def.index)
+                }
+                ty::Predicate::Rfc1592(..) |
+                ty::Predicate::Equate(..) |
+                ty::Predicate::RegionOutlives(..) |
+                ty::Predicate::WellFormed(..) |
+                ty::Predicate::ObjectSafe(..) |
+                ty::Predicate::ClosureKind(..) |
+                ty::Predicate::Projection(..) => {
+                    false
+                }
+            }
+        }).cloned());
+
+        results
     }
 }
 
@@ -568,7 +571,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ty_generics = generics_of_def_id(ccx, def_id);
 
     let ty_generic_predicates =
-        ty_generic_predicates_for_fn(ccx, &sig.generics, rcvr_ty_predicates);
+        ty_generic_predicates(ccx, FnSpace, &sig.generics, ty_generics.parent, vec![], false);
 
     let (fty, explicit_self_category) = {
         let anon_scope = match container {
@@ -634,8 +637,12 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                       ty: ty::Ty<'tcx>,
                                       has_value: bool)
 {
+    let predicates = ty::GenericPredicates {
+        parent: Some(container.id()),
+        predicates: vec![]
+    };
     ccx.tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(id),
-                                           ty::GenericPredicates::empty());
+                                           predicates);
 
     write_ty_to_tcx(ccx, id, ty);
 
@@ -744,7 +751,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             debug!("convert: ast_generics={:?}", generics);
             let def_id = ccx.tcx.map.local_def_id(it.id);
             let ty_generics = generics_of_def_id(ccx, def_id);
-            let mut ty_predicates = ty_generic_predicates_for_type_or_impl(ccx, generics);
+            let mut ty_predicates =
+                ty_generic_predicates(ccx, TypeSpace, generics, None, vec![], false);
 
             debug!("convert: impl_bounds={:?}", ty_predicates);
 
@@ -1187,6 +1195,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         // generic types:
         let trait_def = trait_def_of_item(ccx, item);
         let self_predicate = ty::GenericPredicates {
+            parent: None,
             predicates: vec![trait_def.trait_ref.to_predicate()]
         };
         let scope = &(generics, &self_predicate);
@@ -1209,6 +1218,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         // Combine the two lists to form the complete set of superbounds:
         let superbounds = superbounds1.into_iter().chain(superbounds2).collect();
         let superpredicates = ty::GenericPredicates {
+            parent: None,
             predicates: superbounds
         };
         debug!("superpredicates for trait {:?} = {:?}",
@@ -1327,16 +1337,16 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
     // but to get the full set of predicates on a trait we need to add
     // in the supertrait bounds and anything declared on the
     // associated types.
-    let mut base_predicates = super_predicates;
+    let mut base_predicates = super_predicates.predicates;
 
     // Add in a predicate that `Self:Trait` (where `Trait` is the
     // current trait).  This is needed for builtin bounds.
     let self_predicate = trait_def.trait_ref.to_poly_trait_ref().to_predicate();
-    base_predicates.predicates.push(self_predicate);
+    base_predicates.push(self_predicate);
 
     // add in the explicit where-clauses
     let mut trait_predicates =
-        ty_generic_predicates(ccx, TypeSpace, generics, &base_predicates, true);
+        ty_generic_predicates(ccx, TypeSpace, generics, None, base_predicates, true);
 
     let assoc_predicates = predicates_for_associated_types(ccx,
                                                            generics,
@@ -1619,32 +1629,17 @@ fn predicates_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 it: &hir::Item)
                                 -> ty::GenericPredicates<'tcx> {
     let def_id = ccx.tcx.map.local_def_id(it.id);
-    let predicates = match it.node {
-        hir::ItemStatic(..) | hir::ItemConst(..) => {
-            ty::GenericPredicates::empty()
-        }
-        hir::ItemFn(_, _, _, _, ref ast_generics, _) => {
-            ty_generic_predicates_for_fn(ccx, ast_generics, &ty::GenericPredicates::empty())
-        }
+
+    let no_generics = hir::Generics::empty();
+    let (space, generics) = match it.node {
+        hir::ItemFn(_, _, _, _, ref generics, _) => (FnSpace, generics),
         hir::ItemTy(_, ref generics) |
         hir::ItemEnum(_, ref generics) |
-        hir::ItemStruct(_, ref generics) => {
-            ty_generic_predicates_for_type_or_impl(ccx, generics)
-        }
-        hir::ItemDefaultImpl(..) |
-        hir::ItemTrait(..) |
-        hir::ItemExternCrate(..) |
-        hir::ItemUse(..) |
-        hir::ItemImpl(..) |
-        hir::ItemMod(..) |
-        hir::ItemForeignMod(..) => {
-            span_bug!(
-                it.span,
-                "predicates_of_item: unexpected item type: {:?}",
-                it.node);
-        }
+        hir::ItemStruct(_, ref generics) => (TypeSpace, generics),
+        _ => (TypeSpace, &no_generics)
     };
 
+    let predicates = ty_generic_predicates(ccx, space, generics, None, vec![], false);
     let prev_predicates = ccx.tcx.predicates.borrow_mut().insert(def_id,
                                                                  predicates.clone());
     assert!(prev_predicates.is_none());
@@ -1662,32 +1657,15 @@ fn convert_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let def_id = ccx.tcx.map.local_def_id(it.id);
     type_scheme_of_def_id(ccx, def_id);
 
-    let predicates = match it.node {
-        hir::ForeignItemFn(_, ref generics) => {
-            ty_generic_predicates_for_fn(ccx, generics, &ty::GenericPredicates::empty())
-        }
-        hir::ForeignItemStatic(..) => {
-            ty::GenericPredicates::empty()
-        }
+    let no_generics = hir::Generics::empty();
+    let (space, generics) = match it.node {
+        hir::ForeignItemFn(_, ref generics) => (FnSpace, generics),
+        hir::ForeignItemStatic(..) => (TypeSpace, &no_generics)
     };
 
+    let predicates = ty_generic_predicates(ccx, space, generics, None, vec![], false);
     let prev_predicates = ccx.tcx.predicates.borrow_mut().insert(def_id, predicates);
     assert!(prev_predicates.is_none());
-}
-
-fn ty_generic_predicates_for_type_or_impl<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
-                                                   generics: &hir::Generics)
-                                                   -> ty::GenericPredicates<'tcx>
-{
-    ty_generic_predicates(ccx, TypeSpace, generics, &ty::GenericPredicates::empty(), false)
-}
-
-fn ty_generic_predicates_for_fn<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
-                                         generics: &hir::Generics,
-                                         base_predicates: &ty::GenericPredicates<'tcx>)
-                                         -> ty::GenericPredicates<'tcx>
-{
-    ty_generic_predicates(ccx, FnSpace, generics, base_predicates, false)
 }
 
 // Add the Sized bound, unless the type parameter is marked as `?Sized`.
@@ -1757,12 +1735,25 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx, 'hir>(
 fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                   space: ParamSpace,
                                   ast_generics: &hir::Generics,
-                                  base_predicates: &ty::GenericPredicates<'tcx>,
+                                  parent: Option<DefId>,
+                                  super_predicates: Vec<ty::Predicate<'tcx>>,
                                   has_self: bool)
                                   -> ty::GenericPredicates<'tcx>
 {
     let tcx = ccx.tcx;
-    let mut result = base_predicates.clone();
+    let ref base_predicates = match parent {
+        Some(def_id) => {
+            assert_eq!(super_predicates, vec![]);
+            tcx.lookup_predicates(def_id)
+        }
+        None => {
+            ty::GenericPredicates {
+                parent: None,
+                predicates: super_predicates.clone()
+            }
+        }
+    };
+    let mut predicates = super_predicates;
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
@@ -1775,7 +1766,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     SizedByDefault::Yes,
                                     None,
                                     param.span);
-        result.predicates.extend(bounds.predicates(ccx.tcx, param_ty));
+        predicates.extend(bounds.predicates(ccx.tcx, param_ty));
     }
 
     // Collect the region predicates that were declared inline as
@@ -1793,7 +1784,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         for bound in &param.bounds {
             let bound_region = ast_region_to_region(ccx.tcx, bound);
             let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
-            result.predicates.push(outlives.to_predicate());
+            predicates.push(outlives.to_predicate());
         }
     }
 
@@ -1819,17 +1810,17 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                                                     ty,
                                                                     &mut projections);
 
-                            result.predicates.push(trait_ref.to_predicate());
+                            predicates.push(trait_ref.to_predicate());
 
                             for projection in &projections {
-                                result.predicates.push(projection.to_predicate());
+                                predicates.push(projection.to_predicate());
                             }
                         }
 
                         &hir::TyParamBound::RegionTyParamBound(ref lifetime) => {
                             let region = ast_region_to_region(tcx, lifetime);
                             let pred = ty::Binder(ty::OutlivesPredicate(ty, region));
-                            result.predicates.push(ty::Predicate::TypeOutlives(pred))
+                            predicates.push(ty::Predicate::TypeOutlives(pred))
                         }
                     }
                 }
@@ -1840,7 +1831,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 for bound in &region_pred.bounds {
                     let r2 = ast_region_to_region(tcx, bound);
                     let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
-                    result.predicates.push(ty::Predicate::RegionOutlives(pred))
+                    predicates.push(ty::Predicate::RegionOutlives(pred))
                 }
             }
 
@@ -1853,7 +1844,10 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
     }
 
-    result
+    ty::GenericPredicates {
+        parent: parent,
+        predicates: predicates
+    }
 }
 
 fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,

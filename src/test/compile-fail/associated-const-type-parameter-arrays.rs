@@ -25,7 +25,8 @@ impl Foo for Def {
 }
 
 pub fn test<A: Foo, B: Foo>() {
-    let _array: [u32; <A as Foo>::Y]; //~ error: the parameter type
+    let _array: [u32; <A as Foo>::Y];
+    //~^ ERROR the trait bound `A: Foo` is not satisfied
 }
 
 fn main() {

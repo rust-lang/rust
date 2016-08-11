@@ -211,29 +211,18 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return;
     }
 
-    // Depend on trait/impl predicates always being before method's own predicates,
-    // to be able to split method predicates into "inherited" and method-specific.
-    let trait_predicates = tcx.lookup_predicates(trait_m.container_id()).predicates;
-    let impl_predicates = tcx.lookup_predicates(impl_m.container_id()).predicates;
-    let trait_method_start = trait_predicates.len();
-    let impl_method_start = impl_predicates.len();
-    assert_eq!(&trait_predicates[..], &trait_m.predicates.predicates[..trait_method_start]);
-    assert_eq!(&impl_predicates[..], &impl_m.predicates.predicates[..impl_method_start]);
-
     tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|mut infcx| {
         let mut fulfillment_cx = traits::FulfillmentContext::new();
-
-        // Normalize the associated types in the trait_bounds.
-        let trait_bounds = trait_m.predicates.instantiate(tcx, trait_to_skol_substs);
 
         // Create obligations for each predicate declared by the impl
         // definition in the context of the trait's parameter
         // environment. We can't just use `impl_env.caller_bounds`,
         // however, because we want to replace all late-bound regions with
         // region variables.
-        let impl_bounds = impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
+        let impl_predicates = tcx.lookup_predicates(impl_m.predicates.parent.unwrap());
+        let mut hybrid_preds = impl_predicates.instantiate(tcx, impl_to_skol_substs);
 
-        debug!("compare_impl_method: impl_bounds={:?}", impl_bounds);
+        debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
 
         // This is the only tricky bit of the new way we check implementation methods
         // We need to build a set of predicates where only the FnSpace bounds
@@ -242,14 +231,14 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         //
         // We then register the obligations from the impl_m and check to see
         // if all constraints hold.
-        let hybrid_preds = impl_bounds.predicates[..impl_method_start].iter()
-                    .chain(trait_bounds.predicates[trait_method_start..].iter());
+        hybrid_preds.predicates.extend(
+            trait_m.predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
 
         // Construct trait parameter environment and then shift it into the skolemized viewpoint.
         // The key step here is to update the caller_bounds's predicates to be
         // the new hybrid bounds we computed.
         let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
-        let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.cloned().collect());
+        let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.predicates);
         let trait_param_env = traits::normalize_param_env_or_error(tcx,
                                                                    trait_param_env,
                                                                    normalize_cause.clone());
@@ -261,12 +250,13 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        let (impl_pred_fns, _) =
+        let impl_m_own_bounds = impl_m.predicates.instantiate_own(tcx, impl_to_skol_substs);
+        let (impl_m_own_bounds, _) =
             infcx.replace_late_bound_regions_with_fresh_var(
                 impl_m_span,
                 infer::HigherRankedType,
-                &ty::Binder(impl_bounds.predicates[impl_method_start..].to_vec()));
-        for predicate in impl_pred_fns {
+                &ty::Binder(impl_m_own_bounds.predicates));
+        for predicate in impl_m_own_bounds {
             let traits::Normalized { value: predicate, .. } =
                 traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
 

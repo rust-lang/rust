@@ -1348,17 +1348,7 @@ impl Clean<Item> for hir::ImplItem {
 
 impl<'tcx> Clean<Item> for ty::Method<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
-        // Depend on trait/impl predicates always being before method's own predicates,
-        // to be able to split method predicates into "inherited" and method-specific.
-        let outer_predicates = cx.tcx().lookup_predicates(self.container_id()).predicates;
-        let method_start = outer_predicates.len();
-        assert_eq!(&outer_predicates[..], &self.predicates.predicates[..method_start]);
-
-        let method_predicates = ty::GenericPredicates {
-            predicates: self.predicates.predicates[method_start..].to_vec()
-        };
-
-        let generics = (self.generics, &method_predicates).clean(cx);
+        let generics = (self.generics, &self.predicates).clean(cx);
         let mut decl = (self.def_id, &self.fty.sig).clean(cx);
         match self.explicit_self {
             ty::ExplicitSelfCategory::ByValue => {
