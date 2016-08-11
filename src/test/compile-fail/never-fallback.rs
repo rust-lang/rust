@@ -30,6 +30,7 @@ impl Flah {
 }
 
 fn doit() -> Result<(), ()> {
+    // The type of _ is unconstrained here and should default to !
     let _ = try!(Flah.flah()); //~ ERROR the trait bound
     Ok(())
 }
