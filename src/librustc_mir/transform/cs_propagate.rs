@@ -119,21 +119,18 @@ impl<'tcx> Lattice for CsLattice<'tcx> {
     fn join(&mut self, mut other: Self) -> bool {
         // Calculate inteersection this way:
         let mut changed = false;
-
         // First, drain the self.values into a list of equal values common to both maps.
         let mut common_keys = vec![];
-        for (key, value) in self.values.drain() {
+        for (key, mut value) in self.values.drain() {
             match other.values.remove(&key) {
                     // self had the key, but not other, so removing
-                None => changed = true,
-                Some(ov) => if ov.eq(&value) {
-                    // common key, equal value
-                    common_keys.push((key, value))
-                } else {
-                    // both had key, but different values, so its a top.
-                    common_keys.push((key, Either::Top));
+                None => {
                     changed = true;
-                },
+                }
+                Some(ov) => {
+                    changed |= value.join(ov);
+                    common_keys.push((key, value));
+                }
             }
         }
         // Now, put each common key with equal value back into the map.
