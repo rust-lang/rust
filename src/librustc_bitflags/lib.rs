@@ -201,7 +201,7 @@ macro_rules! bitflags {
                 !(*self & other).is_empty()
             }
 
-            /// Returns `true` all of the flags in `other` are contained within `self`.
+            /// Returns `true` if all of the flags in `other` are contained within `self`.
             #[inline]
             pub fn contains(&self, other: $BitFlags) -> bool {
                 (*self & other) == other
