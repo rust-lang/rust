@@ -12,7 +12,7 @@ use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use std::process::{ExitStatus, Command, Child, Output, Stdio};
+use std::process::{Child, Command, ExitStatus, Output, Stdio};
 
 pub fn dylib_env_var() -> &'static str {
     if cfg!(windows) {
@@ -29,7 +29,7 @@ fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     // search path for the child.
     let var = dylib_env_var();
     let mut path = env::split_paths(&env::var_os(var).unwrap_or(OsString::new()))
-                       .collect::<Vec<_>>();
+        .collect::<Vec<_>>();
     if let Some(p) = aux_path {
         path.insert(0, PathBuf::from(p))
     }
@@ -40,20 +40,25 @@ fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     cmd.env(var, newpath);
 }
 
-pub struct Result {pub status: ExitStatus, pub out: String, pub err: String}
+pub struct Result {
+    pub status: ExitStatus,
+    pub out: String,
+    pub err: String,
+}
 
 pub fn run(lib_path: &str,
            prog: &str,
            aux_path: Option<&str>,
            args: &[String],
-           env: Vec<(String, String)> ,
-           input: Option<String>) -> Option<Result> {
+           env: Vec<(String, String)>,
+           input: Option<String>)
+           -> Option<Result> {
 
     let mut cmd = Command::new(prog);
     cmd.args(args)
-       .stdin(Stdio::piped())
-       .stdout(Stdio::piped())
-       .stderr(Stdio::piped());
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
         cmd.env(&key, &val);
@@ -64,31 +69,31 @@ pub fn run(lib_path: &str,
             if let Some(input) = input {
                 process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
             }
-            let Output { status, stdout, stderr } =
-                process.wait_with_output().unwrap();
+            let Output { status, stdout, stderr } = process.wait_with_output().unwrap();
 
             Some(Result {
                 status: status,
                 out: String::from_utf8(stdout).unwrap(),
-                err: String::from_utf8(stderr).unwrap()
+                err: String::from_utf8(stderr).unwrap(),
             })
-        },
-        Err(..) => None
+        }
+        Err(..) => None,
     }
 }
 
 pub fn run_background(lib_path: &str,
-           prog: &str,
-           aux_path: Option<&str>,
-           args: &[String],
-           env: Vec<(String, String)> ,
-           input: Option<String>) -> Option<Child> {
+                      prog: &str,
+                      aux_path: Option<&str>,
+                      args: &[String],
+                      env: Vec<(String, String)>,
+                      input: Option<String>)
+                      -> Option<Child> {
 
     let mut cmd = Command::new(prog);
     cmd.args(args)
-       .stdin(Stdio::piped())
-       .stdout(Stdio::piped())
-       .stderr(Stdio::piped());
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
         cmd.env(&key, &val);
@@ -101,7 +106,7 @@ pub fn run_background(lib_path: &str,
             }
 
             Some(process)
-        },
-        Err(..) => None
+        }
+        Err(..) => None,
     }
 }
