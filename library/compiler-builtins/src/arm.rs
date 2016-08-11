@@ -1,5 +1,7 @@
 use core::intrinsics;
 
+// NOTE This function and the one below are implemented using assembly because they using a custom
+// calling convention which can't be implemented using a normal Rust function
 // TODO use `global_asm!`
 #[naked]
 #[no_mangle]
