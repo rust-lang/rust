@@ -17,6 +17,8 @@ test_script:
   - cargo build --release
   - cargo test
   - cargo test --release
+  - dumpbin /disasm target/debug/librustc_builtins.rlib
+  - dumpbin /disasm target/release/librustc_builtins.rlib
 
 branches:
   only:
