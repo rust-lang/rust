@@ -863,7 +863,8 @@ impl Build {
             "i686-unknown-linux-musl" |
             "x86_64-unknown-linux-musl" => {
                 base.push("-Wa,-mrelax-relocations=no".into());
-            }
+            },
+            _ => {},
         }
         return base
     }
