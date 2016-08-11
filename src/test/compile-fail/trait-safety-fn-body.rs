@@ -18,7 +18,9 @@ unsafe trait UnsafeTrait : Sized {
 unsafe impl UnsafeTrait for *mut isize {
     fn foo(self) {
         // Unsafe actions are not made legal by taking place in an unsafe trait:
-        *self += 1; //~ ERROR E0133
+        *self += 1;
+        //~^ ERROR E0133
+        //~| NOTE unsafe call requires unsafe function or block
     }
 }
 
