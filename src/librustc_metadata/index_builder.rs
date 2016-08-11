@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use common::tag_items_data_item;
 use encoder::EncodeContext;
 use index::IndexData;
 use rbml::writer::Encoder;
-use rustc::dep_graph::{DepNode, DepTask};
+use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fnv::FnvHashMap;
@@ -52,10 +53,15 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
     ///
     /// Returns a dep-graph task that you should keep live as long as
     /// the data for this item is being emitted.
-    pub fn record(&mut self, id: DefId, rbml_w: &mut Encoder) -> DepTask<'a> {
+    pub fn record<OP>(&mut self, id: DefId, rbml_w: &mut Encoder, op: OP)
+        where OP: FnOnce(&mut ItemContentBuilder<'a, 'tcx>, &mut Encoder)
+    {
         let position = rbml_w.mark_stable_position();
         self.items.record(id, position);
-        self.ecx.tcx.dep_graph.in_task(DepNode::MetaData(id))
+        let _task = self.ecx.tcx.dep_graph.in_task(DepNode::MetaData(id));
+        rbml_w.start_tag(tag_items_data_item).unwrap();
+        op(self, rbml_w);
+        rbml_w.end_tag().unwrap();
     }
 
     pub fn into_fields(self) -> (IndexData, FnvHashMap<XRef<'tcx>, u32>) {

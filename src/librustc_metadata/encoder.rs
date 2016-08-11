@@ -221,37 +221,35 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
                 self.encode_field(rbml_w, field);
             }
 
-            let _task = self.record(vid, rbml_w);
-            rbml_w.start_tag(tag_items_data_item);
-            encode_def_id_and_key(ecx, rbml_w, vid);
-            encode_family(rbml_w, match variant.kind {
-                ty::VariantKind::Struct => 'V',
-                ty::VariantKind::Tuple => 'v',
-                ty::VariantKind::Unit => 'w',
+            self.record(vid, rbml_w, |this, rbml_w| {
+                encode_def_id_and_key(ecx, rbml_w, vid);
+                encode_family(rbml_w, match variant.kind {
+                    ty::VariantKind::Struct => 'V',
+                    ty::VariantKind::Tuple => 'v',
+                    ty::VariantKind::Unit => 'w',
+                });
+                encode_name(rbml_w, variant.name);
+                this.encode_parent_item(rbml_w, did);
+                this.encode_visibility(rbml_w, vis);
+
+                let attrs = ecx.tcx.get_attrs(vid);
+                encode_attributes(rbml_w, &attrs);
+                this.encode_repr_attrs(rbml_w, &attrs);
+
+                let stab = ecx.tcx.lookup_stability(vid);
+                let depr = ecx.tcx.lookup_deprecation(vid);
+                encode_stability(rbml_w, stab);
+                encode_deprecation(rbml_w, depr);
+
+                this.encode_struct_fields(rbml_w, variant);
+
+                let specified_disr_val = variant.disr_val;
+                if specified_disr_val != disr_val {
+                    this.encode_disr_val(rbml_w, specified_disr_val);
+                    disr_val = specified_disr_val;
+                }
+                this.encode_bounds_and_type_for_item(rbml_w, variant_node_id);
             });
-            encode_name(rbml_w, variant.name);
-            self.encode_parent_item(rbml_w, did);
-            self.encode_visibility(rbml_w, vis);
-
-            let attrs = ecx.tcx.get_attrs(vid);
-            encode_attributes(rbml_w, &attrs);
-            self.encode_repr_attrs(rbml_w, &attrs);
-
-            let stab = ecx.tcx.lookup_stability(vid);
-            let depr = ecx.tcx.lookup_deprecation(vid);
-            encode_stability(rbml_w, stab);
-            encode_deprecation(rbml_w, depr);
-
-            self.encode_struct_fields(rbml_w, variant);
-
-            let specified_disr_val = variant.disr_val;
-            if specified_disr_val != disr_val {
-                self.encode_disr_val(rbml_w, specified_disr_val);
-                disr_val = specified_disr_val;
-            }
-            self.encode_bounds_and_type_for_item(rbml_w, variant_node_id);
-
-            rbml_w.end_tag();
 
             disr_val = disr_val.wrap_incr();
         }
@@ -314,7 +312,6 @@ impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
                            vis: &hir::Visibility) {
         let ecx = self.ecx();
 
-        rbml_w.start_tag(tag_items_data_item);
         encode_def_id_and_key(ecx, rbml_w, ecx.tcx.map.local_def_id(id));
         encode_family(rbml_w, 'm');
         encode_name(rbml_w, name);
@@ -346,8 +343,6 @@ impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
             encode_reexports(ecx, rbml_w, id);
         }
         encode_attributes(rbml_w, attrs);
-
-        rbml_w.end_tag();
     }
 
     fn encode_struct_field_family(&mut self, rbml_w: &mut Encoder,
@@ -438,20 +433,18 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
         let nm = field.name;
         let id = ecx.local_id(field.did);
 
-        let _task = self.record(field.did, rbml_w);
-        rbml_w.start_tag(tag_items_data_item);
-        debug!("encode_field: encoding {} {}", nm, id);
-        self.encode_struct_field_family(rbml_w, field.vis);
-        encode_name(rbml_w, nm);
-        self.encode_bounds_and_type_for_item(rbml_w, id);
-        encode_def_id_and_key(ecx, rbml_w, field.did);
+        self.record(field.did, rbml_w, |this, rbml_w| {
+            debug!("encode_field: encoding {} {}", nm, id);
+            this.encode_struct_field_family(rbml_w, field.vis);
+            encode_name(rbml_w, nm);
+            this.encode_bounds_and_type_for_item(rbml_w, id);
+            encode_def_id_and_key(ecx, rbml_w, field.did);
 
-        let stab = ecx.tcx.lookup_stability(field.did);
-        let depr = ecx.tcx.lookup_deprecation(field.did);
-        encode_stability(rbml_w, stab);
-        encode_deprecation(rbml_w, depr);
-
-        rbml_w.end_tag();
+            let stab = ecx.tcx.lookup_stability(field.did);
+            let depr = ecx.tcx.lookup_deprecation(field.did);
+            encode_stability(rbml_w, stab);
+            encode_deprecation(rbml_w, depr);
+        });
     }
 }
 
@@ -465,29 +458,29 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
         let ctor_id = struct_def.id();
         let ctor_def_id = ecx.tcx.map.local_def_id(ctor_id);
 
-        let _task = self.record(ctor_def_id, rbml_w);
-        rbml_w.start_tag(tag_items_data_item);
-        encode_def_id_and_key(ecx, rbml_w, ctor_def_id);
-        encode_family(rbml_w, match *struct_def {
-            hir::VariantData::Struct(..) => 'S',
-            hir::VariantData::Tuple(..) => 's',
-            hir::VariantData::Unit(..) => 'u',
+        self.record(ctor_def_id, rbml_w, |this, rbml_w| {
+            encode_def_id_and_key(ecx, rbml_w, ctor_def_id);
+            encode_family(rbml_w, match *struct_def {
+                hir::VariantData::Struct(..) => 'S',
+                hir::VariantData::Tuple(..) => 's',
+                hir::VariantData::Unit(..) => 'u',
+            });
+            this.encode_bounds_and_type_for_item(rbml_w, ctor_id);
+            encode_name(rbml_w, name);
+            this.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(struct_id));
+
+            let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(ctor_id));
+            let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(ctor_id));
+            encode_stability(rbml_w, stab);
+            encode_deprecation(rbml_w, depr);
+
+            // indicate that this is a tuple struct ctor, because
+            // downstream users will normally want the tuple struct
+            // definition, but without this there is no way for them
+            // to tell that they actually have a ctor rather than a
+            // normal function
+            rbml_w.wr_tagged_bytes(tag_items_data_item_is_tuple_struct_ctor, &[]);
         });
-        self.encode_bounds_and_type_for_item(rbml_w, ctor_id);
-        encode_name(rbml_w, name);
-        self.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(struct_id));
-
-        let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(ctor_id));
-        let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(ctor_id));
-        encode_stability(rbml_w, stab);
-        encode_deprecation(rbml_w, depr);
-
-        // indicate that this is a tuple struct ctor, because downstream users will normally want
-        // the tuple struct definition, but without this there is no way for them to tell that
-        // they actually have a ctor rather than a normal function
-        rbml_w.wr_tagged_bytes(tag_items_data_item_is_tuple_struct_ctor, &[]);
-
-        rbml_w.end_tag();
     }
 }
 
@@ -549,35 +542,32 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
                associated_const.def_id,
                associated_const.name);
 
-        let _task = self.record(associated_const.def_id, rbml_w);
-        rbml_w.start_tag(tag_items_data_item);
+        self.record(associated_const.def_id, rbml_w, |this, rbml_w| {
+            encode_def_id_and_key(ecx, rbml_w, associated_const.def_id);
+            encode_name(rbml_w, associated_const.name);
+            this.encode_visibility(rbml_w, associated_const.vis);
+            encode_family(rbml_w, 'C');
 
-        encode_def_id_and_key(ecx, rbml_w, associated_const.def_id);
-        encode_name(rbml_w, associated_const.name);
-        self.encode_visibility(rbml_w, associated_const.vis);
-        encode_family(rbml_w, 'C');
+            this.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
+            encode_item_sort(rbml_w, 'C');
 
-        self.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
-        encode_item_sort(rbml_w, 'C');
+            this.encode_bounds_and_type_for_item(rbml_w, ecx.local_id(associated_const.def_id));
 
-        self.encode_bounds_and_type_for_item(rbml_w, ecx.local_id(associated_const.def_id));
+            let stab = ecx.tcx.lookup_stability(associated_const.def_id);
+            let depr = ecx.tcx.lookup_deprecation(associated_const.def_id);
+            encode_stability(rbml_w, stab);
+            encode_deprecation(rbml_w, depr);
 
-        let stab = ecx.tcx.lookup_stability(associated_const.def_id);
-        let depr = ecx.tcx.lookup_deprecation(associated_const.def_id);
-        encode_stability(rbml_w, stab);
-        encode_deprecation(rbml_w, depr);
-
-        if let Some(ii) = impl_item_opt {
-            encode_attributes(rbml_w, &ii.attrs);
-            encode_defaultness(rbml_w, ii.defaultness);
-            encode_inlined_item(ecx,
-                                rbml_w,
-                                InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
-                                                         ii));
-            self.encode_mir(rbml_w, ii.id);
-        }
-
-        rbml_w.end_tag();
+            if let Some(ii) = impl_item_opt {
+                encode_attributes(rbml_w, &ii.attrs);
+                encode_defaultness(rbml_w, ii.defaultness);
+                encode_inlined_item(ecx,
+                                    rbml_w,
+                                    InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
+                                                             ii));
+                this.encode_mir(rbml_w, ii.id);
+            }
+        });
     }
 
     fn encode_info_for_method(&mut self,
@@ -590,43 +580,40 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
 
         debug!("encode_info_for_method: {:?} {:?}", m.def_id,
                m.name);
-        let _task = self.record(m.def_id, rbml_w);
-        rbml_w.start_tag(tag_items_data_item);
+        self.record(m.def_id, rbml_w, |this, rbml_w| {
+            this.encode_method_ty_fields(rbml_w, m);
+            this.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
+            encode_item_sort(rbml_w, 'r');
 
-        self.encode_method_ty_fields(rbml_w, m);
-        self.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
-        encode_item_sort(rbml_w, 'r');
+            let stab = ecx.tcx.lookup_stability(m.def_id);
+            let depr = ecx.tcx.lookup_deprecation(m.def_id);
+            encode_stability(rbml_w, stab);
+            encode_deprecation(rbml_w, depr);
 
-        let stab = ecx.tcx.lookup_stability(m.def_id);
-        let depr = ecx.tcx.lookup_deprecation(m.def_id);
-        encode_stability(rbml_w, stab);
-        encode_deprecation(rbml_w, depr);
+            let m_node_id = ecx.local_id(m.def_id);
+            this.encode_bounds_and_type_for_item(rbml_w, m_node_id);
 
-        let m_node_id = ecx.local_id(m.def_id);
-        self.encode_bounds_and_type_for_item(rbml_w, m_node_id);
-
-        if let Some(impl_item) = impl_item_opt {
-            if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
-                encode_attributes(rbml_w, &impl_item.attrs);
-                let generics = ecx.tcx.lookup_generics(m.def_id);
-                let types = generics.parent_types as usize + generics.types.len();
-                let needs_inline = types > 0 || is_default_impl ||
-                    attr::requests_inline(&impl_item.attrs);
-                if needs_inline || sig.constness == hir::Constness::Const {
-                    encode_inlined_item(
-                        ecx,
-                        rbml_w,
-                        InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
-                                                 impl_item));
-                    self.encode_mir(rbml_w, impl_item.id);
+            if let Some(impl_item) = impl_item_opt {
+                if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
+                    encode_attributes(rbml_w, &impl_item.attrs);
+                    let generics = ecx.tcx.lookup_generics(m.def_id);
+                    let types = generics.parent_types as usize + generics.types.len();
+                    let needs_inline = types > 0 || is_default_impl ||
+                        attr::requests_inline(&impl_item.attrs);
+                    if needs_inline || sig.constness == hir::Constness::Const {
+                        encode_inlined_item(
+                            ecx,
+                            rbml_w,
+                            InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
+                                                     impl_item));
+                        this.encode_mir(rbml_w, impl_item.id);
+                    }
+                    encode_constness(rbml_w, sig.constness);
+                    encode_defaultness(rbml_w, impl_item.defaultness);
+                    this.encode_method_argument_names(rbml_w, &sig.decl);
                 }
-                encode_constness(rbml_w, sig.constness);
-                encode_defaultness(rbml_w, impl_item.defaultness);
-                self.encode_method_argument_names(rbml_w, &sig.decl);
             }
-        }
-
-        rbml_w.end_tag();
+        });
     }
 
     fn encode_info_for_associated_type(&mut self,
@@ -639,38 +626,37 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
                associated_type.def_id,
                associated_type.name);
 
-        let _task = self.record(associated_type.def_id, rbml_w);
-        rbml_w.start_tag(tag_items_data_item);
+        self.record(associated_type.def_id, rbml_w, |this, rbml_w| {
+            encode_def_id_and_key(ecx, rbml_w, associated_type.def_id);
+            encode_name(rbml_w, associated_type.name);
+            this.encode_visibility(rbml_w, associated_type.vis);
+            encode_family(rbml_w, 'y');
+            this.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
+            encode_item_sort(rbml_w, 't');
 
-        encode_def_id_and_key(ecx, rbml_w, associated_type.def_id);
-        encode_name(rbml_w, associated_type.name);
-        self.encode_visibility(rbml_w, associated_type.vis);
-        encode_family(rbml_w, 'y');
-        self.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
-        encode_item_sort(rbml_w, 't');
+            let stab = ecx.tcx.lookup_stability(associated_type.def_id);
+            let depr = ecx.tcx.lookup_deprecation(associated_type.def_id);
+            encode_stability(rbml_w, stab);
+            encode_deprecation(rbml_w, depr);
 
-        let stab = ecx.tcx.lookup_stability(associated_type.def_id);
-        let depr = ecx.tcx.lookup_deprecation(associated_type.def_id);
-        encode_stability(rbml_w, stab);
-        encode_deprecation(rbml_w, depr);
+            if let Some(ii) = impl_item_opt {
+                encode_attributes(rbml_w, &ii.attrs);
+                encode_defaultness(rbml_w, ii.defaultness);
+            } else {
+                // TODO this looks bogus and unnecessary
+                this.encode_predicates(rbml_w,
+                                       &ecx.tcx.lookup_predicates(associated_type.def_id),
+                                       tag_item_generics);
+            }
 
-        if let Some(ii) = impl_item_opt {
-            encode_attributes(rbml_w, &ii.attrs);
-            encode_defaultness(rbml_w, ii.defaultness);
-        } else {
-            // TODO this looks bogus and unnecessary
-            self.encode_predicates(rbml_w,
-                                   &ecx.tcx.lookup_predicates(associated_type.def_id),
-                                   tag_item_generics);
-        }
-
-        if let Some(ty) = associated_type.ty {
-            self.encode_type(rbml_w, ty);
-        }
-
-        rbml_w.end_tag();
+            if let Some(ty) = associated_type.ty {
+                this.encode_type(rbml_w, ty);
+            }
+        });
     }
+}
 
+impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
     fn encode_method_argument_names(&mut self,
                                     rbml_w: &mut Encoder,
                                     decl: &hir::FnDecl) {
@@ -686,9 +672,7 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
         }
         rbml_w.end_tag();
     }
-}
 
-impl<'a, 'tcx> ItemContentBuilder<'a, 'tcx> {
     fn encode_repr_attrs(&mut self,
                          rbml_w: &mut Encoder,
                          attrs: &[ast::Attribute]) {
@@ -802,120 +786,114 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
 
         match item.node {
             hir::ItemStatic(_, m, _) => {
-                let _task = self.record(def_id, rbml_w);
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                if m == hir::MutMutable {
-                    encode_family(rbml_w, 'b');
-                } else {
-                    encode_family(rbml_w, 'c');
-                }
-                self.encode_bounds_and_type_for_item(rbml_w, item.id);
-                encode_name(rbml_w, item.name);
-                self.encode_visibility(rbml_w, vis);
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                encode_attributes(rbml_w, &item.attrs);
-                rbml_w.end_tag();
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    if m == hir::MutMutable {
+                        encode_family(rbml_w, 'b');
+                    } else {
+                        encode_family(rbml_w, 'c');
+                    }
+                    this.encode_bounds_and_type_for_item(rbml_w, item.id);
+                    encode_name(rbml_w, item.name);
+                    this.encode_visibility(rbml_w, vis);
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                    encode_attributes(rbml_w, &item.attrs);
+                });
             }
             hir::ItemConst(_, _) => {
-                let _task = self.record(def_id, rbml_w);
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, 'C');
-                self.encode_bounds_and_type_for_item(rbml_w, item.id);
-                encode_name(rbml_w, item.name);
-                encode_attributes(rbml_w, &item.attrs);
-                encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
-                self.encode_mir(rbml_w, item.id);
-                self.encode_visibility(rbml_w, vis);
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                rbml_w.end_tag();
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, 'C');
+                    this.encode_bounds_and_type_for_item(rbml_w, item.id);
+                    encode_name(rbml_w, item.name);
+                    encode_attributes(rbml_w, &item.attrs);
+                    encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
+                    this.encode_mir(rbml_w, item.id);
+                    this.encode_visibility(rbml_w, vis);
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                });
             }
             hir::ItemFn(ref decl, _, constness, _, ref generics, _) => {
-                let _task = self.record(def_id, rbml_w);
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, FN_FAMILY);
-                let tps_len = generics.ty_params.len();
-                self.encode_bounds_and_type_for_item(rbml_w, item.id);
-                encode_name(rbml_w, item.name);
-                encode_attributes(rbml_w, &item.attrs);
-                let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
-                if needs_inline || constness == hir::Constness::Const {
-                    encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
-                    self.encode_mir(rbml_w, item.id);
-                }
-                encode_constness(rbml_w, constness);
-                self.encode_visibility(rbml_w, vis);
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                self.encode_method_argument_names(rbml_w, &decl);
-                rbml_w.end_tag();
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, FN_FAMILY);
+                    let tps_len = generics.ty_params.len();
+                    this.encode_bounds_and_type_for_item(rbml_w, item.id);
+                    encode_name(rbml_w, item.name);
+                    encode_attributes(rbml_w, &item.attrs);
+                    let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
+                    if needs_inline || constness == hir::Constness::Const {
+                        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
+                        this.encode_mir(rbml_w, item.id);
+                    }
+                    encode_constness(rbml_w, constness);
+                    this.encode_visibility(rbml_w, vis);
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                    this.encode_method_argument_names(rbml_w, &decl);
+                });
             }
             hir::ItemMod(ref m) => {
-                let _task = self.record(def_id, rbml_w);
-                self.encode_info_for_mod(rbml_w,
-                                         m,
-                                         &item.attrs,
-                                         item.id,
-                                         item.name,
-                                         &item.vis);
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    this.encode_info_for_mod(rbml_w,
+                                             m,
+                                             &item.attrs,
+                                             item.id,
+                                             item.name,
+                                             &item.vis);
+                });
             }
             hir::ItemForeignMod(ref fm) => {
-                let _task = self.record(def_id, rbml_w);
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, 'n');
-                encode_name(rbml_w, item.name);
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, 'n');
+                    encode_name(rbml_w, item.name);
 
-                // Encode all the items in this module.
-                for foreign_item in &fm.items {
-                    rbml_w.wr_tagged_u64(tag_mod_child,
-                                         def_to_u64(ecx.tcx.map.local_def_id(foreign_item.id)));
-                }
-                self.encode_visibility(rbml_w, vis);
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                rbml_w.end_tag();
+                    // Encode all the items in this module.
+                    for foreign_item in &fm.items {
+                        rbml_w.wr_tagged_u64(tag_mod_child,
+                                             def_to_u64(ecx.tcx.map.local_def_id(foreign_item.id)));
+                    }
+                    this.encode_visibility(rbml_w, vis);
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                });
             }
             hir::ItemTy(..) => {
-                let _task = self.record(def_id, rbml_w);
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, 'y');
-                self.encode_bounds_and_type_for_item(rbml_w, item.id);
-                encode_name(rbml_w, item.name);
-                self.encode_visibility(rbml_w, vis);
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                rbml_w.end_tag();
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, 'y');
+                    this.encode_bounds_and_type_for_item(rbml_w, item.id);
+                    encode_name(rbml_w, item.name);
+                    this.encode_visibility(rbml_w, vis);
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                });
             }
             hir::ItemEnum(ref enum_definition, _) => {
-                let _task = self.record(def_id, rbml_w);
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, 't');
+                    encode_item_variances(rbml_w, ecx, item.id);
+                    this.encode_bounds_and_type_for_item(rbml_w, item.id);
+                    encode_name(rbml_w, item.name);
+                    encode_attributes(rbml_w, &item.attrs);
+                    this.encode_repr_attrs(rbml_w, &item.attrs);
+                    for v in &enum_definition.variants {
+                        encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.data.id()));
+                    }
+                    encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
+                    this.encode_mir(rbml_w, item.id);
 
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, 't');
-                encode_item_variances(rbml_w, ecx, item.id);
-                self.encode_bounds_and_type_for_item(rbml_w, item.id);
-                encode_name(rbml_w, item.name);
-                encode_attributes(rbml_w, &item.attrs);
-                self.encode_repr_attrs(rbml_w, &item.attrs);
-                for v in &enum_definition.variants {
-                    encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.data.id()));
-                }
-                encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
-                self.encode_mir(rbml_w, item.id);
+                    // Encode inherent implementations for this enumeration.
+                    encode_inherent_implementations(ecx, rbml_w, def_id);
 
-                // Encode inherent implementations for this enumeration.
-                encode_inherent_implementations(ecx, rbml_w, def_id);
-
-                self.encode_visibility(rbml_w, vis);
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                rbml_w.end_tag();
+                    this.encode_visibility(rbml_w, vis);
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                });
 
                 self.encode_enum_variant_info(rbml_w,
                                               def_id,
@@ -923,47 +901,44 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
             }
             hir::ItemStruct(ref struct_def, _) => {
                 /* Index the class*/
-                let _task = self.record(def_id, rbml_w);
-
                 let def = ecx.tcx.lookup_adt_def(def_id);
                 let variant = def.struct_variant();
 
-                /* Now, make an item for the class itself */
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, match *struct_def {
-                    hir::VariantData::Struct(..) => 'S',
-                    hir::VariantData::Tuple(..) => 's',
-                    hir::VariantData::Unit(..) => 'u',
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    /* Now, make an item for the class itself */
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, match *struct_def {
+                        hir::VariantData::Struct(..) => 'S',
+                        hir::VariantData::Tuple(..) => 's',
+                        hir::VariantData::Unit(..) => 'u',
+                    });
+                    this.encode_bounds_and_type_for_item(rbml_w, item.id);
+
+                    encode_item_variances(rbml_w, ecx, item.id);
+                    encode_name(rbml_w, item.name);
+                    encode_attributes(rbml_w, &item.attrs);
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                    this.encode_visibility(rbml_w, vis);
+                    this.encode_repr_attrs(rbml_w, &item.attrs);
+
+                    /* Encode def_ids for each field and method
+                    for methods, write all the stuff get_trait_method
+                    needs to know*/
+                    this.encode_struct_fields(rbml_w, variant);
+
+                    encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
+                    this.encode_mir(rbml_w, item.id);
+
+                    // Encode inherent implementations for this structure.
+                    encode_inherent_implementations(ecx, rbml_w, def_id);
+
+                    if !struct_def.is_struct() {
+                        let ctor_did = ecx.tcx.map.local_def_id(struct_def.id());
+                        rbml_w.wr_tagged_u64(tag_items_data_item_struct_ctor,
+                                             def_to_u64(ctor_did));
+                    }
                 });
-                self.encode_bounds_and_type_for_item(rbml_w, item.id);
-
-                encode_item_variances(rbml_w, ecx, item.id);
-                encode_name(rbml_w, item.name);
-                encode_attributes(rbml_w, &item.attrs);
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                self.encode_visibility(rbml_w, vis);
-                self.encode_repr_attrs(rbml_w, &item.attrs);
-
-                /* Encode def_ids for each field and method
-                for methods, write all the stuff get_trait_method
-                needs to know*/
-                self.encode_struct_fields(rbml_w, variant);
-
-                encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(def_id, item));
-                self.encode_mir(rbml_w, item.id);
-
-                // Encode inherent implementations for this structure.
-                encode_inherent_implementations(ecx, rbml_w, def_id);
-
-                if !struct_def.is_struct() {
-                    let ctor_did = ecx.tcx.map.local_def_id(struct_def.id());
-                    rbml_w.wr_tagged_u64(tag_items_data_item_struct_ctor,
-                                         def_to_u64(ctor_did));
-                }
-
-                rbml_w.end_tag();
 
                 for field in &variant.fields {
                     self.encode_field(rbml_w, field);
@@ -975,81 +950,81 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
                 }
             }
             hir::ItemDefaultImpl(unsafety, _) => {
-                let _task = self.record(def_id, rbml_w);
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, 'd');
-                encode_name(rbml_w, item.name);
-                encode_unsafety(rbml_w, unsafety);
+                self.record(def_id, rbml_w, |_this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, 'd');
+                    encode_name(rbml_w, item.name);
+                    encode_unsafety(rbml_w, unsafety);
 
-                let trait_ref = tcx.impl_trait_ref(ecx.tcx.map.local_def_id(item.id)).unwrap();
-                encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
-                rbml_w.end_tag();
+                    let trait_ref = tcx.impl_trait_ref(ecx.tcx.map.local_def_id(item.id)).unwrap();
+                    encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
+                });
             }
             hir::ItemImpl(unsafety, polarity, _, _, _, ref ast_items) => {
-                let _task = self.record(def_id, rbml_w);
-
                 // We need to encode information about the default methods we
                 // have inherited, so we drive this based on the impl structure.
                 let impl_items = tcx.impl_items.borrow();
-                let items = impl_items.get(&def_id).unwrap();
+                let items = &impl_items[&def_id];
 
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, 'i');
-                self.encode_bounds_and_type_for_item(rbml_w, item.id);
-                encode_name(rbml_w, item.name);
-                encode_attributes(rbml_w, &item.attrs);
-                encode_unsafety(rbml_w, unsafety);
-                encode_polarity(rbml_w, polarity);
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, 'i');
+                    this.encode_bounds_and_type_for_item(rbml_w, item.id);
+                    encode_name(rbml_w, item.name);
+                    encode_attributes(rbml_w, &item.attrs);
+                    encode_unsafety(rbml_w, unsafety);
+                    encode_polarity(rbml_w, polarity);
 
-                match tcx.custom_coerce_unsized_kinds
-                         .borrow()
-                         .get(&ecx.tcx.map.local_def_id(item.id)) {
-                    Some(&kind) => {
-                        rbml_w.start_tag(tag_impl_coerce_unsized_kind);
-                        kind.encode(rbml_w);
+                    match
+                        tcx.custom_coerce_unsized_kinds
+                           .borrow()
+                           .get(&ecx.tcx.map.local_def_id(item.id))
+                    {
+                        Some(&kind) => {
+                            rbml_w.start_tag(tag_impl_coerce_unsized_kind);
+                            kind.encode(rbml_w);
+                            rbml_w.end_tag();
+                        }
+                        None => {}
+                    }
+
+                    for &item_def_id in items {
+                        rbml_w.start_tag(tag_item_impl_item);
+                        match item_def_id {
+                            ty::ConstTraitItemId(item_def_id) => {
+                                encode_def_id(rbml_w, item_def_id);
+                                encode_item_sort(rbml_w, 'C');
+                            }
+                            ty::MethodTraitItemId(item_def_id) => {
+                                encode_def_id(rbml_w, item_def_id);
+                                encode_item_sort(rbml_w, 'r');
+                            }
+                            ty::TypeTraitItemId(item_def_id) => {
+                                encode_def_id(rbml_w, item_def_id);
+                                encode_item_sort(rbml_w, 't');
+                            }
+                        }
                         rbml_w.end_tag();
                     }
-                    None => {}
-                }
 
-                for &item_def_id in items {
-                    rbml_w.start_tag(tag_item_impl_item);
-                    match item_def_id {
-                        ty::ConstTraitItemId(item_def_id) => {
-                            encode_def_id(rbml_w, item_def_id);
-                            encode_item_sort(rbml_w, 'C');
-                        }
-                        ty::MethodTraitItemId(item_def_id) => {
-                            encode_def_id(rbml_w, item_def_id);
-                            encode_item_sort(rbml_w, 'r');
-                        }
-                        ty::TypeTraitItemId(item_def_id) => {
-                            encode_def_id(rbml_w, item_def_id);
-                            encode_item_sort(rbml_w, 't');
-                        }
+                    let did = ecx.tcx.map.local_def_id(item.id);
+                    if let Some(trait_ref) = tcx.impl_trait_ref(did) {
+                        encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
+
+                        let trait_def = tcx.lookup_trait_def(trait_ref.def_id);
+                        let parent = trait_def.ancestors(did)
+                                              .skip(1)
+                                              .next()
+                                              .and_then(|node| match node {
+                                                  specialization_graph::Node::Impl(parent) =>
+                                                      Some(parent),
+                                                  _ => None,
+                                              });
+                        encode_parent_impl(rbml_w, parent);
                     }
-                    rbml_w.end_tag();
-                }
-                let did = ecx.tcx.map.local_def_id(item.id);
-                if let Some(trait_ref) = tcx.impl_trait_ref(did) {
-                    encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
-
-                    let trait_def = tcx.lookup_trait_def(trait_ref.def_id);
-                    let parent = trait_def.ancestors(did)
-                                          .skip(1)
-                                          .next()
-                                          .and_then(|node| match node {
-                                              specialization_graph::Node::Impl(parent) =>
-                                                  Some(parent),
-                                              _ => None,
-                                          });
-                    encode_parent_impl(rbml_w, parent);
-                }
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                rbml_w.end_tag();
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                });
 
                 // Iterate down the trait items, emitting them. We rely on the
                 // assumption that all of the actually implemented trait items
@@ -1087,157 +1062,157 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
                 }
             }
             hir::ItemTrait(_, _, _, ref ms) => {
-                let _task = self.record(def_id, rbml_w);
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_family(rbml_w, 'I');
-                encode_item_variances(rbml_w, ecx, item.id);
-                let trait_def = tcx.lookup_trait_def(def_id);
-                let trait_predicates = tcx.lookup_predicates(def_id);
-                encode_unsafety(rbml_w, trait_def.unsafety);
-                encode_paren_sugar(rbml_w, trait_def.paren_sugar);
-                encode_defaulted(rbml_w, tcx.trait_has_default_impl(def_id));
-                encode_associated_type_names(rbml_w, &trait_def.associated_type_names);
-                self.encode_generics(rbml_w, &trait_def.generics, &trait_predicates);
-                self.encode_predicates(rbml_w, &tcx.lookup_super_predicates(def_id), tag_item_super_predicates);
-                encode_trait_ref(rbml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
-                encode_name(rbml_w, item.name);
-                encode_attributes(rbml_w, &item.attrs);
-                self.encode_visibility(rbml_w, vis);
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                for &method_def_id in tcx.trait_item_def_ids(def_id).iter() {
-                    rbml_w.start_tag(tag_item_trait_item);
-                    match method_def_id {
-                        ty::ConstTraitItemId(const_def_id) => {
-                            encode_def_id(rbml_w, const_def_id);
-                            encode_item_sort(rbml_w, 'C');
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_family(rbml_w, 'I');
+                    encode_item_variances(rbml_w, ecx, item.id);
+                    let trait_def = tcx.lookup_trait_def(def_id);
+                    let trait_predicates = tcx.lookup_predicates(def_id);
+                    encode_unsafety(rbml_w, trait_def.unsafety);
+                    encode_paren_sugar(rbml_w, trait_def.paren_sugar);
+                    encode_defaulted(rbml_w, tcx.trait_has_default_impl(def_id));
+                    encode_associated_type_names(rbml_w, &trait_def.associated_type_names);
+                    this.encode_generics(rbml_w, &trait_def.generics, &trait_predicates);
+                    this.encode_predicates(rbml_w,
+                                           &tcx.lookup_super_predicates(def_id),
+                                           tag_item_super_predicates);
+                    encode_trait_ref(rbml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
+                    encode_name(rbml_w, item.name);
+                    encode_attributes(rbml_w, &item.attrs);
+                    this.encode_visibility(rbml_w, vis);
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                    for &method_def_id in tcx.trait_item_def_ids(def_id).iter() {
+                        rbml_w.start_tag(tag_item_trait_item);
+                        match method_def_id {
+                            ty::ConstTraitItemId(const_def_id) => {
+                                encode_def_id(rbml_w, const_def_id);
+                                encode_item_sort(rbml_w, 'C');
+                            }
+                            ty::MethodTraitItemId(method_def_id) => {
+                                encode_def_id(rbml_w, method_def_id);
+                                encode_item_sort(rbml_w, 'r');
+                            }
+                            ty::TypeTraitItemId(type_def_id) => {
+                                encode_def_id(rbml_w, type_def_id);
+                                encode_item_sort(rbml_w, 't');
+                            }
                         }
-                        ty::MethodTraitItemId(method_def_id) => {
-                            encode_def_id(rbml_w, method_def_id);
-                            encode_item_sort(rbml_w, 'r');
-                        }
-                        ty::TypeTraitItemId(type_def_id) => {
-                            encode_def_id(rbml_w, type_def_id);
-                            encode_item_sort(rbml_w, 't');
-                        }
+                        rbml_w.end_tag();
+
+                        rbml_w.wr_tagged_u64(tag_mod_child,
+                                             def_to_u64(method_def_id.def_id()));
                     }
-                    rbml_w.end_tag();
 
-                    rbml_w.wr_tagged_u64(tag_mod_child,
-                                         def_to_u64(method_def_id.def_id()));
-                }
-
-                // Encode inherent implementations for this trait.
-                encode_inherent_implementations(ecx, rbml_w, def_id);
-
-                rbml_w.end_tag();
+                    // Encode inherent implementations for this trait.
+                    encode_inherent_implementations(ecx, rbml_w, def_id);
+                });
 
                 // Now output the trait item info for each trait item.
                 let r = tcx.trait_item_def_ids(def_id);
                 for (i, &item_def_id) in r.iter().enumerate() {
                     assert_eq!(item_def_id.def_id().krate, LOCAL_CRATE);
 
-                    let _task = self.record(item_def_id.def_id(), rbml_w);
-                    rbml_w.start_tag(tag_items_data_item);
+                    self.record(item_def_id.def_id(), rbml_w, |this, rbml_w| {
+                        this.encode_parent_item(rbml_w, def_id);
 
-                    self.encode_parent_item(rbml_w, def_id);
+                        let stab = tcx.lookup_stability(item_def_id.def_id());
+                        let depr = tcx.lookup_deprecation(item_def_id.def_id());
+                        encode_stability(rbml_w, stab);
+                        encode_deprecation(rbml_w, depr);
 
-                    let stab = tcx.lookup_stability(item_def_id.def_id());
-                    let depr = tcx.lookup_deprecation(item_def_id.def_id());
-                    encode_stability(rbml_w, stab);
-                    encode_deprecation(rbml_w, depr);
+                        let trait_item_type =
+                            tcx.impl_or_trait_item(item_def_id.def_id());
+                        let is_nonstatic_method;
+                        match trait_item_type {
+                            ty::ConstTraitItem(associated_const) => {
+                                encode_name(rbml_w, associated_const.name);
+                                encode_def_id_and_key(ecx, rbml_w, associated_const.def_id);
+                                this.encode_visibility(rbml_w, associated_const.vis);
 
-                    let trait_item_type =
-                        tcx.impl_or_trait_item(item_def_id.def_id());
-                    let is_nonstatic_method;
-                    match trait_item_type {
-                        ty::ConstTraitItem(associated_const) => {
-                            encode_name(rbml_w, associated_const.name);
-                            encode_def_id_and_key(ecx, rbml_w, associated_const.def_id);
-                            self.encode_visibility(rbml_w, associated_const.vis);
+                                encode_family(rbml_w, 'C');
 
-                            encode_family(rbml_w, 'C');
-
-                            self.encode_bounds_and_type_for_item(
-                                rbml_w,
-                                ecx.local_id(associated_const.def_id));
-
-                            is_nonstatic_method = false;
-                        }
-                        ty::MethodTraitItem(method_ty) => {
-                            let method_def_id = item_def_id.def_id();
-
-                            self.encode_method_ty_fields(rbml_w, &method_ty);
-
-                            match method_ty.explicit_self {
-                                ty::ExplicitSelfCategory::Static => {
-                                    encode_family(rbml_w,
-                                                  STATIC_METHOD_FAMILY);
-                                }
-                                _ => {
-                                    encode_family(rbml_w,
-                                                  METHOD_FAMILY);
-                                }
-                            }
-                            self.encode_bounds_and_type_for_item(rbml_w,
-                                                                 ecx.local_id(method_def_id));
-
-                            is_nonstatic_method = method_ty.explicit_self !=
-                                ty::ExplicitSelfCategory::Static;
-                        }
-                        ty::TypeTraitItem(associated_type) => {
-                            encode_name(rbml_w, associated_type.name);
-                            encode_def_id_and_key(ecx, rbml_w, associated_type.def_id);
-                            encode_item_sort(rbml_w, 't');
-                            encode_family(rbml_w, 'y');
-
-                            if let Some(ty) = associated_type.ty {
-                                self.encode_type(rbml_w, ty);
-                            }
-
-                            is_nonstatic_method = false;
-                        }
-                    }
-
-                    let trait_item = &ms[i];
-                    encode_attributes(rbml_w, &trait_item.attrs);
-                    match trait_item.node {
-                        hir::ConstTraitItem(_, ref default) => {
-                            if default.is_some() {
-                                encode_item_sort(rbml_w, 'C');
-                            } else {
-                                encode_item_sort(rbml_w, 'c');
-                            }
-
-                            encode_inlined_item(ecx, rbml_w,
-                                                InlinedItemRef::TraitItem(def_id, trait_item));
-                            self.encode_mir(rbml_w, trait_item.id);
-                        }
-                        hir::MethodTraitItem(ref sig, ref body) => {
-                            // If this is a static method, we've already
-                            // encoded this.
-                            if is_nonstatic_method {
-                                self.encode_bounds_and_type_for_item(
+                                this.encode_bounds_and_type_for_item(
                                     rbml_w,
-                                    ecx.local_id(item_def_id.def_id()));
-                            }
+                                    ecx.local_id(associated_const.def_id));
 
-                            if body.is_some() {
-                                encode_item_sort(rbml_w, 'p');
+                                is_nonstatic_method = false;
+                            }
+                            ty::MethodTraitItem(method_ty) => {
+                                let method_def_id = item_def_id.def_id();
+
+                                this.encode_method_ty_fields(rbml_w, &method_ty);
+
+                                match method_ty.explicit_self {
+                                    ty::ExplicitSelfCategory::Static => {
+                                        encode_family(rbml_w,
+                                                      STATIC_METHOD_FAMILY);
+                                    }
+                                    _ => {
+                                        encode_family(rbml_w,
+                                                      METHOD_FAMILY);
+                                    }
+                                }
+                                this.encode_bounds_and_type_for_item(rbml_w,
+                                                                     ecx.local_id(method_def_id));
+
+                                is_nonstatic_method = method_ty.explicit_self !=
+                                    ty::ExplicitSelfCategory::Static;
+                            }
+                            ty::TypeTraitItem(associated_type) => {
+                                encode_name(rbml_w, associated_type.name);
+                                encode_def_id_and_key(ecx, rbml_w, associated_type.def_id);
+                                encode_item_sort(rbml_w, 't');
+                                encode_family(rbml_w, 'y');
+
+                                if let Some(ty) = associated_type.ty {
+                                    this.encode_type(rbml_w, ty);
+                                }
+
+                                is_nonstatic_method = false;
+                            }
+                        }
+
+                        let trait_item = &ms[i];
+                        encode_attributes(rbml_w, &trait_item.attrs);
+                        match trait_item.node {
+                            hir::ConstTraitItem(_, ref default) => {
+                                if default.is_some() {
+                                    encode_item_sort(rbml_w, 'C');
+                                } else {
+                                    encode_item_sort(rbml_w, 'c');
+                                }
+
                                 encode_inlined_item(ecx, rbml_w,
                                                     InlinedItemRef::TraitItem(def_id, trait_item));
-                                self.encode_mir(rbml_w, trait_item.id);
-                            } else {
-                                encode_item_sort(rbml_w, 'r');
+                                this.encode_mir(rbml_w, trait_item.id);
                             }
-                            self.encode_method_argument_names(rbml_w, &sig.decl);
+                            hir::MethodTraitItem(ref sig, ref body) => {
+                                // If this is a static method, we've already
+                                // encoded this.
+                                if is_nonstatic_method {
+                                    this.encode_bounds_and_type_for_item(
+                                        rbml_w,
+                                        ecx.local_id(item_def_id.def_id()));
+                                }
+
+                                if body.is_some() {
+                                    encode_item_sort(rbml_w, 'p');
+                                    encode_inlined_item(ecx,
+                                                        rbml_w,
+                                                        InlinedItemRef::TraitItem(
+                                                            def_id,
+                                                            trait_item));
+                                    this.encode_mir(rbml_w, trait_item.id);
+                                } else {
+                                    encode_item_sort(rbml_w, 'r');
+                                }
+                                this.encode_method_argument_names(rbml_w, &sig.decl);
+                            }
+
+                            hir::TypeTraitItem(..) => {}
                         }
-
-                        hir::TypeTraitItem(..) => {}
-                    }
-
-                    rbml_w.end_tag();
+                    });
                 }
             }
             hir::ItemExternCrate(_) | hir::ItemUse(_) => {
@@ -1255,44 +1230,43 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
         let def_id = ecx.tcx.map.local_def_id(nitem.id);
         let abi = ecx.tcx.map.get_foreign_abi(nitem.id);
 
-        let _task = self.record(def_id, rbml_w);
-        rbml_w.start_tag(tag_items_data_item);
-        encode_def_id_and_key(ecx, rbml_w, def_id);
-        let parent_id = ecx.tcx.map.get_parent(nitem.id);
-        self.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
-        self.encode_visibility(rbml_w, &nitem.vis);
-        match nitem.node {
-            hir::ForeignItemFn(ref fndecl, _) => {
-                encode_family(rbml_w, FN_FAMILY);
-                self.encode_bounds_and_type_for_item(rbml_w, nitem.id);
-                encode_name(rbml_w, nitem.name);
-                if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-                    encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(def_id, nitem));
-                    self.encode_mir(rbml_w, nitem.id);
+        self.record(def_id, rbml_w, |this, rbml_w| {
+            encode_def_id_and_key(ecx, rbml_w, def_id);
+            let parent_id = ecx.tcx.map.get_parent(nitem.id);
+            this.encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
+            this.encode_visibility(rbml_w, &nitem.vis);
+            match nitem.node {
+                hir::ForeignItemFn(ref fndecl, _) => {
+                    encode_family(rbml_w, FN_FAMILY);
+                    this.encode_bounds_and_type_for_item(rbml_w, nitem.id);
+                    encode_name(rbml_w, nitem.name);
+                    if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
+                        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(def_id, nitem));
+                        this.encode_mir(rbml_w, nitem.id);
+                    }
+                    encode_attributes(rbml_w, &nitem.attrs);
+                    let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
+                    let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                    this.encode_method_argument_names(rbml_w, &fndecl);
                 }
-                encode_attributes(rbml_w, &nitem.attrs);
-                let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
-                let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                self.encode_method_argument_names(rbml_w, &fndecl);
-            }
-            hir::ForeignItemStatic(_, mutbl) => {
-                if mutbl {
-                    encode_family(rbml_w, 'b');
-                } else {
-                    encode_family(rbml_w, 'c');
+                hir::ForeignItemStatic(_, mutbl) => {
+                    if mutbl {
+                        encode_family(rbml_w, 'b');
+                    } else {
+                        encode_family(rbml_w, 'c');
+                    }
+                    this.encode_bounds_and_type_for_item(rbml_w, nitem.id);
+                    encode_attributes(rbml_w, &nitem.attrs);
+                    let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
+                    let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
+                    encode_stability(rbml_w, stab);
+                    encode_deprecation(rbml_w, depr);
+                    encode_name(rbml_w, nitem.name);
                 }
-                self.encode_bounds_and_type_for_item(rbml_w, nitem.id);
-                encode_attributes(rbml_w, &nitem.attrs);
-                let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
-                let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
-                encode_stability(rbml_w, stab);
-                encode_deprecation(rbml_w, depr);
-                encode_name(rbml_w, nitem.name);
             }
-        }
-        rbml_w.end_tag();
+        });
     }
 }
 
@@ -1316,7 +1290,7 @@ impl<'a, 'data, 'ecx, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'data, 'ecx, 'tc
     }
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         intravisit::walk_ty(self, ty);
-        encode_info_for_ty(ty, self.rbml_w_for_visit_item, self.index);
+        self.index.encode_info_for_ty(ty, self.rbml_w);
     }
 }
 
@@ -1327,12 +1301,11 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
         let ecx = self.ecx();
         if let hir::TyImplTrait(_) = ty.node {
             let def_id = ecx.tcx.map.local_def_id(ty.id);
-            let _task = self.record(def_id, rbml_w);
-            rbml_w.start_tag(tag_items_data_item);
-            encode_def_id_and_key(ecx, rbml_w, def_id);
-            encode_family(rbml_w, 'y');
-            self.encode_bounds_and_type_for_item(rbml_w, ecx, ty.id);
-            rbml_w.end_tag();
+            self.record(def_id, rbml_w, |this, rbml_w| {
+                encode_def_id_and_key(ecx, rbml_w, def_id);
+                encode_family(rbml_w, 'y');
+                this.encode_bounds_and_type_for_item(rbml_w, ty.id);
+            });
         }
     }
 
@@ -1343,24 +1316,21 @@ impl<'a, 'tcx> IndexBuilder<'a, 'tcx> {
             hir::ExprClosure(..) => {
                 let def_id = ecx.tcx.map.local_def_id(expr.id);
 
-                let _task = self.record(def_id, rbml_w);
+                self.record(def_id, rbml_w, |this, rbml_w| {
+                    encode_def_id_and_key(ecx, rbml_w, def_id);
+                    encode_name(rbml_w, syntax::parse::token::intern("<closure>"));
 
-                rbml_w.start_tag(tag_items_data_item);
-                encode_def_id_and_key(ecx, rbml_w, def_id);
-                encode_name(rbml_w, syntax::parse::token::intern("<closure>"));
+                    rbml_w.start_tag(tag_items_closure_ty);
+                    write_closure_type(ecx, rbml_w, &ecx.tcx.tables.borrow().closure_tys[&def_id]);
+                    rbml_w.end_tag();
 
-                rbml_w.start_tag(tag_items_closure_ty);
-                write_closure_type(ecx, rbml_w, &ecx.tcx.tables.borrow().closure_tys[&def_id]);
-                rbml_w.end_tag();
+                    rbml_w.start_tag(tag_items_closure_kind);
+                    ecx.tcx.closure_kind(def_id).encode(rbml_w).unwrap();
+                    rbml_w.end_tag();
 
-                rbml_w.start_tag(tag_items_closure_kind);
-                ecx.tcx.closure_kind(def_id).encode(rbml_w).unwrap();
-                rbml_w.end_tag();
-
-                assert!(ecx.mir_map.map.contains_key(&def_id));
-                self.encode_mir(rbml_w, expr.id);
-
-                rbml_w.end_tag();
+                    assert!(ecx.mir_map.map.contains_key(&def_id));
+                    this.encode_mir(rbml_w, expr.id);
+                });
             }
             _ => { }
         }
@@ -1375,15 +1345,14 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &'a EncodeContext<'a, 'tcx>,
     let mut index = IndexBuilder::new(ecx);
     rbml_w.start_tag(tag_items_data);
 
-    {
-        let _task = index.record(DefId::local(CRATE_DEF_INDEX), rbml_w);
-        index.encode_info_for_mod(rbml_w,
-                                  &krate.module,
-                                  &[],
-                                  CRATE_NODE_ID,
-                                  syntax::parse::token::intern(&ecx.link_meta.crate_name),
-                                  &hir::Public);
-    }
+    index.record(DefId::local(CRATE_DEF_INDEX), rbml_w, |this, rbml_w| {
+        this.encode_info_for_mod(rbml_w,
+                                 &krate.module,
+                                 &[],
+                                 CRATE_NODE_ID,
+                                 syntax::parse::token::intern(&ecx.link_meta.crate_name),
+                                 &hir::Public);
+    });
 
     krate.visit_all_items(&mut EncodeVisitor {
         index: &mut index,
