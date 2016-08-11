@@ -385,6 +385,9 @@ mod prim_slice { }
 ///
 /// [`.as_ptr()`]: #method.as_ptr
 /// [`len()`]: #method.len
+///
+/// Note: This example shows the internals of `&str`. `unsafe` should not be
+/// used to get a string slice under normal circumstances.
 mod prim_str { }
 
 #[doc(primitive = "tuple")]
