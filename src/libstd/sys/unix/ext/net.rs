@@ -110,7 +110,7 @@ impl SocketAddr {
         })
     }
 
-    /// Returns true iff the address is unnamed.
+    /// Returns true if and only if the address is unnamed.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn is_unnamed(&self) -> bool {
         if let AddressKind::Unnamed = self.address() {
