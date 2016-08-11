@@ -26,7 +26,7 @@ fn maybe_stringify<T: StringifyType>(opt: Option<T>) -> &'static str {
     match opt {
         Some(_) => T::stringify_type(),
         None => "none",
-    } 
+    }
 }
 
 fn main() {
