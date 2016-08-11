@@ -10,7 +10,7 @@
 
 //! This module contains files for saving intermediate work-products.
 
-use persist::util::*;
+use persist::fs::*;
 use rustc::dep_graph::{WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::session::config::OutputType;
@@ -35,7 +35,7 @@ pub fn save_trans_partition(sess: &Session,
         files.iter()
              .map(|&(kind, ref path)| {
                  let file_name = format!("cgu-{}.{}", cgu_name, kind.extension());
-                 let path_in_incr_dir = in_incr_comp_dir(sess, &file_name).unwrap();
+                 let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);
                  match link_or_copy(path, &path_in_incr_dir) {
                      Ok(_) => Some((kind, file_name)),
                      Err(err) => {
