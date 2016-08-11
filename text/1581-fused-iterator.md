@@ -1,7 +1,7 @@
 - Feature Name: fused
 - Start Date: 2016-04-15
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1581](https://github.com/rust-lang/rfcs/pull/1581)
+- Rust Issue: [rust-lang/rust#35602](https://github.com/rust-lang/rust/issues/35602)
 
 # Summary
 [summary]: #summary
