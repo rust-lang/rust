@@ -36,8 +36,10 @@ use syntax_pos::{self, DUMMY_SP, Pos};
 use rustc_trans::back::link;
 use rustc::middle::cstore;
 use rustc::middle::privacy::AccessLevels;
+use rustc::middle::resolve_lifetime::DefRegion::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::fold::Folder;
 use rustc::hir::print as pprust;
 use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::ty;
@@ -1636,6 +1638,43 @@ impl PrimitiveType {
     }
 }
 
+
+// Poor man's type parameter substitution at HIR level.
+// Used to replace private type aliases in public signatures with their aliased types.
+struct SubstAlias<'a, 'tcx: 'a> {
+    tcx: &'a ty::TyCtxt<'a, 'tcx, 'tcx>,
+    // Table type parameter definition -> substituted type
+    ty_substs: HashMap<Def, hir::Ty>,
+    // Table node id of lifetime parameter definition -> substituted lifetime
+    lt_substs: HashMap<ast::NodeId, hir::Lifetime>,
+}
+
+impl<'a, 'tcx: 'a, 'b: 'tcx> Folder for SubstAlias<'a, 'tcx> {
+    fn fold_ty(&mut self, ty: P<hir::Ty>) -> P<hir::Ty> {
+        if let hir::TyPath(..) = ty.node {
+            let def = self.tcx.expect_def(ty.id);
+            if let Some(new_ty) = self.ty_substs.get(&def).cloned() {
+                return P(new_ty);
+            }
+        }
+        hir::fold::noop_fold_ty(ty, self)
+    }
+    fn fold_lifetime(&mut self, lt: hir::Lifetime) -> hir::Lifetime {
+        let def = self.tcx.named_region_map.defs.get(&lt.id).cloned();
+        match def {
+            Some(DefEarlyBoundRegion(_, _, node_id)) |
+            Some(DefLateBoundRegion(_, node_id)) |
+            Some(DefFreeRegion(_, node_id)) => {
+                if let Some(lt) = self.lt_substs.get(&node_id).cloned() {
+                    return lt;
+                }
+            }
+            _ => {}
+        }
+        hir::fold::noop_fold_lifetime(lt, self)
+    }
+}
+
 impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         use rustc::hir::*;
@@ -1665,8 +1704,46 @@ impl Clean<Type> for hir::Ty {
                 FixedVector(box ty.clean(cx), n)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
-            TyPath(None, ref p) => {
-                resolve_type(cx, p.clean(cx), self.id)
+            TyPath(None, ref path) => {
+                if let Some(tcx) = cx.tcx_opt() {
+                    // Substitute private type aliases
+                    let def = tcx.expect_def(self.id);
+                    if let Def::TyAlias(def_id) = def {
+                        if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+                            if !cx.access_levels.borrow().is_exported(def_id) {
+                                let item = tcx.map.expect_item(node_id);
+                                if let hir::ItemTy(ref ty, ref generics) = item.node {
+                                    let provided_params = &path.segments.last().unwrap().parameters;
+                                    let mut ty_substs = HashMap::new();
+                                    let mut lt_substs = HashMap::new();
+                                    for (i, ty_param) in generics.ty_params.iter().enumerate() {
+                                        let ty_param_def = tcx.expect_def(ty_param.id);
+                                        if let Some(ty) = provided_params.types().get(i).cloned()
+                                                                                        .cloned() {
+                                            ty_substs.insert(ty_param_def, ty.unwrap());
+                                        } else if let Some(default) = ty_param.default.clone() {
+                                            ty_substs.insert(ty_param_def, default.unwrap());
+                                        }
+                                    }
+                                    for (i, lt_param) in generics.lifetimes.iter().enumerate() {
+                                        if let Some(lt) = provided_params.lifetimes().get(i)
+                                                                                     .cloned()
+                                                                                     .cloned() {
+                                            lt_substs.insert(lt_param.lifetime.id, lt);
+                                        }
+                                    }
+                                    let mut subst_alias = SubstAlias {
+                                        tcx: &tcx,
+                                        ty_substs: ty_substs,
+                                        lt_substs: lt_substs
+                                    };
+                                    return subst_alias.fold_ty(ty.clone()).clean(cx);
+                                }
+                            }
+                        }
+                    }
+                }
+                resolve_type(cx, path.clean(cx), self.id)
             }
             TyPath(Some(ref qself), ref p) => {
                 let mut segments: Vec<_> = p.segments.clone().into();
