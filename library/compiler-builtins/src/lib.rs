@@ -118,23 +118,3 @@ impl IndexMut<RangeFull> for U64 {
         unsafe { &mut *(self as *const _ as *mut u64) }
     }
 }
-
-macro_rules! absv_i2 {
-    ($intrinsic:ident : $ty:ty) => {
-        #[no_mangle]
-        pub extern "C" fn $intrinsic(x: $ty) -> $ty {
-            let n = <$ty>::bits();
-            if x == 1 << (n - 1) {
-                panic!();
-            }
-            let y = x >> (n - 1);
-            (x ^ y) - y
-        }
-
-    }
-}
-
-absv_i2!(__absvsi2: i32);
-absv_i2!(__absvdi2: i64);
-// TODO(rust-lang/35118)?
-// absv_i2!(__absvti2, i128);
