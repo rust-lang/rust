@@ -108,7 +108,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Lvalue::Arg(_) |
             mir::Lvalue::ReturnPointer => bug!(), // handled above
             mir::Lvalue::Static(def_id) => {
-                let const_ty = self.lvalue_ty(lvalue);
+                let const_ty = self.monomorphized_lvalue_ty(lvalue);
                 LvalueRef::new_sized(consts::get_static(ccx, def_id).val,
                                      LvalueTy::from_ty(const_ty))
             },
@@ -200,7 +200,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             ty::TyArray(..) => {
                                 // must cast the lvalue pointer type to the new
                                 // array type (*[%_; new_len]).
-                                let base_ty = self.lvalue_ty(lvalue);
+                                let base_ty = self.monomorphized_lvalue_ty(lvalue);
                                 let llbasety = type_of::type_of(bcx.ccx(), base_ty).ptr_to();
                                 let llbase = bcx.pointercast(llbase, llbasety);
                                 (llbase, ptr::null_mut())
@@ -240,7 +240,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             match self.locals[index] {
                 LocalRef::Lvalue(lvalue) => f(self, lvalue),
                 LocalRef::Operand(None) => {
-                    let lvalue_ty = self.lvalue_ty(lvalue);
+                    let lvalue_ty = self.monomorphized_lvalue_ty(lvalue);
                     let lvalue = LvalueRef::alloca(bcx,
                                                    lvalue_ty,
                                                    "lvalue_temp");
@@ -252,7 +252,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 LocalRef::Operand(Some(_)) => {
                     // See comments in LocalRef::new_operand as to why
                     // we always have Some in a ZST LocalRef::Operand.
-                    let ty = self.lvalue_ty(lvalue);
+                    let ty = self.monomorphized_lvalue_ty(lvalue);
                     if common::type_is_zero_size(bcx.ccx(), ty) {
                         // Pass an undef pointer as no stores can actually occur.
                         let llptr = C_undef(type_of(bcx.ccx(), ty).ptr_to());
@@ -289,9 +289,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    pub fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
+    pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         let tcx = self.fcx.ccx.tcx();
-        let lvalue_ty = self.mir.lvalue_ty(tcx, lvalue);
+        let lvalue_ty = lvalue.ty(&self.mir, tcx);
         self.fcx.monomorphize(&lvalue_ty.to_ty(tcx))
     }
 }

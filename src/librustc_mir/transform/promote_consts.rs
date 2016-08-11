@@ -347,13 +347,13 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                         continue;
                     }
                 }
-                (statement.source_info.span, mir.lvalue_ty(tcx, dest).to_ty(tcx))
+                (statement.source_info.span, dest.ty(mir, tcx).to_ty(tcx))
             }
             Candidate::ShuffleIndices(bb) => {
                 let terminator = mir[bb].terminator();
                 let ty = match terminator.kind {
                     TerminatorKind::Call { ref args, .. } => {
-                        mir.operand_ty(tcx, &args[2])
+                        args[2].ty(mir, tcx)
                     }
                     _ => {
                         span_bug!(terminator.source_info.span,

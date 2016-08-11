@@ -113,75 +113,38 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Mir<'tcx> {
-    pub fn operand_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                      operand: &Operand<'tcx>)
-                      -> Ty<'tcx>
-    {
-        match *operand {
-            Operand::Consume(ref l) => self.lvalue_ty(tcx, l).to_ty(tcx),
-            Operand::Constant(ref c) => c.ty,
-        }
-    }
-
-    pub fn binop_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    op: BinOp,
-                    lhs_ty: Ty<'tcx>,
-                    rhs_ty: Ty<'tcx>)
-                    -> Ty<'tcx>
-    {
-        // FIXME: handle SIMD correctly
-        match op {
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem |
-            BinOp::BitXor | BinOp::BitAnd | BinOp::BitOr => {
-                // these should be integers or floats of the same size.
-                assert_eq!(lhs_ty, rhs_ty);
-                lhs_ty
-            }
-            BinOp::Shl | BinOp::Shr => {
-                lhs_ty // lhs_ty can be != rhs_ty
-            }
-            BinOp::Eq | BinOp::Lt | BinOp::Le |
-            BinOp::Ne | BinOp::Ge | BinOp::Gt => {
-                tcx.types.bool
-            }
-        }
-    }
-
-    pub fn lvalue_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                     lvalue: &Lvalue<'tcx>)
-                     -> LvalueTy<'tcx>
-    {
-        match *lvalue {
-            Lvalue::Var(index) =>
-                LvalueTy::Ty { ty: self.var_decls[index].ty },
-            Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: self.temp_decls[index].ty },
-            Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: self.arg_decls[index].ty },
-            Lvalue::Static(def_id) =>
+impl<'tcx> Lvalue<'tcx> {
+    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx> {
+        match self {
+            &Lvalue::Var(index) =>
+                LvalueTy::Ty { ty: mir.var_decls[index].ty },
+            &Lvalue::Temp(index) =>
+                LvalueTy::Ty { ty: mir.temp_decls[index].ty },
+            &Lvalue::Arg(index) =>
+                LvalueTy::Ty { ty: mir.arg_decls[index].ty },
+            &Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
-            Lvalue::ReturnPointer =>
-                LvalueTy::Ty { ty: self.return_ty.unwrap() },
-            Lvalue::Projection(ref proj) =>
-                self.lvalue_ty(tcx, &proj.base).projection_ty(tcx, &proj.elem)
+            &Lvalue::ReturnPointer =>
+                LvalueTy::Ty { ty: mir.return_ty.unwrap() },
+            &Lvalue::Projection(ref proj) =>
+                proj.base.ty(mir, tcx).projection_ty(tcx, &proj.elem),
         }
     }
+}
 
-    pub fn rvalue_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                     rvalue: &Rvalue<'tcx>)
-                     -> Option<Ty<'tcx>>
+impl<'tcx> Rvalue<'tcx> {
+    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>>
     {
-        match *rvalue {
-            Rvalue::Use(ref operand) => Some(self.operand_ty(tcx, operand)),
-            Rvalue::Repeat(ref operand, ref count) => {
-                let op_ty = self.operand_ty(tcx, operand);
+        match self {
+            &Rvalue::Use(ref operand) => Some(operand.ty(mir, tcx)),
+            &Rvalue::Repeat(ref operand, ref count) => {
+                let op_ty = operand.ty(mir, tcx);
                 let count = count.value.as_u64(tcx.sess.target.uint_type);
                 assert_eq!(count as usize as u64, count);
                 Some(tcx.mk_array(op_ty, count as usize))
             }
-            Rvalue::Ref(reg, bk, ref lv) => {
-                let lv_ty = self.lvalue_ty(tcx, lv).to_ty(tcx);
+            &Rvalue::Ref(reg, bk, ref lv) => {
+                let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
                 Some(tcx.mk_ref(
                     tcx.mk_region(reg),
                     ty::TypeAndMut {
@@ -190,31 +153,31 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
                     }
                 ))
             }
-            Rvalue::Len(..) => Some(tcx.types.usize),
-            Rvalue::Cast(_, _, ty) => Some(ty),
-            Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
-                let lhs_ty = self.operand_ty(tcx, lhs);
-                let rhs_ty = self.operand_ty(tcx, rhs);
-                Some(self.binop_ty(tcx, op, lhs_ty, rhs_ty))
+            &Rvalue::Len(..) => Some(tcx.types.usize),
+            &Rvalue::Cast(_, _, ty) => Some(ty),
+            &Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = lhs.ty(mir, tcx);
+                let rhs_ty = rhs.ty(mir, tcx);
+                Some(op.ty(tcx, lhs_ty, rhs_ty))
             }
-            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
-                let lhs_ty = self.operand_ty(tcx, lhs);
-                let rhs_ty = self.operand_ty(tcx, rhs);
-                let ty = self.binop_ty(tcx, op, lhs_ty, rhs_ty);
+            &Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = lhs.ty(mir, tcx);
+                let rhs_ty = rhs.ty(mir, tcx);
+                let ty = op.ty(tcx, lhs_ty, rhs_ty);
                 let ty = tcx.mk_tup(vec![ty, tcx.types.bool]);
                 Some(ty)
             }
-            Rvalue::UnaryOp(_, ref operand) => {
-                Some(self.operand_ty(tcx, operand))
+            &Rvalue::UnaryOp(_, ref operand) => {
+                Some(operand.ty(mir, tcx))
             }
-            Rvalue::Box(t) => {
+            &Rvalue::Box(t) => {
                 Some(tcx.mk_box(t))
             }
-            Rvalue::Aggregate(ref ak, ref ops) => {
+            &Rvalue::Aggregate(ref ak, ref ops) => {
                 match *ak {
                     AggregateKind::Vec => {
                         if let Some(operand) = ops.get(0) {
-                            let ty = self.operand_ty(tcx, operand);
+                            let ty = operand.ty(mir, tcx);
                             Some(tcx.mk_array(ty, ops.len()))
                         } else {
                             None
@@ -222,7 +185,7 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
                     }
                     AggregateKind::Tuple => {
                         Some(tcx.mk_tup(
-                            ops.iter().map(|op| self.operand_ty(tcx, op)).collect()
+                            ops.iter().map(|op| op.ty(mir, tcx)).collect()
                         ))
                     }
                     AggregateKind::Adt(def, _, substs) => {
@@ -233,7 +196,40 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
                     }
                 }
             }
-            Rvalue::InlineAsm { .. } => None
+            &Rvalue::InlineAsm { .. } => None
+        }
+    }
+}
+
+impl<'tcx> Operand<'tcx> {
+    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+        match self {
+            &Operand::Consume(ref l) => l.ty(mir, tcx).to_ty(tcx),
+            &Operand::Constant(ref c) => c.ty,
+        }
+    }
+}
+
+impl<'tcx> BinOp {
+      pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                    lhs_ty: Ty<'tcx>,
+                    rhs_ty: Ty<'tcx>)
+                    -> Ty<'tcx> {
+        // FIXME: handle SIMD correctly
+        match self {
+            &BinOp::Add | &BinOp::Sub | &BinOp::Mul | &BinOp::Div | &BinOp::Rem |
+            &BinOp::BitXor | &BinOp::BitAnd | &BinOp::BitOr => {
+                // these should be integers or floats of the same size.
+                assert_eq!(lhs_ty, rhs_ty);
+                lhs_ty
+            }
+            &BinOp::Shl | &BinOp::Shr => {
+                lhs_ty // lhs_ty can be != rhs_ty
+            }
+            &BinOp::Eq | &BinOp::Lt | &BinOp::Le |
+            &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
+                tcx.types.bool
+            }
         }
     }
 }

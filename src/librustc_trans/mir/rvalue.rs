@@ -400,7 +400,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 };
                 let operand = OperandRef {
                     val: OperandValue::Immediate(llresult),
-                    ty: self.mir.binop_ty(bcx.tcx(), op, lhs.ty, rhs.ty),
+                    ty: op.ty(bcx.tcx(), lhs.ty, rhs.ty),
                 };
                 (bcx, operand)
             }
@@ -410,7 +410,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let result = self.trans_scalar_checked_binop(&bcx, op,
                                                              lhs.immediate(), rhs.immediate(),
                                                              lhs.ty);
-                let val_ty = self.mir.binop_ty(bcx.tcx(), op, lhs.ty, rhs.ty);
+                let val_ty = op.ty(bcx.tcx(), lhs.ty, rhs.ty);
                 let operand_ty = bcx.tcx().mk_tup(vec![val_ty, bcx.tcx().types.bool]);
                 let operand = OperandRef {
                     val: result,
