@@ -673,13 +673,11 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                                       cfg,
                                                       &mut loader);
         syntax_ext::register_builtins(&mut ecx.syntax_env);
-        let (ret, macro_names) = syntax::ext::expand::expand_crate(ecx,
-                                                                   syntax_exts,
-                                                                   krate);
+        let ret = syntax::ext::expand::expand_crate(&mut ecx, syntax_exts, krate);
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
-        *sess.available_macros.borrow_mut() = macro_names;
+        *sess.available_macros.borrow_mut() = ecx.syntax_env.names;
         ret
     });
 
