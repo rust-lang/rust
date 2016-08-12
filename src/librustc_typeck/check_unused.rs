@@ -49,7 +49,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for UnusedTraitImportVisitor<'a, 'tcx> {
                 }
                 hir::ViewPathList(_, ref path_list) => {
                     for path_item in path_list {
-                        self.check_import(path_item.node.id(), path_item.span);
+                        self.check_import(path_item.node.id, path_item.span);
                     }
                 }
             }

@@ -631,7 +631,7 @@ pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<DeprecationEntry>)) {
-    match tcx.expect_def(item.node.id()) {
+    match tcx.expect_def(item.node.id) {
         Def::PrimTy(..) => {}
         def => {
             maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
