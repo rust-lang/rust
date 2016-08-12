@@ -211,6 +211,17 @@ impl CString {
     /// This method is equivalent to `new` except that no runtime assertion
     /// is made that `v` contains no 0 bytes, and it requires an actual
     /// byte vector, not anything that can be converted to one with Into.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let raw = b"foo".to_vec();
+    /// unsafe {
+    ///     let c_string = CString::from_vec_unchecked(raw);
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
         v.push(0);
