@@ -28,7 +28,6 @@ use middle::dependency_format::Linkage;
 use rustc::dep_graph::DepNode;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::util::IntTypeExt;
 
 use rustc::hir::svh::Svh;
 use rustc::mir::mir_map::MirMap;
@@ -198,55 +197,53 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
 }
 
 impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
-    fn encode_enum_variant_info(&mut self,
-                                did: DefId,
-                                vis: &hir::Visibility) {
-        debug!("encode_enum_variant_info(did={:?})", did);
+    fn encode_enum_variant_infos(&mut self,
+                                 enum_did: DefId,
+                                 vis: &hir::Visibility) {
+        debug!("encode_enum_variant_info(enum_did={:?})", enum_did);
         let ecx = self.ecx();
-        let repr_hints = ecx.tcx.lookup_repr_hints(did);
-        let repr_type = ecx.tcx.enum_repr_type(repr_hints.get(0));
-        let mut disr_val = repr_type.initial_discriminant(ecx.tcx);
-        let def = ecx.tcx.lookup_adt_def(did);
-        for variant in &def.variants {
-            let vid = variant.did;
-            let variant_node_id = ecx.local_id(vid);
-
+        let def = ecx.tcx.lookup_adt_def(enum_did);
+        for (i, variant) in def.variants.iter().enumerate() {
             for field in &variant.fields {
                 self.encode_field(field);
             }
-
-            self.record(vid, |this| {
-                encode_def_id_and_key(ecx, this.rbml_w, vid);
-                encode_family(this.rbml_w, match variant.kind {
-                    ty::VariantKind::Struct => 'V',
-                    ty::VariantKind::Tuple => 'v',
-                    ty::VariantKind::Unit => 'w',
-                });
-                encode_name(this.rbml_w, variant.name);
-                this.encode_parent_item(did);
-                this.encode_visibility(vis);
-
-                let attrs = ecx.tcx.get_attrs(vid);
-                encode_attributes(this.rbml_w, &attrs);
-                this.encode_repr_attrs(&attrs);
-
-                let stab = ecx.tcx.lookup_stability(vid);
-                let depr = ecx.tcx.lookup_deprecation(vid);
-                encode_stability(this.rbml_w, stab);
-                encode_deprecation(this.rbml_w, depr);
-
-                this.encode_struct_fields(variant);
-
-                let specified_disr_val = variant.disr_val;
-                if specified_disr_val != disr_val {
-                    this.encode_disr_val(specified_disr_val);
-                    disr_val = specified_disr_val;
-                }
-                this.encode_bounds_and_type_for_item(variant_node_id);
-            });
-
-            disr_val = disr_val.wrap_incr();
+            self.record(variant.did, |this| this.encode_enum_variant_info(enum_did, i, vis));
         }
+    }
+}
+
+impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
+    fn encode_enum_variant_info(&mut self,
+                                enum_did: DefId, // enum def-id
+                                index: usize, // variant index
+                                vis: &hir::Visibility) {
+        let ecx = self.ecx;
+        let def = ecx.tcx.lookup_adt_def(enum_did);
+        let variant = &def.variants[index];
+        let vid = variant.did;
+        let variant_node_id = ecx.local_id(vid);
+        encode_def_id_and_key(ecx, self.rbml_w, vid);
+        encode_family(self.rbml_w, match variant.kind {
+            ty::VariantKind::Struct => 'V',
+            ty::VariantKind::Tuple => 'v',
+            ty::VariantKind::Unit => 'w',
+        });
+        encode_name(self.rbml_w, variant.name);
+        self.encode_parent_item(enum_did);
+        self.encode_visibility(vis);
+
+        let attrs = ecx.tcx.get_attrs(vid);
+        encode_attributes(self.rbml_w, &attrs);
+        self.encode_repr_attrs(&attrs);
+
+        let stab = ecx.tcx.lookup_stability(vid);
+        let depr = ecx.tcx.lookup_deprecation(vid);
+        encode_stability(self.rbml_w, stab);
+        encode_deprecation(self.rbml_w, depr);
+
+        self.encode_struct_fields(variant);
+        self.encode_disr_val(variant.disr_val);
+        self.encode_bounds_and_type_for_item(variant_node_id);
     }
 }
 
@@ -1045,7 +1042,7 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                 // no sub-item recording needed in these cases
             }
             hir::ItemEnum(..) => {
-                self.encode_enum_variant_info(def_id, &item.vis);
+                self.encode_enum_variant_infos(def_id, &item.vis);
             }
             hir::ItemStruct(ref struct_def, _) => {
                 self.encode_addl_struct_info(def_id, struct_def.id(), item);

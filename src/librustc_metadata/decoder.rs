@@ -240,11 +240,10 @@ fn reexports<'a>(d: rbml::Doc<'a>) -> reader::TaggedDocsIterator<'a> {
     reader::tagged_docs(d, tag_items_data_item_reexport)
 }
 
-fn variant_disr_val(d: rbml::Doc) -> Option<u64> {
-    reader::maybe_get_doc(d, tag_disr_val).and_then(|val_doc| {
-        reader::with_doc_data(val_doc, |data| {
-            str::from_utf8(data).ok().and_then(|s| s.parse().ok())
-        })
+fn variant_disr_val(d: rbml::Doc) -> u64 {
+    let val_doc = reader::get_doc(d, tag_disr_val);
+    reader::with_doc_data(val_doc, |data| {
+        str::from_utf8(data).unwrap().parse().unwrap()
     })
 }
 
@@ -402,17 +401,10 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
         }
     }
     fn get_enum_variants<'tcx>(cdata: Cmd, doc: rbml::Doc) -> Vec<ty::VariantDefData<'tcx, 'tcx>> {
-        let mut disr_val = 0;
         reader::tagged_docs(doc, tag_items_data_item_variant).map(|p| {
             let did = translated_def_id(cdata, p);
             let item = cdata.lookup_item(did.index);
-
-            if let Some(disr) = variant_disr_val(item) {
-                disr_val = disr;
-            }
-            let disr = disr_val;
-            disr_val = disr_val.wrapping_add(1);
-
+            let disr = variant_disr_val(item);
             ty::VariantDefData {
                 did: did,
                 name: item_name(item),
