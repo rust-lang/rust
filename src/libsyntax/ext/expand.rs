@@ -218,6 +218,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     }
                 });
 
+                let check = !attr::contains_name(&attrs, "rustc_unsafe_macro");
                 // DON'T mark before expansion.
                 fld.cx.insert_macro(ast::MacroDef {
                     ident: ident,
@@ -229,7 +230,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     export: attr::contains_name(&attrs, "macro_export"),
                     allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
                     attrs: attrs,
-                });
+                }, check);
 
                 // macro_rules! has a side effect but expands to nothing.
                 Some(Box::new(MacroScopePlaceholder))
@@ -519,7 +520,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     // We need to error on `#[macro_use] extern crate` when it isn't at the
                     // crate root, because `$crate` won't work properly.
                     for def in self.cx.loader.load_crate(item, self.at_crate_root) {
-                        self.cx.insert_macro(def);
+                        self.cx.insert_macro(def, false);
                     }
                 } else {
                     let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);

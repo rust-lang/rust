@@ -139,6 +139,7 @@ impl BlockAndExtension for BasicBlock {
 
 /// Update a block pointer and return the value.
 /// Use it like `let x = unpack!(block = self.foo(block, foo))`.
+#[rustc_unsafe_macro]
 macro_rules! unpack {
     ($x:ident = $c:expr) => {
         {

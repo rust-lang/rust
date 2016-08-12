@@ -148,6 +148,7 @@ macro_rules! maybe_whole_expr {
 }
 
 /// As maybe_whole_expr, but for things other than expressions
+#[rustc_unsafe_macro]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident) => (
         {
