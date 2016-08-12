@@ -20,7 +20,6 @@ pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
 pub use self::Item_::*;
 pub use self::Mutability::*;
-pub use self::PathListItem_::*;
 pub use self::PrimTy::*;
 pub use self::Stmt_::*;
 pub use self::TraitItem_::*;
@@ -1337,39 +1336,11 @@ pub struct Variant_ {
 pub type Variant = Spanned<Variant_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum PathListItem_ {
-    PathListIdent {
-        name: Name,
-        /// renamed in list, eg `use foo::{bar as baz};`
-        rename: Option<Name>,
-        id: NodeId,
-    },
-    PathListMod {
-        /// renamed in list, eg `use foo::{self as baz};`
-        rename: Option<Name>,
-        id: NodeId,
-    },
-}
-
-impl PathListItem_ {
-    pub fn id(&self) -> NodeId {
-        match *self {
-            PathListIdent { id, .. } | PathListMod { id, .. } => id,
-        }
-    }
-
-    pub fn name(&self) -> Option<Name> {
-        match *self {
-            PathListIdent { name, .. } => Some(name),
-            PathListMod { .. } => None,
-        }
-    }
-
-    pub fn rename(&self) -> Option<Name> {
-        match *self {
-            PathListIdent { rename, .. } | PathListMod { rename, .. } => rename,
-        }
-    }
+pub struct PathListItem_ {
+    pub name: Name,
+    /// renamed in list, eg `use foo::{bar as baz};`
+    pub rename: Option<Name>,
+    pub id: NodeId,
 }
 
 pub type PathListItem = Spanned<PathListItem_>;
