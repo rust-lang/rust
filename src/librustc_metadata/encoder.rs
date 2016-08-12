@@ -203,10 +203,8 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         debug!("encode_enum_variant_info(enum_did={:?})", enum_did);
         let ecx = self.ecx();
         let def = ecx.tcx.lookup_adt_def(enum_did);
+        self.encode_fields(enum_did);
         for (i, variant) in def.variants.iter().enumerate() {
-            for field in &variant.fields {
-                self.encode_field(field);
-            }
             self.record(variant.did, |this| this.encode_enum_variant_info(enum_did, i, vis));
         }
     }
@@ -415,25 +413,42 @@ fn encode_item_sort(rbml_w: &mut Encoder, sort: char) {
 }
 
 impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
+    fn encode_fields(&mut self,
+                     adt_def_id: DefId) {
+        let def = self.ecx.tcx.lookup_adt_def(adt_def_id);
+        for (variant_index, variant) in def.variants.iter().enumerate() {
+            for (field_index, field) in variant.fields.iter().enumerate() {
+                self.record(field.did, |this| this.encode_field(adt_def_id,
+                                                                variant_index,
+                                                                field_index));
+            }
+        }
+    }
+}
+
+impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_field(&mut self,
-                    field: ty::FieldDef<'tcx>) {
+                    adt_def_id: DefId,
+                    variant_index: usize,
+                    field_index: usize) {
         let ecx = self.ecx();
+        let def = ecx.tcx.lookup_adt_def(adt_def_id);
+        let variant = &def.variants[variant_index];
+        let field = &variant.fields[field_index];
 
         let nm = field.name;
         let id = ecx.local_id(field.did);
+        debug!("encode_field: encoding {} {}", nm, id);
 
-        self.record(field.did, |this| {
-            debug!("encode_field: encoding {} {}", nm, id);
-            this.encode_struct_field_family(field.vis);
-            encode_name(this.rbml_w, nm);
-            this.encode_bounds_and_type_for_item(id);
-            encode_def_id_and_key(ecx, this.rbml_w, field.did);
+        self.encode_struct_field_family(field.vis);
+        encode_name(self.rbml_w, nm);
+        self.encode_bounds_and_type_for_item(id);
+        encode_def_id_and_key(ecx, self.rbml_w, field.did);
 
-            let stab = ecx.tcx.lookup_stability(field.did);
-            let depr = ecx.tcx.lookup_deprecation(field.did);
-            encode_stability(this.rbml_w, stab);
-            encode_deprecation(this.rbml_w, depr);
-        });
+        let stab = ecx.tcx.lookup_stability(field.did);
+        let depr = ecx.tcx.lookup_deprecation(field.did);
+        encode_stability(self.rbml_w, stab);
+        encode_deprecation(self.rbml_w, depr);
     }
 }
 
@@ -1064,9 +1079,7 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         let def = ecx.tcx.lookup_adt_def(def_id);
         let variant = def.struct_variant();
 
-        for field in &variant.fields {
-            self.encode_field(field);
-        }
+        self.encode_fields(def_id);
 
         // If this is a tuple-like struct, encode the type of the constructor.
         match variant.kind {
