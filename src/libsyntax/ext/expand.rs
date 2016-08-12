@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, Ident, Mac_, Name, PatKind};
+use ast::{Block, Crate, Ident, Mac_, PatKind};
 use ast::{MacStmtStyle, Stmt, StmtKind, ItemKind};
 use ast;
 use ext::hygiene::Mark;
@@ -28,8 +28,6 @@ use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
 use std_inject;
-
-use std::collections::HashSet;
 
 // A trait for AST nodes and AST node lists into which macro invocations may expand.
 trait MacroGenerable: Sized {
@@ -218,8 +216,7 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     }
                 });
 
-                // DON'T mark before expansion.
-                fld.cx.insert_macro(ast::MacroDef {
+                let def = ast::MacroDef {
                     ident: ident,
                     id: ast::DUMMY_NODE_ID,
                     span: call_site,
@@ -229,10 +226,30 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
                     export: attr::contains_name(&attrs, "macro_export"),
                     allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
                     attrs: attrs,
-                });
+                };
 
-                // macro_rules! has a side effect but expands to nothing.
-                Some(Box::new(MacroScopePlaceholder))
+                fld.cx.insert_macro(def.clone());
+
+                // macro_rules! has a side effect, but expands to nothing.
+                // If keep_macs is true, expands to a MacEager::items instead.
+                if fld.keep_macs {
+                    Some(MacEager::items(SmallVector::one(P(ast::Item {
+                        ident: def.ident,
+                        attrs: def.attrs.clone(),
+                        id: ast::DUMMY_NODE_ID,
+                        node: ast::ItemKind::Mac(ast::Mac {
+                            span: def.span,
+                            node: ast::Mac_ {
+                                path: path.clone(),
+                                tts: def.body.clone(),
+                            }
+                        }),
+                        vis: ast::Visibility::Inherited,
+                        span: def.span,
+                    }))))
+                } else {
+                    Some(Box::new(MacroScopePlaceholder))
+                }
             }
 
             MultiDecorator(..) | MultiModifier(..) => {
@@ -260,7 +277,13 @@ fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attr
     let marked = expanded.fold_with(&mut Marker { mark: mark, expn_id: Some(fld.cx.backtrace()) });
     let configured = marked.fold_with(&mut fld.strip_unconfigured());
     fld.load_macros(&configured);
-    let fully_expanded = configured.fold_with(fld);
+
+    let fully_expanded = if fld.single_step {
+        configured
+    } else {
+        configured.fold_with(fld)
+    };
+
     fld.cx.bt_pop();
     fully_expanded
 }
@@ -490,11 +513,19 @@ pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
 /// A tree-folder that performs macro expansion
 pub struct MacroExpander<'a, 'b:'a> {
     pub cx: &'a mut ExtCtxt<'b>,
+    pub single_step: bool,
+    pub keep_macs: bool,
 }
 
 impl<'a, 'b> MacroExpander<'a, 'b> {
-    pub fn new(cx: &'a mut ExtCtxt<'b>) -> MacroExpander<'a, 'b> {
-        MacroExpander { cx: cx }
+    pub fn new(cx: &'a mut ExtCtxt<'b>,
+               single_step: bool,
+               keep_macs: bool) -> MacroExpander<'a, 'b> {
+        MacroExpander {
+            cx: cx,
+            single_step: single_step,
+            keep_macs: keep_macs
+        }
     }
 
     fn strip_unconfigured(&mut self) -> StripUnconfigured {
@@ -672,38 +703,45 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 }
 
-pub fn expand_crate(mut cx: ExtCtxt,
+pub fn expand_crate(cx: &mut ExtCtxt,
                     user_exts: Vec<NamedSyntaxExtension>,
-                    mut c: Crate) -> (Crate, HashSet<Name>) {
+                    c: Crate) -> Crate {
+    let mut expander = MacroExpander::new(cx, false, false);
+    expand_crate_with_expander(&mut expander, user_exts, c)
+}
+
+// Expands crate using supplied MacroExpander - allows for
+// non-standard expansion behaviour (e.g. step-wise).
+pub fn expand_crate_with_expander(expander: &mut MacroExpander,
+                                  user_exts: Vec<NamedSyntaxExtension>,
+                                  mut c: Crate) -> Crate {
     if std_inject::no_core(&c) {
-        cx.crate_root = None;
+        expander.cx.crate_root = None;
     } else if std_inject::no_std(&c) {
-        cx.crate_root = Some("core");
+        expander.cx.crate_root = Some("core");
     } else {
-        cx.crate_root = Some("std");
+        expander.cx.crate_root = Some("std");
     }
-    let ret = {
-        let mut expander = MacroExpander::new(&mut cx);
 
-        for (name, extension) in user_exts {
-            expander.cx.syntax_env.insert(name, extension);
-        }
+    // User extensions must be added before expander.load_macros is called,
+    // so that macros from external crates shadow user defined extensions.
+    for (name, extension) in user_exts {
+        expander.cx.syntax_env.insert(name, extension);
+    }
 
-        let items = SmallVector::many(c.module.items);
-        expander.load_macros(&items);
-        c.module.items = items.into();
+    let items = SmallVector::many(c.module.items);
+    expander.load_macros(&items);
+    c.module.items = items.into();
 
-        let err_count = cx.parse_sess.span_diagnostic.err_count();
-        let mut ret = expander.fold_crate(c);
-        ret.exported_macros = expander.cx.exported_macros.clone();
+    let err_count = expander.cx.parse_sess.span_diagnostic.err_count();
+    let mut ret = expander.fold_crate(c);
+    ret.exported_macros = expander.cx.exported_macros.clone();
 
-        if cx.parse_sess.span_diagnostic.err_count() > err_count {
-            cx.parse_sess.span_diagnostic.abort_if_errors();
-        }
+    if expander.cx.parse_sess.span_diagnostic.err_count() > err_count {
+        expander.cx.parse_sess.span_diagnostic.abort_if_errors();
+    }
 
-        ret
-    };
-    return (ret, cx.syntax_env.names);
+    ret
 }
 
 // A Marker adds the given mark to the syntax context and
@@ -779,8 +817,8 @@ mod tests {
             Vec::new(), &sess).unwrap();
         // should fail:
         let mut loader = DummyMacroLoader;
-        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
-        expand_crate(ecx, vec![], crate_ast);
+        let mut ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
+        expand_crate(&mut ecx, vec![], crate_ast);
     }
 
     // make sure that macros can't escape modules
@@ -794,8 +832,8 @@ mod tests {
             src,
             Vec::new(), &sess).unwrap();
         let mut loader = DummyMacroLoader;
-        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
-        expand_crate(ecx, vec![], crate_ast);
+        let mut ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
+        expand_crate(&mut ecx, vec![], crate_ast);
     }
 
     // macro_use modules should allow macros to escape
@@ -808,8 +846,8 @@ mod tests {
             src,
             Vec::new(), &sess).unwrap();
         let mut loader = DummyMacroLoader;
-        let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
-        expand_crate(ecx, vec![], crate_ast);
+        let mut ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
+        expand_crate(&mut ecx, vec![], crate_ast);
     }
 
     fn expand_crate_str(crate_str: String) -> ast::Crate {
@@ -817,8 +855,8 @@ mod tests {
         let crate_ast = panictry!(string_to_parser(&ps, crate_str).parse_crate_mod());
         // the cfg argument actually does matter, here...
         let mut loader = DummyMacroLoader;
-        let ecx = ExtCtxt::new(&ps, vec![], test_ecfg(), &mut loader);
-        expand_crate(ecx, vec![], crate_ast).0
+        let mut ecx = ExtCtxt::new(&ps, vec![], test_ecfg(), &mut loader);
+        expand_crate(&mut ecx, vec![], crate_ast)
     }
 
     #[test] fn macro_tokens_should_match(){
