@@ -367,8 +367,8 @@ pub fn walk_path<V: Visitor>(visitor: &mut V, path: &Path) {
 }
 
 pub fn walk_path_list_item<V: Visitor>(visitor: &mut V, _prefix: &Path, item: &PathListItem) {
-    walk_opt_ident(visitor, item.span, item.node.name());
-    walk_opt_ident(visitor, item.span, item.node.rename());
+    visitor.visit_ident(item.span, item.node.name);
+    walk_opt_ident(visitor, item.span, item.node.rename);
 }
 
 pub fn walk_path_segment<V: Visitor>(visitor: &mut V, path_span: Span, segment: &PathSegment) {

@@ -218,16 +218,10 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_path_list_item(&mut self, path_list_ident: &PathListItem) -> hir::PathListItem {
         Spanned {
-            node: match path_list_ident.node {
-                PathListItemKind::Ident { id, name, rename } => hir::PathListIdent {
-                    id: id,
-                    name: name.name,
-                    rename: rename.map(|x| x.name),
-                },
-                PathListItemKind::Mod { id, rename } => hir::PathListMod {
-                    id: id,
-                    rename: rename.map(|x| x.name),
-                },
+            node: hir::PathListIdent {
+                id: path_list_ident.node.id,
+                name: path_list_ident.node.name.name,
+                rename: path_list_ident.node.rename.map(|rename| rename.name),
             },
             span: path_list_ident.span,
         }

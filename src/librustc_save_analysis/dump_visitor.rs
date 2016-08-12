@@ -1102,18 +1102,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                     }
                     ast::ViewPathList(ref path, ref list) => {
                         for plid in list {
-                            match plid.node {
-                                ast::PathListItemKind::Ident { id, .. } => {
-                                    let scope = self.cur_scope;
-                                    if let Some(def_id) = self.lookup_type_ref(id) {
-                                        self.process_def_kind(id,
-                                                              plid.span,
-                                                              Some(plid.span),
-                                                              def_id,
-                                                              scope);
-                                    }
-                                }
-                                ast::PathListItemKind::Mod { .. } => (),
+                            let scope = self.cur_scope;
+                            let id = plid.node.id;
+                            if let Some(def_id) = self.lookup_type_ref(id) {
+                                let span = plid.span;
+                                self.process_def_kind(id, span, Some(span), def_id, scope);
                             }
                         }
 

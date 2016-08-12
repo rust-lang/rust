@@ -2878,26 +2878,13 @@ impl<'a> State<'a> {
                     try!(word(&mut self.s, "::{"));
                 }
                 try!(self.commasep(Inconsistent, &idents[..], |s, w| {
-                    match w.node {
-                        ast::PathListItemKind::Ident { name, rename, .. } => {
-                            try!(s.print_ident(name));
-                            if let Some(ident) = rename {
-                                try!(space(&mut s.s));
-                                try!(s.word_space("as"));
-                                try!(s.print_ident(ident));
-                            }
-                            Ok(())
-                        },
-                        ast::PathListItemKind::Mod { rename, .. } => {
-                            try!(word(&mut s.s, "self"));
-                            if let Some(ident) = rename {
-                                try!(space(&mut s.s));
-                                try!(s.word_space("as"));
-                                try!(s.print_ident(ident));
-                            }
-                            Ok(())
-                        }
+                    try!(s.print_ident(w.node.name));
+                    if let Some(ident) = w.node.rename {
+                        try!(space(&mut s.s));
+                        try!(s.word_space("as"));
+                        try!(s.print_ident(ident));
                     }
+                    Ok(())
                 }));
                 word(&mut self.s, "}")
             }
