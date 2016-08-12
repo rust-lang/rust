@@ -1399,6 +1399,38 @@ struct Foo<T: 'static> {
 ```
 "##,
 
+E0312: r##"
+A lifetime of reference outlives lifetime of borrowed content.
+
+Erroneous code example:
+
+```compile_fail,E0312
+fn make_child<'human, 'elve>(x: &mut &'human isize, y: &mut &'elve isize) {
+    *x = *y;
+    // error: lifetime of reference outlives lifetime of borrowed content
+}
+```
+
+The compiler cannot determine if the `human` lifetime will live long enough
+to keep up on the elve one. To solve this error, you have to give an
+explicit lifetime hierarchy:
+
+```
+fn make_child<'human, 'elve: 'human>(x: &mut &'human isize,
+                                     y: &mut &'elve isize) {
+    *x = *y; // ok!
+}
+```
+
+Or use the same lifetime for every variable:
+
+```
+fn make_child<'elve>(x: &mut &'elve isize, y: &mut &'elve isize) {
+    *x = *y; // ok!
+}
+```
+"##,
+
 E0398: r##"
 In Rust 1.3, the default object lifetime bounds are expected to change, as
 described in RFC #1156 [1]. You are getting a warning because the compiler
@@ -1674,7 +1706,6 @@ register_diagnostics! {
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
     E0311, // thing may not live long enough
-    E0312, // lifetime of reference outlives lifetime of borrowed content
     E0313, // lifetime of borrowed pointer outlives lifetime of captured variable
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
