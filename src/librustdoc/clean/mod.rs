@@ -2513,7 +2513,7 @@ impl Clean<Vec<Item>> for doctree::Import {
                 let remaining = if !denied {
                     let mut remaining = vec![];
                     for path in list {
-                        match inline::try_inline(cx, path.node.id(), path.node.rename()) {
+                        match inline::try_inline(cx, path.node.id, path.node.rename) {
                             Some(items) => {
                                 ret.extend(items);
                             }
@@ -2581,17 +2581,10 @@ pub struct ViewListIdent {
 
 impl Clean<ViewListIdent> for hir::PathListItem {
     fn clean(&self, cx: &DocContext) -> ViewListIdent {
-        match self.node {
-            hir::PathListIdent { id, name, rename } => ViewListIdent {
-                name: name.clean(cx),
-                rename: rename.map(|r| r.clean(cx)),
-                source: resolve_def(cx, id)
-            },
-            hir::PathListMod { id, rename } => ViewListIdent {
-                name: "self".to_string(),
-                rename: rename.map(|r| r.clean(cx)),
-                source: resolve_def(cx, id)
-            }
+        ViewListIdent {
+            name: self.node.name.clean(cx),
+            rename: self.node.rename.map(|r| r.clean(cx)),
+            source: resolve_def(cx, self.node.id)
         }
     }
 }
