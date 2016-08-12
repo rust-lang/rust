@@ -19,12 +19,12 @@ struct Foo<T: ?Sized> {
 }
 
 pub fn main() {
-    // Test that we cannot convert from *-ptr to &-ptr
+    // Test that we cannot convert from *-ptr to &S and &T
     let x: *const S = &S;
     let y: &S = x; //~ ERROR mismatched types
     let y: &T = x; //~ ERROR mismatched types
 
-    // Test that we cannot convert from *-ptr to &-ptr (mut version)
+    // Test that we cannot convert from *-ptr to &S and &T (mut version)
     let x: *mut S = &mut S;
     let y: &S = x; //~ ERROR mismatched types
     let y: &T = x; //~ ERROR mismatched types
