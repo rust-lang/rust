@@ -62,6 +62,7 @@ use rustc::middle::stability;
 use rustc::session::config::get_unstable_features_setting;
 use rustc::hir;
 use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
+use rustc_data_structures::flock;
 
 use clean::{self, Attributes, GetDefId};
 use doctree;
@@ -651,7 +652,7 @@ fn write_shared(cx: &Context,
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
     try_err!(mkdir(&cx.dst), &cx.dst);
-    let _lock = ::flock::Lock::new(&cx.dst.join(".lock"));
+    let _lock = flock::Lock::new(&cx.dst.join(".lock"));
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
