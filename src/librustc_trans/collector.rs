@@ -796,6 +796,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         ty::TyProjection(_) |
         ty::TyParam(_)      |
         ty::TyInfer(_)      |
+        ty::TyAnon(..)      |
         ty::TyError         => {
             bug!("encountered unexpected type");
         }

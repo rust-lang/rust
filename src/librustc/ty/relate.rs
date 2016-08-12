@@ -582,6 +582,13 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name))
         }
 
+        (&ty::TyAnon(a_def_id, a_substs), &ty::TyAnon(b_def_id, b_substs))
+            if a_def_id == b_def_id =>
+        {
+            let substs = relate_substs(relation, None, a_substs, b_substs)?;
+            Ok(tcx.mk_anon(a_def_id, substs))
+        }
+
         _ =>
         {
             Err(TypeError::Sorts(expected_found(relation, &a, &b)))

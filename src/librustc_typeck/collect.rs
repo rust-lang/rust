@@ -564,13 +564,17 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ty_generic_predicates =
         ty_generic_predicates_for_fn(ccx, &sig.generics, rcvr_ty_predicates);
 
-    let (fty, explicit_self_category) =
+    let (fty, explicit_self_category) = {
+        let anon_scope = match container {
+            ImplContainer(_) => Some(AnonTypeScope::new(&ty_generics)),
+            TraitContainer(_) => None
+        };
         AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                              sig,
-                              untransformed_rcvr_ty);
+                              sig, untransformed_rcvr_ty, anon_scope)
+    };
 
     let def_id = ccx.tcx.map.local_def_id(id);
-    let substs = mk_item_substs(ccx, &ty_generics);
+    let substs = mk_item_substs(ccx.tcx, &ty_generics);
 
     let ty_method = ty::Method::new(name,
                                     ty_generics,
@@ -961,7 +965,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 .map(|field| field.unsubst_ty())
                 .collect();
             let def_id = tcx.map.local_def_id(ctor_id);
-            let substs = mk_item_substs(ccx, &scheme.generics);
+            let substs = mk_item_substs(tcx, &scheme.generics);
             tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: abi::Abi::Rust,
@@ -1190,10 +1194,11 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
         let self_param_ty = tcx.mk_self_type();
         let superbounds1 = compute_bounds(&ccx.icx(scope),
-                                    self_param_ty,
-                                    bounds,
-                                    SizedByDefault::No,
-                                    item.span);
+                                          self_param_ty,
+                                          bounds,
+                                          SizedByDefault::No,
+                                          None,
+                                          item.span);
 
         let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
@@ -1403,6 +1408,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
                                         assoc_ty,
                                         bounds,
                                         SizedByDefault::Yes,
+                                        None,
                                         trait_item.span);
 
             bounds.predicates(ccx.tcx, assoc_ty).into_iter()
@@ -1460,9 +1466,10 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
         hir::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
-            let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
+            let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl,
+                                              Some(AnonTypeScope::new(&ty_generics)));
             let def_id = ccx.tcx.map.local_def_id(it.id);
-            let substs = mk_item_substs(ccx, &ty_generics);
+            let substs = mk_item_substs(tcx, &ty_generics);
             let ty = tcx.mk_fn_def(def_id, substs, tofd);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
@@ -1474,14 +1481,14 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         hir::ItemEnum(ref ei, ref generics) => {
             let def = convert_enum_def(ccx, it, ei);
             let ty_generics = ty_generics_for_type(ccx, generics);
-            let substs = mk_item_substs(ccx, &ty_generics);
+            let substs = mk_item_substs(tcx, &ty_generics);
             let t = tcx.mk_enum(def, substs);
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         hir::ItemStruct(ref si, ref generics) => {
             let def = convert_struct_def(ccx, it, si);
             let ty_generics = ty_generics_for_type(ccx, generics);
-            let substs = mk_item_substs(ccx, &ty_generics);
+            let substs = mk_item_substs(tcx, &ty_generics);
             let t = tcx.mk_struct(def, substs);
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
@@ -1694,10 +1701,10 @@ fn ty_generic_predicates_for_fn<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 }
 
 // Add the Sized bound, unless the type parameter is marked as `?Sized`.
-fn add_unsized_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
-                           bounds: &mut ty::BuiltinBounds,
-                           ast_bounds: &[hir::TyParamBound],
-                           span: Span)
+fn add_unsized_bound<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                       bounds: &mut ty::BuiltinBounds,
+                                       ast_bounds: &[hir::TyParamBound],
+                                       span: Span)
 {
     let tcx = astconv.tcx();
 
@@ -1775,6 +1782,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     param_ty,
                                     &param.bounds,
                                     SizedByDefault::Yes,
+                                    None,
                                     param.span);
         let predicates = bounds.predicates(ccx.tcx, param_ty);
         result.predicates.extend(space, predicates.into_iter());
@@ -2038,34 +2046,52 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     }
 }
 
-enum SizedByDefault { Yes, No, }
+pub enum SizedByDefault { Yes, No, }
 
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
-fn compute_bounds<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
-                        param_ty: ty::Ty<'tcx>,
-                        ast_bounds: &[hir::TyParamBound],
-                        sized_by_default: SizedByDefault,
-                        span: Span)
-                        -> Bounds<'tcx>
+pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                        param_ty: ty::Ty<'tcx>,
+                                        ast_bounds: &[hir::TyParamBound],
+                                        sized_by_default: SizedByDefault,
+                                        anon_scope: Option<AnonTypeScope>,
+                                        span: Span)
+                                        -> Bounds<'tcx>
 {
-    let mut bounds =
-        conv_param_bounds(astconv,
-                          span,
-                          param_ty,
-                          ast_bounds);
+    let tcx = astconv.tcx();
+    let PartitionedBounds {
+        mut builtin_bounds,
+        trait_bounds,
+        region_bounds
+    } = partition_bounds(tcx, span, &ast_bounds);
 
     if let SizedByDefault::Yes = sized_by_default {
-        add_unsized_bound(astconv,
-                          &mut bounds.builtin_bounds,
-                          ast_bounds,
-                          span);
+        add_unsized_bound(astconv, &mut builtin_bounds, ast_bounds, span);
     }
 
-    bounds.trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
+    let mut projection_bounds = vec![];
 
-    bounds
+    let rscope = MaybeWithAnonTypes::new(ExplicitRscope, anon_scope);
+    let mut trait_bounds: Vec<_> = trait_bounds.iter().map(|&bound| {
+        astconv.instantiate_poly_trait_ref(&rscope,
+                                           bound,
+                                           Some(param_ty),
+                                           &mut projection_bounds)
+    }).collect();
+
+    let region_bounds = region_bounds.into_iter().map(|r| {
+        ast_region_to_region(tcx, r)
+    }).collect();
+
+    trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
+
+    Bounds {
+        region_bounds: region_bounds,
+        builtin_bounds: builtin_bounds,
+        trait_bounds: trait_bounds,
+        projection_bounds: projection_bounds,
+    }
 }
 
 /// Converts a specific TyParamBound from the AST into a set of
@@ -2098,53 +2124,17 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
     }
 }
 
-fn conv_poly_trait_ref<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
-                             param_ty: Ty<'tcx>,
-                             trait_ref: &hir::PolyTraitRef,
-                             projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
-                             -> ty::PolyTraitRef<'tcx>
+fn conv_poly_trait_ref<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                         param_ty: Ty<'tcx>,
+                                         trait_ref: &hir::PolyTraitRef,
+                                         projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
+                                         -> ty::PolyTraitRef<'tcx>
 {
     AstConv::instantiate_poly_trait_ref(astconv,
                                         &ExplicitRscope,
                                         trait_ref,
                                         Some(param_ty),
                                         projections)
-}
-
-fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx, 'tcx>,
-                              span: Span,
-                              param_ty: ty::Ty<'tcx>,
-                              ast_bounds: &[hir::TyParamBound])
-                              -> Bounds<'tcx>
-{
-    let tcx = astconv.tcx();
-    let PartitionedBounds {
-        builtin_bounds,
-        trait_bounds,
-        region_bounds
-    } = partition_bounds(tcx, span, &ast_bounds);
-
-    let mut projection_bounds = Vec::new();
-
-    let trait_bounds: Vec<ty::PolyTraitRef> =
-        trait_bounds.iter()
-                    .map(|bound| conv_poly_trait_ref(astconv,
-                                                     param_ty,
-                                                     *bound,
-                                                     &mut projection_bounds))
-                    .collect();
-
-    let region_bounds: Vec<ty::Region> =
-        region_bounds.into_iter()
-                     .map(|r| ast_region_to_region(tcx, r))
-                     .collect();
-
-    Bounds {
-        region_bounds: region_bounds,
-        builtin_bounds: builtin_bounds,
-        trait_bounds: trait_bounds,
-        projection_bounds: projection_bounds,
-    }
 }
 
 fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
@@ -2194,7 +2184,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
         }
     }
 
-    let substs = mk_item_substs(ccx, &ty_generics);
+    let substs = mk_item_substs(ccx.tcx, &ty_generics);
     let t_fn = ccx.tcx.mk_fn_def(id, substs, ccx.tcx.mk_bare_fn(ty::BareFnTy {
         abi: abi,
         unsafety: hir::Unsafety::Unsafe,
@@ -2209,19 +2199,19 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     }
 }
 
-fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                            ty_generics: &ty::Generics<'tcx>)
-                            -> &'tcx Substs<'tcx>
+pub fn mk_item_substs<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                      ty_generics: &ty::Generics)
+                                      -> &'tcx Substs<'tcx>
 {
     let types =
         ty_generics.types.map(
-            |def| ccx.tcx.mk_param_from_def(def));
+            |def| tcx.mk_param_from_def(def));
 
     let regions =
         ty_generics.regions.map(
             |def| def.to_early_bound_region());
 
-    ccx.tcx.mk_substs(Substs::new(types, regions))
+    tcx.mk_substs(Substs::new(types, regions))
 }
 
 /// Checks that all the type parameters on an impl

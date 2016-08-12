@@ -16,7 +16,7 @@ use abi::FnType;
 use adt;
 use common::*;
 use machine;
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TypeFoldable};
 
 use type_::Type;
@@ -112,7 +112,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             }
         }
 
-        ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) | ty::TyError => {
+        ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) |
+        ty::TyAnon(..) | ty::TyError => {
             bug!("fictitious type {:?} in sizing_type_of()", t)
         }
         ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => bug!()
@@ -123,7 +124,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
 
     // FIXME(eddyb) Temporary sanity check for ty::layout.
-    let layout = cx.tcx().normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+    let layout = cx.tcx().normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
         t.layout(&infcx)
     });
     match layout {
@@ -339,10 +340,11 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           }
       }
 
-      ty::TyInfer(..) => bug!("type_of with TyInfer"),
-      ty::TyProjection(..) => bug!("type_of with TyProjection"),
-      ty::TyParam(..) => bug!("type_of with ty_param"),
-      ty::TyError => bug!("type_of with TyError"),
+      ty::TyInfer(..) |
+      ty::TyProjection(..) |
+      ty::TyParam(..) |
+      ty::TyAnon(..) |
+      ty::TyError => bug!("type_of with {:?}", t),
     };
 
     debug!("--> mapped t={:?} to llty={:?}", t, llty);

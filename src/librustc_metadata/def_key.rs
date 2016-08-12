@@ -41,6 +41,7 @@ pub enum DefPathData {
     StructCtor,
     Initializer,
     Binding,
+    ImplTrait,
 }
 
 pub fn simplify_def_key(key: hir_map::DefKey) -> DefKey {
@@ -72,6 +73,7 @@ fn simplify_def_path_data(data: hir_map::DefPathData) -> DefPathData {
         hir_map::DefPathData::StructCtor => DefPathData::StructCtor,
         hir_map::DefPathData::Initializer => DefPathData::Initializer,
         hir_map::DefPathData::Binding(_) => DefPathData::Binding,
+        hir_map::DefPathData::ImplTrait => DefPathData::ImplTrait,
     }
 }
 
@@ -103,5 +105,6 @@ fn recover_def_path_data(data: DefPathData, name: Option<InternedString>) -> hir
         DefPathData::StructCtor => hir_map::DefPathData::StructCtor,
         DefPathData::Initializer => hir_map::DefPathData::Initializer,
         DefPathData::Binding => hir_map::DefPathData::Binding(name.unwrap()),
+        DefPathData::ImplTrait => hir_map::DefPathData::ImplTrait,
     }
 }

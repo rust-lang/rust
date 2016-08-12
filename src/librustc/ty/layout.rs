@@ -558,8 +558,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             (&Univariant { non_zero: true, .. }, &ty::TyStruct(def, substs)) => {
                 let fields = &def.struct_variant().fields;
                 assert_eq!(fields.len(), 1);
-                let ty = normalize_associated_type(infcx, fields[0].ty(tcx, substs));
-                match *ty.layout(infcx)? {
+                match *fields[0].ty(tcx, substs).layout(infcx)? {
                     // FIXME(eddyb) also allow floating-point types here.
                     Scalar { value: Int(_), non_zero: false } |
                     Scalar { value: Pointer, non_zero: false } => {
@@ -577,7 +576,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             (_, &ty::TyStruct(def, substs)) => {
                 Struct::non_zero_field_path(infcx, def.struct_variant().fields
                                                       .iter().map(|field| {
-                    normalize_associated_type(infcx, field.ty(tcx, substs))
+                    field.ty(tcx, substs)
                 }))
             }
 
@@ -593,6 +592,14 @@ impl<'a, 'gcx, 'tcx> Struct {
             // with at least one element?
             (_, &ty::TyArray(ety, d)) if d > 0 => {
                 Struct::non_zero_field_path(infcx, Some(ety).into_iter())
+            }
+
+            (_, &ty::TyProjection(_)) | (_, &ty::TyAnon(..)) => {
+                let normalized = normalize_associated_type(infcx, ty);
+                if ty == normalized {
+                    return Ok(None);
+                }
+                return Struct::non_zero_field_in_type(infcx, normalized);
             }
 
             // Anything else is not a non-zero type.
@@ -762,8 +769,9 @@ fn normalize_associated_type<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 impl<'a, 'gcx, 'tcx> Layout {
     pub fn compute_uncached(ty: Ty<'gcx>,
                             infcx: &InferCtxt<'a, 'gcx, 'tcx>)
-                            -> Result<Layout, LayoutError<'gcx>> {
+                            -> Result<&'gcx Layout, LayoutError<'gcx>> {
         let tcx = infcx.tcx.global_tcx();
+        let success = |layout| Ok(tcx.intern_layout(layout));
         let dl = &tcx.data_layout;
         assert!(!ty.has_infer_types());
 
@@ -795,6 +803,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 if pointee.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
                     Scalar { value: Pointer, non_zero: non_zero }
                 } else {
+                    let pointee = normalize_associated_type(infcx, pointee);
                     let unsized_part = tcx.struct_tail(pointee);
                     let meta = match unsized_part.sty {
                         ty::TySlice(_) | ty::TyStr => {
@@ -860,7 +869,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let element = ty.simd_type(tcx);
                     match *element.layout(infcx)? {
                         Scalar { value, .. } => {
-                            return Ok(Vector {
+                            return success(Vector {
                                 element: value,
                                 count: ty.simd_size(tcx) as u64
                             });
@@ -873,8 +882,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     }
                 }
                 let fields = def.struct_variant().fields.iter().map(|field| {
-                    normalize_associated_type(infcx, field.ty(tcx, substs))
-                        .layout(infcx)
+                    field.ty(tcx, substs).layout(infcx)
                 });
                 let packed = tcx.lookup_packed(def.did);
                 let mut st = Struct::new(dl, packed);
@@ -914,7 +922,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                     let mut st = Struct::new(dl, false);
                     st.extend(dl, drop_flag.iter().map(Ok), ty)?;
-                    return Ok(Univariant { variant: st, non_zero: false });
+                    return success(Univariant { variant: st, non_zero: false });
                 }
 
                 if !dtor && def.variants.iter().all(|v| v.fields.is_empty()) {
@@ -927,7 +935,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     }
 
                     let (discr, signed) = Integer::repr_discr(tcx, hint, min, max);
-                    return Ok(CEnum {
+                    return success(CEnum {
                         discr: discr,
                         signed: signed,
                         min: min as u64,
@@ -950,19 +958,16 @@ impl<'a, 'gcx, 'tcx> Layout {
                     // (Typechecking will reject discriminant-sizing attrs.)
                     assert_eq!(hint, attr::ReprAny);
                     let fields = def.variants[0].fields.iter().map(|field| {
-                        normalize_associated_type(infcx, field.ty(tcx, substs))
-                            .layout(infcx)
+                        field.ty(tcx, substs).layout(infcx)
                     });
                     let mut st = Struct::new(dl, false);
                     st.extend(dl, fields.chain(drop_flag.iter().map(Ok)), ty)?;
-                    return Ok(Univariant { variant: st, non_zero: false });
+                    return success(Univariant { variant: st, non_zero: false });
                 }
 
                 // Cache the substituted and normalized variant field types.
                 let variants = def.variants.iter().map(|v| {
-                    v.fields.iter().map(|field| {
-                        normalize_associated_type(infcx, field.ty(tcx, substs))
-                    }).collect::<Vec<_>>()
+                    v.fields.iter().map(|field| field.ty(tcx, substs)).collect::<Vec<_>>()
                 }).collect::<Vec<_>>();
 
                 if !dtor && variants.len() == 2 && hint == attr::ReprAny {
@@ -982,7 +987,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         if path == &[0] && variants[discr].len() == 1 {
                             match *variants[discr][0].layout(infcx)? {
                                 Scalar { value, .. } => {
-                                    return Ok(RawNullablePointer {
+                                    return success(RawNullablePointer {
                                         nndiscr: discr as u64,
                                         value: value
                                     });
@@ -998,10 +1003,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                         path.push(0); // For GEP through a pointer.
                         path.reverse();
                         let mut st = Struct::new(dl, false);
-                        st.extend(dl, variants[discr].iter().map(|ty| {
-                            ty.layout(infcx)
-                        }), ty)?;
-                        return Ok(StructWrappedNullablePointer {
+                        st.extend(dl, variants[discr].iter().map(|ty| ty.layout(infcx)), ty)?;
+                        return success(StructWrappedNullablePointer {
                             nndiscr: discr as u64,
                             nonnull: st,
                             discrfield: path
@@ -1105,7 +1108,14 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             // Types with no meaningful known layout.
-            ty::TyProjection(_) | ty::TyParam(_) => {
+            ty::TyProjection(_) | ty::TyAnon(..) => {
+                let normalized = normalize_associated_type(infcx, ty);
+                if ty == normalized {
+                    return Err(LayoutError::Unknown(ty));
+                }
+                return normalized.layout(infcx);
+            }
+            ty::TyParam(_) => {
                 return Err(LayoutError::Unknown(ty));
             }
             ty::TyInfer(_) | ty::TyError => {
@@ -1113,7 +1123,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
         };
 
-        Ok(layout)
+        success(layout)
     }
 
     /// Returns true if the layout corresponds to an unsized type.
@@ -1272,8 +1282,7 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
                 // Get a zero-sized variant or a pointer newtype.
                 let zero_or_ptr_variant = |i: usize| {
                     let fields = def.variants[i].fields.iter().map(|field| {
-                        let ty = normalize_associated_type(infcx, &field.ty(tcx, substs));
-                        SizeSkeleton::compute(ty, infcx)
+                        SizeSkeleton::compute(field.ty(tcx, substs), infcx)
                     });
                     let mut ptr = None;
                     for field in fields {
@@ -1320,6 +1329,15 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
                         })
                     }
                     _ => Err(err)
+                }
+            }
+
+            ty::TyProjection(_) | ty::TyAnon(..) => {
+                let normalized = normalize_associated_type(infcx, ty);
+                if ty == normalized {
+                    Err(err)
+                } else {
+                    SizeSkeleton::compute(normalized, infcx)
                 }
             }
 

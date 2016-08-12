@@ -89,14 +89,14 @@ use hir::def_id::DefId;
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, Reveal};
 use rustc::ty::{GenericPredicates, TypeScheme};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, Visibility};
 use rustc::ty::{MethodCall, MethodCallee};
 use rustc::ty::adjustment;
-use rustc::ty::fold::TypeFoldable;
+use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::util::{Representability, IntTypeExt};
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
@@ -172,6 +172,16 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolutionHandler<'gcx, 'tcx>>>>,
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
+
+    // Anonymized types found in explicit return types and their
+    // associated fresh inference variable. Writeback resolves these
+    // variables to get the concrete type, which can be used to
+    // deanonymize TyAnon, after typeck is done with all functions.
+    anon_types: RefCell<DefIdMap<Ty<'tcx>>>,
+
+    // Obligations which will have to be checked at the end of
+    // type-checking, after all functions have been inferred.
+    deferred_obligations: RefCell<Vec<traits::DeferredObligation<'tcx>>>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -384,13 +394,14 @@ pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> CrateCtxt<'a, 'gcx> {
-    pub fn inherited(&'a self, param_env: Option<ty::ParameterEnvironment<'gcx>>)
+    pub fn inherited(&'a self, id: ast::NodeId)
                      -> InheritedBuilder<'a, 'gcx, 'tcx> {
+        let param_env = ParameterEnvironment::for_item(self.tcx, id);
         InheritedBuilder {
             ccx: self,
             infcx: self.tcx.infer_ctxt(Some(ty::Tables::empty()),
-                                       param_env,
-                                       ProjectionMode::AnyFinal)
+                                       Some(param_env),
+                                       Reveal::NotSpecializable)
         }
     }
 }
@@ -408,6 +419,8 @@ impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
                 locals: RefCell::new(NodeMap()),
                 deferred_call_resolutions: RefCell::new(DefIdMap()),
                 deferred_cast_checks: RefCell::new(Vec::new()),
+                anon_types: RefCell::new(DefIdMap()),
+                deferred_obligations: RefCell::new(Vec::new()),
             })
         })
     }
@@ -442,7 +455,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
         match t.node {
             hir::TyFixedLengthVec(_, ref expr) => {
-                check_const_in_type(self.ccx, &expr, self.ccx.tcx.types.usize);
+                check_const_with_type(self.ccx, &expr, self.ccx.tcx.types.usize, expr.id);
             }
             _ => {}
         }
@@ -475,6 +488,31 @@ pub fn check_item_bodies(ccx: &CrateCtxt) -> CompileResult {
     ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemBodiesVisitor { ccx: ccx };
         ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemBody, &mut visit);
+
+        // Process deferred obligations, now that all functions
+        // bodies have been fully inferred.
+        for (&item_id, obligations) in ccx.deferred_obligations.borrow().iter() {
+            // Use the same DepNode as for the body of the original function/item.
+            let def_id = ccx.tcx.map.local_def_id(item_id);
+            let _task = ccx.tcx.dep_graph.in_task(DepNode::TypeckItemBody(def_id));
+
+            let param_env = ParameterEnvironment::for_item(ccx.tcx, item_id);
+            ccx.tcx.infer_ctxt(None, Some(param_env),
+                               Reveal::NotSpecializable).enter(|infcx| {
+                let mut fulfillment_cx = traits::FulfillmentContext::new();
+                for obligation in obligations.iter().map(|o| o.to_obligation()) {
+                    fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+                }
+
+                if let Err(errors) = fulfillment_cx.select_all_or_error(&infcx) {
+                    infcx.report_fulfillment_errors(&errors);
+                }
+
+                if let Err(errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
+                    infcx.report_fulfillment_errors_as_warnings(&errors, item_id);
+                }
+            });
+        }
     })
 }
 
@@ -501,17 +539,14 @@ pub fn check_drop_impls(ccx: &CrateCtxt) -> CompileResult {
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            decl: &'tcx hir::FnDecl,
                            body: &'tcx hir::Block,
-                           fn_id: ast::NodeId,
-                           fn_span: Span,
-                           raw_fty: Ty<'tcx>,
-                           param_env: ty::ParameterEnvironment<'tcx>)
-{
+                           fn_id: ast::NodeId) {
+    let raw_fty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(fn_id)).ty;
     let fn_ty = match raw_fty.sty {
         ty::TyFnDef(_, _, f) => f,
         _ => span_bug!(body.span, "check_bare_fn: function type expected")
     };
 
-    ccx.inherited(Some(param_env)).enter(|inh| {
+    ccx.inherited(fn_id).enter(|inh| {
         // Compute the fty from point of view of inside fn.
         let fn_scope = inh.tcx.region_maps.call_site_extent(fn_id, body.id);
         let fn_sig =
@@ -529,8 +564,8 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         fcx.check_casts();
         fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
 
-        fcx.regionck_fn(fn_id, fn_span, decl, body);
-        fcx.resolve_type_vars_in_fn(decl, body);
+        fcx.regionck_fn(fn_id, decl, body);
+        fcx.resolve_type_vars_in_fn(decl, body, fn_id);
     });
 }
 
@@ -631,32 +666,29 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             body: &'gcx hir::Block)
                             -> FnCtxt<'a, 'gcx, 'tcx>
 {
-    let arg_tys = &fn_sig.inputs;
-    let ret_ty = fn_sig.output;
+    let mut fn_sig = fn_sig.clone();
 
-    debug!("check_fn(arg_tys={:?}, ret_ty={:?}, fn_id={})",
-           arg_tys,
-           ret_ty,
-           fn_id);
+    debug!("check_fn(sig={:?}, fn_id={})", fn_sig, fn_id);
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
-    let fcx = FnCtxt::new(inherited, ret_ty, body.id);
+    let mut fcx = FnCtxt::new(inherited, fn_sig.output, body.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(unsafety, unsafety_id);
 
-    if let ty::FnConverging(ret_ty) = ret_ty {
-        fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
-    }
-
-    debug!("fn-sig-map: fn_id={} fn_sig={:?}", fn_id, fn_sig);
-
-    inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig.clone());
+    fn_sig.output = match fcx.ret_ty {
+        ty::FnConverging(orig_ret_ty) => {
+            fcx.require_type_is_sized(orig_ret_ty, decl.output.span(), traits::ReturnType);
+            ty::FnConverging(fcx.instantiate_anon_types(&orig_ret_ty))
+        }
+        ty::FnDiverging => ty::FnDiverging
+    };
+    fcx.ret_ty = fn_sig.output;
 
     {
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
 
         // Add formal parameters.
-        for (arg_ty, input) in arg_tys.iter().zip(&decl.inputs) {
+        for (arg_ty, input) in fn_sig.inputs.iter().zip(&decl.inputs) {
             // The type of the argument must be well-formed.
             //
             // NB -- this is now checked in wfcheck, but that
@@ -672,20 +704,19 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             });
 
             // Check the pattern.
-            fcx.check_pat(&input.pat, *arg_ty);
+            fcx.check_pat(&input.pat, arg_ty);
+            fcx.write_ty(input.id, arg_ty);
         }
 
         visit.visit_block(body);
     }
 
-    fcx.check_block_with_expected(body, match ret_ty {
+    inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
+
+    fcx.check_block_with_expected(body, match fcx.ret_ty {
         ty::FnConverging(result_type) => ExpectHasType(result_type),
         ty::FnDiverging => NoExpectation
     });
-
-    for (input, arg) in decl.inputs.iter().zip(arg_tys) {
-        fcx.write_ty(input.id, arg);
-    }
 
     fcx
 }
@@ -708,7 +739,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
     match it.node {
       // Consts can play a role in type-checking, so they are included here.
       hir::ItemStatic(_, _, ref e) |
-      hir::ItemConst(_, ref e) => check_const(ccx, it.span, &e, it.id),
+      hir::ItemConst(_, ref e) => check_const(ccx, &e, it.id),
       hir::ItemEnum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
@@ -787,23 +818,18 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
     let _indenter = indenter();
     match it.node {
       hir::ItemFn(ref decl, _, _, _, _, ref body) => {
-        let fn_pty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(it.id));
-        let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
-        check_bare_fn(ccx, &decl, &body, it.id, it.span, fn_pty.ty, param_env);
+        check_bare_fn(ccx, &decl, &body, it.id);
       }
       hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", it.name, it.id);
 
-        let impl_pty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(it.id));
-
         for impl_item in impl_items {
             match impl_item.node {
                 hir::ImplItemKind::Const(_, ref expr) => {
-                    check_const(ccx, impl_item.span, &expr, impl_item.id)
+                    check_const(ccx, &expr, impl_item.id)
                 }
                 hir::ImplItemKind::Method(ref sig, ref body) => {
-                    check_method_body(ccx, &impl_pty.generics, sig, body,
-                                      impl_item.id, impl_item.span);
+                    check_bare_fn(ccx, &sig.decl, body, impl_item.id);
                 }
                 hir::ImplItemKind::Type(_) => {
                     // Nothing to do here.
@@ -812,17 +838,15 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         }
       }
       hir::ItemTrait(_, _, _, ref trait_items) => {
-        let trait_def = ccx.tcx.lookup_trait_def(ccx.tcx.map.local_def_id(it.id));
         for trait_item in trait_items {
             match trait_item.node {
                 hir::ConstTraitItem(_, Some(ref expr)) => {
-                    check_const(ccx, trait_item.span, &expr, trait_item.id)
+                    check_const(ccx, &expr, trait_item.id)
                 }
                 hir::MethodTraitItem(ref sig, Some(ref body)) => {
                     check_trait_fn_not_const(ccx, trait_item.span, sig.constness);
 
-                    check_method_body(ccx, &trait_def.generics, sig, body,
-                                      trait_item.id, trait_item.span);
+                    check_bare_fn(ccx, &sig.decl, body, trait_item.id);
                 }
                 hir::MethodTraitItem(ref sig, None) => {
                     check_trait_fn_not_const(ccx, trait_item.span, sig.constness);
@@ -897,29 +921,6 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    eg `#[rustc_on_unimplemented = \"foo\"]`")
         }
     }
-}
-
-/// Type checks a method body.
-///
-/// # Parameters
-///
-/// * `item_generics`: generics defined on the impl/trait that contains
-///   the method
-/// * `self_bound`: bound for the `Self` type parameter, if any
-/// * `method`: the method definition
-fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                               item_generics: &ty::Generics<'tcx>,
-                               sig: &'tcx hir::MethodSig,
-                               body: &'tcx hir::Block,
-                               id: ast::NodeId, span: Span) {
-    debug!("check_method_body(item_generics={:?}, id={})",
-            item_generics, id);
-    let param_env = ParameterEnvironment::for_item(ccx.tcx, id);
-
-    let fty = ccx.tcx.node_id_to_type(id);
-    debug!("check_method_body: fty={:?}", fty);
-
-    check_bare_fn(ccx, &sig.decl, body, id, span, fty, param_env);
 }
 
 fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1160,30 +1161,39 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-/// Checks a constant appearing in a type. At the moment this is just the
-/// length expression in a fixed-length vector, but someday it might be
-/// extended to type-level numeric literals.
-fn check_const_in_type<'a,'tcx>(ccx: &'a CrateCtxt<'a,'tcx>,
-                                expr: &'tcx hir::Expr,
-                                expected_type: Ty<'tcx>) {
-    ccx.inherited(None).enter(|inh| {
+/// Checks a constant with a given type.
+fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
+                                   expr: &'tcx hir::Expr,
+                                   expected_type: Ty<'tcx>,
+                                   id: ast::NodeId) {
+    ccx.inherited(id).enter(|inh| {
         let fcx = FnCtxt::new(&inh, ty::FnConverging(expected_type), expr.id);
-        fcx.check_const_with_ty(expr.span, expr, expected_type);
+        fcx.require_type_is_sized(expected_type, expr.span, traits::ConstSized);
+
+        // Gather locals in statics (because of block expressions).
+        // This is technically unnecessary because locals in static items are forbidden,
+        // but prevents type checking from blowing up before const checking can properly
+        // emit an error.
+        GatherLocalsVisitor { fcx: &fcx }.visit_expr(expr);
+
+        fcx.check_expr_coercable_to_type(expr, expected_type);
+
+        fcx.select_all_obligations_and_apply_defaults();
+        fcx.closure_analyze_const(expr);
+        fcx.select_obligations_where_possible();
+        fcx.check_casts();
+        fcx.select_all_obligations_or_error();
+
+        fcx.regionck_expr(expr);
+        fcx.resolve_type_vars_in_expr(expr, id);
     });
 }
 
-fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
-                        sp: Span,
-                        e: &'tcx hir::Expr,
-                        id: ast::NodeId) {
-    let param_env = ParameterEnvironment::for_item(ccx.tcx, id);
-    ccx.inherited(Some(param_env)).enter(|inh| {
-        let rty = ccx.tcx.node_id_to_type(id);
-        let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), e.id);
-        let declty = fcx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
-        fcx.require_type_is_sized(declty, e.span, traits::ConstSized);
-        fcx.check_const_with_ty(sp, e, declty);
-    });
+fn check_const<'a, 'tcx>(ccx: &CrateCtxt<'a,'tcx>,
+                         expr: &'tcx hir::Expr,
+                         id: ast::NodeId) {
+    let decl_ty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
+    check_const_with_type(ccx, expr, decl_ty, id);
 }
 
 /// Checks whether a type can be represented in memory. In particular, it
@@ -1252,45 +1262,40 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             "unsupported representation for zero-variant enum");
     }
 
-    ccx.inherited(None).enter(|inh| {
-        let rty = ccx.tcx.node_id_to_type(id);
-        let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), id);
-
-        let repr_type_ty = ccx.tcx.enum_repr_type(Some(&hint)).to_ty(ccx.tcx);
-        for v in vs {
-            if let Some(ref e) = v.node.disr_expr {
-                fcx.check_const_with_ty(e.span, e, repr_type_ty);
-            }
+    let repr_type_ty = ccx.tcx.enum_repr_type(Some(&hint)).to_ty(ccx.tcx);
+    for v in vs {
+        if let Some(ref e) = v.node.disr_expr {
+            check_const_with_type(ccx, e, repr_type_ty, e.id);
         }
+    }
 
-        let def_id = ccx.tcx.map.local_def_id(id);
+    let def_id = ccx.tcx.map.local_def_id(id);
 
-        let variants = &ccx.tcx.lookup_adt_def(def_id).variants;
-        let mut disr_vals: Vec<ty::Disr> = Vec::new();
-        for (v, variant) in vs.iter().zip(variants.iter()) {
-            let current_disr_val = variant.disr_val;
+    let variants = &ccx.tcx.lookup_adt_def(def_id).variants;
+    let mut disr_vals: Vec<ty::Disr> = Vec::new();
+    for (v, variant) in vs.iter().zip(variants.iter()) {
+        let current_disr_val = variant.disr_val;
 
-            // Check for duplicate discriminant values
-            if let Some(i) = disr_vals.iter().position(|&x| x == current_disr_val) {
-                let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
-                let variant_i = ccx.tcx.map.expect_variant(variant_i_node_id);
-                let i_span = match variant_i.node.disr_expr {
-                    Some(ref expr) => expr.span,
-                    None => ccx.tcx.map.span(variant_i_node_id)
-                };
-                let span = match v.node.disr_expr {
-                    Some(ref expr) => expr.span,
-                    None => v.span
-                };
-                struct_span_err!(ccx.tcx.sess, span, E0081,
-                                 "discriminant value `{}` already exists", disr_vals[i])
-                    .span_label(i_span, &format!("first use of `{}`", disr_vals[i]))
-                    .span_label(span , &format!("enum already has `{}`", disr_vals[i]))
-                    .emit();
-            }
-            disr_vals.push(current_disr_val);
+        // Check for duplicate discriminant values
+        if let Some(i) = disr_vals.iter().position(|&x| x == current_disr_val) {
+            let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
+            let variant_i = ccx.tcx.map.expect_variant(variant_i_node_id);
+            let i_span = match variant_i.node.disr_expr {
+                Some(ref expr) => expr.span,
+                None => ccx.tcx.map.span(variant_i_node_id)
+            };
+            let span = match v.node.disr_expr {
+                Some(ref expr) => expr.span,
+                None => v.span
+            };
+            struct_span_err!(ccx.tcx.sess, span, E0081,
+                             "discriminant value `{}` already exists", disr_vals[i])
+                .span_label(i_span, &format!("first use of `{}`", disr_vals[i]))
+                .span_label(span , &format!("enum already has `{}`", disr_vals[i]))
+                .emit();
         }
-    });
+        disr_vals.push(current_disr_val);
+    }
 
     check_representable(ccx.tcx, sp, id, "enum");
 }
@@ -1623,6 +1628,41 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Replace all anonymized types with fresh inference variables
+    /// and record them for writeback.
+    fn instantiate_anon_types<T: TypeFoldable<'tcx>>(&self, value: &T) -> T {
+        value.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
+            if let ty::TyAnon(def_id, substs) = ty.sty {
+                // Use the same type variable if the exact same TyAnon appears more
+                // than once in the return type (e.g. if it's pased to a type alias).
+                if let Some(ty_var) = self.anon_types.borrow().get(&def_id) {
+                    return ty_var;
+                }
+                let ty_var = self.next_ty_var();
+                self.anon_types.borrow_mut().insert(def_id, ty_var);
+
+                let item_predicates = self.tcx.lookup_predicates(def_id);
+                let bounds = item_predicates.instantiate(self.tcx, substs);
+
+                let span = self.tcx.map.def_id_span(def_id, codemap::DUMMY_SP);
+                for predicate in bounds.predicates {
+                    // Change the predicate to refer to the type variable,
+                    // which will be the concrete type, instead of the TyAnon.
+                    // This also instantiates nested `impl Trait`.
+                    let predicate = self.instantiate_anon_types(&predicate);
+
+                    // Require that the predicate holds for the concrete type.
+                    let cause = traits::ObligationCause::new(span, self.body_id,
+                                                             traits::ReturnType);
+                    self.register_predicate(traits::Obligation::new(cause, predicate));
+                }
+
+                ty_var
+            } else {
+                ty
+            }
+        }})
+    }
 
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
         where T : TypeFoldable<'tcx>
@@ -2190,6 +2230,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.select_all_obligations_and_apply_defaults();
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
+
+        // Steal the deferred obligations before the fulfillment
+        // context can turn all of them into errors.
+        let obligations = fulfillment_cx.take_deferred_obligations();
+        self.deferred_obligations.borrow_mut().extend(obligations);
+
         match fulfillment_cx.select_all_or_error(self) {
             Ok(()) => { }
             Err(errors) => { self.report_fulfillment_errors(&errors); }
@@ -3996,29 +4042,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         *self.ps.borrow_mut() = prev;
-    }
-
-
-    fn check_const_with_ty(&self,
-                           _: Span,
-                           e: &'gcx hir::Expr,
-                           declty: Ty<'tcx>) {
-        // Gather locals in statics (because of block expressions).
-        // This is technically unnecessary because locals in static items are forbidden,
-        // but prevents type checking from blowing up before const checking can properly
-        // emit an error.
-        GatherLocalsVisitor { fcx: self }.visit_expr(e);
-
-        self.check_expr_coercable_to_type(e, declty);
-
-        self.select_all_obligations_and_apply_defaults();
-        self.closure_analyze_const(e);
-        self.select_obligations_where_possible();
-        self.check_casts();
-        self.select_all_obligations_or_error();
-
-        self.regionck_expr(e);
-        self.resolve_type_vars_in_expr(e);
     }
 
     // Returns the type parameter count and the type for the given definition.

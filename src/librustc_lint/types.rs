@@ -14,7 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{Layout, Primitive};
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use middle::const_val::ConstVal;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
@@ -596,7 +596,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::TyParam(..) | ty::TyInfer(..) | ty::TyError |
-            ty::TyClosure(..) | ty::TyProjection(..) |
+            ty::TyClosure(..) | ty::TyProjection(..) | ty::TyAnon(..) |
             ty::TyFnDef(..) => {
                 bug!("Unexpected type in foreign function")
             }
@@ -697,7 +697,7 @@ impl LateLintPass for VariantSizeDifferences {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {  // sizes only make sense for non-generic types
                 let t = cx.tcx.node_id_to_type(it.id);
-                let layout = cx.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+                let layout = cx.tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
                     let ty = cx.tcx.erase_regions(&t);
                     ty.layout(&infcx).unwrap_or_else(|e| {
                         bug!("failed to get layout for `{}`: {}", t, e)

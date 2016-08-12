@@ -11,7 +11,7 @@
 use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty;
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, Reveal};
 use rustc::ty::error::ExpectedFound;
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
 use rustc::hir::map::Node;
@@ -213,7 +213,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return;
     }
 
-    tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|mut infcx| {
+    tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|mut infcx| {
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
         // Normalize the associated types in the trait_bounds.
@@ -433,7 +433,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
            impl_trait_ref);
 
     let tcx = ccx.tcx;
-    tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
+    tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
         // The below is for the most part highly similar to the procedure

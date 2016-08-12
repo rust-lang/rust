@@ -1016,7 +1016,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         sty_debug_print!(
             self,
             TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
-            TyTrait, TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
+            TyTrait, TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("BareFnTy interner: #{}", self.interners.bare_fn.borrow().len());
@@ -1353,6 +1353,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_param_from_def(self, def: &ty::TypeParameterDef) -> Ty<'tcx> {
         self.mk_param(def.space, def.index, def.name)
+    }
+
+    pub fn mk_anon(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyAnon(def_id, substs))
     }
 
     pub fn trait_items(self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'gcx>>> {

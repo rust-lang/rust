@@ -17,7 +17,7 @@ use llvm::{ValueRef, get_params};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::{FnSpace, Subst, Substs};
 use rustc::ty::subst;
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, Reveal};
 use abi::FnType;
 use base::*;
 use build::*;
@@ -321,7 +321,7 @@ pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
-            let substs = tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+            let substs = tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
                 let substs = traits::translate_substs(&infcx, impl_def_id,
                                                       substs, node_item.node);
                 tcx.lift(&substs).unwrap_or_else(|| {

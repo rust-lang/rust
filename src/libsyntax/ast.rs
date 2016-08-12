@@ -1368,6 +1368,8 @@ pub enum TyKind {
     ObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
     PolyTraitRef(TyParamBounds),
+    /// An `impl TraitA+TraitB` type.
+    ImplTrait(TyParamBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),
     /// Unused for now

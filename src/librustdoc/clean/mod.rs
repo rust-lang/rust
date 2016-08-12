@@ -1492,6 +1492,9 @@ pub enum Type {
 
     // for<'a> Foo(&'a)
     PolyTraitRef(Vec<TyParamBound>),
+
+    // impl TraitA+TraitB
+    ImplTrait(Vec<TyParamBound>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Copy, Debug)]
@@ -1777,6 +1780,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyPolyTraitRef(ref bounds) => PolyTraitRef(bounds.clean(cx)),
+            TyImplTrait(ref bounds) => ImplTrait(bounds.clean(cx)),
             TyInfer => Infer,
             TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
         }
@@ -1862,6 +1866,18 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyProjection(ref data) => data.clean(cx),
 
             ty::TyParam(ref p) => Generic(p.name.to_string()),
+
+            ty::TyAnon(def_id, substs) => {
+                // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
+                // by looking up the projections associated with the def_id.
+                let item_predicates = cx.tcx().lookup_predicates(def_id);
+                let substs = cx.tcx().lift(&substs).unwrap();
+                let bounds = item_predicates.instantiate(cx.tcx(), substs);
+                let predicates = bounds.predicates.into_vec();
+                ImplTrait(predicates.into_iter().filter_map(|predicate| {
+                    predicate.to_opt_poly_trait_ref().clean(cx)
+                }).collect())
+            }
 
             ty::TyClosure(..) => Tuple(vec![]), // FIXME(pcwalton)
 

@@ -39,7 +39,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
@@ -96,7 +96,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         };
 
         self.tcx
-            .infer_ctxt(None, Some(param_env), ProjectionMode::AnyFinal)
+            .infer_ctxt(None, Some(param_env), Reveal::NotSpecializable)
             .enter(|infcx| f(&mut euv::ExprUseVisitor::new(self, &infcx)))
     }
 

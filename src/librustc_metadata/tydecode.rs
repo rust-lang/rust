@@ -445,6 +445,13 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 let name = token::intern(&self.parse_str(']'));
                 return tcx.mk_projection(trait_ref, name);
             }
+            'A' => {
+                assert_eq!(self.next(), '[');
+                let def_id = self.parse_def();
+                let substs = self.parse_substs();
+                assert_eq!(self.next(), ']');
+                return self.tcx.mk_anon(def_id, self.tcx.mk_substs(substs));
+            }
             'e' => {
                 return tcx.types.err;
             }
