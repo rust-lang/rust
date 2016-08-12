@@ -536,6 +536,9 @@ impl<'a> State<'a> {
             hir::TyPolyTraitRef(ref bounds) => {
                 self.print_bounds("", &bounds[..])?;
             }
+            hir::TyImplTrait(ref bounds) => {
+                self.print_bounds("impl ", &bounds[..])?;
+            }
             hir::TyFixedLengthVec(ref ty, ref v) => {
                 word(&mut self.s, "[")?;
                 self.print_type(&ty)?;

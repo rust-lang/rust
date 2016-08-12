@@ -22,7 +22,7 @@ use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
 use rustc::ty::subst;
 use rustc::ty::subst::Subst;
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
@@ -141,7 +141,7 @@ fn test_env<F>(source_string: &str,
                              index,
                              "test_crate",
                              |tcx| {
-        tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
+        tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
 
             body(Env { infcx: &infcx });
             let free_regions = FreeRegionMap::new();

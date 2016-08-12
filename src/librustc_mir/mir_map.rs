@@ -27,7 +27,7 @@ use hair::cx::Cx;
 
 use rustc::mir::mir_map::MirMap;
 use rustc::infer::InferCtxtBuilder;
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::hir;
@@ -103,7 +103,7 @@ impl<'a, 'gcx, 'tcx> BuildMir<'a, 'gcx> {
         let def_id = self.tcx.map.local_def_id(src.item_id());
         CxBuilder {
             src: src,
-            infcx: self.tcx.infer_ctxt(None, Some(param_env), ProjectionMode::AnyFinal),
+            infcx: self.tcx.infer_ctxt(None, Some(param_env), Reveal::NotSpecializable),
             def_id: def_id,
             map: self.map
         }

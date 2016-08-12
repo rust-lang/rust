@@ -17,7 +17,7 @@ use rustc::infer;
 use middle::region;
 use rustc::ty::subst::{self, Subst};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, Reveal};
 use util::nodemap::FnvHashSet;
 
 use syntax::ast;
@@ -84,7 +84,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     // check that the impl type can be made to match the trait type.
 
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
-    tcx.infer_ctxt(None, Some(impl_param_env), ProjectionMode::AnyFinal).enter(|infcx| {
+    tcx.infer_ctxt(None, Some(impl_param_env), Reveal::NotSpecializable).enter(|infcx| {
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
@@ -499,7 +499,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
         }
 
         // these are always dtorck
-        ty::TyTrait(..) | ty::TyProjection(_) => bug!(),
+        ty::TyTrait(..) | ty::TyProjection(_) | ty::TyAnon(..) => bug!(),
     }
 }
 
@@ -509,7 +509,7 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyEnum(def, _) | ty::TyStruct(def, _) => {
             def.is_dtorck(tcx)
         }
-        ty::TyTrait(..) | ty::TyProjection(..) => {
+        ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);
             true
         },

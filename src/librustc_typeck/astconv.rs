@@ -56,6 +56,7 @@ use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
 use rustc::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
+use rustc::ty::subst::VecPerParamSpace;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -64,6 +65,7 @@ use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
              ElisionFailureInfo, ElidedLifetime};
+use rscope::{AnonTypeScope, MaybeWithAnonTypes};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::{NodeMap, FnvHashSet};
 
@@ -634,20 +636,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn convert_ty_with_lifetime_elision(&self,
                                         elided_lifetime: ElidedLifetime,
-                                        ty: &hir::Ty)
+                                        ty: &hir::Ty,
+                                        anon_scope: Option<AnonTypeScope>)
                                         -> Ty<'tcx>
     {
         match elided_lifetime {
             Ok(implied_output_region) => {
                 let rb = ElidableRscope::new(implied_output_region);
-                self.ast_ty_to_ty(&rb, ty)
+                self.ast_ty_to_ty(&MaybeWithAnonTypes::new(rb, anon_scope), ty)
             }
             Err(param_lifetimes) => {
                 // All regions must be explicitly specified in the output
                 // if the lifetime elision rules do not apply. This saves
                 // the user from potentially-confusing errors.
                 let rb = UnelidableRscope::new(param_lifetimes);
-                self.ast_ty_to_ty(&rb, ty)
+                self.ast_ty_to_ty(&MaybeWithAnonTypes::new(rb, anon_scope), ty)
             }
         }
     }
@@ -664,7 +667,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let region_substs =
             self.create_region_substs(rscope, span, decl_generics, Vec::new());
 
-        let binding_rscope = BindingRscope::new();
+        let anon_scope = rscope.anon_type_scope();
+        let binding_rscope = MaybeWithAnonTypes::new(BindingRscope::new(), anon_scope);
         let inputs =
             data.inputs.iter()
                        .map(|a_t| self.ast_ty_arg_to_ty(&binding_rscope, decl_generics,
@@ -678,7 +682,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let (output, output_span) = match data.output {
             Some(ref output_ty) => {
-                (self.convert_ty_with_lifetime_elision(implied_output_region, &output_ty),
+                (self.convert_ty_with_lifetime_elision(implied_output_region,
+                                                       &output_ty,
+                                                       anon_scope),
                  output_ty.span)
             }
             None => {
@@ -1702,7 +1708,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                let bare_fn_ty = self.ty_of_bare_fn(bf.unsafety, bf.abi, &bf.decl);
+                let anon_scope = rscope.anon_type_scope();
+                let (bare_fn_ty, _) =
+                    self.ty_of_method_or_bare_fn(bf.unsafety,
+                                                 bf.abi,
+                                                 None,
+                                                 &bf.decl,
+                                                 anon_scope,
+                                                 anon_scope);
 
                 // Find any late-bound regions declared in return type that do
                 // not appear in the arguments. These are not wellformed.
@@ -1744,6 +1757,34 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyPolyTraitRef(ref bounds) => {
                 self.conv_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
+            }
+            hir::TyImplTrait(ref bounds) => {
+                use collect::{compute_bounds, SizedByDefault};
+
+                // Create the anonymized type.
+                let def_id = tcx.map.local_def_id(ast_ty.id);
+                if let Some(anon_scope) = rscope.anon_type_scope() {
+                    let substs = anon_scope.fresh_substs(tcx);
+                    let ty = tcx.mk_anon(tcx.map.local_def_id(ast_ty.id), substs);
+
+                    // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
+                    let bounds = compute_bounds(self, ty, bounds,
+                                                SizedByDefault::Yes,
+                                                Some(anon_scope),
+                                                ast_ty.span);
+                    let predicates = bounds.predicates(tcx, ty);
+                    let predicates = tcx.lift_to_global(&predicates).unwrap();
+                    tcx.predicates.borrow_mut().insert(def_id, ty::GenericPredicates {
+                        predicates: VecPerParamSpace::new(vec![], vec![], predicates)
+                    });
+
+                    ty
+                } else {
+                    span_err!(tcx.sess, ast_ty.span, E0562,
+                              "`impl Trait` not allowed outside of function \
+                               and inherent method return types");
+                    tcx.types.err
+                }
             }
             hir::TyPath(ref maybe_qself, ref path) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
@@ -1809,36 +1850,40 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     pub fn ty_of_method(&self,
                         sig: &hir::MethodSig,
-                        untransformed_self_ty: Ty<'tcx>)
+                        untransformed_self_ty: Ty<'tcx>,
+                        anon_scope: Option<AnonTypeScope>)
                         -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory) {
-        let (bare_fn_ty, optional_explicit_self_category) =
-            self.ty_of_method_or_bare_fn(sig.unsafety,
-                                         sig.abi,
-                                         Some(untransformed_self_ty),
-                                         &sig.decl);
-        (bare_fn_ty, optional_explicit_self_category)
+        self.ty_of_method_or_bare_fn(sig.unsafety,
+                                     sig.abi,
+                                     Some(untransformed_self_ty),
+                                     &sig.decl,
+                                     None,
+                                     anon_scope)
     }
 
     pub fn ty_of_bare_fn(&self,
                          unsafety: hir::Unsafety,
                          abi: abi::Abi,
-                         decl: &hir::FnDecl)
+                         decl: &hir::FnDecl,
+                         anon_scope: Option<AnonTypeScope>)
                          -> &'tcx ty::BareFnTy<'tcx> {
-        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl).0
+        self.ty_of_method_or_bare_fn(unsafety, abi, None, decl, None, anon_scope).0
     }
 
-    fn ty_of_method_or_bare_fn<'a>(&self,
-                                   unsafety: hir::Unsafety,
-                                   abi: abi::Abi,
-                                   opt_untransformed_self_ty: Option<Ty<'tcx>>,
-                                   decl: &hir::FnDecl)
-                                   -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory)
+    fn ty_of_method_or_bare_fn(&self,
+                               unsafety: hir::Unsafety,
+                               abi: abi::Abi,
+                               opt_untransformed_self_ty: Option<Ty<'tcx>>,
+                               decl: &hir::FnDecl,
+                               arg_anon_scope: Option<AnonTypeScope>,
+                               ret_anon_scope: Option<AnonTypeScope>)
+                               -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory)
     {
         debug!("ty_of_method_or_bare_fn");
 
         // New region names that appear inside of the arguments of the function
         // declaration are bound to that function type.
-        let rb = rscope::BindingRscope::new();
+        let rb = MaybeWithAnonTypes::new(BindingRscope::new(), arg_anon_scope);
 
         // `implied_output_region` is the region that will be assumed for any
         // region parameters in the return type. In accordance with the rules for
@@ -1876,7 +1921,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let output_ty = match decl.output {
             hir::Return(ref output) =>
                 ty::FnConverging(self.convert_ty_with_lifetime_elision(implied_output_region,
-                                                                       &output)),
+                                                                       &output,
+                                                                       ret_anon_scope)),
             hir::DefaultReturn(..) => ty::FnConverging(self.tcx().mk_nil()),
             hir::NoReturn(..) => ty::FnDiverging
         };

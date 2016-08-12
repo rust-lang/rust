@@ -10,7 +10,8 @@
 
 use dep_graph::DepGraph;
 use infer::{InferCtxt, InferOk};
-use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, TyCtxt};
+use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, TyCtxt, ToPredicate};
+use ty::subst::{Substs, Subst};
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
@@ -22,10 +23,9 @@ use util::nodemap::{FnvHashSet, NodeMap};
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
-use super::FulfillmentError;
-use super::FulfillmentErrorCode;
-use super::ObligationCause;
-use super::PredicateObligation;
+use super::{FulfillmentError, FulfillmentErrorCode, SelectionError};
+use super::{ObligationCause, BuiltinDerivedObligation};
+use super::{PredicateObligation, TraitObligation, Obligation};
 use super::project;
 use super::select::SelectionContext;
 use super::Unimplemented;
@@ -51,6 +51,7 @@ pub struct GlobalFulfilledPredicates<'tcx> {
 /// along. Once all type inference constraints have been generated, the
 /// method `select_all_or_error` can be used to report any remaining
 /// ambiguous cases as errors.
+
 pub struct FulfillmentContext<'tcx> {
     // A list of all obligations that have been registered with this
     // fulfillment context.
@@ -84,6 +85,10 @@ pub struct FulfillmentContext<'tcx> {
     // obligations (otherwise, it's easy to fail to walk to a
     // particular node-id).
     region_obligations: NodeMap<Vec<RegionObligation<'tcx>>>,
+
+    // A list of obligations that need to be deferred to
+    // a later time for them to be properly fulfilled.
+    deferred_obligations: Vec<DeferredObligation<'tcx>>,
 }
 
 #[derive(Clone)]
@@ -99,6 +104,90 @@ pub struct PendingPredicateObligation<'tcx> {
     pub stalled_on: Vec<Ty<'tcx>>,
 }
 
+/// An obligation which cannot be fulfilled in the context
+/// it was registered in, such as auto trait obligations on
+/// `impl Trait`, which require the concrete type to be
+/// available, only guaranteed after finishing type-checking.
+#[derive(Clone, Debug)]
+pub struct DeferredObligation<'tcx> {
+    pub predicate: ty::PolyTraitPredicate<'tcx>,
+    pub cause: ObligationCause<'tcx>
+}
+
+impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
+    /// If possible, create a `DeferredObligation` from
+    /// a trait predicate which had failed selection,
+    /// but could succeed later.
+    pub fn from_select_error(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                             obligation: &TraitObligation<'tcx>,
+                             selection_err: &SelectionError<'tcx>)
+                             -> Option<DeferredObligation<'tcx>> {
+        if let Unimplemented = *selection_err {
+            if DeferredObligation::must_defer(tcx, &obligation.predicate) {
+                return Some(DeferredObligation {
+                    predicate: obligation.predicate.clone(),
+                    cause: obligation.cause.clone()
+                });
+            }
+        }
+
+        None
+    }
+
+    /// Returns true if the given trait predicate can be
+    /// fulfilled at a later time.
+    pub fn must_defer(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                      predicate: &ty::PolyTraitPredicate<'tcx>)
+                      -> bool {
+        // Auto trait obligations on `impl Trait`.
+        if tcx.trait_has_default_impl(predicate.def_id()) {
+            let substs = predicate.skip_binder().trait_ref.substs;
+            if substs.types.as_slice().len() == 1 && substs.regions.is_empty() {
+                if let ty::TyAnon(..) = predicate.skip_binder().self_ty().sty {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    /// If possible, return the nested obligations required
+    /// to fulfill this obligation.
+    pub fn try_select(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                      -> Option<Vec<PredicateObligation<'tcx>>> {
+        if let ty::TyAnon(def_id, substs) = self.predicate.skip_binder().self_ty().sty {
+            // We can resolve the `impl Trait` to its concrete type.
+            if let Some(ty_scheme) = tcx.opt_lookup_item_type(def_id) {
+                let concrete_ty = ty_scheme.ty.subst(tcx, substs);
+                let concrete_substs = Substs::new_trait(vec![], vec![], concrete_ty);
+                let predicate = ty::TraitRef {
+                    def_id: self.predicate.def_id(),
+                    substs: tcx.mk_substs(concrete_substs)
+                }.to_predicate();
+
+                let original_obligation = Obligation::new(self.cause.clone(),
+                                                          self.predicate.clone());
+                let cause = original_obligation.derived_cause(BuiltinDerivedObligation);
+                return Some(vec![Obligation::new(cause, predicate)]);
+            }
+        }
+
+        None
+    }
+
+    /// Return the `PredicateObligation` this was created from.
+    pub fn to_obligation(&self) -> PredicateObligation<'tcx> {
+        let predicate = ty::Predicate::Trait(self.predicate.clone());
+        Obligation::new(self.cause.clone(), predicate)
+    }
+
+    /// Return an error as if this obligation had failed.
+    pub fn to_error(&self) -> FulfillmentError<'tcx> {
+        FulfillmentError::new(self.to_obligation(), CodeSelectionError(Unimplemented))
+    }
+}
+
 impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub fn new() -> FulfillmentContext<'tcx> {
@@ -106,6 +195,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
             predicates: ObligationForest::new(),
             rfc1592_obligations: Vec::new(),
             region_obligations: NodeMap(),
+            deferred_obligations: vec![],
         }
     }
 
@@ -224,10 +314,16 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     {
         self.select_where_possible(infcx)?;
 
+        // Fail all of the deferred obligations that haven't
+        // been otherwise removed from the context.
+        let deferred_errors = self.deferred_obligations.iter()
+                                  .map(|d| d.to_error());
+
         let errors: Vec<_> =
             self.predicates.to_errors(CodeAmbiguity)
                            .into_iter()
                            .map(|e| to_fulfillment_error(e))
+                           .chain(deferred_errors)
                            .collect();
         if errors.is_empty() {
             Ok(())
@@ -248,6 +344,10 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         self.predicates.pending_obligations()
     }
 
+    pub fn take_deferred_obligations(&mut self) -> Vec<DeferredObligation<'tcx>> {
+        mem::replace(&mut self.deferred_obligations, vec![])
+    }
+
     /// Attempts to select obligations using `selcx`. If `only_new_obligations` is true, then it
     /// only attempts to select obligations that haven't been seen before.
     fn select(&mut self, selcx: &mut SelectionContext<'a, 'gcx, 'tcx>)
@@ -261,9 +361,10 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
             // Process pending obligations.
             let outcome = self.predicates.process_obligations(&mut FulfillProcessor {
-                    selcx: selcx,
-                    region_obligations: &mut self.region_obligations,
-                    rfc1592_obligations: &mut self.rfc1592_obligations
+                selcx: selcx,
+                region_obligations: &mut self.region_obligations,
+                rfc1592_obligations: &mut self.rfc1592_obligations,
+                deferred_obligations: &mut self.deferred_obligations
             });
             debug!("select: outcome={:?}", outcome);
 
@@ -298,7 +399,8 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 struct FulfillProcessor<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
     selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
     region_obligations: &'a mut NodeMap<Vec<RegionObligation<'tcx>>>,
-    rfc1592_obligations: &'a mut Vec<PredicateObligation<'tcx>>
+    rfc1592_obligations: &'a mut Vec<PredicateObligation<'tcx>>,
+    deferred_obligations: &'a mut Vec<DeferredObligation<'tcx>>
 }
 
 impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 'tcx> {
@@ -312,7 +414,8 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
         process_predicate(self.selcx,
                           obligation,
                           self.region_obligations,
-                          self.rfc1592_obligations)
+                          self.rfc1592_obligations,
+                          self.deferred_obligations)
             .map(|os| os.map(|os| os.into_iter().map(|o| PendingPredicateObligation {
                 obligation: o,
                 stalled_on: vec![]
@@ -354,7 +457,8 @@ fn process_predicate<'a, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
     pending_obligation: &mut PendingPredicateObligation<'tcx>,
     region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>,
-    rfc1592_obligations: &mut Vec<PredicateObligation<'tcx>>)
+    rfc1592_obligations: &mut Vec<PredicateObligation<'tcx>>,
+    deferred_obligations: &mut Vec<DeferredObligation<'tcx>>)
     -> Result<Option<Vec<PredicateObligation<'tcx>>>,
               FulfillmentErrorCode<'tcx>>
 {
@@ -422,7 +526,22 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                 Err(selection_err) => {
                     info!("selecting trait `{:?}` at depth {} yielded Err",
                           data, obligation.recursion_depth);
-                    Err(CodeSelectionError(selection_err))
+
+                    let defer = DeferredObligation::from_select_error(selcx.tcx(),
+                                                                      &trait_obligation,
+                                                                      &selection_err);
+                    if let Some(deferred_obligation) = defer {
+                        if let Some(nested) = deferred_obligation.try_select(selcx.tcx()) {
+                            Ok(Some(nested))
+                        } else {
+                            // Pretend that the obligation succeeded,
+                            // but record it for later.
+                            deferred_obligations.push(deferred_obligation);
+                            Ok(Some(vec![]))
+                        }
+                    } else {
+                        Err(CodeSelectionError(selection_err))
+                    }
                 }
             }
         }
@@ -629,6 +748,12 @@ impl<'a, 'gcx, 'tcx> GlobalFulfilledPredicates<'gcx> {
             // already has the required read edges, so we don't need
             // to add any more edges here.
             if data.is_global() {
+                // Don't cache predicates which were fulfilled
+                // by deferring them for later fulfillment.
+                if DeferredObligation::must_defer(tcx, data) {
+                    return;
+                }
+
                 if let Some(data) = tcx.lift_to_global(data) {
                     if self.set.insert(data.clone()) {
                         debug!("add_if_global: global predicate `{:?}` added", data);

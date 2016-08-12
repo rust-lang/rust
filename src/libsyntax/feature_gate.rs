@@ -277,7 +277,10 @@ declare_features! (
     (active, cfg_target_has_atomic, "1.9.0", Some(32976)),
 
     // Allows `..` in tuple (struct) patterns
-    (active, dotdot_in_tuple_patterns, "1.10.0", Some(33627))
+    (active, dotdot_in_tuple_patterns, "1.10.0", Some(33627)),
+
+    // Allows `impl Trait` in function return types.
+    (active, conservative_impl_trait, "1.12.0", Some(34511))
 );
 
 declare_features! (
@@ -951,6 +954,10 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
         match ty.node {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_abi(bare_fn_ty.abi, ty.span);
+            }
+            ast::TyKind::ImplTrait(..) => {
+                gate_feature_post!(&self, conservative_impl_trait, ty.span,
+                                   "`impl Trait` is experimental");
             }
             _ => {}
         }

@@ -1018,6 +1018,9 @@ impl<'a> State<'a> {
             ast::TyKind::PolyTraitRef(ref bounds) => {
                 try!(self.print_bounds("", &bounds[..]));
             }
+            ast::TyKind::ImplTrait(ref bounds) => {
+                try!(self.print_bounds("impl ", &bounds[..]));
+            }
             ast::TyKind::FixedLengthVec(ref ty, ref v) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&ty));

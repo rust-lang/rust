@@ -107,7 +107,7 @@ use hir::map as hir_map;
 use rustc::infer::TypeOrigin;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::traits::ProjectionMode;
+use rustc::traits::{self, Reveal};
 use session::{config, CompileResult};
 use util::common::time;
 
@@ -150,6 +150,11 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
     pub stack: RefCell<Vec<collect::AstConvRequest>>,
 
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+
+    /// Obligations which will have to be checked at the end of
+    /// type-checking, after all functions have been inferred.
+    /// The key is the NodeId of the item the obligations were from.
+    pub deferred_obligations: RefCell<NodeMap<Vec<traits::DeferredObligation<'tcx>>>>,
 }
 
 // Functions that write types into the node type table
@@ -190,7 +195,7 @@ fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 t1: Ty<'tcx>,
                                 t2: Ty<'tcx>)
                                 -> bool {
-    ccx.tcx.infer_ctxt(None, None, ProjectionMode::AnyFinal).enter(|infcx| {
+    ccx.tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
         if let Err(err) = infcx.eq_types(false, origin.clone(), t1, t2) {
             infcx.report_mismatched_types(origin, t1, t2, err);
             false
@@ -328,7 +333,8 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         ast_ty_to_ty_cache: RefCell::new(NodeMap()),
         all_traits: RefCell::new(None),
         stack: RefCell::new(Vec::new()),
-        tcx: tcx
+        tcx: tcx,
+        deferred_obligations: RefCell::new(NodeMap()),
     };
 
     // this ensures that later parts of type checking can assume that items

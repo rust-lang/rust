@@ -14,7 +14,7 @@ use hir::def_id::DefId;
 use ty::subst;
 use infer::InferCtxt;
 use hir::pat_util;
-use traits::{self, ProjectionMode};
+use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
 use ty::fold::TypeVisitor;
@@ -137,8 +137,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(),CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(None, Some(self.clone()),
-                       ProjectionMode::Topmost).enter(|infcx| {
+        tcx.infer_ctxt(None, Some(self.clone()), Reveal::ExactMatch).enter(|infcx| {
             let adt = match self_type.sty {
                 ty::TyStruct(struct_def, substs) => {
                     for field in struct_def.all_fields() {
@@ -438,6 +437,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
+            TyAnon(def_id, _) |
             TyFnDef(def_id, _, _) => self.def_id(def_id),
             TyFnPtr(f) => {
                 self.hash(f.unsafety);
@@ -533,7 +533,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                    param_env: &ParameterEnvironment<'tcx>,
                    bound: ty::BuiltinBound, span: Span) -> bool
     {
-        tcx.infer_ctxt(None, Some(param_env.clone()), ProjectionMode::Topmost).enter(|infcx| {
+        tcx.infer_ctxt(None, Some(param_env.clone()), Reveal::ExactMatch).enter(|infcx| {
             traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
         })
     }
@@ -560,7 +560,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }) => Some(true),
 
             TyArray(..) | TySlice(_) | TyTrait(..) | TyTuple(..) |
-            TyClosure(..) | TyEnum(..) | TyStruct(..) |
+            TyClosure(..) | TyEnum(..) | TyStruct(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| !self.impls_bound(tcx, param_env, ty::BoundCopy, span));
 
@@ -601,7 +601,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyStr | TyTrait(..) | TySlice(_) => Some(false),
 
             TyEnum(..) | TyStruct(..) | TyProjection(..) | TyParam(..) |
-            TyInfer(..) | TyError => None
+            TyInfer(..) | TyAnon(..) | TyError => None
         }.unwrap_or_else(|| self.impls_bound(tcx, param_env, ty::BoundSized, span));
 
         if !self.has_param_types() && !self.has_self_ty() {
@@ -627,7 +627,6 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         }
 
         let layout = Layout::compute_uncached(self, infcx)?;
-        let layout = tcx.intern_layout(layout);
         if can_cache {
             tcx.layout_cache.borrow_mut().insert(self, layout);
         }

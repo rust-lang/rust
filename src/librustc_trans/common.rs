@@ -40,7 +40,7 @@ use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::Layout;
-use rustc::traits::{self, SelectionContext, ProjectionMode};
+use rustc::traits::{self, SelectionContext, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::hir;
 use util::nodemap::NodeMap;
@@ -128,7 +128,7 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
 pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                                   -> bool {
     let tcx = ccx.tcx();
-    let layout = tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+    let layout = tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
         match ty.layout(&infcx) {
             Ok(layout) => layout,
             Err(err) => {
@@ -1136,7 +1136,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+        tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
 
             let obligation_cause = traits::ObligationCause::misc(span,
@@ -1195,7 +1195,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+    tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = traits::FulfillmentContext::new();
         let cause = traits::ObligationCause::dummy();

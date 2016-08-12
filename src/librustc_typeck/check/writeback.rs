@@ -18,7 +18,9 @@ use hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
+use rustc::ty::subst::ParamSpace;
 use rustc::infer::{InferCtxt, FixupError};
+use rustc::util::nodemap::DefIdMap;
 use write_substs_to_tcx;
 use write_ty_to_tcx;
 
@@ -35,7 +37,7 @@ use rustc::hir::{self, PatKind};
 // Entry point functions
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr) {
+    pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr, item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
         wbcx.visit_expr(e);
@@ -43,9 +45,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
+        wbcx.visit_deferred_obligations(item_id);
     }
 
-    pub fn resolve_type_vars_in_fn(&self, decl: &hir::FnDecl, blk: &hir::Block) {
+    pub fn resolve_type_vars_in_fn(&self,
+                                   decl: &hir::FnDecl,
+                                   blk: &hir::Block,
+                                   item_id: ast::NodeId) {
         assert_eq!(self.writeback_errors.get(), false);
         let mut wbcx = WritebackCx::new(self);
         wbcx.visit_block(blk);
@@ -62,6 +68,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
+        wbcx.visit_anon_types();
+        wbcx.visit_deferred_obligations(item_id);
     }
 }
 
@@ -75,11 +83,48 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
 struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
+
+    // Mapping from free regions of the function to the
+    // early-bound versions of them, visible from the
+    // outside of the function. This is needed by, and
+    // only populated if there are any `impl Trait`.
+    free_to_bound_regions: DefIdMap<ty::Region>
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn new(fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>) -> WritebackCx<'cx, 'gcx, 'tcx> {
-        WritebackCx { fcx: fcx }
+        let mut wbcx = WritebackCx {
+            fcx: fcx,
+            free_to_bound_regions: DefIdMap()
+        };
+
+        // Only build the reverse mapping if `impl Trait` is used.
+        if fcx.anon_types.borrow().is_empty() {
+            return wbcx;
+        }
+
+        let free_substs = fcx.parameter_environment.free_substs;
+        for &space in &ParamSpace::all() {
+            for (i, r) in free_substs.regions.get_slice(space).iter().enumerate() {
+                match *r {
+                    ty::ReFree(ty::FreeRegion {
+                        bound_region: ty::BoundRegion::BrNamed(def_id, name, _), ..
+                    }) => {
+                        let bound_region = ty::ReEarlyBound(ty::EarlyBoundRegion {
+                            space: space,
+                            index: i as u32,
+                            name: name,
+                        });
+                        wbcx.free_to_bound_regions.insert(def_id, bound_region);
+                    }
+                    _ => {
+                        bug!("{:?} is not a free region for an early-bound lifetime", r);
+                    }
+                }
+            }
+        }
+
+        wbcx
     }
 
     fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
@@ -255,6 +300,58 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn visit_anon_types(&self) {
+        if self.fcx.writeback_errors.get() {
+            return
+        }
+
+        let gcx = self.tcx().global_tcx();
+        for (&def_id, &concrete_ty) in self.fcx.anon_types.borrow().iter() {
+            let reason = ResolvingAnonTy(def_id);
+            let inside_ty = self.resolve(&concrete_ty, reason);
+
+            // Convert the type from the function into a type valid outside
+            // the function, by replacing free regions with early-bound ones.
+            let outside_ty = gcx.fold_regions(&inside_ty, &mut false, |r, _| {
+                match r {
+                    // 'static is valid everywhere.
+                    ty::ReStatic => ty::ReStatic,
+
+                    // Free regions that come from early-bound regions are valid.
+                    ty::ReFree(ty::FreeRegion {
+                        bound_region: ty::BoundRegion::BrNamed(def_id, _, _), ..
+                    }) if self.free_to_bound_regions.contains_key(&def_id) => {
+                        self.free_to_bound_regions[&def_id]
+                    }
+
+                    ty::ReFree(_) |
+                    ty::ReEarlyBound(_) |
+                    ty::ReLateBound(..) |
+                    ty::ReScope(_) |
+                    ty::ReSkolemized(..) => {
+                        let span = reason.span(self.tcx());
+                        span_err!(self.tcx().sess, span, E0564,
+                                  "only named lifetimes are allowed in `impl Trait`, \
+                                   but `{}` was found in the type `{}`", r, inside_ty);
+                        ty::ReStatic
+                    }
+
+                    ty::ReVar(_) |
+                    ty::ReEmpty |
+                    ty::ReErased => {
+                        let span = reason.span(self.tcx());
+                        span_bug!(span, "invalid region in impl Trait: {:?}", r);
+                    }
+                }
+            });
+
+            gcx.tcache.borrow_mut().insert(def_id, ty::TypeScheme {
+                ty: outside_ty,
+                generics: ty::Generics::empty()
+            });
+        }
+    }
+
     fn visit_node_id(&self, reason: ResolveReason, id: ast::NodeId) {
         // Resolve any borrowings for the node with id `id`
         self.visit_adjustments(reason, id);
@@ -353,6 +450,19 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn visit_deferred_obligations(&self, item_id: ast::NodeId) {
+        let deferred_obligations = self.fcx.deferred_obligations.borrow();
+        let obligations: Vec<_> = deferred_obligations.iter().map(|obligation| {
+            let reason = ResolvingDeferredObligation(obligation.cause.span);
+            self.resolve(obligation, reason)
+        }).collect();
+
+        if !obligations.is_empty() {
+            assert!(self.fcx.ccx.deferred_obligations.borrow_mut()
+                                .insert(item_id, obligations).is_none());
+        }
+    }
+
     fn resolve<T>(&self, x: &T, reason: ResolveReason) -> T::Lifted
         where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
     {
@@ -369,7 +479,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Resolution reason.
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum ResolveReason {
     ResolvingExpr(Span),
     ResolvingLocal(Span),
@@ -377,7 +487,9 @@ enum ResolveReason {
     ResolvingUpvar(ty::UpvarId),
     ResolvingClosure(DefId),
     ResolvingFnSig(ast::NodeId),
-    ResolvingFieldTypes(ast::NodeId)
+    ResolvingFieldTypes(ast::NodeId),
+    ResolvingAnonTy(DefId),
+    ResolvingDeferredObligation(Span),
 }
 
 impl<'a, 'gcx, 'tcx> ResolveReason {
@@ -395,13 +507,11 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
             ResolvingFieldTypes(id) => {
                 tcx.map.span(id)
             }
-            ResolvingClosure(did) => {
-                if let Some(node_id) = tcx.map.as_local_node_id(did) {
-                    tcx.expr_span(node_id)
-                } else {
-                    DUMMY_SP
-                }
+            ResolvingClosure(did) |
+            ResolvingAnonTy(did) => {
+                tcx.map.def_id_span(did, DUMMY_SP)
             }
+            ResolvingDeferredObligation(span) => span
         }
     }
 }
@@ -474,14 +584,23 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
                               "cannot determine a type for this closure")
                 }
 
-                ResolvingFnSig(id) | ResolvingFieldTypes(id) => {
+                ResolvingFnSig(_) |
+                ResolvingFieldTypes(_) |
+                ResolvingDeferredObligation(_) => {
                     // any failures here should also fail when
                     // resolving the patterns, closure types, or
                     // something else.
                     let span = self.reason.span(self.tcx);
                     self.tcx.sess.delay_span_bug(
                         span,
-                        &format!("cannot resolve some aspect of data for {:?}", id));
+                        &format!("cannot resolve some aspect of data for {:?}: {}",
+                                 self.reason, e));
+                }
+
+                ResolvingAnonTy(_) => {
+                    let span = self.reason.span(self.tcx);
+                    span_err!(self.tcx.sess, span, E0563,
+                              "cannot determine a type for this `impl Trait`: {}", e)
                 }
             }
         }

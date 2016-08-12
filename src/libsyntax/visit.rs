@@ -343,6 +343,9 @@ pub fn walk_ty<V: Visitor>(visitor: &mut V, typ: &Ty) {
         TyKind::PolyTraitRef(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
+        TyKind::ImplTrait(ref bounds) => {
+            walk_list!(visitor, visit_ty_param_bound, bounds);
+        }
         TyKind::Typeof(ref expression) => {
             visitor.visit_expr(expression)
         }

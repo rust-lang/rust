@@ -30,6 +30,7 @@ pub enum SimplifiedType {
     TraitSimplifiedType(DefId),
     StructSimplifiedType(DefId),
     ClosureSimplifiedType(DefId),
+    AnonSimplifiedType(DefId),
     FunctionSimplifiedType(usize),
     ParameterSimplifiedType,
 }
@@ -97,6 +98,9 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             } else {
                 None
             }
+        }
+        ty::TyAnon(def_id, _) => {
+            Some(AnonSimplifiedType(def_id))
         }
         ty::TyInfer(_) | ty::TyError => None,
     }
