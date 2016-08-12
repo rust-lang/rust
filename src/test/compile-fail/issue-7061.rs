@@ -15,7 +15,7 @@ impl<'a> BarStruct {
     //~^ ERROR mismatched types
     //~| expected type `Box<BarStruct>`
     //~| found type `&'a mut BarStruct`
-    //~| expected box, found &-ptr
+    //~| expected box, found mutable reference
 }
 
 fn main() {}

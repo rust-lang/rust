@@ -222,7 +222,24 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyArray(_, n) => format!("array of {} elements", n),
             ty::TySlice(_) => "slice".to_string(),
             ty::TyRawPtr(_) => "*-ptr".to_string(),
-            ty::TyRef(_, _) => "&-ptr".to_string(),
+            ty::TyRef(region, tymut) => {
+                let tymut_string = tymut.to_string();
+                if tymut_string == "_" ||         //unknown type name,
+                   tymut_string.len() > 10 ||     //name longer than saying "reference",
+                   region.to_string() != ""       //... or a complex type
+                {
+                    match tymut {
+                        ty::TypeAndMut{mutbl, ..} => {
+                            format!("{}reference", match mutbl {
+                                hir::Mutability::MutMutable => "mutable ",
+                                _ => ""
+                            })
+                        }
+                    }
+                } else {
+                    format!("&{}", tymut_string)
+                }
+            }
             ty::TyFnDef(..) => format!("fn item"),
             ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyTrait(ref inner) => {

@@ -52,7 +52,7 @@ fn main() {
 //~^ ERROR mismatched types
 //~| expected type `(bool, bool)`
 //~| found type `&_`
-//~| expected tuple, found &-ptr
+//~| expected tuple, found reference
     }
 
 

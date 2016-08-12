@@ -42,12 +42,12 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `T`
     //~| found type `&_`
-    //~| expected trait T, found &-ptr
+    //~| expected trait T, found reference
     let &&&x = &(&1isize as &T);
     //~^ ERROR mismatched types
     //~| expected type `T`
     //~| found type `&_`
-    //~| expected trait T, found &-ptr
+    //~| expected trait T, found reference
     let box box x = box 1isize as Box<T>;
     //~^ ERROR mismatched types
     //~| expected type `T`
