@@ -17,7 +17,7 @@ This error occurs when an attempt is made to use data captured by a closure,
 when that data may no longer exist. It's most commonly seen when attempting to
 return a closure:
 
-```compile_fail
+```compile_fail,E0373
 fn foo() -> Box<Fn(u32) -> u32> {
     let x = 0u32;
     Box::new(|y| x + y)
@@ -31,7 +31,7 @@ unsafe.
 
 Another situation where this might be encountered is when spawning threads:
 
-```compile_fail
+```compile_fail,E0373
 fn foo() {
     let x = 0u32;
     let y = 1u32;
@@ -66,7 +66,7 @@ about safety.
 E0381: r##"
 It is not allowed to use or capture an uninitialized variable. For example:
 
-```compile_fail
+```compile_fail,E0381
 fn main() {
     let x: i32;
     let y = x; // error, use of possibly uninitialized variable
@@ -88,7 +88,7 @@ E0382: r##"
 This error occurs when an attempt is made to use a variable after its contents
 have been moved elsewhere. For example:
 
-```compile_fail
+```compile_fail,E0382
 struct MyStruct { s: u32 }
 
 fn main() {
@@ -180,8 +180,8 @@ E0384: r##"
 This error occurs when an attempt is made to reassign an immutable variable.
 For example:
 
-```compile_fail
-fn main(){
+```compile_fail,E0384
+fn main() {
     let x = 3;
     x = 5; // error, reassignment of immutable variable
 }
@@ -191,7 +191,7 @@ By default, variables in Rust are immutable. To fix this error, add the keyword
 `mut` after the keyword `let` when declaring the variable. For example:
 
 ```
-fn main(){
+fn main() {
     let mut x = 3;
     x = 5;
 }
@@ -204,7 +204,7 @@ reference stored inside an immutable container.
 
 For example, this can happen when storing a `&mut` inside an immutable `Box`:
 
-```compile_fail
+```compile_fail,E0386
 let mut x: i64 = 1;
 let y: Box<_> = Box::new(&mut x);
 **y = 2; // error, cannot assign to data in an immutable container
@@ -234,7 +234,7 @@ E0387: r##"
 This error occurs when an attempt is made to mutate or mutably reference data
 that a closure has captured immutably. Examples of this error are shown below:
 
-```compile_fail
+```compile_fail,E0387
 // Accepts a function or a closure that captures its environment immutably.
 // Closures passed to foo will not be able to mutate their closed-over state.
 fn foo<F: Fn()>(f: F) { }
@@ -286,6 +286,30 @@ You can read more about cell types in the API documentation:
 https://doc.rust-lang.org/std/cell/
 "##,
 
+E0388: r##"
+A mutable borrow was attempted in a static location.
+
+Erroneous code example:
+
+```compile_fail,E0388
+static X: i32 = 1;
+
+static STATIC_REF: &'static mut i32 = &mut X;
+// error: cannot borrow data mutably in a static location
+
+const CONST_REF: &'static mut i32 = &mut X;
+// error: cannot borrow data mutably in a static location
+```
+
+To fix this error, you have to use constant borrow:
+
+```
+static X: i32 = 1;
+
+static STATIC_REF: &'static i32 = &X;
+```
+"##,
+
 E0389: r##"
 An attempt was made to mutate data using a non-mutable reference. This
 commonly occurs when attempting to assign to a non-mutable reference of a
@@ -293,9 +317,9 @@ mutable reference (`&(&mut T)`).
 
 Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0389
 struct FancyNum {
-    num: u8
+    num: u8,
 }
 
 fn main() {
@@ -315,7 +339,7 @@ To fix this, either remove the outer reference:
 
 ```
 struct FancyNum {
-    num: u8
+    num: u8,
 }
 
 fn main() {
@@ -353,7 +377,7 @@ fn main() {
 E0499: r##"
 A variable was borrowed as mutable more than once. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0499
 let mut i = 0;
 let mut x = &mut i;
 let mut a = &mut i;
@@ -438,7 +462,7 @@ capturing.
 
 Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0501
 fn inside_closure(x: &mut i32) {
     // Actions which require unique access
 }
@@ -508,7 +532,7 @@ has already been borrowed as immutable.
 
 Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0502
 fn bar(x: &mut i32) {}
 fn foo(a: &mut i32) {
     let ref y = a; // a is borrowed as immutable.
@@ -537,7 +561,7 @@ A value was used after it was mutably borrowed.
 
 Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0503
 fn main() {
     let mut value = 3;
     // Create a mutable borrow of `value`. This borrow
@@ -594,9 +618,9 @@ closure.
 
 Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0504
 struct FancyNum {
-    num: u8
+    num: u8,
 }
 
 fn main() {
@@ -622,7 +646,7 @@ rather than moving:
 
 ```
 struct FancyNum {
-    num: u8
+    num: u8,
 }
 
 fn main() {
@@ -645,7 +669,7 @@ the borrow using a scoped block:
 
 ```
 struct FancyNum {
-    num: u8
+    num: u8,
 }
 
 fn main() {
@@ -674,7 +698,7 @@ use std::sync::Arc;
 use std::thread;
 
 struct FancyNum {
-    num: u8
+    num: u8,
 }
 
 fn main() {
@@ -692,95 +716,12 @@ fn main() {
 ```
 "##,
 
-E0506: r##"
-This error occurs when an attempt is made to assign to a borrowed value.
-
-Example of erroneous code:
-
-```compile_fail
-struct FancyNum {
-    num: u8
-}
-
-fn main() {
-    let mut fancy_num = FancyNum { num: 5 };
-    let fancy_ref = &fancy_num;
-    fancy_num = FancyNum { num: 6 };
-    // error: cannot assign to `fancy_num` because it is borrowed
-
-    println!("Num: {}, Ref: {}", fancy_num.num, fancy_ref.num);
-}
-```
-
-Because `fancy_ref` still holds a reference to `fancy_num`, `fancy_num` can't
-be assigned to a new value as it would invalidate the reference.
-
-Alternatively, we can move out of `fancy_num` into a second `fancy_num`:
-
-```
-struct FancyNum {
-    num: u8
-}
-
-fn main() {
-    let mut fancy_num = FancyNum { num: 5 };
-    let moved_num = fancy_num;
-    fancy_num = FancyNum { num: 6 };
-
-    println!("Num: {}, Moved num: {}", fancy_num.num, moved_num.num);
-}
-```
-
-If the value has to be borrowed, try limiting the lifetime of the borrow using
-a scoped block:
-
-```
-struct FancyNum {
-    num: u8
-}
-
-fn main() {
-    let mut fancy_num = FancyNum { num: 5 };
-
-    {
-        let fancy_ref = &fancy_num;
-        println!("Ref: {}", fancy_ref.num);
-    }
-
-    // Works because `fancy_ref` is no longer in scope
-    fancy_num = FancyNum { num: 6 };
-    println!("Num: {}", fancy_num.num);
-}
-```
-
-Or by moving the reference into a function:
-
-```
-struct FancyNum {
-    num: u8
-}
-
-fn main() {
-    let mut fancy_num = FancyNum { num: 5 };
-
-    print_fancy_ref(&fancy_num);
-
-    // Works because function borrow has ended
-    fancy_num = FancyNum { num: 6 };
-    println!("Num: {}", fancy_num.num);
-}
-
-fn print_fancy_ref(fancy_ref: &FancyNum){
-    println!("Ref: {}", fancy_ref.num);
-}
-```
-"##,
-
 E0505: r##"
 A value was moved out while it was still borrowed.
+
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0505
 struct Value {}
 
 fn eat(val: Value) {}
@@ -855,10 +796,94 @@ You can find more information about borrowing in the rust-book:
 http://doc.rust-lang.org/stable/book/references-and-borrowing.html
 "##,
 
+E0506: r##"
+This error occurs when an attempt is made to assign to a borrowed value.
+
+Example of erroneous code:
+
+```compile_fail,E0506
+struct FancyNum {
+    num: u8,
+}
+
+fn main() {
+    let mut fancy_num = FancyNum { num: 5 };
+    let fancy_ref = &fancy_num;
+    fancy_num = FancyNum { num: 6 };
+    // error: cannot assign to `fancy_num` because it is borrowed
+
+    println!("Num: {}, Ref: {}", fancy_num.num, fancy_ref.num);
+}
+```
+
+Because `fancy_ref` still holds a reference to `fancy_num`, `fancy_num` can't
+be assigned to a new value as it would invalidate the reference.
+
+Alternatively, we can move out of `fancy_num` into a second `fancy_num`:
+
+```
+struct FancyNum {
+    num: u8,
+}
+
+fn main() {
+    let mut fancy_num = FancyNum { num: 5 };
+    let moved_num = fancy_num;
+    fancy_num = FancyNum { num: 6 };
+
+    println!("Num: {}, Moved num: {}", fancy_num.num, moved_num.num);
+}
+```
+
+If the value has to be borrowed, try limiting the lifetime of the borrow using
+a scoped block:
+
+```
+struct FancyNum {
+    num: u8,
+}
+
+fn main() {
+    let mut fancy_num = FancyNum { num: 5 };
+
+    {
+        let fancy_ref = &fancy_num;
+        println!("Ref: {}", fancy_ref.num);
+    }
+
+    // Works because `fancy_ref` is no longer in scope
+    fancy_num = FancyNum { num: 6 };
+    println!("Num: {}", fancy_num.num);
+}
+```
+
+Or by moving the reference into a function:
+
+```
+struct FancyNum {
+    num: u8,
+}
+
+fn main() {
+    let mut fancy_num = FancyNum { num: 5 };
+
+    print_fancy_ref(&fancy_num);
+
+    // Works because function borrow has ended
+    fancy_num = FancyNum { num: 6 };
+    println!("Num: {}", fancy_num.num);
+}
+
+fn print_fancy_ref(fancy_ref: &FancyNum){
+    println!("Ref: {}", fancy_ref.num);
+}
+```
+"##,
+
 E0507: r##"
 You tried to move out of a value which was borrowed. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0507
 use std::cell::RefCell;
 
 struct TheDarkKnight;
@@ -975,7 +1000,7 @@ A value was moved out of a non-copy fixed-size array.
 
 Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0508
 struct NonCopy;
 
 fn main() {
@@ -1020,7 +1045,7 @@ implements the `Drop` trait.
 
 Example of erroneous code:
 
-```compile_fail
+```compile_fail,E0509
 struct FancyNum {
     num: usize
 }
@@ -1113,6 +1138,5 @@ fn main() {
 
 register_diagnostics! {
     E0385, // {} in an aliasable location
-    E0388, // {} in a static location
     E0524, // two closures require unique access to `..` at the same time
 }
