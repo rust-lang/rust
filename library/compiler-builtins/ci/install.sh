@@ -37,7 +37,7 @@ install_binutils() {
     case $TARGET in
         thumbv*-none-eabi)
             sudo apt-get install -y --no-install-recommends \
-                 binutils-arm-none-eabi
+                 gcc-arm-none-eabi
             ;;
     esac
 }
