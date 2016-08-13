@@ -30,12 +30,10 @@ case $TARGET in
         ;;
     mips-unknown-linux-gnu)
         export PREFIX=mips-linux-gnu-
-        # export QEMU=qemu-mips
         export QEMU_LD_PREFIX=/usr/mips-linux-gnu
         ;;
     mipsel-unknown-linux-gnu)
         export PREFIX=mipsel-linux-gnu-
-        # export QEMU=qemu-mipsel
         export QEMU_LD_PREFIX=/usr/mipsel-linux-gnu
         ;;
     powerpc-unknown-linux-gnu)
@@ -44,12 +42,10 @@ case $TARGET in
         ;;
     powerpc64-unknown-linux-gnu)
         export PREFIX=powerpc64-linux-gnu-
-        # export QEMU=qemu-ppc64
         export QEMU_LD_PREFIX=/usr/powerpc64-linux-gnu
         ;;
     powerpc64le-unknown-linux-gnu)
         export PREFIX=powerpc64le-linux-gnu-
-        # export QEMU=qemu-ppc64le
         export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
         # Issue #2. QEMU doesn't work
         export RUN_TESTS=n

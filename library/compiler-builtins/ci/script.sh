@@ -20,16 +20,7 @@ run_tests() {
         export RUST_TEST_THREADS=1
     fi
 
-    if [[ $QEMU ]]; then
-        cargo test --target $TARGET --no-run
-        if [[ ${RUN_TESTS:-y} == "y" ]]; then
-           $QEMU target/**/debug/rustc_builtins-*
-        fi
-        cargo test --target $TARGET --release --no-run
-        if [[ ${RUN_TESTS:-y} == "y" ]]; then
-            $QEMU target/**/release/rustc_builtins-*
-        fi
-    elif [[ ${RUN_TESTS:-y} == "y" ]]; then
+    if [[ ${RUN_TESTS:-y} == "y" ]]; then
         cargo test --target $TARGET
         cargo test --target $TARGET --release
     fi
