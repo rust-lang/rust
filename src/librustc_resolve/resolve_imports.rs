@@ -505,7 +505,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
                 Success(binding) if !binding.is_importable() => {
                     let msg = format!("`{}` is not directly importable", target);
-                    span_err!(self.session, directive.span, E0253, "{}", &msg);
+                    struct_span_err!(self.session, directive.span, E0253, "{}", &msg)
+                        .span_label(directive.span, &format!("cannot be imported directly"))
+                        .emit();
                     // Do not import this illegal binding. Import a dummy binding and pretend
                     // everything is fine
                     self.import_dummy_binding(module, directive);
