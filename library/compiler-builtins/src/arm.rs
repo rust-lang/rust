@@ -9,7 +9,8 @@ pub unsafe fn __aeabi_uidivmod() {
           sub sp, sp, #4
           mov r2, sp
           bl __udivmodsi4
-          ldr r1, [sp], #4
+          ldr r1, [sp]
+          add sp, sp, #4
           pop {pc}");
     intrinsics::unreachable();
 }
@@ -17,13 +18,15 @@ pub unsafe fn __aeabi_uidivmod() {
 #[naked]
 #[cfg_attr(not(test), no_mangle)]
 pub unsafe fn __aeabi_uldivmod() {
-    asm!("push {lr}
-          sub r12, sp, #12
-          str r12, [sp, #-20]!
+    asm!("push {r4, lr}
+          sub sp, sp, #16
+          add r4, sp, #8
+          str r4, [sp]
           bl __udivmoddi4
-          ldrd r2, r3, [sp, #8]
-          add sp, sp, #20
-          pop {pc}");
+          ldr r2, [sp, #8]
+          ldr r3, [sp, #12]
+          add sp, sp, #16
+          pop {r4, pc}");
     intrinsics::unreachable();
 }
 
