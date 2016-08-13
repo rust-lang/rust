@@ -3,6 +3,18 @@ sudo: false
 
 matrix:
   include:
+    - env: TARGET=thumbv6m-none-eabi
+      os: linux
+      dist: trusty
+      sudo: required
+    - env: TARGET=thumbv7m-none-eabi
+      os: linux
+      dist: trusty
+      sudo: required
+    - env: TARGET=thumbv7em-none-eabi
+      os: linux
+      dist: trusty
+      sudo: required
     - env: TARGET=i586-unknown-linux-gnu
       os: linux
       services: docker
@@ -83,6 +95,16 @@ matrix:
     - env: TARGET=x86_64-apple-darwin
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
+      os: linux
+  allow_failures:
+     # Issue #2. Flaky test
+    - env: TARGET=arm-unknown-linux-gnueabi
+      os: linux
+     # Issue #2. Flaky test
+    - env: TARGET=arm-unknown-linux-gnueabihf
+      os: linux
+     # Issue #2. Flaky test
+    - env: TARGET=armv7-unknown-linux-gnueabihf
       os: linux
 
 before_install:

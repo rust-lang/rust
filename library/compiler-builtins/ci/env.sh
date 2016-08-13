@@ -25,8 +25,6 @@ case $TARGET in
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
         ;;
     armv7-unknown-linux-gnueabihf)
-        # See #2
-        export DONT_RUN_TESTS=y
         export PREFIX=arm-linux-gnueabihf-
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
         ;;
@@ -65,13 +63,19 @@ case $TARGET in
         export QEMU_LD_PREFIX=/usr/powerpc64-linux-gnu
         ;;
     powerpc64le-unknown-linux-gnu)
-        # See #2
-        export DONT_RUN_TESTS=y
         if [[ -z $DOCKER ]]; then
             export DOCKER=y
         fi
         export PREFIX=powerpc64le-linux-gnu-
         export QEMU=qemu-ppc64le
         export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
+        # Issue #2. QEMU doesn't work
+        export RUN_TESTS=n
+        ;;
+    thumbv*-none-eabi)
+        export CARGO=xargo
+        export PREFIX=arm-none-eabi-
+        # Bare metal targets. No `std` or `test` crates for these targets.
+        export RUN_TESTS=n
         ;;
 esac

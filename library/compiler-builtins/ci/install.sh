@@ -32,7 +32,12 @@ install_binutils() {
         osx)
             brew install binutils
             ;;
-        *)
+    esac
+
+    case $TARGET in
+        thumbv*-none-eabi)
+            sudo apt-get install -y --no-install-recommends \
+                 gcc-arm-none-eabi
             ;;
     esac
 }
@@ -74,8 +79,17 @@ install_rust() {
 }
 
 add_rustup_target() {
-    if [[ $TARGET != $HOST ]]; then
+    if [[ $TARGET != $HOST && ${CARGO:-cargo} == "cargo" ]]; then
         rustup target add $TARGET
+    fi
+}
+
+install_xargo() {
+    if [[ $CARGO == "xargo" ]]; then
+        sudo apt-get install -y --no-install-recommends \
+             libssh2-1
+        curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | \
+            bash -s -- --from japaric/xargo --at $HOME/.cargo/bin
     fi
 }
 
@@ -99,6 +113,7 @@ main() {
         install_c_toolchain
         install_rust
         add_rustup_target
+        install_xargo
         configure_cargo
     fi
 }
