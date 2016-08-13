@@ -79,7 +79,7 @@ install_rust() {
 }
 
 add_rustup_target() {
-    if [[ $TARGET != $HOST ]]; then
+    if [[ $TARGET != $HOST && ${CARGO:-cargo} == "cargo" ]]; then
         rustup target add $TARGET
     fi
 }
