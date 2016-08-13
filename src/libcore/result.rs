@@ -241,6 +241,7 @@ use self::Result::{Ok, Err};
 use clone::Clone;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSizeIterator, IntoIterator};
+use iter::FusedIterator;
 use ops::FnOnce;
 use option::Option::{self, None, Some};
 
@@ -869,6 +870,9 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for Iter<'a, T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { inner: self.inner } }
@@ -901,6 +905,9 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for IterMut<'a, T> {}
+
 /// An iterator over the value in a `Ok` variant of a `Result`.
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -927,6 +934,9 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<T> FusedIterator for IntoIter<T> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // FromIterator

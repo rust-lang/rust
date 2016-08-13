@@ -37,6 +37,7 @@
 #![feature(core_intrinsics)]
 #![feature(dropck_parametricity)]
 #![feature(fmt_internals)]
+#![feature(fused)]
 #![feature(heap_api)]
 #![feature(inclusive_range)]
 #![feature(lang_items)]

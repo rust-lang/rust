@@ -16,6 +16,7 @@ use prelude::v1::*;
 
 use mem;
 use ops::Range;
+use iter::FusedIterator;
 
 /// Extension methods for ASCII-subset only operations on string slices.
 ///
@@ -368,6 +369,9 @@ impl DoubleEndedIterator for EscapeDefault {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExactSizeIterator for EscapeDefault {}
+#[unstable(feature = "fused", issue = "35602")]
+impl FusedIterator for EscapeDefault {}
+
 
 static ASCII_LOWERCASE_MAP: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,

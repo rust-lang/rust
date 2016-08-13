@@ -20,7 +20,7 @@
 
 use core::marker;
 use core::fmt;
-use core::iter::FromIterator;
+use core::iter::{FromIterator, FusedIterator};
 use core::ops::{Sub, BitOr, BitAnd, BitXor};
 
 // FIXME(contentions): implement union family of methods? (general design may be
@@ -265,6 +265,9 @@ impl<E: CLike> Iterator for Iter<E> {
         (exact, Some(exact))
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<E: CLike> FusedIterator for Iter<E> {}
 
 impl<E: CLike> FromIterator<E> for EnumSet<E> {
     fn from_iter<I: IntoIterator<Item = E>>(iter: I) -> EnumSet<E> {

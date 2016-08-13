@@ -144,8 +144,8 @@ use self::Option::*;
 use clone::Clone;
 use convert::From;
 use default::Default;
-use iter::ExactSizeIterator;
-use iter::{Iterator, DoubleEndedIterator, FromIterator, IntoIterator};
+use iter::{Iterator, FromIterator, IntoIterator, ExactSizeIterator, DoubleEndedIterator};
+use iter::FusedIterator;
 use mem;
 use ops::FnOnce;
 use result::Result::{Ok, Err};
@@ -796,6 +796,7 @@ impl<A> DoubleEndedIterator for Item<A> {
 }
 
 impl<A> ExactSizeIterator for Item<A> {}
+impl<A> FusedIterator for Item<A> {}
 
 /// An iterator over a reference of the contained item in an Option.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -820,6 +821,9 @@ impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> ExactSizeIterator for Iter<'a, A> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, A> FusedIterator for Iter<'a, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> Clone for Iter<'a, A> {
@@ -852,6 +856,9 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, A> FusedIterator for IterMut<'a, A> {}
+
 /// An iterator over the item contained inside an Option.
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -875,6 +882,9 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> ExactSizeIterator for IntoIter<A> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<A> FusedIterator for IntoIter<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // FromIterator

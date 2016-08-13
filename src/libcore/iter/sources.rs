@@ -15,7 +15,7 @@ use marker;
 use option::Option::{self, Some, None};
 use usize;
 
-use super::{DoubleEndedIterator, IntoIterator, Iterator, ExactSizeIterator};
+use super::{DoubleEndedIterator, IntoIterator, Iterator, ExactSizeIterator, FusedIterator};
 
 /// An iterator that repeats an element endlessly.
 ///
@@ -43,6 +43,9 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { Some(self.element.clone()) }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<A: Clone> FusedIterator for Repeat<A> {}
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///
@@ -138,6 +141,9 @@ impl<T> ExactSizeIterator for Empty<T> {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<T> FusedIterator for Empty<T> {}
+
 // not #[derive] because that adds a Clone bound on T,
 // which isn't necessary.
 #[stable(feature = "iter_empty", since = "1.2.0")]
@@ -212,6 +218,9 @@ impl<T> ExactSizeIterator for Once<T> {
         self.inner.len()
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<T> FusedIterator for Once<T> {}
 
 /// Creates an iterator that yields an element exactly once.
 ///

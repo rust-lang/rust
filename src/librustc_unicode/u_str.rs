@@ -14,7 +14,7 @@
 //! methods provided by the unicode parts of the CharExt trait.
 
 use core::char;
-use core::iter::Filter;
+use core::iter::{Filter, FusedIterator};
 use core::str::Split;
 
 /// An iterator over the non-whitespace substrings of a string,
@@ -177,6 +177,10 @@ impl<I> Iterator for Utf16Encoder<I>
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<I> FusedIterator for Utf16Encoder<I>
+    where I: FusedIterator<Item = char> {}
+
 impl<'a> Iterator for SplitWhitespace<'a> {
     type Item = &'a str;
 
@@ -189,3 +193,6 @@ impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
         self.inner.next_back()
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for SplitWhitespace<'a> {}

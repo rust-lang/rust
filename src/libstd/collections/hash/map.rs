@@ -15,7 +15,7 @@ use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
 use hash::{Hash, Hasher, BuildHasher, SipHasher13};
-use iter::FromIterator;
+use iter::{FromIterator, FusedIterator};
 use mem::{self, replace};
 use ops::{Deref, Index};
 use rand::{self, Rng};
@@ -1484,6 +1484,9 @@ impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
@@ -1495,6 +1498,8 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
 impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Iterator for IntoIter<K, V> {
@@ -1507,6 +1512,8 @@ impl<K, V> Iterator for IntoIter<K, V> {
 impl<K, V> ExactSizeIterator for IntoIter<K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
+#[unstable(feature = "fused", issue = "35602")]
+impl<K, V> FusedIterator for IntoIter<K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
@@ -1519,6 +1526,8 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
 impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
@@ -1531,6 +1540,8 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
@@ -1543,6 +1554,8 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
 impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Drain<'a, K, V> {
@@ -1555,6 +1568,8 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
 impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, K, V> FusedIterator for Drain<'a, K, V> {}
 
 impl<'a, K, V> Entry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
