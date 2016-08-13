@@ -4,9 +4,9 @@
 #![feature(linkage)]
 #![feature(naked_functions)]
 #![cfg_attr(not(test), no_std)]
+#![no_builtins]
 // TODO(rust-lang/rust#35021) uncomment when that PR lands
 // #![feature(rustc_builtins)]
-#![no_builtins]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
@@ -22,6 +22,7 @@ extern crate core;
 pub mod arm;
 
 pub mod udiv;
+#[cfg(all(not(windows), not(target_os = "macos")))]
 pub mod mem;
 pub mod mul;
 pub mod shift;
