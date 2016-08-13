@@ -186,8 +186,8 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
             if sr > u32::bits() - 1 {
                 if let Some(rem) = rem {
                     *rem = n;
-                    return 0;
                 }
+                return 0;
             }
 
             sr += 1;
