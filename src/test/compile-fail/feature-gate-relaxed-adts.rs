@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {}
+struct S(); //~ ERROR empty tuple structs and enum variants are unstable
+struct Z(u8, u8);
+
+enum E {
+    V(), //~ ERROR empty tuple structs and enum variants are unstable
+    U(u8, u8),
+}
 
 fn main() {
-    let u = Foo { value: 0 };
-    //~^ ERROR `Foo` does not name a struct or a struct variant [E0071]
-    //~| NOTE not a struct
-
-    let t = u32 { value: 4 };
-    //~^ ERROR `u32` does not name a struct or a struct variant [E0071]
-    //~| NOTE not a struct
+    match S() {
+        S() => {} //~ ERROR empty tuple structs patterns are unstable
+    }
+    match E::V() {
+        E::V() => {} //~ ERROR empty tuple structs patterns are unstable
+    }
 }

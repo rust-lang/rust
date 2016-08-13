@@ -197,27 +197,6 @@ impl<'a> Visitor for AstValidator<'a> {
         visit::walk_foreign_item(self, fi)
     }
 
-    fn visit_variant_data(&mut self,
-                          vdata: &VariantData,
-                          _: Ident,
-                          _: &Generics,
-                          _: NodeId,
-                          span: Span) {
-        if vdata.fields().is_empty() {
-            if vdata.is_tuple() {
-                self.err_handler()
-                    .struct_span_err(span,
-                                     "empty tuple structs and enum variants are not allowed, use \
-                                      unit structs and enum variants instead")
-                    .span_help(span,
-                               "remove trailing `()` to make a unit struct or unit enum variant")
-                    .emit();
-            }
-        }
-
-        visit::walk_struct_def(self, vdata)
-    }
-
     fn visit_vis(&mut self, vis: &Visibility) {
         match *vis {
             Visibility::Restricted { ref path, .. } => {

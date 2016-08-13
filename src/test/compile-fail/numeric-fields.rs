@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Feature gate test for empty struct with braces
-// Can't define an empty braced struct
+#![feature(relaxed_adts)]
 
-struct Empty1 {}
-struct Empty2;
-
-enum E {
-    Empty4 {},
-    Empty5,
-}
+struct S(u8, u16);
 
 fn main() {
+    let s = S{0b1: 10, 0: 11}; //~ ERROR structure `S` has no field named `0b1`
+    match s {
+        S{0: a, 0x1: b, ..} => {} //~ ERROR does not have a field named `0x1`
+    }
 }

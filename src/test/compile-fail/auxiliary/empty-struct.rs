@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(relaxed_adts)]
+
 pub struct XEmpty1 {}
 pub struct XEmpty2;
+pub struct XEmpty6();
 
 pub enum XE {
     XEmpty3 {},
     XEmpty4,
+    XEmpty5(),
 }

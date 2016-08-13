@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo(); //~ ERROR empty tuple structs and enum variants are not allowed
+#![feature(relaxed_adts)]
 
-fn main() {}
+struct S(u8, u16);
+
+fn main() {
+    let s = S{1: 10, 0: 11};
+    match s {
+        S{0: a, 1: b, ..} => {
+            assert_eq!(a, 11);
+            assert_eq!(b, 10);
+        }
+    }
+}

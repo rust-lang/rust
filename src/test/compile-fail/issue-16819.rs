@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct TS ( //~ ERROR empty tuple structs and enum variants are not allowed
+struct TS ( //~ ERROR empty tuple structs and enum variants are unstable
     #[cfg(untrue)]
     i32,
 );
 
 enum E {
-    TV ( //~ ERROR empty tuple structs and enum variants are not allowed
+    TV ( //~ ERROR empty tuple structs and enum variants are unstable
         #[cfg(untrue)]
         i32,
     )
