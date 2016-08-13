@@ -9,7 +9,7 @@ matrix:
       addons:
         apt:
           packages: &cortex
-            - binutils-arm-none-eabi
+            - gcc-arm-none-eabi
     - env: TARGET=thumbv7m-none-eabi
       os: linux
       dist: trusty
