@@ -140,6 +140,9 @@ macro_rules! targets {
             (dist_std, DistStd { compiler: Compiler<'a> }),
             (dist_src, DistSrc { _dummy: () }),
 
+            // install target
+            (install, Install { stage: u32 }),
+
             // Misc targets
             (android_copy_libs, AndroidCopyLibs { compiler: Compiler<'a> }),
         }
@@ -249,8 +252,7 @@ fn top_level(build: &Build) -> Vec<Step> {
         }
     }
 
-    return targets
-
+    targets
 }
 
 fn add_steps<'a>(build: &'a Build,
@@ -467,7 +469,7 @@ impl<'a> Step<'a> {
                         self.dist(stage),
                     ]);
                 }
-                return base
+                base
             }
             Source::CheckLinkcheck { stage } => {
                 vec![self.tool_linkchecker(stage), self.doc(stage)]
@@ -590,7 +592,11 @@ impl<'a> Step<'a> {
                         base.push(target.dist_std(compiler));
                     }
                 }
-                return base
+                base
+            }
+
+            Source::Install { stage } => {
+                vec![self.dist(stage)]
             }
 
             Source::AndroidCopyLibs { compiler } => {
