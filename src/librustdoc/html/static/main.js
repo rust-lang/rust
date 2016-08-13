@@ -577,10 +577,6 @@
                         displayPath = item.path + '::';
                         href = rootPath + item.path.replace(/::/g, '/') + '/' +
                                name + '/index.html';
-                    } else if (type === 'static' || type === 'reexport') {
-                        displayPath = item.path + '::';
-                        href = rootPath + item.path.replace(/::/g, '/') +
-                               '/index.html';
                     } else if (type === "primitive") {
                         displayPath = "";
                         href = rootPath + item.path.replace(/::/g, '/') +
