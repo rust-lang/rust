@@ -86,6 +86,8 @@ add_rustup_target() {
 
 install_xargo() {
     if [[ $CARGO == "xargo" ]]; then
+        sudo apt-get install -y --no-install-recommends \
+             libssh2-1
         curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | \
             bash -s -- --from japaric/xargo --at $HOME/.cargo/bin
     fi
