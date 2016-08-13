@@ -86,7 +86,8 @@ add_rustup_target() {
 
 install_xargo() {
     if [[ $CARGO == "xargo" ]]; then
-        curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | bash -s -- --from japaric/xargo
+        curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | \
+            bash -s -- --from japaric/xargo --at $HOME/.cargo/bin
     fi
 }
 
