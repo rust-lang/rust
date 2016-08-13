@@ -616,6 +616,10 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                         Rvalue::InlineAsm { .. } => {}
                     }
                 }
+                StatementKind::SetDiscriminant{ .. } => {
+                    span_bug!(stmt.source_info.span,
+                              "SetDiscriminant should not exist during borrowck");
+                }
             }
         }
 

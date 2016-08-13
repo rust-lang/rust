@@ -14,6 +14,8 @@ use common::{self, BlockAndBuilder};
 
 use super::MirContext;
 use super::LocalRef;
+use super::super::adt;
+use super::super::disr::Disr;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_statement(&mut self,
@@ -56,6 +58,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     let tr_dest = self.trans_lvalue(&bcx, lvalue);
                     self.trans_rvalue(bcx, tr_dest, rvalue, debug_loc)
                 }
+            }
+            mir::StatementKind::SetDiscriminant{ref lvalue, variant_index} => {
+                let ty = self.monomorphized_lvalue_ty(lvalue);
+                let repr = adt::represent_type(bcx.ccx(), ty);
+                let lvalue_transed = self.trans_lvalue(&bcx, lvalue);
+                bcx.with_block(|bcx|
+                    adt::trans_set_discr(bcx,
+                                         &repr,
+                                        lvalue_transed.llval,
+                                        Disr::from(variant_index))
+                );
+                bcx
             }
         }
     }
