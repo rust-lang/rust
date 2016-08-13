@@ -1704,7 +1704,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut type_scheme = self.tcx.lookup_item_type(did);
         if type_scheme.ty.is_fn() {
             // Tuple variants have fn type even in type namespace, extract true variant type from it
-            let fn_ret = self.tcx.no_late_bound_regions(&type_scheme.ty.fn_ret()).unwrap().unwrap();
+            let fn_ret = self.tcx.no_late_bound_regions(&type_scheme.ty.fn_ret()).unwrap();
             type_scheme = ty::TypeScheme { ty: fn_ret, generics: type_scheme.generics }
         }
         let type_predicates = self.tcx.lookup_predicates(did);
