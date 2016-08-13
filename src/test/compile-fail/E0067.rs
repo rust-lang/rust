@@ -13,4 +13,6 @@ use std::collections::LinkedList;
 fn main() {
     LinkedList::new() += 1; //~ ERROR E0368
                             //~^ ERROR E0067
+                            //~^^ NOTE invalid expression for left-hand side
+                            //~| NOTE cannot use `+=` on type `std::collections::LinkedList<_>`
 }
