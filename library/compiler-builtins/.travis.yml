@@ -1,97 +1,39 @@
 language: generic
-sudo: false
+sudo: required
+services: docker
 
 matrix:
   include:
     - env: TARGET=thumbv6m-none-eabi
       os: linux
-      dist: trusty
-      sudo: required
     - env: TARGET=thumbv7m-none-eabi
       os: linux
-      dist: trusty
-      sudo: required
     - env: TARGET=thumbv7em-none-eabi
       os: linux
-      dist: trusty
-      sudo: required
     - env: TARGET=i586-unknown-linux-gnu
       os: linux
-      services: docker
-      sudo: required
     - env: TARGET=aarch64-unknown-linux-gnu
       os: linux
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - qemu-user-static
     - env: TARGET=arm-unknown-linux-gnueabi
       os: linux
-      sudo: required
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - gcc-arm-linux-gnueabi
-            - libc6-armel-cross
-            - libc6-dev-armel-cross
-            - qemu-user-static
     - env: TARGET=arm-unknown-linux-gnueabihf
       os: linux
-      sudo: required
-      addons:
-        apt:
-          packages: &armhf
-            - binfmt-support
-            - gcc-arm-linux-gnueabihf
-            - libc6-armhf-cross
-            - libc6-dev-armhf-cross
-            - qemu-user-static
     - env: TARGET=armv7-unknown-linux-gnueabihf
       os: linux
-      sudo: required
-      addons:
-        apt:
-          packages: *armhf
     - env: TARGET=i686-apple-darwin
       os: osx
     - env: TARGET=i686-unknown-linux-gnu
       os: linux
-      addons:
-        apt:
-          packages:
-            - gcc-multilib
     - env: TARGET=mips-unknown-linux-gnu
       os: linux
-      services: docker
-      sudo: required
     - env: TARGET=mipsel-unknown-linux-gnu
       os: linux
-      services: docker
-      sudo: required
     - env: TARGET=powerpc-unknown-linux-gnu
       os: linux
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - gcc-powerpc-linux-gnu
-            - libc6-powerpc-cross
-            - libc6-dev-powerpc-cross
-            - qemu-user-static
     - env: TARGET=powerpc64-unknown-linux-gnu
       os: linux
-      services: docker
-      sudo: required
     - env: TARGET=powerpc64le-unknown-linux-gnu
       os: linux
-      services: docker
-      sudo: required
     - env: TARGET=x86_64-apple-darwin
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
@@ -106,9 +48,6 @@ matrix:
      # Issue #2. Flaky test
     - env: TARGET=armv7-unknown-linux-gnueabihf
       os: linux
-
-before_install:
-  - export PATH="$PATH:$HOME/.cargo/bin"
 
 install:
   - bash ci/install.sh

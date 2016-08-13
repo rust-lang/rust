@@ -28,26 +28,14 @@ case $TARGET in
         export PREFIX=arm-linux-gnueabihf-
         export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
         ;;
-    i586-unknown-linux-gnu)
-        # NOTE $DOCKER values: 'y' (yes, call docker), 'i' (inside a docker container) or 'n' ("no)
-        if [[ -z $DOCKER ]]; then
-            export DOCKER=y
-        fi
-        ;;
     mips-unknown-linux-gnu)
-        if [[ -z $DOCKER ]]; then
-            export DOCKER=y
-        fi
         export PREFIX=mips-linux-gnu-
-        export QEMU=qemu-mips
+        # export QEMU=qemu-mips
         export QEMU_LD_PREFIX=/usr/mips-linux-gnu
         ;;
     mipsel-unknown-linux-gnu)
-        if [[ -z $DOCKER ]]; then
-            export DOCKER=y
-        fi
         export PREFIX=mipsel-linux-gnu-
-        export QEMU=qemu-mipsel
+        # export QEMU=qemu-mipsel
         export QEMU_LD_PREFIX=/usr/mipsel-linux-gnu
         ;;
     powerpc-unknown-linux-gnu)
@@ -55,19 +43,13 @@ case $TARGET in
         export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
         ;;
     powerpc64-unknown-linux-gnu)
-        if [[ -z $DOCKER ]]; then
-            export DOCKER=y
-        fi
         export PREFIX=powerpc64-linux-gnu-
-        export QEMU=qemu-ppc64
+        # export QEMU=qemu-ppc64
         export QEMU_LD_PREFIX=/usr/powerpc64-linux-gnu
         ;;
     powerpc64le-unknown-linux-gnu)
-        if [[ -z $DOCKER ]]; then
-            export DOCKER=y
-        fi
         export PREFIX=powerpc64le-linux-gnu-
-        export QEMU=qemu-ppc64le
+        # export QEMU=qemu-ppc64le
         export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
         # Issue #2. QEMU doesn't work
         export RUN_TESTS=n

@@ -7,6 +7,14 @@ build() {
     ${CARGO:-cargo} build --target $TARGET --release
 }
 
+inspect() {
+    $PREFIX$NM -g --defined-only target/**/debug/*.rlib
+    set +e
+    $PREFIX$OBJDUMP -Cd target/**/debug/*.rlib
+    $PREFIX$OBJDUMP -Cd target/**/release/*.rlib
+    set -e
+}
+
 run_tests() {
     if [[ $QEMU_LD_PREFIX ]]; then
         export RUST_TEST_THREADS=1
@@ -27,25 +35,20 @@ run_tests() {
     fi
 }
 
-inspect() {
-    $PREFIX$NM -g --defined-only target/**/debug/*.rlib
-    set +e
-    $PREFIX$OBJDUMP -Cd target/**/debug/*.rlib
-    $PREFIX$OBJDUMP -Cd target/**/release/*.rlib
-    set -e
-}
-
 main() {
     if [[ $DOCKER == "y" ]]; then
+        local tag=2016-08-13
+
         docker run \
-               -e DOCKER=i \
+               --privileged \
+               -e IN_DOCKER_CONTAINER=y \
                -e TARGET=$TARGET \
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
                -v $(pwd):/mnt \
-               ubuntu:16.04 \
+               japaric/rustc-builtins:$tag \
                sh -c 'set -ex;
                       cd /mnt;
-                      export PATH="$PATH:$HOME/.cargo/bin";
+                      export PATH="$PATH:/root/.cargo/bin";
                       bash ci/install.sh;
                       bash ci/script.sh'
     else
