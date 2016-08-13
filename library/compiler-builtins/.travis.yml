@@ -40,6 +40,9 @@ matrix:
     - env: TARGET=x86_64-unknown-linux-gnu
       os: linux
 
+before_install:
+  - export PATH="$PATH:$HOME/.cargo/bin"
+
 install:
   - bash ci/install.sh
 
