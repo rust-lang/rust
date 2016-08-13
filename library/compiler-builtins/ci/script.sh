@@ -9,10 +9,21 @@ build() {
 
 inspect() {
     $PREFIX$NM -g --defined-only target/**/debug/*.rlib
+
     set +e
     $PREFIX$OBJDUMP -Cd target/**/debug/*.rlib
     $PREFIX$OBJDUMP -Cd target/**/release/*.rlib
     set -e
+
+    # Check presence of weak symbols
+    case $TRAVIS_OS_NAME in
+        linux)
+            local symbols=( memcmp memcpy memmove memset )
+            for symbol in "${symbols[@]}"; do
+                $PREFIX$NM target/**/debug/*.rlib | grep -q "W $symbol"
+            done
+            ;;
+    esac
 }
 
 run_tests() {
