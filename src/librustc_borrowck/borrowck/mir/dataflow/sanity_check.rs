@@ -104,6 +104,9 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             repr::StatementKind::Assign(ref lvalue, ref rvalue) => {
                 (lvalue, rvalue)
             }
+            repr::StatementKind::SetDiscriminant{ .. } =>
+                span_bug!(stmt.source_info.span,
+                          "sanity_check should run before Deaggregator inserts SetDiscriminant"),
         };
 
         if lvalue == peek_arg_lval {

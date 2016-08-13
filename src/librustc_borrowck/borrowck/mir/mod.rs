@@ -369,6 +369,9 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
     let block = &mir[loc.block];
     match block.statements.get(loc.index) {
         Some(stmt) => match stmt.kind {
+            repr::StatementKind::SetDiscriminant{ .. } => {
+                span_bug!(stmt.source_info.span, "SetDiscrimant should not exist during borrowck");
+            }
             repr::StatementKind::Assign(ref lvalue, _) => {
                 debug!("drop_flag_effects: assignment {:?}", stmt);
                  on_all_children_bits(tcx, mir, move_data,
