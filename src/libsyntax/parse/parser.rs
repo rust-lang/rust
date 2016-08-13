@@ -2009,10 +2009,19 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn parse_field_name(&mut self) -> PResult<'a, Ident> {
+        if let token::Literal(token::Integer(name), None) = self.token {
+            self.bump();
+            Ok(Ident::with_empty_ctxt(name))
+        } else {
+            self.parse_ident()
+        }
+    }
+
     /// Parse ident COLON expr
     pub fn parse_field(&mut self) -> PResult<'a, Field> {
         let lo = self.span.lo;
-        let i = self.parse_ident()?;
+        let i = self.parse_field_name()?;
         let hi = self.last_span.hi;
         self.expect(&token::Colon)?;
         let e = self.parse_expr()?;
@@ -3508,7 +3517,7 @@ impl<'a> Parser<'a> {
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
                 // Parsing a pattern of the form "fieldname: pat"
-                let fieldname = self.parse_ident()?;
+                let fieldname = self.parse_field_name()?;
                 self.bump();
                 let pat = self.parse_pat()?;
                 hi = pat.span.hi;

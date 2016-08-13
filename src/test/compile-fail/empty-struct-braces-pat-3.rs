@@ -12,6 +12,8 @@
 
 // aux-build:empty-struct.rs
 
+#![feature(relaxed_adts)]
+
 extern crate empty_struct;
 use empty_struct::*;
 
@@ -23,13 +25,12 @@ fn main() {
     let e3 = E::Empty3 {};
     let xe3 = XE::XEmpty3 {};
 
-    // Rejected by parser as yet
-    // match e3 {
-    //     E::Empty3() => () // ERROR `E::Empty3` does not name a tuple variant or a tuple struct
-    // }
-    // match xe3 {
-    //     E::Empty3() => () // ERROR `XE::XEmpty3` does not name a tuple variant or a tuple struct
-    // }
+    match e3 {
+        E::Empty3() => () //~ ERROR `E::Empty3` does not name a tuple variant or a tuple struct
+    }
+    match xe3 {
+        XE::XEmpty3() => () //~ ERROR `XE::XEmpty3` does not name a tuple variant or a tuple struct
+    }
     match e3 {
         E::Empty3(..) => () //~ ERROR `E::Empty3` does not name a tuple variant or a tuple struct
     }
