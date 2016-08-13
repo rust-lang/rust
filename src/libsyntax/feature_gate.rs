@@ -981,7 +981,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 ast::TyKind::Never => return,
                 _ => (),
             };
-            visit::walk_ty(self, output_ty)
+            self.visit_ty(output_ty)
         }
     }
 
