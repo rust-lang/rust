@@ -23,7 +23,7 @@ use convert::AsRef;
 use default::Default;
 use fmt;
 use iter::ExactSizeIterator;
-use iter::{Map, Cloned, Iterator, DoubleEndedIterator};
+use iter::{Map, Cloned, Iterator, DoubleEndedIterator, FusedIterator};
 use marker::Sized;
 use mem;
 use ops::{Fn, FnMut, FnOnce};
@@ -454,6 +454,9 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for Chars<'a> {}
+
 impl<'a> Chars<'a> {
     /// View the underlying data as a subslice of the original data.
     ///
@@ -525,6 +528,9 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for CharIndices<'a> {}
+
 impl<'a> CharIndices<'a> {
     /// View the underlying data as a subslice of the original data.
     ///
@@ -592,6 +598,9 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
         self.0.len()
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for Bytes<'a> {}
 
 /// This macro generates a Clone impl for string pattern API
 /// wrapper types of the form X<'a, P>
@@ -738,6 +747,13 @@ macro_rules! generate_pattern_iterators {
                 $reverse_iterator(self.0.clone())
             }
         }
+
+        #[unstable(feature = "fused", issue = "35602")]
+        impl<'a, P: Pattern<'a>> FusedIterator for $forward_iterator<'a, P> {}
+
+        #[unstable(feature = "fused", issue = "35602")]
+        impl<'a, P: Pattern<'a>> FusedIterator for $reverse_iterator<'a, P>
+            where P::Searcher: ReverseSearcher<'a> {}
 
         generate_pattern_iterators!($($t)* with $(#[$common_stability_attribute])*,
                                                 $forward_iterator,
@@ -1088,6 +1104,9 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for Lines<'a> {}
+
 /// Created with the method [`lines_any()`].
 ///
 /// [`lines_any()`]: ../../std/primitive.str.html#method.lines_any
@@ -1150,6 +1169,10 @@ impl<'a> DoubleEndedIterator for LinesAny<'a> {
         self.0.next_back()
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+#[allow(deprecated)]
+impl<'a> FusedIterator for LinesAny<'a> {}
 
 /*
 Section: Comparing strings

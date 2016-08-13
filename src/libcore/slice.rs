@@ -992,6 +992,9 @@ iterator!{struct Iter -> *const T, &'a T}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for Iter<'a, T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { ptr: self.ptr, end: self.end, _marker: self._marker } }
@@ -1110,6 +1113,9 @@ iterator!{struct IterMut -> *mut T, &'a mut T}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for IterMut<'a, T> {}
+
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.
 #[doc(hidden)]
@@ -1202,6 +1208,9 @@ impl<'a, T, P> SplitIter for Split<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T, P> FusedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {}
+
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1291,6 +1300,9 @@ impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
         }
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T, P> FusedIterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {}
 
 /// An private iterator over subslices separated by elements that
 /// match a predicate function, splitting at most a fixed number of
@@ -1408,6 +1420,10 @@ macro_rules! forward_iterator {
                 self.inner.size_hint()
             }
         }
+
+        #[unstable(feature = "fused", issue = "35602")]
+        impl<'a, $elem, P> FusedIterator for $name<'a, $elem, P>
+            where P: FnMut(&T) -> bool {}
     }
 }
 
@@ -1505,6 +1521,9 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for Windows<'a, T> {}
 
 /// An iterator over a slice in (non-overlapping) chunks (`size` elements at a
 /// time).
@@ -1609,6 +1628,9 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for Chunks<'a, T> {}
+
 /// An iterator over a slice in (non-overlapping) mutable chunks (`size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
@@ -1703,6 +1725,9 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for ChunksMut<'a, T> {}
 
 //
 // Free functions

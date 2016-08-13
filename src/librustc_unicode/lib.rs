@@ -35,6 +35,7 @@
 #![feature(char_escape_debug)]
 #![feature(core_char_ext)]
 #![feature(decode_utf8)]
+#![feature(fused)]
 #![feature(lang_items)]
 #![feature(staged_api)]
 #![feature(unicode)]
