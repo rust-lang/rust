@@ -1,6 +1,7 @@
+dist: trusty
 language: generic
-sudo: required
 services: docker
+sudo: required
 
 matrix:
   include:
