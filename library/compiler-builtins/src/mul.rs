@@ -19,7 +19,7 @@ macro_rules! mul {
             low += (t & lower_mask) << half_bits;
             high += t >> half_bits;
             high += (a.low() >> half_bits) * (b.low() >> half_bits);
-            high += a.high().wrapping_mul(b.low()) + a.low().wrapping_mul(b.high());
+            high = high.wrapping_add(a.high().wrapping_mul(b.low()).wrapping_add(a.low().wrapping_mul(b.high())));
             <$ty>::from_parts(low, high)
         }
     }
