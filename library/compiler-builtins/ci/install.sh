@@ -48,7 +48,7 @@ install_xargo() {
 }
 
 main() {
-    if [[ $TRAVIS_OS_NAME == "osx" || ${IN_DOCKER_CONTAINER:-n} == "y" ]]
+    if [[ $TRAVIS_OS_NAME == "osx" || ${IN_DOCKER_CONTAINER:-n} == "y" ]]; then
         install_qemu
         install_binutils
         install_rust
