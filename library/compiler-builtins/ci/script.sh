@@ -36,7 +36,7 @@ run_tests() {
 }
 
 main() {
-    if [[ $DOCKER == "y" ]]; then
+    if [[ $TRAVIS_OS_NAME == "linux" ]]; then
         local tag=2016-08-13
 
         docker run \
