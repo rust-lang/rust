@@ -47,8 +47,6 @@ case $TARGET in
     powerpc64le-unknown-linux-gnu)
         export PREFIX=powerpc64le-linux-gnu-
         export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
-        # Issue #2. QEMU doesn't work
-        export RUN_TESTS=n
         ;;
     thumbv*-none-eabi)
         export CARGO=xargo
