@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Rust programs compiled for windows will always flash up a console window on
+Rust programs compiled for windows will always allocate a console window on
 startup. This behavior is controlled via the `SUBSYSTEM` parameter passed to the
 linker, and so *can* be overridden with specific compiler flags. However, doing
 so will bypass the rust-specific initialization code in `libstd`, as when using
