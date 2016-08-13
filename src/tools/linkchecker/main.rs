@@ -33,7 +33,7 @@ use std::path::{Path, PathBuf};
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 
-use url::{Url, UrlParser};
+use url::Url;
 
 use Redirect::*;
 
@@ -92,7 +92,7 @@ fn walk(cache: &mut Cache, root: &Path, dir: &Path, url: &mut Url, errors: &mut 
     for entry in t!(dir.read_dir()).map(|e| t!(e)) {
         let path = entry.path();
         let kind = t!(entry.file_type());
-        url.path_mut().unwrap().push(entry.file_name().into_string().unwrap());
+        url.path_segments_mut().unwrap().push(entry.file_name().to_str().unwrap());
         if kind.is_dir() {
             walk(cache, root, &path, url, errors);
         } else {
@@ -104,7 +104,7 @@ fn walk(cache: &mut Cache, root: &Path, dir: &Path, url: &mut Url, errors: &mut 
                 entry.source = String::new();
             }
         }
-        url.path_mut().unwrap().pop();
+        url.path_segments_mut().unwrap().pop();
     }
 }
 
@@ -138,9 +138,6 @@ fn check(cache: &mut Cache,
         return None;
     }
 
-    let mut parser = UrlParser::new();
-    parser.base_url(base);
-
     let res = load_file(cache, root, PathBuf::from(file), SkipRedirect);
     let (pretty_file, contents) = match res {
         Ok(res) => res,
@@ -162,7 +159,7 @@ fn check(cache: &mut Cache,
         }
         // Once we've plucked out the URL, parse it using our base url and
         // then try to extract a file path.
-        let (parsed_url, path) = match url_to_file_path(&parser, url) {
+        let (parsed_url, path) = match url_to_file_path(&base, url) {
             Some((url, path)) => (url, PathBuf::from(path)),
             None => {
                 *errors = true;
@@ -203,7 +200,7 @@ fn check(cache: &mut Cache,
                 Err(LoadError::IsRedirect) => unreachable!(),
             };
 
-            if let Some(ref fragment) = parsed_url.fragment {
+            if let Some(ref fragment) = parsed_url.fragment() {
                 // Fragments like `#1-6` are most likely line numbers to be
                 // interpreted by javascript, so we're ignoring these
                 if fragment.splitn(2, '-')
@@ -214,7 +211,7 @@ fn check(cache: &mut Cache,
                 let entry = &mut cache.get_mut(&pretty_path).unwrap();
                 entry.parse_ids(&pretty_path, &contents, errors);
 
-                if !entry.ids.contains(fragment) {
+                if !entry.ids.contains(*fragment) {
                     *errors = true;
                     print!("{}:{}: broken link fragment  ",
                            pretty_file.display(),
@@ -271,10 +268,8 @@ fn load_file(cache: &mut Cache,
         }
     };
     let base = Url::from_file_path(&file).unwrap();
-    let mut parser = UrlParser::new();
-    parser.base_url(&base);
 
-    match maybe_redirect.and_then(|url| url_to_file_path(&parser, &url)) {
+    match maybe_redirect.and_then(|url| url_to_file_path(&base, &url)) {
         Some((_, redirect_file)) => {
             let path = PathBuf::from(redirect_file);
             load_file(cache, root, path, FromRedirect(true))
@@ -299,8 +294,8 @@ fn maybe_redirect(source: &str) -> Option<String> {
     })
 }
 
-fn url_to_file_path(parser: &UrlParser, url: &str) -> Option<(Url, PathBuf)> {
-    parser.parse(url)
+fn url_to_file_path(parser: &Url, url: &str) -> Option<(Url, PathBuf)> {
+    parser.join(url)
           .ok()
           .and_then(|parsed_url| parsed_url.to_file_path().ok().map(|f| (parsed_url, f)))
 }
