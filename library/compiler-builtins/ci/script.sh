@@ -7,26 +7,6 @@ build() {
     ${CARGO:-cargo} build --target $TARGET --release
 }
 
-run_tests() {
-    if [[ $QEMU_LD_PREFIX ]]; then
-        export RUST_TEST_THREADS=1
-    fi
-
-    if [[ $QEMU ]]; then
-        cargo test --target $TARGET --no-run
-        if [[ ${RUN_TESTS:-y} == "y" ]]; then
-           $QEMU target/**/debug/rustc_builtins-*
-        fi
-        cargo test --target $TARGET --release --no-run
-        if [[ ${RUN_TESTS:-y} == "y" ]]; then
-            $QEMU target/**/release/rustc_builtins-*
-        fi
-    elif [[ ${RUN_TESTS:-y} == "y" ]]; then
-        cargo test --target $TARGET
-        cargo test --target $TARGET --release
-    fi
-}
-
 inspect() {
     $PREFIX$NM -g --defined-only target/**/debug/*.rlib
     set +e
@@ -35,17 +15,31 @@ inspect() {
     set -e
 }
 
+run_tests() {
+    if [[ $QEMU_LD_PREFIX ]]; then
+        export RUST_TEST_THREADS=1
+    fi
+
+    if [[ ${RUN_TESTS:-y} == "y" ]]; then
+        cargo test --target $TARGET
+        cargo test --target $TARGET --release
+    fi
+}
+
 main() {
-    if [[ $DOCKER == "y" ]]; then
+    if [[ $TRAVIS_OS_NAME == "linux" && ${IN_DOCKER_CONTAINER:-n} == "n" ]]; then
+        local tag=2016-08-13
+
         docker run \
-               -e DOCKER=i \
+               --privileged \
+               -e IN_DOCKER_CONTAINER=y \
                -e TARGET=$TARGET \
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
                -v $(pwd):/mnt \
-               ubuntu:16.04 \
+               japaric/rustc-builtins:$tag \
                sh -c 'set -ex;
                       cd /mnt;
-                      export PATH="$PATH:$HOME/.cargo/bin";
+                      export PATH="$PATH:/root/.cargo/bin";
                       bash ci/install.sh;
                       bash ci/script.sh'
     else
