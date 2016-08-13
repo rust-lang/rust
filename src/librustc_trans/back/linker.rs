@@ -247,29 +247,49 @@ impl<'a> Linker for GnuLinker<'a> {
             return
         }
 
-        let path = tmpdir.join("list");
-        let prefix = if self.sess.target.target.options.is_like_osx {
-            "_"
-        } else {
-            ""
-        };
-        let res = (|| -> io::Result<()> {
-            let mut f = BufWriter::new(File::create(&path)?);
-            for sym in &self.info.cdylib_exports {
-                writeln!(f, "{}{}", prefix, sym)?;
-            }
-            Ok(())
-        })();
-        if let Err(e) = res {
-            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
-        }
         let mut arg = OsString::new();
-        if self.sess.target.target.options.is_like_osx {
-            arg.push("-Wl,-exported_symbols_list,");
+        let path = tmpdir.join("list");
+
+        if self.sess.target.target.options.is_like_solaris {
+            let res = (|| -> io::Result<()> {
+                let mut f = BufWriter::new(File::create(&path)?);
+                writeln!(f, "{{\n  global:")?;
+                for sym in &self.info.cdylib_exports {
+                    writeln!(f, "    {};", sym)?;
+                }
+                writeln!(f, "\n  local:\n    *;\n}};")?;
+                Ok(())
+            })();
+            if let Err(e) = res {
+                self.sess.fatal(&format!("failed to write version script: {}", e));
+            }
+
+            arg.push("-Wl,-M,");
+            arg.push(&path);
         } else {
-            arg.push("-Wl,--retain-symbols-file=");
+            let prefix = if self.sess.target.target.options.is_like_osx {
+                "_"
+            } else {
+                ""
+            };
+            let res = (|| -> io::Result<()> {
+                let mut f = BufWriter::new(File::create(&path)?);
+                for sym in &self.info.cdylib_exports {
+                    writeln!(f, "{}{}", prefix, sym)?;
+                }
+                Ok(())
+            })();
+            if let Err(e) = res {
+                self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+            }
+            if self.sess.target.target.options.is_like_osx {
+                arg.push("-Wl,-exported_symbols_list,");
+            } else {
+                arg.push("-Wl,--retain-symbols-file=");
+            }
+            arg.push(&path);
         }
-        arg.push(&path);
+
         self.cmd.arg(arg);
     }
 }
