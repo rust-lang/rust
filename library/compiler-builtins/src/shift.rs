@@ -61,9 +61,12 @@ lshr!(__lshrdi3: u64);
 #[cfg(test)]
 mod tests {
     use quickcheck::TestResult;
+    use qc::{I64, U64};
 
+    // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
     quickcheck! {
-        fn ashldi(a: u64, b: u32) -> TestResult {
+        fn ashldi(a: U64, b: u32) -> TestResult {
+            let a = a.0;
             if b >= 64 {
                 TestResult::discard()
             } else {
@@ -72,7 +75,8 @@ mod tests {
             }
         }
 
-        fn ashrdi(a: i64, b: u32) -> TestResult {
+        fn ashrdi(a: I64, b: u32) -> TestResult {
+            let a = a.0;
             if b >= 64 {
                 TestResult::discard()
             } else {
@@ -81,7 +85,8 @@ mod tests {
             }
         }
 
-        fn lshrdi(a: u64, b: u32) -> TestResult {
+        fn lshrdi(a: U64, b: u32) -> TestResult {
+            let a = a.0;
             if b >= 64 {
                 TestResult::discard()
             } else {

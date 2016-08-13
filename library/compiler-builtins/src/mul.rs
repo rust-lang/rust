@@ -72,13 +72,17 @@ mulo!(__mulodi4: i64);
 
 #[cfg(test)]
 mod tests {
+    use qc::{I32, I64, U64};
+
     quickcheck! {
-        fn muldi(a: u64, b: u64) -> bool {
+        fn muldi(a: U64, b: U64) -> bool {
+            let (a, b) = (a.0, b.0);
             let r = super::__muldi4(a, b);
             r == a.wrapping_mul(b)
         }
 
-        fn mulosi(a: i32, b: i32) -> bool {
+        fn mulosi(a: I32, b: I32) -> bool {
+            let (a, b) = (a.0, b.0);
             let mut overflow = 2;
             let r = super::__mulosi4(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {
@@ -87,7 +91,8 @@ mod tests {
             (r, overflow != 0) == a.overflowing_mul(b)
         }
 
-        fn mulodi(a: i64, b: i64) -> bool {
+        fn mulodi(a: I64, b: I64) -> bool {
+            let (a, b) = (a.0, b.0);
             let mut overflow = 2;
             let r = super::__mulodi4(a, b, &mut overflow);
             if overflow != 0 && overflow != 1 {

@@ -1,8 +1,8 @@
 #![allow(unused_features)]
-#![no_std]
 #![feature(asm)]
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
+#![cfg_attr(not(test), no_std)]
 // TODO(rust-lang/rust#35021) uncomment when that PR lands
 // #![feature(rustc_builtins)]
 
@@ -13,12 +13,18 @@
 #[macro_use]
 extern crate quickcheck;
 
+#[cfg(test)]
+extern crate core;
+
 #[cfg(target_arch = "arm")]
 pub mod arm;
 
 pub mod udiv;
 pub mod mul;
 pub mod shift;
+
+#[cfg(test)]
+mod qc;
 
 /// Trait for some basic operations on integers
 trait Int {
