@@ -32,8 +32,6 @@ install_binutils() {
         osx)
             brew install binutils
             ;;
-        *)
-            ;;
     esac
 }
 
@@ -79,6 +77,12 @@ add_rustup_target() {
     fi
 }
 
+install_xargo() {
+    if [[ $CARGO == "xargo" ]]; then
+        curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | bash -s -- --from japaric/xargo
+    fi
+}
+
 configure_cargo() {
     if [[ $PREFIX ]]; then
         ${PREFIX}gcc -v
@@ -99,6 +103,7 @@ main() {
         install_c_toolchain
         install_rust
         add_rustup_target
+        install_xargo
         configure_cargo
     fi
 }

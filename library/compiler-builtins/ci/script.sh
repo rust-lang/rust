@@ -3,8 +3,8 @@ set -ex
 . $(dirname $0)/env.sh
 
 build() {
-    cargo build --target $TARGET
-    cargo build --target $TARGET --release
+    ${CARGO:-cargo} build --target $TARGET
+    ${CARGO:-cargo} build --target $TARGET --release
 }
 
 run_tests() {
@@ -14,14 +14,14 @@ run_tests() {
 
     if [[ $QEMU ]]; then
         cargo test --target $TARGET --no-run
-        if [[ -z $DONT_RUN_TESTS ]]; then
+        if [[ ${RUN_TESTS:-y} == "y" ]]; then
            $QEMU target/**/debug/rustc_builtins-*
         fi
         cargo test --target $TARGET --release --no-run
-        if [[ -z $DONT_RUN_TESTS ]]; then
+        if [[ ${RUN_TESTS:-y} == "y" ]]; then
             $QEMU target/**/release/rustc_builtins-*
         fi
-    elif [[ -z $DONT_RUN_TESTS ]]; then
+    elif [[ ${RUN_TESTS:-y} == "y" ]]; then
         cargo test --target $TARGET
         cargo test --target $TARGET --release
     fi
@@ -50,8 +50,8 @@ main() {
                       bash ci/script.sh'
     else
         build
-        run_tests
         inspect
+        run_tests
     fi
 }
 
