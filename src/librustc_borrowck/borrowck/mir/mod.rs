@@ -19,7 +19,7 @@ use rustc::hir;
 use rustc::hir::intravisit::{FnKind};
 
 use rustc::mir::repr;
-use rustc::mir::repr::{BasicBlock, BasicBlockData, Mir, Statement, Terminator};
+use rustc::mir::repr::{BasicBlock, BasicBlockData, Mir, Statement, Terminator, Location};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
@@ -35,7 +35,7 @@ use self::dataflow::{DataflowOperator};
 use self::dataflow::{Dataflow, DataflowAnalysis, DataflowResults};
 use self::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use self::dataflow::{DefinitelyInitializedLvals};
-use self::gather_moves::{MoveData, MovePathIndex, Location};
+use self::gather_moves::{MoveData, MovePathIndex};
 use self::gather_moves::{MovePathContent, MovePathData};
 
 fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<P<MetaItem>> {
@@ -367,7 +367,7 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
     }
 
     let block = &mir[loc.block];
-    match block.statements.get(loc.index) {
+    match block.statements.get(loc.statement_index) {
         Some(stmt) => match stmt.kind {
             repr::StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span, "SetDiscrimant should not exist during borrowck");
