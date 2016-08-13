@@ -77,10 +77,14 @@ impl<'a> CheckLoopVisitor<'a> {
         match self.cx {
             Loop => {}
             Closure => {
-                span_err!(self.sess, span, E0267, "`{}` inside of a closure", name);
+                struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
+                .span_label(span, &format!("cannot break inside of a closure"))
+                .emit();
             }
             Normal => {
-                span_err!(self.sess, span, E0268, "`{}` outside of loop", name);
+                struct_span_err!(self.sess, span, E0268, "`{}` outside of loop", name)
+                .span_label(span, &format!("cannot break outside of a loop"))
+                .emit();
             }
         }
     }
