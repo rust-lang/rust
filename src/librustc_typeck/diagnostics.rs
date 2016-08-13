@@ -1866,20 +1866,6 @@ fn bar(foo: Foo) -> u32 {
 ```
 "##,
 
-E0166: r##"
-This error means that the compiler found a return expression in a function
-marked as diverging. A function diverges if it has `!` in the place of the
-return type in its signature. For example:
-
-```compile_fail,E0166
-fn foo() -> ! { return; } // error
-```
-
-For a function that diverges, every control path in the function must never
-return, for example with a `loop` that never breaks or a call to another
-diverging function (such as `panic!()`).
-"##,
-
 E0172: r##"
 This error means that an attempt was made to specify the type of a variable with
 a combination of a concrete type and a trait. Consider the following example:
