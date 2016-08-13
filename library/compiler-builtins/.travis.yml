@@ -5,14 +5,6 @@ sudo: required
 
 matrix:
   include:
-    - env: TARGET=thumbv6m-none-eabi
-      os: linux
-    - env: TARGET=thumbv7m-none-eabi
-      os: linux
-    - env: TARGET=thumbv7em-none-eabi
-      os: linux
-    - env: TARGET=i586-unknown-linux-gnu
-      os: linux
     - env: TARGET=aarch64-unknown-linux-gnu
       os: linux
     - env: TARGET=arm-unknown-linux-gnueabi
@@ -20,6 +12,8 @@ matrix:
     - env: TARGET=arm-unknown-linux-gnueabihf
       os: linux
     - env: TARGET=armv7-unknown-linux-gnueabihf
+      os: linux
+    - env: TARGET=i586-unknown-linux-gnu
       os: linux
     - env: TARGET=i686-apple-darwin
       os: osx
@@ -34,6 +28,12 @@ matrix:
     - env: TARGET=powerpc64-unknown-linux-gnu
       os: linux
     - env: TARGET=powerpc64le-unknown-linux-gnu
+      os: linux
+    - env: TARGET=thumbv6m-none-eabi
+      os: linux
+    - env: TARGET=thumbv7em-none-eabi
+      os: linux
+    - env: TARGET=thumbv7m-none-eabi
       os: linux
     - env: TARGET=x86_64-apple-darwin
       os: osx
