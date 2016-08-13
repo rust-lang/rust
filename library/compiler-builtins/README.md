@@ -37,8 +37,8 @@ See [rust-lang/rust#35437][0].
 - [x] arm/aeabi_memcpy.S
 - [x] arm/aeabi_memmove.S
 - [x] arm/aeabi_memset.S
-- [ ] arm/aeabi_uidivmod.S
-- [ ] arm/aeabi_uldivmod.S
+- [x] arm/aeabi_uidivmod.S
+- [x] arm/aeabi_uldivmod.S
 - [ ] arm/divdf3vfp.S
 - [ ] arm/divmodsi4.S
 - [ ] arm/divsf3vfp.S
@@ -78,41 +78,30 @@ See [rust-lang/rust#35437][0].
 - [ ] arm/umodsi3.S
 - [ ] arm/unorddf2vfp.S
 - [ ] arm/unordsf2vfp.S
-- [ ] ashldi3.c
-- [ ] ashlti3.c
-- [ ] ashrdi3.c
-- [ ] ashrti3.c
+- [x] ashldi3.c
+- [x] ashrdi3.c
 - [ ] divdf3.c
 - [ ] divdi3.c
 - [ ] divsf3.c
 - [ ] divsi3.c
-- [ ] divti3.c
 - [ ] extendhfsf2.c
 - [ ] extendsfdf2.c
 - [ ] fixdfdi.c
 - [ ] fixdfsi.c
-- [ ] fixdfti.c
 - [ ] fixsfdi.c
 - [ ] fixsfsi.c
-- [ ] fixsfti.c
 - [ ] fixunsdfdi.c
 - [ ] fixunsdfsi.c
-- [ ] fixunsdfti.c
 - [ ] fixunssfdi.c
 - [ ] fixunssfsi.c
-- [ ] fixunssfti.c
 - [ ] floatdidf.c
 - [ ] floatdisf.c
 - [ ] floatsidf.c
 - [ ] floatsisf.c
-- [ ] floattidf.c
-- [ ] floattisf.c
 - [ ] floatundidf.c
 - [ ] floatundisf.c
 - [ ] floatunsidf.c
 - [ ] floatunsisf.c
-- [ ] floatuntidf.c
-- [ ] floatuntisf.c
 - [ ] i386/ashldi3.S
 - [ ] i386/ashrdi3.S
 - [ ] i386/chkstk.S
@@ -123,18 +112,14 @@ See [rust-lang/rust#35437][0].
 - [ ] i386/muldi3.S
 - [ ] i386/udivdi3.S
 - [ ] i386/umoddi3.S
-- [ ] lshrdi3.c
-- [ ] lshrti3.c
+- [x] lshrdi3.c
 - [ ] moddi3.c
 - [ ] modsi3.c
-- [ ] modti3.c
 - [ ] muldf3.c
-- [ ] muldi3.c
-- [ ] mulodi4.c
-- [ ] mulosi4.c
-- [ ] muloti4.c
+- [x] muldi3.c
+- [x] mulodi4.c
+- [x] mulosi4.c
 - [ ] mulsf3.c
-- [ ] multi3.c
 - [ ] powidf2.c
 - [ ] powisf2.c
 - [ ] subdf3.c
@@ -142,16 +127,35 @@ See [rust-lang/rust#35437][0].
 - [ ] truncdfhf2.c
 - [ ] truncdfsf2.c
 - [ ] truncsfhf2.c
-- [ ] udivdi3.c
+- [x] udivdi3.c
 - [x] udivmoddi4.c
 - [x] udivmodsi4.c
-- [ ] udivsi3.c
-- [ ] udivti3.c
-- [ ] umoddi3.c
-- [ ] umodsi3.c
-- [ ] umodti3.c
+- [x] udivsi3.c
+- [x] umoddi3.c
+- [x] umodsi3.c
 - [ ] x86_64/chkstk.S
 - [ ] x86_64/chkstk2.S
+
+These builtins are needed to support 128-bit integers, which are in the process of being added to Rust.
+
+- [ ] ashlti3.c
+- [ ] ashrti3.c
+- [ ] divti3.c
+- [ ] fixdfti.c
+- [ ] fixsfti.c
+- [ ] fixunsdfti.c
+- [ ] fixunssfti.c
+- [ ] floattidf.c
+- [ ] floattisf.c
+- [ ] floatuntidf.c
+- [ ] floatuntisf.c
+- [ ] lshrti3.c
+- [ ] modti3.c
+- [ ] muloti4.c
+- [ ] multi3.c
+- [ ] udivmodti4.c
+- [ ] udivti3.c
+- [ ] umodti3.c
 
 ## Unimplemented functions
 

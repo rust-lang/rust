@@ -1,13 +1,14 @@
 #![allow(unused_features)]
-#![cfg_attr(not(test), no_std)]
+#![no_std]
 #![feature(asm)]
 #![feature(core_intrinsics)]
 #![feature(naked_functions)]
 // TODO(rust-lang/rust#35021) uncomment when that PR lands
 // #![feature(rustc_builtins)]
 
-#[cfg(test)]
-extern crate core;
+// We disable #[no_mangle] for tests so that we can verify the test results
+// against the native compiler-rt implementations of the builtins.
+
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
@@ -15,36 +16,33 @@ extern crate quickcheck;
 #[cfg(target_arch = "arm")]
 pub mod arm;
 
-pub mod div;
-
-#[cfg(test)]
-mod test;
-
-use core::ops::{Index, IndexMut, RangeFull};
+pub mod udiv;
+pub mod mul;
+pub mod shift;
 
 /// Trait for some basic operations on integers
 trait Int {
-    fn bits() -> usize;
+    fn bits() -> u32;
 }
 
 // TODO: Once i128/u128 support lands, we'll want to add impls for those as well
 impl Int for u32 {
-    fn bits() -> usize {
+    fn bits() -> u32 {
         32
     }
 }
 impl Int for i32 {
-    fn bits() -> usize {
+    fn bits() -> u32 {
         32
     }
 }
 impl Int for u64 {
-    fn bits() -> usize {
+    fn bits() -> u32 {
         64
     }
 }
 impl Int for i64 {
-    fn bits() -> usize {
+    fn bits() -> u32 {
         64
     }
 }
@@ -86,35 +84,5 @@ impl LargeInt for i64 {
     }
     fn from_parts(low: u32, high: i32) -> i64 {
         low as i64 | ((high as i64) << 32)
-    }
-}
-
-/// Union-like access to the 32-bit words that make an `u64`: `x.low` and `x.high`. The whole `u64`
-/// can be accessed via the expression `x[..]`, which can be used in lvalue or rvalue position.
-#[cfg(target_endian = "little")]
-#[repr(C)]
-struct U64 {
-    low: u32,
-    high: u32,
-}
-
-#[cfg(target_endian = "big")]
-#[repr(C)]
-struct U64 {
-    high: u32,
-    low: u32,
-}
-
-impl Index<RangeFull> for U64 {
-    type Output = u64;
-
-    fn index(&self, _: RangeFull) -> &u64 {
-        unsafe { &*(self as *const _ as *const u64) }
-    }
-}
-
-impl IndexMut<RangeFull> for U64 {
-    fn index_mut(&mut self, _: RangeFull) -> &mut u64 {
-        unsafe { &mut *(self as *const _ as *mut u64) }
     }
 }
