@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::path::Path;
+use std::ffi::OsStr;
 
 const CARGO_LOCK: &'static str = "Cargo.lock";
 
@@ -18,14 +19,15 @@ pub fn check(path: &Path, bad: &mut bool) {
     super::walk(path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
                 &mut |file| {
-        let name = file.file_name().unwrap().to_string_lossy();
-        if name == CARGO_LOCK {
+        if let Some(CARGO_LOCK) = file.file_name().and_then(OsStr::to_str) {
             let rel_path = file.strip_prefix(path).unwrap();
+            let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
             let ret_code = Command::new("git")
-                                        .arg("diff-index")
-                                        .arg("--quiet")
+                                        .arg("diff")
+                                        .arg("--exit-code")
+                                        .arg("--patch")
                                         .arg("HEAD")
-                                        .arg(rel_path)
+                                        .arg(&git_friendly_path)
                                         .current_dir(path)
                                         .status()
                                         .unwrap_or_else(|e| {
