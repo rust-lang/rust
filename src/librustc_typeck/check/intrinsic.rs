@@ -51,10 +51,12 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {
-        span_err!(tcx.sess, it.span, E0094,
+        struct_span_err!(tcx.sess, it.span, E0094,
             "intrinsic has wrong number of type \
              parameters: found {}, expected {}",
-             i_n_tps, n_tps);
+             i_n_tps, n_tps)
+             .span_label(it.span, &format!("expected {} type parameter", n_tps))
+             .emit();
     } else {
         require_same_types(ccx,
                            TypeOrigin::IntrinsicType(it.span),
