@@ -303,6 +303,7 @@ pub struct TestOpts {
     pub nocapture: bool,
     pub color: ColorConfig,
     pub quiet: bool,
+    pub test_threads: Option<usize>,
 }
 
 impl TestOpts {
@@ -317,6 +318,7 @@ impl TestOpts {
             nocapture: false,
             color: AutoColor,
             quiet: false,
+            test_threads: None,
         }
     }
 }
@@ -334,6 +336,8 @@ fn optgroups() -> Vec<getopts::OptGroup> {
                           of stdout", "PATH"),
       getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
                                          task, allow printing directly"),
+      getopts::optopt("", "test-threads", "Number of threads used for running tests \
+                                           in parallel", "n_threads"),
       getopts::optflag("q", "quiet", "Display one character per test instead of one line"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
@@ -349,7 +353,8 @@ The FILTER string is tested against the name of all tests, and only those
 tests whose names contain the filter are run.
 
 By default, all tests are run in parallel. This can be altered with the
-RUST_TEST_THREADS environment variable when running tests (set it to 1).
+--test-threads flag or the RUST_TEST_THREADS environment variable when running
+tests (set it to 1).
 
 All tests have their standard output and standard error captured by default.
 This can be overridden with the --nocapture flag or setting RUST_TEST_NOCAPTURE
@@ -408,6 +413,18 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         };
     }
 
+    let test_threads = match matches.opt_str("test-threads") {
+        Some(n_str) =>
+            match n_str.parse::<usize>() {
+                Ok(n) => Some(n),
+                Err(e) =>
+                    return Some(Err(format!("argument for --test-threads must be a number > 0 \
+                                             (error: {})", e)))
+            },
+        None =>
+            None,
+    };
+
     let color = match matches.opt_str("color").as_ref().map(|s| &**s) {
         Some("auto") | None => AutoColor,
         Some("always") => AlwaysColor,
@@ -429,6 +446,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         nocapture: nocapture,
         color: color,
         quiet: quiet,
+        test_threads: test_threads,
     };
 
     Some(Ok(test_opts))
@@ -871,9 +889,10 @@ fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> 
             }
         });
 
-    // It's tempting to just spawn all the tests at once, but since we have
-    // many tests that run in other processes we would be making a big mess.
-    let concurrency = get_concurrency();
+    let concurrency = match opts.test_threads {
+        Some(n) => n,
+        None => get_concurrency(),
+    };
 
     let mut remaining = filtered_tests;
     remaining.reverse();
