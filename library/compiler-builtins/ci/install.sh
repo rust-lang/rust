@@ -33,6 +33,13 @@ install_binutils() {
             brew install binutils
             ;;
     esac
+
+    case $TARGET in
+        thumbv*-none-eabi)
+            sudo apt-get install -y --no-install-recommends \
+                 binutils-arm-none-eabi
+            ;;
+    esac
 }
 
 install_c_toolchain() {

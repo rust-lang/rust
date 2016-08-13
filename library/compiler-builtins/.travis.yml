@@ -6,22 +6,15 @@ matrix:
     - env: TARGET=thumbv6m-none-eabi
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages: &cortex
-            - gcc-arm-none-eabi
+      sudo: required
     - env: TARGET=thumbv7m-none-eabi
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages: *cortex
+      sudo: required
     - env: TARGET=thumbv7em-none-eabi
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages: *cortex
+      sudo: required
     - env: TARGET=i586-unknown-linux-gnu
       os: linux
       services: docker
