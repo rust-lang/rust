@@ -285,6 +285,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             Err(err) => if failure.is_ok() { failure = Err(err); }
                         }
                     }
+                    mir::StatementKind::StorageLive(_) |
+                    mir::StatementKind::StorageDead(_) => {}
                     mir::StatementKind::SetDiscriminant{ .. } => {
                         span_bug!(span, "SetDiscriminant should not appear in constants?");
                     }

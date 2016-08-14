@@ -161,8 +161,11 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
                 LvalueContext::Call => {
                     self.mark_assigned(index);
                 }
-                LvalueContext::Consume => {
-                }
+
+                LvalueContext::StorageLive |
+                LvalueContext::StorageDead |
+                LvalueContext::Consume => {}
+
                 LvalueContext::Store |
                 LvalueContext::Inspect |
                 LvalueContext::Borrow { .. } |
@@ -170,6 +173,7 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
                 LvalueContext::Projection => {
                     self.mark_as_lvalue(index);
                 }
+
                 LvalueContext::Drop => {
                     let ty = lvalue.ty(self.mir, self.bcx.tcx());
                     let ty = self.bcx.monomorphize(&ty.to_ty(self.bcx.tcx()));

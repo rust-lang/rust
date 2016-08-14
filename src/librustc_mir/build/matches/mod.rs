@@ -122,6 +122,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Binding { mode: BindingMode::ByValue,
                                    var,
                                    subpattern: None, .. } => {
+                self.storage_live_for_bindings(block, &irrefutable_pat);
                 let lvalue = Lvalue::Var(self.var_indices[&var]);
                 return self.into(&lvalue, block, initializer);
             }
@@ -205,6 +206,43 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         }
         var_scope
+    }
+
+    /// Emit `StorageLive` for every binding in the pattern.
+    pub fn storage_live_for_bindings(&mut self,
+                                     block: BasicBlock,
+                                     pattern: &Pattern<'tcx>) {
+        match *pattern.kind {
+            PatternKind::Binding { var, ref subpattern, .. } => {
+                let lvalue = Lvalue::Var(self.var_indices[&var]);
+                let source_info = self.source_info(pattern.span);
+                self.cfg.push(block, Statement {
+                    source_info: source_info,
+                    kind: StatementKind::StorageLive(lvalue)
+                });
+
+                if let Some(subpattern) = subpattern.as_ref() {
+                    self.storage_live_for_bindings(block, subpattern);
+                }
+            }
+            PatternKind::Array { ref prefix, ref slice, ref suffix } |
+            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+                for subpattern in prefix.iter().chain(slice).chain(suffix) {
+                    self.storage_live_for_bindings(block, subpattern);
+                }
+            }
+            PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {
+            }
+            PatternKind::Deref { ref subpattern } => {
+                self.storage_live_for_bindings(block, subpattern);
+            }
+            PatternKind::Leaf { ref subpatterns } |
+            PatternKind::Variant { ref subpatterns, .. } => {
+                for subpattern in subpatterns {
+                    self.storage_live_for_bindings(block, &subpattern.pattern);
+                }
+            }
+        }
     }
 }
 
@@ -665,6 +703,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             };
 
             let source_info = self.source_info(binding.span);
+            self.cfg.push(block, Statement {
+                source_info: source_info,
+                kind: StatementKind::StorageLive(Lvalue::Var(var_index))
+            });
             self.cfg.push_assign(block, source_info,
                                  &Lvalue::Var(var_index), rvalue);
         }

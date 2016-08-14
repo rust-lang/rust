@@ -688,8 +688,17 @@ pub struct Statement<'tcx> {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
+    /// Write the RHS Rvalue to the LHS Lvalue.
     Assign(Lvalue<'tcx>, Rvalue<'tcx>),
-    SetDiscriminant{ lvalue: Lvalue<'tcx>, variant_index: usize },
+
+    /// Write the discriminant for a variant to the enum Lvalue.
+    SetDiscriminant { lvalue: Lvalue<'tcx>, variant_index: usize },
+
+    /// Start a live range for the storage of the local.
+    StorageLive(Lvalue<'tcx>),
+
+    /// End the current live range for the storage of the local.
+    StorageDead(Lvalue<'tcx>),
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
@@ -697,6 +706,8 @@ impl<'tcx> Debug for Statement<'tcx> {
         use self::StatementKind::*;
         match self.kind {
             Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv),
+            StorageLive(ref lv) => write!(fmt, "StorageLive({:?})", lv),
+            StorageDead(ref lv) => write!(fmt, "StorageDead({:?})", lv),
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
                 write!(fmt, "discriminant({:?}) = {:?}", lv, index)
             }

@@ -326,6 +326,12 @@ macro_rules! make_mir_visitor {
                     StatementKind::SetDiscriminant{ ref $($mutability)* lvalue, .. } => {
                         self.visit_lvalue(lvalue, LvalueContext::Store);
                     }
+                    StatementKind::StorageLive(ref $($mutability)* lvalue) => {
+                        self.visit_lvalue(lvalue, LvalueContext::StorageLive);
+                    }
+                    StatementKind::StorageDead(ref $($mutability)* lvalue) => {
+                        self.visit_lvalue(lvalue, LvalueContext::StorageDead);
+                    }
                 }
             }
 
@@ -759,4 +765,8 @@ pub enum LvalueContext {
 
     // Consumed as part of an operand
     Consume,
+
+    // Starting and ending a storage live range
+    StorageLive,
+    StorageDead,
 }
