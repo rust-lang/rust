@@ -17,7 +17,7 @@ use super::boxed::Box;
 use core::ops::Drop;
 use core::cmp;
 
-/// A low-level utility for more ergonomically allocating, reallocating, and deallocating a
+/// A low-level utility for more ergonomically allocating, reallocating, and deallocating
 /// a buffer of memory on the heap without having to worry about all the corner cases
 /// involved. This type is excellent for building your own data structures like Vec and VecDeque.
 /// In particular:
@@ -534,8 +534,8 @@ impl<T> RawVec<T> {
     /// Converts the entire buffer into `Box<[T]>`.
     ///
     /// While it is not *strictly* Undefined Behavior to call
-    /// this procedure while some of the RawVec is unintialized,
-    /// it cetainly makes it trivial to trigger it.
+    /// this procedure while some of the RawVec is uninitialized,
+    /// it certainly makes it trivial to trigger it.
     ///
     /// Note that this will correctly reconstitute any `cap` changes
     /// that may have been performed. (see description of type for details)
