@@ -3,12 +3,7 @@ set -ex
 . $(dirname $0)/env.sh
 
 install_qemu() {
-    case ${QEMU_ARCH:-$TRAVIS_OS_NAME} in
-        i386)
-            dpkg --add-architecture $QEMU_ARCH
-            apt-get install -y --no-install-recommends \
-                    binfmt-support qemu-user-static:$QEMU_ARCH
-            ;;
+    case $TRAVIS_OS_NAME in
         linux)
             apt-get update
             apt-get install -y --no-install-recommends \

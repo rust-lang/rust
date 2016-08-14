@@ -47,6 +47,8 @@ case $TARGET in
     powerpc64le-unknown-linux-gnu)
         export PREFIX=powerpc64le-linux-gnu-
         export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
+        # QEMU crashes, even running the simplest cross compiled C program:
+        # `int main() { return 0; }`
         export RUN_TESTS=n
         ;;
     thumbv*-none-eabi)
