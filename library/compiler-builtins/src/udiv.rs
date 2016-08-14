@@ -186,8 +186,8 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
             if sr > u32::bits() - 1 {
                 if let Some(rem) = rem {
                     *rem = n;
-                    return 0;
                 }
+                return 0;
             }
 
             sr += 1;
@@ -229,9 +229,11 @@ pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
 #[cfg(test)]
 mod tests {
     use quickcheck::TestResult;
+    use qc::{U32, U64};
 
     quickcheck!{
-        fn udivdi3(n: u64, d: u64) -> TestResult {
+        fn udivdi3(n: U64, d: U64) -> TestResult {
+            let (n, d) = (n.0, d.0);
             if d == 0 {
                 TestResult::discard()
             } else {
@@ -240,7 +242,8 @@ mod tests {
             }
         }
 
-        fn umoddi3(n: u64, d: u64) -> TestResult {
+        fn umoddi3(n: U64, d: U64) -> TestResult {
+            let (n, d) = (n.0, d.0);
             if d == 0 {
                 TestResult::discard()
             } else {
@@ -249,7 +252,8 @@ mod tests {
             }
         }
 
-        fn udivmoddi4(n: u64, d: u64) -> TestResult {
+        fn udivmoddi4(n: U64, d: U64) -> TestResult {
+            let (n, d) = (n.0, d.0);
             if d == 0 {
                 TestResult::discard()
             } else {
@@ -259,7 +263,8 @@ mod tests {
             }
         }
 
-        fn udivsi3(n: u32, d: u32) -> TestResult {
+        fn udivsi3(n: U32, d: U32) -> TestResult {
+            let (n, d) = (n.0, d.0);
             if d == 0 {
                 TestResult::discard()
             } else {
@@ -268,7 +273,8 @@ mod tests {
             }
         }
 
-        fn umodsi3(n: u32, d: u32) -> TestResult {
+        fn umodsi3(n: U32, d: U32) -> TestResult {
+            let (n, d) = (n.0, d.0);
             if d == 0 {
                 TestResult::discard()
             } else {
@@ -277,7 +283,8 @@ mod tests {
             }
         }
 
-        fn udivmodsi4(n: u32, d: u32) -> TestResult {
+        fn udivmodsi4(n: U32, d: U32) -> TestResult {
+            let (n, d) = (n.0, d.0);
             if d == 0 {
                 TestResult::discard()
             } else {
