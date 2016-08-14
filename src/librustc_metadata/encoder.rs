@@ -452,38 +452,37 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     }
 }
 
-impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
-    fn encode_info_for_struct_ctor(&mut self,
-                                   name: Name,
-                                   ctor_id: ast::NodeId,
-                                   variant: ty::VariantDef<'tcx>,
-                                   struct_id: NodeId) {
+impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
+    fn encode_struct_ctor(&mut self,
+                          struct_def_id: DefId,
+                          struct_node_id: ast::NodeId,
+                          ctor_node_id: ast::NodeId) {
         let ecx = self.ecx();
-        let ctor_def_id = ecx.tcx.map.local_def_id(ctor_id);
-
-        self.record(ctor_def_id, |this| {
-            encode_def_id_and_key(ecx, this.rbml_w, ctor_def_id);
-            encode_family(this.rbml_w, match variant.kind {
-                ty::VariantKind::Struct => 'S',
-                ty::VariantKind::Tuple => 's',
-                ty::VariantKind::Unit => 'u',
-            });
-            this.encode_bounds_and_type_for_item(ctor_id);
-            encode_name(this.rbml_w, name);
-            this.encode_parent_item(ecx.tcx.map.local_def_id(struct_id));
-
-            let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(ctor_id));
-            let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(ctor_id));
-            encode_stability(this.rbml_w, stab);
-            encode_deprecation(this.rbml_w, depr);
-
-            // indicate that this is a tuple struct ctor, because
-            // downstream users will normally want the tuple struct
-            // definition, but without this there is no way for them
-            // to tell that they actually have a ctor rather than a
-            // normal function
-            this.rbml_w.wr_tagged_bytes(tag_items_data_item_is_tuple_struct_ctor, &[]);
+        let def = ecx.tcx.lookup_adt_def(struct_def_id);
+        let variant = def.struct_variant();
+        let item = ecx.tcx.map.expect_item(struct_node_id);
+        let ctor_def_id = ecx.tcx.map.local_def_id(ctor_node_id);
+        encode_def_id_and_key(ecx, self.rbml_w, ctor_def_id);
+        encode_family(self.rbml_w, match variant.kind {
+            ty::VariantKind::Struct => 'S',
+            ty::VariantKind::Tuple => 's',
+            ty::VariantKind::Unit => 'u',
         });
+        self.encode_bounds_and_type_for_item(ctor_node_id);
+        encode_name(self.rbml_w, item.name);
+        self.encode_parent_item(struct_def_id);
+
+        let stab = ecx.tcx.lookup_stability(ctor_def_id);
+        let depr = ecx.tcx.lookup_deprecation(ctor_def_id);
+        encode_stability(self.rbml_w, stab);
+        encode_deprecation(self.rbml_w, depr);
+
+        // indicate that this is a tuple struct ctor, because
+        // downstream users will normally want the tuple struct
+        // definition, but without this there is no way for them
+        // to tell that they actually have a ctor rather than a
+        // normal function
+        self.rbml_w.wr_tagged_bytes(tag_items_data_item_is_tuple_struct_ctor, &[]);
     }
 }
 
@@ -1073,7 +1072,7 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
 
     fn encode_addl_struct_info(&mut self,
                                def_id: DefId,
-                               struct_def_id: ast::NodeId,
+                               struct_node_id: ast::NodeId,
                                item: &hir::Item) {
         let ecx = self.ecx;
         let def = ecx.tcx.lookup_adt_def(def_id);
@@ -1089,10 +1088,10 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
             ty::VariantKind::Tuple | ty::VariantKind::Unit => {
                 // there is a value for structs like `struct
                 // Foo()` and `struct Foo`
-                self.encode_info_for_struct_ctor(item.name,
-                                                       struct_def_id,
-                                                       variant,
-                                                       item.id);
+                let ctor_def_id = ecx.tcx.map.local_def_id(struct_node_id);
+                self.record(ctor_def_id, |this| this.encode_struct_ctor(def_id,
+                                                                        item.id,
+                                                                        struct_node_id));
             }
         }
     }
