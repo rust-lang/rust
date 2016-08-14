@@ -32,7 +32,7 @@
 //! atomically-reference-counted shared pointer).
 //!
 //! Most atomic types may be stored in static variables, initialized using
-//! the provided static initializers like `INIT_ATOMIC_BOOL`. Atomic statics
+//! the provided static initializers like `ATOMIC_BOOL_INIT`. Atomic statics
 //! are often used for lazy global initialization.
 //!
 //!
