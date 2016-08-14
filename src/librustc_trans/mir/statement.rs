@@ -10,6 +10,7 @@
 
 use rustc::mir::repr as mir;
 
+use base;
 use common::{self, BlockAndBuilder};
 
 use super::MirContext;
@@ -71,6 +72,25 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 );
                 bcx
             }
+            mir::StatementKind::StorageLive(ref lvalue) => {
+                self.trans_storage_liveness(bcx, lvalue, base::Lifetime::Start)
+            }
+            mir::StatementKind::StorageDead(ref lvalue) => {
+                self.trans_storage_liveness(bcx, lvalue, base::Lifetime::End)
+            }
         }
+    }
+
+    fn trans_storage_liveness(&self,
+                              bcx: BlockAndBuilder<'bcx, 'tcx>,
+                              lvalue: &mir::Lvalue<'tcx>,
+                              intrinsic: base::Lifetime)
+                              -> BlockAndBuilder<'bcx, 'tcx> {
+        if let Some(index) = self.mir.local_index(lvalue) {
+            if let LocalRef::Lvalue(tr_lval) = self.locals[index] {
+                intrinsic.call(&bcx, tr_lval.llval);
+            }
+        }
+        bcx
     }
 }

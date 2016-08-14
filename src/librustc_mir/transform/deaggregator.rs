@@ -50,8 +50,7 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
             let orig_stmt = bb.statements.pop().unwrap();
             let (lhs, rhs) = match orig_stmt.kind {
                 StatementKind::Assign(ref lhs, ref rhs) => (lhs, rhs),
-                StatementKind::SetDiscriminant{ .. } =>
-                    span_bug!(src_info.span, "expected aggregate, not {:?}", orig_stmt.kind),
+                _ => span_bug!(src_info.span, "expected assign, not {:?}", orig_stmt),
             };
             let (agg_kind, operands) = match rhs {
                 &Rvalue::Aggregate(ref agg_kind, ref operands) => (agg_kind, operands),
@@ -114,7 +113,7 @@ fn get_aggregate_statement_index<'a, 'tcx, 'b>(start: usize,
         let ref statement = statements[i];
         let rhs = match statement.kind {
             StatementKind::Assign(_, ref rhs) => rhs,
-            StatementKind::SetDiscriminant{ .. } => continue,
+            _ => continue,
         };
         let (kind, operands) = match rhs {
             &Rvalue::Aggregate(ref kind, ref operands) => (kind, operands),

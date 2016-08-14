@@ -68,6 +68,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 // FIXME #30046                              ^~~~
                                 this.expr_into_pattern(block, pattern, init)
                             }));
+                        } else {
+                            this.storage_live_for_bindings(block, &pattern);
                         }
 
                         // Enter the visibility scope, after evaluating the initializer.

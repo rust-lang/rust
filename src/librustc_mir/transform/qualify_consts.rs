@@ -854,7 +854,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>) {
         assert_eq!(self.location.block, bb);
-        self.nest(|this| this.super_statement(bb, statement));
+        self.nest(|this| {
+            this.visit_source_info(&statement.source_info);
+            match statement.kind {
+                StatementKind::Assign(ref lvalue, ref rvalue) => {
+                    this.visit_assign(bb, lvalue, rvalue);
+                }
+                StatementKind::SetDiscriminant { .. } |
+                StatementKind::StorageLive(_) |
+                StatementKind::StorageDead(_) => {}
+            }
+        });
         self.location.statement_index += 1;
     }
 
