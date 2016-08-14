@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z force-dropflag-checks=on
+// ignore-emscripten
 
 // Quick-and-dirty test to ensure -Z force-dropflag-checks=on works as
 // expected. Note that the inlined drop-flag is slated for removal

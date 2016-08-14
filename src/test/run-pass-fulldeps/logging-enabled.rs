@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // exec-env:RUST_LOG=logging_enabled=info
+// ignore-emscripten: FIXME(#31622)
 
 
 #![feature(rustc_private)]
