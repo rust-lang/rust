@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
 
 [dependencies]
-url = "0.5"
+url = "1.2"
 
 [[bin]]
 name = "linkchecker"

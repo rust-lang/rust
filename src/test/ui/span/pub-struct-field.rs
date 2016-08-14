@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    &panic!()
-    //~^ ERROR mismatched types
-    //~| expected type `()`
-    //~| found type `&_`
-    //~| expected (), found reference
+// Regression test for issue #26083 and #35435
+// Test that span for public struct fields start at `pub`
+
+#![feature(pub_restricted)]
+
+struct Foo {
+    bar: u8,
+    pub bar: u8,
+    pub(crate) bar: u8,
 }
+
+fn main() {}

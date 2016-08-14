@@ -19,7 +19,7 @@ extern crate rustc_const_math;
 extern crate syntax;
 
 use rustc::mir::transform::{self, MirPass, MirSource};
-use rustc::mir::repr::{Mir, Literal};
+use rustc::mir::repr::{Mir, Literal, Location};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use rustc::middle::const_val::ConstVal;
@@ -40,7 +40,7 @@ impl<'tcx> MirPass<'tcx> for Pass {
 struct Visitor;
 
 impl<'tcx> MutVisitor<'tcx> for Visitor {
-    fn visit_literal(&mut self, literal: &mut Literal<'tcx>) {
+    fn visit_literal(&mut self, literal: &mut Literal<'tcx>, _: Location) {
         if let Literal::Value { ref mut value } = *literal {
             if let ConstVal::Integral(ConstInt::I32(ref mut i @ 11)) = *value {
                 *i = 42;

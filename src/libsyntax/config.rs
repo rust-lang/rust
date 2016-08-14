@@ -62,12 +62,16 @@ impl<'a> StripUnconfigured<'a> {
         };
 
         if attr::cfg_matches(self.config, &cfg, self.sess, self.features) {
-            self.process_cfg_attr(respan(mi.span, ast::Attribute_ {
+            let inner_attr = respan(mi.span, ast::Attribute_ {
                 id: attr::mk_attr_id(),
                 style: attr.node.style,
                 value: mi.clone(),
                 is_sugared_doc: false,
-            }))
+            });
+            if attr::is_used(&attr) {
+                attr::mark_used(&inner_attr);
+            }
+            self.process_cfg_attr(inner_attr)
         } else {
             None
         }

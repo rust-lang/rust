@@ -479,6 +479,29 @@ fn test_split_off() {
 }
 
 #[test]
+fn test_into_iter_as_slice() {
+    let vec = vec!['a', 'b', 'c'];
+    let mut into_iter = vec.into_iter();
+    assert_eq!(into_iter.as_slice(), &['a', 'b', 'c']);
+    let _ = into_iter.next().unwrap();
+    assert_eq!(into_iter.as_slice(), &['b', 'c']);
+    let _ = into_iter.next().unwrap();
+    let _ = into_iter.next().unwrap();
+    assert_eq!(into_iter.as_slice(), &[]);
+}
+
+#[test]
+fn test_into_iter_as_mut_slice() {
+    let vec = vec!['a', 'b', 'c'];
+    let mut into_iter = vec.into_iter();
+    assert_eq!(into_iter.as_slice(), &['a', 'b', 'c']);
+    into_iter.as_mut_slice()[0] = 'x';
+    into_iter.as_mut_slice()[1] = 'y';
+    assert_eq!(into_iter.next().unwrap(), 'x');
+    assert_eq!(into_iter.as_slice(), &['y', 'c']);
+}
+
+#[test]
 fn test_into_iter_count() {
     assert_eq!(vec![1, 2, 3].into_iter().count(), 3);
 }
