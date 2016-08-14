@@ -938,7 +938,8 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                                 self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
                                                        node_id,
                                                        ty.span,
-                                                       format!("private type in public interface"));
+                                                       format!("private type in public \
+                                                                interface (error E0446)"));
                             }
                         }
                     }

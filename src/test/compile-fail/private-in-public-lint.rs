@@ -9,8 +9,6 @@
 // except according to those terms.
 
 mod m1 {
-    #![deny(private_in_public)]
-
     pub struct Pub;
     struct Priv;
 

@@ -114,7 +114,7 @@ declare_lint! {
 
 declare_lint! {
     pub PRIVATE_IN_PUBLIC,
-    Warn,
+    Deny,
     "detect private items in public interfaces not caught by the old implementation"
 }
 

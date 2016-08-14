@@ -45,7 +45,7 @@ struct S2;
 
 mod m1 {
     fn f() {
-        struct Z {
+        pub struct Z {
             pub field: u8
         }
 
