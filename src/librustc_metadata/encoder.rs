@@ -1258,54 +1258,54 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
             });
         }
     }
+}
 
+impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_info_for_foreign_item(&mut self,
+                                    def_id: DefId,
                                     nitem: &hir::ForeignItem) {
         let ecx = self.ecx();
 
         debug!("writing foreign item {}", ecx.tcx.node_path_str(nitem.id));
-        let def_id = ecx.tcx.map.local_def_id(nitem.id);
         let abi = ecx.tcx.map.get_foreign_abi(nitem.id);
 
-        self.record(def_id, |this| {
-            encode_def_id_and_key(ecx, this.rbml_w, def_id);
-            let parent_id = ecx.tcx.map.get_parent(nitem.id);
-            this.encode_parent_item(ecx.tcx.map.local_def_id(parent_id));
-            this.encode_visibility(&nitem.vis);
-            match nitem.node {
-                hir::ForeignItemFn(ref fndecl, _) => {
-                    encode_family(this.rbml_w, FN_FAMILY);
-                    this.encode_bounds_and_type_for_item(nitem.id);
-                    encode_name(this.rbml_w, nitem.name);
-                    if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-                        encode_inlined_item(ecx,
-                                            this.rbml_w,
-                                            InlinedItemRef::Foreign(def_id, nitem));
-                        this.encode_mir(nitem.id);
-                    }
-                    encode_attributes(this.rbml_w, &nitem.attrs);
-                    let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
-                    let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
-                    encode_stability(this.rbml_w, stab);
-                    encode_deprecation(this.rbml_w, depr);
-                    this.encode_method_argument_names(&fndecl);
+        encode_def_id_and_key(ecx, self.rbml_w, def_id);
+        let parent_id = ecx.tcx.map.get_parent(nitem.id);
+        self.encode_parent_item(ecx.tcx.map.local_def_id(parent_id));
+        self.encode_visibility(&nitem.vis);
+        match nitem.node {
+            hir::ForeignItemFn(ref fndecl, _) => {
+                encode_family(self.rbml_w, FN_FAMILY);
+                self.encode_bounds_and_type_for_item(nitem.id);
+                encode_name(self.rbml_w, nitem.name);
+                if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
+                    encode_inlined_item(ecx,
+                                        self.rbml_w,
+                                        InlinedItemRef::Foreign(def_id, nitem));
+                    self.encode_mir(nitem.id);
                 }
-                hir::ForeignItemStatic(_, mutbl) => {
-                    if mutbl {
-                        encode_family(this.rbml_w, 'b');
-                    } else {
-                        encode_family(this.rbml_w, 'c');
-                    }
-                    this.encode_bounds_and_type_for_item(nitem.id);
-                    encode_attributes(this.rbml_w, &nitem.attrs);
-                    let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
-                    let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
-                    encode_stability(this.rbml_w, stab);
-                    encode_deprecation(this.rbml_w, depr);
-                    encode_name(this.rbml_w, nitem.name);
-                }
+                encode_attributes(self.rbml_w, &nitem.attrs);
+                let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
+                let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
+                encode_stability(self.rbml_w, stab);
+                encode_deprecation(self.rbml_w, depr);
+                self.encode_method_argument_names(&fndecl);
             }
-        });
+            hir::ForeignItemStatic(_, mutbl) => {
+                if mutbl {
+                    encode_family(self.rbml_w, 'b');
+                } else {
+                    encode_family(self.rbml_w, 'c');
+                }
+                self.encode_bounds_and_type_for_item(nitem.id);
+                encode_attributes(self.rbml_w, &nitem.attrs);
+                let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
+                let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));
+                encode_stability(self.rbml_w, stab);
+                encode_deprecation(self.rbml_w, depr);
+                encode_name(self.rbml_w, nitem.name);
+            }
+        }
     }
 }
 
@@ -1329,7 +1329,8 @@ impl<'a, 'ecx, 'tcx, 'encoder> Visitor<'tcx> for EncodeVisitor<'a, 'ecx, 'tcx, '
     }
     fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
         intravisit::walk_foreign_item(self, ni);
-        self.index.encode_info_for_foreign_item(ni);
+        let def_id = self.index.ecx.tcx.map.local_def_id(ni.id);
+        self.index.record(def_id, |index| index.encode_info_for_foreign_item(def_id, ni));
     }
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         intravisit::walk_ty(self, ty);
@@ -1357,26 +1358,31 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
             hir::ExprClosure(..) => {
                 let def_id = ecx.tcx.map.local_def_id(expr.id);
 
-                self.record(def_id, |this| {
-                    encode_def_id_and_key(ecx, this.rbml_w, def_id);
-                    encode_name(this.rbml_w, syntax::parse::token::intern("<closure>"));
-
-                    this.rbml_w.start_tag(tag_items_closure_ty);
-                    write_closure_type(ecx,
-                                       this.rbml_w,
-                                       &ecx.tcx.tables.borrow().closure_tys[&def_id]);
-                    this.rbml_w.end_tag();
-
-                    this.rbml_w.start_tag(tag_items_closure_kind);
-                    ecx.tcx.closure_kind(def_id).encode(this.rbml_w).unwrap();
-                    this.rbml_w.end_tag();
-
-                    assert!(ecx.mir_map.map.contains_key(&def_id));
-                    this.encode_mir(expr.id);
-                });
+                self.record(def_id, |this| this.encode_info_for_closure(def_id, expr.id));
             }
             _ => { }
         }
+    }
+}
+
+impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
+    fn encode_info_for_closure(&mut self, def_id: DefId, expr_id: NodeId) {
+        let ecx = self.ecx;
+        encode_def_id_and_key(ecx, self.rbml_w, def_id);
+        encode_name(self.rbml_w, syntax::parse::token::intern("<closure>"));
+
+        self.rbml_w.start_tag(tag_items_closure_ty);
+        write_closure_type(ecx,
+                           self.rbml_w,
+                           &ecx.tcx.tables.borrow().closure_tys[&def_id]);
+        self.rbml_w.end_tag();
+
+        self.rbml_w.start_tag(tag_items_closure_kind);
+        ecx.tcx.closure_kind(def_id).encode(self.rbml_w).unwrap();
+        self.rbml_w.end_tag();
+
+        assert!(ecx.mir_map.map.contains_key(&def_id));
+        self.encode_mir(expr_id);
     }
 }
 
