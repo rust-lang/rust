@@ -42,6 +42,11 @@
 //!   line. It is up to consumers of this core library to define this panic
 //!   function; it is only required to never return. This requires a `lang`
 //!   attribute named `panic_fmt`.
+//!
+//! * `rust_eh_personality` - is used by the failure mechanisms of the
+//!    compiler. This is often mapped to GCC's personality function, but crates
+//!    which do not trigger a panic can be assured that this function is never
+//!    called. The `lang` attribute is called `eh_personality`.
 
 // Since libcore defines many fundamental lang items, all tests live in a
 // separate crate, libcoretest, to avoid bizarre issues.
