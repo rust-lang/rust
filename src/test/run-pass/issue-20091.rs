@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-aarch64
+// ignore-emscripten
 #![feature(std_misc, os)]
 
 #[cfg(unix)]

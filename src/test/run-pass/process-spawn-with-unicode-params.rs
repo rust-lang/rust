@@ -17,6 +17,7 @@
 // intact.
 
 // ignore-aarch64
+// ignore-emscripten
 
 use std::io::prelude::*;
 use std::io;
