@@ -7,8 +7,8 @@ CFG_LIB_NAME_i586-unknown-linux-gnu=lib$(1).so
 CFG_STATIC_LIB_NAME_i586-unknown-linux-gnu=lib$(1).a
 CFG_LIB_GLOB_i586-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_i586-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
-CFG_JEMALLOC_CFLAGS_i586-unknown-linux-gnu := -m32 $(CFLAGS) -march=pentium
-CFG_GCCISH_CFLAGS_i586-unknown-linux-gnu :=  -g -fPIC -m32 $(CFLAGS) -march=pentium
+CFG_JEMALLOC_CFLAGS_i586-unknown-linux-gnu := -m32 $(CFLAGS) -march=pentium -Wa,-mrelax-relocations=no
+CFG_GCCISH_CFLAGS_i586-unknown-linux-gnu :=  -g -fPIC -m32 $(CFLAGS) -march=pentium -Wa,-mrelax-relocations=no
 CFG_GCCISH_CXXFLAGS_i586-unknown-linux-gnu := -fno-rtti $(CXXFLAGS) -march=pentium
 CFG_GCCISH_LINK_FLAGS_i586-unknown-linux-gnu := -shared -fPIC -ldl -pthread  -lrt -g -m32
 CFG_GCCISH_DEF_FLAG_i586-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
