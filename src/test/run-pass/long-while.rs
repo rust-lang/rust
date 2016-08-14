@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 pub fn main() {
     let mut i: isize = 0;

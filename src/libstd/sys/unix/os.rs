@@ -551,11 +551,13 @@ pub fn home_dir() -> Option<PathBuf> {
 
     #[cfg(any(target_os = "android",
               target_os = "ios",
-              target_os = "nacl"))]
+              target_os = "nacl",
+              target_os = "emscripten"))]
     unsafe fn fallback() -> Option<OsString> { None }
     #[cfg(not(any(target_os = "android",
                   target_os = "ios",
-                  target_os = "nacl")))]
+                  target_os = "nacl",
+                  target_os = "emscripten")))]
     unsafe fn fallback() -> Option<OsString> {
         #[cfg(not(target_os = "solaris"))]
         unsafe fn getpwduid_r(me: libc::uid_t, passwd: &mut libc::passwd,

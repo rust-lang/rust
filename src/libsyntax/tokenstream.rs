@@ -340,6 +340,11 @@ pub struct TokenStream {
     ts: InternalTS,
 }
 
+// This indicates the maximum size for a leaf in the concatenation algorithm.
+// If two leafs will be collectively smaller than this, they will be merged.
+// If a leaf is larger than this, it will be concatenated at the top.
+const LEAF_SIZE : usize = 32;
+
 // NB If Leaf access proves to be slow, inroducing a secondary Leaf without the bounds
 // for unsliced Leafs may lead to some performance improvemenet.
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -483,6 +488,37 @@ impl InternalTS {
             }
         }
     }
+
+    fn to_vec(&self) -> Vec<&TokenTree> {
+        let mut res = Vec::with_capacity(self.len());
+        fn traverse_and_append<'a>(res: &mut Vec<&'a TokenTree>, ts: &'a InternalTS) {
+            match *ts {
+                InternalTS::Empty(..) => {},
+                InternalTS::Leaf { ref tts, offset, len, .. } => {
+                    let mut to_app = tts[offset..offset + len].iter().collect();
+                    res.append(&mut to_app);
+                }
+                InternalTS::Node { ref left, ref right, .. } => {
+                    traverse_and_append(res, left);
+                    traverse_and_append(res, right);
+                }
+            }
+        }
+        traverse_and_append(&mut res, self);
+        res
+    }
+
+    fn to_tts(&self) -> Vec<TokenTree> {
+        self.to_vec().into_iter().cloned().collect::<Vec<TokenTree>>()
+    }
+
+    // Returns an internal node's children.
+    fn children(&self) -> Option<(Rc<InternalTS>, Rc<InternalTS>)> {
+        match *self {
+            InternalTS::Node { ref left, ref right, .. } => Some((left.clone(), right.clone())),
+            _ => None,
+        }
+    }
 }
 
 /// TokenStream operators include basic destructuring, boolean operations, `maybe_...`
@@ -496,14 +532,17 @@ impl InternalTS {
 ///
 ///    `maybe_path_prefix("a::b::c(a,b,c).foo()") -> (a::b::c, "(a,b,c).foo()")`
 impl TokenStream {
+    // Construct an empty node with a dummy span.
     pub fn mk_empty() -> TokenStream {
         TokenStream { ts: InternalTS::Empty(DUMMY_SP) }
     }
 
+    // Construct an empty node with the provided span.
     fn mk_spanned_empty(sp: Span) -> TokenStream {
         TokenStream { ts: InternalTS::Empty(sp) }
     }
 
+    // Construct a leaf node with a 0 offset and length equivalent to the input.
     fn mk_leaf(tts: Rc<Vec<TokenTree>>, sp: Span) -> TokenStream {
         let len = tts.len();
         TokenStream {
@@ -516,6 +555,7 @@ impl TokenStream {
         }
     }
 
+    // Construct a leaf node with the provided values.
     fn mk_sub_leaf(tts: Rc<Vec<TokenTree>>, offset: usize, len: usize, sp: Span) -> TokenStream {
         TokenStream {
             ts: InternalTS::Leaf {
@@ -527,6 +567,7 @@ impl TokenStream {
         }
     }
 
+    // Construct an internal node with the provided values.
     fn mk_int_node(left: Rc<InternalTS>,
                    right: Rc<InternalTS>,
                    len: usize,
@@ -561,11 +602,56 @@ impl TokenStream {
         }
     }
 
-    /// Concatenates two TokenStreams into a new TokenStream
+    /// Concatenates two TokenStreams into a new TokenStream.
     pub fn concat(left: TokenStream, right: TokenStream) -> TokenStream {
-        let new_len = left.len() + right.len();
-        let new_span = combine_spans(left.span(), right.span());
-        TokenStream::mk_int_node(Rc::new(left.ts), Rc::new(right.ts), new_len, new_span)
+        // This internal procedure performs 'aggressive compacting' during concatenation as
+        // follows:
+        // - If the nodes' combined total total length is less than 32, we copy both of
+        //   them into a new vector and build a new leaf node.
+        // - If one node is an internal node and the other is a 'small' leaf (length<32),
+        //   we recur down the internal node on the appropriate side.
+        // - Otherwise, we construct a new internal node that points to them as left and
+        // right.
+        fn concat_internal(left: Rc<InternalTS>, right: Rc<InternalTS>) -> TokenStream {
+            let llen = left.len();
+            let rlen = right.len();
+            let len = llen + rlen;
+            let span = combine_spans(left.span(), right.span());
+            if len <= LEAF_SIZE {
+                let mut new_vec = left.to_tts();
+                let mut rvec = right.to_tts();
+                new_vec.append(&mut rvec);
+                return TokenStream::mk_leaf(Rc::new(new_vec), span);
+            }
+
+            match (left.children(), right.children()) {
+                (Some((lleft, lright)), None) => {
+                    if rlen <= LEAF_SIZE  {
+                        let new_right = concat_internal(lright, right);
+                        TokenStream::mk_int_node(lleft, Rc::new(new_right.ts), len, span)
+                    } else {
+                       TokenStream::mk_int_node(left, right, len, span)
+                    }
+                }
+                (None, Some((rleft, rright))) => {
+                    if rlen <= LEAF_SIZE  {
+                        let new_left = concat_internal(left, rleft);
+                        TokenStream::mk_int_node(Rc::new(new_left.ts), rright, len, span)
+                    } else {
+                       TokenStream::mk_int_node(left, right, len, span)
+                    }
+                }
+                (_, _) => TokenStream::mk_int_node(left, right, len, span),
+            }
+        }
+
+        if left.is_empty() {
+            right
+        } else if right.is_empty() {
+            left
+        } else {
+            concat_internal(Rc::new(left.ts), Rc::new(right.ts))
+        }
     }
 
     /// Indicate if the TokenStream is empty.
@@ -580,27 +666,13 @@ impl TokenStream {
 
     /// Convert a TokenStream into a vector of borrowed TokenTrees.
     pub fn to_vec(&self) -> Vec<&TokenTree> {
-        fn internal_to_vec(ts: &InternalTS) -> Vec<&TokenTree> {
-            match *ts {
-                InternalTS::Empty(..) => Vec::new(),
-                InternalTS::Leaf { ref tts, offset, len, .. } => {
-                    tts[offset..offset + len].iter().collect()
-                }
-                InternalTS::Node { ref left, ref right, .. } => {
-                    let mut v1 = internal_to_vec(left);
-                    let mut v2 = internal_to_vec(right);
-                    v1.append(&mut v2);
-                    v1
-                }
-            }
-        }
-        internal_to_vec(&self.ts)
+        self.ts.to_vec()
     }
 
     /// Convert a TokenStream into a vector of TokenTrees (by cloning the TokenTrees).
     /// (This operation is an O(n) deep copy of the underlying structure.)
     pub fn to_tts(&self) -> Vec<TokenTree> {
-        self.to_vec().into_iter().cloned().collect::<Vec<TokenTree>>()
+        self.ts.to_tts()
     }
 
     /// Return the TokenStream's span.

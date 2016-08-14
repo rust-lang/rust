@@ -71,8 +71,8 @@ use result::Result;
 ///
 /// # Generic Impls
 ///
-/// - `AsRef` auto-dereference if the inner type is a reference or a mutable
-/// reference (eg: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`)
+/// - `AsRef` auto-dereferences if the inner type is a reference or a mutable
+/// reference (e.g.: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`)
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRef<T: ?Sized> {
@@ -88,8 +88,8 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// # Generic Impls
 ///
-/// - `AsMut` auto-dereference if the inner type is a reference or a mutable
-/// reference (eg: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`)
+/// - `AsMut` auto-dereferences if the inner type is a reference or a mutable
+/// reference (e.g.: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`)
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {

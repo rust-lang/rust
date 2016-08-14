@@ -12,7 +12,7 @@
 // `e` is a type which requires a destructor.
 
 
-#![allow(path_statement)]
+#![allow(path_statements)]
 
 struct A { n: isize }
 struct B;

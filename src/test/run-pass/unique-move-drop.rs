@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 

@@ -1152,7 +1152,7 @@ impl String {
         self.vec.set_len(len + amt);
     }
 
-    /// Inserts a string into this `String` at a byte position.
+    /// Inserts a string slice into this `String` at a byte position.
     ///
     /// This is an `O(n)` operation as it requires copying every element in the
     /// buffer.
@@ -1182,8 +1182,7 @@ impl String {
                reason = "recent addition",
                issue = "35553")]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
-        let len = self.len();
-        assert!(idx <= len);
+        assert!(idx <= self.len());
         assert!(self.is_char_boundary(idx));
 
         unsafe {

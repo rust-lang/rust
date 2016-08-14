@@ -27,11 +27,11 @@ fn main() {
         //~^ ERROR mismatched types
         //~| expected type `&std::option::Option<{integer}>`
         //~| found type `std::option::Option<_>`
-        //~| expected &-ptr, found enum `std::option::Option`
+        //~| expected reference, found enum `std::option::Option`
         None => ()
         //~^ ERROR mismatched types
         //~| expected type `&std::option::Option<{integer}>`
         //~| found type `std::option::Option<_>`
-        //~| expected &-ptr, found enum `std::option::Option`
+        //~| expected reference, found enum `std::option::Option`
     }
 }
