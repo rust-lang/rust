@@ -81,6 +81,7 @@ impl<'b> Resolver<'b> {
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item) {
         let parent = self.current_module;
+        let parent_vis = self.current_vis;
         let name = item.ident.name;
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
@@ -207,7 +208,10 @@ impl<'b> Resolver<'b> {
                 });
                 self.define(parent, name, TypeNS, (module, sp, vis));
                 self.module_map.insert(item.id, module);
-                self.current_module = module; // Descend into the module.
+
+                // Descend into the module.
+                self.current_module = module;
+                self.current_vis = ty::Visibility::Restricted(item.id);
             }
 
             ItemKind::ForeignMod(..) => {}
@@ -303,6 +307,7 @@ impl<'b> Resolver<'b> {
 
         visit::walk_item(&mut BuildReducedGraphVisitor { resolver: self }, item);
         self.current_module = parent;
+        self.current_vis = parent_vis;
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
