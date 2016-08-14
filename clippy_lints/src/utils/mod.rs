@@ -5,7 +5,7 @@ use rustc::hir::map::Node;
 use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::middle::cstore;
 use rustc::session::Session;
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty;
@@ -274,7 +274,7 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
     let ty = cx.tcx.erase_regions(&ty);
-    cx.tcx.infer_ctxt(None, None, ProjectionMode::Any).enter(|infcx| {
+    cx.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
         let obligation = cx.tcx.predicate_for_trait_def(traits::ObligationCause::dummy(),
                                                         trait_id,
                                                         0,
@@ -709,7 +709,7 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Optio
 // not for type parameters.
 pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>, parameter_item: NodeId) -> bool {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, parameter_item);
-    cx.tcx.infer_ctxt(None, Some(parameter_env), ProjectionMode::Any).enter(|infcx| {
+    cx.tcx.infer_ctxt(None, Some(parameter_env), Reveal::All).enter(|infcx| {
         let new_a = a.subst(infcx.tcx, infcx.parameter_environment.free_substs);
         let new_b = b.subst(infcx.tcx, infcx.parameter_environment.free_substs);
         infcx.can_equate(&new_a, &new_b).is_ok()
