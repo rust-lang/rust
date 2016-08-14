@@ -1152,7 +1152,7 @@ impl String {
         self.vec.set_len(len + amt);
     }
 
-    /// Inserts a string into this `String` at a byte position.
+    /// Inserts a string slice into this `String` at a byte position.
     ///
     /// This is an `O(n)` operation as it requires copying every element in the
     /// buffer.
