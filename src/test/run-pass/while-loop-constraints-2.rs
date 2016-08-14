@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_assignment)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 pub fn main() {
     let mut y: isize = 42;

@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(path_statement)]
+#![allow(path_statements)]
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
