@@ -41,7 +41,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::fold::Folder;
 use rustc::hir::print as pprust;
-use rustc::ty::subst::{self, ParamSpace, Substs, VecPerParamSpace};
+use rustc::ty::subst::{self, Substs, VecPerParamSpace};
 use rustc::ty;
 use rustc::middle::stability;
 
@@ -630,13 +630,14 @@ impl Clean<TyParamBound> for hir::TyParamBound {
     }
 }
 
-fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
+fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: bool,
                         bindings: Vec<TypeBinding>, substs: &Substs) -> PathParameters {
     let lifetimes = substs.regions.get_slice(subst::TypeSpace)
                     .iter()
                     .filter_map(|v| v.clean(cx))
                     .collect();
-    let types = substs.types.get_slice(subst::TypeSpace).to_vec();
+    let types = substs.types.get_slice(subst::TypeSpace);
+    let types = types[has_self as usize..].to_vec();
 
     match (trait_did, cx.tcx_opt()) {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
@@ -675,13 +676,13 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
-fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>,
+fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self: bool,
                  bindings: Vec<TypeBinding>, substs: &Substs) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
             name: name.to_string(),
-            params: external_path_params(cx, trait_did, bindings, substs)
+            params: external_path_params(cx, trait_did, has_self, bindings, substs)
         }],
     }
 }
@@ -696,16 +697,16 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
         let (did, path) = match *self {
             ty::BoundSend =>
                 (tcx.lang_items.send_trait().unwrap(),
-                 external_path(cx, "Send", None, vec![], empty)),
+                 external_path(cx, "Send", None, false, vec![], empty)),
             ty::BoundSized =>
                 (tcx.lang_items.sized_trait().unwrap(),
-                 external_path(cx, "Sized", None, vec![], empty)),
+                 external_path(cx, "Sized", None, false, vec![], empty)),
             ty::BoundCopy =>
                 (tcx.lang_items.copy_trait().unwrap(),
-                 external_path(cx, "Copy", None, vec![], empty)),
+                 external_path(cx, "Copy", None, false, vec![], empty)),
             ty::BoundSync =>
                 (tcx.lang_items.sync_trait().unwrap(),
-                 external_path(cx, "Sync", None, vec![], empty)),
+                 external_path(cx, "Sync", None, false, vec![], empty)),
         };
         inline::record_extern_fqn(cx, did, TypeTrait);
         TraitBound(PolyTrait {
@@ -728,14 +729,14 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         };
         inline::record_extern_fqn(cx, self.def_id, TypeTrait);
         let path = external_path(cx, &tcx.item_name(self.def_id).as_str(),
-                                 Some(self.def_id), vec![], self.substs);
+                                 Some(self.def_id), true, vec![], self.substs);
 
         debug!("ty::TraitRef\n  substs.types(TypeSpace): {:?}\n",
-               self.substs.types.get_slice(ParamSpace::TypeSpace));
+               &self.input_types()[1..]);
 
         // collect any late bound regions
         let mut late_bounds = vec![];
-        for &ty_s in self.substs.types.get_slice(ParamSpace::TypeSpace) {
+        for &ty_s in &self.input_types()[1..] {
             if let ty::TyTuple(ts) = ty_s.sty {
                 for &ty_s in ts {
                     if let ty::TyRef(ref reg, _) = ty_s.sty {
@@ -982,8 +983,13 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
-        let stripped_typarams = gens.types.get_slice(space).iter().map(|tp| {
-            tp.clean(cx)
+        let stripped_typarams = gens.types.get_slice(space).iter().filter_map(|tp| {
+            if tp.name == keywords::SelfType.name() {
+                assert_eq!(tp.index, 0);
+                None
+            } else {
+                Some(tp.clean(cx))
+            }
         }).collect::<Vec<_>>();
         let stripped_lifetimes = gens.regions.get_slice(space).iter().map(|rp| {
             let mut srp = rp.clone();
@@ -1820,7 +1826,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
-                                         None, vec![], substs);
+                                         None, false, vec![], substs);
                 ResolvedPath {
                     path: path,
                     typarams: None,
@@ -1847,7 +1853,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 }
 
                 let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
-                                         Some(did), bindings, obj.principal.0.substs);
+                                         Some(did), false, bindings, obj.principal.0.substs);
                 ResolvedPath {
                     path: path,
                     typarams: Some(typarams),

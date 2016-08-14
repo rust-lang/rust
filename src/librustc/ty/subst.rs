@@ -47,8 +47,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                   r: Vec<ty::Region>)
                   -> &'tcx Substs<'tcx>
     {
-        Substs::new(tcx, VecPerParamSpace::new(vec![], vec![], t),
-                    VecPerParamSpace::new(vec![], vec![], r))
+        Substs::new(tcx, VecPerParamSpace::new(vec![], t),
+                    VecPerParamSpace::new(vec![], r))
     }
 
     pub fn new_type(tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -56,18 +56,19 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                     r: Vec<ty::Region>)
                     -> &'tcx Substs<'tcx>
     {
-        Substs::new(tcx, VecPerParamSpace::new(vec![], t, vec![]),
-                    VecPerParamSpace::new(vec![], r, vec![]))
+        Substs::new(tcx, VecPerParamSpace::new(t, vec![]),
+                    VecPerParamSpace::new(r, vec![]))
     }
 
     pub fn new_trait(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                     t: Vec<Ty<'tcx>>,
+                     mut t: Vec<Ty<'tcx>>,
                      r: Vec<ty::Region>,
                      s: Ty<'tcx>)
                     -> &'tcx Substs<'tcx>
     {
-        Substs::new(tcx, VecPerParamSpace::new(vec![s], t, vec![]),
-                    VecPerParamSpace::new(vec![], r, vec![]))
+        t.insert(0, s);
+        Substs::new(tcx, VecPerParamSpace::new(t, vec![]),
+                    VecPerParamSpace::new(r, vec![]))
     }
 
     pub fn empty(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx Substs<'tcx> {
@@ -90,12 +91,10 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         let defs = tcx.lookup_generics(def_id);
         let mut substs = Substs {
             types: VecPerParamSpace {
-                self_limit: 0,
                 type_limit: 0,
                 content: Vec::with_capacity(defs.types.content.len())
             },
             regions: VecPerParamSpace {
-                self_limit: 0,
                 type_limit: 0,
                 content: Vec::with_capacity(defs.regions.content.len())
             }
@@ -104,7 +103,6 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         for &space in &ParamSpace::all() {
             for def in defs.regions.get_slice(space) {
                 assert_eq!(def.space, space);
-                assert!(space != SelfSpace);
 
                 let region = mk_region(def, &substs);
                 substs.regions.content.push(region);
@@ -120,11 +118,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                 let ty = mk_type(def, &substs);
                 substs.types.content.push(ty);
 
-                if space == SelfSpace {
-                    substs.types.self_limit += 1;
-                }
-
-                if space <= TypeSpace {
+                if space == TypeSpace {
                     substs.types.type_limit += 1;
                 }
             }
@@ -155,7 +149,6 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                        target_substs: &Substs<'tcx>)
                        -> &'tcx Substs<'tcx> {
         let defs = tcx.lookup_generics(source_ancestor);
-        assert_eq!(self.types.len(SelfSpace), defs.types.len(SelfSpace));
         assert_eq!(self.types.len(TypeSpace), defs.types.len(TypeSpace));
         assert_eq!(target_substs.types.len(FnSpace), 0);
         assert_eq!(defs.types.len(FnSpace), 0);
@@ -195,29 +188,26 @@ impl<'tcx> Decodable for &'tcx Substs<'tcx> {
 #[derive(PartialOrd, Ord, PartialEq, Eq, Copy,
            Clone, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum ParamSpace {
-    SelfSpace,  // Self parameter on a trait
     TypeSpace,  // Type parameters attached to a type definition, trait, or impl
     FnSpace,    // Type parameters attached to a method or fn
 }
 
 impl ParamSpace {
-    pub fn all() -> [ParamSpace; 3] {
-        [SelfSpace, TypeSpace, FnSpace]
+    pub fn all() -> [ParamSpace; 2] {
+        [TypeSpace, FnSpace]
     }
 
     pub fn to_uint(self) -> usize {
         match self {
-            SelfSpace => 0,
-            TypeSpace => 1,
-            FnSpace => 2,
+            TypeSpace => 0,
+            FnSpace => 1,
         }
     }
 
     pub fn from_uint(u: usize) -> ParamSpace {
         match u {
-            0 => SelfSpace,
-            1 => TypeSpace,
-            2 => FnSpace,
+            0 => TypeSpace,
+            1 => FnSpace,
             _ => bug!("Invalid ParamSpace: {}", u)
         }
     }
@@ -235,18 +225,15 @@ pub struct VecPerParamSpace<T> {
     // Here is how the representation corresponds to the abstraction
     // i.e. the "abstraction function" AF:
     //
-    // AF(self) = (self.content[..self.self_limit],
-    //             self.content[self.self_limit..self.type_limit],
+    // AF(self) = (self.content[..self.type_limit],
     //             self.content[self.type_limit..])
-    self_limit: usize,
     type_limit: usize,
     content: Vec<T>,
 }
 
 impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[{:?};{:?};{:?}]",
-               self.get_slice(SelfSpace),
+        write!(f, "[{:?};{:?}]",
                self.get_slice(TypeSpace),
                self.get_slice(FnSpace))
     }
@@ -255,43 +242,34 @@ impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
 impl<T> VecPerParamSpace<T> {
     fn limits(&self, space: ParamSpace) -> (usize, usize) {
         match space {
-            SelfSpace => (0, self.self_limit),
-            TypeSpace => (self.self_limit, self.type_limit),
+            TypeSpace => (0, self.type_limit),
             FnSpace => (self.type_limit, self.content.len()),
         }
     }
 
     pub fn empty() -> VecPerParamSpace<T> {
         VecPerParamSpace {
-            self_limit: 0,
             type_limit: 0,
             content: Vec::new()
         }
     }
 
-    /// `s` is the self space.
     /// `t` is the type space.
     /// `f` is the fn space.
-    pub fn new(s: Vec<T>, t: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
-        let self_limit = s.len();
-        let type_limit = self_limit + t.len();
+    pub fn new(t: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
+        let type_limit = t.len();
 
-        let mut content = s;
-        content.extend(t);
+        let mut content = t;
         content.extend(f);
 
         VecPerParamSpace {
-            self_limit: self_limit,
             type_limit: type_limit,
             content: content,
         }
     }
 
-    fn new_internal(content: Vec<T>, self_limit: usize, type_limit: usize)
-                    -> VecPerParamSpace<T>
-    {
+    fn new_internal(content: Vec<T>, type_limit: usize) -> VecPerParamSpace<T> {
         VecPerParamSpace {
-            self_limit: self_limit,
             type_limit: type_limit,
             content: content,
         }
@@ -336,18 +314,14 @@ impl<T> VecPerParamSpace<T> {
 
     pub fn map<U, P>(&self, pred: P) -> VecPerParamSpace<U> where P: FnMut(&T) -> U {
         let result = self.as_full_slice().iter().map(pred).collect();
-        VecPerParamSpace::new_internal(result,
-                                       self.self_limit,
-                                       self.type_limit)
+        VecPerParamSpace::new_internal(result, self.type_limit)
     }
 
     pub fn map_enumerated<U, P>(&self, pred: P) -> VecPerParamSpace<U> where
         P: FnMut((ParamSpace, usize, &T)) -> U,
     {
         let result = self.iter_enumerated().map(pred).collect();
-        VecPerParamSpace::new_internal(result,
-                                       self.self_limit,
-                                       self.type_limit)
+        VecPerParamSpace::new_internal(result, self.type_limit)
     }
 }
 
@@ -639,8 +613,6 @@ impl<'a, 'gcx, 'tcx> ty::ExistentialTraitRef<'tcx> {
                          -> ty::ExistentialTraitRef<'tcx> {
         let Substs { mut types, regions } = trait_ref.substs.clone();
 
-        assert_eq!(types.self_limit, 1);
-        types.self_limit = 0;
         types.type_limit -= 1;
         types.content.remove(0);
 
@@ -665,8 +637,6 @@ impl<'a, 'gcx, 'tcx> ty::PolyExistentialTraitRef<'tcx> {
         self.map_bound(|trait_ref| {
             let Substs { mut types, regions } = trait_ref.substs.clone();
 
-            assert_eq!(types.self_limit, 0);
-            types.self_limit = 1;
             types.type_limit += 1;
             types.content.insert(0, self_ty);
 

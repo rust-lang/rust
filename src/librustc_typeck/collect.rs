@@ -65,7 +65,7 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
-use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
+use rustc::ty::subst::{Substs, FnSpace, ParamSpace, TypeSpace, VecPerParamSpace};
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use rustc::ty::{VariantKind};
@@ -85,7 +85,6 @@ use std::rc::Rc;
 
 use syntax::{abi, ast, attr};
 use syntax::parse::token::keywords;
-use syntax::ptr::P;
 use syntax_pos::Span;
 
 use rustc::hir::{self, intravisit, map as hir_map, print as pprust};
@@ -546,7 +545,7 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let path_res = tcx.expect_resolution(ast_ty.id);
         match path_res.base_def {
             Def::SelfTy(Some(def_id), None) |
-            Def::TyParam(_, _, def_id, _) if path_res.depth == 0 => {
+            Def::TyParam(def_id) if path_res.depth == 0 => {
                 def_id == tcx.map.local_def_id(param_id)
             }
             _ => false
@@ -1333,7 +1332,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
 
     // add in the explicit where-clauses
     let mut trait_predicates =
-        ty_generic_predicates(ccx, TypeSpace, generics, &base_predicates);
+        ty_generic_predicates(ccx, TypeSpace, generics, &base_predicates, true);
 
     let assoc_predicates = predicates_for_associated_types(ccx,
                                                            generics,
@@ -1430,7 +1429,7 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         let parent = ccx.tcx.map.get_parent(param_id);
 
                         let def = ty::TypeParameterDef {
-                            space: SelfSpace,
+                            space: TypeSpace,
                             index: 0,
                             name: keywords::SelfType.name(),
                             def_id: tcx.map.local_def_id(param_id),
@@ -1477,27 +1476,25 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }).collect();
 
         // Now create the real type parameters.
-        let types = ast_generics.ty_params.iter().enumerate().map(|(i, _)| {
-            get_or_create_type_parameter_def(ccx, ast_generics, space, i as u32, allow_defaults)
+        let types = ast_generics.ty_params.iter().enumerate().map(|(i, p)| {
+            let i = opt_self.is_some() as u32 + i as u32;
+            get_or_create_type_parameter_def(ccx, ast_generics, space, i, p, allow_defaults)
         }).collect();
 
         let has_self = base_generics.has_self || opt_self.is_some();
         let (regions, types) = match space {
-            SelfSpace => bug!(),
             TypeSpace => {
                 assert_eq!(base_generics.regions.as_full_slice().len(), 0);
                 assert_eq!(base_generics.types.as_full_slice().len(), 0);
-                (VecPerParamSpace::new(vec![], regions, vec![]),
-                 VecPerParamSpace::new(opt_self.into_iter().collect(), types, vec![]))
+                (VecPerParamSpace::new(regions, vec![]),
+                 VecPerParamSpace::new(opt_self.into_iter().chain(types).collect(), vec![]))
             }
             FnSpace => {
                 assert_eq!(base_generics.regions.len(FnSpace), 0);
                 assert_eq!(base_generics.types.len(FnSpace), 0);
-                (VecPerParamSpace::new(base_generics.regions.get_slice(SelfSpace).to_vec(),
-                                       base_generics.regions.get_slice(TypeSpace).to_vec(),
+                (VecPerParamSpace::new(base_generics.regions.get_slice(TypeSpace).to_vec(),
                                        regions),
-                 VecPerParamSpace::new(base_generics.types.get_slice(SelfSpace).to_vec(),
-                                       base_generics.types.get_slice(TypeSpace).to_vec(),
+                 VecPerParamSpace::new(base_generics.types.get_slice(TypeSpace).to_vec(),
                                        types))
             }
         };
@@ -1674,7 +1671,7 @@ fn ty_generic_predicates_for_type_or_impl<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                                    generics: &hir::Generics)
                                                    -> ty::GenericPredicates<'tcx>
 {
-    ty_generic_predicates(ccx, TypeSpace, generics, &ty::GenericPredicates::empty())
+    ty_generic_predicates(ccx, TypeSpace, generics, &ty::GenericPredicates::empty(), false)
 }
 
 fn ty_generic_predicates_for_fn<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
@@ -1682,7 +1679,7 @@ fn ty_generic_predicates_for_fn<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                          base_predicates: &ty::GenericPredicates<'tcx>)
                                          -> ty::GenericPredicates<'tcx>
 {
-    ty_generic_predicates(ccx, FnSpace, generics, base_predicates)
+    ty_generic_predicates(ccx, FnSpace, generics, base_predicates, false)
 }
 
 // Add the Sized bound, unless the type parameter is marked as `?Sized`.
@@ -1752,7 +1749,8 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx, 'hir>(
 fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                   space: ParamSpace,
                                   ast_generics: &hir::Generics,
-                                  base_predicates: &ty::GenericPredicates<'tcx>)
+                                  base_predicates: &ty::GenericPredicates<'tcx>,
+                                  has_self: bool)
                                   -> ty::GenericPredicates<'tcx>
 {
     let tcx = ccx.tcx;
@@ -1761,7 +1759,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
     for (index, param) in ast_generics.ty_params.iter().enumerate() {
-        let index = index as u32;
+        let index = has_self as u32 + index as u32;
         let param_ty = ty::ParamTy::new(space, index, param.name).to_ty(ccx.tcx);
         let bounds = compute_bounds(&ccx.icx(&(base_predicates, ast_generics)),
                                     param_ty,
@@ -1850,50 +1848,22 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     result
 }
 
-fn convert_default_type_parameter<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                            path: &P<hir::Ty>,
-                                            space: ParamSpace,
-                                            index: u32)
-                                            -> Ty<'tcx>
-{
-    let ty = AstConv::ast_ty_to_ty(&ccx.icx(&()), &ExplicitRscope, &path);
-
-    for leaf_ty in ty.walk() {
-        if let ty::TyParam(p) = leaf_ty.sty {
-            if p.space == space && p.idx >= index {
-                struct_span_err!(ccx.tcx.sess, path.span, E0128,
-                                 "type parameters with a default cannot use \
-                                 forward declared identifiers")
-                    .span_label(path.span, &format!("defaulted type parameters \
-                                                    cannot be forward declared"))
-                    .emit();
-
-                return ccx.tcx.types.err
-            }
-        }
-    }
-
-    ty
-}
-
 fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                              ast_generics: &hir::Generics,
                                              space: ParamSpace,
                                              index: u32,
+                                             param: &hir::TyParam,
                                              allow_defaults: bool)
                                              -> ty::TypeParameterDef<'tcx>
 {
-    let param = &ast_generics.ty_params[index as usize];
-
     let tcx = ccx.tcx;
     match tcx.ty_param_defs.borrow().get(&param.id) {
         Some(d) => { return d.clone(); }
         None => { }
     }
 
-    let default = param.default.as_ref().map(
-        |def| convert_default_type_parameter(ccx, def, space, index)
-    );
+    let default =
+        param.default.as_ref().map(|def| ccx.icx(&()).to_ty(&ExplicitRscope, def));
 
     let object_lifetime_default =
         compute_object_lifetime_default(ccx, param.id,
@@ -1921,6 +1891,10 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         default: default,
         object_lifetime_default: object_lifetime_default,
     };
+
+    if def.name == keywords::SelfType.name() {
+        span_bug!(param.span, "`Self` should not be the name of a regular parameter");
+    }
 
     tcx.ty_param_defs.borrow_mut().insert(param.id, def.clone());
 
@@ -2153,7 +2127,7 @@ pub fn mk_item_substs<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 
 /// Checks that all the type parameters on an impl
 fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                                 ast_generics: &hir::Generics,
+                                                 generics: &hir::Generics,
                                                  impl_predicates: &mut ty::GenericPredicates<'tcx>,
                                                  impl_def_id: DefId)
 {
@@ -2173,12 +2147,11 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                        impl_trait_ref,
                                        &mut input_parameters);
 
-    for (index, ty_param) in ast_generics.ty_params.iter().enumerate() {
-        let param_ty = ty::ParamTy { space: TypeSpace,
-                                     idx: index as u32,
-                                     name: ty_param.name };
+    let ty_generics = generics_of_def_id(ccx, impl_def_id);
+    for (ty_param, param) in ty_generics.types.as_full_slice().iter().zip(&generics.ty_params) {
+        let param_ty = ty::ParamTy::for_def(ty_param);
         if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
-            report_unused_parameter(ccx, ty_param.span, "type", &param_ty.to_string());
+            report_unused_parameter(ccx, param.span, "type", &param_ty.to_string());
         }
     }
 }

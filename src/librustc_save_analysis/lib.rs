@@ -490,7 +490,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Def::Enum(def_id) |
             Def::TyAlias(def_id) |
             Def::Trait(def_id) |
-            Def::TyParam(_, _, def_id, _) => {
+            Def::TyParam(def_id) => {
                 Some(Data::TypeRefData(TypeRefData {
                     span: sub_span.unwrap(),
                     ref_id: Some(def_id),

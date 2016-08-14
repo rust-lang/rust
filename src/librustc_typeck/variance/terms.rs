@@ -21,7 +21,7 @@
 
 use arena::TypedArena;
 use dep_graph::DepTrackingMapConfig;
-use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace};
+use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::ItemVariances;
 use std::fmt;
@@ -164,16 +164,16 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
         let inferreds_on_entry = self.num_inferred();
 
-        if has_self {
-            self.add_inferred(item_id, TypeParam, SelfSpace, 0, item_id);
-        }
-
         for (i, p) in generics.lifetimes.iter().enumerate() {
             let id = p.lifetime.id;
             self.add_inferred(item_id, RegionParam, TypeSpace, i, id);
         }
 
+        if has_self {
+            self.add_inferred(item_id, TypeParam, TypeSpace, 0, item_id);
+        }
         for (i, p) in generics.ty_params.iter().enumerate() {
+            let i = has_self as usize + i;
             self.add_inferred(item_id, TypeParam, TypeSpace, i, p.id);
         }
 
@@ -233,7 +233,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                              -> ty::Variance
     {
         match space {
-            SelfSpace | FnSpace => {
+            FnSpace => {
                 ty::Bivariant
             }
 

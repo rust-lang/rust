@@ -131,15 +131,15 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     fn parse_vec_per_param_space<T, F>(&mut self, mut f: F) -> VecPerParamSpace<T> where
         F: FnMut(&mut TyDecoder<'a, 'tcx>) -> T,
     {
-        let (mut a, mut b, mut c) =  (vec![], vec![], vec![]);
-        for r in &mut [&mut a, &mut b, &mut c] {
+        let (mut a, mut b) =  (vec![], vec![]);
+        for r in &mut [&mut a, &mut b] {
             assert_eq!(self.next(), '[');
             while self.peek() != ']' {
                 r.push(f(self));
             }
             assert_eq!(self.next(), ']');
         }
-        VecPerParamSpace::new(a, b, c)
+        VecPerParamSpace::new(a, b)
     }
 
     pub fn parse_substs(&mut self) -> &'tcx Substs<'tcx> {

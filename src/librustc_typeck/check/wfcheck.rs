@@ -14,13 +14,12 @@ use CrateCtxt;
 use hir::def_id::DefId;
 use middle::region::{CodeExtent};
 use rustc::infer::TypeOrigin;
-use rustc::ty::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
+use rustc::ty::subst;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 
 use std::collections::HashSet;
 use syntax::ast;
-use syntax::parse::token::keywords;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
@@ -461,7 +460,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             variances.types
                      .iter_enumerated()
                      .filter(|&(_, _, &variance)| variance != ty::Bivariant)
-                     .map(|(space, index, _)| self.param_ty(ast_generics, space, index))
+                     .map(|(_, index, _)| self.param_ty(ast_generics, index))
                      .map(|p| Parameter::Type(p))
                      .collect();
 
@@ -470,52 +469,34 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                                          &mut constrained_parameters);
 
         for (space, index, _) in variances.types.iter_enumerated() {
-            let param_ty = self.param_ty(ast_generics, space, index);
+            assert_eq!(space, subst::TypeSpace);
+
+            let param_ty = self.param_ty(ast_generics, index);
             if constrained_parameters.contains(&Parameter::Type(param_ty)) {
                 continue;
             }
-            let span = self.ty_param_span(ast_generics, item, space, index);
+            let span = ast_generics.ty_params[index].span;
             self.report_bivariance(span, param_ty.name);
         }
 
         for (space, index, &variance) in variances.regions.iter_enumerated() {
+            assert_eq!(space, subst::TypeSpace);
+
             if variance != ty::Bivariant {
                 continue;
             }
 
-            assert_eq!(space, TypeSpace);
             let span = ast_generics.lifetimes[index].lifetime.span;
             let name = ast_generics.lifetimes[index].lifetime.name;
             self.report_bivariance(span, name);
         }
     }
 
-    fn param_ty(&self,
-                ast_generics: &hir::Generics,
-                space: ParamSpace,
-                index: usize)
-                -> ty::ParamTy
-    {
-        let name = match space {
-            TypeSpace => ast_generics.ty_params[index].name,
-            SelfSpace => keywords::SelfType.name(),
-            FnSpace => bug!("Fn space occupied?"),
-        };
-
-        ty::ParamTy { space: space, idx: index as u32, name: name }
-    }
-
-    fn ty_param_span(&self,
-                     ast_generics: &hir::Generics,
-                     item: &hir::Item,
-                     space: ParamSpace,
-                     index: usize)
-                     -> Span
-    {
-        match space {
-            TypeSpace => ast_generics.ty_params[index].span,
-            SelfSpace => item.span,
-            FnSpace => span_bug!(item.span, "Fn space occupied?"),
+    fn param_ty(&self, ast_generics: &hir::Generics, index: usize) -> ty::ParamTy {
+        ty::ParamTy {
+            space: subst::TypeSpace,
+            idx: index as u32,
+            name: ast_generics.ty_params[index].name
         }
     }
 
