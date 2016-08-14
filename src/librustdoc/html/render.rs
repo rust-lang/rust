@@ -2509,19 +2509,28 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             if let Some(g) = g {
                 write!(w, "{}", WhereClause(g))?
             }
-            write!(w, " {{\n{}", tab)?;
+            let mut has_visible_fields = false;
+            write!(w, " {{")?;
             for field in fields {
                 if let clean::StructFieldItem(ref ty) = field.inner {
-                    write!(w, "    {}{}: {},\n{}",
+                    write!(w, "\n{}    {}{}: {},",
+                           tab,
                            VisSpace(&field.visibility),
                            field.name.as_ref().unwrap(),
-                           *ty,
-                           tab)?;
+                           *ty)?;
+                    has_visible_fields = true;
                 }
             }
 
-            if it.has_stripped_fields().unwrap() {
-                write!(w, "    // some fields omitted\n{}", tab)?;
+            if has_visible_fields {
+                if it.has_stripped_fields().unwrap() {
+                    write!(w, "\n{}    // some fields omitted", tab)?;
+                }
+                write!(w, "\n{}", tab)?;
+            } else if it.has_stripped_fields().unwrap() {
+                // If there are no visible fields we can just display
+                // `{ /* fields omitted */ }` to save space.
+                write!(w, " /* fields omitted */ ")?;
             }
             write!(w, "}}")?;
         }
