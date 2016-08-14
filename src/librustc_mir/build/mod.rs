@@ -238,7 +238,8 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let span = tcx.map.span(item_id);
     let mut builder = Builder::new(hir, span);
 
-    let extent = ROOT_CODE_EXTENT;
+    let extent = tcx.region_maps.temporary_scope(ast_expr.id)
+                    .unwrap_or(ROOT_CODE_EXTENT);
     let mut block = START_BLOCK;
     let _ = builder.in_scope(extent, block, |builder| {
         let expr = builder.hir.mirror(ast_expr);

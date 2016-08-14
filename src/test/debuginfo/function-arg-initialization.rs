@@ -288,8 +288,8 @@ fn while_expr(mut x: u64, y: u64, z: u64) -> u64 {
 }
 
 fn loop_expr(mut x: u64, y: u64, z: u64) -> u64 {
-    loop { // #break
-        x += z;
+    loop {
+        x += z; // #break
 
         if x + y > 1000 {
             return x;
