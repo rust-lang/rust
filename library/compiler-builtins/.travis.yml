@@ -5,8 +5,6 @@ sudo: required
 
 matrix:
   include:
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-      os: linux
     - env: TARGET=aarch64-unknown-linux-gnu
       os: linux
     - env: TARGET=arm-unknown-linux-gnueabi
@@ -28,6 +26,8 @@ matrix:
     - env: TARGET=powerpc-unknown-linux-gnu
       os: linux
     - env: TARGET=powerpc64-unknown-linux-gnu
+      os: linux
+    - env: TARGET=powerpc64le-unknown-linux-gnu
       os: linux
     - env: TARGET=thumbv6m-none-eabi
       os: linux
