@@ -166,7 +166,7 @@ story. The other half is *using* the `find` function we've written. Let's try
 to use it to find the extension in a file name.
 
 ```rust
-# fn find(_: &str, _: char) -> Option<usize> { None }
+# fn find(haystack: &str, needle: char) -> Option<usize> { haystack.find(needle) }
 fn main() {
     let file_name = "foobar.rs";
     match find(file_name, '.') {
@@ -223,7 +223,7 @@ Getting the extension of a file name is a pretty common operation, so it makes
 sense to put it into a function:
 
 ```rust
-# fn find(_: &str, _: char) -> Option<usize> { None }
+# fn find(haystack: &str, needle: char) -> Option<usize> { haystack.find(needle) }
 // Returns the extension of the given file name, where the extension is defined
 // as all characters following the first `.`.
 // If `file_name` has no `.`, then `None` is returned.
@@ -272,7 +272,7 @@ Armed with our new combinator, we can rewrite our `extension_explicit` method
 to get rid of the case analysis:
 
 ```rust
-# fn find(_: &str, _: char) -> Option<usize> { None }
+# fn find(haystack: &str, needle: char) -> Option<usize> { haystack.find(needle) }
 // Returns the extension of the given file name, where the extension is defined
 // as all characters following the first `.`.
 // If `file_name` has no `.`, then `None` is returned.
