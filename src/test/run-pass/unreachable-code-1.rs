@@ -10,7 +10,7 @@
 
 
 #![allow(unreachable_code)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn id(x: bool) -> bool { x }
 

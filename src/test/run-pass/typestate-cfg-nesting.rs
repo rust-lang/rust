@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 #![allow(dead_assignment)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn f() {
     let x = 10; let mut y = 11;
