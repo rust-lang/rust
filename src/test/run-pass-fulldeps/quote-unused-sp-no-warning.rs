@@ -12,7 +12,7 @@
 // ignore-pretty: does not work well with `--test`
 
 #![feature(quote, rustc_private)]
-#![deny(unused_variable)]
+#![deny(unused_variables)]
 
 extern crate syntax;
 
