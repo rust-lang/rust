@@ -6,6 +6,7 @@ install_qemu() {
     case ${QEMU_ARCH:-$TRAVIS_OS_NAME} in
         i386)
             dpkg --add-architecture $QEMU_ARCH
+            apt-get update
             apt-get install -y --no-install-recommends \
                     binfmt-support qemu-user-static:$QEMU_ARCH
             ;;
