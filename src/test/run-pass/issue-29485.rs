@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-29485.rs
+// ignore-emscripten
 
 #[feature(recover)]
 
