@@ -125,7 +125,7 @@ warning, but it will still print "Hello, world!":
 
 ```text
    Compiling hello_world v0.0.1 (file:///home/you/projects/hello_world)
-src/main.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)]
+src/main.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variables)]
    on by default
 src/main.rs:2     let x: i32;
                       ^

@@ -137,10 +137,6 @@ impl<'test> TestCx<'test> {
 
         self.check_correct_failure_status(&proc_res);
 
-        if proc_res.status.success() {
-            self.fatal("process did not return an error status");
-        }
-
         let output_to_check = self.get_output(&proc_res);
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
         if !expected_errors.is_empty() {

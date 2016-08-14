@@ -132,8 +132,13 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((item.id, item.span));
             } else {
-                span_err!(ctxt.session, item.span, E0138,
-                          "multiple 'start' functions");
+                struct_span_err!(
+                    ctxt.session, item.span, E0138,
+                    "multiple 'start' functions")
+                    .span_label(ctxt.start_fn.unwrap().1,
+                                &format!("previous `start` function here"))
+                    .span_label(item.span, &format!("multiple `start` functions"))
+                    .emit();
             }
         },
         EntryPointType::None => ()

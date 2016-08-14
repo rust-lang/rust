@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten No support for threads
+
 #![allow(unknown_features)]
 #![feature(std_misc)]
 

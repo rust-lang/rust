@@ -81,8 +81,7 @@ impl Thread {
     }
 
     #[cfg(any(target_os = "linux",
-              target_os = "android",
-              target_os = "emscripten"))]
+              target_os = "android"))]
     pub fn set_name(name: &CStr) {
         const PR_SET_NAME: libc::c_int = 15;
         // pthread wrapper only appeared in glibc 2.12, so we use syscall
@@ -118,9 +117,9 @@ impl Thread {
                                      name.as_ptr() as *mut libc::c_void);
         }
     }
-    #[cfg(any(target_env = "newlib", target_os = "solaris"))]
+    #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
     pub fn set_name(_name: &CStr) {
-        // Newlib and Illumos has no way to set a thread name.
+        // Newlib, Illumos and Emscripten have no way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {

@@ -15,5 +15,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `&[i32]`
     //~| found type `[{integer}; 1]`
-    //~| expected &-ptr, found array of 1 elements
+    //~| expected &[i32], found array of 1 elements
 }

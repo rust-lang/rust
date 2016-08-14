@@ -3374,8 +3374,11 @@ impl<'a> Resolver<'a> {
 
         let mut err = match (old_binding.is_extern_crate(), binding.is_extern_crate()) {
             (true, true) => struct_span_err!(self.session, span, E0259, "{}", msg),
-            (true, _) | (_, true) if binding.is_import() || old_binding.is_import() =>
-                struct_span_err!(self.session, span, E0254, "{}", msg),
+            (true, _) | (_, true) if binding.is_import() || old_binding.is_import() => {
+                let mut e = struct_span_err!(self.session, span, E0254, "{}", msg);
+                e.span_label(span, &"already imported");
+                e
+            },
             (true, _) | (_, true) => struct_span_err!(self.session, span, E0260, "{}", msg),
             _ => match (old_binding.is_import(), binding.is_import()) {
                 (false, false) => struct_span_err!(self.session, span, E0428, "{}", msg),

@@ -13,5 +13,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `()`
     //~| found type `&_`
-    //~| expected (), found &-ptr
+    //~| expected (), found reference
 }
