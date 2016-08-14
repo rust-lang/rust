@@ -24,7 +24,8 @@ use std::path::{PathBuf, Path};
 use std::process::Command;
 
 use {Build, Compiler};
-use util::{cp_r, libdir, is_dylib};
+use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
+use regex::{RegexSet, quote};
 
 fn package_vers(build: &Build) -> &str {
     match &build.config.channel[..] {
@@ -281,6 +282,119 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
        .arg(format!("--component-name=rust-std-{}", target))
        .arg("--legacy-manifest-dirs=rustlib,cargo");
     build.run(&mut cmd);
+    t!(fs::remove_dir_all(&image));
+}
+
+/// Creates the `rust-src` installer component and the plain source tarball
+pub fn rust_src(build: &Build) {
+    println!("Dist src");
+    let plain_name = format!("rustc-{}-src", package_vers(build));
+    let name = format!("rust-src-{}", package_vers(build));
+    let image = tmpdir(build).join(format!("{}-image", name));
+    let _ = fs::remove_dir_all(&image);
+
+    let dst = image.join("lib/rustlib/src");
+    let dst_src = dst.join("rust");
+    let plain_dst_src = dst.join(&plain_name);
+    t!(fs::create_dir_all(&dst_src));
+
+    // This is the set of root paths which will become part of the source package
+    let src_files = [
+        "COPYRIGHT",
+        "LICENSE-APACHE",
+        "LICENSE-MIT",
+        "CONTRIBUTING.md",
+        "README.md",
+        "RELEASES.md",
+        "configure",
+        "Makefile.in"
+    ];
+    let src_dirs = [
+        "man",
+        "src",
+        "mk"
+    ];
+
+    // Exclude paths matching these wildcard expressions
+    let excludes = [
+        // exclude-vcs
+        "CVS", "RCS", "SCCS", ".git", ".gitignore", ".gitmodules", ".gitattributes", ".cvsignore",
+        ".svn", ".arch-ids", "{arch}", "=RELEASE-ID", "=meta-update", "=update", ".bzr",
+        ".bzrignore", ".bzrtags", ".hg", ".hgignore", ".hgrags", "_darcs",
+        // extensions
+        "*~", "*.pyc",
+        // misc
+        "llvm/test/*/*.ll",
+        "llvm/test/*/*.td",
+        "llvm/test/*/*.s",
+        "llvm/test/*/*/*.ll",
+        "llvm/test/*/*/*.td",
+        "llvm/test/*/*/*.s"
+    ];
+
+    // Construct a set of regexes for efficiently testing whether paths match one of the above
+    // expressions.
+    let regex_set = t!(RegexSet::new(
+        // This converts a wildcard expression to a regex
+        excludes.iter().map(|&s| {
+            // Prefix ensures that matching starts on a path separator boundary
+            r"^(.*[\\/])?".to_owned() + (
+                // Escape the expression to produce a regex matching exactly that string
+                &quote(s)
+                // Replace slashes with a pattern matching either forward or backslash
+                .replace(r"/", r"[\\/]")
+                // Replace wildcards with a pattern matching a single path segment, ie. containing
+                // no slashes.
+                .replace(r"\*", r"[^\\/]*")
+            // Suffix anchors to the end of the path
+            ) + "$"
+        })
+    ));
+
+    // Create a filter which skips files which match the regex set or contain invalid unicode
+    let filter_fn = move |path: &Path| {
+        if let Some(path) = path.to_str() {
+            !regex_set.is_match(path)
+        } else {
+            false
+        }
+    };
+
+    // Copy the directories using our filter
+    for item in &src_dirs {
+        let dst = &dst_src.join(item);
+        t!(fs::create_dir(dst));
+        cp_filtered(&build.src.join(item), dst, &filter_fn);
+    }
+    // Copy the files normally
+    for item in &src_files {
+        copy(&build.src.join(item), &dst_src.join(item));
+    }
+
+    // Create source tarball in rust-installer format
+    let mut cmd = Command::new("sh");
+    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+       .arg("--product-name=Rust")
+       .arg("--rel-manifest-dir=rustlib")
+       .arg("--success-message=Awesome-Source.")
+       .arg(format!("--image-dir={}", sanitize_sh(&image)))
+       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
+       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg(format!("--package-name={}", name))
+       .arg("--component-name=rust-src")
+       .arg("--legacy-manifest-dirs=rustlib,cargo");
+    build.run(&mut cmd);
+
+    // Rename directory, so that root folder of tarball has the correct name
+    t!(fs::rename(&dst_src, &plain_dst_src));
+
+    // Create plain source tarball
+    let mut cmd = Command::new("tar");
+    cmd.arg("-czf").arg(sanitize_sh(&distdir(build).join(&format!("{}.tar.gz", plain_name))))
+       .arg(&plain_name)
+       .current_dir(&dst);
+    build.run(&mut cmd);
+
     t!(fs::remove_dir_all(&image));
 }
 

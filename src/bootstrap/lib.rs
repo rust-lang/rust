@@ -26,6 +26,7 @@ extern crate md5;
 extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
+extern crate regex;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -451,6 +452,7 @@ impl Build {
                 DistMingw { _dummy } => dist::mingw(self, target.target),
                 DistRustc { stage } => dist::rustc(self, stage, target.target),
                 DistStd { compiler } => dist::std(self, &compiler, target.target),
+                DistSrc { _dummy } => dist::rust_src(self),
 
                 DebuggerScripts { stage } => {
                     let compiler = Compiler::new(stage, target.target);
