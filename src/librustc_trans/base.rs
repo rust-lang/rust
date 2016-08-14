@@ -2250,10 +2250,17 @@ fn write_metadata(cx: &SharedCrateContext,
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let name =
+        let section_name =
             cx.tcx().sess.cstore.metadata_section_name(&cx.sess().target.target);
-        let name = CString::new(name).unwrap();
-        llvm::LLVMSetSection(llglobal, name.as_ptr())
+        let name = CString::new(section_name).unwrap();
+        llvm::LLVMSetSection(llglobal, name.as_ptr());
+
+        // Also generate a .section directive to force no
+        // flags, at least for ELF outputs, so that the
+        // metadata doesn't get loaded into memory.
+        let directive = format!(".section {}", section_name);
+        let directive = CString::new(directive).unwrap();
+        llvm::LLVMSetModuleInlineAsm(cx.metadata_llmod(), directive.as_ptr())
     }
     return metadata;
 }
