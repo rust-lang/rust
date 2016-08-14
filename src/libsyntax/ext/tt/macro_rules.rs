@@ -302,7 +302,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     let mut valid = true;
 
     // Extract the arguments:
-    let lhses = match **argument_map.get(&lhs_nm.name).unwrap() {
+    let lhses = match **argument_map.get(&lhs_nm).unwrap() {
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| match **m {
                 MatchedNonterminal(NtTT(ref tt)) => {
@@ -315,7 +315,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
 
-    let rhses = match **argument_map.get(&rhs_nm.name).unwrap() {
+    let rhses = match **argument_map.get(&rhs_nm).unwrap() {
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| match **m {
                 MatchedNonterminal(NtTT(ref tt)) => (**tt).clone(),

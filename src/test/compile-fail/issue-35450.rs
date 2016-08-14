@@ -8,24 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+macro_rules! m { ($t:tt) => { $t } }
 
-macro_rules! foo {
-    ($x:tt) => (type Alias = $x<i32>;)
-}
-
-foo!(Box);
-
-macro_rules! bar {
-    ($x:tt) => {
-        macro_rules! baz {
-            ($x:tt, $y:tt) => { ($x, $y) }
-        }
-    }
-}
-
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
-    bar!($y);
-    let _: (i8, i16) = baz!(0i8, 0i16);
+fn main() {
+    m!($t); //~ ERROR unknown macro variable
+            //~| ERROR expected expression
 }
