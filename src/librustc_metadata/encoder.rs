@@ -21,7 +21,7 @@ use def_key;
 use tyencode;
 use index::{self, IndexData};
 
-use middle::cstore::{LOCAL_CRATE, InlinedItemRef, LinkMeta, tls};
+use middle::cstore::{InlinedItemRef, LinkMeta, tls};
 use rustc::hir::def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
@@ -531,6 +531,109 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
 }
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
+    fn encode_info_for_trait_item(&mut self,
+                                  trait_def_id: DefId,
+                                  item_def_id: DefId,
+                                  trait_item: &hir::TraitItem) {
+        let ecx = self.ecx;
+        let tcx = ecx.tcx;
+
+        self.encode_parent_item(trait_def_id);
+
+        let stab = tcx.lookup_stability(item_def_id);
+        let depr = tcx.lookup_deprecation(item_def_id);
+        encode_stability(self.rbml_w, stab);
+        encode_deprecation(self.rbml_w, depr);
+
+        let trait_item_type =
+            tcx.impl_or_trait_item(item_def_id);
+        let is_nonstatic_method;
+        match trait_item_type {
+            ty::ConstTraitItem(associated_const) => {
+                encode_name(self.rbml_w, associated_const.name);
+                encode_def_id_and_key(ecx, self.rbml_w, associated_const.def_id);
+                self.encode_visibility(associated_const.vis);
+
+                encode_family(self.rbml_w, 'C');
+
+                self.encode_bounds_and_type_for_item(
+                    ecx.local_id(associated_const.def_id));
+
+                is_nonstatic_method = false;
+            }
+            ty::MethodTraitItem(method_ty) => {
+                let method_def_id = item_def_id;
+
+                self.encode_method_ty_fields(&method_ty);
+
+                match method_ty.explicit_self {
+                    ty::ExplicitSelfCategory::Static => {
+                        encode_family(self.rbml_w,
+                                      STATIC_METHOD_FAMILY);
+                    }
+                    _ => {
+                        encode_family(self.rbml_w,
+                                      METHOD_FAMILY);
+                    }
+                }
+                self.encode_bounds_and_type_for_item(ecx.local_id(method_def_id));
+
+                is_nonstatic_method = method_ty.explicit_self !=
+                    ty::ExplicitSelfCategory::Static;
+            }
+            ty::TypeTraitItem(associated_type) => {
+                encode_name(self.rbml_w, associated_type.name);
+                encode_def_id_and_key(ecx, self.rbml_w, associated_type.def_id);
+                encode_item_sort(self.rbml_w, 't');
+                encode_family(self.rbml_w, 'y');
+
+                if let Some(ty) = associated_type.ty {
+                    self.encode_type(ty);
+                }
+
+                is_nonstatic_method = false;
+            }
+        }
+
+        encode_attributes(self.rbml_w, &trait_item.attrs);
+        match trait_item.node {
+            hir::ConstTraitItem(_, ref default) => {
+                if default.is_some() {
+                    encode_item_sort(self.rbml_w, 'C');
+                } else {
+                    encode_item_sort(self.rbml_w, 'c');
+                }
+
+                encode_inlined_item(ecx, self.rbml_w,
+                                    InlinedItemRef::TraitItem(trait_def_id, trait_item));
+                self.encode_mir(trait_item.id);
+            }
+            hir::MethodTraitItem(ref sig, ref body) => {
+                // If this is a static method, we've already
+                // encoded self.
+                if is_nonstatic_method {
+                    self.encode_bounds_and_type_for_item(
+                        ecx.local_id(item_def_id));
+                }
+
+                if body.is_some() {
+                    encode_item_sort(self.rbml_w, 'p');
+                    encode_inlined_item(ecx,
+                                        self.rbml_w,
+                                        InlinedItemRef::TraitItem(
+                                            trait_def_id,
+                                            trait_item));
+                    self.encode_mir(trait_item.id);
+                } else {
+                    encode_item_sort(self.rbml_w, 'r');
+                }
+                self.encode_method_argument_names(&sig.decl);
+            }
+
+            hir::TypeTraitItem(..) => {}
+        }
+    }
+
     fn encode_info_for_impl_item(&mut self,
                                  impl_id: NodeId,
                                  impl_item_def_id: DefId,
@@ -1145,107 +1248,13 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                               def_id: DefId,
                               trait_items: &[hir::TraitItem]) {
         // Now output the trait item info for each trait item.
-        let ecx = self.ecx;
         let tcx = self.ecx.tcx;
         let r = tcx.trait_item_def_ids(def_id);
-        for (&item_def_id, trait_item) in r.iter().zip(trait_items) {
-            assert_eq!(item_def_id.def_id().krate, LOCAL_CRATE);
-
-            self.record(item_def_id.def_id(), |this| {
-                this.encode_parent_item(def_id);
-
-                let stab = tcx.lookup_stability(item_def_id.def_id());
-                let depr = tcx.lookup_deprecation(item_def_id.def_id());
-                encode_stability(this.rbml_w, stab);
-                encode_deprecation(this.rbml_w, depr);
-
-                let trait_item_type =
-                    tcx.impl_or_trait_item(item_def_id.def_id());
-                let is_nonstatic_method;
-                match trait_item_type {
-                    ty::ConstTraitItem(associated_const) => {
-                        encode_name(this.rbml_w, associated_const.name);
-                        encode_def_id_and_key(ecx, this.rbml_w, associated_const.def_id);
-                        this.encode_visibility(associated_const.vis);
-
-                        encode_family(this.rbml_w, 'C');
-
-                        this.encode_bounds_and_type_for_item(
-                            ecx.local_id(associated_const.def_id));
-
-                        is_nonstatic_method = false;
-                    }
-                    ty::MethodTraitItem(method_ty) => {
-                        let method_def_id = item_def_id.def_id();
-
-                        this.encode_method_ty_fields(&method_ty);
-
-                        match method_ty.explicit_self {
-                            ty::ExplicitSelfCategory::Static => {
-                                encode_family(this.rbml_w,
-                                              STATIC_METHOD_FAMILY);
-                            }
-                            _ => {
-                                encode_family(this.rbml_w,
-                                              METHOD_FAMILY);
-                            }
-                        }
-                        this.encode_bounds_and_type_for_item(ecx.local_id(method_def_id));
-
-                        is_nonstatic_method = method_ty.explicit_self !=
-                            ty::ExplicitSelfCategory::Static;
-                    }
-                    ty::TypeTraitItem(associated_type) => {
-                        encode_name(this.rbml_w, associated_type.name);
-                        encode_def_id_and_key(ecx, this.rbml_w, associated_type.def_id);
-                        encode_item_sort(this.rbml_w, 't');
-                        encode_family(this.rbml_w, 'y');
-
-                        if let Some(ty) = associated_type.ty {
-                            this.encode_type(ty);
-                        }
-
-                        is_nonstatic_method = false;
-                    }
-                }
-
-                encode_attributes(this.rbml_w, &trait_item.attrs);
-                match trait_item.node {
-                    hir::ConstTraitItem(_, ref default) => {
-                        if default.is_some() {
-                            encode_item_sort(this.rbml_w, 'C');
-                        } else {
-                            encode_item_sort(this.rbml_w, 'c');
-                        }
-
-                        encode_inlined_item(ecx, this.rbml_w,
-                                            InlinedItemRef::TraitItem(def_id, trait_item));
-                        this.encode_mir(trait_item.id);
-                    }
-                    hir::MethodTraitItem(ref sig, ref body) => {
-                        // If this is a static method, we've already
-                        // encoded this.
-                        if is_nonstatic_method {
-                            this.encode_bounds_and_type_for_item(
-                                ecx.local_id(item_def_id.def_id()));
-                        }
-
-                        if body.is_some() {
-                            encode_item_sort(this.rbml_w, 'p');
-                            encode_inlined_item(ecx,
-                                                this.rbml_w,
-                                                InlinedItemRef::TraitItem(
-                                                    def_id,
-                                                    trait_item));
-                            this.encode_mir(trait_item.id);
-                        } else {
-                            encode_item_sort(this.rbml_w, 'r');
-                        }
-                        this.encode_method_argument_names(&sig.decl);
-                    }
-
-                    hir::TypeTraitItem(..) => {}
-                }
+        for (item_def_id, trait_item) in r.iter().zip(trait_items) {
+            let item_def_id = item_def_id.def_id();
+            assert!(item_def_id.is_local());
+            self.record(item_def_id, |this| {
+                this.encode_info_for_trait_item(def_id, item_def_id, trait_item)
             });
         }
     }
