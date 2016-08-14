@@ -1182,8 +1182,7 @@ impl String {
                reason = "recent addition",
                issue = "35553")]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
-        let len = self.len();
-        assert!(idx <= len);
+        assert!(idx <= self.len());
         assert!(self.is_char_boundary(idx));
 
         unsafe {
