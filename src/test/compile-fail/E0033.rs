@@ -13,10 +13,11 @@ trait SomeTrait {
 }
 
 fn main() {
-    let trait_obj: &SomeTrait = SomeTrait; //~ ERROR E0425
-                                           //~^ ERROR E0038
-                                           //~| method `foo` has no receiver
-                                           //~| NOTE the trait `SomeTrait` cannot be made into an object
+    let trait_obj: &SomeTrait = SomeTrait;
+    //~^ ERROR E0425
+    //~| ERROR E0038
+    //~| method `foo` has no receiver
+    //~| NOTE the trait `SomeTrait` cannot be made into an object
 
     let &invalid = trait_obj;
     //~^ ERROR E0033
