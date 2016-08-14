@@ -969,6 +969,10 @@ pub struct Resolver<'a> {
     // The module that represents the current item scope.
     current_module: Module<'a>,
 
+    // The visibility of `pub(self)` items in the current scope.
+    // Equivalently, the visibility required for an item to be accessible from the current scope.
+    current_vis: ty::Visibility,
+
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
     value_ribs: Vec<Rib<'a>>,
@@ -1154,6 +1158,7 @@ impl<'a> Resolver<'a> {
             indeterminate_imports: Vec::new(),
 
             current_module: graph_root,
+            current_vis: ty::Visibility::Restricted(ast::CRATE_NODE_ID),
             value_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
             type_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
             label_ribs: Vec::new(),
@@ -1197,6 +1202,7 @@ impl<'a> Resolver<'a> {
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
         self.current_module = self.graph_root;
+        self.current_vis = ty::Visibility::Restricted(ast::CRATE_NODE_ID);
         visit::walk_crate(self, krate);
 
         check_unused::check_crate(self, krate);
@@ -1562,13 +1568,15 @@ impl<'a> Resolver<'a> {
         let module = self.module_map.get(&id).cloned(); // clones a reference
         if let Some(module) = module {
             // Move down in the graph.
-            let orig_module = ::std::mem::replace(&mut self.current_module, module);
+            let orig_module = replace(&mut self.current_module, module);
+            let orig_vis = replace(&mut self.current_vis, ty::Visibility::Restricted(id));
             self.value_ribs.push(Rib::new(ModuleRibKind(module)));
             self.type_ribs.push(Rib::new(ModuleRibKind(module)));
 
             f(self);
 
             self.current_module = orig_module;
+            self.current_vis = orig_vis;
             self.value_ribs.pop();
             self.type_ribs.pop();
         } else {
@@ -2706,7 +2714,6 @@ impl<'a> Resolver<'a> {
     fn with_empty_ribs<T, F>(&mut self, f: F) -> T
         where F: FnOnce(&mut Resolver<'a>) -> T,
     {
-        use ::std::mem::replace;
         let value_ribs = replace(&mut self.value_ribs, Vec::new());
         let type_ribs = replace(&mut self.type_ribs, Vec::new());
         let label_ribs = replace(&mut self.label_ribs, Vec::new());
@@ -3264,13 +3271,7 @@ impl<'a> Resolver<'a> {
             ast::Visibility::Public => return ty::Visibility::Public,
             ast::Visibility::Crate(_) => return ty::Visibility::Restricted(ast::CRATE_NODE_ID),
             ast::Visibility::Restricted { ref path, id } => (path, id),
-            ast::Visibility::Inherited => {
-                let current_module =
-                    self.get_nearest_normal_module_parent_or_self(self.current_module);
-                let id =
-                    self.definitions.as_local_node_id(current_module.def_id().unwrap()).unwrap();
-                return ty::Visibility::Restricted(id);
-            }
+            ast::Visibility::Inherited => return self.current_vis,
         };
 
         let segments: Vec<_> = path.segments.iter().map(|seg| seg.identifier.name).collect();
@@ -3299,9 +3300,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_accessible(&self, vis: ty::Visibility) -> bool {
-        let current_module = self.get_nearest_normal_module_parent_or_self(self.current_module);
-        let node_id = self.definitions.as_local_node_id(current_module.def_id().unwrap()).unwrap();
-        vis.is_accessible_from(node_id, self)
+        vis.is_at_least(self.current_vis, self)
     }
 
     fn check_privacy(&mut self, name: Name, binding: &'a NameBinding<'a>, span: Span) {

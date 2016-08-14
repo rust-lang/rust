@@ -356,6 +356,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     // remain or unsuccessfully when no forward progress in resolving imports
     // is made.
 
+    fn set_current_module(&mut self, module: Module<'b>) {
+        self.current_module = module;
+        self.current_vis = ty::Visibility::Restricted({
+            let normal_module = self.get_nearest_normal_module_parent_or_self(module);
+            self.definitions.as_local_node_id(normal_module.def_id().unwrap()).unwrap()
+        });
+    }
+
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
     fn resolve_imports(&mut self) {
@@ -449,7 +457,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                module_to_string(self.current_module));
 
         let module = directive.parent;
-        self.current_module = module;
+        self.set_current_module(module);
 
         let target_module = match directive.target_module.get() {
             Some(module) => module,
