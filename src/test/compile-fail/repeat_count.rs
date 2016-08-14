@@ -38,7 +38,7 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `usize`
     //~| found type `&'static str`
-    //~| expected usize, found &-ptr
+    //~| expected usize, found reference
     //~| ERROR expected `usize` for repeat count, found string literal [E0306]
     //~| expected `usize`
     let f = [0; -4_isize];

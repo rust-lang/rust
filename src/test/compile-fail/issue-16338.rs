@@ -18,5 +18,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `&str`
     //~| found type `Slice<_>`
-    //~| expected &-ptr, found struct `Slice`
+    //~| expected &str, found struct `Slice`
 }
