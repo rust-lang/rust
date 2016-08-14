@@ -41,7 +41,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
         if !tcx.expr_is_lval(lhs_expr) {
-            span_err!(tcx.sess, lhs_expr.span, E0067, "invalid left-hand side expression");
+            struct_span_err!(
+                tcx.sess, lhs_expr.span,
+                E0067, "invalid left-hand side expression")
+            .span_label(
+                lhs_expr.span,
+                &format!("invalid expression for left-hand side"))
+            .emit();
         }
     }
 
