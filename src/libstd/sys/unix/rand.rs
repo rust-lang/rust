@@ -24,7 +24,10 @@ fn next_u64(mut fill_buf: &mut FnMut(&mut [u8])) -> u64 {
     unsafe { mem::transmute::<[u8; 8], u64>(buf) }
 }
 
-#[cfg(all(unix, not(target_os = "ios"), not(target_os = "openbsd")))]
+#[cfg(all(unix,
+          not(target_os = "ios"),
+          not(target_os = "openbsd"),
+          not(target_os = "freebsd")))]
 mod imp {
     use self::OsRngInner::*;
     use super::{next_u32, next_u64};
@@ -278,6 +281,54 @@ mod imp {
             if ret == -1 {
                 panic!("couldn't generate random bytes: {}",
                        io::Error::last_os_error());
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+mod imp {
+    use super::{next_u32, next_u64};
+
+    use io;
+    use libc;
+    use rand::Rng;
+    use ptr;
+
+    pub struct OsRng {
+        // dummy field to ensure that this struct cannot be constructed outside
+        // of this module
+        _dummy: (),
+    }
+
+    impl OsRng {
+        /// Create a new `OsRng`.
+        pub fn new() -> io::Result<OsRng> {
+            Ok(OsRng { _dummy: () })
+        }
+    }
+
+    impl Rng for OsRng {
+        fn next_u32(&mut self) -> u32 {
+            next_u32(&mut |v| self.fill_bytes(v))
+        }
+        fn next_u64(&mut self) -> u64 {
+            next_u64(&mut |v| self.fill_bytes(v))
+        }
+        fn fill_bytes(&mut self, v: &mut [u8]) {
+            let mib = [libc::CTL_KERN, libc::KERN_ARND];
+            // kern.arandom permits a maximum buffer size of 256 bytes
+            for s in v.chunks_mut(256) {
+                let mut s_len = s.len();
+                let ret = unsafe {
+                    libc::sysctl(mib.as_ptr(), mib.len() as libc::c_uint,
+                                 s.as_mut_ptr() as *mut _, &mut s_len,
+                                 ptr::null(), 0)
+                };
+                if ret == -1 || s_len != s.len() {
+                    panic!("kern.arandom sysctl failed! (returned {}, s.len() {}, oldlenp {})",
+                           ret, s.len(), s_len);
+                }
             }
         }
     }
