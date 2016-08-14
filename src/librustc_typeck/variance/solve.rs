@@ -110,8 +110,8 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         while index < num_inferred {
             let item_id = inferred_infos[index].item_id;
 
-            let (mut rs, mut rt, mut rf) = (vec![], vec![], vec![]);
-            let (mut ts, mut tt, mut tf) = (vec![], vec![], vec![]);
+            let (mut rt, mut rf) = (vec![], vec![]);
+            let (mut tt, mut tf) = (vec![], vec![]);
 
             while index < num_inferred && inferred_infos[index].item_id == item_id {
                 let info = &inferred_infos[index];
@@ -121,7 +121,6 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 match info.kind {
                     TypeParam => {
                         let types = match info.space {
-                            subst::SelfSpace => &mut ts,
                             subst::TypeSpace => &mut tt,
                             subst::FnSpace => &mut tf
                         };
@@ -130,7 +129,6 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                     }
                     RegionParam => {
                         let regions = match info.space {
-                            subst::SelfSpace => &mut rs,
                             subst::TypeSpace => &mut rt,
                             subst::FnSpace => &mut rf
                         };
@@ -143,8 +141,8 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             }
 
             let item_variances = ty::ItemVariances {
-                regions: subst::VecPerParamSpace::new(rs, rt, rf),
-                types: subst::VecPerParamSpace::new(ts, tt, tf)
+                regions: subst::VecPerParamSpace::new(rt, rf),
+                types: subst::VecPerParamSpace::new(tt, tf)
             };
 
             debug!("item_id={} item_variances={:?}",

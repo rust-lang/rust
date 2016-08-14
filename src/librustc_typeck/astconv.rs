@@ -55,7 +55,7 @@ use hir::def_id::DefId;
 use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
-use rustc::ty::subst::{TypeSpace, SelfSpace, Subst, Substs};
+use rustc::ty::subst::{TypeSpace, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -455,6 +455,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // Check the number of type parameters supplied by the user.
         if let Some(num_provided) = num_types_provided {
             let ty_param_defs = decl_generics.types.get_slice(TypeSpace);
+            let ty_param_defs = &ty_param_defs[self_ty.is_some() as usize..];
             check_type_argument_count(tcx, span, num_provided, ty_param_defs);
         }
 
@@ -476,13 +477,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             assert_eq!(def.space, TypeSpace);
             regions[def.index as usize]
         }, |def, substs| {
-            assert!(def.space == SelfSpace || def.space == TypeSpace);
+            assert!(def.space == TypeSpace);
             let i = def.index as usize;
-            if def.space == SelfSpace {
-                // Self, which must have been provided.
-                assert_eq!(i, 0);
-                self_ty.expect("Self type parameter missing")
-            } else if num_types_provided.map_or(false, |n| i < n) {
+
+            // Handle Self first, so we can adjust the index to match the AST.
+            if let (0, Some(ty)) = (i, self_ty) {
+                return ty;
+            }
+
+            let i = i - self_ty.is_some() as usize;
+            if num_types_provided.map_or(false, |n| i < n) {
                 // A provided type parameter.
                 match *parameters {
                     hir::AngleBracketedParameters(ref data) => {
@@ -1325,8 +1329,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
-            (&ty::TyParam(_), Def::TyParam(_, _, param_did, param_name)) => {
+            (&ty::TyParam(_), Def::TyParam(param_did)) => {
                 let param_node_id = tcx.map.as_local_node_id(param_did).unwrap();
+                let param_name = tcx.type_parameter_def(param_node_id).name;
                 match self.find_bound_for_assoc_item(param_node_id,
                                                      param_name,
                                                      assoc_name,
@@ -1336,10 +1341,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             }
             _ => {
-                self.report_ambiguous_associated_type(span,
-                                                      &ty.to_string(),
-                                                      "Trait",
-                                                      &assoc_name.as_str());
+                // Don't print TyErr to the user.
+                if !ty.references_error() {
+                    self.report_ambiguous_associated_type(span,
+                                                          &ty.to_string(),
+                                                          "Trait",
+                                                          &assoc_name.as_str());
+                }
                 return (tcx.types.err, Def::Err);
             }
         };
@@ -1477,9 +1485,25 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                     did,
                                     base_segments.last().unwrap())
             }
-            Def::TyParam(space, index, _, name) => {
+            Def::TyParam(did) => {
                 tcx.prohibit_type_params(base_segments);
-                tcx.mk_param(space, index, name)
+
+                let node_id = tcx.map.as_local_node_id(did).unwrap();
+                let param = tcx.ty_param_defs.borrow().get(&node_id)
+                               .map(ty::ParamTy::for_def);
+                if let Some(p) = param {
+                    p.to_ty(tcx)
+                } else {
+                    // Only while computing defaults of earlier type
+                    // parameters can a type parameter be missing its def.
+                    struct_span_err!(tcx.sess, span, E0128,
+                                     "type parameters with a default cannot use \
+                                      forward declared identifiers")
+                        .span_label(span, &format!("defaulted type parameters \
+                                                    cannot be forward declared"))
+                        .emit();
+                    tcx.types.err
+                }
             }
             Def::SelfTy(_, Some(impl_id)) => {
                 // Self in impl (we know the concrete type).

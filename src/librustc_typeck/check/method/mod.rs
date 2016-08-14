@@ -183,7 +183,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let trait_def = self.tcx.lookup_trait_def(trait_def_id);
 
         if let Some(ref input_types) = opt_input_types {
-            assert_eq!(trait_def.generics.types.len(subst::TypeSpace), input_types.len());
+            assert_eq!(trait_def.generics.types.len(subst::TypeSpace) - 1, input_types.len());
         }
         assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
         assert!(trait_def.generics.regions.is_empty());
@@ -192,10 +192,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self.tcx, trait_def_id, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, substs| {
-            if def.space == subst::SelfSpace {
+            if def.index == 0 {
                 self_ty
             } else if let Some(ref input_types) = opt_input_types {
-                input_types[def.index as usize]
+                input_types[def.index as usize - 1]
             } else {
                 self.type_var_for_def(span, def, substs)
             }

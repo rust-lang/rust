@@ -413,7 +413,7 @@ impl tr for Def {
           Def::AssociatedTy(trait_did, did) =>
               Def::AssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
           Def::PrimTy(p) => Def::PrimTy(p),
-          Def::TyParam(s, index, def_id, n) => Def::TyParam(s, index, def_id.tr(dcx), n),
+          Def::TyParam(did) => Def::TyParam(did.tr(dcx)),
           Def::Upvar(_, nid1, index, nid2) => {
               let nid1 = dcx.tr_id(nid1);
               let nid2 = dcx.tr_id(nid2);

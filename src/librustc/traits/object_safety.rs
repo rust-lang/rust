@@ -20,7 +20,7 @@
 use super::elaborate_predicates;
 
 use hir::def_id::DefId;
-use ty::subst::{self, SelfSpace, TypeSpace};
+use ty::subst;
 use traits;
 use ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use std::rc::Rc;
@@ -146,10 +146,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match predicate {
                     ty::Predicate::Trait(ref data) => {
                         // In the case of a trait predicate, we can skip the "self" type.
-                        data.0.trait_ref.substs.types.get_slice(TypeSpace)
-                                                     .iter()
-                                                     .cloned()
-                                                     .any(|t| t.has_self_ty())
+                        data.0.trait_ref.input_types()[1..].iter().any(|t| t.has_self_ty())
                     }
                     ty::Predicate::Projection(..) |
                     ty::Predicate::WellFormed(..) |
@@ -325,7 +322,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ty.maybe_walk(|ty| {
             match ty.sty {
                 ty::TyParam(ref param_ty) => {
-                    if param_ty.space == SelfSpace {
+                    if param_ty.is_self() {
                         error = true;
                     }
 

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ty::subst::ParamSpace;
 use util::nodemap::NodeMap;
 use syntax::ast;
 use hir;
@@ -31,7 +30,7 @@ pub enum Def {
     AssociatedTy(DefId /* trait */, DefId),
     Trait(DefId),
     PrimTy(hir::PrimTy),
-    TyParam(ParamSpace, u32, DefId, ast::Name),
+    TyParam(DefId),
     Upvar(DefId,        // def id of closed over local
              ast::NodeId,  // node id of closed over local
              usize,        // index in the freevars list of the closure
@@ -122,7 +121,7 @@ impl Def {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::ForeignMod(id) | Def::Static(id, _) |
             Def::Variant(_, id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(_, id) |
-            Def::TyParam(_, _, id, _) | Def::Struct(id) | Def::Trait(id) |
+            Def::TyParam(id) | Def::Struct(id) | Def::Trait(id) |
             Def::Method(id) | Def::Const(id) | Def::AssociatedConst(id) |
             Def::Local(id, _) | Def::Upvar(id, _, _, _) => {
                 id

@@ -522,10 +522,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                            trait_ref.substs.types.len(subst::TypeSpace));
                 assert_eq!(m.generics.regions.len(subst::TypeSpace),
                            trait_ref.substs.regions.len(subst::TypeSpace));
-                assert_eq!(m.generics.types.len(subst::SelfSpace),
-                           trait_ref.substs.types.len(subst::SelfSpace));
-                assert_eq!(m.generics.regions.len(subst::SelfSpace),
-                           trait_ref.substs.regions.len(subst::SelfSpace));
             }
 
             // Because this trait derives from a where-clause, it
@@ -755,11 +751,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let substs = Substs::for_item(self.tcx, trait_def_id, |def, _| {
                 self.region_var_for_def(self.span, def)
             }, |def, substs| {
-                if def.space == subst::SelfSpace {
-                    assert_eq!(def.index, 0);
+                if def.index == 0 {
                     step.self_ty
                 } else {
-                    assert_eq!(def.space, subst::TypeSpace);
                     self.type_var_for_def(self.span, def, substs)
                 }
             });

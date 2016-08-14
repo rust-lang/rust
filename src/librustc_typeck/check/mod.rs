@@ -4225,7 +4225,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self.tcx, def.def_id(), |def, _| {
             let i = def.index as usize;
             let segment = match def.space {
-                subst::SelfSpace => None,
                 subst::TypeSpace => type_segment,
                 subst::FnSpace => fn_segment
             };
@@ -4241,9 +4240,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.region_var_for_def(span, def)
             }
         }, |def, substs| {
-            let i = def.index as usize;
+            let mut i = def.index as usize;
             let segment = match def.space {
-                subst::SelfSpace => None,
                 subst::TypeSpace => type_segment,
                 subst::FnSpace => fn_segment
             };
@@ -4252,18 +4250,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(&hir::ParenthesizedParameters(_)) => bug!(),
                 None => &[]
             };
+
+            // Handle Self first, so we can adjust the index to match the AST.
+            if scheme.generics.has_self && def.space == subst::TypeSpace {
+                if i == 0 {
+                    return opt_self_ty.unwrap_or_else(|| {
+                        self.type_var_for_def(span, def, substs)
+                    });
+                }
+                i -= 1;
+            }
+
             let can_omit = def.space != subst::TypeSpace || !require_type_space;
             let default = if can_omit && types.len() == 0 {
                 def.default
             } else {
                 None
             };
-
-            if def.space == subst::SelfSpace && opt_self_ty.is_some() {
-                // Self, which has been provided.
-                assert_eq!(i, 0);
-                opt_self_ty.unwrap()
-            } else if let Some(ast_ty) = types.get(i) {
+            if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
                 self.to_ty(ast_ty)
             } else if let Some(default) = default {
@@ -4371,6 +4375,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Check provided type parameters.
         let type_defs = generics.types.get_slice(space);
+        let type_defs = if space == subst::TypeSpace {
+            &type_defs[generics.has_self as usize..]
+        } else {
+            type_defs
+        };
         let required_len = type_defs.iter()
                                     .take_while(|d| d.default.is_none())
                                     .count();

@@ -1225,7 +1225,7 @@ impl<'tcx> TraitRef<'tcx> {
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
-        *self.substs.types.get(subst::SelfSpace, 0)
+        *self.substs.types.get(subst::TypeSpace, 0)
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {

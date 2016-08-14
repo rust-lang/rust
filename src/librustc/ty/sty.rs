@@ -305,7 +305,7 @@ pub struct TraitObject<'tcx> {
 ///
 /// This would be represented by a trait-reference where the def-id is the
 /// def-id for the trait `Foo` and the substs defines `T` as parameter 0 in the
-/// `SelfSpace` and `U` as parameter 0 in the `TypeSpace`.
+/// `TypeSpace` and `U` as parameter 1 in the `TypeSpace`.
 ///
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the substitutions.
@@ -512,7 +512,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(subst::SelfSpace, 0, keywords::SelfType.name())
+        ParamTy::new(subst::TypeSpace, 0, keywords::SelfType.name())
     }
 
     pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {
@@ -524,7 +524,13 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn is_self(&self) -> bool {
-        self.space == subst::SelfSpace && self.idx == 0
+        if self.name == keywords::SelfType.name() {
+            assert_eq!(self.space, subst::TypeSpace);
+            assert_eq!(self.idx, 0);
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -954,7 +960,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_self(&self) -> bool {
         match self.sty {
-            TyParam(ref p) => p.space == subst::SelfSpace,
+            TyParam(ref p) => p.is_self(),
             _ => false
         }
     }

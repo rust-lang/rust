@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ty::subst::{self, Substs};
+use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
 pub struct FlagComputation {
@@ -77,7 +77,7 @@ impl FlagComputation {
 
             &ty::TyParam(ref p) => {
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
-                if p.space == subst::SelfSpace {
+                if p.is_self() {
                     self.add_flags(TypeFlags::HAS_SELF);
                 } else {
                     self.add_flags(TypeFlags::HAS_PARAMS);

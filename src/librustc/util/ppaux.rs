@@ -62,35 +62,36 @@ pub enum Ns {
     Value
 }
 
-fn number_of_supplied_defaults<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                               substs: &subst::Substs,
-                                               space: subst::ParamSpace,
-                                               generics: &ty::Generics<'tcx>)
-                                               -> usize
-{
-    let ty_params = generics.types.get_slice(space);
-    let tps = substs.types.get_slice(space);
-    if ty_params.last().map_or(false, |def| def.default.is_some()) {
-        let substs = tcx.lift(&substs);
-        ty_params.iter().zip(tps).rev().take_while(|&(def, &actual)| {
-            substs.and_then(|substs| def.default.subst(tcx, substs))
-                == Some(actual)
-        }).count()
-    } else {
-        0
-    }
-}
-
 pub fn parameterized(f: &mut fmt::Formatter,
                      substs: &subst::Substs,
                      did: DefId,
                      ns: Ns,
                      projections: &[ty::ProjectionPredicate])
                      -> fmt::Result {
-    let (fn_trait_kind, verbose, item_name, is_in_trait) = ty::tls::with(|tcx| {
-        let is_in_trait = ns == Ns::Value && tcx.trait_of_item(did).is_some();
-        if is_in_trait {
-            write!(f, "<{} as ", substs.types.get(subst::SelfSpace, 0))?;
+    let mut verbose = false;
+    let mut num_supplied_defaults = 0;
+    let mut has_self = false;
+    let (fn_trait_kind, item_name) = ty::tls::with(|tcx| {
+        verbose = tcx.sess.verbose();
+        let generics = tcx.lookup_generics(did);
+        if !verbose {
+            let ty_params = generics.types.get_slice(subst::TypeSpace);
+            if ty_params.last().map_or(false, |def| def.default.is_some()) {
+                if let Some(substs) = tcx.lift(&substs) {
+                    let tps = substs.types.get_slice(subst::TypeSpace);
+                    for (def, actual) in ty_params.iter().zip(tps).rev() {
+                        if def.default.subst(tcx, substs) != Some(actual) {
+                            break;
+                        }
+                        num_supplied_defaults += 1;
+                    }
+                }
+            }
+        }
+
+        has_self = generics.has_self;
+        if ns == Ns::Value && has_self {
+            write!(f, "<{} as ", substs.types.get(subst::TypeSpace, 0))?;
         }
 
         let (did, item_name) = if ns == Ns::Value {
@@ -107,15 +108,12 @@ pub fn parameterized(f: &mut fmt::Formatter,
             (did, None)
         };
         write!(f, "{}", tcx.item_path_str(did))?;
-        Ok((tcx.lang_items.fn_trait_kind(did),
-            tcx.sess.verbose(),
-            item_name,
-            is_in_trait))
+        Ok((tcx.lang_items.fn_trait_kind(did), item_name))
     })?;
 
     if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
         let projection_ty = projections[0].ty;
-        if let TyTuple(ref args) = substs.types.get(subst::TypeSpace, 0).sty {
+        if let TyTuple(ref args) = substs.types.get(subst::TypeSpace, 1).sty {
             return fn_sig(f, args, false, projection_ty);
         }
     }
@@ -160,18 +158,9 @@ pub fn parameterized(f: &mut fmt::Formatter,
 
     print_regions(f, "<", substs.regions.get_slice(subst::TypeSpace))?;
 
-    let num_supplied_defaults = if verbose {
-        0
-    } else {
-        ty::tls::with(|tcx| {
-            let generics = tcx.lookup_generics(did);
-            number_of_supplied_defaults(tcx, substs, subst::TypeSpace, generics)
-        })
-    };
-
     let tps = substs.types.get_slice(subst::TypeSpace);
 
-    for &ty in &tps[..tps.len() - num_supplied_defaults] {
+    for &ty in &tps[has_self as usize..tps.len() - num_supplied_defaults] {
         start_or_continue(f, "<", ", ")?;
         write!(f, "{}", ty)?;
     }
@@ -189,7 +178,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
     if ns == Ns::Value {
         empty.set(true);
 
-        if is_in_trait {
+        if has_self {
             write!(f, ">")?;
         }
 
