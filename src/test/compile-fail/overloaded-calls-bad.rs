@@ -36,7 +36,7 @@ fn main() {
         y: 3,
     };
     let ans = s("what");    //~ ERROR mismatched types
-    //~^ NOTE expected isize, found &-ptr
+    //~^ NOTE expected isize, found reference
     //~| NOTE expected type
     //~| NOTE found type
     let ans = s();

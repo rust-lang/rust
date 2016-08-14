@@ -13,7 +13,7 @@ macro_rules! foo {
         fn bar(d: u8) { }
         bar(&mut $d);
         //~^ ERROR mismatched types
-        //~| expected u8, found &-ptr
+        //~| expected u8, found &mut u8
         //~| expected type `u8`
         //~| found type `&mut u8`
     }}
