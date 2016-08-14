@@ -1,6 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.81 - 2016-08-14
+* Rustup to *rustc 1.12.0-nightly (1deb02ea6 2016-08-12)*
+* New lints: [`eval_order_dependence`], [`mixed_case_hex_literals`], [`unseparated_literal_suffix`]
+* False positive fix in [`too_many_arguments`]
+* Addition of functionality to [`needless_borrow`]
+* Suggestions for [`clone_on_copy`]
+* Bug fix in [`wrong_self_convention`]
+* Doc improvements
+
 ## 0.0.80 — 2016-07-31
 * Rustup to *rustc 1.12.0-nightly (1225e122f 2016-07-30)*
 
