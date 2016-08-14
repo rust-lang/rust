@@ -867,34 +867,29 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
 }
 
 pub fn meta_section_name(target: &Target) -> &'static str {
+    // Historical note:
+    //
+    // When using link.exe it was seen that the section name `.note.rustc`
+    // was getting shortened to `.note.ru`, and according to the PE and COFF
+    // specification:
+    //
+    // > Executable images do not use a string table and do not support
+    // > section names longer than 8 characters
+    //
+    // https://msdn.microsoft.com/en-us/library/windows/hardware/gg463119.aspx
+    //
+    // As a result, we choose a slightly shorter name! As to why
+    // `.note.rustc` works on MinGW, that's another good question...
+
     if target.options.is_like_osx {
-        "__DATA,__note.rustc"
-    } else if target.options.is_like_msvc {
-        // When using link.exe it was seen that the section name `.note.rustc`
-        // was getting shortened to `.note.ru`, and according to the PE and COFF
-        // specification:
-        //
-        // > Executable images do not use a string table and do not support
-        // > section names longer than 8 characters
-        //
-        // https://msdn.microsoft.com/en-us/library/windows/hardware/gg463119.aspx
-        //
-        // As a result, we choose a slightly shorter name! As to why
-        // `.note.rustc` works on MinGW, that's another good question...
-        ".rustc"
+        "__DATA,.rustc"
     } else {
-        ".note.rustc"
+        ".rustc"
     }
 }
 
-pub fn read_meta_section_name(target: &Target) -> &'static str {
-    if target.options.is_like_osx {
-        "__note.rustc"
-    } else if target.options.is_like_msvc {
-        ".rustc"
-    } else {
-        ".note.rustc"
-    }
+pub fn read_meta_section_name(_target: &Target) -> &'static str {
+    ".rustc"
 }
 
 // A diagnostic function for dumping crate metadata to an output stream

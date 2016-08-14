@@ -382,6 +382,15 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                variant_index);
                 };
             }
+            StatementKind::StorageLive(ref lv) |
+            StatementKind::StorageDead(ref lv) => {
+                match *lv {
+                    Lvalue::Temp(_) | Lvalue::Var(_) => {}
+                    _ => {
+                        span_mirbug!(self, stmt, "bad lvalue: expected temp or var");
+                    }
+                }
+            }
         }
     }
 

@@ -87,8 +87,12 @@ impl<'tcx> Visitor<'tcx> for TempCollector {
         if let Lvalue::Temp(index) = *lvalue {
             // Ignore drops, if the temp gets promoted,
             // then it's constant and thus drop is noop.
-            if let LvalueContext::Drop = context {
-                return;
+            // Storage live ranges are also irrelevant.
+            match context {
+                LvalueContext::Drop |
+                LvalueContext::StorageLive |
+                LvalueContext::StorageDead => return,
+                _ => {}
             }
 
             let temp = &mut self.temps[index];
@@ -219,12 +223,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let (mut rvalue, mut call) = (None, None);
         let source_info = if stmt_idx < no_stmts {
             let statement = &mut self.source[bb].statements[stmt_idx];
-            let mut rhs = match statement.kind {
+            let rhs = match statement.kind {
                 StatementKind::Assign(_, ref mut rhs) => rhs,
-                StatementKind::SetDiscriminant{ .. } =>
-                    span_bug!(statement.source_info.span,
-                              "cannot promote SetDiscriminant {:?}",
-                              statement),
+                _ => {
+                    span_bug!(statement.source_info.span, "{:?} is not an assignment",
+                              statement);
+                }
             };
             if self.keep_original {
                 rvalue = Some(rhs.clone());
@@ -311,11 +315,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     StatementKind::Assign(_, ref mut rvalue) => {
                         mem::replace(rvalue, Rvalue::Use(new_operand))
                     }
-                    StatementKind::SetDiscriminant{ .. } => {
-                        span_bug!(statement.source_info.span,
-                                  "cannot promote SetDiscriminant {:?}",
-                                  statement);
-                    }
+                    _ => bug!()
                 }
             }
             Candidate::ShuffleIndices(bb) => {
@@ -354,8 +354,10 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 let statement = &mir[bb].statements[stmt_idx];
                 let dest = match statement.kind {
                     StatementKind::Assign(ref dest, _) => dest,
-                    StatementKind::SetDiscriminant{ .. } =>
-                        panic!("cannot promote SetDiscriminant"),
+                    _ => {
+                        span_bug!(statement.source_info.span,
+                                  "expected assignment to promote");
+                    }
                 };
                 if let Lvalue::Temp(index) = *dest {
                     if temps[index] == TempState::PromotedOut {
@@ -408,7 +410,9 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
     for block in mir.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
-                StatementKind::Assign(Lvalue::Temp(index), _) => {
+                StatementKind::Assign(Lvalue::Temp(index), _) |
+                StatementKind::StorageLive(Lvalue::Temp(index)) |
+                StatementKind::StorageDead(Lvalue::Temp(index)) => {
                     !promoted(index)
                 }
                 _ => true

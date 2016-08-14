@@ -104,6 +104,8 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             repr::StatementKind::Assign(ref lvalue, ref rvalue) => {
                 (lvalue, rvalue)
             }
+            repr::StatementKind::StorageLive(_) |
+            repr::StatementKind::StorageDead(_) => continue,
             repr::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
                           "sanity_check should run before Deaggregator inserts SetDiscriminant"),
