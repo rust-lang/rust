@@ -51,7 +51,7 @@ extern crate rustc_errors as errors;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::default::Default;
 use std::env;
 use std::path::PathBuf;
@@ -60,7 +60,8 @@ use std::sync::mpsc::channel;
 
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
-use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options};
+use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options,
+                             Externs};
 
 #[macro_use]
 pub mod externalfiles;
@@ -323,7 +324,7 @@ pub fn main_args(args: &[String]) -> isize {
 /// Looks inside the command line arguments to extract the relevant input format
 /// and files and then generates the necessary rustdoc output for formatting.
 fn acquire_input(input: &str,
-                 externs: core::Externs,
+                 externs: Externs,
                  matches: &getopts::Matches) -> Result<Output, String> {
     match matches.opt_str("r").as_ref().map(|s| &**s) {
         Some("rust") => Ok(rust_input(input, externs, matches)),
@@ -335,10 +336,10 @@ fn acquire_input(input: &str,
 }
 
 /// Extracts `--extern CRATE=PATH` arguments from `matches` and
-/// returns a `HashMap` mapping crate names to their paths or else an
+/// returns a map mapping crate names to their paths or else an
 /// error message.
-fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
-    let mut externs = HashMap::new();
+fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
+    let mut externs = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
@@ -346,9 +347,9 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
                                  .ok_or("--extern value must be of the format `foo=bar`"
                                     .to_string())?;
         let name = name.to_string();
-        externs.entry(name).or_insert(vec![]).push(location.to_string());
+        externs.entry(name).or_insert_with(BTreeSet::new).insert(location.to_string());
     }
-    Ok(externs)
+    Ok(Externs::new(externs))
 }
 
 /// Interprets the input file as a rust source file, passing it through the
@@ -356,7 +357,7 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matches) -> Output {
+fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> Output {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");

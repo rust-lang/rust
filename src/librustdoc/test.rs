@@ -26,7 +26,8 @@ use rustc_lint;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
-use rustc::session::config::{get_unstable_features_setting, OutputType};
+use rustc::session::config::{get_unstable_features_setting, OutputType,
+                             OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
@@ -55,7 +56,7 @@ pub struct TestOptions {
 pub fn run(input: &str,
            cfgs: Vec<String>,
            libs: SearchPaths,
-           externs: core::Externs,
+           externs: Externs,
            mut test_args: Vec<String>,
            crate_name: Option<String>)
            -> isize {
@@ -89,8 +90,7 @@ pub fn run(input: &str,
                                        cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-    let mut cfg = config::build_configuration(&sess);
-    cfg.extend(config::parse_cfgspecs(cfgs.clone()));
+    let cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
     let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
     let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
@@ -172,7 +172,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 }
 
 fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
-           externs: core::Externs,
+           externs: Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
            compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions) {
     // the test harness wants its own `main` & top level functions, so
@@ -182,8 +182,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         name: driver::anon_src(),
         input: test.to_owned(),
     };
-    let mut outputs = HashMap::new();
-    outputs.insert(OutputType::Exe, None);
+    let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
 
     let sessopts = config::Options {
         maybe_sysroot: Some(env::current_exe().unwrap().parent().unwrap()
@@ -247,8 +246,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     let mut control = driver::CompileController::basic();
-    let mut cfg = config::build_configuration(&sess);
-    cfg.extend(config::parse_cfgspecs(cfgs.clone()));
+    let cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
     let out = Some(outdir.lock().unwrap().path().to_path_buf());
 
     if no_run {
@@ -396,7 +394,7 @@ pub struct Collector {
     names: Vec<String>,
     cfgs: Vec<String>,
     libs: SearchPaths,
-    externs: core::Externs,
+    externs: Externs,
     cnt: usize,
     use_headers: bool,
     current_header: Option<String>,
@@ -405,7 +403,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: core::Externs,
+    pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions) -> Collector {
         Collector {
             tests: Vec::new(),

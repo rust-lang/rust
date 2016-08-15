@@ -19,7 +19,8 @@ extern crate syntax;
 
 use rustc::dep_graph::DepGraph;
 use rustc::session::{build_session, Session};
-use rustc::session::config::{basic_options, build_configuration, Input, OutputType};
+use rustc::session::config::{basic_options, build_configuration, Input,
+                             OutputType, OutputTypes};
 use rustc_driver::driver::{compile_input, CompileController, anon_src};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
@@ -51,7 +52,7 @@ fn main() {
 
 fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
     let mut opts = basic_options();
-    opts.output_types.insert(OutputType::Exe, None);
+    opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
     opts.maybe_sysroot = Some(sysroot);
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
@@ -64,7 +65,7 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let (sess, cstore) = basic_sess(sysroot);
-    let cfg = build_configuration(&sess);
+    let cfg = build_configuration(&sess, vec![]);
     let control = CompileController::basic();
 
     compile_input(&sess, &cstore,
