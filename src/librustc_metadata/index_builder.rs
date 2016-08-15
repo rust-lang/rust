@@ -8,6 +8,60 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Builder types for generating the "item data" section of the
+//! metadata. This section winds up looking like this:
+//!
+//! ```
+//! <common::data> // big list of item-like things...
+//!    <common::data_item> // ...for most def-ids, there is an entry.
+//!    </common::data_item>
+//! </common::data>
+//! ```
+//!
+//! As we generate this listing, we collect the offset of each
+//! `data_item` entry and store it in an index. Then, when we load the
+//! metadata, we can skip right to the metadata for a particular item.
+//!
+//! In addition to the offset, we need to track the data that was used
+//! to generate the contents of each `data_item`. This is so that we
+//! can figure out which HIR nodes contributors to that data for
+//! incremental compilation purposes.
+//!
+//! The `IndexBuilder` facilitates with both of these. It is created
+//! with an RBML encoder isntance (`rbml_w`) along with an
+//! `EncodingContext` (`ecx`), which it encapsulates. It has one main
+//! method, `record()`. You invoke `record` like so to create a new
+//! `data_item` element in the list:
+//!
+//! ```
+//! index.record(some_def_id, callback_fn, data)
+//! ```
+//!
+//! What record will do is to (a) record the current offset, (b) emit
+//! the `common::data_item` tag, and then call `callback_fn` with the
+//! given data as well as an `ItemContentBuilder`. Once `callback_fn`
+//! returns, the `common::data_item` tag will be closed.
+//!
+//! The `ItemContentBuilder` is another type that just offers access
+//! to the `ecx` and `rbml_w` that were given in, as well as
+//! maintaining a list of `xref` instances, which are used to extract
+//! common data so it is not re-serialized.
+//!
+//! `ItemContentBuilder` is a distinct type which does not offer the
+//! `record` method, so that we can ensure that `common::data_item` elements
+//! are never nested.
+//!
+//! In addition, while the `callback_fn` is executing, we will push a
+//! task `MetaData(some_def_id)`, which can then observe the
+//! reads/writes that occur in the task. For this reason, the `data`
+//! argument that is given to the `callback_fn` must implement the
+//! trait `DepGraphRead`, which indicates how to register reads on the
+//! data in this new task (note that many types of data, such as
+//! `DefId`, do not currently require any reads to be registered,
+//! since they are not derived from a HIR node). This is also why we
+//! give a callback fn, rather than taking a closure: it allows us to
+//! easily control precisely what data is given to that fn.
+
 use common::tag_items_data_item;
 use encoder::EncodeContext;
 use index::IndexData;
@@ -18,7 +72,6 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
 use syntax::ast;
-use std::ops::{Deref, DerefMut};
 
 /// Builder that can encode new items, adding them into the index.
 /// Item encoding cannot be nested.
@@ -53,6 +106,10 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         }
     }
 
+    pub fn ecx(&self) -> &'a EncodeContext<'a, 'tcx> {
+        self.builder.ecx()
+    }
+
     /// Emit the data for a def-id to the metadata. The function to
     /// emit the data is `op`, and it will be given `data` as
     /// arguments. This `record` function will start/end an RBML tag
@@ -76,31 +133,17 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                         data: DATA)
         where DATA: DepGraphRead
     {
-        let position = self.rbml_w.mark_stable_position();
+        let position = self.builder.rbml_w.mark_stable_position();
         self.items.record(id, position);
-        let _task = self.ecx.tcx.dep_graph.in_task(DepNode::MetaData(id));
-        self.rbml_w.start_tag(tag_items_data_item).unwrap();
-        data.read(self.ecx.tcx);
-        op(self, data);
-        self.rbml_w.end_tag().unwrap();
+        let _task = self.ecx().tcx.dep_graph.in_task(DepNode::MetaData(id));
+        self.builder.rbml_w.start_tag(tag_items_data_item).unwrap();
+        data.read(self.ecx().tcx);
+        op(&mut self.builder, data);
+        self.builder.rbml_w.end_tag().unwrap();
     }
 
     pub fn into_fields(self) -> (IndexData, FnvHashMap<XRef<'tcx>, u32>) {
         (self.items, self.builder.xrefs)
-    }
-}
-
-impl<'a, 'tcx, 'encoder> Deref for IndexBuilder<'a, 'tcx, 'encoder> {
-    type Target = ItemContentBuilder<'a, 'tcx, 'encoder>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.builder
-    }
-}
-
-impl<'a, 'tcx, 'encoder> DerefMut for IndexBuilder<'a, 'tcx, 'encoder> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.builder
     }
 }
 
@@ -115,9 +158,10 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     }
 }
 
-/// Trait that registers reads for types that are tracked in the
-/// dep-graph. Mostly it is implemented for indices like DefId etc
-/// which do not need to register a read.
+/// Trait used for data that can be passed from outside a dep-graph
+/// task.  The data must either be of some safe type, such as a
+/// `DefId` index, or implement the `read` method so that it can add
+/// a read of whatever dep-graph nodes are appropriate.
 pub trait DepGraphRead {
     fn read(&self, tcx: TyCtxt);
 }
@@ -185,8 +229,10 @@ read_hir!(hir::ImplItem);
 read_hir!(hir::TraitItem);
 read_hir!(hir::ForeignItem);
 
-/// You can use `FromId(X, ...)` to indicate that `...` came from node
-/// `X`; so we will add a read from the suitable `Hir` node.
+/// Newtype that can be used to package up misc data extracted from a
+/// HIR node that doesn't carry its own id. This will allow an
+/// arbitrary `T` to be passed in, but register a read on the given
+/// node-id.
 pub struct FromId<T>(pub ast::NodeId, pub T);
 
 impl<T> DepGraphRead for FromId<T> {
