@@ -18,6 +18,11 @@ use sys::cvt;
 use sys_common::AsInner;
 use sys_common::io::read_to_end_uninitialized;
 
+#[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
+use libc::{pread64, pwrite64, off64_t};
+#[cfg(not(any(target_os = "linux", target_os = "emscripten", target_os = "android")))]
+use libc::{pread as pread64, pwrite as pwrite64, off_t as off64_t};
+
 pub struct FileDesc {
     fd: c_int,
 }
@@ -50,11 +55,31 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
+    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            pread64(self.fd,
+                    buf.as_mut_ptr() as *mut c_void,
+                    buf.len(),
+                    offset as off64_t)
+        })?;
+        Ok(ret as usize)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::write(self.fd,
                         buf.as_ptr() as *const c_void,
                         buf.len())
+        })?;
+        Ok(ret as usize)
+    }
+
+    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            pwrite64(self.fd,
+                     buf.as_ptr() as *const c_void,
+                     buf.len(),
+                     offset as off64_t)
         })?;
         Ok(ret as usize)
     }
