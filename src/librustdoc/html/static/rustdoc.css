@@ -170,8 +170,6 @@ nav.sub {
     min-height: 100%;
 }
 
-.content, nav { max-width: 960px; }
-
 /* Everything else */
 
 .js-only, .hidden { display: none !important; }
