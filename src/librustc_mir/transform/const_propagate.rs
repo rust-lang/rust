@@ -34,7 +34,6 @@ use rustc_data_structures::fnv::FnvHashMap;
 use rustc::middle::const_val::ConstVal;
 use rustc::hir::def_id::DefId;
 use rustc::mir::repr::*;
-use rustc::mir::tcx::binop_ty;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::mir::visit::{MutVisitor};
 use rustc::ty::TyCtxt;
@@ -159,7 +158,17 @@ impl<'a, 'tcx> Transfer<'tcx> for ConstTransfer<'a, 'tcx> {
     fn stmt(&self, s: &Statement<'tcx>, mut lat: Self::Lattice)
     -> Self::Lattice
     {
-        let StatementKind::Assign(ref lval, ref rval) = s.kind;
+        let (lval, rval) = match s.kind {
+            // Could be handled with some extra information, but there’s no point in doing that yet
+            // because currently we would have no consumers of this data (no GetDiscriminant).
+            StatementKind::SetDiscriminant { .. } => return lat,
+            StatementKind::StorageDead(ref lval) => {
+                lat.top(lval);
+                return lat;
+            }
+            StatementKind::StorageLive(_) => return lat,
+            StatementKind::Assign(ref lval, ref rval) => (lval, rval),
+        };
         match *rval {
             Rvalue::Use(Operand::Consume(_)) => {
                 lat.top(lval);
@@ -329,7 +338,11 @@ struct ConstEvalVisitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>);
 impl<'a, 'tcx> MutVisitor<'tcx> for ConstEvalVisitor<'a, 'tcx> {
     fn visit_statement(&mut self, _: BasicBlock, stmt: &mut Statement<'tcx>) {
         let span = stmt.source_info.span;
-        let StatementKind::Assign(_, ref mut rval) = stmt.kind;
+        let rval = if let StatementKind::Assign(_, ref mut rval) = stmt.kind {
+            rval
+        } else {
+            return
+        };
         let repl = match *rval {
             // FIXME: Rvalue::CheckedBinaryOp could be evaluated to Rvalue::Aggregate of 2-tuple
             // (or disaggregated version of it; needs replacement with arbitrary graphs)
@@ -338,7 +351,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ConstEvalVisitor<'a, 'tcx> {
                     (&Literal::Value { value: ref value1 },
                      &Literal::Value { value: ref value2 }) =>
                         eval_const_binop(op.to_hir_binop(), &value1, &value2, span).ok().map(|v| {
-                            (v, binop_ty(self.0, *op, opr1.ty, opr2.ty))
+                            (v, op.ty(self.0, opr1.ty, opr2.ty))
                         }),
                     _ => None
                 }

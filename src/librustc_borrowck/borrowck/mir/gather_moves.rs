@@ -614,12 +614,14 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                         Rvalue::InlineAsm { .. } => {}
                     }
                 }
+                StatementKind::SetDiscriminant{ ref lvalue, .. } => {
+                    // not a move, is assignment like.
+                    bb_ctxt.builder.create_move_path(lvalue);
+                    let assigned_path = bb_ctxt.builder.move_path_for(lvalue);
+                    bb_ctxt.path_map.fill_to(assigned_path.index());
+                }
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) => {}
-                StatementKind::SetDiscriminant{ .. } => {
-                    span_bug!(stmt.source_info.span,
-                              "SetDiscriminant should not exist during borrowck");
-                }
             }
         }
 

@@ -83,7 +83,7 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                                              variant_index: index }
                     }
                     _ => {
-                        bug!("cannot downcast non-enum type: `{:?}` as `{:?}`", self, elem)
+                        bug!("cannot downcast non-enum type: `{:?}`", self)
                     }
                 },
             ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }
@@ -113,26 +113,16 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Mir<'tcx> {
-    pub fn operand_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                      operand: &Operand<'tcx>)
-                      -> Ty<'tcx>
-    {
-        match *operand {
-            Operand::Consume(ref l) => self.lvalue_ty(tcx, l).to_ty(tcx),
-            Operand::Constant(ref c) => c.ty,
-        }
-    }
-
-    pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, lvalue: &Lvalue<'tcx>) -> LvalueTy<'tcx> {
-        match *lvalue {
-            Lvalue::Var(index) =>
-                LvalueTy::Ty { ty: self.var_decls[index].ty },
-            Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: self.temp_decls[index].ty },
-            Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: self.arg_decls[index].ty },
-            Lvalue::Static(def_id) =>
+impl<'tcx> Lvalue<'tcx> {
+    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx> {
+        match self {
+            &Lvalue::Var(index) =>
+                LvalueTy::Ty { ty: mir.var_decls[index].ty },
+            &Lvalue::Temp(index) =>
+                LvalueTy::Ty { ty: mir.temp_decls[index].ty },
+            &Lvalue::Arg(index) =>
+                LvalueTy::Ty { ty: mir.arg_decls[index].ty },
+            &Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
             &Lvalue::ReturnPointer =>
                 LvalueTy::Ty { ty: mir.return_ty },
@@ -163,17 +153,17 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                 ))
             }
-            Rvalue::Len(..) => Some(tcx.types.usize),
-            Rvalue::Cast(_, _, ty) => Some(ty),
-            Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
-                let lhs_ty = self.operand_ty(tcx, lhs);
-                let rhs_ty = self.operand_ty(tcx, rhs);
-                Some(binop_ty(tcx, op, lhs_ty, rhs_ty))
+            &Rvalue::Len(..) => Some(tcx.types.usize),
+            &Rvalue::Cast(_, _, ty) => Some(ty),
+            &Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = lhs.ty(mir, tcx);
+                let rhs_ty = rhs.ty(mir, tcx);
+                Some(op.ty(tcx, lhs_ty, rhs_ty))
             }
-            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
-                let lhs_ty = self.operand_ty(tcx, lhs);
-                let rhs_ty = self.operand_ty(tcx, rhs);
-                let ty = binop_ty(tcx, op, lhs_ty, rhs_ty);
+            &Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = lhs.ty(mir, tcx);
+                let rhs_ty = rhs.ty(mir, tcx);
+                let ty = op.ty(tcx, lhs_ty, rhs_ty);
                 let ty = tcx.mk_tup(vec![ty, tcx.types.bool]);
                 Some(ty)
             }

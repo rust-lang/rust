@@ -81,6 +81,16 @@ impl DeadCodeLattice {
             _ => false
         };
     }
+
+    fn is_live<'a>(&self, lval: &Lvalue<'a>) -> bool {
+        match *lval {
+            Lvalue::Temp(t) => self.tmps.contains(t.index()),
+            Lvalue::Var(v) => self.vars.contains(v.index()),
+            Lvalue::Arg(a) => self.args.contains(a.index()),
+            // All other stuff is *always* live.
+            _ => true
+        }
+    }
 }
 
 struct DeadCodeTransfer;
@@ -108,12 +118,11 @@ where T: Transfer<'tcx, Lattice=DeadCodeLattice>
     fn stmt(&self, s: &Statement<'tcx>, lat: &DeadCodeLattice)
     -> StatementChange<'tcx>
     {
-        let StatementKind::Assign(ref lval, ref rval) = s.kind;
-        let keep = !rval.is_pure() || match *lval {
-            Lvalue::Temp(t) => lat.tmps.contains(t.index()),
-            Lvalue::Var(v) => lat.vars.contains(v.index()),
-            Lvalue::Arg(a) => lat.args.contains(a.index()),
-            _ => true
+        let keep = match s.kind {
+            StatementKind::Assign(ref lval, ref rval) => !rval.is_pure() || lat.is_live(lval),
+            StatementKind::SetDiscriminant { ref lvalue, .. } => lat.is_live(lvalue),
+            StatementKind::StorageLive(_) => true,
+            StatementKind::StorageDead(_) => true,
         };
         if keep {
             StatementChange::Statement(s.clone())
@@ -141,6 +150,11 @@ impl<'tcx> Visitor<'tcx> for DeadCodeVisitor {
                 ref l@Lvalue::Arg(_) => self.0.set_lvalue_dead(l),
                 _ => {}
             }
+        } else if ctx == LvalueContext::StorageLive || ctx == LvalueContext::StorageDead {
+            // Do not consider StorageDead as use of value, because that way we gonna never apply
+            // any optimisation in this pass. StorageLive behaves in a similar way as an assignment
+            // by having the value dead above the statement.
+            self.0.set_lvalue_dead(lval);
         } else {
             self.0.set_lvalue_live(lval);
         }

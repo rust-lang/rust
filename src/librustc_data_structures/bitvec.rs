@@ -23,12 +23,6 @@ impl BitVector {
         BitVector { data: vec![0; num_words] }
     }
 
-    pub fn clear(&mut self) {
-        for p in &mut self.data {
-            *p = 0;
-        }
-    }
-
     pub fn contains(&self, bit: usize) -> bool {
         let (word, mask) = word_mask(bit);
         (self.data.get(word).cloned().unwrap_or(0) & mask) != 0
@@ -419,6 +413,7 @@ fn matrix_iter() {
     assert!(iter.next().is_none());
 }
 
+#[test]
 fn bitvec_pop() {
     let mut bitvec = BitVector::new(100);
     bitvec.insert(1);
@@ -430,7 +425,7 @@ fn bitvec_pop() {
     bitvec.insert(65);
     bitvec.insert(66);
     bitvec.insert(99);
-    let idxs = vec![];
+    let mut idxs = vec![];
     while let Some(idx) = bitvec.pop() { idxs.push(idx); }
     assert_eq!(idxs, [99, 66, 65, 64, 63, 62, 19, 10, 1]);
 }

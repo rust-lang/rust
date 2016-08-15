@@ -317,6 +317,9 @@ struct DeclMarker {
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
     fn visit_lvalue(&mut self, lval: &mir::Lvalue<'tcx>, ctx: LvalueContext) {
+        if ctx == LvalueContext::StorageLive || ctx == LvalueContext::StorageDead {
+            return; // ignore these altogether.
+        }
         match *lval {
             mir::Lvalue::Var(ref v) => self.live_vars.insert(v.index()),
             mir::Lvalue::Temp(ref t) => self.live_temps.insert(t.index()),

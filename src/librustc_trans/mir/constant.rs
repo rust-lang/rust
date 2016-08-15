@@ -17,7 +17,7 @@ use rustc_const_math::ConstMathErr;
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::mir::repr as mir;
-use rustc::mir::tcx::{LvalueTy, binop_ty};
+use rustc::mir::tcx::LvalueTy;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::cast::{CastTy, IntTy};
