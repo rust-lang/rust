@@ -165,8 +165,11 @@ impl<'a> Resolver<'a> {
                 if !allow_private_imports && binding.is_import() && !binding.is_pseudo_public() {
                     return Failed(None);
                 }
-                if record_used.is_some() {
+                if let Some(span) = record_used {
                     self.record_use(name, ns, binding);
+                    if !self.is_accessible(binding.vis) {
+                        self.privacy_errors.push(PrivacyError(span, name, binding));
+                    }
                 }
                 Success(binding)
             });
