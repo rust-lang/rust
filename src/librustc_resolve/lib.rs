@@ -1304,9 +1304,6 @@ impl<'a> Resolver<'a> {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
                     if let Some(module_def) = binding.module() {
-                        if let Some(span) = span {
-                            self.check_privacy(name, binding, span);
-                        }
                         search_module = module_def;
                     } else {
                         let msg = format!("Not a module `{}`", name);
@@ -2614,10 +2611,7 @@ impl<'a> Resolver<'a> {
         let name = segments.last().unwrap().identifier.name;
         let result =
             self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
-        result.success().map(|binding| {
-            self.check_privacy(name, binding, span);
-            binding
-        }).ok_or(false)
+        result.success().ok_or(false)
     }
 
     /// Invariant: This must be called only during main resolution, not during
@@ -2656,10 +2650,7 @@ impl<'a> Resolver<'a> {
         let name = segments.last().unwrap().name();
         let result =
             self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
-        result.success().map(|binding| {
-            self.check_privacy(name, binding, span);
-            binding
-        }).ok_or(false)
+        result.success().ok_or(false)
     }
 
     fn with_no_errors<T, F>(&mut self, f: F) -> T
@@ -3274,12 +3265,6 @@ impl<'a> Resolver<'a> {
 
     fn is_accessible(&self, vis: ty::Visibility) -> bool {
         vis.is_at_least(self.current_vis, self)
-    }
-
-    fn check_privacy(&mut self, name: Name, binding: &'a NameBinding<'a>, span: Span) {
-        if !self.is_accessible(binding.vis) {
-            self.privacy_errors.push(PrivacyError(span, name, binding));
-        }
     }
 
     fn report_privacy_errors(&self) {
