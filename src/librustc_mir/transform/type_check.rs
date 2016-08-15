@@ -423,7 +423,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
-                let discr_ty = discr.ty(mir, tcx).to_ty(tcx);
+                let discr_ty = discr.ty(mir, tcx);
                 if let Err(terr) = self.sub_types(self.last_span, discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);

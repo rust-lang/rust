@@ -228,10 +228,12 @@ impl<'a, 'tcx> Transfer<'tcx> for ConstTransfer<'a, 'tcx> {
                 lat.insert(lval, bool_const(true));
                 vec![lat, falsy]
             }
-            TerminatorKind::SwitchInt { ref discr, ref values, switch_ty, .. } => {
+            TerminatorKind::SwitchInt { discr: Operand::Consume(ref lval),
+                                        ref values,
+                                        switch_ty, .. } => {
                 let mut vec: Vec<_> = values.iter().map(|val| {
                     let mut branch = lat.clone();
-                    branch.insert(discr, Constant {
+                    branch.insert(lval, Constant {
                         span: span,
                         ty: switch_ty,
                         literal: Literal::Value { value: val.clone() }
@@ -283,9 +285,11 @@ impl<'a, 'tcx> Transfer<'tcx> for ConstTransfer<'a, 'tcx> {
                     vec![lat; succ_count]
                 }
             }
+            // (unreachable if interleaved with simplify branches pass):
+            TerminatorKind::SwitchInt { .. } | // The condition is constant
+            TerminatorKind::If { .. } |        // The condition is constant
+
             TerminatorKind::Switch { .. } | // Might make some sense to handle this
-            TerminatorKind::If { .. } | // The condition is constant
-                                        // (unreachable if interleaved with simplify branches pass)
             TerminatorKind::Goto { .. } |
             TerminatorKind::Unreachable |
             TerminatorKind::Return |
@@ -402,9 +406,7 @@ impl<'tcx, T: Transfer<'tcx>> Rewrite<'tcx, T> for SimplifyRewrite {
                 TerminatorChange::Terminator(nt)
             }
             TerminatorKind::If { ref targets, cond: Operand::Constant(Constant {
-                literal: Literal::Value {
-                    value: ConstVal::Bool(cond)
-                }, ..
+                literal: Literal::Value { value: ConstVal::Bool(cond) }, ..
             }) } => {
                 let mut nt = t.clone();
                 if cond {
@@ -414,11 +416,32 @@ impl<'tcx, T: Transfer<'tcx>> Rewrite<'tcx, T> for SimplifyRewrite {
                 }
                 TerminatorChange::Terminator(nt)
             }
+
             TerminatorKind::SwitchInt { ref targets, .. } if targets.len() == 1 => {
-                let mut nt = t.clone();
-                nt.kind = TerminatorKind::Goto { target: targets[0] };
-                TerminatorChange::Terminator(nt)
+                TerminatorChange::Terminator(Terminator {
+                    source_info: t.source_info,
+                    kind: TerminatorKind::Goto { target: targets[0] }
+                })
             }
+            TerminatorKind::SwitchInt { discr: Operand::Constant(Constant {
+                literal: Literal::Value { value: ref switch }, ..
+            }), ref targets, ref values, .. } => {
+                for (target, value) in targets.iter().zip(values.iter()) {
+                    if value == switch {
+                        return TerminatorChange::Terminator(Terminator {
+                            source_info: t.source_info,
+                            kind: TerminatorKind::Goto { target: *target }
+                        });
+                    }
+                }
+                TerminatorChange::Terminator(Terminator {
+                    source_info: t.source_info,
+                    kind: TerminatorKind::Goto {
+                        target: *targets.last().expect("SwitchInt has the `otherwise` target")
+                    }
+                })
+            }
+
             TerminatorKind::Assert { target, cond: Operand::Constant(Constant {
                 literal: Literal::Value {
                     value: ConstVal::Bool(cond)
@@ -427,9 +450,10 @@ impl<'tcx, T: Transfer<'tcx>> Rewrite<'tcx, T> for SimplifyRewrite {
                 // FIXME: once replacements with arbitrary subgraphs get implemented, this should
                 // have success branch pointed to a block with Unreachable terminator when cond !=
                 // expected.
-                let mut nt = t.clone();
-                nt.kind = TerminatorKind::Goto { target: target };
-                TerminatorChange::Terminator(nt)
+                TerminatorChange::Terminator(Terminator {
+                    source_info: t.source_info,
+                    kind: TerminatorKind::Goto { target: target }
+                })
             }
             _ => TerminatorChange::Terminator(t.clone())
         }

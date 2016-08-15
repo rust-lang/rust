@@ -395,7 +395,7 @@ pub enum TerminatorKind<'tcx> {
     /// to one of the targets, and otherwise fallback to `otherwise`
     SwitchInt {
         /// discriminant value being tested
-        discr: Lvalue<'tcx>,
+        discr: Operand<'tcx>,
 
         /// type of value being tested
         switch_ty: Ty<'tcx>,

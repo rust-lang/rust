@@ -378,7 +378,7 @@ macro_rules! make_mir_visitor {
                                                 ref $($mutability)* switch_ty,
                                                 ref $($mutability)* values,
                                                 ref targets } => {
-                        self.visit_lvalue(discr, LvalueContext::Inspect);
+                        self.visit_operand(discr);
                         self.visit_ty(switch_ty);
                         for value in values {
                             self.visit_const_val(value);
