@@ -29,10 +29,14 @@ pub struct MacroLoader<'a> {
 }
 
 impl<'a> MacroLoader<'a> {
-    pub fn new(sess: &'a Session, cstore: &'a CStore, crate_name: &str) -> MacroLoader<'a> {
+    pub fn new(sess: &'a Session,
+               cstore: &'a CStore,
+               crate_name: &str,
+               crate_config: ast::CrateConfig)
+               -> MacroLoader<'a> {
         MacroLoader {
             sess: sess,
-            reader: CrateReader::new(sess, cstore, crate_name),
+            reader: CrateReader::new(sess, cstore, crate_name, crate_config),
         }
     }
 }

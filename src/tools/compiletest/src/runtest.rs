@@ -2008,6 +2008,7 @@ actual:\n\
         // Add an extra flag pointing at the incremental directory.
         let mut revision_props = self.props.clone();
         revision_props.incremental_dir = Some(incremental_dir);
+        revision_props.compile_flags.push(String::from("-Zincremental-info"));
 
         let revision_cx = TestCx {
             config: self.config,

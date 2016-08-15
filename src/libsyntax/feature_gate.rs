@@ -1194,7 +1194,7 @@ pub fn check_crate(krate: &ast::Crate,
     visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UnstableFeatures {
     /// Hard errors for unstable features are active, as on
     /// beta/stable channels.

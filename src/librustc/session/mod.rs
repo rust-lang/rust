@@ -363,7 +363,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
         .map(|&(_, ref level)| *level != lint::Allow)
         .last()
         .unwrap_or(true);
-    let treat_err_as_bug = sopts.treat_err_as_bug;
+    let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
     let emitter: Box<Emitter> = match sopts.error_format {
         config::ErrorOutputType::HumanReadable(color_config) => {

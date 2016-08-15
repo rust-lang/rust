@@ -22,7 +22,7 @@ pub struct Iter<'a> {
     iter: slice::Iter<'a, (PathKind, PathBuf)>,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Hash)]
 pub enum PathKind {
     Native,
     Crate,

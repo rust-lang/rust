@@ -105,6 +105,10 @@ pub fn encode_dep_graph(preds: &Predecessors,
                         builder: &mut DefIdDirectoryBuilder,
                         encoder: &mut Encoder)
                         -> io::Result<()> {
+    // First encode the commandline arguments hash
+    let tcx = builder.tcx();
+    try!(tcx.sess.opts.dep_tracking_hash().encode(encoder));
+
     // Create a flat list of (Input, WorkProduct) edges for
     // serialization.
     let mut edges = vec![];

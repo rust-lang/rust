@@ -2576,7 +2576,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_module_sources::assert_module_sources(tcx, &modules);
 
     // Skip crate items and just output metadata in -Z no-trans mode.
-    if tcx.sess.opts.no_trans {
+    if tcx.sess.opts.debugging_opts.no_trans {
         let linker_info = LinkerInfo::new(&shared_ccx, &[]);
         return CrateTranslation {
             modules: modules,
