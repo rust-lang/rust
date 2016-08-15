@@ -18,7 +18,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.CsPropagate.before.mir
+// START rustc.node4.ConstPropagate.before.mir
 // bb0: {
 //     var0 = const 10i32;
 //     var1 = const 20usize;
@@ -46,7 +46,7 @@ fn main() {
 //     return = ();
 //     goto -> bb4;
 // }
-// END rustc.node4.CsPropagate.before.mir
+// END rustc.node4.ConstPropagate.before.mir
 // START rustc.node4.DeadCode.after.mir
 // bb0: {
 //     goto -> bb1;

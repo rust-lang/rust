@@ -14,7 +14,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.CsPropagate.before.mir
+// START rustc.node4.ConstPropagate.before.mir
 // bb0: {
 //     var0 = const false;
 //     tmp1 = var0;
@@ -37,7 +37,7 @@ fn main() {
 //     tmp3 = Sub(tmp4, const 42i32);
 //     std::process::exit(tmp3);
 // }
-// END rustc.node4.CsPropagate.before.mir
+// END rustc.node4.ConstPropagate.before.mir
 // START rustc.node4.DeadCode.after.mir
 // bb1: {
 //     std::process::exit(const 0i32);

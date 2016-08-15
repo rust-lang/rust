@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This is Constant-Simplify propagation pass. This is a composition of three distinct
-//! dataflow passes: alias-propagation, constant-propagation and terminator simplification.
+//! This is Constant-Simplify propagation pass. This is a composition of two distinct
+//! passes: constant-propagation and terminator simplification.
 //!
-//! All these are very similar in their nature:
+//! Note that having these passes interleaved results in a strictly more potent optimisation pass
+//! which is able to optimise CFG in a way which two passes couldn’t do separately even if they
+//! were run indefinitely one after another.
+//!
+//! Both these passes are very similar in their nature:
 //!
 //!                  | Constant  | Simplify  |
 //! |----------------|-----------|-----------|
@@ -19,69 +23,57 @@
 //! | Lattice Value  | Constant  | Constant  |
 //! | Transfer       | x = const | x = const |
 //! | Rewrite        | x → const | T(x) → T' |
-//! | Bottom         | {}        | {}        |
+//! | Top            | {}        | {}        |
 //! | Join           | intersect | intersect |
+//! |----------------|-----------|-----------|
 //!
-//! For all of them we will be using a lattice of `HashMap<Lvalue, Either<Lvalue, Constant, Top>>`.
+//! It might be a good idea to eventually interleave move propagation here, as it has very
+//! similar lattice to the constant propagation pass.
 
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::middle::const_val::ConstVal;
+use rustc::hir::def_id::DefId;
 use rustc::mir::repr::*;
 use rustc::mir::tcx::binop_ty;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::mir::visit::{MutVisitor};
 use rustc::ty::TyCtxt;
 use rustc_const_eval::{eval_const_binop, eval_const_unop, cast_const};
-use std::collections::hash_map::Entry;
 
 use super::dataflow::*;
 
-pub struct CsPropagate;
+pub struct ConstPropagate;
 
-impl Pass for CsPropagate {}
+impl Pass for ConstPropagate {}
 
-impl<'tcx> MirPass<'tcx> for CsPropagate {
+impl<'tcx> MirPass<'tcx> for ConstPropagate {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
-        *mir = Dataflow::forward(mir, CsTransfer { tcx: tcx },
+        *mir = Dataflow::forward(mir,
+                                 ConstTransfer { tcx: tcx },
                                  ConstRewrite { tcx: tcx }.and_then(SimplifyRewrite));
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
-enum Either<'tcx> {
-    Lvalue(Lvalue<'tcx>),
-    Const(Constant<'tcx>),
-    Top
+#[derive(Debug, Clone)]
+struct ConstLattice<'tcx> {
+    statics: FnvHashMap<DefId, Constant<'tcx>>,
+    // key must not be a static or a projection.
+    locals: FnvHashMap<Lvalue<'tcx>, Constant<'tcx>>,
 }
 
-impl<'tcx> Lattice for Either<'tcx> {
-    fn bottom() -> Self { unimplemented!() }
-    fn join(&mut self, other: Self) -> bool {
-        if !other.eq(self) {
-            if Either::Top.eq(self) {
-                false
-            } else {
-                *self = Either::Top;
-                true
-            }
-        } else {
-            false
+impl<'tcx> ConstLattice<'tcx> {
+    fn new() -> ConstLattice<'tcx> {
+        ConstLattice {
+            statics: FnvHashMap(),
+            locals: FnvHashMap()
         }
     }
-}
 
-#[derive(Debug, Clone)]
-struct CsLattice<'tcx> {
-    values: FnvHashMap<Lvalue<'tcx>, Either<'tcx>>
-}
-
-impl<'tcx> CsLattice<'tcx> {
-    fn insert(&mut self, key: &Lvalue<'tcx>, val: Either<'tcx>) {
+    fn insert(&mut self, key: &Lvalue<'tcx>, val: Constant<'tcx>) {
         // FIXME: HashMap has no way to insert stuff without cloning the key even if it exists
         // already.
         match *key {
-            // Do not bother with statics – global state.
-            Lvalue::Static(_) => {}
+            Lvalue::Static(defid) => self.statics.insert(defid, val),
             // I feel like this could be handled, but needs special care. For example in code like
             // this:
             //
@@ -95,58 +87,73 @@ impl<'tcx> CsLattice<'tcx> {
             // projections of var and not just var itself. Currently we handle this by not
             // keeping any knowledge about projections at all, but I think eventually we
             // want to do so.
-            Lvalue::Projection(_) => {},
-            _ => match self.values.entry(key.clone()) {
-                Entry::Vacant(e) => {
-                    e.insert(val);
-                }
-                Entry::Occupied(mut e) => {
-                    e.get_mut().join(val);
-                }
-            }
+            Lvalue::Projection(_) => None,
+            _ => self.locals.insert(key.clone(), val)
+        };
+    }
+
+    fn get(&self, key: &Lvalue<'tcx>) -> Option<&Constant<'tcx>> {
+        match *key {
+            Lvalue::Static(ref defid) => self.statics.get(defid),
+            Lvalue::Projection(_) => None,
+            _ => self.locals.get(key),
         }
     }
-    fn remove(&mut self, key: &Lvalue<'tcx>) -> Option<Either<'tcx>> {
-        self.values.remove(key)
-    }
+
     fn top(&mut self, key: &Lvalue<'tcx>) {
-        self.insert(key, Either::Top);
+        match *key {
+            Lvalue::Static(ref defid) => { self.statics.remove(defid); }
+            Lvalue::Projection(_) => {}
+            _ => { self.locals.remove(key); }
+        }
     }
 }
 
-impl<'tcx> Lattice for CsLattice<'tcx> {
-    fn bottom() -> Self { CsLattice { values: FnvHashMap() } }
-    fn join(&mut self, mut other: Self) -> bool {
-        // Calculate inteersection this way:
-        let mut changed = false;
-        // First, drain the self.values into a list of equal values common to both maps.
-        let mut common_keys = vec![];
-        for (key, mut value) in self.values.drain() {
-            match other.values.remove(&key) {
-                    // self had the key, but not other, so removing
-                None => {
-                    changed = true;
-                }
-                Some(ov) => {
-                    changed |= value.join(ov);
+fn intersect_map<K, V>(this: &mut FnvHashMap<K, V>, mut other: FnvHashMap<K, V>) -> bool
+where K: Eq + ::std::hash::Hash, V: PartialEq
+{
+    let mut changed = false;
+    // Calculate inteersection this way:
+    // First, drain the self.values into a list of equal values common to both maps.
+    let mut common_keys = vec![];
+    for (key, value) in this.drain() {
+        match other.remove(&key) {
+            None => {
+                // self had the key, but not other, so it is Top (i.e. removed)
+                changed = true;
+            }
+            Some(ov) => {
+                // Similarly, if the values are not equal…
+                changed |= if ov != value {
+                    true
+                } else {
                     common_keys.push((key, value));
+                    false
                 }
             }
         }
-        // Now, put each common key with equal value back into the map.
-        for (key, value) in common_keys {
-            self.values.insert(key, value);
-        }
-        changed
+    }
+    // Now, put each common key with equal value back into the map.
+    for (key, value) in common_keys {
+        this.insert(key, value);
+    }
+    changed
+}
+
+impl<'tcx> Lattice for ConstLattice<'tcx> {
+    fn bottom() -> Self { unimplemented!() }
+    fn join(&mut self, other: Self) -> bool {
+        intersect_map(&mut self.locals, other.locals) |
+        intersect_map(&mut self.statics, other.statics)
     }
 }
 
-struct CsTransfer<'a, 'tcx: 'a> {
+struct ConstTransfer<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> Transfer<'tcx> for CsTransfer<'a, 'tcx> {
-    type Lattice = CsLattice<'tcx>;
+impl<'a, 'tcx> Transfer<'tcx> for ConstTransfer<'a, 'tcx> {
+    type Lattice = ConstLattice<'tcx>;
     type TerminatorReturn = Vec<Self::Lattice>;
 
     fn stmt(&self, s: &Statement<'tcx>, mut lat: Self::Lattice)
@@ -154,18 +161,16 @@ impl<'a, 'tcx> Transfer<'tcx> for CsTransfer<'a, 'tcx> {
     {
         let StatementKind::Assign(ref lval, ref rval) = s.kind;
         match *rval {
-            Rvalue::Use(Operand::Consume(ref nlval)) => {
-                lat.insert(lval, Either::Lvalue(nlval.clone()));
-                // Consider moved.
-                lat.remove(nlval);
+            Rvalue::Use(Operand::Consume(_)) => {
+                lat.top(lval);
             },
             Rvalue::Use(Operand::Constant(ref cnst)) => {
-                lat.insert(lval, Either::Const(cnst.clone()));
+                lat.insert(lval, cnst.clone());
             },
             // We do not want to deal with references and pointers here. Not yet and not without
             // a way to query stuff about reference/pointer aliasing.
             Rvalue::Ref(_, _, ref referee) => {
-                lat.remove(lval);
+                lat.top(lval);
                 lat.top(referee);
             }
             // FIXME: should calculate length of statically sized arrays and store it.
@@ -182,7 +187,7 @@ impl<'a, 'tcx> Transfer<'tcx> for CsTransfer<'a, 'tcx> {
             Rvalue::Box(_) => { lat.top(lval); }
             // Not handled, but could be. Disaggregation helps to not bother with this.
             Rvalue::Aggregate(..) => { lat.top(lval); }
-            // Not handled, invalidate any knowledge about any variables used by this. Dangerous
+            // Not handled, invalidate any knowledge about any variables touched by this. Dangerous
             // stuff and other dragons be here.
             Rvalue::InlineAsm { ref outputs, ref inputs, asm: _ } => {
                 lat.top(lval);
@@ -190,6 +195,8 @@ impl<'a, 'tcx> Transfer<'tcx> for CsTransfer<'a, 'tcx> {
                 for input in inputs {
                     if let Operand::Consume(ref lval) = *input { lat.top(lval); }
                 }
+                // Clear the statics, because inline assembly may mutate global state at will.
+                lat.statics.clear();
             }
         };
         lat
@@ -200,11 +207,11 @@ impl<'a, 'tcx> Transfer<'tcx> for CsTransfer<'a, 'tcx> {
     {
         let span = t.source_info.span;
         let succ_count = t.successors().len();
-        let bool_const = |b: bool| Either::Const(Constant {
+        let bool_const = |b: bool| Constant {
             span: span,
             ty: self.tcx.mk_bool(),
             literal: Literal::Value { value: ConstVal::Bool(b) },
-        });
+        };
         match t.kind {
             TerminatorKind::If { cond: Operand::Consume(ref lval), .. } => {
                 let mut falsy = lat.clone();
@@ -215,46 +222,42 @@ impl<'a, 'tcx> Transfer<'tcx> for CsTransfer<'a, 'tcx> {
             TerminatorKind::SwitchInt { ref discr, ref values, switch_ty, .. } => {
                 let mut vec: Vec<_> = values.iter().map(|val| {
                     let mut branch = lat.clone();
-                    branch.insert(discr, Either::Const(Constant {
+                    branch.insert(discr, Constant {
                         span: span,
                         ty: switch_ty,
                         literal: Literal::Value { value: val.clone() }
-                    }));
+                    });
                     branch
                 }).collect();
                 vec.push(lat);
                 vec
             }
             TerminatorKind::Drop { ref location, .. } => {
-                lat.remove(location);
+                lat.top(location);
+                // See comment in Call.
+                lat.statics.clear();
                 vec![lat; succ_count]
             }
-            TerminatorKind::DropAndReplace { ref location, ref unwind, ref value, .. } => {
+            TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 match *value {
-                    Operand::Consume(ref lval) => {
-                        lat.remove(location);
-                        lat.remove(lval);
-                    },
-                    Operand::Constant(ref cnst) => {
-                        lat.insert(location, Either::Const(cnst.clone()));
-                    }
+                    Operand::Consume(_) => lat.top(location),
+                    Operand::Constant(ref cnst) => lat.insert(location, cnst.clone()),
                 }
-                if unwind.is_some() {
-                    let mut unwind = lat.clone();
-                    unwind.remove(location);
-                    vec![lat, unwind]
-                } else {
-                    vec![lat]
-                }
+                // See comment in Call.
+                lat.statics.clear();
+                vec![lat; succ_count]
             }
             TerminatorKind::Call { ref destination, ref args, .. } => {
                 for arg in args {
                     if let Operand::Consume(ref lval) = *arg {
                         // FIXME: Probably safe to not remove any non-projection lvals.
-                        lat.remove(lval);
+                        lat.top(lval);
                     }
                 }
                 destination.as_ref().map(|&(ref lval, _)| lat.top(lval));
+                // Clear all knowledge about statics, because call may mutate any global state
+                // without us knowing about it.
+                lat.statics.clear();
                 vec![lat; succ_count]
             }
             TerminatorKind::Assert { ref cond, expected, ref cleanup, .. } => {
@@ -288,11 +291,11 @@ struct ConstRewrite<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
 impl<'a, 'tcx, T> Rewrite<'tcx, T> for ConstRewrite<'a, 'tcx>
-where T: Transfer<'tcx, Lattice=CsLattice<'tcx>>
+where T: Transfer<'tcx, Lattice=ConstLattice<'tcx>>
 {
     fn stmt(&self, stmt: &Statement<'tcx>, fact: &T::Lattice) -> StatementChange<'tcx> {
         let mut stmt = stmt.clone();
-        let mut vis = RewriteConstVisitor(&fact.values);
+        let mut vis = RewriteConstVisitor(&fact);
         vis.visit_statement(START_BLOCK, &mut stmt);
         ConstEvalVisitor(self.tcx).visit_statement(START_BLOCK, &mut stmt);
         StatementChange::Statement(stmt)
@@ -300,23 +303,19 @@ where T: Transfer<'tcx, Lattice=CsLattice<'tcx>>
 
     fn term(&self, term: &Terminator<'tcx>, fact: &T::Lattice) -> TerminatorChange<'tcx> {
         let mut term = term.clone();
-        let mut vis = RewriteConstVisitor(&fact.values);
+        let mut vis = RewriteConstVisitor(&fact);
         vis.visit_terminator(START_BLOCK, &mut term);
         ConstEvalVisitor(self.tcx).visit_terminator(START_BLOCK, &mut term);
         TerminatorChange::Terminator(term)
     }
 }
 
-struct RewriteConstVisitor<'a, 'tcx: 'a>(&'a FnvHashMap<Lvalue<'tcx>, Either<'tcx>>);
+struct RewriteConstVisitor<'a, 'tcx: 'a>(&'a ConstLattice<'tcx>);
 impl<'a, 'tcx> MutVisitor<'tcx> for RewriteConstVisitor<'a, 'tcx> {
     fn visit_operand(&mut self, op: &mut Operand<'tcx>) {
         // To satisy borrow checker, modify `op` after inspecting it
         let repl = if let Operand::Consume(ref lval) = *op {
-            if let Some(&Either::Const(ref c)) = self.0.get(lval) {
-                Some(c.clone())
-            } else {
-                None
-            }
+            self.0.get(lval).cloned()
         } else {
             None
         };
