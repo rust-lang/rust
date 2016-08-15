@@ -294,8 +294,8 @@ pub struct FieldInfo<'a> {
 
 /// Fields for a static method
 pub enum StaticFields {
-    /// Tuple structs/enum variants like this.
-    Unnamed(Vec<Span>),
+    /// Tuple and unit structs/enum variants like this.
+    Unnamed(Vec<Span>, bool /*is tuple*/),
     /// Normal structs/struct variants.
     Named(Vec<(Ident, Span)>),
 }
@@ -1470,7 +1470,7 @@ impl<'a> TraitDef<'a> {
             (_, false) => Named(named_idents),
             // empty structs
             _ if struct_def.is_struct() => Named(named_idents),
-            _ => Unnamed(just_spans),
+            _ => Unnamed(just_spans, struct_def.is_tuple()),
         }
     }
 
