@@ -1242,7 +1242,7 @@ impl<'a> Resolver<'a> {
                                      mut search_module: Module<'a>,
                                      module_path: &[Name],
                                      index: usize,
-                                     span: Span)
+                                     span: Option<Span>)
                                      -> ResolveResult<Module<'a>> {
         fn search_parent_externals<'a>(this: &mut Resolver<'a>, needle: Name, module: Module<'a>)
                                        -> Option<Module<'a>> {
@@ -1265,7 +1265,7 @@ impl<'a> Resolver<'a> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index];
-            match self.resolve_name_in_module(search_module, name, TypeNS, false, Some(span)) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, span) {
                 Failed(None) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
@@ -1291,7 +1291,7 @@ impl<'a> Resolver<'a> {
                         format!("Could not find `{}` in `{}`", segment_name, module_name)
                     };
 
-                    return Failed(Some((span, msg)));
+                    return Failed(span.map(|span| (span, msg)));
                 }
                 Failed(err) => return Failed(err),
                 Indeterminate => {
@@ -1304,11 +1304,13 @@ impl<'a> Resolver<'a> {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
                     if let Some(module_def) = binding.module() {
-                        self.check_privacy(name, binding, span);
+                        if let Some(span) = span {
+                            self.check_privacy(name, binding, span);
+                        }
                         search_module = module_def;
                     } else {
                         let msg = format!("Not a module `{}`", name);
-                        return Failed(Some((span, msg)));
+                        return Failed(span.map(|span| (span, msg)));
                     }
                 }
             }
@@ -1324,7 +1326,7 @@ impl<'a> Resolver<'a> {
     fn resolve_module_path(&mut self,
                            module_path: &[Name],
                            use_lexical_scope: UseLexicalScopeFlag,
-                           span: Span)
+                           span: Option<Span>)
                            -> ResolveResult<Module<'a>> {
         if module_path.len() == 0 {
             return Success(self.graph_root) // Use the crate root
@@ -1361,7 +1363,7 @@ impl<'a> Resolver<'a> {
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
                         let ident = ast::Ident::with_empty_ctxt(module_path[0]);
-                        match self.resolve_ident_in_lexical_scope(ident, TypeNS, Some(span))
+                        match self.resolve_ident_in_lexical_scope(ident, TypeNS, span)
                                   .and_then(LexicalScopeBinding::module) {
                             None => return Failed(None),
                             Some(containing_module) => {
@@ -1378,10 +1380,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        self.resolve_module_path_from_root(search_module,
-                                           module_path,
-                                           start_index,
-                                           span)
+        self.resolve_module_path_from_root(search_module, module_path, start_index, span)
     }
 
     /// This resolves the identifier `ident` in the namespace `ns` in the current lexical scope.
@@ -1485,7 +1484,7 @@ impl<'a> Resolver<'a> {
     /// Resolves a "module prefix". A module prefix is one or both of (a) `self::`;
     /// (b) some chain of `super::`.
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
-    fn resolve_module_prefix(&mut self, module_path: &[Name], span: Span)
+    fn resolve_module_prefix(&mut self, module_path: &[Name], span: Option<Span>)
                              -> ResolveResult<ModulePrefixResult<'a>> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
@@ -1504,7 +1503,7 @@ impl<'a> Resolver<'a> {
             match self.get_nearest_normal_module_parent(containing_module) {
                 None => {
                     let msg = "There are too many initial `super`s.".into();
-                    return Failed(Some((span, msg)));
+                    return Failed(span.map(|span| (span, msg)));
                 }
                 Some(new_module) => {
                     containing_module = new_module;
@@ -2592,7 +2591,7 @@ impl<'a> Resolver<'a> {
                                   .collect::<Vec<_>>();
 
         let containing_module;
-        match self.resolve_module_path(&module_path, UseLexicalScope, span) {
+        match self.resolve_module_path(&module_path, UseLexicalScope, Some(span)) {
             Failed(err) => {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
@@ -2632,10 +2631,7 @@ impl<'a> Resolver<'a> {
         let root_module = self.graph_root;
 
         let containing_module;
-        match self.resolve_module_path_from_root(root_module,
-                                                 &module_path,
-                                                 0,
-                                                 span) {
+        match self.resolve_module_path_from_root(root_module, &module_path, 0, Some(span)) {
             Failed(err) => {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
@@ -2915,7 +2911,7 @@ impl<'a> Resolver<'a> {
 
                                     match self.resolve_module_path(&name_path[..],
                                                                    UseLexicalScope,
-                                                                   expr.span) {
+                                                                   Some(expr.span)) {
                                         Success(e) => {
                                             if let Some(def_type) = e.def {
                                                 def = def_type;
@@ -3253,7 +3249,7 @@ impl<'a> Resolver<'a> {
 
         let segments: Vec<_> = path.segments.iter().map(|seg| seg.identifier.name).collect();
         let mut path_resolution = err_path_resolution();
-        let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, path.span) {
+        let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, Some(path.span)) {
             Success(module) => {
                 let def = module.def.unwrap();
                 path_resolution = PathResolution::new(def);

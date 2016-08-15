@@ -480,7 +480,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             Some(module) => module,
             _ => match self.resolve_module_path(&directive.module_path,
                                                 DontUseLexicalScope,
-                                                directive.span) {
+                                                Some(directive.span)) {
                 Success(module) => module,
                 Indeterminate => return Indeterminate,
                 Failed(err) => return Failed(err),
