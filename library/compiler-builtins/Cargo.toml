@@ -3,5 +3,11 @@ authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 name = "rustc_builtins"
 version = "0.1.0"
 
+[dependencies]
+rlibc = { git = "https://github.com/alexcrichton/rlibc", optional = true }
+
 [dev-dependencies]
 quickcheck = "0.3.1"
+
+[features]
+default = ["rlibc/weak"]

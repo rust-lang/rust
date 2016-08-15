@@ -18,12 +18,13 @@ extern crate quickcheck;
 #[cfg(test)]
 extern crate core;
 
+#[cfg(all(not(windows), not(target_os = "macos")))]
+extern crate rlibc;
+
 #[cfg(target_arch = "arm")]
 pub mod arm;
 
 pub mod udiv;
-#[cfg(all(not(windows), not(target_os = "macos")))]
-pub mod mem;
 pub mod mul;
 pub mod shift;
 
