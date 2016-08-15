@@ -13,7 +13,9 @@
 // @has assoc_types/trait.Index.html
 pub trait Index<I: ?Sized> {
     // @has - '//*[@id="associatedtype.Output"]//code' 'type Output: ?Sized'
+    // @has - '//*[@id="Output.t"]//code' 'type Output: ?Sized'
     type Output: ?Sized;
+    // @has - '//*[@id="index.v"]//code' 'fn index'
     // @has - '//*[@id="tymethod.index"]//code' \
     //      "fn index<'a>(&'a self, index: I) -> &'a Self::Output"
     fn index<'a>(&'a self, index: I) -> &'a Self::Output;

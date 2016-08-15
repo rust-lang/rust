@@ -24,11 +24,13 @@ pub mod bar {
     // @has foo/bar/baz/index.html '//a/@href' '../../../src/foo/src-links.rs.html'
     pub mod baz {
         /// Dox
+        // @has foo/bar/baz/baz.v.html
         // @has foo/bar/baz/fn.baz.html '//a/@href' '../../../src/foo/src-links.rs.html'
         pub fn baz() { }
     }
 
     /// Dox
+    // @has foo/bar/Foobar.t.html
     // @has foo/bar/trait.Foobar.html '//a/@href' '../../src/foo/src-links.rs.html'
     pub trait Foobar { fn dummy(&self) { } }
 
