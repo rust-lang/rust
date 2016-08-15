@@ -943,6 +943,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
     let vendor = &sess.target.target.target_vendor;
+    let min_atomic_width = sess.target.target.min_atomic_width();
     let max_atomic_width = sess.target.target.max_atomic_width();
 
     let mut ret = HashSet::new();
@@ -963,7 +964,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         ret.insert((Symbol::intern("target_thread_local"), None));
     }
     for &i in &[8, 16, 32, 64, 128] {
-        if i <= max_atomic_width {
+        if i >= min_atomic_width && i <= max_atomic_width {
             let s = i.to_string();
             ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern(&s))));
             if &s == wordsz {
