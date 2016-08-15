@@ -295,7 +295,7 @@ impl<A: Step> ops::Range<A> {
     ///
     /// ```
     /// #![feature(step_by)]
-    /// let result: Vec<_> = (0..10).step_by(2).take(10).collect();
+    /// let result: Vec<_> = (0..10).step_by(2).collect();
     /// assert_eq!(result, vec![0, 2, 4, 6, 8]);
     /// ```
     #[unstable(feature = "step_by", reason = "recent addition",
