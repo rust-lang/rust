@@ -53,7 +53,7 @@ use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 use rustc::hir::map::DefKey;
 
-use super::index_builder::{IndexBuilder, ItemContentBuilder, XRef};
+use super::index_builder::{FromId, IndexBuilder, ItemContentBuilder, XRef};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
@@ -198,8 +198,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
 
 impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
     fn encode_enum_variant_infos(&mut self,
-                                 enum_did: DefId,
-                                 vis: &hir::Visibility) {
+                                 enum_did: DefId) {
         debug!("encode_enum_variant_info(enum_did={:?})", enum_did);
         let ecx = self.ecx();
         let def = ecx.tcx.lookup_adt_def(enum_did);
@@ -207,15 +206,15 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         for (i, variant) in def.variants.iter().enumerate() {
             self.record(variant.did,
                         ItemContentBuilder::encode_enum_variant_info,
-                        (enum_did, i, vis));
+                        (enum_did, i));
         }
     }
 }
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_enum_variant_info(&mut self,
-                                (enum_did, index, vis):
-                                (DefId, usize, &hir::Visibility)) {
+                                (enum_did, index):
+                                (DefId, usize)) {
         let ecx = self.ecx;
         let def = ecx.tcx.lookup_adt_def(enum_did);
         let variant = &def.variants[index];
@@ -229,7 +228,10 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
         });
         encode_name(self.rbml_w, variant.name);
         self.encode_parent_item(enum_did);
-        self.encode_visibility(vis);
+
+        let enum_id = ecx.tcx.map.as_local_node_id(enum_did).unwrap();
+        let enum_vis = &ecx.tcx.map.expect_item(enum_id).vis;
+        self.encode_visibility(enum_vis);
 
         let attrs = ecx.tcx.get_attrs(vid);
         encode_attributes(self.rbml_w, &attrs);
@@ -294,8 +296,8 @@ fn encode_reexports(ecx: &EncodeContext,
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_info_for_mod(&mut self,
-                           (md, attrs, id, name, vis):
-                           (&hir::Mod, &[ast::Attribute], NodeId, Name, &hir::Visibility)) {
+                           FromId(id, (md, attrs, name, vis)):
+                           FromId<(&hir::Mod, &[ast::Attribute], Name, &hir::Visibility)>) {
         let ecx = self.ecx();
 
         encode_def_id_and_key(ecx, self.rbml_w, ecx.tcx.map.local_def_id(id));
@@ -936,7 +938,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 self.encode_method_argument_names(&decl);
             }
             hir::ItemMod(ref m) => {
-                self.encode_info_for_mod((m, &item.attrs, item.id, item.name, &item.vis));
+                self.encode_info_for_mod(FromId(item.id, (m, &item.attrs, item.name, &item.vis)));
             }
             hir::ItemForeignMod(ref fm) => {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
@@ -1166,7 +1168,7 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                 // no sub-item recording needed in these cases
             }
             hir::ItemEnum(..) => {
-                self.encode_enum_variant_infos(def_id, &item.vis);
+                self.encode_enum_variant_infos(def_id);
             }
             hir::ItemStruct(ref struct_def, _) => {
                 self.encode_addl_struct_info(def_id, struct_def.id(), item);
@@ -1395,11 +1397,10 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         let mut index = IndexBuilder::new(ecx, rbml_w);
         index.record(DefId::local(CRATE_DEF_INDEX),
                      ItemContentBuilder::encode_info_for_mod,
-                     (&krate.module,
-                      &[],
-                      CRATE_NODE_ID,
-                      syntax::parse::token::intern(&ecx.link_meta.crate_name),
-                      &hir::Public));
+                     FromId(CRATE_NODE_ID, (&krate.module,
+                                            &[],
+                                            syntax::parse::token::intern(&ecx.link_meta.crate_name),
+                                            &hir::Public)));
         krate.visit_all_items(&mut EncodeVisitor {
             index: &mut index,
         });

@@ -13,9 +13,11 @@ use encoder::EncodeContext;
 use index::IndexData;
 use rbml::writer::Encoder;
 use rustc::dep_graph::DepNode;
+use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
+use syntax::ast;
 use std::ops::{Deref, DerefMut};
 
 /// Builder that can encode new items, adding them into the index.
@@ -51,21 +53,34 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         }
     }
 
-    /// Records that `id` is being emitted at the current offset.
-    /// This data is later used to construct the item index in the
-    /// metadata so we can quickly find the data for a given item.
+    /// Emit the data for a def-id to the metadata. The function to
+    /// emit the data is `op`, and it will be given `data` as
+    /// arguments. This `record` function will start/end an RBML tag
+    /// and record the current offset for use in the index, calling
+    /// `op` to generate the data in the RBML tag.
     ///
-    /// Returns a dep-graph task that you should keep live as long as
-    /// the data for this item is being emitted.
+    /// In addition, it will setup a dep-graph task to track what data
+    /// `op` accesses to generate the metadata, which is later used by
+    /// incremental compilation to compute a hash for the metadata and
+    /// track changes.
+    ///
+    /// The reason that `op` is a function pointer, and not a closure,
+    /// is that we want to be able to completely track all data it has
+    /// access to, so that we can be sure that `DATA: DepGraphRead`
+    /// holds, and that it is therefore not gaining "secret" access to
+    /// bits of HIR or other state that would not be trackd by the
+    /// content system.
     pub fn record<DATA>(&mut self,
                         id: DefId,
                         op: fn(&mut ItemContentBuilder<'a, 'tcx, 'encoder>, DATA),
                         data: DATA)
+        where DATA: DepGraphRead
     {
         let position = self.rbml_w.mark_stable_position();
         self.items.record(id, position);
         let _task = self.ecx.tcx.dep_graph.in_task(DepNode::MetaData(id));
         self.rbml_w.start_tag(tag_items_data_item).unwrap();
+        data.read(self.ecx.tcx);
         op(self, data);
         self.rbml_w.end_tag().unwrap();
     }
@@ -100,3 +115,82 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     }
 }
 
+/// Trait that registers reads for types that are tracked in the
+/// dep-graph. Mostly it is implemented for indices like DefId etc
+/// which do not need to register a read.
+pub trait DepGraphRead {
+    fn read(&self, tcx: TyCtxt);
+}
+
+impl DepGraphRead for usize {
+    fn read(&self, _tcx: TyCtxt) { }
+}
+
+impl DepGraphRead for DefId {
+    fn read(&self, _tcx: TyCtxt) { }
+}
+
+impl DepGraphRead for ast::NodeId {
+    fn read(&self, _tcx: TyCtxt) { }
+}
+
+impl<T> DepGraphRead for Option<T>
+    where T: DepGraphRead
+{
+    fn read(&self, tcx: TyCtxt) {
+        match *self {
+            Some(ref v) => v.read(tcx),
+            None => (),
+        }
+    }
+}
+
+impl<T> DepGraphRead for [T]
+    where T: DepGraphRead
+{
+    fn read(&self, tcx: TyCtxt) {
+        for i in self {
+            i.read(tcx);
+        }
+    }
+}
+
+macro_rules! read_tuple {
+    ($($name:ident),*) => {
+        impl<$($name),*> DepGraphRead for ($($name),*)
+            where $($name: DepGraphRead),*
+        {
+            #[allow(non_snake_case)]
+            fn read(&self, tcx: TyCtxt) {
+                let &($(ref $name),*) = self;
+                $($name.read(tcx);)*
+            }
+        }
+    }
+}
+read_tuple!(A,B);
+read_tuple!(A,B,C);
+
+macro_rules! read_hir {
+    ($t:ty) => {
+        impl<'tcx> DepGraphRead for &'tcx $t {
+            fn read(&self, tcx: TyCtxt) {
+                tcx.map.read(self.id);
+            }
+        }
+    }
+}
+read_hir!(hir::Item);
+read_hir!(hir::ImplItem);
+read_hir!(hir::TraitItem);
+read_hir!(hir::ForeignItem);
+
+/// You can use `FromId(X, ...)` to indicate that `...` came from node
+/// `X`; so we will add a read from the suitable `Hir` node.
+pub struct FromId<T>(pub ast::NodeId, pub T);
+
+impl<T> DepGraphRead for FromId<T> {
+    fn read(&self, tcx: TyCtxt) {
+        tcx.map.read(self.0);
+    }
+}
