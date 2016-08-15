@@ -947,8 +947,9 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
 
                 // Encode all the items in self module.
                 for foreign_item in &fm.items {
-                    self.rbml_w.wr_tagged_u64(tag_mod_child,
-                                              def_to_u64(ecx.tcx.map.local_def_id(foreign_item.id)));
+                    self.rbml_w.wr_tagged_u64(
+                        tag_mod_child,
+                        def_to_u64(ecx.tcx.map.local_def_id(foreign_item.id)));
                 }
                 self.encode_visibility(vis);
                 encode_stability(self.rbml_w, stab);
