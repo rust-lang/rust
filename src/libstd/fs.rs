@@ -348,6 +348,18 @@ impl File {
             inner: self.inner.duplicate()?
         })
     }
+
+    /// Reads a number of bytes starting from a given offset.
+    #[unstable(feature = "file_offset", issue = "0")]
+    pub fn read_offset(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        self.inner.read_offset(buf, offset)
+    }
+
+    /// Writes a number of bytes starting from a given offset.
+    #[unstable(feature = "file_offset", issue = "0")]
+    pub fn write_offset(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        self.inner.write_offset(buf, offset)
+    }
 }
 
 impl AsInner<fs_imp::File> for File {

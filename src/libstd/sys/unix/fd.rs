@@ -13,7 +13,7 @@
 use prelude::v1::*;
 
 use io::{self, Read};
-use libc::{self, c_int, size_t, c_void};
+use libc::{self, c_int, off_t, size_t, c_void};
 use mem;
 use sync::atomic::{AtomicBool, Ordering};
 use sys::cvt;
@@ -42,7 +42,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::read(self.fd,
                        buf.as_mut_ptr() as *mut c_void,
-                       buf.len() as size_t)
+                       buf.len())
         })?;
         Ok(ret as usize)
     }
@@ -52,11 +52,31 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
+    pub fn read_offset(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::pread(self.fd,
+                        buf.as_mut_ptr() as *mut c_void,
+                        buf.len(),
+                        offset as off_t)
+        })?;
+        Ok(ret as usize)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::write(self.fd,
                         buf.as_ptr() as *const c_void,
                         buf.len() as size_t)
+        })?;
+        Ok(ret as usize)
+    }
+
+    pub fn write_offset(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::pwrite(self.fd,
+                        buf.as_ptr() as *const c_void,
+                        buf.len(),
+                        offset as off_t)
         })?;
         Ok(ret as usize)
     }
