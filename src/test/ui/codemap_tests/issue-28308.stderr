@@ -1,7 +1,7 @@
 error: cannot apply unary operator `!` to type `&'static str`
-  --> $DIR/issue-28308.rs:13:5
+  --> $DIR/issue-28308.rs:12:5
    |
-13 |     assert!("foo");
+12 |     assert!("foo");
    |     ^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro from the standard library
