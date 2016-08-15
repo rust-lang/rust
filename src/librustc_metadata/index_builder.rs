@@ -57,14 +57,16 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
     ///
     /// Returns a dep-graph task that you should keep live as long as
     /// the data for this item is being emitted.
-    pub fn record<OP>(&mut self, id: DefId, op: OP)
-        where OP: FnOnce(&mut ItemContentBuilder<'a, 'tcx, 'encoder>)
+    pub fn record<DATA>(&mut self,
+                        id: DefId,
+                        op: fn(&mut ItemContentBuilder<'a, 'tcx, 'encoder>, DATA),
+                        data: DATA)
     {
         let position = self.rbml_w.mark_stable_position();
         self.items.record(id, position);
         let _task = self.ecx.tcx.dep_graph.in_task(DepNode::MetaData(id));
         self.rbml_w.start_tag(tag_items_data_item).unwrap();
-        op(self);
+        op(self, data);
         self.rbml_w.end_tag().unwrap();
     }
 
