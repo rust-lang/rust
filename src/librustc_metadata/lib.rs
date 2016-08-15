@@ -62,3 +62,5 @@ pub mod index;
 pub mod loader;
 pub mod macro_import;
 pub mod tls_context;
+
+__build_diagnostic_array! { librustc_metadata, DIAGNOSTICS }
