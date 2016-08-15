@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// this error is dispayed in `<std macros>`
-// error-pattern:cannot apply unary operator `!` to type `&'static str`
-// error-pattern:in this expansion of assert!
-
 fn main() {
     assert!("foo");
 }
