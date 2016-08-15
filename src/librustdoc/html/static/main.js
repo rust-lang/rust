@@ -617,7 +617,7 @@
             }
 
             output += "</p>";
-            $('#main.content').addClass('hidden');
+            $('#main>div.content').addClass('hidden');
             $('#search.content').removeClass('hidden').html(output);
             $('#search .desc').width($('#search').width() - 40 -
                 $('#search td:first-child').first().width());
@@ -748,7 +748,7 @@
                     if (browserSupportsHistoryApi()) {
                         history.replaceState("", "std - Rust", "?search=");
                     }
-                    $('#main.content').removeClass('hidden');
+                    $('#main>div.content').removeClass('hidden');
                     $('#search.content').addClass('hidden');
                 } else {
                     searchTimeout = setTimeout(search, 500);
@@ -779,7 +779,7 @@
                     // When browsing back from search results the main page
                     // visibility must be reset.
                     if (!params.search) {
-                        $('#main.content').removeClass('hidden');
+                        $('#main>div.content').removeClass('hidden');
                         $('#search.content').addClass('hidden');
                     }
                     // Revert to the previous title manually since the History
@@ -1002,7 +1002,7 @@
                     .css('display', 'none')
                     .html('&nbsp;Expand&nbsp;description'));
         var wrapper = $("<div class='toggle-wrapper'>").append(mainToggle);
-        $("#main > .docblock").before(wrapper);
+        $("#main > div > .docblock").before(wrapper);
     });
 
     $('pre.line-numbers').on('click', 'span', function() {
