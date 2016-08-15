@@ -1510,26 +1510,32 @@ impl<'a> TraitDef<'a> {
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl);
-        let pattern = if struct_def.is_struct() {
-            let field_pats = subpats.into_iter()
-                .zip(&ident_exprs)
-                .map(|(pat, &(sp, ident, _, _))| {
-                    if ident.is_none() {
-                        cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
-                    }
-                    codemap::Spanned {
-                        span: pat.span,
-                        node: ast::FieldPat {
-                            ident: ident.unwrap(),
-                            pat: pat,
-                            is_shorthand: false,
-                        },
-                    }
-                })
-                .collect();
-            cx.pat_struct(self.span, struct_path, field_pats)
-        } else {
-            cx.pat_enum(self.span, struct_path, subpats)
+        let pattern = match *struct_def {
+            VariantData::Struct(..) => {
+                let field_pats = subpats.into_iter()
+                    .zip(&ident_exprs)
+                    .map(|(pat, &(sp, ident, _, _))| {
+                        if ident.is_none() {
+                            cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
+                        }
+                        codemap::Spanned {
+                            span: pat.span,
+                            node: ast::FieldPat {
+                                ident: ident.unwrap(),
+                                pat: pat,
+                                is_shorthand: false,
+                            },
+                        }
+                    })
+                    .collect();
+                cx.pat_struct(self.span, struct_path, field_pats)
+            }
+            VariantData::Tuple(..) => {
+                cx.pat_tuple_struct(self.span, struct_path, subpats)
+            }
+            VariantData::Unit(..) => {
+                cx.pat_path(self.span, struct_path)
+            }
         };
 
         (pattern, ident_exprs)
