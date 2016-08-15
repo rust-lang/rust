@@ -118,6 +118,14 @@ as other items by an `extern crate` item.
 No `#[macro_use]` or `#[macro_export]` annotations are required.
 
 
+## Shadowing
+
+Macro names follow the same shadowing rules as other names. For example, an
+explicitly declared macro would shadow a glob-imported macro with the same name.
+Note that since macros are in a different namespace from types and values, a
+macro cannot shadow a type or value or vice versa.
+
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
@@ -167,3 +175,13 @@ for a future RFC.
 Some day, I hope that procedural macros may be defined in the same crate in
 which they are used. I leave the details of this for later, however, I don't
 think this affects the design of naming - it should all Just Work.
+
+## Applying to existing macros
+
+This RFC is framed in terms of a new macro system. There are various ways that
+some parts of it could be applied to existing macros (`macro_rules!`) to
+backwards compatibly make existing macros usable under the new naming system.
+
+I want to leave this question unanswered for now. Until we get some experience
+implementing this feature it is unclear how much this is possible. Once we know
+that we can try to decide how much of that is also desirable.
