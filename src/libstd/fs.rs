@@ -1904,6 +1904,130 @@ mod tests {
     }
 
     #[test]
+    fn file_test_io_eof() {
+        let tmpdir = tmpdir();
+        let filename = tmpdir.join("file_rt_io_file_test_eof.txt");
+        let mut buf = [0; 256];
+        {
+            let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+            let mut rw = check!(oo.open(&filename));
+            assert_eq!(check!(rw.read(&mut buf)), 0);
+            assert_eq!(check!(rw.read(&mut buf)), 0);
+        }
+        check!(fs::remove_file(&filename));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn file_test_io_read_write_at() {
+        use os::unix::fs::FileExt;
+
+        let tmpdir = tmpdir();
+        let filename = tmpdir.join("file_rt_io_file_test_read_write_at.txt");
+        let mut buf = [0; 256];
+        let write1 = "asdf";
+        let write2 = "qwer-";
+        let write3 = "-zxcv";
+        let content = "qwer-asdf-zxcv";
+        {
+            let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+            let mut rw = check!(oo.open(&filename));
+            assert_eq!(check!(rw.write_at(write1.as_bytes(), 5)), write1.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 0);
+            assert_eq!(check!(rw.read_at(&mut buf, 5)), write1.len());
+            assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 0);
+            assert_eq!(check!(rw.read_at(&mut buf[..write2.len()], 0)), write2.len());
+            assert_eq!(str::from_utf8(&buf[..write2.len()]), Ok("\0\0\0\0\0"));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 0);
+            assert_eq!(check!(rw.write(write2.as_bytes())), write2.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 5);
+            assert_eq!(check!(rw.read(&mut buf)), write1.len());
+            assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(rw.read_at(&mut buf[..write2.len()], 0)), write2.len());
+            assert_eq!(str::from_utf8(&buf[..write2.len()]), Ok(write2));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(rw.write_at(write3.as_bytes(), 9)), write3.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+        }
+        {
+            let mut read = check!(File::open(&filename));
+            assert_eq!(check!(read.read_at(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 0);
+            assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
+            assert_eq!(check!(read.read_at(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(read.read(&mut buf)), write3.len());
+            assert_eq!(str::from_utf8(&buf[..write3.len()]), Ok(write3));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+            assert_eq!(check!(read.read_at(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+            assert_eq!(check!(read.read_at(&mut buf, 14)), 0);
+            assert_eq!(check!(read.read_at(&mut buf, 15)), 0);
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        }
+        check!(fs::remove_file(&filename));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn file_test_io_seek_read_write() {
+        use os::windows::fs::FileExt;
+
+        let tmpdir = tmpdir();
+        let filename = tmpdir.join("file_rt_io_file_test_seek_read_write.txt");
+        let mut buf = [0; 256];
+        let write1 = "asdf";
+        let write2 = "qwer-";
+        let write3 = "-zxcv";
+        let content = "qwer-asdf-zxcv";
+        {
+            let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+            let mut rw = check!(oo.open(&filename));
+            assert_eq!(check!(rw.seek_write(write1.as_bytes(), 5)), write1.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(rw.seek_read(&mut buf, 5)), write1.len());
+            assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(rw.seek(SeekFrom::Start(0))), 0);
+            assert_eq!(check!(rw.write(write2.as_bytes())), write2.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 5);
+            assert_eq!(check!(rw.read(&mut buf)), write1.len());
+            assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(rw.seek_read(&mut buf[..write2.len()], 0)), write2.len());
+            assert_eq!(str::from_utf8(&buf[..write2.len()]), Ok(write2));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 5);
+            assert_eq!(check!(rw.seek_write(write3.as_bytes(), 9)), write3.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 14);
+        }
+        {
+            let mut read = check!(File::open(&filename));
+            assert_eq!(check!(read.seek_read(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+            assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
+            assert_eq!(check!(read.seek_read(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+            assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
+            assert_eq!(check!(read.read(&mut buf)), write3.len());
+            assert_eq!(str::from_utf8(&buf[..write3.len()]), Ok(write3));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+            assert_eq!(check!(read.seek_read(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+            assert_eq!(check!(read.seek_read(&mut buf, 14)), 0);
+            assert_eq!(check!(read.seek_read(&mut buf, 15)), 0);
+        }
+        check!(fs::remove_file(&filename));
+    }
+
+    #[test]
     fn file_test_stat_is_correct_on_is_file() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_file.txt");
@@ -2221,8 +2345,8 @@ mod tests {
         check!(fs::set_permissions(&out, attr.permissions()));
     }
 
-    #[cfg(windows)]
     #[test]
+    #[cfg(windows)]
     fn copy_file_preserves_streams() {
         let tmp = tmpdir();
         check!(check!(File::create(tmp.join("in.txt:bunny"))).write("carrot".as_bytes()));
