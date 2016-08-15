@@ -844,7 +844,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn pat_enum(&self, span: Span, path: ast::Path, subpats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
         let pat = if subpats.is_empty() {
-            PatKind::Path(None, path)
+            PatKind::Struct(path, Vec::new(), false)
         } else {
             PatKind::TupleStruct(path, subpats, None)
         };
