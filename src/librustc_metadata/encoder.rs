@@ -205,16 +205,17 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         let def = ecx.tcx.lookup_adt_def(enum_did);
         self.encode_fields(enum_did);
         for (i, variant) in def.variants.iter().enumerate() {
-            self.record(variant.did, |this| this.encode_enum_variant_info(enum_did, i, vis));
+            self.record(variant.did,
+                        ItemContentBuilder::encode_enum_variant_info,
+                        (enum_did, i, vis));
         }
     }
 }
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_enum_variant_info(&mut self,
-                                enum_did: DefId, // enum def-id
-                                index: usize, // variant index
-                                vis: &hir::Visibility) {
+                                (enum_did, index, vis):
+                                (DefId, usize, &hir::Visibility)) {
         let ecx = self.ecx;
         let def = ecx.tcx.lookup_adt_def(enum_did);
         let variant = &def.variants[index];
@@ -293,11 +294,8 @@ fn encode_reexports(ecx: &EncodeContext,
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_info_for_mod(&mut self,
-                           md: &hir::Mod,
-                           attrs: &[ast::Attribute],
-                           id: NodeId,
-                           name: Name,
-                           vis: &hir::Visibility) {
+                           (md, attrs, id, name, vis):
+                           (&hir::Mod, &[ast::Attribute], NodeId, Name, &hir::Visibility)) {
         let ecx = self.ecx();
 
         encode_def_id_and_key(ecx, self.rbml_w, ecx.tcx.map.local_def_id(id));
@@ -418,9 +416,9 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         let def = self.ecx.tcx.lookup_adt_def(adt_def_id);
         for (variant_index, variant) in def.variants.iter().enumerate() {
             for (field_index, field) in variant.fields.iter().enumerate() {
-                self.record(field.did, |this| this.encode_field(adt_def_id,
-                                                                variant_index,
-                                                                field_index));
+                self.record(field.did,
+                            ItemContentBuilder::encode_field,
+                            (adt_def_id, variant_index, field_index));
             }
         }
     }
@@ -428,9 +426,8 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_field(&mut self,
-                    adt_def_id: DefId,
-                    variant_index: usize,
-                    field_index: usize) {
+                    (adt_def_id, variant_index, field_index):
+                    (DefId, usize, usize)) {
         let ecx = self.ecx();
         let def = ecx.tcx.lookup_adt_def(adt_def_id);
         let variant = &def.variants[variant_index];
@@ -454,9 +451,8 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_struct_ctor(&mut self,
-                          struct_def_id: DefId,
-                          struct_node_id: ast::NodeId,
-                          ctor_node_id: ast::NodeId) {
+                          (struct_def_id, struct_node_id, ctor_node_id):
+                          (DefId, ast::NodeId, ast::NodeId)) {
         let ecx = self.ecx();
         let def = ecx.tcx.lookup_adt_def(struct_def_id);
         let variant = def.struct_variant();
@@ -532,9 +528,8 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_info_for_trait_item(&mut self,
-                                  trait_def_id: DefId,
-                                  item_def_id: DefId,
-                                  trait_item: &hir::TraitItem) {
+                                  (trait_def_id, item_def_id, trait_item):
+                                  (DefId, DefId, &hir::TraitItem)) {
         let ecx = self.ecx;
         let tcx = ecx.tcx;
 
@@ -635,9 +630,8 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     }
 
     fn encode_info_for_impl_item(&mut self,
-                                 impl_id: NodeId,
-                                 impl_item_def_id: DefId,
-                                 ast_item: Option<&hir::ImplItem>) {
+                                 (impl_id, impl_item_def_id, ast_item):
+                                 (NodeId, DefId, Option<&hir::ImplItem>)) {
         match self.ecx.tcx.impl_or_trait_item(impl_item_def_id) {
             ty::ConstTraitItem(ref associated_const) => {
                 self.encode_info_for_associated_const(&associated_const,
@@ -882,8 +876,7 @@ fn encode_xrefs<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_info_for_item(&mut self,
-                            def_id: DefId,
-                            item: &hir::Item) {
+                            (def_id, item): (DefId, &hir::Item)) {
         let ecx = self.ecx();
         let tcx = ecx.tcx;
 
@@ -943,11 +936,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 self.encode_method_argument_names(&decl);
             }
             hir::ItemMod(ref m) => {
-                self.encode_info_for_mod(m,
-                                         &item.attrs,
-                                         item.id,
-                                         item.name,
-                                         &item.vis);
+                self.encode_info_for_mod((m, &item.attrs, item.id, item.name, &item.vis));
             }
             hir::ItemForeignMod(ref fm) => {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
@@ -1210,9 +1199,9 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                 // there is a value for structs like `struct
                 // Foo()` and `struct Foo`
                 let ctor_def_id = ecx.tcx.map.local_def_id(struct_node_id);
-                self.record(ctor_def_id, |this| this.encode_struct_ctor(def_id,
-                                                                        item.id,
-                                                                        struct_node_id));
+                self.record(ctor_def_id,
+                            ItemContentBuilder::encode_struct_ctor,
+                            (def_id, item.id, struct_node_id));
             }
         }
     }
@@ -1238,9 +1227,9 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
             };
 
             let trait_item_def_id = trait_item_def_id.def_id();
-            self.record(trait_item_def_id, |this| {
-                this.encode_info_for_impl_item(impl_id, trait_item_def_id, ast_item)
-            });
+            self.record(trait_item_def_id,
+                        ItemContentBuilder::encode_info_for_impl_item,
+                        (impl_id, trait_item_def_id, ast_item));
         }
     }
 
@@ -1253,17 +1242,16 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         for (item_def_id, trait_item) in r.iter().zip(trait_items) {
             let item_def_id = item_def_id.def_id();
             assert!(item_def_id.is_local());
-            self.record(item_def_id, |this| {
-                this.encode_info_for_trait_item(def_id, item_def_id, trait_item)
-            });
+            self.record(item_def_id,
+                        ItemContentBuilder::encode_info_for_trait_item,
+                        (def_id, item_def_id, trait_item));
         }
     }
 }
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     fn encode_info_for_foreign_item(&mut self,
-                                    def_id: DefId,
-                                    nitem: &hir::ForeignItem) {
+                                    (def_id, nitem): (DefId, &hir::ForeignItem)) {
         let ecx = self.ecx();
 
         debug!("writing foreign item {}", ecx.tcx.node_path_str(nitem.id));
@@ -1323,14 +1311,18 @@ impl<'a, 'ecx, 'tcx, 'encoder> Visitor<'tcx> for EncodeVisitor<'a, 'ecx, 'tcx, '
         let def_id = self.index.ecx.tcx.map.local_def_id(item.id);
         match item.node {
             hir::ItemExternCrate(_) | hir::ItemUse(_) => (), // ignore these
-            _ => self.index.record(def_id, |index| index.encode_info_for_item(def_id, item)),
+            _ => self.index.record(def_id,
+                                   ItemContentBuilder::encode_info_for_item,
+                                   (def_id, item)),
         }
         self.index.encode_addl_info_for_item(item);
     }
     fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
         intravisit::walk_foreign_item(self, ni);
         let def_id = self.index.ecx.tcx.map.local_def_id(ni.id);
-        self.index.record(def_id, |index| index.encode_info_for_foreign_item(def_id, ni));
+        self.index.record(def_id,
+                          ItemContentBuilder::encode_info_for_foreign_item,
+                          (def_id, ni));
     }
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         intravisit::walk_ty(self, ty);
@@ -1343,11 +1335,9 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         let ecx = self.ecx();
         if let hir::TyImplTrait(_) = ty.node {
             let def_id = ecx.tcx.map.local_def_id(ty.id);
-            self.record(def_id, |this| {
-                encode_def_id_and_key(ecx, this.rbml_w, def_id);
-                encode_family(this.rbml_w, 'y');
-                this.encode_bounds_and_type_for_item(ty.id);
-            });
+            self.record(def_id,
+                        ItemContentBuilder::encode_info_for_anon_ty,
+                        (def_id, ty.id));
         }
     }
 
@@ -1357,8 +1347,9 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         match expr.node {
             hir::ExprClosure(..) => {
                 let def_id = ecx.tcx.map.local_def_id(expr.id);
-
-                self.record(def_id, |this| this.encode_info_for_closure(def_id, expr.id));
+                self.record(def_id,
+                            ItemContentBuilder::encode_info_for_closure,
+                            (def_id, expr.id));
             }
             _ => { }
         }
@@ -1366,7 +1357,14 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
 }
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
-    fn encode_info_for_closure(&mut self, def_id: DefId, expr_id: NodeId) {
+    fn encode_info_for_anon_ty(&mut self, (def_id, ty_id): (DefId, NodeId)) {
+        let ecx = self.ecx;
+        encode_def_id_and_key(ecx, self.rbml_w, def_id);
+        encode_family(self.rbml_w, 'y');
+        self.encode_bounds_and_type_for_item(ty_id);
+    }
+
+    fn encode_info_for_closure(&mut self, (def_id, expr_id): (DefId, NodeId)) {
         let ecx = self.ecx;
         encode_def_id_and_key(ecx, self.rbml_w, def_id);
         encode_name(self.rbml_w, syntax::parse::token::intern("<closure>"));
@@ -1395,13 +1393,13 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
     let fields = {
         let mut index = IndexBuilder::new(ecx, rbml_w);
-        index.record(DefId::local(CRATE_DEF_INDEX), |this| {
-            this.encode_info_for_mod(&krate.module,
-                                     &[],
-                                     CRATE_NODE_ID,
-                                     syntax::parse::token::intern(&ecx.link_meta.crate_name),
-                                     &hir::Public);
-        });
+        index.record(DefId::local(CRATE_DEF_INDEX),
+                     ItemContentBuilder::encode_info_for_mod,
+                     (&krate.module,
+                      &[],
+                      CRATE_NODE_ID,
+                      syntax::parse::token::intern(&ecx.link_meta.crate_name),
+                      &hir::Public));
         krate.visit_all_items(&mut EncodeVisitor {
             index: &mut index,
         });
