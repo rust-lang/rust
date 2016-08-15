@@ -20,5 +20,5 @@ const BLUB: [u32; FOO[4]] = [5, 6];
 //~| index out of bounds: the len is 3 but the index is 4
 
 fn main() {
-    let _ = BAR;
+    drop(BAR);
 }
