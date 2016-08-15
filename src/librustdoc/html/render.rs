@@ -2036,14 +2036,18 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     fn trait_item(w: &mut fmt::Formatter, cx: &Context, m: &clean::Item, t: &clean::Item)
                   -> fmt::Result {
         let name = m.name.as_ref().unwrap();
-        let id = derive_id(format!("{}.{}", item_type(m), name));
-        write!(w, "<h3 id='{id}' class='method stab {stab}'><code>",
+        let item_type = item_type(m);
+        let id = derive_id(format!("{}.{}", item_type, name));
+        let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
+        write!(w, "<h3 id='{id}' class='method stab {stab}'>\
+                   <span id='{ns_id}' class='invisible'><code>",
                id = id,
-               stab = m.stability_class())?;
+               stab = m.stability_class(),
+               ns_id = ns_id)?;
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)))?;
         write!(w, "</code>")?;
         render_stability_since(w, m, t)?;
-        write!(w, "</h3>")?;
+        write!(w, "</span></h3>")?;
         document(w, cx, m)?;
         Ok(())
     }
@@ -2282,12 +2286,19 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         if fields.peek().is_some() {
             write!(w, "<h2 class='fields'>Fields</h2>")?;
             for (field, ty) in fields {
-                write!(w, "<span id='{item_type}.{name}' class='{item_type}'>
-                           <a id='{name}.{name_space}'>
+                let id = derive_id(format!("{}.{}",
+                                           ItemType::StructField,
+                                           field.name.as_ref().unwrap()));
+                let ns_id = derive_id(format!("{}.{}",
+                                              field.name.as_ref().unwrap(),
+                                              ItemType::StructField.name_space()));
+                write!(w, "<span id='{id}' class='{item_type}'>
+                           <span id='{ns_id}' class='invisible'>
                            <code>{name}: {ty}</code>
-                           </a></span><span class='stab {stab}'></span>",
+                           </span></span><span class='stab {stab}'></span>",
                        item_type = ItemType::StructField,
-                       name_space = ItemType::StructField.name_space(),
+                       id = id,
+                       ns_id = ns_id,
                        stab = field.stability_class(),
                        name = field.name.as_ref().unwrap(),
                        ty = ty)?;
@@ -2356,10 +2367,16 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     if !e.variants.is_empty() {
         write!(w, "<h2 class='variants'>Variants</h2>\n")?;
         for variant in &e.variants {
-            write!(w, "<span id='{item_type}.{name}' class='variant'>\
-                       <a id='{name}.{name_space}'><code>{name}",
-                   item_type = ItemType::Variant,
-                   name_space = ItemType::Variant.name_space(),
+            let id = derive_id(format!("{}.{}",
+                                       ItemType::Variant,
+                                       variant.name.as_ref().unwrap()));
+            let ns_id = derive_id(format!("{}.{}",
+                                          variant.name.as_ref().unwrap(),
+                                          ItemType::Variant.name_space()));
+            write!(w, "<span id='{id}' class='variant'>\
+                       <span id='{ns_id}' class='invisible'><code>{name}",
+                   id = id,
+                   ns_id = ns_id,
                    name = variant.name.as_ref().unwrap())?;
             if let clean::VariantItem(ref var) = variant.inner {
                 if let clean::TupleVariant(ref tys) = var.kind {
@@ -2373,7 +2390,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                     write!(w, ")")?;
                 }
             }
-            write!(w, "</code></a></span>")?;
+            write!(w, "</code></span></span>")?;
             document(w, cx, variant)?;
 
             use clean::{Variant, StructVariant};
@@ -2383,14 +2400,21 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 for field in &s.fields {
                     use clean::StructFieldItem;
                     if let StructFieldItem(ref ty) = field.inner {
+                        let id = derive_id(format!("variant.{}.field.{}",
+                                                   variant.name.as_ref().unwrap(),
+                                                   field.name.as_ref().unwrap()));
+                        let ns_id = derive_id(format!("{}.{}.{}.{}",
+                                                      variant.name.as_ref().unwrap(),
+                                                      ItemType::Variant.name_space(),
+                                                      field.name.as_ref().unwrap(),
+                                                      ItemType::StructField.name_space()));
                         write!(w, "<tr><td \
-                                   id='variant.{v}.field.{f}'>\
-                                   <a id='{v}.{vns}.{f}.{fns}'>\
-                                   <code>{f}:&nbsp;{t}</code></a></td><td>",
-                               v = variant.name.as_ref().unwrap(),
+                                   id='{id}'>\
+                                   <span id='{ns_id}' class='invisible'>\
+                                   <code>{f}:&nbsp;{t}</code></span></td><td>",
+                               id = id,
+                               ns_id = ns_id,
                                f = field.name.as_ref().unwrap(),
-                               vns = ItemType::Variant.name_space(),
-                               fns = ItemType::StructField.name_space(),
                                t = *ty)?;
                         document(w, cx, field)?;
                         write!(w, "</td></tr>")?;
@@ -2606,10 +2630,10 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
     }
 
-    fn doctraititem(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
-                    link: AssocItemLink, render_static: bool,
-                    is_default_item: bool, outer_version: Option<&str>,
-                    trait_: Option<&clean::Trait>) -> fmt::Result {
+    fn doc_impl_item(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
+                     link: AssocItemLink, render_static: bool,
+                     is_default_item: bool, outer_version: Option<&str>,
+                     trait_: Option<&clean::Trait>) -> fmt::Result {
         let item_type = item_type(item);
         let name = item.name.as_ref().unwrap();
 
@@ -2624,42 +2648,47 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 // Only render when the method is not static or we allow static methods
                 if !is_static || render_static {
                     let id = derive_id(format!("{}.{}", item_type, name));
+                    let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
                     write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
-                    write!(w, "<a id='{}.{}'>", name, item_type.name_space())?;
+                    write!(w, "<span id='{}' class='invisible'>", ns_id)?;
                     write!(w, "<code>")?;
                     render_assoc_item(w, item, link.anchor(&id))?;
                     write!(w, "</code>")?;
                     render_stability_since_raw(w, item.stable_since(), outer_version)?;
-                    write!(w, "</a></h4>\n")?;
+                    write!(w, "</span></h4>\n")?;
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
                 let id = derive_id(format!("{}.{}", ItemType::AssociatedType, name));
+                let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
-                write!(w, "<a id='{}.{}'><code>", name, item_type.name_space())?;
+                write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
-                write!(w, "</code></a></h4>\n")?;
+                write!(w, "</code></span></h4>\n")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
+                let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
-                write!(w, "<a id='{}.{}'><code>", name, item_type.name_space())?;
+                write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
-                write!(w, "</code></a></h4>\n")?;
+                write!(w, "</code></span></h4>\n")?;
             }
             clean::ConstantItem(ref c) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
+                let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
-                write!(w, "<a id='{}.{}'><code>", name, item_type.name_space())?;
+                write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_const(w, item, &c.type_, Some(&c.expr), link.anchor(&id))?;
-                write!(w, "</code></a></h4>\n")?;
+                write!(w, "</code></span></h4>\n")?;
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
+                let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
-                write!(w, "<a id='{}.{}'><code>", name, item_type.name_space())?;
+                write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id))?;
-                write!(w, "</code></a></h4>\n")?;
+                write!(w, "</code></span></h4>\n")?;
             }
             clean::StrippedItem(..) => return Ok(()),
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
@@ -2698,8 +2727,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.inner_impl().items {
-        doctraititem(w, cx, trait_item, link, render_header,
-                     false, outer_version, trait_)?;
+        doc_impl_item(w, cx, trait_item, link, render_header,
+                      false, outer_version, trait_)?;
     }
 
     fn render_default_items(w: &mut fmt::Formatter,
@@ -2716,8 +2745,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             let did = i.trait_.as_ref().unwrap().def_id().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
-            doctraititem(w, cx, trait_item, assoc_link, render_static, true,
-                         outer_version, None)?;
+            doc_impl_item(w, cx, trait_item, assoc_link, render_static, true,
+                          outer_version, None)?;
         }
         Ok(())
     }
