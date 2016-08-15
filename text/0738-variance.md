@@ -264,7 +264,7 @@ as desired:
 PhantomData<T>         // covariance
 PhantomData<*mut T>    // invariance, but see "unresolved question"
 PhantomData<Cell<T>>   // invariance
-PhantomData<fn() -> T> // contravariant
+PhantomData<fn(T)>     // contravariant
 ```
 
 Even better, the user doesn't really have to understand the terms
