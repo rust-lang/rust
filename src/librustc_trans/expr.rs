@@ -385,7 +385,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let mono_target = bcx.monomorphize(target);
             let llty = type_of::type_of(bcx.ccx(), mono_target);
             let dummy = C_undef(llty.ptr_to());
-            datum = Datum::new(dummy, mono_target, Rvalue::new(ByRef)).to_expr_datum();
+            datum = Datum::new(dummy, mono_target, Lvalue::new("never")).to_expr_datum();
         }
         AdjustReifyFnPointer => {
             match datum.ty.sty {
