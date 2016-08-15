@@ -306,7 +306,8 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
                                                      variant),
                         ty::AdtKind::Struct => format!("struct {}",
                                                        tcx.item_path_str(def_id)),
-                        ty::AdtKind::Union => unimplemented_unions!(),
+                        ty::AdtKind::Union => format!("union {}",
+                                                       tcx.item_path_str(def_id)),
                     };
                     span_note!(
                         &mut err,

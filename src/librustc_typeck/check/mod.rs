@@ -713,14 +713,16 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     fcx
 }
 
-pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
-    let tcx = ccx.tcx;
+fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
+    check_representable(ccx.tcx, span, id);
 
-    check_representable(tcx, span, id, "struct");
-
-    if tcx.lookup_simd(ccx.tcx.map.local_def_id(id)) {
-        check_simd(tcx, span, id);
+    if ccx.tcx.lookup_simd(ccx.tcx.map.local_def_id(id)) {
+        check_simd(ccx.tcx, span, id);
     }
+}
+
+fn check_union(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
+    check_representable(ccx.tcx, span, id);
 }
 
 pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
@@ -763,7 +765,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_struct(ccx, it.id, it.span);
       }
       hir::ItemUnion(..) => {
-        unimplemented_unions!();
+        check_union(ccx, it.id, it.span);
       }
       hir::ItemTy(_, ref generics) => {
         let pty_ty = ccx.tcx.node_id_to_type(it.id);
@@ -1174,10 +1176,10 @@ fn check_const<'a, 'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 /// Checks whether a type can be represented in memory. In particular, it
 /// identifies types that contain themselves without indirection through a
 /// pointer, which would mean their size is unbounded.
-pub fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     sp: Span,
-                                     item_id: ast::NodeId,
-                                     _designation: &str) -> bool {
+fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 sp: Span,
+                                 item_id: ast::NodeId)
+                                 -> bool {
     let rty = tcx.node_id_to_type(item_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -1277,7 +1279,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         disr_vals.push(current_disr_val);
     }
 
-    check_representable(ccx.tcx, sp, id, "enum");
+    check_representable(ccx.tcx, sp, id);
 }
 
 impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {

@@ -414,7 +414,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprStruct(_, ref fields, ref opt_with) => {
-                self.walk_struct_expr(expr, fields, opt_with);
+                self.walk_struct_expr(fields, opt_with);
             }
 
             hir::ExprTup(ref exprs) => {
@@ -655,7 +655,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn walk_struct_expr(&mut self,
-                        _expr: &hir::Expr,
                         fields: &[hir::Field],
                         opt_with: &Option<P<hir::Expr>>) {
         // Consume the expressions supplying values for each field.
@@ -686,9 +685,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         self.delegate_consume(with_expr.id, with_expr.span, cmt_field);
                     }
                 }
-            }
-            ty::TyUnion(..) => {
-                unimplemented_unions!();
             }
             _ => {
                 // the base expression should always evaluate to a
