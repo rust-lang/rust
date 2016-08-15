@@ -957,7 +957,10 @@ pub struct Resolver<'a> {
 
     structs: FnvHashMap<DefId, Vec<Name>>,
 
-    // All indeterminate imports (i.e. imports not known to succeed or fail).
+    // All imports known to succeed or fail.
+    determined_imports: Vec<&'a ImportDirective<'a>>,
+
+    // All non-determined imports.
     indeterminate_imports: Vec<&'a ImportDirective<'a>>,
 
     // The module that represents the current item scope.
@@ -1149,6 +1152,7 @@ impl<'a> Resolver<'a> {
             trait_item_map: FnvHashMap(),
             structs: FnvHashMap(),
 
+            determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
 
             current_module: graph_root,
