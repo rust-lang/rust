@@ -104,7 +104,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
         };
 
         let eq_arm = cx.arm(span,
-                            vec![cx.pat_enum(span, equals_path.clone(), vec![])],
+                            vec![cx.pat_path(span, equals_path.clone())],
                             old);
         let neq_arm = cx.arm(span,
                              vec![cx.pat_ident(span, test_id)],
