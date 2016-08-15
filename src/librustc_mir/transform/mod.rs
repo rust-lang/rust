@@ -20,5 +20,5 @@ pub mod promote_consts;
 pub mod qualify_consts;
 pub mod dump_mir;
 pub mod deaggregator;
-pub mod liveness;
-pub mod cs_propagate;
+pub mod deadcode;
+pub mod const_propagate;

@@ -22,7 +22,8 @@ impl Pass for DeadCode {}
 
 impl<'tcx> MirPass<'tcx> for DeadCode {
     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
-        let new_mir = Dataflow::backward(mir, DeadCodeTransfer, DeadCodeRewrite);
+        let new_mir = Dataflow::backward(mir, DeadCodeLattice::bottom(),
+                                         DeadCodeTransfer, DeadCodeRewrite);
         *mir = new_mir;
     }
 }

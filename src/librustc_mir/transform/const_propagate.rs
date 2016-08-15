@@ -48,7 +48,7 @@ impl Pass for ConstPropagate {}
 
 impl<'tcx> MirPass<'tcx> for ConstPropagate {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
-        *mir = Dataflow::forward(mir,
+        *mir = Dataflow::forward(mir, ConstLattice::new(),
                                  ConstTransfer { tcx: tcx },
                                  ConstRewrite { tcx: tcx }.and_then(SimplifyRewrite));
     }

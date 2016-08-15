@@ -111,7 +111,7 @@ where L: Lattice,
       R: Rewrite<'tcx, T>
 {
     /// Execute dataflow in forward direction
-    pub fn forward(mir: &'a Mir<'tcx>, transfer: T, rewrite: R) -> Mir<'tcx> {
+    pub fn forward(mir: &'a Mir<'tcx>, initial: L, transfer: T, rewrite: R) -> Mir<'tcx> {
         let block_count = mir.basic_blocks().len();
         let mut queue = BitVector::new(block_count);
         queue.insert(START_BLOCK.index());
@@ -123,6 +123,7 @@ where L: Lattice,
             transfer: transfer,
         };
         dataflow.knowledge.extend(::std::iter::repeat(None).take(block_count));
+        dataflow.update_fact(START_BLOCK, initial);
         dataflow.fixpoint(Self::forward_block);
         dataflow.construct_mir()
     }
@@ -169,18 +170,25 @@ where L: Lattice,
       R: Rewrite<'tcx, T>
 {
     /// Execute dataflow in backward direction.
-    pub fn backward(mir: &'a Mir<'tcx>, transfer: T, rewrite: R) -> Mir<'tcx> {
+    pub fn backward(mir: &'a Mir<'tcx>, initial: L, transfer: T, rewrite: R) -> Mir<'tcx> {
         let block_count = mir.basic_blocks().len();
         let mut queue = BitVector::new(block_count);
         mir_exits(mir, &mut queue);
+        let mut knowledge = IndexVec::with_capacity(block_count);
+        knowledge.extend(::std::iter::repeat(None).take(block_count));
+        for block in queue.iter() {
+            knowledge[BasicBlock::new(block)] = Some(Knowledge {
+                fact: initial.clone(),
+                new_block: None,
+            });
+        }
         let mut dataflow = Dataflow {
             mir: mir,
             queue: queue,
-            knowledge: IndexVec::with_capacity(block_count),
+            knowledge: knowledge,
             rewrite: rewrite,
             transfer: transfer,
         };
-        dataflow.knowledge.extend(::std::iter::repeat(None).take(block_count));
         dataflow.fixpoint(Self::backward_block);
         dataflow.construct_mir()
     }
