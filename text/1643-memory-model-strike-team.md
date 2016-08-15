@@ -1,7 +1,7 @@
 - Feature Name: N/A
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- Start Date: 2016-06-07
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1643
+- Rust Issue: N/A
 
 # Summary
 [summary]: #summary
