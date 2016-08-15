@@ -188,12 +188,30 @@ avoid mutation if possible.
 "##,
 
 E0394: r##"
-From [RFC 246]:
+A static was referred to by value by another static.
 
- > It is invalid for a static to reference another static by value. It is
- > required that all references be borrowed.
+Erroneous code examples:
 
-[RFC 246]: https://github.com/rust-lang/rfcs/pull/246
+```compile_fail,E0394
+static A: u32 = 0;
+static B: u32 = A; // error: cannot refer to other statics by value, use the
+                   //        address-of operator or a constant instead
+```
+
+A static cannot be referred by value. To fix this issue, either use a
+constant:
+
+```
+const A: u32 = 0; // `A` is now a constant
+static B: u32 = A; // ok!
+```
+
+Or refer to `A` by reference:
+
+```
+static A: u32 = 0;
+static B: &'static u32 = &A; // ok!
+```
 "##,
 
 
