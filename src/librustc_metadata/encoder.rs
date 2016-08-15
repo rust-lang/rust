@@ -415,7 +415,7 @@ fn encode_item_sort(rbml_w: &mut Encoder, sort: char) {
 impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
     fn encode_fields(&mut self,
                      adt_def_id: DefId) {
-        let def = self.ecx.tcx.lookup_adt_def(adt_def_id);
+        let def = self.ecx().tcx.lookup_adt_def(adt_def_id);
         for (variant_index, variant) in def.variants.iter().enumerate() {
             for (field_index, field) in variant.fields.iter().enumerate() {
                 self.record(field.did,
@@ -1155,7 +1155,7 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
     /// normally in the visitor walk.
     fn encode_addl_info_for_item(&mut self,
                                  item: &hir::Item) {
-        let def_id = self.ecx.tcx.map.local_def_id(item.id);
+        let def_id = self.ecx().tcx.map.local_def_id(item.id);
         match item.node {
             hir::ItemStatic(..) |
             hir::ItemConst(..) |
@@ -1187,7 +1187,7 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                                def_id: DefId,
                                struct_node_id: ast::NodeId,
                                item: &hir::Item) {
-        let ecx = self.ecx;
+        let ecx = self.ecx();
         let def = ecx.tcx.lookup_adt_def(def_id);
         let variant = def.struct_variant();
 
@@ -1213,7 +1213,7 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                              def_id: DefId,
                              impl_id: ast::NodeId,
                              ast_items: &[hir::ImplItem]) {
-        let ecx = self.ecx;
+        let ecx = self.ecx();
         let impl_items = ecx.tcx.impl_items.borrow();
         let items = &impl_items[&def_id];
 
@@ -1240,7 +1240,7 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                               def_id: DefId,
                               trait_items: &[hir::TraitItem]) {
         // Now output the trait item info for each trait item.
-        let tcx = self.ecx.tcx;
+        let tcx = self.ecx().tcx;
         let r = tcx.trait_item_def_ids(def_id);
         for (item_def_id, trait_item) in r.iter().zip(trait_items) {
             let item_def_id = item_def_id.def_id();
@@ -1311,7 +1311,7 @@ impl<'a, 'ecx, 'tcx, 'encoder> Visitor<'tcx> for EncodeVisitor<'a, 'ecx, 'tcx, '
     }
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         intravisit::walk_item(self, item);
-        let def_id = self.index.ecx.tcx.map.local_def_id(item.id);
+        let def_id = self.index.ecx().tcx.map.local_def_id(item.id);
         match item.node {
             hir::ItemExternCrate(_) | hir::ItemUse(_) => (), // ignore these
             _ => self.index.record(def_id,
@@ -1322,7 +1322,7 @@ impl<'a, 'ecx, 'tcx, 'encoder> Visitor<'tcx> for EncodeVisitor<'a, 'ecx, 'tcx, '
     }
     fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
         intravisit::walk_foreign_item(self, ni);
-        let def_id = self.index.ecx.tcx.map.local_def_id(ni.id);
+        let def_id = self.index.ecx().tcx.map.local_def_id(ni.id);
         self.index.record(def_id,
                           ItemContentBuilder::encode_info_for_foreign_item,
                           (def_id, ni));
