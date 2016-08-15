@@ -458,13 +458,25 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                                        being coerced, none found");
                             return;
                         } else if diff_fields.len() > 1 {
-                            span_err!(tcx.sess, span, E0375,
-                                      "the trait `CoerceUnsized` may only be implemented \
-                                       for a coercion between structures with one field \
-                                       being coerced, but {} fields need coercions: {}",
-                                       diff_fields.len(), diff_fields.iter().map(|&(i, a, b)| {
-                                            format!("{} ({} to {})", fields[i].name, a, b)
-                                       }).collect::<Vec<_>>().join(", "));
+                            let item = tcx.map.expect_item(impl_node_id);
+                            let span = if let ItemImpl(_, _, _, Some(ref t), _, _) = item.node {
+                                t.path.span
+                            } else {
+                                tcx.map.span(impl_node_id)
+                            };
+
+                            let mut err = struct_span_err!(tcx.sess, span, E0375,
+                                      "implementing the trait `CoerceUnsized` \
+                                       requires multiple coercions");
+                            err.note("`CoerceUnsized` may only be implemented for \
+                                      a coercion between structures with one field being coerced");
+                            err.note(&format!("currently, {} fields need coercions: {}",
+                                             diff_fields.len(),
+                                             diff_fields.iter().map(|&(i, a, b)| {
+                                                format!("{} ({} to {})", fields[i].name, a, b)
+                                             }).collect::<Vec<_>>().join(", ") ));
+                            err.span_label(span, &format!("requires multiple coercions"));
+                            err.emit();
                             return;
                         }
 
