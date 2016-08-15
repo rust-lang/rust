@@ -706,9 +706,12 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
     debug!("is_useful - pat_constructors = {:?} left_ty = {:?}", constructors,
            left_ty);
     if constructors.is_empty() {
+        // v[0] is a wildcard pattern - `pat_constructors` should really be returning
+        // an Option.
         let constructors = missing_constructors(cx, matrix, left_ty, max_slice_length);
         debug!("is_useful - missing_constructors = {:?}", constructors);
         if constructors.is_empty() {
+            // all constructors are covered - must check them all.
             all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
                 match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
                     UsefulWithWitness(pats) => UsefulWithWitness({
@@ -727,6 +730,7 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
                 }
             }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
         } else {
+            // some constructor is only covered by wildcards - pick it.
             let matrix = rows.iter().filter_map(|r| {
                 match raw_pat(r[0].0).node {
                     PatKind::Binding(..) | PatKind::Wild => Some(r[1..].to_vec()),
@@ -747,9 +751,38 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
             }
         }
     } else {
+        // `v` is not a wildcard
         constructors.into_iter().map(|c|
             is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness)
         ).find(|result| result != &NotUseful).unwrap_or(NotUseful)
+    }
+}
+
+fn check_for_ref_splitting<'s, 'a, 'tcx, I>(cx: &MatchCheckCtxt<'a, 'tcx>, data: I)
+    where I: Iterator<Item=(&'s Pat, Option<Ty<'tcx>>)>
+{
+    let mut ref_pattern = None;
+    let mut lit_pattern = None;
+
+    for (pat, _ty) in data {
+        match pat.node {
+            PatKind::Lit(..) => {
+                lit_pattern = Some(pat);
+            }
+            PatKind::Ref(..) => {
+                ref_pattern = Some(pat);
+            }
+            _ => {}
+        };
+        if let (Some(lit_pattern), Some(ref_pattern)) = (lit_pattern, ref_pattern) {
+            cx.tcx.sess.struct_span_err(
+                ref_pattern.span,
+                &format!("as a temporary restriction, literal patterns can't be split \
+                - see issue #35044")
+            ).span_note(lit_pattern.span, &format!("split literal here"))
+            .emit();
+            cx.tcx.sess.abort_if_errors();
+        }
     }
 }
 
@@ -762,6 +795,10 @@ fn is_useful_specialized<'a, 'tcx>(
     witness: WitnessPreference) -> Usefulness
 {
     let arity = constructor_arity(cx, &ctor, lty);
+    check_for_ref_splitting(
+        cx,
+        m.iter().map(|r| r[0]).chain(Some(v[0]))
+    );
     let matrix = Matrix(m.iter().filter_map(|r| {
         specialize(cx, &r[..], &ctor, 0, arity)
     }).collect());
@@ -781,7 +818,8 @@ fn is_useful_specialized<'a, 'tcx>(
 /// On the other hand, a wild pattern and an identifier pattern cannot be
 /// specialized in any way.
 fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
-                    left_ty: Ty, max_slice_length: usize) -> Vec<Constructor> {
+                    left_ty: Ty, max_slice_length: usize)
+                    -> Vec<Constructor> {
     let pat = raw_pat(p);
     match pat.node {
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
