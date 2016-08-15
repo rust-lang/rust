@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-aarch64
+// ignore-emscripten
 #![feature(io, process_capture)]
 
 use std::env;

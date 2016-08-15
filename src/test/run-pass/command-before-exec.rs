@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-windows - this is a unix-specific test
+// ignore-emscripten
 
 #![feature(process_exec, libc)]
 

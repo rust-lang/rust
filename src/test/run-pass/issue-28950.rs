@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten
 // compile-flags: -Z orbit=off
 // (blows the stack with MIR trans and no optimizations)
 

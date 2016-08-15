@@ -17,6 +17,7 @@
 
 // compile-flags:-g -Cllvm-args=-enable-tail-merge=0
 // ignore-pretty as this critically relies on line numbers
+// ignore-emscripten spawning processes is not supported
 
 use std::io;
 use std::io::prelude::*;

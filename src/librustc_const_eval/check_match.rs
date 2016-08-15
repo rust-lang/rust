@@ -1175,8 +1175,10 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
               _: LoanCause) {
         match kind {
             MutBorrow => {
-                span_err!(self.cx.tcx.sess, span, E0301,
+                struct_span_err!(self.cx.tcx.sess, span, E0301,
                           "cannot mutably borrow in a pattern guard")
+                    .span_label(span, &format!("borrowed mutably in pattern guard"))
+                    .emit();
             }
             ImmBorrow | UniqueImmBorrow => {}
         }
@@ -1185,7 +1187,9 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
     fn mutate(&mut self, _: NodeId, span: Span, _: cmt, mode: MutateMode) {
         match mode {
             MutateMode::JustWrite | MutateMode::WriteAndRead => {
-                span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")
+                struct_span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")
+                    .span_label(span, &format!("assignment in pattern guard"))
+                    .emit();
             }
             MutateMode::Init => {}
         }

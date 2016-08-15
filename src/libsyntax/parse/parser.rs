@@ -3788,19 +3788,18 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a structure field
-    fn parse_name_and_ty(&mut self, pr: Visibility,
-                         attrs: Vec<Attribute> ) -> PResult<'a, StructField> {
-        let lo = match pr {
-            Visibility::Inherited => self.span.lo,
-            _ => self.last_span.lo,
-        };
+    fn parse_name_and_ty(&mut self,
+                         lo: BytePos,
+                         vis: Visibility,
+                         attrs: Vec<Attribute>)
+                         -> PResult<'a, StructField> {
         let name = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty_sum()?;
         Ok(StructField {
             span: mk_sp(lo, self.last_span.hi),
             ident: Some(name),
-            vis: pr,
+            vis: vis,
             id: ast::DUMMY_NODE_ID,
             ty: ty,
             attrs: attrs,
@@ -5120,10 +5119,11 @@ impl<'a> Parser<'a> {
 
     /// Parse a structure field declaration
     pub fn parse_single_struct_field(&mut self,
+                                     lo: BytePos,
                                      vis: Visibility,
                                      attrs: Vec<Attribute> )
                                      -> PResult<'a, StructField> {
-        let a_var = self.parse_name_and_ty(vis, attrs)?;
+        let a_var = self.parse_name_and_ty(lo, vis, attrs)?;
         match self.token {
             token::Comma => {
                 self.bump();
@@ -5144,8 +5144,9 @@ impl<'a> Parser<'a> {
     /// Parse an element of a struct definition
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
         let attrs = self.parse_outer_attributes()?;
+        let lo = self.span.lo;
         let vis = self.parse_visibility(true)?;
-        self.parse_single_struct_field(vis, attrs)
+        self.parse_single_struct_field(lo, vis, attrs)
     }
 
     // If `allow_path` is false, just parse the `pub` in `pub(path)` (but still parse `pub(crate)`)

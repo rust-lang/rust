@@ -1446,13 +1446,12 @@ impl<T> IntoIterator for Vec<T> {
     #[inline]
     fn into_iter(mut self) -> IntoIter<T> {
         unsafe {
-            let ptr = self.as_mut_ptr();
-            assume(!ptr.is_null());
-            let begin = ptr as *const T;
+            let begin = self.as_mut_ptr();
+            assume(!begin.is_null());
             let end = if mem::size_of::<T>() == 0 {
-                arith_offset(ptr as *const i8, self.len() as isize) as *const T
+                arith_offset(begin as *const i8, self.len() as isize) as *const T
             } else {
-                ptr.offset(self.len() as isize) as *const T
+                begin.offset(self.len() as isize) as *const T
             };
             let buf = ptr::read(&self.buf);
             mem::forget(self);
@@ -1710,8 +1709,50 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     _buf: RawVec<T>,
-    ptr: *const T,
+    ptr: *mut T,
     end: *const T,
+}
+
+impl<T> IntoIter<T> {
+    /// Returns the remaining items of this iterator as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #![feature(vec_into_iter_as_slice)]
+    /// let vec = vec!['a', 'b', 'c'];
+    /// let mut into_iter = vec.into_iter();
+    /// assert_eq!(into_iter.as_slice(), &['a', 'b', 'c']);
+    /// let _ = into_iter.next().unwrap();
+    /// assert_eq!(into_iter.as_slice(), &['b', 'c']);
+    /// ```
+    #[unstable(feature = "vec_into_iter_as_slice", issue = "35601")]
+    pub fn as_slice(&self) -> &[T] {
+        unsafe {
+            slice::from_raw_parts(self.ptr, self.len())
+        }
+    }
+
+    /// Returns the remaining items of this iterator as a mutable slice.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #![feature(vec_into_iter_as_slice)]
+    /// let vec = vec!['a', 'b', 'c'];
+    /// let mut into_iter = vec.into_iter();
+    /// assert_eq!(into_iter.as_slice(), &['a', 'b', 'c']);
+    /// into_iter.as_mut_slice()[2] = 'z';
+    /// assert_eq!(into_iter.next().unwrap(), 'a');
+    /// assert_eq!(into_iter.next().unwrap(), 'b');
+    /// assert_eq!(into_iter.next().unwrap(), 'z');
+    /// ```
+    #[unstable(feature = "vec_into_iter_as_slice", issue = "35601")]
+    pub fn as_mut_slice(&self) -> &mut [T] {
+        unsafe {
+            slice::from_raw_parts_mut(self.ptr, self.len())
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1726,14 +1767,14 @@ impl<T> Iterator for IntoIter<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
         unsafe {
-            if self.ptr == self.end {
+            if self.ptr as *const _ == self.end {
                 None
             } else {
                 if mem::size_of::<T>() == 0 {
                     // purposefully don't use 'ptr.offset' because for
                     // vectors with 0-size elements this would return the
                     // same pointer.
-                    self.ptr = arith_offset(self.ptr as *const i8, 1) as *const T;
+                    self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
 
                     // Use a non-null pointer value
                     Some(ptr::read(EMPTY as *mut T))
@@ -1776,7 +1817,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
             } else {
                 if mem::size_of::<T>() == 0 {
                     // See above for why 'ptr.offset' isn't used
-                    self.end = arith_offset(self.end as *const i8, -1) as *const T;
+                    self.end = arith_offset(self.end as *const i8, -1) as *mut T;
 
                     // Use a non-null pointer value
                     Some(ptr::read(EMPTY as *mut T))
@@ -1796,9 +1837,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone> Clone for IntoIter<T> {
     fn clone(&self) -> IntoIter<T> {
-        unsafe {
-            slice::from_raw_parts(self.ptr, self.len()).to_owned().into_iter()
-        }
+        self.as_slice().to_owned().into_iter()
     }
 }
 

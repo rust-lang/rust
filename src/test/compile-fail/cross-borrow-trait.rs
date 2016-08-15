@@ -21,5 +21,5 @@ pub fn main() {
     let _y: &Trait = x; //~  ERROR mismatched types
                         //~| expected type `&Trait`
                         //~| found type `Box<Trait>`
-                        //~| expected &-ptr, found box
+                        //~| expected &Trait, found box
 }

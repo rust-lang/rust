@@ -9,6 +9,7 @@
 // except according to those terms.
 
 extern crate collections;
+//~^ NOTE previous import of `collections` here
 
 mod foo {
     pub trait collections {
@@ -16,6 +17,8 @@ mod foo {
     }
 }
 
-use foo::collections; //~ ERROR E0254
+use foo::collections;
+//~^ ERROR E0254
+//~| NOTE already imported
 
 fn main() {}

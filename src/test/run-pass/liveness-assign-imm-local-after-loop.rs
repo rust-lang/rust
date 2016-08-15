@@ -12,7 +12,7 @@
 
 #![allow(dead_assignment)]
 #![allow(unreachable_code)]
-#![allow(unused_variable)]
+#![allow(unused_variables)]
 
 fn test(_cond: bool) {
     let v: isize;
