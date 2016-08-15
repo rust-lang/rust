@@ -1463,15 +1463,17 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 /// # Examples
 ///
 /// ```
-/// fn main() {
-///     assert_eq!((..), std::ops::RangeFull);
+/// assert_eq!((..), std::ops::RangeFull);
 ///
-///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);  // RangeFull
-///     assert_eq!(arr[ ..3], [0,1,2  ]);
-///     assert_eq!(arr[1.. ], [  1,2,3]);
-///     assert_eq!(arr[1..3], [  1,2  ]);
-/// }
+/// // for i in .. {
+/// //     println!("This errors because .. has no Iterator impl");
+/// // }
+///
+/// let arr = [0, 1, 2, 3];
+/// assert_eq!(arr[ .. ], [0,1,2,3]);  // RangeFull
+/// assert_eq!(arr[ ..3], [0,1,2  ]);
+/// assert_eq!(arr[1.. ], [  1,2,3]);
+/// assert_eq!(arr[1..3], [  1,2  ]);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
