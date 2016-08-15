@@ -652,7 +652,7 @@ fn write_shared(cx: &Context,
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
     try_err!(mkdir(&cx.dst), &cx.dst);
-    let _lock = flock::Lock::new(&cx.dst.join(".lock"));
+    let _lock = flock::Lock::panicking_new(&cx.dst.join(".lock"), true, true, true);
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
