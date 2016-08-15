@@ -212,17 +212,23 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
         // Man pages
         t!(fs::create_dir_all(image.join("share/man/man1")));
         //cp_r(&build.src.join("man"), &image.join("share/man/man1"));
+        let now_string = calc_now_string();
+        println!("Searchable 98hnandsf9ifnesd");
         for man_page_source in t!(build.src.join("man").read_dir()).map(|e| t!(e)) {
-          let os_filename = entry.file_name();
-          let filename = t!(os_filename.into_string());
+          let os_filename = man_page_source.file_name();
 
-          // Match all source files
-          if filename.ends_with(".1.in") {
-            // TODO generate header somehow
-          }
-          // Match all generated files
-          if filename.ends_with(".1") {
-            // TODO copy them
+          if let Some(filename) = os_filename.to_str() {
+
+            // Match all source files
+            if filename.ends_with(".1.in") {
+                let header = format!(r##".TH RUSTC "1" "{now_string}" "rustc 1.12.0" "User Commands""##, now_string=now_string);
+
+                println!("build: {:?}\nheader: {:?}", build.release, header);
+            }
+            // Match all generated files
+            if filename.ends_with(".1") {
+                // TODO copy them
+            }
           }
         }
 
@@ -237,6 +243,52 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
         cp("LICENSE-APACHE");
         cp("LICENSE-MIT");
         cp("README.md");
+    }
+
+    fn calc_now_string() -> String {
+        use std::time::*;
+
+        let now = SystemTime::now();
+        let now = now.duration_since(UNIX_EPOCH).unwrap();
+        let secs = now.as_secs();
+
+        let years = secs / (60 * 60 * 24 * 365);
+
+        let year_secs = 60 * 60 * 24 * 365; // n seconds per year
+        let years_secs = years * year_secs; // seconds all past years used up
+
+        let this_years_secs = secs - years_secs;
+
+        let january : u64 = 60*60*24* 31;
+        let february : u64 = january + (60f64*60f64*24f64* 28.25) as u64;
+        let march : u64 = february + 60*60*24* 31;
+        let april : u64 = march + 60*60*24* 30;
+        let may : u64 = april + 60*60*24* 31;
+        let june : u64 = may + 60*60*24* 30;
+        let july : u64 = june + 60*60*24* 31;
+        let august : u64 = july + 60*60*24* 31;
+        let september : u64 = august + 60*60*24* 30;
+        let october : u64 = september + 60*60*24* 31;
+        let november : u64 = october + 60*60*24* 30;
+
+        let month =
+            if this_years_secs < january { "January" } else
+            if this_years_secs < february { "February" } else
+            if this_years_secs < march { "March" } else
+            if this_years_secs < april { "April" } else
+            if this_years_secs < may { "May" } else
+            if this_years_secs < june { "June" } else
+            if this_years_secs < july { "July" } else
+            if this_years_secs < august { "August" } else
+            if this_years_secs < september { "September" } else
+            if this_years_secs < october { "October" } else
+            if this_years_secs < november { "November" } else
+            { "December" }
+        ;
+
+        let year = years + 1970;
+
+        format!("{} {}", month, year)
     }
 }
 
