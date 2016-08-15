@@ -42,7 +42,7 @@ use std::process::Command;
 use std::str;
 use flate;
 use syntax::ast;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr::AttrMetaMethods;
 use syntax_pos::Span;
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
@@ -938,10 +938,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                let is_a_no_builtins_crate =
-                    attr::contains_name(&sess.cstore.crate_attrs(cnum), "no_builtins");
                 add_static_crate(cmd, sess, tmpdir, crate_type,
-                                 &src.rlib.unwrap().0, is_a_no_builtins_crate)
+                                 &src.rlib.unwrap().0, sess.cstore.is_no_builtins(cnum))
             }
             Linkage::Dynamic => {
                 add_dynamic_crate(cmd, sess, &src.dylib.unwrap().0)

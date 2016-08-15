@@ -409,6 +409,10 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_reachable_ids(&cdata)
     }
 
+    fn is_no_builtins(&self, cnum: ast::CrateNum) -> bool {
+        attr::contains_name(&self.crate_attrs(cnum), "no_builtins")
+    }
+
     fn def_index_for_def_key(&self,
                              cnum: ast::CrateNum,
                              def: DefKey)
