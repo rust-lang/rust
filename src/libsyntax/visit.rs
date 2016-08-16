@@ -128,6 +128,9 @@ pub trait Visitor: Sized {
     fn visit_vis(&mut self, vis: &Visibility) {
         walk_vis(self, vis)
     }
+    fn visit_fn_ret_ty(&mut self, ret_ty: &FunctionRetTy) {
+        walk_fn_ret_ty(self, ret_ty)
+    }
 }
 
 #[macro_export]
@@ -319,6 +322,7 @@ pub fn walk_ty<V: Visitor>(visitor: &mut V, typ: &Ty) {
             walk_list!(visitor, visit_lifetime, opt_lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
+        TyKind::Never => {},
         TyKind::Tup(ref tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
@@ -509,7 +513,7 @@ pub fn walk_fn_decl<V: Visitor>(visitor: &mut V, function_declaration: &FnDecl) 
         visitor.visit_pat(&argument.pat);
         visitor.visit_ty(&argument.ty)
     }
-    walk_fn_ret_ty(visitor, &function_declaration.output)
+    visitor.visit_fn_ret_ty(&function_declaration.output)
 }
 
 pub fn walk_fn_kind<V: Visitor>(visitor: &mut V, function_kind: FnKind) {

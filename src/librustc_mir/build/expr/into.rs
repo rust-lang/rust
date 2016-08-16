@@ -45,6 +45,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Match { discriminant, arms } => {
                 this.match_expr(destination, expr_span, block, discriminant, arms)
             }
+            ExprKind::NeverToAny { source } => {
+                let source = this.hir.mirror(source);
+                let is_call = match source.kind {
+                    ExprKind::Call { .. } => true,
+                    _ => false,
+                };
+
+                unpack!(block = this.as_rvalue(block, source));
+
+                // This is an optimization. If the expression was a call then we already have an
+                // unreachable block. Don't bother to terminate it and create a new one.
+                if is_call {
+                    block.unit()
+                } else {
+                    this.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+                    let end_block = this.cfg.start_new_block();
+                    end_block.unit()
+                }
+            }
             ExprKind::If { condition: cond_expr, then: then_expr, otherwise: else_expr } => {
                 let operand = unpack!(block = this.as_operand(block, cond_expr));
 
@@ -190,7 +209,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Call { ty, fun, args } => {
                 let diverges = match ty.sty {
                     ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
-                        f.sig.0.output.diverges()
+                        // FIXME(canndrew): This is_never should probably be an is_uninhabited
+                        f.sig.0.output.is_never()
                     }
                     _ => false
                 };

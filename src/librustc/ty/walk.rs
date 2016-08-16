@@ -70,7 +70,7 @@ pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> IntoIter<Ty<'tcx>> {
 fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
     match parent_ty.sty {
         ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
-        ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyError => {
+        ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyNever | ty::TyError => {
         }
         ty::TyBox(ty) | ty::TyArray(ty, _) | ty::TySlice(ty) => {
             stack.push(ty);
@@ -110,10 +110,7 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
 }
 
 fn push_sig_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, sig: &ty::PolyFnSig<'tcx>) {
-    match sig.0.output {
-        ty::FnConverging(output) => { stack.push(output); }
-        ty::FnDiverging => { }
-    }
+    stack.push(sig.0.output);
     push_reversed(stack, &sig.0.inputs);
 }
 

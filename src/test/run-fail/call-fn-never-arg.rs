@@ -8,10 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that a function with a ! annotation always actually fails
+// Test that we can use a ! for an argument of type !
 
-fn bad_bang(i: usize) -> ! { //~ ERROR computation may converge in a function marked as diverging
-    println!("{}", 3);
+// error-pattern:wowzers!
+
+#![feature(never_type)]
+#![allow(unreachable_code)]
+
+fn foo(x: !) -> ! {
+    x
 }
 
-fn main() { bad_bang(5); }
+fn main() {
+    foo(panic!("wowzers!"))
+}
+

@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unreachable_code)]
+// Test that we can use ! as an argument to a trait impl.
 
-fn f() -> ! {
-    return panic!(); //~ ERROR `return` in a function declared as diverging
-    panic!(); // the unreachable statement error is in <std macro>, at this line, there
-             // only is a note
+// error-pattern:oh no!
+
+#![feature(never_type)]
+
+struct Wub;
+
+impl PartialEq<!> for Wub {
+    fn eq(&self, other: &!) -> bool {
+        *other
+    }
 }
 
-fn main() { f() }
+fn main() {
+    let _ = Wub == panic!("oh no!");
+}
+

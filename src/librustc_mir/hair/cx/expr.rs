@@ -60,6 +60,14 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
                 };
             }
+            Some(&ty::adjustment::AdjustNeverToAny(adjusted_ty)) => {
+                expr = Expr {
+                    temp_lifetime: temp_lifetime,
+                    ty: adjusted_ty,
+                    span: self.span,
+                    kind: ExprKind::NeverToAny { source: expr.to_ref() },
+                };
+            }
             Some(&ty::adjustment::AdjustMutToConstPointer) => {
                 let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
                 expr = Expr {
@@ -88,9 +96,9 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
                         let ref_ty = cx.tcx.no_late_bound_regions(&meth_ty.fn_ret());
                         let (region, mutbl) = match ref_ty {
-                            Some(ty::FnConverging(&ty::TyS {
+                            Some(&ty::TyS {
                                 sty: ty::TyRef(region, mt), ..
-                            })) => (region, mt.mutbl),
+                            }) => (region, mt.mutbl),
                             _ => span_bug!(expr.span, "autoderef returned bad type")
                         };
 
@@ -946,10 +954,8 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let tables = cx.tcx.tables.borrow();
     let callee = &tables.method_map[&method_call];
     let ref_ty = callee.ty.fn_ret();
-    let ref_ty = cx.tcx.no_late_bound_regions(&ref_ty).unwrap().unwrap();
-    //                                              1~~~~~   2~~~~~
-    // (1) callees always have all late-bound regions fully instantiated,
-    // (2) overloaded methods don't return `!`
+    let ref_ty = cx.tcx.no_late_bound_regions(&ref_ty).unwrap();
+    // callees always have all late-bound regions fully instantiated,
 
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type

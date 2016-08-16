@@ -1112,6 +1112,7 @@ pub struct BareFnTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 /// The different kinds of types recognized by the compiler
 pub enum Ty_ {
+    /// A variable length array (`[T]`)
     TyVec(P<Ty>),
     /// A fixed length array (`[T; n]`)
     TyFixedLengthVec(P<Ty>, P<Expr>),
@@ -1121,6 +1122,8 @@ pub enum Ty_ {
     TyRptr(Option<Lifetime>, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
     TyBareFn(P<BareFnTy>),
+    /// The never type (`!`)
+    TyNever,
     /// A tuple (`(A, B, C, D,...)`)
     TyTup(HirVec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally
@@ -1283,9 +1286,6 @@ impl fmt::Debug for ImplPolarity {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum FunctionRetTy {
-    /// Functions with return type `!`that always
-    /// raise an error or exit (i.e. never return to the caller)
-    NoReturn(Span),
     /// Return type is not specified.
     ///
     /// Functions default to `()` and
@@ -1299,7 +1299,6 @@ pub enum FunctionRetTy {
 impl FunctionRetTy {
     pub fn span(&self) -> Span {
         match *self {
-            NoReturn(span) => span,
             DefaultReturn(span) => span,
             Return(ref ty) => ty.span,
         }

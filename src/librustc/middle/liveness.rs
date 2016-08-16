@@ -112,7 +112,7 @@ use self::VarKind::*;
 use dep_graph::DepNode;
 use hir::def::*;
 use hir::pat_util;
-use ty::{self, TyCtxt, ParameterEnvironment};
+use ty::{self, Ty, TyCtxt, ParameterEnvironment};
 use traits::{self, Reveal};
 use ty::subst::Subst;
 use lint;
@@ -1111,8 +1111,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprCall(ref f, ref args) => {
+            // FIXME(canndrew): This is_never should really be an is_uninhabited
             let diverges = !self.ir.tcx.is_method_call(expr.id) &&
-                self.ir.tcx.expr_ty_adjusted(&f).fn_ret().diverges();
+                self.ir.tcx.expr_ty_adjusted(&f).fn_ret().0.is_never();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1125,7 +1126,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprMethodCall(_, _, ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.tables.borrow().method_map[&method_call].ty;
-            let succ = if method_ty.fn_ret().diverges() {
+            // FIXME(canndrew): This is_never should really be an is_uninhabited
+            let succ = if method_ty.fn_ret().0.is_never() {
                 self.s.exit_ln
             } else {
                 succ
@@ -1454,7 +1456,7 @@ fn check_fn(_v: &Liveness,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn fn_ret(&self, id: NodeId) -> ty::PolyFnOutput<'tcx> {
+    fn fn_ret(&self, id: NodeId) -> ty::Binder<Ty<'tcx>> {
         let fn_ty = self.ir.tcx.node_id_to_type(id);
         match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>
@@ -1477,55 +1479,44 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.ir.tcx.region_maps.call_site_extent(id, body.id),
                 &self.fn_ret(id));
 
-        match fn_ret {
-            ty::FnConverging(t_ret)
-                    if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
+        if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
+            let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
+            let t_ret_subst = fn_ret.subst(self.ir.tcx, &param_env.free_substs);
+            let is_nil = self.ir.tcx.infer_ctxt(None, Some(param_env),
+                                                Reveal::All).enter(|infcx| {
+                let cause = traits::ObligationCause::dummy();
+                traits::fully_normalize(&infcx, cause, &t_ret_subst).unwrap().is_nil()
+            });
 
-                let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
-                let t_ret_subst = t_ret.subst(self.ir.tcx, &param_env.free_substs);
-                let is_nil = self.ir.tcx.infer_ctxt(None, Some(param_env),
-                                                    Reveal::All).enter(|infcx| {
-                    let cause = traits::ObligationCause::dummy();
-                    traits::fully_normalize(&infcx, cause, &t_ret_subst).unwrap().is_nil()
-                });
-
-                // for nil return types, it is ok to not return a value expl.
-                if !is_nil {
-                    let ends_with_stmt = match body.expr {
-                        None if !body.stmts.is_empty() =>
-                            match body.stmts.last().unwrap().node {
-                                hir::StmtSemi(ref e, _) => {
-                                    self.ir.tcx.expr_ty(&e) == t_ret
-                                },
-                                _ => false
+            // for nil return types, it is ok to not return a value expl.
+            if !is_nil {
+                let ends_with_stmt = match body.expr {
+                    None if !body.stmts.is_empty() =>
+                        match body.stmts.last().unwrap().node {
+                            hir::StmtSemi(ref e, _) => {
+                                self.ir.tcx.expr_ty(&e) == fn_ret
                             },
-                        _ => false
+                            _ => false
+                        },
+                    _ => false
+                };
+                let mut err = struct_span_err!(self.ir.tcx.sess,
+                                               sp,
+                                               E0269,
+                                               "not all control paths return a value");
+                if ends_with_stmt {
+                    let last_stmt = body.stmts.last().unwrap();
+                    let original_span = original_sp(self.ir.tcx.sess.codemap(),
+                                                    last_stmt.span, sp);
+                    let span_semicolon = Span {
+                        lo: original_span.hi - BytePos(1),
+                        hi: original_span.hi,
+                        expn_id: original_span.expn_id
                     };
-                    let mut err = struct_span_err!(self.ir.tcx.sess,
-                                                   sp,
-                                                   E0269,
-                                                   "not all control paths return a value");
-                    if ends_with_stmt {
-                        let last_stmt = body.stmts.last().unwrap();
-                        let original_span = original_sp(self.ir.tcx.sess.codemap(),
-                                                        last_stmt.span, sp);
-                        let span_semicolon = Span {
-                            lo: original_span.hi - BytePos(1),
-                            hi: original_span.hi,
-                            expn_id: original_span.expn_id
-                        };
-                        err.span_help(span_semicolon, "consider removing this semicolon:");
-                    }
-                    err.emit();
+                    err.span_help(span_semicolon, "consider removing this semicolon:");
                 }
+                err.emit();
             }
-            ty::FnDiverging
-                if self.live_on_entry(entry_ln, self.s.clean_exit_var).is_some() => {
-                    span_err!(self.ir.tcx.sess, sp, E0270,
-                        "computation may converge in a function marked as diverging");
-                }
-
-            _ => {}
         }
     }
 

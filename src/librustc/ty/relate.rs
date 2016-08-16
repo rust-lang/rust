@@ -256,20 +256,11 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
         let inputs = relate_arg_vecs(relation,
                                      &a.inputs,
                                      &b.inputs)?;
+        let output = relation.relate(&a.output, &b.output)?;
 
-        let output = match (a.output, b.output) {
-            (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
-                Ok(ty::FnConverging(relation.relate(&a_ty, &b_ty)?)),
-            (ty::FnDiverging, ty::FnDiverging) =>
-                Ok(ty::FnDiverging),
-            (a, b) =>
-                Err(TypeError::ConvergenceMismatch(
-                    expected_found(relation, &(a != ty::FnDiverging), &(b != ty::FnDiverging)))),
-        }?;
-
-        return Ok(ty::FnSig {inputs: inputs,
-                             output: output,
-                             variadic: a.variadic});
+        Ok(ty::FnSig {inputs: inputs,
+                      output: output,
+                      variadic: a.variadic})
     }
 }
 
@@ -462,6 +453,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.types.err)
         }
 
+        (&ty::TyNever, _) |
         (&ty::TyChar, _) |
         (&ty::TyBool, _) |
         (&ty::TyInt(_), _) |

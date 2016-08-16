@@ -525,7 +525,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             // Make a fake operand for store_return
                             let op = OperandRef {
                                 val: Ref(dst),
-                                ty: sig.output.unwrap()
+                                ty: sig.output,
                             };
                             self.store_return(&bcx, ret_dest, fn_ty.ret, op);
                         }
@@ -563,7 +563,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             debug_loc.apply_to_bcx(ret_bcx);
                             let op = OperandRef {
                                 val: Immediate(invokeret),
-                                ty: sig.output.unwrap()
+                                ty: sig.output,
                             };
                             self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
                         });
@@ -574,7 +574,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if let Some((_, target)) = *destination {
                         let op = OperandRef {
                             val: Immediate(llret),
-                            ty: sig.output.unwrap()
+                            ty: sig.output,
                         };
                         self.store_return(&bcx, ret_dest, fn_ty.ret, op);
                         funclet_br(self, bcx, target);

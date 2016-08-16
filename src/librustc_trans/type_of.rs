@@ -64,6 +64,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::TyInt(t) => Type::int_from_ty(cx, t),
         ty::TyUint(t) => Type::uint_from_ty(cx, t),
         ty::TyFloat(t) => Type::float_from_ty(cx, t),
+        ty::TyNever => Type::nil(cx),
 
         ty::TyBox(ty) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
@@ -249,6 +250,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyInt(t) => Type::int_from_ty(cx, t),
       ty::TyUint(t) => Type::uint_from_ty(cx, t),
       ty::TyFloat(t) => Type::float_from_ty(cx, t),
+      ty::TyNever => Type::nil(cx),
       ty::TyEnum(def, ref substs) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache. This

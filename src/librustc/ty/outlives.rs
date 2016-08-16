@@ -171,6 +171,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::TyInt(..) |         // OutlivesScalar
             ty::TyUint(..) |        // OutlivesScalar
             ty::TyFloat(..) |       // OutlivesScalar
+            ty::TyNever |           // ...
             ty::TyEnum(..) |        // OutlivesNominalType
             ty::TyStruct(..) |      // OutlivesNominalType
             ty::TyBox(..) |         // OutlivesNominalType (ish)

@@ -51,7 +51,7 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         let id = self.id;
         let span = self.span;
         self.inherited.enter(|inh| {
-            let fcx = FnCtxt::new(&inh, ty::FnDiverging, id);
+            let fcx = FnCtxt::new(&inh, inh.ccx.tcx.types.never, id);
             let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
                 ccx: fcx.ccx,
                 code: code
@@ -394,15 +394,10 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         }
         implied_bounds.extend(sig.inputs);
 
-        match sig.output {
-            ty::FnConverging(output) => {
-                fcx.register_wf_obligation(output, span, self.code.clone());
+        fcx.register_wf_obligation(sig.output, span, self.code.clone());
 
-                // FIXME(#25759) return types should not be implied bounds
-                implied_bounds.push(output);
-            }
-            ty::FnDiverging => { }
-        }
+        // FIXME(#25759) return types should not be implied bounds
+        implied_bounds.push(sig.output);
 
         self.check_where_clauses(fcx, span, predicates);
     }

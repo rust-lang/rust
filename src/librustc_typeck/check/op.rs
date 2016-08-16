@@ -349,7 +349,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // extract return type for method; all late bound regions
                 // should have been instantiated by now
                 let ret_ty = method_ty.fn_ret();
-                Ok(self.tcx.no_late_bound_regions(&ret_ty).unwrap().unwrap())
+                Ok(self.tcx.no_late_bound_regions(&ret_ty).unwrap())
             }
             None => {
                 Err(())

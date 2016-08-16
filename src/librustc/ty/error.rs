@@ -214,7 +214,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
     fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> String {
         match self.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) |
-            ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr => self.to_string(),
+            ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr | ty::TyNever => self.to_string(),
             ty::TyTuple(ref tys) if tys.is_empty() => self.to_string(),
 
             ty::TyEnum(def, _) => format!("enum `{}`", tcx.item_path_str(def.did)),

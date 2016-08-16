@@ -378,6 +378,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
             Some(adjustment) => {
                 let resolved_adjustment = match adjustment {
+                    adjustment::AdjustNeverToAny(ty) => {
+                        adjustment::AdjustNeverToAny(self.resolve(&ty, reason))
+                    }
+
                     adjustment::AdjustReifyFnPointer => {
                         adjustment::AdjustReifyFnPointer
                     }

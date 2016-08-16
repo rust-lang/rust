@@ -40,6 +40,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyBool => output.push_str("bool"),
         ty::TyChar => output.push_str("char"),
         ty::TyStr => output.push_str("str"),
+        ty::TyNever => output.push_str("!"),
         ty::TyInt(int_ty) => output.push_str(int_ty.ty_to_string()),
         ty::TyUint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
         ty::TyFloat(float_ty) => output.push_str(float_ty.ty_to_string()),
@@ -133,15 +134,9 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push(')');
 
-            match sig.output {
-                ty::FnConverging(result_type) if result_type.is_nil() => {}
-                ty::FnConverging(result_type) => {
-                    output.push_str(" -> ");
-                    push_debuginfo_type_name(cx, result_type, true, output);
-                }
-                ty::FnDiverging => {
-                    output.push_str(" -> !");
-                }
+            if !sig.output.is_nil() {
+                output.push_str(" -> ");
+                push_debuginfo_type_name(cx, sig.output, true, output);
             }
         },
         ty::TyClosure(..) => {

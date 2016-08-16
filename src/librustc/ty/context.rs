@@ -190,6 +190,7 @@ pub struct CommonTypes<'tcx> {
     pub u64: Ty<'tcx>,
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
+    pub never: Ty<'tcx>,
     pub err: Ty<'tcx>,
 }
 
@@ -256,6 +257,7 @@ impl<'tcx> CommonTypes<'tcx> {
         CommonTypes {
             bool: mk(TyBool),
             char: mk(TyChar),
+            never: mk(TyNever),
             err: mk(TyError),
             isize: mk(TyInt(ast::IntTy::Is)),
             i8: mk(TyInt(ast::IntTy::I8)),
@@ -975,7 +977,7 @@ macro_rules! sty_debug_print {
                 for &Interned(t) in tcx.interners.type_.borrow().iter() {
                     let variant = match t.sty {
                         ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
-                            ty::TyFloat(..) | ty::TyStr => continue,
+                            ty::TyFloat(..) | ty::TyStr | ty::TyNever => continue,
                         ty::TyError => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
@@ -1262,6 +1264,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_nil(self) -> Ty<'tcx> {
         self.mk_tup(Vec::new())
+    }
+
+    pub fn mk_diverging_default(self) -> Ty<'tcx> {
+        if self.sess.features.borrow().never_type {
+            self.types.never
+        } else {
+            self.mk_nil()
+        }
     }
 
     pub fn mk_bool(self) -> Ty<'tcx> {

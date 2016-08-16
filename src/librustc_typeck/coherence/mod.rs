@@ -24,7 +24,7 @@ use rustc::ty::{ImplOrTraitItemId, ConstTraitItemId};
 use rustc::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use rustc::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
-use rustc::ty::{TyRef, TyStruct, TyTrait, TyTuple};
+use rustc::ty::{TyRef, TyStruct, TyTrait, TyNever, TyTuple};
 use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use rustc::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
 use rustc::ty::{TyProjection, TyAnon};
@@ -84,7 +84,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
             TyStr | TyArray(..) | TySlice(..) | TyFnDef(..) | TyFnPtr(_) |
-            TyTuple(..) | TyParam(..) | TyError |
+            TyTuple(..) | TyParam(..) | TyError | TyNever |
             TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
                 None
             }

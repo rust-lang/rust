@@ -68,6 +68,7 @@ use rustc::traits::{self, ObligationCause};
 use rustc::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use rustc::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
 use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
+use rustc::ty::adjustment::AdjustNeverToAny;
 use rustc::ty::{self, LvaluePreference, TypeAndMut, Ty};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
@@ -165,6 +166,10 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // Just ignore error types.
         if a.references_error() || b.references_error() {
             return self.identity(b);
+        }
+
+        if a.is_never() {
+            return Ok((b, AdjustNeverToAny(b)));
         }
 
         // Consider coercing the subtype to a DST
@@ -637,7 +642,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 apply(&mut coerce, &|| Some(expr), source, target)?;
             if !adjustment.is_identity() {
                 debug!("Success, coerced with {:?}", adjustment);
-                assert!(!self.tables.borrow().adjustments.contains_key(&expr.id));
+                match self.tables.borrow().adjustments.get(&expr.id) {
+                    None | Some(&AdjustNeverToAny(..)) => (),
+                    _ => bug!("expr already has an adjustment on it!"),
+                };
                 self.write_adjustment(expr.id, adjustment);
             }
             Ok(ty)
@@ -741,6 +749,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     _ => false
                 },
+                Some(&AdjustNeverToAny(_)) => true,
                 Some(_) => false,
                 None => true
             };
@@ -776,7 +785,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok((ty, adjustment)) => {
                 if !adjustment.is_identity() {
                     for expr in exprs() {
-                        self.write_adjustment(expr.id, adjustment);
+                        let previous = self.tables.borrow().adjustments.get(&expr.id).cloned();
+                        if let Some(AdjustNeverToAny(_)) = previous {
+                            self.write_adjustment(expr.id, AdjustNeverToAny(ty));
+                        } else {
+                            self.write_adjustment(expr.id, adjustment);
+                        }
                     }
                 }
                 Ok(ty)

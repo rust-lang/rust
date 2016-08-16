@@ -372,7 +372,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // expects the types within the function to be consistent.
     err_count_on_creation: usize,
 
-    ret_ty: ty::FnOutput<'tcx>,
+    ret_ty: Ty<'tcx>,
 
     ps: RefCell<UnsafetyState>,
 
@@ -676,14 +676,9 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let mut fcx = FnCtxt::new(inherited, fn_sig.output, body.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(unsafety, unsafety_id);
 
-    fn_sig.output = match fcx.ret_ty {
-        ty::FnConverging(orig_ret_ty) => {
-            fcx.require_type_is_sized(orig_ret_ty, decl.output.span(), traits::ReturnType);
-            ty::FnConverging(fcx.instantiate_anon_types(&orig_ret_ty))
-        }
-        ty::FnDiverging => ty::FnDiverging
-    };
-    fcx.ret_ty = fn_sig.output;
+    fcx.require_type_is_sized(fcx.ret_ty, decl.output.span(), traits::ReturnType);
+    fcx.ret_ty = fcx.instantiate_anon_types(&fcx.ret_ty);
+    fn_sig.output = fcx.ret_ty;
 
     {
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
@@ -714,10 +709,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
 
-    fcx.check_block_with_expected(body, match fcx.ret_ty {
-        ty::FnConverging(result_type) => ExpectHasType(result_type),
-        ty::FnDiverging => NoExpectation
-    });
+    fcx.check_block_with_expected(body, ExpectHasType(fcx.ret_ty));
 
     fcx
 }
@@ -1168,7 +1160,7 @@ fn check_const_with_type<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                                    expected_type: Ty<'tcx>,
                                    id: ast::NodeId) {
     ccx.inherited(id).enter(|inh| {
-        let fcx = FnCtxt::new(&inh, ty::FnConverging(expected_type), expr.id);
+        let fcx = FnCtxt::new(&inh, expected_type, expr.id);
         fcx.require_type_is_sized(expected_type, expr.span, traits::ConstSized);
 
         // Gather locals in statics (because of block expressions).
@@ -1465,7 +1457,7 @@ enum TupleArgumentsFlag {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
-               rty: ty::FnOutput<'tcx>,
+               rty: Ty<'tcx>,
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
@@ -1559,6 +1551,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("write_ty({}, {:?}) in fcx {}",
                node_id, ty, self.tag());
         self.tables.borrow_mut().node_types.insert(node_id, ty);
+
+        // Add adjustments to !-expressions
+        if ty.is_never() {
+            if let Some(hir::map::NodeExpr(_)) = self.tcx.map.find(node_id) {
+                let adj = adjustment::AdjustNeverToAny(self.next_diverging_ty_var());
+                self.write_adjustment(node_id, adj);
+            }
+        }
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts<'tcx>) {
@@ -1704,7 +1704,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut type_scheme = self.tcx.lookup_item_type(did);
         if type_scheme.ty.is_fn() {
             // Tuple variants have fn type even in type namespace, extract true variant type from it
-            let fn_ret = self.tcx.no_late_bound_regions(&type_scheme.ty.fn_ret()).unwrap().unwrap();
+            let fn_ret = self.tcx.no_late_bound_regions(&type_scheme.ty.fn_ret()).unwrap();
             type_scheme = ty::TypeScheme { ty: fn_ret, generics: type_scheme.generics }
         }
         let type_predicates = self.tcx.lookup_predicates(did);
@@ -1731,6 +1731,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn write_nil(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, self.tcx.mk_nil());
     }
+
+    pub fn write_never(&self, node_id: ast::NodeId) {
+        self.write_ty(node_id, self.tcx.types.never);
+    }
+
     pub fn write_error(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, self.tcx.types.err);
     }
@@ -1788,6 +1793,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn expr_ty(&self, ex: &hir::Expr) -> Ty<'tcx> {
+        if let Some(&adjustment::AdjustNeverToAny(ref t))
+                = self.tables.borrow().adjustments.get(&ex.id) {
+            return t;
+        }
         match self.tables.borrow().node_types.get(&ex.id) {
             Some(&t) => t,
             None => {
@@ -1966,9 +1975,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for ty in &self.unsolved_variables() {
             let resolved = self.resolve_type_vars_if_possible(ty);
             if self.type_var_diverges(resolved) {
-                debug!("default_type_parameters: defaulting `{:?}` to `()` because it diverges",
+                debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges",
                        resolved);
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_nil());
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
+                                   self.tcx.mk_diverging_default());
             } else {
                 match self.type_is_unconstrained_numeric(resolved) {
                     UnconstrainedInt => {
@@ -2042,7 +2052,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for ty in &unsolved_variables {
                 let resolved = self.resolve_type_vars_if_possible(ty);
                 if self.type_var_diverges(resolved) {
-                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_nil());
+                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
+                                       self.tcx.mk_diverging_default());
                 } else {
                     match self.type_is_unconstrained_numeric(resolved) {
                         UnconstrainedInt | UnconstrainedFloat => {
@@ -2100,7 +2111,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let _ = self.commit_if_ok(|_: &infer::CombinedSnapshot| {
                 for ty in &unbound_tyvars {
                     if self.type_var_diverges(ty) {
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_nil());
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
+                                           self.tcx.mk_diverging_default());
                     } else {
                         match self.type_is_unconstrained_numeric(ty) {
                             UnconstrainedInt => {
@@ -2196,7 +2208,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // reporting for more then one conflict.
         for ty in &unbound_tyvars {
             if self.type_var_diverges(ty) {
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.mk_nil());
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
+                                   self.tcx.mk_diverging_default());
             } else {
                 match self.type_is_unconstrained_numeric(ty) {
                     UnconstrainedInt => {
@@ -2271,7 +2284,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // extract method return type, which will be &T;
         // all LB regions should have been instantiated during method lookup
         let ret_ty = method.ty.fn_ret();
-        let ret_ty = self.tcx.no_late_bound_regions(&ret_ty).unwrap().unwrap();
+        let ret_ty = self.tcx.no_late_bound_regions(&ret_ty).unwrap();
 
         // method returns &T, but the type as visible to user is T, so deref
         ret_ty.builtin_deref(true, NoPreference).unwrap()
@@ -2400,7 +2413,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    args_no_rcvr: &'gcx [P<hir::Expr>],
                                    tuple_arguments: TupleArgumentsFlag,
                                    expected: Expectation<'tcx>)
-                                   -> ty::FnOutput<'tcx> {
+                                   -> Ty<'tcx> {
         if method_fn_ty.references_error() {
             let err_inputs = self.err_args(args_no_rcvr.len());
 
@@ -2411,7 +2424,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             self.check_argument_types(sp, &err_inputs[..], &[], args_no_rcvr,
                                       false, tuple_arguments);
-            ty::FnConverging(self.tcx.types.err)
+            self.tcx.types.err
         } else {
             match method_fn_ty.sty {
                 ty::TyFnDef(_, _, ref fty) => {
@@ -2601,7 +2614,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(&arg_ty) = self.tables.borrow().node_types.get(&arg.id) {
-                    any_diverges = any_diverges || self.type_var_diverges(arg_ty);
+                    // FIXME(canndrew): This is_never should probably be an is_uninhabited
+                    any_diverges = any_diverges ||
+                                   self.type_var_diverges(arg_ty) ||
+                                   arg_ty.is_never();
                 }
             }
             if any_diverges && !warned {
@@ -2669,11 +2685,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn write_call(&self,
                   call_expr: &hir::Expr,
-                  output: ty::FnOutput<'tcx>) {
-        self.write_ty(call_expr.id, match output {
-            ty::FnConverging(output_ty) => output_ty,
-            ty::FnDiverging => self.next_diverging_ty_var()
-        });
+                  output: Ty<'tcx>) {
+        self.write_ty(call_expr.id, output);
     }
 
     // AST fragment checking
@@ -2796,35 +2809,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn expected_types_for_fn_args(&self,
                                   call_span: Span,
                                   expected_ret: Expectation<'tcx>,
-                                  formal_ret: ty::FnOutput<'tcx>,
+                                  formal_ret: Ty<'tcx>,
                                   formal_args: &[Ty<'tcx>])
                                   -> Vec<Ty<'tcx>> {
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
-            if let ty::FnConverging(formal_ret_ty) = formal_ret {
-                self.commit_regions_if_ok(|| {
-                    // Attempt to apply a subtyping relationship between the formal
-                    // return type (likely containing type variables if the function
-                    // is polymorphic) and the expected return type.
-                    // No argument expectations are produced if unification fails.
-                    let origin = TypeOrigin::Misc(call_span);
-                    let ures = self.sub_types(false, origin, formal_ret_ty, ret_ty);
-                    // FIXME(#15760) can't use try! here, FromError doesn't default
-                    // to identity so the resulting type is not constrained.
-                    match ures {
-                        // FIXME(#32730) propagate obligations
-                        Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
-                        Err(e) => return Err(e),
-                    }
+            self.commit_regions_if_ok(|| {
+                // Attempt to apply a subtyping relationship between the formal
+                // return type (likely containing type variables if the function
+                // is polymorphic) and the expected return type.
+                // No argument expectations are produced if unification fails.
+                let origin = TypeOrigin::Misc(call_span);
+                let ures = self.sub_types(false, origin, formal_ret, ret_ty);
+                // FIXME(#15760) can't use try! here, FromError doesn't default
+                // to identity so the resulting type is not constrained.
+                match ures {
+                    // FIXME(#32730) propagate obligations
+                    Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
+                    Err(e) => return Err(e),
+                }
 
-                    // Record all the argument types, with the substitutions
-                    // produced from the above subtyping unification.
-                    Ok(formal_args.iter().map(|ty| {
-                        self.resolve_type_vars_if_possible(ty)
-                    }).collect())
-                }).ok()
-            } else {
-                None
-            }
+                // Record all the argument types, with the substitutions
+                // produced from the above subtyping unification.
+                Ok(formal_args.iter().map(|ty| {
+                    self.resolve_type_vars_if_possible(ty)
+                }).collect())
+            }).ok()
         }).unwrap_or(vec![]);
         debug!("expected_types_for_fn_args(formal={:?} -> {:?}, expected={:?} -> {:?})",
                formal_args, formal_ret,
@@ -3481,39 +3490,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               }
               self.write_nil(id);
           }
-          hir::ExprBreak(_) => { self.write_ty(id, self.next_diverging_ty_var()); }
-          hir::ExprAgain(_) => { self.write_ty(id, self.next_diverging_ty_var()); }
+          hir::ExprBreak(_) => { self.write_never(id); }
+          hir::ExprAgain(_) => { self.write_never(id); }
           hir::ExprRet(ref expr_opt) => {
-            match self.ret_ty {
-                ty::FnConverging(result_type) => {
-                    if let Some(ref e) = *expr_opt {
-                        self.check_expr_coercable_to_type(&e, result_type);
-                    } else {
-                        let eq_result = self.eq_types(false,
-                                                      TypeOrigin::Misc(expr.span),
-                                                      result_type,
-                                                      tcx.mk_nil())
-                            // FIXME(#32730) propagate obligations
-                            .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()));
-                        if eq_result.is_err() {
-                            struct_span_err!(tcx.sess, expr.span, E0069,
-                                     "`return;` in a function whose return type is not `()`")
-                                .span_label(expr.span, &format!("return type is not ()"))
-                                .emit();
-                        }
-                    }
-                }
-                ty::FnDiverging => {
-                    if let Some(ref e) = *expr_opt {
-                        self.check_expr(&e);
-                    }
-                    struct_span_err!(tcx.sess, expr.span, E0166,
-                        "`return` in a function declared as diverging")
-                        .span_label(expr.span, &format!("diverging function cannot return"))
+            if let Some(ref e) = *expr_opt {
+                self.check_expr_coercable_to_type(&e, self.ret_ty);
+            } else {
+                let eq_result = self.eq_types(false,
+                                              TypeOrigin::Misc(expr.span),
+                                              self.ret_ty,
+                                              tcx.mk_nil())
+                    // FIXME(#32730) propagate obligations
+                    .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()));
+                if eq_result.is_err() {
+                    struct_span_err!(tcx.sess, expr.span, E0069,
+                             "`return;` in a function whose return type is not `()`")
+                        .span_label(expr.span, &format!("return type is not ()"))
                         .emit();
                 }
             }
-            self.write_ty(id, self.next_diverging_ty_var());
+            self.write_never(id);
           }
           hir::ExprAssign(ref lhs, ref rhs) => {
             self.check_expr_with_lvalue_pref(&lhs, PreferMutLvalue);
@@ -3560,7 +3556,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprLoop(ref body, _) => {
             self.check_block_no_value(&body);
             if !may_break(tcx, expr.id, &body) {
-                self.write_ty(id, self.next_diverging_ty_var());
+                self.write_never(id);
             } else {
                 self.write_nil(id);
             }
@@ -4016,7 +4012,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               "unreachable statement".to_string());
                 warned = true;
             }
-            any_diverges = any_diverges || self.type_var_diverges(s_ty);
+            // FIXME(canndrew): This is_never should probably be an is_uninhabited
+            any_diverges = any_diverges ||
+                           self.type_var_diverges(s_ty) ||
+                           s_ty.is_never();
             any_err = any_err || s_ty.references_error();
         }
         match blk.expr {

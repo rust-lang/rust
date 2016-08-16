@@ -632,6 +632,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
     match v.tcx.tables.borrow().adjustments.get(&e.id) {
         None |
+        Some(&ty::adjustment::AdjustNeverToAny(..)) |
         Some(&ty::adjustment::AdjustReifyFnPointer) |
         Some(&ty::adjustment::AdjustUnsafeFnPointer) |
         Some(&ty::adjustment::AdjustMutToConstPointer) => {}

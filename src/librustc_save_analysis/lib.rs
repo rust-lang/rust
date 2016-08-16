@@ -671,7 +671,6 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     sig.push_str(&decl.inputs.iter().map(arg_to_string).collect::<Vec<_>>().join(", "));
     sig.push(')');
     match decl.output {
-        ast::FunctionRetTy::None(_) => sig.push_str(" -> !"),
         ast::FunctionRetTy::Default(_) => {}
         ast::FunctionRetTy::Ty(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
     }

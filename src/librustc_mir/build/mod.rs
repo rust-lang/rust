@@ -162,7 +162,7 @@ macro_rules! unpack {
 pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                        fn_id: ast::NodeId,
                                        arguments: A,
-                                       return_ty: ty::FnOutput<'gcx>,
+                                       return_ty: Ty<'gcx>,
                                        ast_block: &'gcx hir::Block)
                                        -> (Mir<'tcx>, ScopeAuxiliaryVec)
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
@@ -256,7 +256,7 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     });
 
     let ty = tcx.expr_ty_adjusted(ast_expr);
-    builder.finish(vec![], IndexVec::new(), ty::FnConverging(ty))
+    builder.finish(vec![], IndexVec::new(), ty)
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -288,7 +288,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn finish(self,
               upvar_decls: Vec<UpvarDecl>,
               arg_decls: IndexVec<Arg, ArgDecl<'tcx>>,
-              return_ty: ty::FnOutput<'tcx>)
+              return_ty: Ty<'tcx>)
               -> (Mir<'tcx>, ScopeAuxiliaryVec) {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
@@ -310,7 +310,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn args_and_body<A>(&mut self,
                         mut block: BasicBlock,
-                        return_ty: ty::FnOutput<'tcx>,
+                        return_ty: Ty<'tcx>,
                         arguments: A,
                         argument_extent: CodeExtent,
                         ast_block: &'gcx hir::Block)
@@ -351,11 +351,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         // FIXME(#32959): temporary hack for the issue at hand
-        let return_is_unit = if let ty::FnConverging(t) = return_ty {
-            t.is_nil()
-        } else {
-            false
-        };
+        let return_is_unit = return_ty.is_nil();
         // start the first basic block and translate the body
         unpack!(block = self.ast_block(&Lvalue::ReturnPointer, return_is_unit, block, ast_block));
 

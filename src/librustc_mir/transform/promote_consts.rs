@@ -25,7 +25,7 @@
 use rustc::mir::repr::*;
 use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
 use build::Location;
@@ -303,7 +303,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let span = self.promoted.span;
         let new_operand = Operand::Constant(Constant {
             span: span,
-            ty: self.promoted.return_ty.unwrap(),
+            ty: self.promoted.return_ty,
             literal: Literal::Promoted {
                 index: Promoted::new(self.source.promoted.len())
             }
@@ -391,7 +391,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                     parent_scope: None
                 }).into_iter().collect(),
                 IndexVec::new(),
-                ty::FnConverging(ty),
+                ty,
                 IndexVec::new(),
                 IndexVec::new(),
                 IndexVec::new(),

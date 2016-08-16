@@ -139,6 +139,9 @@ pub enum ExprKind<'tcx> {
     Cast {
         source: ExprRef<'tcx>,
     },
+    NeverToAny {
+        source: ExprRef<'tcx>,
+    },
     ReifyFnPointer {
         source: ExprRef<'tcx>,
     },

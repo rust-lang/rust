@@ -795,6 +795,9 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyFloat(FloatTy::F64) => Scalar { value: F64, non_zero: false },
             ty::TyFnPtr(_) => Scalar { value: Pointer, non_zero: true },
 
+            // The never type.
+            ty::TyNever => Univariant { variant: Struct::new(dl, false), non_zero: false },
+
             // Potentially-fat pointers.
             ty::TyBox(pointee) |
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |

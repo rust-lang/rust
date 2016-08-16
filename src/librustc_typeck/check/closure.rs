@@ -221,7 +221,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let fn_sig = ty::FnSig {
             inputs: input_tys,
-            output: ty::FnConverging(ret_param_ty),
+            output: ret_param_ty,
             variadic: false
         };
         debug!("deduce_sig_from_projection: fn_sig {:?}", fn_sig);

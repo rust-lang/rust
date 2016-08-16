@@ -353,6 +353,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                         }
                     }))
                 }
+                TyNever => node,
                 TyTup(tys) => TyTup(tys.move_map(|ty| fld.fold_ty(ty))),
                 TyPath(qself, path) => {
                     let qself = qself.map(|QSelf { ty, position }| {
@@ -515,7 +516,6 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
             output: match output {
                 Return(ty) => Return(fld.fold_ty(ty)),
                 DefaultReturn(span) => DefaultReturn(span),
-                NoReturn(span) => NoReturn(span),
             },
             variadic: variadic,
         }

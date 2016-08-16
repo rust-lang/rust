@@ -1176,15 +1176,6 @@ impl Clean<FnDecl> for hir::FnDecl {
     }
 }
 
-impl<'tcx> Clean<Type> for ty::FnOutput<'tcx> {
-    fn clean(&self, cx: &DocContext) -> Type {
-        match *self {
-            ty::FnConverging(ty) => ty.clean(cx),
-            ty::FnDiverging => Bottom
-        }
-    }
-}
-
 impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
@@ -1254,7 +1245,6 @@ impl Clean<Argument> for hir::Arg {
 pub enum FunctionRetTy {
     Return(Type),
     DefaultReturn,
-    NoReturn
 }
 
 impl Clean<FunctionRetTy> for hir::FunctionRetTy {
@@ -1262,7 +1252,6 @@ impl Clean<FunctionRetTy> for hir::FunctionRetTy {
         match *self {
             hir::Return(ref typ) => Return(typ.clean(cx)),
             hir::DefaultReturn(..) => DefaultReturn,
-            hir::NoReturn(..) => NoReturn
         }
     }
 }
@@ -1470,8 +1459,7 @@ pub enum Type {
     Tuple(Vec<Type>),
     Vector(Box<Type>),
     FixedVector(Box<Type>, String),
-    /// aka TyBot
-    Bottom,
+    Never,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
     BorrowedRef {
@@ -1682,6 +1670,7 @@ impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         use rustc::hir::*;
         match self.node {
+            TyNever => Never,
             TyPtr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
@@ -1790,6 +1779,7 @@ impl Clean<Type> for hir::Ty {
 impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
+            ty::TyNever => Never,
             ty::TyBool => Primitive(Bool),
             ty::TyChar => Primitive(Char),
             ty::TyInt(ast::IntTy::Is) => Primitive(Isize),

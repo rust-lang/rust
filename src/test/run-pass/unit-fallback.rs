@@ -8,10 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<F, R>(_: F) where F: Fn() -> R {
+// Test that diverging types default to () (with feature(never_type) disabled).
+
+trait Balls: Sized {
+    fn smeg() -> Result<Self, ()>;
+}
+
+impl Balls for () {
+    fn smeg() -> Result<(), ()> { Ok(()) }
+}
+
+struct Flah;
+
+impl Flah {
+    fn flah<T: Balls>(&self) -> Result<T, ()> {
+        T::smeg()
+    }
+}
+
+fn doit() -> Result<(), ()> {
+    // The type of _ is unconstrained here and should default to ()
+    let _ = try!(Flah.flah());
+    Ok(())
 }
 
 fn main() {
-    f(|| -> ! { () });
-//~^ ERROR: computation may converge in a function marked as diverging [E0270]
+    let _ = doit();
 }
+

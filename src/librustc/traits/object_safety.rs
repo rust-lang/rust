@@ -269,10 +269,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 return Some(MethodViolationCode::ReferencesSelf);
             }
         }
-        if let ty::FnConverging(result_type) = sig.0.output {
-            if self.contains_illegal_self_type_reference(trait_def_id, result_type) {
-                return Some(MethodViolationCode::ReferencesSelf);
-            }
+        if self.contains_illegal_self_type_reference(trait_def_id, sig.0.output) {
+            return Some(MethodViolationCode::ReferencesSelf);
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.

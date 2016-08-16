@@ -270,6 +270,7 @@ impl<'a> LoweringContext<'a> {
                         decl: self.lower_fn_decl(&f.decl),
                     }))
                 }
+                Never => hir::TyNever,
                 Tup(ref tys) => hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty)).collect()),
                 Paren(ref ty) => {
                     return self.lower_ty(ty);
@@ -402,7 +403,6 @@ impl<'a> LoweringContext<'a> {
             output: match decl.output {
                 FunctionRetTy::Ty(ref ty) => hir::Return(self.lower_ty(ty)),
                 FunctionRetTy::Default(span) => hir::DefaultReturn(span),
-                FunctionRetTy::None(span) => hir::NoReturn(span),
             },
             variadic: decl.variadic,
         })

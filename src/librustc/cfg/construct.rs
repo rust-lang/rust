@@ -379,7 +379,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        if fn_ty.fn_ret().diverges() {
+        // FIXME(canndrew): This is_never should probably be an is_uninhabited.
+        if fn_ty.fn_ret().0.is_never() {
             self.add_unreachable_node()
         } else {
             ret

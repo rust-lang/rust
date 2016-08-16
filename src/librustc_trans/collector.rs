@@ -791,6 +791,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         ty::TyRef(..)   |
         ty::TyFnDef(..) |
         ty::TyFnPtr(_)  |
+        ty::TyNever     |
         ty::TyTrait(_)  => {
             /* nothing to do */
         }
