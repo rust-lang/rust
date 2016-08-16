@@ -20,13 +20,12 @@ use rustc::traits::{self, Reveal};
 use abi::FnType;
 use base::*;
 use build::*;
-use callee::{Callee, Virtual, ArgVals, trans_fn_pointer_shim};
+use callee::{Callee, Virtual, trans_fn_pointer_shim};
 use closure;
 use common::*;
 use consts;
 use debuginfo::DebugLoc;
 use declare;
-use expr;
 use glue;
 use machine;
 use type_::Type;
@@ -96,25 +95,21 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &block_arena);
-    let mut bcx = fcx.init(false, None);
-    assert!(!fcx.needs_ret_allocas);
+    let mut bcx = fcx.init(false);
 
-
-    let dest =
-        fcx.llretslotptr.get().map(
-            |_| expr::SaveIn(fcx.get_ret_slot(bcx, "ret_slot")));
+    let dest = fcx.llretslotptr.get();
 
     debug!("trans_object_shim: method_offset_in_vtable={}",
            vtable_index);
 
     let llargs = get_params(fcx.llfn);
-    let args = ArgVals(&llargs[fcx.fn_ty.ret.is_indirect() as usize..]);
 
     let callee = Callee {
         data: Virtual(vtable_index),
         ty: method_ty
     };
-    bcx = callee.call(bcx, DebugLoc::None, args, dest).bcx;
+    bcx = callee.call(bcx, DebugLoc::None,
+                      &llargs[fcx.fn_ty.ret.is_indirect() as usize..], dest).bcx;
 
     fcx.finish(bcx, DebugLoc::None);
 
@@ -160,7 +155,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 get_vtable_methods(tcx, id, substs)
                     .into_iter()
                     .map(|opt_mth| opt_mth.map_or(nullptr, |mth| {
-                        Callee::def(ccx, mth.method.def_id, &mth.substs).reify(ccx).val
+                        Callee::def(ccx, mth.method.def_id, &mth.substs).reify(ccx)
                     }))
                     .collect::<Vec<_>>()
                     .into_iter()

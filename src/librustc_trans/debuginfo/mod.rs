@@ -56,13 +56,7 @@ mod source_loc;
 
 pub use self::create_scope_map::create_mir_scopes;
 pub use self::source_loc::start_emitting_source_locations;
-pub use self::source_loc::get_cleanup_debug_loc_for_ast_node;
-pub use self::source_loc::with_source_location_override;
-pub use self::metadata::create_match_binding_metadata;
-pub use self::metadata::create_argument_metadata;
-pub use self::metadata::create_captured_var_metadata;
 pub use self::metadata::create_global_var_metadata;
-pub use self::metadata::create_local_var_metadata;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
@@ -142,7 +136,6 @@ impl FunctionDebugContext {
 pub struct FunctionDebugContextData {
     scope_map: RefCell<NodeMap<DIScope>>,
     fn_metadata: DISubprogram,
-    argument_counter: Cell<usize>,
     source_locations_enabled: Cell<bool>,
     source_location_override: Cell<bool>,
 }
@@ -307,7 +300,6 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let fn_debug_context = box FunctionDebugContextData {
         scope_map: RefCell::new(NodeMap()),
         fn_metadata: fn_metadata,
-        argument_counter: Cell::new(1),
         source_locations_enabled: Cell::new(false),
         source_location_override: Cell::new(false),
     };
@@ -452,25 +444,6 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 .def_id_span(instance.def, syntax_pos::DUMMY_SP);
 
         (containing_scope, definition_span)
-    }
-}
-
-/// Computes the scope map for a function given its declaration and body.
-pub fn fill_scope_map_for_function<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
-                                             fn_decl: &hir::FnDecl,
-                                             top_level_block: &hir::Block,
-                                             fn_ast_id: ast::NodeId) {
-    match fcx.debug_context {
-        FunctionDebugContext::RegularContext(box ref data) => {
-            let scope_map = create_scope_map::create_scope_map(fcx.ccx,
-                                                               &fn_decl.inputs,
-                                                               top_level_block,
-                                                               data.fn_metadata,
-                                                               fn_ast_id);
-            *data.scope_map.borrow_mut() = scope_map;
-        }
-        FunctionDebugContext::DebugInfoDisabled |
-        FunctionDebugContext::FunctionWithoutDebugInfo => {}
     }
 }
 

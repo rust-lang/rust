@@ -14,11 +14,10 @@ use self::MemberDescriptionFactory::*;
 use self::EnumDiscriminantInfo::*;
 
 use super::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align_of,
-                   get_namespace_and_span_for_item, create_DIArray,
-                   fn_should_be_ignored, is_node_local_to_unit};
+                   get_namespace_and_span_for_item, create_DIArray, is_node_local_to_unit};
 use super::namespace::mangled_name_of_item;
 use super::type_names::{compute_debuginfo_type_name, push_debuginfo_type_name};
-use super::{declare_local, VariableKind, VariableAccess, CrateDebugContext};
+use super::{CrateDebugContext};
 use context::SharedCrateContext;
 use session::Session;
 
@@ -26,16 +25,13 @@ use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 
 use rustc::hir::def_id::DefId;
-use rustc::hir::pat_util;
 use rustc::ty::subst::Substs;
-use rustc::hir::map as hir_map;
-use rustc::hir::{self, PatKind};
+use rustc::hir;
 use {type_of, adt, machine, monomorphize};
-use common::{self, CrateContext, FunctionContext, Block};
-use _match::{BindingInfo, TransBindingMode};
+use common::{CrateContext, FunctionContext};
 use type_::Type;
 use rustc::ty::{self, Ty};
-use session::config::{self, FullDebugInfo};
+use session::config;
 use util::nodemap::FnvHashMap;
 use util::common::path2cstr;
 
@@ -1862,227 +1858,4 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                                     global,
                                                     ptr::null_mut());
     }
-}
-
-/// Creates debug information for the given local variable.
-///
-/// This function assumes that there's a datum for each pattern component of the
-/// local in `bcx.fcx.lllocals`.
-/// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_local_var_metadata(bcx: Block, local: &hir::Local) {
-    if bcx.unreachable.get() ||
-       fn_should_be_ignored(bcx.fcx) ||
-       bcx.sess().opts.debuginfo != FullDebugInfo  {
-        return;
-    }
-
-    let locals = bcx.fcx.lllocals.borrow();
-    pat_util::pat_bindings(&local.pat, |_, node_id, span, var_name| {
-        let datum = match locals.get(&node_id) {
-            Some(datum) => datum,
-            None => {
-                span_bug!(span,
-                          "no entry in lllocals table for {}",
-                          node_id);
-            }
-        };
-
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            span_bug!(span, "debuginfo::create_local_var_metadata() - \
-                             Referenced variable location is not an alloca!");
-        }
-
-        let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
-
-        declare_local(bcx,
-                      var_name.node,
-                      datum.ty,
-                      scope_metadata,
-                      VariableAccess::DirectVariable { alloca: datum.val },
-                      VariableKind::LocalVariable,
-                      span);
-    })
-}
-
-/// Creates debug information for a variable captured in a closure.
-///
-/// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                node_id: ast::NodeId,
-                                                env_pointer: ValueRef,
-                                                env_index: usize,
-                                                captured_by_ref: bool,
-                                                span: Span) {
-    if bcx.unreachable.get() ||
-       fn_should_be_ignored(bcx.fcx) ||
-       bcx.sess().opts.debuginfo != FullDebugInfo {
-        return;
-    }
-
-    let cx = bcx.ccx();
-
-    let ast_item = cx.tcx().map.find(node_id);
-
-    let variable_name = match ast_item {
-        None => {
-            span_bug!(span, "debuginfo::create_captured_var_metadata: node not found");
-        }
-        Some(hir_map::NodeLocal(pat)) => {
-            match pat.node {
-                PatKind::Binding(_, ref path1, _) => {
-                    path1.node
-                }
-                _ => {
-                    span_bug!(span,
-                              "debuginfo::create_captured_var_metadata() - \
-                               Captured var-id refers to unexpected \
-                               hir_map variant: {:?}",
-                              ast_item);
-                }
-            }
-        }
-        _ => {
-            span_bug!(span,
-                      "debuginfo::create_captured_var_metadata() - \
-                       Captured var-id refers to unexpected \
-                       hir_map variant: {:?}",
-                      ast_item);
-        }
-    };
-
-    let variable_type = common::node_id_type(bcx, node_id);
-    let scope_metadata = bcx.fcx.debug_context.get_ref(span).fn_metadata;
-
-    // env_pointer is the alloca containing the pointer to the environment,
-    // so it's type is **EnvironmentType. In order to find out the type of
-    // the environment we have to "dereference" two times.
-    let llvm_env_data_type = common::val_ty(env_pointer).element_type()
-                                                        .element_type();
-    let byte_offset_of_var_in_env = machine::llelement_offset(cx,
-                                                              llvm_env_data_type,
-                                                              env_index);
-
-    let address_operations = unsafe {
-        [llvm::LLVMRustDIBuilderCreateOpDeref(),
-         llvm::LLVMRustDIBuilderCreateOpPlus(),
-         byte_offset_of_var_in_env as i64,
-         llvm::LLVMRustDIBuilderCreateOpDeref()]
-    };
-
-    let address_op_count = if captured_by_ref {
-        address_operations.len()
-    } else {
-        address_operations.len() - 1
-    };
-
-    let variable_access = VariableAccess::IndirectVariable {
-        alloca: env_pointer,
-        address_operations: &address_operations[..address_op_count]
-    };
-
-    declare_local(bcx,
-                  variable_name,
-                  variable_type,
-                  scope_metadata,
-                  variable_access,
-                  VariableKind::CapturedVariable,
-                  span);
-}
-
-/// Creates debug information for a local variable introduced in the head of a
-/// match-statement arm.
-///
-/// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                 variable_name: ast::Name,
-                                                 binding: BindingInfo<'tcx>) {
-    if bcx.unreachable.get() ||
-       fn_should_be_ignored(bcx.fcx) ||
-       bcx.sess().opts.debuginfo != FullDebugInfo {
-        return;
-    }
-
-    let scope_metadata = scope_metadata(bcx.fcx, binding.id, binding.span);
-    let aops = unsafe {
-        [llvm::LLVMRustDIBuilderCreateOpDeref()]
-    };
-    // Regardless of the actual type (`T`) we're always passed the stack slot
-    // (alloca) for the binding. For ByRef bindings that's a `T*` but for ByMove
-    // bindings we actually have `T**`. So to get the actual variable we need to
-    // dereference once more. For ByCopy we just use the stack slot we created
-    // for the binding.
-    let var_access = match binding.trmode {
-        TransBindingMode::TrByCopy(llbinding) |
-        TransBindingMode::TrByMoveIntoCopy(llbinding) => VariableAccess::DirectVariable {
-            alloca: llbinding
-        },
-        TransBindingMode::TrByMoveRef => VariableAccess::IndirectVariable {
-            alloca: binding.llmatch,
-            address_operations: &aops
-        },
-        TransBindingMode::TrByRef => VariableAccess::DirectVariable {
-            alloca: binding.llmatch
-        }
-    };
-
-    declare_local(bcx,
-                  variable_name,
-                  binding.ty,
-                  scope_metadata,
-                  var_access,
-                  VariableKind::LocalVariable,
-                  binding.span);
-}
-
-/// Creates debug information for the given function argument.
-///
-/// This function assumes that there's a datum for each pattern component of the
-/// argument in `bcx.fcx.lllocals`.
-/// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_argument_metadata(bcx: Block, arg: &hir::Arg) {
-    if bcx.unreachable.get() ||
-       fn_should_be_ignored(bcx.fcx) ||
-       bcx.sess().opts.debuginfo != FullDebugInfo {
-        return;
-    }
-
-    let scope_metadata = bcx
-                         .fcx
-                         .debug_context
-                         .get_ref(arg.pat.span)
-                         .fn_metadata;
-    let locals = bcx.fcx.lllocals.borrow();
-
-    pat_util::pat_bindings(&arg.pat, |_, node_id, span, var_name| {
-        let datum = match locals.get(&node_id) {
-            Some(v) => v,
-            None => {
-                span_bug!(span, "no entry in lllocals table for {}", node_id);
-            }
-        };
-
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            span_bug!(span, "debuginfo::create_argument_metadata() - \
-                             Referenced variable location is not an alloca!");
-        }
-
-        let argument_index = {
-            let counter = &bcx
-                          .fcx
-                          .debug_context
-                          .get_ref(span)
-                          .argument_counter;
-            let argument_index = counter.get();
-            counter.set(argument_index + 1);
-            argument_index
-        };
-
-        declare_local(bcx,
-                      var_name.node,
-                      datum.ty,
-                      scope_metadata,
-                      VariableAccess::DirectVariable { alloca: datum.val },
-                      VariableKind::ArgumentVariable(argument_index),
-                      span);
-    })
 }
