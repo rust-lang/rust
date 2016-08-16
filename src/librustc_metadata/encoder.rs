@@ -53,7 +53,7 @@ use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 use rustc::hir::map::DefKey;
 
-use super::index_builder::{FromId, IndexBuilder, ItemContentBuilder, XRef};
+use super::index_builder::{FromId, IndexBuilder, ItemContentBuilder, Untracked, XRef};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
@@ -206,15 +206,20 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
         for (i, variant) in def.variants.iter().enumerate() {
             self.record(variant.did,
                         ItemContentBuilder::encode_enum_variant_info,
-                        (enum_did, i));
+                        (enum_did, Untracked(i)));
         }
     }
 }
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
+    /// Encode data for the given variant of the given ADT. The
+    /// index of the variant is untracked: this is ok because we
+    /// will have to lookup the adt-def by its id, and that gives us
+    /// the right to access any information in the adt-def (including,
+    /// e.g., the length of the various vectors).
     fn encode_enum_variant_info(&mut self,
-                                (enum_did, index):
-                                (DefId, usize)) {
+                                (enum_did, Untracked(index)):
+                                (DefId, Untracked<usize>)) {
         let ecx = self.ecx;
         let def = ecx.tcx.lookup_adt_def(enum_did);
         let variant = &def.variants[index];
@@ -420,16 +425,22 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
             for (field_index, field) in variant.fields.iter().enumerate() {
                 self.record(field.did,
                             ItemContentBuilder::encode_field,
-                            (adt_def_id, variant_index, field_index));
+                            (adt_def_id, Untracked((variant_index, field_index))));
             }
         }
     }
 }
 
 impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
+    /// Encode data for the given field of the given variant of the
+    /// given ADT. The indices of the variant/field are untracked:
+    /// this is ok because we will have to lookup the adt-def by its
+    /// id, and that gives us the right to access any information in
+    /// the adt-def (including, e.g., the length of the various
+    /// vectors).
     fn encode_field(&mut self,
-                    (adt_def_id, variant_index, field_index):
-                    (DefId, usize, usize)) {
+                    (adt_def_id, Untracked((variant_index, field_index))):
+                    (DefId, Untracked<(usize, usize)>)) {
         let ecx = self.ecx();
         let def = ecx.tcx.lookup_adt_def(adt_def_id);
         let variant = &def.variants[variant_index];

@@ -24,10 +24,10 @@
 //!
 //! In addition to the offset, we need to track the data that was used
 //! to generate the contents of each `data_item`. This is so that we
-//! can figure out which HIR nodes contributors to that data for
+//! can figure out which HIR nodes contributed to that data for
 //! incremental compilation purposes.
 //!
-//! The `IndexBuilder` facilitates with both of these. It is created
+//! The `IndexBuilder` facilitates both of these. It is created
 //! with an RBML encoder isntance (`rbml_w`) along with an
 //! `EncodingContext` (`ecx`), which it encapsulates. It has one main
 //! method, `record()`. You invoke `record` like so to create a new
@@ -166,10 +166,6 @@ pub trait DepGraphRead {
     fn read(&self, tcx: TyCtxt);
 }
 
-impl DepGraphRead for usize {
-    fn read(&self, _tcx: TyCtxt) { }
-}
-
 impl DepGraphRead for DefId {
     fn read(&self, _tcx: TyCtxt) { }
 }
@@ -228,6 +224,21 @@ read_hir!(hir::Item);
 read_hir!(hir::ImplItem);
 read_hir!(hir::TraitItem);
 read_hir!(hir::ForeignItem);
+
+/// Leaks access to a value of type T without any tracking. This is
+/// suitable for ambiguous types like `usize`, which *could* represent
+/// tracked data (e.g., if you read it out of a HIR node) or might not
+/// (e.g., if it's an index). Adding in an `Untracked` is an
+/// assertion, essentially, that the data does not need to be tracked
+/// (or that read edges will be added by some other way).
+///
+/// A good idea is to add to each use of `Untracked` an explanation of
+/// why this value is ok.
+pub struct Untracked<T>(pub T);
+
+impl<T> DepGraphRead for Untracked<T> {
+    fn read(&self, _tcx: TyCtxt) { }
+}
 
 /// Newtype that can be used to package up misc data extracted from a
 /// HIR node that doesn't carry its own id. This will allow an
