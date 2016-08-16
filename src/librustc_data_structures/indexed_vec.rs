@@ -164,6 +164,21 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub unsafe fn as_mut_ptr(&mut self) -> *mut T {
         self.raw.as_mut_ptr()
     }
+
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.raw.shrink_to_fit()
+    }
+
+    #[inline]
+    pub fn swap(&mut self, a: usize, b: usize) {
+        self.raw.swap(a, b)
+    }
+
+    #[inline]
+    pub fn truncate(&mut self, a: usize) {
+        self.raw.truncate(a)
+    }
 }
 
 impl<I: Idx, T> Index<I> for IndexVec<I, T> {

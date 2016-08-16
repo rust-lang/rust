@@ -299,32 +299,3 @@ pub fn cleanup_kinds<'bcx,'tcx>(_bcx: Block<'bcx,'tcx>,
     debug!("cleanup_kinds: result={:?}", result);
     result
 }
-
-pub fn count_live_locals<'tcx>(mir: &mir::Mir<'tcx>) -> (BitVector, BitVector) {
-    let mut marker = DeclMarker {
-        live_vars: BitVector::new(mir.var_decls.len()),
-        live_temps: BitVector::new(mir.temp_decls.len()),
-    };
-    marker.visit_mir(mir);
-    let DeclMarker { live_vars, live_temps } = marker;
-    (live_vars, live_temps)
-}
-
-struct DeclMarker {
-    pub live_vars: BitVector,
-    pub live_temps: BitVector
-}
-
-impl<'tcx> Visitor<'tcx> for DeclMarker {
-    fn visit_lvalue(&mut self, lval: &mir::Lvalue<'tcx>, ctx: LvalueContext) {
-        if ctx == LvalueContext::StorageLive || ctx == LvalueContext::StorageDead {
-            return; // ignore these altogether.
-        }
-        match *lval {
-            mir::Lvalue::Var(ref v) => self.live_vars.insert(v.index()),
-            mir::Lvalue::Temp(ref t) => self.live_temps.insert(t.index()),
-            _ => false,
-        };
-        self.super_lvalue(lval, ctx);
-    }
-}

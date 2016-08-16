@@ -11,7 +11,7 @@
 pub mod dataflow;
 
 pub mod simplify_branches;
-pub mod simplify_cfg;
+pub mod simplify;
 pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod type_check;

@@ -115,7 +115,6 @@ impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
 enum LocalRef<'tcx> {
     Lvalue(LvalueRef<'tcx>),
     Operand(Option<OperandRef<'tcx>>),
-    Unused,
 }
 
 impl<'tcx> LocalRef<'tcx> {
@@ -155,7 +154,6 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         (analyze::lvalue_locals(bcx, &mir),
          analyze::cleanup_kinds(bcx, &mir))
     });
-    let (live_vars, live_temps) = analyze::count_live_locals(&mir);
 
 
     // Compute debuginfo scopes from MIR scopes.
@@ -165,9 +163,6 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let locals = {
         let args = arg_local_refs(&bcx, &mir, &scopes, &lvalue_locals);
         let vars = mir.var_decls.iter_enumerated().map(|(var_idx, decl)| {
-            if !live_vars.contains(var_idx.index()) {
-                return LocalRef::Unused;
-            }
             let ty = bcx.monomorphize(&decl.ty);
             let scope = scopes[decl.source_info.scope];
             let dbg = !scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo;
@@ -186,9 +181,6 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
             LocalRef::Lvalue(lvalue)
         });
         let temps = mir.temp_decls.iter_enumerated().map(|(temp_idx, decl)| {
-            if !live_temps.contains(temp_idx.index()) {
-                return LocalRef::Unused;
-            }
             let ty = bcx.monomorphize(&decl.ty);
             let local = mir.local_index(&mir::Lvalue::Temp(temp_idx)).unwrap();
             if lvalue_locals.contains(local.index()) {

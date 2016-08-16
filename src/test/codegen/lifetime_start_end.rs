@@ -18,14 +18,14 @@
 #[rustc_mir] // FIXME #27840 MIR has different codegen.
 pub fn test() {
     let a = 0;
-    &a; // keep variable in an alloca
+    drop(&a); // keep variable in an alloca
 
 // CHECK: [[S_a:%[0-9]+]] = bitcast i32* %a to i8*
 // CHECK: call void @llvm.lifetime.start(i{{[0-9 ]+}}, i8* [[S_a]])
 
     {
         let b = &Some(a);
-        &b; // keep variable in an alloca
+        drop(&b); // keep variable in an alloca
 
 // CHECK: [[S_b:%[0-9]+]] = bitcast %"2.std::option::Option<i32>"** %b to i8*
 // CHECK: call void @llvm.lifetime.start(i{{[0-9 ]+}}, i8* [[S_b]])
@@ -41,7 +41,7 @@ pub fn test() {
     }
 
     let c = 1;
-    &c; // keep variable in an alloca
+    drop(&c); // keep variable in an alloca
 
 // CHECK: [[S_c:%[0-9]+]] = bitcast i32* %c to i8*
 // CHECK: call void @llvm.lifetime.start(i{{[0-9 ]+}}, i8* [[S_c]])
