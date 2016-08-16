@@ -277,7 +277,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             } else {
                 "cannot refer to statics by value, use a constant instead"
             };
-            span_err!(self.tcx.sess, self.span, E0394, "{}", msg);
+            struct_span_err!(self.tcx.sess, self.span, E0394, "{}", msg)
+                .span_label(self.span, &format!("referring to another static by value"))
+                .note(&format!("use the address-of operator or a constant instead"))
+                .emit();
 
             // Replace STATIC with NOT_CONST to avoid further errors.
             self.qualif = self.qualif - Qualif::STATIC;
