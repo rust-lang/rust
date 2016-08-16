@@ -88,13 +88,13 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 let def_id = ccx.tcx().map.local_def_id(node_id);
                 let _task = ccx.tcx().dep_graph.in_task(DepNode::TransCrateItem(def_id)); // (*)
                 let item = ccx.tcx().map.expect_item(node_id);
-                if let hir::ItemStatic(_, m, ref expr) = item.node {
-                    match consts::trans_static(&ccx, m, expr, item.id, &item.attrs) {
+                if let hir::ItemStatic(_, m, _) = item.node {
+                    match consts::trans_static(&ccx, m, item.id, &item.attrs) {
                         Ok(_) => { /* Cool, everything's alright. */ },
                         Err(err) => {
                             // FIXME: shouldn't this be a `span_err`?
                             fatal_const_eval_err(
-                                ccx.tcx(), &err, expr.span, "static");
+                                ccx.tcx(), &err, item.span, "static");
                         }
                     };
                 } else {

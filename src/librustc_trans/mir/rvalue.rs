@@ -17,7 +17,6 @@ use asm;
 use base;
 use callee::Callee;
 use common::{self, val_ty, C_bool, C_null, C_uint, BlockAndBuilder, Result};
-use datum::{Datum, Lvalue};
 use debuginfo::DebugLoc;
 use adt;
 use machine;
@@ -157,8 +156,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::InlineAsm { ref asm, ref outputs, ref inputs } => {
                 let outputs = outputs.iter().map(|output| {
                     let lvalue = self.trans_lvalue(&bcx, output);
-                    Datum::new(lvalue.llval, lvalue.ty.to_ty(bcx.tcx()),
-                               Lvalue::new("out"))
+                    (lvalue.llval, lvalue.ty.to_ty(bcx.tcx()))
                 }).collect();
 
                 let input_vals = inputs.iter().map(|input| {
@@ -202,7 +200,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             ty::TyFnDef(def_id, substs, _) => {
                                 OperandValue::Immediate(
                                     Callee::def(bcx.ccx(), def_id, substs)
-                                        .reify(bcx.ccx()).val)
+                                        .reify(bcx.ccx()))
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.ty)
