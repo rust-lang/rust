@@ -369,7 +369,6 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
     let block = &mir[loc.block];
     match block.statements.get(loc.index) {
         Some(stmt) => match stmt.kind {
-            repr::StatementKind::SetDiscriminant{ ref lvalue, .. } |
             repr::StatementKind::Assign(ref lvalue, _) => {
                 debug!("drop_flag_effects: assignment {:?}", stmt);
                  on_all_children_bits(tcx, mir, move_data,
@@ -378,6 +377,8 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
             }
             repr::StatementKind::StorageLive(_) |
             repr::StatementKind::StorageDead(_) => {}
+            repr::StatementKind::SetDiscriminant{ .. } =>
+                bug!("SetDiscriminant and drop elaboration are incompatible")
         },
         None => {
             debug!("drop_flag_effects: replace {:?}", block.terminator());
