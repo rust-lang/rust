@@ -227,6 +227,7 @@ pub trait CrateStore<'tcx> {
     fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>;
     fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>;
+    fn is_no_builtins(&self, cnum: ast::CrateNum) -> bool;
 
     // resolve
     fn def_index_for_def_key(&self,
@@ -428,6 +429,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>
         { bug!("native_libraries") }
     fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId> { bug!("reachable_ids") }
+    fn is_no_builtins(&self, cnum: ast::CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve
     fn def_key(&self, def: DefId) -> hir_map::DefKey { bug!("def_key") }
