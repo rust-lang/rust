@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
-  --> $DIR/main.rs:14:18
+  --> $DIR/main.rs:12:18
    |
-14 |     let x: u32 = (
+12 |     let x: u32 = (
    |                  ^ expected u32, found ()
    |
    = note: expected type `u32`
