@@ -109,7 +109,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Lvalue::ReturnPointer => bug!(), // handled above
             mir::Lvalue::Static(def_id) => {
                 let const_ty = self.monomorphized_lvalue_ty(lvalue);
-                LvalueRef::new_sized(consts::get_static(ccx, def_id).val,
+                LvalueRef::new_sized(consts::get_static(ccx, def_id),
                                      LvalueTy::from_ty(const_ty))
             },
             mir::Lvalue::Projection(box mir::Projection {

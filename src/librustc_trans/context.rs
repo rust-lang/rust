@@ -79,7 +79,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     stats: Stats,
     check_overflow: bool,
-    check_drop_flag_for_sanity: bool,
     mir_map: &'a MirMap<'tcx>,
     mir_cache: RefCell<DepTrackingMap<MirCache<'tcx>>>,
 
@@ -424,8 +423,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet,
-               check_overflow: bool,
-               check_drop_flag_for_sanity: bool)
+               check_overflow: bool)
                -> SharedCrateContext<'b, 'tcx> {
         let (metadata_llcx, metadata_llmod) = unsafe {
             create_context_and_module(&tcx.sess, "metadata")
@@ -500,7 +498,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                 fn_stats: RefCell::new(Vec::new()),
             },
             check_overflow: check_overflow,
-            check_drop_flag_for_sanity: check_drop_flag_for_sanity,
             use_dll_storage_attrs: use_dll_storage_attrs,
             translation_items: RefCell::new(FnvHashSet()),
             trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
@@ -962,13 +959,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn check_overflow(&self) -> bool {
         self.shared.check_overflow
-    }
-
-    pub fn check_drop_flag_for_sanity(&self) -> bool {
-        // This controls whether we emit a conditional llvm.debugtrap
-        // guarded on whether the dropflag is one of its (two) valid
-        // values.
-        self.shared.check_drop_flag_for_sanity
     }
 
     pub fn use_dll_storage_attrs(&self) -> bool {
