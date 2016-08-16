@@ -1,3 +1,180 @@
+Version 1.11.0 (2016-08-18)
+===========================
+
+Language
+--------
+
+* [`cfg_attr` works on `path` attributes]
+  (https://github.com/rust-lang/rust/pull/34546)
+* [Support nested `cfg_attr` attributes]
+  (https://github.com/rust-lang/rust/pull/34216)
+* [Allow statement-generating braced macro invocations at the end of blocks]
+  (https://github.com/rust-lang/rust/pull/34436)
+* [Macros can be expanded inside of trait definitions]
+  (https://github.com/rust-lang/rust/pull/34213)
+* [`#[macro_use]` works properly when it is itself expanded from a macro]
+  (https://github.com/rust-lang/rust/pull/34032)
+
+Stabilized APIs
+---------------
+
+* [`BinaryHeap::append`]
+  (https://doc.rust-lang.org/std/collections/binary_heap/struct.BinaryHeap.html#method.append)
+* [`BTreeMap::append`]
+  (https://doc.rust-lang.org/std/collections/btree_map/struct.BTreeMap.html#method.append)
+* [`BTreeMap::split_off`]
+  (https://doc.rust-lang.org/std/collections/btree_map/struct.BTreeMap.html#method.split_off)
+* [`BTreeSet::append`]
+  (https://doc.rust-lang.org/std/collections/btree_set/struct.BTreeSet.html#method.append)
+* [`BTreeSet::split_off`]
+  (https://doc.rust-lang.org/std/collections/btree_set/struct.BTreeSet.html#method.split_off)
+* [`f32::to_degrees`]
+  (https://doc.rust-lang.org/std/primitive.f32.html#method.to_degrees)
+  (in libcore - previously stabilized in libstd)
+* [`f32::to_radians`]
+  (https://doc.rust-lang.org/std/primitive.f32.html#method.to_radians)
+  (in libcore - previously stabilized in libstd)
+* [`f64::to_degrees`]
+  (https://doc.rust-lang.org/std/primitive.f64.html#method.to_degrees)
+  (in libcore - previously stabilized in libstd)
+* [`f64::to_radians`]
+  (https://doc.rust-lang.org/std/primitive.f64.html#method.to_radians)
+  (in libcore - previously stabilized in libstd)
+* [`Iterator::sum`]
+  (https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.sum)
+* [`Iterator::product`]
+  (https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.sum)
+* [`Cell::get_mut`]
+  (https://doc.rust-lang.org/std/cell/struct.Cell.html#method.get_mut)
+* [`RefCell::get_mut`]
+  (https://doc.rust-lang.org/std/cell/struct.RefCell.html#method.get_mut)
+
+Libraries
+---------
+
+* [The `thread_local!` macro supports multiple definitions in a single
+   invocation, and can apply attributes]
+  (https://github.com/rust-lang/rust/pull/34077)
+* [`Cow` implements `Default`]
+  (https://github.com/rust-lang/rust/pull/34305)
+* [`Wrapping` implements binary, octal, lower-hex and upper-hex
+  `Display` formatting]
+  (https://github.com/rust-lang/rust/pull/34190)
+* [The range types implement `Hash`]
+  (https://github.com/rust-lang/rust/pull/34180)
+* [`lookup_host` ignores unknown address types]
+  (https://github.com/rust-lang/rust/pull/34067)
+* [`assert_eq!` accepts a custom error message, like `assert!` does]
+  (https://github.com/rust-lang/rust/pull/33976)
+* [The main thread is now called "main" instead of "&lt;main&gt;"]
+  (https://github.com/rust-lang/rust/pull/33803)
+
+Cargo
+-----
+
+* [Disallow specifying features of transitive deps]
+  (https://github.com/rust-lang/cargo/pull/2821)
+* [Add color support for Windows consoles]
+  (https://github.com/rust-lang/cargo/pull/2804)
+* [Fix `harness = false` on `[lib]` sections]
+  (https://github.com/rust-lang/cargo/pull/2795)
+* [Don't panic when `links` contains a '.']
+  (https://github.com/rust-lang/cargo/pull/2787)
+* [Build scripts can emit warnings]
+  (https://github.com/rust-lang/cargo/pull/2630),
+  and `-vv` prints warnings for all crates.
+* [Ignore file locks on OS X NFS mounts]
+  (https://github.com/rust-lang/cargo/pull/2720)
+* [Don't warn about `package.metadata` keys]
+  (https://github.com/rust-lang/cargo/pull/2668).
+  This provides room for expansion by arbitrary tools.
+* [Add support for cdylib crate types]
+  (https://github.com/rust-lang/cargo/pull/2741)
+* [Prevent publishing crates when files are dirty]
+  (https://github.com/rust-lang/cargo/pull/2781)
+* [Don't fetch all crates on clean]
+  (https://github.com/rust-lang/cargo/pull/2704)
+* [Propagate --color option to rustc]
+  (https://github.com/rust-lang/cargo/pull/2779)
+* [Fix `cargo doc --open` on Windows]
+  (https://github.com/rust-lang/cargo/pull/2780)
+* [Improve autocompletion]
+  (https://github.com/rust-lang/cargo/pull/2772)
+* [Configure colors of stderr as well as stdout]
+  (https://github.com/rust-lang/cargo/pull/2739)
+
+Performance
+-----------
+
+* [Caching projections speeds up type check dramatically for some
+  workloads]
+  (https://github.com/rust-lang/rust/pull/33816)
+* [The default `HashMap` hasher is SipHash 1-3 instead of SipHash 2-4]
+  (https://github.com/rust-lang/rust/pull/33940)
+  This hasher is faster, but is believed to provide sufficient
+  protection from collision attacks.
+* [Comparison of `Ipv4Addr` is 10x faster]
+  (https://github.com/rust-lang/rust/pull/33891)
+
+Rustdoc
+-------
+
+* [Fix empty implementation section on some module pages]
+  (https://github.com/rust-lang/rust/pull/34536)
+* [Fix inlined renamed reexports in import lists]
+  (https://github.com/rust-lang/rust/pull/34479)
+* [Fix search result layout for enum variants and struct fields]
+  (https://github.com/rust-lang/rust/pull/34477)
+* [Fix issues with source links to external crates]
+  (https://github.com/rust-lang/rust/pull/34387)
+* [Fix redirect pages for renamed reexports]
+  (https://github.com/rust-lang/rust/pull/34245)
+
+Tooling
+-------
+
+* [rustc is better at finding the MSVC toolchain]
+  (https://github.com/rust-lang/rust/pull/34492)
+* [When emitting debug info, rustc emits frame pointers for closures,
+  shims and glue, as it does for all other functions]
+  (https://github.com/rust-lang/rust/pull/33909)
+* [rust-lldb warns about unsupported versions of LLDB]
+  (https://github.com/rust-lang/rust/pull/34646)
+* Many more errors have been given error codes and extended
+  explanations
+* API documentation continues to be improved, with many new examples
+
+Misc
+----
+
+* [rustc no longer hangs when dependencies recursively re-export
+  submodules]
+  (https://github.com/rust-lang/rust/pull/34542)
+* [rustc requires LLVM 3.7+]
+  (https://github.com/rust-lang/rust/pull/34104)
+* [The 'How Safe and Unsafe Interact' chapter of The Rustonomicon was
+  rewritten]
+  (https://github.com/rust-lang/rust/pull/33895)
+* [rustc support 16-bit pointer sizes]
+  (https://github.com/rust-lang/rust/pull/33460).
+  No targets use this yet, but it works toward AVR support.
+
+Compatibility Notes
+-------------------
+
+* [`const`s and `static`s may not have unsized types]
+  (https://github.com/rust-lang/rust/pull/34443)
+* [The new follow-set rules that place restrictions on `macro_rules!`
+  in order to ensure syntax forward-compatibility have been enabled]
+  (https://github.com/rust-lang/rust/pull/33982)
+  This was an [ammendment to RFC 550]
+  (https://github.com/rust-lang/rfcs/pull/1384),
+  and has been a warning since 1.10.
+* [`cfg` attribute process has been refactored to fix various bugs]
+  (https://github.com/rust-lang/rust/pull/33706).
+  This causes breakage in some corner cases.
+
+
 Version 1.10.0 (2016-07-07)
 ===========================
 
