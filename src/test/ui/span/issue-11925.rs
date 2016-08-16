@@ -15,7 +15,7 @@ fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
 fn main() {
     let r = {
         let x: Box<_> = box 42;
-        let f = to_fn_once(move|| &x); //~ ERROR: `x` does not live long enough
+        let f = to_fn_once(move|| &x);
         f()
     };
 
