@@ -96,6 +96,7 @@ pub mod methods;
 pub mod minmax;
 pub mod misc;
 pub mod misc_early;
+pub mod module_inception;
 pub mod mut_mut;
 pub mod mut_reference;
 pub mod mutex_atomic;
@@ -173,6 +174,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box booleans::NonminimalBool);
+    reg.register_early_lint_pass(box module_inception::Pass);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
     reg.register_late_lint_pass(box misc::CmpNan);
     reg.register_late_lint_pass(box eq_op::EqOp);
@@ -384,6 +386,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc_early::MIXED_CASE_HEX_LITERALS,
         misc_early::REDUNDANT_CLOSURE_CALL,
         misc_early::UNNEEDED_FIELD_PATTERN,
+        module_inception::MODULE_INCEPTION,
         mut_reference::UNNECESSARY_MUT_PASSED,
         mutex_atomic::MUTEX_ATOMIC,
         needless_bool::BOOL_COMPARISON,
