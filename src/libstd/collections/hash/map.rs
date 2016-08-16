@@ -2035,6 +2035,8 @@ fn assert_covariance() {
     fn keys_val<'a, 'new>(v: Keys<'a, u8, &'static str>) -> Keys<'a, u8, &'new str> { v }
     fn values_key<'a, 'new>(v: Values<'a, &'static str, u8>) -> Values<'a, &'new str, u8> { v }
     fn values_val<'a, 'new>(v: Values<'a, u8, &'static str>) -> Values<'a, u8, &'new str> { v }
+    fn drain<'new>(d: Drain<'static, &'static str, &'static str>)
+        -> Drain<'new, &'new str, &'new str> { d }
 }
 
 #[cfg(test)]

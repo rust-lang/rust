@@ -10,6 +10,7 @@
 
 use std::collections::VecDeque;
 use std::fmt::Debug;
+use std::collections::vec_deque::Drain;
 
 use test;
 
@@ -998,4 +999,9 @@ fn test_contains() {
     v.clear();
 
     assert!(!v.contains(&3));
+}
+
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
 }
