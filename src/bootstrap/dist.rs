@@ -221,13 +221,15 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
 
             // Match all source files
             if filename.ends_with(".1.in") {
-                let header = format!(r##".TH RUSTC "1" "{now_string}" "rustc 1.12.0" "User Commands""##, now_string=now_string);
+                let header =
+                    format!(r##".TH RUSTC "1" "{now_string}" "rustc 1.12.0" "User Commands""##
+                    , now_string=now_string);
 
                 println!("build: {:?}\nheader: {:?}", build.release, header);
             }
             // Match all generated files
             if filename.ends_with(".1") {
-                // TODO copy them
+                // FIXME copy them
             }
           }
         }
