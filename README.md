@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 163 lints included in this crate:
+There are 164 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -100,6 +100,7 @@ name                                                                            
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                                   | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [misrefactored_assign_op](https://github.com/Manishearth/rust-clippy/wiki#misrefactored_assign_op)                   | warn    | having a variable on both sides of an assign op
 [mixed_case_hex_literals](https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals)                   | warn    | hex literals whose letter digits are not consistently upper- or lowercased
+[module_inception](https://github.com/Manishearth/rust-clippy/wiki#module_inception)                                 | warn    | modules that have the same name as their parent module
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                                             | warn    | taking a number modulo 1, which always returns 0
 [mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                                   | allow   | usage of double-mut refs, e.g. `&mut &mut ...`
 [mutex_atomic](https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic)                                         | warn    | using a mutex where an atomic value could be used instead

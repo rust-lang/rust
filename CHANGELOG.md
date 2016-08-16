@@ -222,6 +222,7 @@ All notable changes to this project will be documented in this file.
 [`min_max`]: https://github.com/Manishearth/rust-clippy/wiki#min_max
 [`misrefactored_assign_op`]: https://github.com/Manishearth/rust-clippy/wiki#misrefactored_assign_op
 [`mixed_case_hex_literals`]: https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals
+[`module_inception`]: https://github.com/Manishearth/rust-clippy/wiki#module_inception
 [`modulo_one`]: https://github.com/Manishearth/rust-clippy/wiki#modulo_one
 [`mut_mut`]: https://github.com/Manishearth/rust-clippy/wiki#mut_mut
 [`mutex_atomic`]: https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic
