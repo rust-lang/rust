@@ -10,9 +10,8 @@
 
 // Tests that the result of type ascription has adjustments applied
 
-#![feature(rustc_attrs, type_ascription)]
+#![feature(type_ascription)]
 
-#[rustc_mir]
 fn main() {
     let x = [1, 2, 3];
     // The RHS should coerce to &[i32]

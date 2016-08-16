@@ -11,10 +11,9 @@
 // aux-build:dummy_mir_pass.rs
 // ignore-stage1
 
-#![feature(plugin, rustc_attrs)]
+#![feature(plugin)]
 #![plugin(dummy_mir_pass)]
 
-#[rustc_mir]
 fn math() -> i32 {
     11
 }

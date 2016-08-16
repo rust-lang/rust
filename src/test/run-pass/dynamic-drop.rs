@@ -74,7 +74,6 @@ impl<'a> Drop for Ptr<'a> {
     }
 }
 
-#[rustc_mir]
 fn dynamic_init(a: &Allocator, c: bool) {
     let _x;
     if c {
@@ -82,7 +81,6 @@ fn dynamic_init(a: &Allocator, c: bool) {
     }
 }
 
-#[rustc_mir]
 fn dynamic_drop(a: &Allocator, c: bool) {
     let x = a.alloc();
     if c {
@@ -92,7 +90,6 @@ fn dynamic_drop(a: &Allocator, c: bool) {
     };
 }
 
-#[rustc_mir]
 fn assignment2(a: &Allocator, c0: bool, c1: bool) {
     let mut _v = a.alloc();
     let mut _w = a.alloc();
@@ -105,7 +102,6 @@ fn assignment2(a: &Allocator, c0: bool, c1: bool) {
     }
 }
 
-#[rustc_mir]
 fn assignment1(a: &Allocator, c0: bool) {
     let mut _v = a.alloc();
     let mut _w = a.alloc();

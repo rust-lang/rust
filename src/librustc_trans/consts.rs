@@ -1150,12 +1150,7 @@ pub fn trans_static(ccx: &CrateContext,
         let def_id = ccx.tcx().map.local_def_id(id);
         let datum = get_static(ccx, def_id);
 
-        let check_attrs = |attrs: &[ast::Attribute]| {
-            let default_to_mir = ccx.sess().opts.debugging_opts.orbit;
-            let invert = if default_to_mir { "rustc_no_mir" } else { "rustc_mir" };
-            default_to_mir ^ attrs.iter().any(|item| item.check_name(invert))
-        };
-        let use_mir = check_attrs(ccx.tcx().map.attrs(id));
+        let use_mir = true;
 
         let v = if use_mir {
             ::mir::trans_static_initializer(ccx, def_id)

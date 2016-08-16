@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z orbit
-// Tests that -Z orbit affects functions from other crates.
+// Tests that MIR trans is used for functions from other crates.
 
 #![feature(unsafe_no_drop_flag)]
 

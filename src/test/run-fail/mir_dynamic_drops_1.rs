@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
 // error-pattern:drop 1
 // error-pattern:drop 2
 use std::io::{self, Write};
@@ -26,7 +25,6 @@ impl<'a> Drop for Droppable<'a> {
     }
 }
 
-#[rustc_mir]
 fn mir() {
     let (mut xv, mut yv) = (false, false);
     let x = Droppable(&mut xv, 1);
