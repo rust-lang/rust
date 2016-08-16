@@ -1466,7 +1466,7 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 /// assert_eq!((..), std::ops::RangeFull);
 ///
 /// // for i in .. {
-/// //     println!("This errors because .. has no Iterator impl");
+/// //     println!("This errors because .. has no IntoIterator impl");
 /// // }
 ///
 /// let arr = [0, 1, 2, 3];
