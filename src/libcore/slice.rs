@@ -49,7 +49,7 @@ use result::Result;
 use result::Result::{Ok, Err};
 use ptr;
 use mem;
-use marker::{Copy, Send, Sync, self};
+use marker::{Copy, Send, Sync, Sized, self};
 use iter_private::TrustedRandomAccess;
 
 #[repr(C)]
@@ -150,7 +150,7 @@ pub trait SliceExt {
     fn as_mut_ptr(&mut self) -> *mut Self::Item;
 
     #[stable(feature = "core", since = "1.6.0")]
-    fn contains(&self, x: &Self::Item) -> bool where Self::Item: PartialEq;
+    fn contains<U: ?Sized>(&self, x: &U) -> bool where Self::Item: PartialEq<U>;
 
     #[stable(feature = "core", since = "1.6.0")]
     fn starts_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
@@ -469,8 +469,8 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn contains(&self, x: &T) -> bool where T: PartialEq {
-        self.iter().any(|elt| *x == *elt)
+    fn contains<U: ?Sized>(&self, x: &U) -> bool where T: PartialEq<U> {
+        self.iter().any(|elt| *elt == *x)
     }
 
     #[inline]
