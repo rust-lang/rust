@@ -26,7 +26,6 @@ use syntax::parse::token::keywords;
 
 use std::ops::Deref;
 use std::rc::Rc;
-use std::iter;
 
 use basic_block::BasicBlock;
 
@@ -193,8 +192,8 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
             }
         });
 
-        args.into_iter().chain(vars).chain(temps).chain(mir.return_ty.maybe_converging().map(|ty| {
-            let ty = bcx.monomorphize(&ty);
+        args.into_iter().chain(vars).chain(temps).chain(Some({
+            let ty = bcx.monomorphize(&mir.return_ty);
             let lvalue = mir::Lvalue::ReturnPointer;
             if fcx.fn_ty.ret.is_indirect() {
                 let llretptr = llvm::get_param(fcx.llfn, 0);
