@@ -213,6 +213,22 @@ impl<'a> From<&'a str> for Box<Error> {
     }
 }
 
+// Note: This macro is a temporary hack that can be remove once we are building with a compiler
+// that supports `!`
+macro_rules! not_stage0 {
+    () => {
+        #[unstable(feature = "never_type", issue = "35121")]
+        impl Error for ! {
+            fn description(&self) -> &str {
+                *self
+            }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+not_stage0!();
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
     fn description(&self) -> &str { "failed to parse bool" }
