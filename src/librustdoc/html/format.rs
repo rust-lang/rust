@@ -492,7 +492,7 @@ impl fmt::Display for clean::Type {
                 primitive_link(f, clean::PrimitiveType::Array,
                                &format!("; {}]", Escape(s)))
             }
-            clean::Bottom => f.write_str("!"),
+            clean::Never => f.write_str("!"),
             clean::RawPointer(m, ref t) => {
                 match **t {
                     clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {
@@ -634,7 +634,6 @@ impl fmt::Display for clean::FunctionRetTy {
             clean::Return(clean::Tuple(ref tys)) if tys.is_empty() => Ok(()),
             clean::Return(ref ty) => write!(f, " -&gt; {}", ty),
             clean::DefaultReturn => Ok(()),
-            clean::NoReturn => write!(f, " -&gt; !")
         }
     }
 }

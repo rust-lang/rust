@@ -219,6 +219,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Block { .. } |
             ExprKind::Match { .. } |
             ExprKind::If { .. } |
+            ExprKind::NeverToAny { .. } |
             ExprKind::Loop { .. } |
             ExprKind::LogicalOp { .. } |
             ExprKind::Call { .. } |

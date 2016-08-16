@@ -185,7 +185,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
                 // Scalar and unique types are sendable, and durable
                 ty::TyInfer(ty::FreshIntTy(_)) | ty::TyInfer(ty::FreshFloatTy(_)) |
-                ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
+                ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
                 ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar => {
                     TC::None
                 }

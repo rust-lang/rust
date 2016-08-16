@@ -69,7 +69,7 @@ use tvec;
 use type_of;
 use value::Value;
 use Disr;
-use rustc::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use rustc::ty::adjustment::{AdjustNeverToAny, AdjustDerefRef, AdjustReifyFnPointer};
 use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -348,6 +348,7 @@ fn adjustment_required<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     match adjustment {
+        AdjustNeverToAny(..) => true,
         AdjustReifyFnPointer => true,
         AdjustUnsafeFnPointer | AdjustMutToConstPointer => {
             // purely a type-level thing
@@ -380,6 +381,12 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("unadjusted datum for expr {:?}: {:?} adjustment={:?}",
            expr, datum, adjustment);
     match adjustment {
+        AdjustNeverToAny(ref target) => {
+            let mono_target = bcx.monomorphize(target);
+            let llty = type_of::type_of(bcx.ccx(), mono_target);
+            let dummy = C_undef(llty.ptr_to());
+            datum = Datum::new(dummy, mono_target, Lvalue::new("never")).to_expr_datum();
+        }
         AdjustReifyFnPointer => {
             match datum.ty.sty {
                 ty::TyFnDef(def_id, substs, _) => {
@@ -796,7 +803,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
 
             let ref_ty = // invoked methods have LB regions instantiated:
-                bcx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
+                bcx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap();
             let elt_ty = match ref_ty.builtin_deref(true, ty::NoPreference) {
                 None => {
                     span_bug!(index_expr.span,
@@ -2053,7 +2060,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let ref_ty = // invoked methods have their LB regions instantiated
-                ccx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
+                ccx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap();
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
             bcx = Callee::method(bcx, method)

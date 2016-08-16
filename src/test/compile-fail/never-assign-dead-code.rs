@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// Test that an assignment of type ! makes the rest of the block dead code.
 
-enum v {}
-pub fn main() {
-    let y: v = unsafe { ::std::mem::uninitialized() };
+#![feature(never_type)]
+#![deny(unused, unreachable_code)]
+
+fn main() {
+    let x: ! = panic!("aah"); //~ ERROR unused
+    drop(x); //~ ERROR unreachable
 }
+

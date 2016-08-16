@@ -523,7 +523,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             // Primitive types with a stable representation.
             ty::TyBool | ty::TyInt(..) | ty::TyUint(..) |
-            ty::TyFloat(..) => FfiSafe,
+            ty::TyFloat(..) | ty::TyNever => FfiSafe,
 
             ty::TyBox(..) => {
                 FfiUnsafe("found Rust type Box<_> in foreign module, \
@@ -573,16 +573,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 let sig = cx.erase_late_bound_regions(&bare_fn.sig);
-                match sig.output {
-                    ty::FnDiverging => {}
-                    ty::FnConverging(output) => {
-                        if !output.is_nil() {
-                            let r = self.check_type_for_ffi(cache, output);
-                            match r {
-                                FfiSafe => {}
-                                _ => { return r; }
-                            }
-                        }
+                if !sig.output.is_nil() {
+                    let r = self.check_type_for_ffi(cache, sig.output);
+                    match r {
+                        FfiSafe => {}
+                        _ => { return r; }
                     }
                 }
                 for arg in sig.inputs {
@@ -641,7 +636,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         if let hir::Return(ref ret_hir) = decl.output {
-            let ret_ty = sig.output.unwrap();
+            let ret_ty = sig.output;
             if !ret_ty.is_nil() {
                 self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty);
             }

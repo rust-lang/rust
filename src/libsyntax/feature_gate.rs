@@ -284,7 +284,10 @@ declare_features! (
 
     // Allows tuple structs and variants in more contexts,
     // Permits numeric fields in struct expressions and patterns.
-    (active, relaxed_adts, "1.12.0", Some(35626))
+    (active, relaxed_adts, "1.12.0", Some(35626)),
+
+    // The `!` type
+    (active, never_type, "1.13.0", Some(35121))
 );
 
 declare_features! (
@@ -963,9 +966,23 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, conservative_impl_trait, ty.span,
                                    "`impl Trait` is experimental");
             }
+            ast::TyKind::Never => {
+                gate_feature_post!(&self, never_type, ty.span,
+                                   "The `!` type is experimental");
+            },
             _ => {}
         }
         visit::walk_ty(self, ty)
+    }
+
+    fn visit_fn_ret_ty(&mut self, ret_ty: &ast::FunctionRetTy) {
+        if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
+            match output_ty.node {
+                ast::TyKind::Never => return,
+                _ => (),
+            };
+            self.visit_ty(output_ty)
+        }
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {

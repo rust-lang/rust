@@ -610,7 +610,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let scheme = tcx.lookup_item_type(def.def_id());
         let scheme = if scheme.ty.is_fn() {
             // Replace constructor type with constructed type for tuple struct patterns.
-            let fn_ret = tcx.no_late_bound_regions(&scheme.ty.fn_ret()).unwrap().unwrap();
+            let fn_ret = tcx.no_late_bound_regions(&scheme.ty.fn_ret()).unwrap();
             ty::TypeScheme { ty: fn_ret, generics: scheme.generics }
         } else {
             // Leave the type as is for unit structs (backward compatibility).

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/* Make sure a loop{} with a break in it can't be
-   the tailexpr in the body of a diverging function */
-fn forever() -> ! {
-  loop {
-    break;
-  }
-  return 42; //~ ERROR `return` in a function declared as diverging
+// Test that ! coerces to other types.
+
+// error-pattern:aah!
+
+fn call_another_fn<T, F: FnOnce() -> T>(f: F) -> T {
+    f()
+}
+
+fn wub() -> ! {
+    panic!("aah!");
 }
 
 fn main() {
+    let x: i32 = call_another_fn(wub);
+    let y: u32 = wub();
 }
+
+

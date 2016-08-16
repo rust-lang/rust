@@ -201,7 +201,11 @@ pub fn trans_closure_body_via_mir<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     trans_closure_expr(Dest::Ignore(ccx),
                        &hir::FnDecl {
                            inputs: P::new(),
-                           output: hir::NoReturn(DUMMY_SP),
+                           output: hir::Return(P(hir::Ty {
+                               id: DUMMY_NODE_ID,
+                               span: DUMMY_SP,
+                               node: hir::Ty_::TyNever,
+                           })),
                            variadic: false
                        },
                        &hir::Block {

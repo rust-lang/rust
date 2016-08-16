@@ -220,18 +220,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoRef<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::FnOutput<'a> {
-    type Lifted = ty::FnOutput<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        match *self {
-            ty::FnConverging(ty) => {
-                tcx.lift(&ty).map(ty::FnConverging)
-            }
-            ty::FnDiverging => Some(ty::FnDiverging)
-        }
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for ty::FnSig<'a> {
     type Lifted = ty::FnSig<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -498,7 +486,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) => self.sty.clone(),
+            ty::TyParam(..) | ty::TyNever => self.sty.clone(),
         };
         folder.tcx().mk_ty(sty)
     }
@@ -527,7 +515,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyAnon(_, ref substs) => substs.visit_with(visitor),
             ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
-            ty::TyParam(..) => false,
+            ty::TyParam(..) | ty::TyNever => false,
         }
     }
 
@@ -584,26 +572,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.ty.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::FnOutput<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            ty::FnConverging(ref ty) => ty::FnConverging(ty.fold_with(folder)),
-            ty::FnDiverging => ty::FnDiverging
-        }
-    }
-
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_output(self)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            ty::FnConverging(ref ty) => ty.visit_with(visitor),
-            ty::FnDiverging => false,
-        }
     }
 }
 

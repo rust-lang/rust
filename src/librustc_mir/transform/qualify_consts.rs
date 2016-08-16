@@ -416,7 +416,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        let return_ty = mir.return_ty.unwrap();
+        let return_ty = mir.return_ty;
         self.qualif = self.return_qualif.unwrap_or(Qualif::NOT_CONST);
 
         match self.mode {
@@ -1001,7 +1001,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
 
             // Statics must be Sync.
             if mode == Mode::Static {
-                let ty = mir.return_ty.unwrap();
+                let ty = mir.return_ty;
                 tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
                     let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                     let mut fulfillment_cx = traits::FulfillmentContext::new();

@@ -1972,7 +1972,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
     let sig = ccx.tcx().normalize_associated_type(&sig);
-    let result_ty = sig.output.unwrap();
+    let result_ty = sig.output;
 
     // Get location to store the result. If the user does not care about
     // the result, just make a stack slot
@@ -2054,7 +2054,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if !fcx.fn_ty.ret.is_ignore() {
         let dest = fcx.get_ret_slot(bcx, "eret_slot");
         let dest_val = adt::MaybeSizedValue::sized(dest); // Can return unsized value
-        let repr = adt::represent_type(ccx, sig.output.unwrap());
+        let repr = adt::represent_type(ccx, sig.output);
         let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs.into_iter().enumerate() {

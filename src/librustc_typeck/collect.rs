@@ -971,7 +971,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 abi: abi::Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: inputs,
-                    output: ty::FnConverging(scheme.ty),
+                    output: scheme.ty,
                     variadic: false
                 })
             }))
@@ -2155,11 +2155,9 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
 
     let output = match decl.output {
         hir::Return(ref ty) =>
-            ty::FnConverging(AstConv::ast_ty_to_ty(&ccx.icx(ast_generics), &rb, &ty)),
+            AstConv::ast_ty_to_ty(&ccx.icx(ast_generics), &rb, &ty),
         hir::DefaultReturn(..) =>
-            ty::FnConverging(ccx.tcx.mk_nil()),
-        hir::NoReturn(..) =>
-            ty::FnDiverging
+            ccx.tcx.mk_nil(),
     };
 
     // feature gate SIMD types in FFI, since I (huonw) am not sure the
@@ -2180,7 +2178,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
             check(&input.ty, ty)
         }
         if let hir::Return(ref ty) = decl.output {
-            check(&ty, output.unwrap())
+            check(&ty, output)
         }
     }
 

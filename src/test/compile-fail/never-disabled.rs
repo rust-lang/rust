@@ -8,12 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that a function with a ! annotation always actually fails
+// Test that ! errors when used in illegal positions with feature(never_type) disabled
 
-fn bad_bang(i: usize) -> ! {
-    return 7;
-    //~^ ERROR `return` in a function declared as diverging [E0166]
-    //~| NOTE diverging function cannot return
+trait Foo {
+    type Wub;
 }
 
-fn main() { bad_bang(5); }
+type Ma = (u32, !, i32); //~ ERROR type is experimental
+type Meeshka = Vec<!>; //~ ERROR type is experimental
+type Mow = &fn(!) -> !; //~ ERROR type is experimental
+type Skwoz = &mut !; //~ ERROR type is experimental
+
+impl Foo for Meeshka {
+    type Wub = !; //~ ERROR type is experimental
+}
+
+fn main() {
+}
+

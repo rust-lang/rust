@@ -433,7 +433,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
     // We still need to ensure all referenced data is safe.
     match ty.sty {
         ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
-        ty::TyFloat(_) | ty::TyStr => {
+        ty::TyFloat(_) | ty::TyStr | ty::TyNever => {
             // primitive - definitely safe
             Ok(())
         }

@@ -238,7 +238,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: Vec::new(),
-                    output: ty::FnConverging(tcx.mk_nil()),
+                    output: tcx.mk_nil(),
                     variadic: false
                 })
             }));
@@ -294,7 +294,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
                     ),
-                    output: ty::FnConverging(tcx.types.isize),
+                    output: tcx.types.isize,
                     variadic: false,
                 }),
             }));

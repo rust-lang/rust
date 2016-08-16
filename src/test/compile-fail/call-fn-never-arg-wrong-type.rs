@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() -> ! { //~ ERROR computation may converge in a function marked as diverging
-    3
+// Test that we can't pass other types for !
+
+#![feature(never_type)]
+
+fn foo(x: !) -> ! {
+    x
 }
-fn main() { }
+
+fn main() {
+    foo("wow"); //~ ERROR mismatched types
+}
+

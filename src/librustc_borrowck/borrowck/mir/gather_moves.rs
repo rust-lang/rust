@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use rustc::ty::{FnOutput, TyCtxt};
+use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::util::nodemap::FnvHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -231,8 +231,7 @@ impl<'tcx> Index<MovePathIndex> for MovePathData<'tcx> {
     }
 }
 
-struct MovePathDataBuilder<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+struct MovePathDataBuilder<'tcx> {
     pre_move_paths: Vec<PreMovePath<'tcx>>,
     rev_lookup: MovePathLookup<'tcx>,
 }
@@ -412,7 +411,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     }
 }
 
-impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
+impl<'tcx> MovePathDataBuilder<'tcx> {
     fn lookup(&mut self, lval: &Lvalue<'tcx>) -> Lookup<MovePathIndex> {
         let proj = match *lval {
             Lvalue::Var(var_idx) =>
@@ -528,7 +527,6 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
     // BlockContexts constructed on each iteration. (Moving is more
     // straight-forward than mutable borrows in this instance.)
     let mut builder = MovePathDataBuilder {
-        mir: mir,
         pre_move_paths: Vec::new(),
         rev_lookup: MovePathLookup::new(mir),
     };
@@ -634,13 +632,8 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
             TerminatorKind::Return => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
-                if let FnOutput::FnConverging(_) = bb_ctxt.builder.mir.return_ty {
-                    debug!("gather_moves Return on_move_out_lval return {:?}", source);
-                    bb_ctxt.on_move_out_lval(SK::Return, &Lvalue::ReturnPointer, source);
-                } else {
-                    debug!("gather_moves Return on_move_out_lval \
-                            assuming unreachable return {:?}", source);
-                }
+                debug!("gather_moves Return on_move_out_lval return {:?}", source);
+                bb_ctxt.on_move_out_lval(SK::Return, &Lvalue::ReturnPointer, source);
             }
 
             TerminatorKind::If { ref cond, targets: _ } => {
@@ -751,15 +744,15 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
     }
 }
 
-struct BlockContext<'b, 'a: 'b, 'tcx: 'a> {
+struct BlockContext<'b, 'tcx: 'b> {
     _tcx: TyCtxt<'b, 'tcx, 'tcx>,
     moves: &'b mut Vec<MoveOut>,
-    builder: MovePathDataBuilder<'a, 'tcx>,
+    builder: MovePathDataBuilder<'tcx>,
     path_map: &'b mut Vec<Vec<MoveOutIndex>>,
     loc_map_bb: &'b mut Vec<Vec<MoveOutIndex>>,
 }
 
-impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
+impl<'b, 'tcx: 'b> BlockContext<'b, 'tcx> {
     fn on_move_out_lval(&mut self,
                         stmt_kind: StmtKind,
                         lval: &Lvalue<'tcx>,

@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> ! { return; }
-    //~^ ERROR E0166
-    //~| NOTE diverging function cannot return
+// Test that we can extract a ! through pattern matching then use it as several different types.
+
+#![feature(never_type)]
 
 fn main() {
+    let x: Result<u32, !> = Ok(123);
+    match x {
+        Ok(z) => (),
+        Err(y) => {
+            let q: u32 = y;
+            let w: i32 = y;
+            let e: String = y;
+            y
+        },
+    }
 }
+

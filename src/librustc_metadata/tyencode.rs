@@ -74,6 +74,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
     match t.sty {
         ty::TyBool => { write!(w, "b"); }
         ty::TyChar => { write!(w, "c"); }
+        ty::TyNever => { write!(w, "!"); }
         ty::TyInt(t) => {
             match t {
                 ast::IntTy::Is => write!(w, "is"),
@@ -382,14 +383,7 @@ fn enc_fn_sig<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     } else {
         write!(w, "N");
     }
-    match fsig.0.output {
-        ty::FnConverging(result_type) => {
-            enc_ty(w, cx, result_type);
-        }
-        ty::FnDiverging => {
-            write!(w, "z");
-        }
-    }
+    enc_ty(w, cx, fsig.0.output);
 }
 
 pub fn enc_builtin_bounds(w: &mut Cursor<Vec<u8>>, _cx: &ctxt, bs: &ty::BuiltinBounds) {

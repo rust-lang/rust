@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that a function with a ! annotation always actually fails
+// Test that we can explicitly cast ! to another type
 
-fn bad_bang(i: usize) -> ! { //~ ERROR computation may converge in a function marked as diverging
-    if i < 0 { } else { panic!(); }
+#![feature(never_type)]
+
+// error-pattern:explicit
+fn main() {
+    let x: ! = panic!();
+    let y: u32 = x as u32;
 }
 
-fn main() { bad_bang(5); }

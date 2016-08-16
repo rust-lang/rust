@@ -34,7 +34,7 @@ use type_of;
 use value::Value;
 use Disr;
 use rustc::ty::subst::Substs;
-use rustc::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use rustc::ty::adjustment::{AdjustNeverToAny, AdjustDerefRef, AdjustReifyFnPointer};
 use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::cast::{CastTy,IntTy};
@@ -348,6 +348,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                             &cx.tcx().expr_ty_adjusted(e));
     let opt_adj = cx.tcx().tables.borrow().adjustments.get(&e.id).cloned();
     match opt_adj {
+        Some(AdjustNeverToAny(..)) => span_bug!(e.span, "const expression of type ! encountered"),
         Some(AdjustReifyFnPointer) => {
             match ety.sty {
                 ty::TyFnDef(def_id, substs, _) => {

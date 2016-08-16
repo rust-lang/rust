@@ -311,7 +311,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         let fn_sig_tys: Vec<_> =
             fn_sig.inputs.iter()
                          .cloned()
-                         .chain(Some(fn_sig.output.unwrap_or(self.tcx.types.bool)))
+                         .chain(Some(fn_sig.output))
                          .collect();
 
         let old_body_id = self.set_body_id(body.id);
@@ -708,7 +708,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
                                             None::<hir::Expr>.iter(), true);
                         // late-bound regions in overloaded method calls are instantiated
                         let fn_ret = self.tcx.no_late_bound_regions(&method.ty.fn_ret());
-                        fn_ret.unwrap().unwrap()
+                        fn_ret.unwrap()
                     }
                     None => self.resolve_node_type(base.id)
                 };
@@ -980,14 +980,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     // Specialized version of constrain_call.
                     self.type_must_outlive(infer::CallRcvr(deref_expr.span),
                                            self_ty, r_deref_expr);
-                    match fn_sig.output {
-                        ty::FnConverging(return_type) => {
-                            self.type_must_outlive(infer::CallReturn(deref_expr.span),
-                                                   return_type, r_deref_expr);
-                            return_type
-                        }
-                        ty::FnDiverging => bug!()
-                    }
+                    self.type_must_outlive(infer::CallReturn(deref_expr.span),
+                                           fn_sig.output, r_deref_expr);
+                    fn_sig.output
                 }
                 None => derefd_ty
             };

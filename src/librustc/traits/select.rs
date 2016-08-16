@@ -1388,7 +1388,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: _,
-                    output: ty::FnConverging(_),
+                    output: _,
                     variadic: false
                 })
             }) |
@@ -1397,7 +1397,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: _,
-                    output: ty::FnConverging(_),
+                    output: _,
                     variadic: false
                 })
             }) => {
@@ -1772,7 +1772,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
             ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
             ty::TyChar | ty::TyBox(_) | ty::TyRef(..) |
-            ty::TyArray(..) | ty::TyClosure(..) |
+            ty::TyArray(..) | ty::TyClosure(..) | ty::TyNever |
             ty::TyError => {
                 // safe for everything
                 Where(ty::Binder(Vec::new()))
@@ -1820,7 +1820,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
             ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
             ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
-            ty::TyRawPtr(..) | ty::TyError |
+            ty::TyRawPtr(..) | ty::TyError | ty::TyNever |
             ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
                 Where(ty::Binder(Vec::new()))
             }
@@ -1886,6 +1886,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyError |
             ty::TyInfer(ty::IntVar(_)) |
             ty::TyInfer(ty::FloatVar(_)) |
+            ty::TyNever |
             ty::TyChar => {
                 Vec::new()
             }

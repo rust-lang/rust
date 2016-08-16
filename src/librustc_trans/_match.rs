@@ -1593,7 +1593,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     }
 
     let t = node_id_type(bcx, discr_expr.id);
-    let chk = if t.is_empty(tcx) {
+    let chk = if t.is_uninhabited(tcx) {
         Unreachable
     } else {
         Infallible

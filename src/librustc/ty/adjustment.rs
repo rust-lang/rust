@@ -21,9 +21,10 @@ use hir;
 
 #[derive(Copy, Clone)]
 pub enum AutoAdjustment<'tcx> {
-    AdjustReifyFnPointer,    // go from a fn-item type to a fn-pointer type
-    AdjustUnsafeFnPointer,   // go from a safe fn pointer to an unsafe fn pointer
-    AdjustMutToConstPointer, // go from a mut raw pointer to a const raw pointer
+    AdjustNeverToAny(Ty<'tcx>), // go from ! to any type
+    AdjustReifyFnPointer,       // go from a fn-item type to a fn-pointer type
+    AdjustUnsafeFnPointer,      // go from a safe fn pointer to an unsafe fn pointer
+    AdjustMutToConstPointer,    // go from a mut raw pointer to a const raw pointer
     AdjustDerefRef(AutoDerefRef<'tcx>),
 }
 
@@ -106,6 +107,7 @@ pub struct AutoDerefRef<'tcx> {
 impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
+            AdjustNeverToAny(ty) => ty.is_never(),
             AdjustReifyFnPointer |
             AdjustUnsafeFnPointer |
             AdjustMutToConstPointer => false,
@@ -154,6 +156,8 @@ impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
         return match adjustment {
             Some(adjustment) => {
                 match *adjustment {
+                    AdjustNeverToAny(ref ty) => ty,
+
                     AdjustReifyFnPointer => {
                         match self.sty {
                             ty::TyFnDef(_, _, f) => tcx.mk_fn_ptr(f),
@@ -227,8 +231,7 @@ impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
         if let Some(method_ty) = method_type(method_call) {
             // Method calls always have all late-bound regions
             // fully instantiated.
-            let fn_ret = tcx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
-            adjusted_ty = fn_ret.unwrap();
+            adjusted_ty = tcx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
         }
         match adjusted_ty.builtin_deref(true, NoPreference) {
             Some(mt) => mt.ty,
