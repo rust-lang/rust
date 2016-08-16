@@ -1,4 +1,5 @@
 #![feature(asm)]
+#![feature(core_intrinsics)]
 #![feature(linkage)]
 #![feature(naked_functions)]
 #![cfg_attr(not(test), no_std)]
