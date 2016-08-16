@@ -1053,6 +1053,7 @@ pub struct Resolver<'a> {
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
+    new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
 }
 
 pub struct ResolverArenas<'a> {
@@ -1209,6 +1210,7 @@ impl<'a> Resolver<'a> {
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
+            new_import_semantics: session.features.borrow().item_like_imports,
         }
     }
 
