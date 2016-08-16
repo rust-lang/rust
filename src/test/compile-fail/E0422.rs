@@ -9,5 +9,7 @@
 // except according to those terms.
 
 fn main () {
-    let x = Foo { x: 1, y: 2 }; //~ ERROR E0422
+    let x = Foo { x: 1, y: 2 };
+    //~^ ERROR E0422
+    //~| NOTE not a structure
 }

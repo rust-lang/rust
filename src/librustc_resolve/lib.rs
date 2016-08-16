@@ -317,11 +317,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::DoesNotNameAStruct(name) => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0422,
                              "`{}` does not name a structure",
-                             name)
+                             name);
+            err.span_label(span, &format!("not a structure"));
+            err
         }
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
             struct_span_err!(resolver.session,
