@@ -46,6 +46,7 @@ clean-misc:
 	$(Q)rm -Rf rust-stage0-*.tar.bz2 $(PKG_NAME)-*.tar.gz $(PKG_NAME)-*.exe
 	$(Q)rm -Rf dist/*
 	$(Q)rm -Rf doc
+	$(Q)git clean -xdf man/
 
 define CLEAN_GENERIC
 

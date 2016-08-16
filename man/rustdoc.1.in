@@ -1,4 +1,3 @@
-.TH RUSTDOC "1" "August 2016" "rustdoc 1.12.0" "User Commands"
 .SH NAME
 rustdoc \- generate documentation from Rust source code
 .SH SYNOPSIS
