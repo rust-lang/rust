@@ -19,6 +19,7 @@
 use rustc::lint;
 use rustc::session::Session;
 use syntax::ast::*;
+use syntax::attr;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -167,6 +168,10 @@ impl<'a> Visitor for AstValidator<'a> {
                         self.invalid_visibility(&field.vis, field.span, None);
                     }
                 }
+            }
+            ItemKind::Mod(_) => {
+                // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
+                attr::first_attr_value_str_by_name(&item.attrs, "path");
             }
             _ => {}
         }
