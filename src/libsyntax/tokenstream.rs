@@ -589,6 +589,12 @@ impl TokenStream {
         TokenStream::mk_leaf(Rc::new(trees), span)
     }
 
+    /// Convert a vector of Tokens into a TokenStream.
+    pub fn from_tokens(tokens: Vec<Token>) -> TokenStream {
+        // FIXME do something nicer with the spans
+        TokenStream::from_tts(tokens.into_iter().map(|t| TokenTree::Token(DUMMY_SP, t)).collect())
+    }
+
     /// Manually change a TokenStream's span.
     pub fn respan(self, span: Span) -> TokenStream {
         match self.ts {
