@@ -20,7 +20,7 @@ inspect() {
         linux)
             local symbols=( memcmp memcpy memmove memset )
             for symbol in "${symbols[@]}"; do
-                $PREFIX$NM target/**/debug/*.rlib | grep -q "W $symbol"
+                $PREFIX$NM target/**/debug/deps/librlibc*.rlib | grep -q "W $symbol"
             done
             ;;
     esac
