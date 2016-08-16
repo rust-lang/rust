@@ -1,8 +1,9 @@
-#![allow(unused_features)]
 #![feature(asm)]
 #![feature(core_intrinsics)]
+#![feature(linkage)]
 #![feature(naked_functions)]
 #![cfg_attr(not(test), no_std)]
+#![no_builtins]
 // TODO(rust-lang/rust#35021) uncomment when that PR lands
 // #![feature(rustc_builtins)]
 
@@ -15,6 +16,9 @@ extern crate quickcheck;
 
 #[cfg(test)]
 extern crate core;
+
+#[cfg(all(not(windows), not(target_os = "macos")))]
+extern crate rlibc;
 
 #[cfg(target_arch = "arm")]
 pub mod arm;
