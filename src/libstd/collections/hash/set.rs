@@ -1036,6 +1036,7 @@ fn assert_covariance() {
         -> Intersection<'a, &'new str, RandomState> { v }
     fn union<'a, 'new>(v: Union<'a, &'static str, RandomState>)
         -> Union<'a, &'new str, RandomState> { v }
+    fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
 }
 
 #[cfg(test)]
