@@ -22,8 +22,8 @@ fn a() {
     let mut factorial: Option<Box<Fn(u32) -> u32>> = None;
 
     let f = |x: u32| -> u32 {
-        //~^ ERROR `factorial` does not live long enough
         let g = factorial.as_ref().unwrap();
+        //~^ ERROR `factorial` does not live long enough
         if x == 0 {1} else {x * g(x-1)}
     };
 

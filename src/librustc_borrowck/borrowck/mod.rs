@@ -43,7 +43,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span, BytePos};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
@@ -566,7 +566,7 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
 #[derive(PartialEq)]
 pub enum bckerr_code {
     err_mutbl,
-    err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
+    err_out_of_scope(ty::Region, ty::Region, euv::LoanCause), // superscope, subscope, loan cause
     err_borrowed_pointer_too_short(ty::Region, ty::Region), // loan, ptr
 }
 
@@ -614,9 +614,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn report(&self, err: BckError<'tcx>) {
         // Catch and handle some particular cases.
         match (&err.code, &err.cause) {
-            (&err_out_of_scope(ty::ReScope(_), ty::ReStatic),
+            (&err_out_of_scope(ty::ReScope(_), ty::ReStatic, _),
              &BorrowViolation(euv::ClosureCapture(span))) |
-            (&err_out_of_scope(ty::ReScope(_), ty::ReFree(..)),
+            (&err_out_of_scope(ty::ReScope(_), ty::ReFree(..), _),
              &BorrowViolation(euv::ClosureCapture(span))) => {
                 return self.report_out_of_scope_escaping_closure_capture(&err, span);
             }
@@ -963,6 +963,24 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             .emit();
     }
 
+    fn convert_region_to_span(&self, region: ty::Region) -> Option<Span> {
+        match region {
+            ty::ReScope(scope) => {
+                match scope.span(&self.tcx.region_maps, &self.tcx.map) {
+                    Some(s) => {
+                        let mut last_span = s;
+                        last_span.lo = BytePos(last_span.hi.0 - 1);
+                        Some(last_span)
+                    }
+                    None => {
+                        None
+                    }
+                }
+            }
+            _ => None
+        }
+    }
+
     pub fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>,
         error_span: Span) {
         let code = err.code;
@@ -1003,19 +1021,61 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            err_out_of_scope(super_scope, sub_scope) => {
-                self.tcx.note_and_explain_region(
-                    db,
-                    "reference must be valid for ",
-                    sub_scope,
-                    "...");
-                self.tcx.note_and_explain_region(
-                    db,
-                    "...but borrowed value is only valid for ",
-                    super_scope,
-                    "");
+            err_out_of_scope(super_scope, sub_scope, cause) => {
+                match cause {
+                    euv::ClosureCapture(s) => {
+                        match db.span.primary_span() {
+                            Some(primary) => {
+                                db.span = MultiSpan::from_span(s);
+                                db.span_label(primary, &format!("capture occurs here"));
+                                db.span_label(s, &format!("does not live long enough"));
+                            }
+                            None => ()
+                        }
+                    }
+                    _ => {
+                        db.span_label(error_span, &format!("does not live long enough"));
+                    }
+                }
+
+                let sub_span = self.convert_region_to_span(sub_scope);
+                let super_span = self.convert_region_to_span(super_scope);
+
+                match (sub_span, super_span) {
+                    (Some(s1), Some(s2)) if s1 == s2 => {
+                        db.span_label(s1, &"borrowed value dropped before borrower");
+                        db.note("values in a scope are dropped in the opposite order \
+                                they are created");
+                    }
+                    _ => {
+                        match sub_span {
+                            Some(s) => {
+                                db.span_label(s, &"borrowed value must be valid until here");
+                            }
+                            None => {
+                                self.tcx.note_and_explain_region(
+                                    db,
+                                    "borrowed value must be valid for ",
+                                    sub_scope,
+                                    "...");
+                            }
+                        }
+                        match super_span {
+                            Some(s) => {
+                                db.span_label(s, &"borrowed value only valid until here");
+                            }
+                            None => {
+                                self.tcx.note_and_explain_region(
+                                    db,
+                                    "...but borrowed value is only valid for ",
+                                    super_scope,
+                                    "");
+                            }
+                        }
+                    }
+                }
+
                 if let Some(span) = statement_scope_span(self.tcx, super_scope) {
-                    db.span_label(error_span, &format!("does not live long enough"));
                     db.span_help(span,
                                  "consider using a `let` binding to increase its lifetime");
                 }

@@ -11,11 +11,11 @@
 fn f() {
     let x = [1].iter();
     //~^ ERROR borrowed value does not live long enough
-    //~|does not live long enough
-    //~| NOTE reference must be valid for the block suffix following statement
+    //~| NOTE does not live long enough
+    //~| NOTE borrowed value only valid until here
     //~| HELP consider using a `let` binding to increase its lifetime
-    //~| NOTE ...but borrowed value is only valid for the statement at 12:4
 }
+//~^ borrowed value must be valid until here
 
 fn main() {
     f();
