@@ -23,6 +23,9 @@ extern crate rlibc;
 #[cfg(target_arch = "arm")]
 pub mod arm;
 
+#[cfg(target_arch = "x86_64")]
+pub mod x86_64;
+
 pub mod udiv;
 pub mod mul;
 pub mod shift;
