@@ -1,7 +1,7 @@
-- Feature Name: panic_safe_slicing
+- Feature Name: `panic_safe_slicing`
 - Start Date: 2015-10-16
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1679](https://github.com/rust-lang/rfcs/pull/1679)
+- Rust Issue: [rust-lang/rfcs#35729](https://github.com/rust-lang/rust/issues/35729)
 
 # Summary
 
