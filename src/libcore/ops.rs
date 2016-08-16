@@ -102,6 +102,13 @@ pub trait Drop {
     ///
     /// After this function is over, the memory of `self` will be deallocated.
     ///
+    /// This function cannot be called explicitly. This is compiler error
+    /// [0040]. However, the [`std::mem::drop`] function in the prelude can be
+    /// used to call the argument's `Drop` implementation.
+    ///
+    /// [0040]: https://doc.rust-lang.org/error-index.html#E0040
+    /// [`std::mem::drop`]: https://doc.rust-lang.org/std/mem/fn.drop.html
+    ///
     /// # Panics
     ///
     /// Given that a `panic!` will call `drop()` as it unwinds, any `panic!` in
