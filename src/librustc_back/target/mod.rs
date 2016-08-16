@@ -143,6 +143,8 @@ supported_targets! {
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
     ("mipsel-unknown-linux-musl", mipsel_unknown_linux_musl),
+    ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
+    ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
 
     ("i686-linux-android", i686_linux_android),
     ("arm-linux-androideabi", arm_linux_androideabi),
