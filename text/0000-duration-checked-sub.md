@@ -54,7 +54,7 @@ underlying primitive types:
 
 ```rust
 impl Duration {
-    fn checked_sub(self, rhs: Duration) -> Duration {
+    fn checked_sub(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
             let nanos = if self.nanos >= rhs.nanos {
                 self.nanos - rhs.nanos
@@ -67,7 +67,7 @@ impl Duration {
                 }
             };
             debug_assert!(nanos < NANOS_PER_SEC);
-            Duration { secs: secs, nanos: nanos }
+            Some(Duration { secs: secs, nanos: nanos })
         }
         else {
             None
