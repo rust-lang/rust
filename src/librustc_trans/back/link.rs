@@ -940,7 +940,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             Linkage::IncludedFromDylib => {}
             Linkage::Static => {
                 add_static_crate(cmd, sess, tmpdir, crate_type,
-                                 &src.rlib.unwrap().0)
+                                 &src.rlib.unwrap().0, sess.cstore.is_no_builtins(cnum))
             }
             Linkage::Dynamic => {
                 add_dynamic_crate(cmd, sess, &src.dylib.unwrap().0)
@@ -964,12 +964,16 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // * For LTO, we remove upstream object files.
     // * For dylibs we remove metadata and bytecode from upstream rlibs
     //
-    // When performing LTO, all of the bytecode from the upstream libraries has
-    // already been included in our object file output. As a result we need to
-    // remove the object files in the upstream libraries so the linker doesn't
-    // try to include them twice (or whine about duplicate symbols). We must
-    // continue to include the rest of the rlib, however, as it may contain
-    // static native libraries which must be linked in.
+    // When performing LTO, almost(*) all of the bytecode from the upstream
+    // libraries has already been included in our object file output. As a
+    // result we need to remove the object files in the upstream libraries so
+    // the linker doesn't try to include them twice (or whine about duplicate
+    // symbols). We must continue to include the rest of the rlib, however, as
+    // it may contain static native libraries which must be linked in.
+    //
+    // (*) Crates marked with `#![no_builtins]` don't participate in LTO and
+    // their bytecode wasn't included. The object files in those libraries must
+    // still be passed to the linker.
     //
     // When making a dynamic library, linkers by default don't include any
     // object files in an archive if they're not necessary to resolve the link.
@@ -989,7 +993,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                         sess: &Session,
                         tmpdir: &Path,
                         crate_type: config::CrateType,
-                        cratepath: &Path) {
+                        cratepath: &Path,
+                        is_a_no_builtins_crate: bool) {
         if !sess.lto() && crate_type != config::CrateTypeDylib {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
             return
@@ -1013,7 +1018,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 }
                 let canonical = f.replace("-", "_");
                 let canonical_name = name.replace("-", "_");
-                if sess.lto() && canonical.starts_with(&canonical_name) &&
+                if sess.lto() && !is_a_no_builtins_crate &&
+                   canonical.starts_with(&canonical_name) &&
                    canonical.ends_with(".o") {
                     let num = &f[name.len()..f.len() - 2];
                     if num.len() > 0 && num[1..].parse::<u32>().is_ok() {
