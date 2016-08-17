@@ -17,15 +17,13 @@
 fn print(_args: std::fmt::Arguments) {}
 
 macro_rules! myprint {
-    ($($arg:tt)*) => (print(format_args!($($arg)*)));   //~ NOTE in this expansion of
+    ($($arg:tt)*) => (print(format_args!($($arg)*)));
 }
 
 macro_rules! myprintln {
-    ($fmt:expr) => (myprint!(concat!($fmt, "\n"))); //~ ERROR invalid reference to argument `0`
-                                                    //~| NOTE in this expansion of concat!
-                                                    //~| NOTE in this expansion of myprint!
+    ($fmt:expr) => (myprint!(concat!($fmt, "\n")));
 }
 
 fn main() {
-    myprintln!("{}"); //~ NOTE in this expansion of
+    myprintln!("{}");
 }

@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// this error is dispayed in `<std macros>`
-// error-pattern:cannot apply unary operator `!` to type `&'static str`
-// error-pattern:in this expansion of assert!
+#![crate_type = "dylib"]
 
-fn main() {
-    assert!("foo");
+pub fn print(_args: std::fmt::Arguments) {}
+
+#[macro_export]
+macro_rules! myprint {
+    ($($arg:tt)*) => (print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! myprintln {
+    ($fmt:expr) => (myprint!(concat!($fmt, "\n")));
 }

@@ -1,0 +1,8 @@
+error: expected a literal
+  --> $DIR/bad_hello.rs:12:14
+   |
+12 |     println!(3 + 4);
+   |              ^^^^^
+
+error: aborting due to previous error
+
