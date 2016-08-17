@@ -3188,14 +3188,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             !error_happened &&
             !remaining_fields.is_empty()
         {
-            span_err!(tcx.sess, span, E0063,
-                      "missing field{} {} in initializer of `{}`",
-                      if remaining_fields.len() == 1 {""} else {"s"},
-                      remaining_fields.keys()
-                                      .map(|n| format!("`{}`", n))
-                                      .collect::<Vec<_>>()
-                                      .join(", "),
-                      adt_ty);
+            let len = remaining_fields.len();
+
+            let truncated_fields = if len <= 3 {
+                (remaining_fields.keys().take(len), "".to_string())
+            } else {
+                (remaining_fields.keys().take(3), format!(", and {} other field{}",
+                            (len-3), if len-3 == 1 {""} else {"s"}))
+            };
+
+            let remaining_fields_names = truncated_fields.0
+                                        .map(|n| format!("`{}`", n))
+                                        .collect::<Vec<_>>()
+                                        .join(", ");
+
+            struct_span_err!(tcx.sess, span, E0063,
+                        "missing field{} {}{} in initializer of `{}`",
+                        if remaining_fields.len() == 1 {""} else {"s"},
+                        remaining_fields_names,
+                        truncated_fields.1,
+                        adt_ty)
+                        .span_label(span, &format!("missing {}{}",
+                            remaining_fields_names,
+                            truncated_fields.1))
+                        .emit();
         }
 
     }

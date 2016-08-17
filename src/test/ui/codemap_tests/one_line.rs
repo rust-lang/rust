@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// rustc-env:RUST_NEW_ERROR_FORMAT
-
 fn main() {
     let mut v = vec![Some("foo"), Some("bar")];
     v.push(v.pop().unwrap());

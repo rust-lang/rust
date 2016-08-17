@@ -8,11 +8,47 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo {
-    x: i32,
-    y: i32
+// ignore-tidy-linelength
+
+struct SingleFoo {
+    x: i32
 }
 
+struct PluralFoo {
+    x: i32,
+    y: i32,
+    z: i32
+}
+
+struct TruncatedFoo {
+    a: i32,
+    b: i32,
+    x: i32,
+    y: i32,
+    z: i32
+}
+
+struct TruncatedPluralFoo {
+    a: i32,
+    b: i32,
+    c: i32,
+    x: i32,
+    y: i32,
+    z: i32
+}
+
+
 fn main() {
-    let x = Foo { x: 0 }; //~ ERROR E0063
+    let w = SingleFoo { };
+    //~^ ERROR  missing field `x` in initializer of `SingleFoo`
+    //~| NOTE missing `x`
+    let x = PluralFoo {x: 1};
+    //~^ ERROR  missing fields `z`, `y` in initializer of `PluralFoo`
+    //~| NOTE missing `z`, `y`
+    let y = TruncatedFoo{x:1};
+    //~^ ERROR missing fields `a`, `z`, `b`, and 1 other field in initializer of `TruncatedFoo`
+    //~| NOTE missing `a`, `z`, `b`, and 1 other field
+    let z = TruncatedPluralFoo{x:1};
+    //~^ ERROR missing fields `c`, `a`, `z`, and 2 other fields in initializer of `TruncatedPluralFoo`
+    //~| NOTE missing `c`, `a`, `z`, and 2 other fields
 }

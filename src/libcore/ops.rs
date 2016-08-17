@@ -10,11 +10,16 @@
 
 //! Overloadable operators.
 //!
-//! Implementing these traits allows you to get an effect similar to
-//! overloading operators.
+//! Implementing these traits allows you to overload certain operators.
 //!
 //! Some of these traits are imported by the prelude, so they are available in
-//! every Rust program.
+//! every Rust program. Only operators backed by traits can be overloaded. For
+//! example, the addition operator (`+`) can be overloaded through the `Add`
+//! trait, but since the assignment operator (`=`) has no backing trait, there
+//! is no way of overloading its semantics. Additionally, this module does not
+//! provide any mechanism to create new operators. If traitless overloading or
+//! custom operators are required, you should look toward macros or compiler
+//! plugins to extend Rust's syntax.
 //!
 //! Many of the operators take their operands by value. In non-generic
 //! contexts involving built-in types, this is usually not a problem.

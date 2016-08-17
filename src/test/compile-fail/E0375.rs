@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 #![feature(coerce_unsized)]
 use std::ops::CoerceUnsized;
 
@@ -17,6 +19,10 @@ struct Foo<T: ?Sized, U: ?Sized> {
     c: U,
 }
 
-impl<T, U> CoerceUnsized<Foo<U, T>> for Foo<T, U> {} //~ ERROR E0375
+impl<T, U> CoerceUnsized<Foo<U, T>> for Foo<T, U> {}
+//~^ ERROR E0375
+//~| NOTE requires multiple coercions
+//~| NOTE `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
+//~| NOTE currently, 2 fields need coercions: b (T to U), c (U to T)
 
 fn main() {}

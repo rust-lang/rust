@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// rustc-env:RUST_NEW_ERROR_FORMAT
 // ignore-tidy-tab
+
 fn main() {
 	bar;
 }
-
