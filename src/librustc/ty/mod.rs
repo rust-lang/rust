@@ -562,6 +562,10 @@ pub struct TyS<'tcx> {
     region_depth: u32,
 }
 
+impl<'tcx> TyS<'tcx> {
+    pub fn region_depth(&self) -> u32 { self.region_depth }
+}
+
 impl<'tcx> PartialEq for TyS<'tcx> {
     #[inline]
     fn eq(&self, other: &TyS<'tcx>) -> bool {
@@ -1068,7 +1072,9 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
         // we're about to add a binder, so let's check that we don't
         // accidentally capture anything, or else that might be some
         // weird debruijn accounting.
-        assert!(!self.has_escaping_regions());
+        if self.has_escaping_regions() {
+            bug!("TraitRef::to_predicate {:?} has escaping regions", self);
+        }
 
         ty::Predicate::Trait(ty::Binder(ty::TraitPredicate {
             trait_ref: self.clone()
