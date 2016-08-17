@@ -1,14 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.83 — TBD
+## 0.0.84 — TBD
+
+## 0.0.83 — 2016-08-17
+* Rustup to *rustc 1.12.0-nightly (1bf5fa326 2016-08-16)*
 * New lints: [`print_with_newline`], [`useless_attribute`]
 
 ## 0.0.82 — 2016-08-17
 * Rustup to *rustc 1.12.0-nightly (197be89f3 2016-08-15)*
 * New lint: [`module_inception`]
 
-## 0.0.81 - 2016-08-14
+## 0.0.81 — 2016-08-14
 * Rustup to *rustc 1.12.0-nightly (1deb02ea6 2016-08-12)*
 * New lints: [`eval_order_dependence`], [`mixed_case_hex_literals`], [`unseparated_literal_suffix`]
 * False positive fix in [`too_many_arguments`]
