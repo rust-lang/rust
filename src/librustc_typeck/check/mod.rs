@@ -88,7 +88,7 @@ use hir::def::{Def, PathResolution};
 use hir::def_id::DefId;
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
-use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
+use rustc::ty::subst::{self, Subst, Substs};
 use rustc::traits::{self, Reveal};
 use rustc::ty::{GenericPredicates, TypeScheme};
 use rustc::ty::{ParamTy, ParameterEnvironment};
@@ -1702,7 +1702,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                      PathParamMode::Optional,
                                                      &type_scheme.generics,
                                                      path.segments.last().unwrap());
-        let substs = self.tcx.mk_substs(substs);
         debug!("instantiate_type_path: ty={:?} substs={:?}", &type_scheme.ty, substs);
         let bounds = self.instantiate_bounds(path.span, substs, &type_predicates);
         let cause = traits::ObligationCause::new(path.span, self.body_id,
@@ -4158,7 +4157,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(!segments.is_empty());
 
         let mut ufcs_associated = None;
-        let mut segment_spaces: Vec<_>;
+        let mut type_segment = None;
+        let mut fn_segment = None;
         match def {
             // Case 1 and 1b. Reference to a *type* or *enum variant*.
             Def::SelfTy(..) |
@@ -4172,40 +4172,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::TyParam(..) => {
                 // Everything but the final segment should have no
                 // parameters at all.
-                segment_spaces = vec![None; segments.len() - 1];
-                segment_spaces.push(Some(subst::TypeSpace));
+                type_segment = segments.last();
             }
 
             // Case 2. Reference to a top-level value.
             Def::Fn(..) |
             Def::Const(..) |
             Def::Static(..) => {
-                segment_spaces = vec![None; segments.len() - 1];
-                segment_spaces.push(Some(subst::FnSpace));
+                fn_segment = segments.last();
             }
 
-            // Case 3. Reference to a method.
-            Def::Method(def_id) => {
-                let container = self.tcx.impl_or_trait_item(def_id).container();
-                match container {
-                    ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(self.ccx, span, trait_did)
-                    }
-                    ty::ImplContainer(_) => {}
-                }
-
-                if segments.len() >= 2 {
-                    segment_spaces = vec![None; segments.len() - 2];
-                    segment_spaces.push(Some(subst::TypeSpace));
-                    segment_spaces.push(Some(subst::FnSpace));
-                } else {
-                    // `<T>::method` will end up here, and so can `T::method`.
-                    let self_ty = opt_self_ty.expect("UFCS sugared method missing Self");
-                    segment_spaces = vec![Some(subst::FnSpace)];
-                    ufcs_associated = Some((container, self_ty));
-                }
-            }
-
+            // Case 3. Reference to a method or associated const.
+            Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
                 let container = self.tcx.impl_or_trait_item(def_id).container();
                 match container {
@@ -4216,15 +4194,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if segments.len() >= 2 {
-                    segment_spaces = vec![None; segments.len() - 2];
-                    segment_spaces.push(Some(subst::TypeSpace));
-                    segment_spaces.push(None);
+                    type_segment = Some(&segments[segments.len() - 2]);
                 } else {
-                    // `<T>::CONST` will end up here, and so can `T::CONST`.
-                    let self_ty = opt_self_ty.expect("UFCS sugared const missing Self");
-                    segment_spaces = vec![None];
+                    // `<T>::assoc` will end up here, and so can `T::assoc`.
+                    let self_ty = opt_self_ty.expect("UFCS sugared assoc missing Self");
                     ufcs_associated = Some((container, self_ty));
                 }
+                fn_segment = segments.last();
             }
 
             // Other cases. Various nonsense that really shouldn't show up
@@ -4234,51 +4210,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::ForeignMod(..) |
             Def::Local(..) |
             Def::Label(..) |
-            Def::Upvar(..) => {
-                segment_spaces = vec![None; segments.len()];
-            }
+            Def::Upvar(..) => {}
 
             Def::Err => {
                 self.set_tainted_by_errors();
-                segment_spaces = vec![None; segments.len()];
             }
         }
-        assert_eq!(segment_spaces.len(), segments.len());
 
         // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but
         // `opt_self_ty` can also be Some for `Foo::method`, where Foo's
         // type parameters are not mandatory.
         let require_type_space = opt_self_ty.is_some() && ufcs_associated.is_none();
 
-        debug!("segment_spaces={:?}", segment_spaces);
-
-        // Next, examine the definition, and determine how many type
-        // parameters we expect from each space.
-        let type_defs = &type_scheme.generics.types;
-        let region_defs = &type_scheme.generics.regions;
+        debug!("type_segment={:?} fn_segment={:?}", type_segment, fn_segment);
 
         // Now that we have categorized what space the parameters for each
         // segment belong to, let's sort out the parameters that the user
         // provided (if any) into their appropriate spaces. We'll also report
         // errors if type parameters are provided in an inappropriate place.
-        let mut substs = Substs::empty();
-        for (&opt_space, segment) in segment_spaces.iter().zip(segments) {
-            if let Some(space) = opt_space {
-                self.push_explicit_parameters_from_segment_to_substs(space,
-                                                                     span,
-                                                                     type_defs,
-                                                                     region_defs,
-                                                                     segment,
-                                                                     &mut substs);
-            } else {
-                self.tcx.prohibit_type_params(slice::ref_slice(segment));
-            }
-        }
-        if let Some(self_ty) = opt_self_ty {
-            if type_defs.len(subst::SelfSpace) == 1 {
-                substs.types.push(subst::SelfSpace, self_ty);
-            }
-        }
+        let poly_segments = type_segment.is_some() as usize +
+                            fn_segment.is_some() as usize;
+        self.tcx.prohibit_type_params(&segments[..segments.len() - poly_segments]);
 
         // Now we have to compare the types that the user *actually*
         // provided against the types that were *expected*. If the user
@@ -4286,19 +4238,77 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
-        for &space in &[subst::SelfSpace, subst::TypeSpace, subst::FnSpace] {
-            self.adjust_type_parameters(span, space, type_defs,
-                                        require_type_space, &mut substs);
-            assert_eq!(substs.types.len(space), type_defs.len(space));
+        self.check_path_parameter_count(subst::TypeSpace,
+                                        span,
+                                        &type_scheme.generics,
+                                        !require_type_space,
+                                        &mut type_segment);
+        self.check_path_parameter_count(subst::FnSpace,
+                                        span,
+                                        &type_scheme.generics,
+                                        true,
+                                        &mut fn_segment);
 
-            self.adjust_region_parameters(span, space, region_defs, &mut substs);
-            assert_eq!(substs.regions.len(space), region_defs.len(space));
-        }
+        let substs = Substs::from_generics(&type_scheme.generics, |def, _| {
+            let i = def.index as usize;
+            let segment = match def.space {
+                subst::SelfSpace => None,
+                subst::TypeSpace => type_segment,
+                subst::FnSpace => fn_segment
+            };
+            let lifetimes = match segment.map(|s| &s.parameters) {
+                Some(&hir::AngleBracketedParameters(ref data)) => &data.lifetimes[..],
+                Some(&hir::ParenthesizedParameters(_)) => bug!(),
+                None => &[]
+            };
+
+            if let Some(ast_lifetime) = lifetimes.get(i) {
+                ast_region_to_region(self.tcx, ast_lifetime)
+            } else {
+                self.region_var_for_def(span, def)
+            }
+        }, |def, substs| {
+            let i = def.index as usize;
+            let segment = match def.space {
+                subst::SelfSpace => None,
+                subst::TypeSpace => type_segment,
+                subst::FnSpace => fn_segment
+            };
+            let types = match segment.map(|s| &s.parameters) {
+                Some(&hir::AngleBracketedParameters(ref data)) => &data.types[..],
+                Some(&hir::ParenthesizedParameters(_)) => bug!(),
+                None => &[]
+            };
+            let can_omit = def.space != subst::TypeSpace || !require_type_space;
+            let default = if can_omit && types.len() == 0 {
+                def.default
+            } else {
+                None
+            };
+
+            if def.space == subst::SelfSpace && opt_self_ty.is_some() {
+                // Self, which has been provided.
+                assert_eq!(i, 0);
+                opt_self_ty.unwrap()
+            } else if let Some(ast_ty) = types.get(i) {
+                // A provided type parameter.
+                self.to_ty(ast_ty)
+            } else if let Some(default) = default {
+                // No type parameter provided, but a default exists.
+                default.subst_spanned(self.tcx, substs, Some(span))
+            } else {
+                // No type parameters were provided, we can infer all.
+                // This can also be reached in some error cases:
+                // We prefer to use inference variables instead of
+                // TyError to let type inference recover somewhat.
+                self.type_var_for_def(span, def, substs)
+            }
+        });
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
         let substs = self.tcx.mk_substs(substs);
-        assert!(!substs.has_regions_escaping_depth(0));
+        assert!(!substs.has_escaping_regions());
         assert!(!type_scheme.has_escaping_regions());
 
         // Add all the obligations that are required, substituting and
@@ -4349,246 +4359,79 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty_substituted
     }
 
-    /// Finds the parameters that the user provided and adds them to `substs`. If too many
-    /// parameters are provided, then reports an error and clears the output vector.
-    ///
-    /// We clear the output vector because that will cause the `adjust_XXX_parameters()` later to
-    /// use inference variables. This seems less likely to lead to derived errors.
-    ///
-    /// Note that we *do not* check for *too few* parameters here. Due to the presence of defaults
-    /// etc that is more complicated. I wanted however to do the reporting of *too many* parameters
-    /// here because we can easily use the precise span of the N+1'th parameter.
-    fn push_explicit_parameters_from_segment_to_substs(&self,
-        space: subst::ParamSpace,
-        span: Span,
-        type_defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
-        region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
-        segment: &hir::PathSegment,
-        substs: &mut Substs<'tcx>)
-    {
-        match segment.parameters {
-            hir::AngleBracketedParameters(ref data) => {
-                self.push_explicit_angle_bracketed_parameters_from_segment_to_substs(
-                    space, type_defs, region_defs, data, substs);
+    /// Report errors if the provided parameters are too few or too many.
+    fn check_path_parameter_count(&self,
+                                  space: subst::ParamSpace,
+                                  span: Span,
+                                  generics: &ty::Generics<'tcx>,
+                                  can_omit: bool,
+                                  segment: &mut Option<&hir::PathSegment>) {
+        let (lifetimes, types, bindings) = match segment.map(|s| &s.parameters) {
+            Some(&hir::AngleBracketedParameters(ref data)) => {
+                (&data.lifetimes[..], &data.types[..], &data.bindings[..])
             }
+            Some(&hir::ParenthesizedParameters(_)) => {
+                span_bug!(span, "parenthesized parameters cannot appear in ExprPath");
+            }
+            None => (&[][..], &[][..], &[][..])
+        };
 
-            hir::ParenthesizedParameters(ref data) => {
-                span_err!(self.tcx.sess, span, E0238,
-                    "parenthesized parameters may only be used with a trait");
-                self.push_explicit_parenthesized_parameters_from_segment_to_substs(
-                    space, span, type_defs, data, substs);
-            }
-        }
-    }
+        let count = |n| {
+            format!("{} parameter{}", n, if n == 1 { "" } else { "s" })
+        };
 
-    fn push_explicit_angle_bracketed_parameters_from_segment_to_substs(&self,
-        space: subst::ParamSpace,
-        type_defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
-        region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
-        data: &hir::AngleBracketedParameterData,
-        substs: &mut Substs<'tcx>)
-    {
-        {
-            let type_count = type_defs.len(space);
-            assert_eq!(substs.types.len(space), 0);
-            for (i, typ) in data.types.iter().enumerate() {
-                let t = self.to_ty(&typ);
-                if i < type_count {
-                    substs.types.push(space, t);
-                } else if i == type_count {
-                    struct_span_err!(self.tcx.sess, typ.span, E0087,
-                                     "too many type parameters provided: \
-                                      expected at most {} parameter{}, \
-                                      found {} parameter{}",
-                                     type_count,
-                                     if type_count == 1 {""} else {"s"},
-                                     data.types.len(),
-                                     if data.types.len() == 1 {""} else {"s"})
-                        .span_label(typ.span , &format!("expected {} parameter{}",
-                                    type_count,
-                                    if type_count == 1 {""} else {"s"})).emit();
-                    substs.types.truncate(space, 0);
-                    break;
-                }
-            }
+        // Check provided lifetime parameters.
+        let lifetime_defs = generics.regions.get_slice(space);
+        if lifetimes.len() > lifetime_defs.len() {
+            let span = lifetimes[lifetime_defs.len()].span;
+            span_err!(self.tcx.sess, span, E0088,
+                      "too many lifetime parameters provided: \
+                       expected {}, found {}",
+                      count(lifetime_defs.len()),
+                      count(lifetimes.len()));
+        } else if lifetimes.len() > 0 && lifetimes.len() < lifetime_defs.len() {
+            span_err!(self.tcx.sess, span, E0090,
+                      "too few lifetime parameters provided: \
+                       expected {}, found {}",
+                      count(lifetime_defs.len()),
+                      count(lifetimes.len()));
         }
 
-        if !data.bindings.is_empty() {
-            span_err!(self.tcx.sess, data.bindings[0].span, E0182,
+        // Check provided type parameters.
+        let type_defs = generics.types.get_slice(space);
+        let required_len = type_defs.iter()
+                                    .take_while(|d| d.default.is_none())
+                                    .count();
+        if types.len() > type_defs.len() {
+            let span = types[type_defs.len()].span;
+            struct_span_err!(self.tcx.sess, span, E0087,
+                             "too many type parameters provided: \
+                              expected at most {}, found {}",
+                             count(type_defs.len()),
+                             count(types.len()))
+                .span_label(span, &format!("expected {}",
+                            count(type_defs.len()))).emit();
+
+            // To prevent derived errors to accumulate due to extra
+            // type parameters, we force instantiate_value_path to
+            // use inference variables instead of the provided types.
+            *segment = None;
+        } else if !(can_omit && types.len() == 0) && types.len() < required_len {
+            let qualifier =
+                if type_defs.len() != required_len { "at least " } else { "" };
+            span_err!(self.tcx.sess, span, E0089,
+                      "too few type parameters provided: \
+                       expected {}{}, found {}",
+                      qualifier,
+                      count(required_len),
+                      count(types.len()));
+        }
+
+        if !bindings.is_empty() {
+            span_err!(self.tcx.sess, bindings[0].span, E0182,
                       "unexpected binding of associated item in expression path \
                        (only allowed in type paths)");
         }
-
-        {
-            let region_count = region_defs.len(space);
-            assert_eq!(substs.regions.len(space), 0);
-            for (i, lifetime) in data.lifetimes.iter().enumerate() {
-                let r = ast_region_to_region(self.tcx, lifetime);
-                if i < region_count {
-                    substs.regions.push(space, r);
-                } else if i == region_count {
-                    span_err!(self.tcx.sess, lifetime.span, E0088,
-                        "too many lifetime parameters provided: \
-                         expected {} parameter{}, found {} parameter{}",
-                        region_count,
-                        if region_count == 1 {""} else {"s"},
-                        data.lifetimes.len(),
-                        if data.lifetimes.len() == 1 {""} else {"s"});
-                    substs.regions.truncate(space, 0);
-                    break;
-                }
-            }
-        }
-    }
-
-    /// As with
-    /// `push_explicit_angle_bracketed_parameters_from_segment_to_substs`,
-    /// but intended for `Foo(A,B) -> C` form. This expands to
-    /// roughly the same thing as `Foo<(A,B),C>`. One important
-    /// difference has to do with the treatment of anonymous
-    /// regions, which are translated into bound regions (NYI).
-    fn push_explicit_parenthesized_parameters_from_segment_to_substs(&self,
-        space: subst::ParamSpace,
-        span: Span,
-        type_defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
-        data: &hir::ParenthesizedParameterData,
-        substs: &mut Substs<'tcx>)
-    {
-        let type_count = type_defs.len(space);
-        if type_count < 2 {
-            span_err!(self.tcx.sess, span, E0167,
-                      "parenthesized form always supplies 2 type parameters, \
-                      but only {} parameter(s) were expected",
-                      type_count);
-        }
-
-        let input_tys: Vec<Ty> =
-            data.inputs.iter().map(|ty| self.to_ty(&ty)).collect();
-
-        let tuple_ty = self.tcx.mk_tup(input_tys);
-
-        if type_count >= 1 {
-            substs.types.push(space, tuple_ty);
-        }
-
-        let output_ty: Option<Ty> =
-            data.output.as_ref().map(|ty| self.to_ty(&ty));
-
-        let output_ty =
-            output_ty.unwrap_or(self.tcx.mk_nil());
-
-        if type_count >= 2 {
-            substs.types.push(space, output_ty);
-        }
-    }
-
-    fn adjust_type_parameters(&self,
-        span: Span,
-        space: ParamSpace,
-        defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
-        require_type_space: bool,
-        substs: &mut Substs<'tcx>)
-    {
-        let provided_len = substs.types.len(space);
-        let desired = defs.get_slice(space);
-        let required_len = desired.iter()
-                              .take_while(|d| d.default.is_none())
-                              .count();
-
-        debug!("adjust_type_parameters(space={:?}, \
-               provided_len={}, \
-               desired_len={}, \
-               required_len={})",
-               space,
-               provided_len,
-               desired.len(),
-               required_len);
-
-        // Enforced by `push_explicit_parameters_from_segment_to_substs()`.
-        assert!(provided_len <= desired.len());
-
-        // Nothing specified at all: supply inference variables for
-        // everything.
-        if provided_len == 0 && !(require_type_space && space == subst::TypeSpace) {
-            substs.types.replace(space, Vec::new());
-            for def in desired {
-                let ty_var = self.type_var_for_def(span, def, substs);
-                substs.types.push(def.space, ty_var);
-            }
-            return;
-        }
-
-        // Too few parameters specified: report an error and use Err
-        // for everything.
-        if provided_len < required_len {
-            let qualifier =
-                if desired.len() != required_len { "at least " } else { "" };
-            span_err!(self.tcx.sess, span, E0089,
-                "too few type parameters provided: expected {}{} parameter{}, \
-                 found {} parameter{}",
-                qualifier, required_len,
-                if required_len == 1 {""} else {"s"},
-                provided_len,
-                if provided_len == 1 {""} else {"s"});
-            substs.types.replace(space, vec![self.tcx.types.err; desired.len()]);
-            return;
-        }
-
-        // Otherwise, add in any optional parameters that the user
-        // omitted. The case of *too many* parameters is handled
-        // already by
-        // push_explicit_parameters_from_segment_to_substs(). Note
-        // that the *default* type are expressed in terms of all prior
-        // parameters, so we have to substitute as we go with the
-        // partial substitution that we have built up.
-        for i in provided_len..desired.len() {
-            let default = desired[i].default.unwrap();
-            let default = default.subst_spanned(self.tcx, substs, Some(span));
-            substs.types.push(space, default);
-        }
-        assert_eq!(substs.types.len(space), desired.len());
-
-        debug!("Final substs: {:?}", substs);
-    }
-
-    fn adjust_region_parameters(&self,
-        span: Span,
-        space: ParamSpace,
-        defs: &VecPerParamSpace<ty::RegionParameterDef>,
-        substs: &mut Substs)
-    {
-        let provided_len = substs.regions.len(space);
-        let desired = defs.get_slice(space);
-
-        // Enforced by `push_explicit_parameters_from_segment_to_substs()`.
-        assert!(provided_len <= desired.len());
-
-        // If nothing was provided, just use inference variables.
-        if provided_len == 0 {
-            substs.regions.replace(
-                space,
-                self.region_vars_for_defs(span, desired));
-            return;
-        }
-
-        // If just the right number were provided, everybody is happy.
-        if provided_len == desired.len() {
-            return;
-        }
-
-        // Otherwise, too few were provided. Report an error and then
-        // use inference variables.
-        span_err!(self.tcx.sess, span, E0090,
-            "too few lifetime parameters provided: expected {} parameter{}, \
-             found {} parameter{}",
-            desired.len(),
-            if desired.len() == 1 {""} else {"s"},
-            provided_len,
-            if provided_len == 1 {""} else {"s"});
-
-        substs.regions.replace(
-            space,
-            self.region_vars_for_defs(span, desired));
     }
 
     fn structurally_resolve_type_or_else<F>(&self, sp: Span, ty: Ty<'tcx>, f: F)

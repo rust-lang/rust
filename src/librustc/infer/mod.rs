@@ -1234,13 +1234,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.mk_var(ty_var_id)
     }
 
-    pub fn region_vars_for_defs(&self,
-                                span: Span,
-                                defs: &[ty::RegionParameterDef])
-                                -> Vec<ty::Region> {
-        defs.iter().map(|def| self.region_var_for_def(span, def)).collect()
-    }
-
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
     pub fn fresh_substs_for_generics(&self,
