@@ -212,8 +212,11 @@ impl<'a> ::ModuleS<'a> {
 
         Failed(None)
     }
+}
 
-    pub fn add_import_directive(&self,
+impl<'a> Resolver<'a> {
+    // Add an import directive to the current module.
+    pub fn add_import_directive(&mut self,
                                 module_path: Vec<Name>,
                                 subclass: ImportDirectiveSubclass,
                                 span: Span,
@@ -228,23 +231,21 @@ impl<'a> ::ModuleS<'a> {
             vis: vis,
         });
 
-        self.unresolved_imports.borrow_mut().push(directive);
+        self.current_module.unresolved_imports.borrow_mut().push(directive);
         match directive.subclass {
             SingleImport { target, .. } => {
                 for &ns in &[ValueNS, TypeNS] {
-                    self.resolution(target, ns).borrow_mut().single_imports
-                                                            .add_directive(directive);
+                    let mut resolution = self.current_module.resolution(target, ns).borrow_mut();
+                    resolution.single_imports.add_directive(directive);
                 }
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
             GlobImport { is_prelude: true } => {}
-            GlobImport { .. } => self.globs.borrow_mut().push(directive),
+            GlobImport { .. } => self.current_module.globs.borrow_mut().push(directive),
         }
     }
-}
 
-impl<'a> Resolver<'a> {
     // Given a binding and an import directive that resolves to it,
     // return the corresponding binding defined by the import directive.
     fn import(&mut self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
