@@ -590,7 +590,7 @@ impl LateLintPass for Pass {
 
             let ret_ty = return_ty(cx, implitem.id);
             if &name.as_str() == &"new" &&
-               !ret_ty.map_or(false, |ret_ty| ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id))) {
+               !ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id)) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
                           explicit_self.span,

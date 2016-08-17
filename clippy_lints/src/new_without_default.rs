@@ -106,8 +106,7 @@ impl LateLintPass for NewWithoutDefault {
                     .ty;
                 if_let_chain!{[
                     self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
-                    let Some(ret_ty) = return_ty(cx, id),
-                    same_tys(cx, self_ty, ret_ty, id),
+                    same_tys(cx, self_ty, return_ty(cx, id), id),
                     let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),
                     !implements_trait(cx, self_ty, default_trait_id, Vec::new())
                 ], {

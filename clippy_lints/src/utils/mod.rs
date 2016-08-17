@@ -692,16 +692,12 @@ pub fn camel_case_from(s: &str) -> usize {
     last_i
 }
 
-/// Convenience function to get the return type of a function or `None` if the function diverges.
-pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Option<ty::Ty<'tcx>> {
+/// Convenience function to get the return type of a function
+pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::Ty<'tcx> {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
     let fn_sig = cx.tcx.node_id_to_type(fn_item).fn_sig().subst(cx.tcx, parameter_env.free_substs);
     let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, &fn_sig);
-    if let ty::FnConverging(ret_ty) = fn_sig.output {
-        Some(ret_ty)
-    } else {
-        None
-    }
+    fn_sig.output
 }
 
 /// Check if two types are the same.

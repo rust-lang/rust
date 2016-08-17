@@ -142,7 +142,7 @@ impl<'a, 'b, 'tcx, 'gcx> Visitor<'a> for CCHelper<'b, 'gcx, 'tcx> {
                 let ty = self.tcx.node_id_to_type(callee.id);
                 match ty.sty {
                     ty::TyFnDef(_, _, ty) |
-                    ty::TyFnPtr(ty) if ty.sig.skip_binder().output.diverges() => {
+                    ty::TyFnPtr(ty) if ty.sig.skip_binder().output.sty == ty::TyNever => {
                         self.divergence += 1;
                     }
                     _ => (),
