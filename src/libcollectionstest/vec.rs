@@ -502,6 +502,14 @@ fn test_into_iter_as_mut_slice() {
 }
 
 #[test]
+fn test_into_iter_debug() {
+    let vec = vec!['a', 'b', 'c'];
+    let into_iter = vec.into_iter();
+    let debug = format!("{:?}", into_iter);
+    assert_eq!(debug, "IntoIter(['a', 'b', 'c'])");
+}
+
+#[test]
 fn test_into_iter_count() {
     assert_eq!(vec![1, 2, 3].into_iter().count(), 3);
 }

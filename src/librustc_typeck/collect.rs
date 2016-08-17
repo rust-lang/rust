@@ -2236,7 +2236,6 @@ fn report_unused_parameter(ccx: &CrateCtxt,
         "the {} parameter `{}` is not constrained by the \
         impl trait, self type, or predicates",
         kind, name)
-        .span_label(span, &format!("unconstrained lifetime parameter"))
+        .span_label(span, &format!("unconstrained {} parameter", kind))
         .emit();
-
 }

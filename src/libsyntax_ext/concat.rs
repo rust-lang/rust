@@ -20,10 +20,10 @@ use std::string::String;
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          sp: syntax_pos::Span,
                          tts: &[tokenstream::TokenTree])
-                         -> Box<base::MacResult+'static> {
+                         -> Box<base::MacResult + 'static> {
     let es = match base::get_exprs_from_tts(cx, sp, tts) {
         Some(e) => e,
-        None => return base::DummyResult::expr(sp)
+        None => return base::DummyResult::expr(sp),
     };
     let mut accumulator = String::new();
     for e in es {
@@ -57,7 +57,5 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
             }
         }
     }
-    base::MacEager::expr(cx.expr_str(
-            sp,
-            token::intern_and_get_ident(&accumulator[..])))
+    base::MacEager::expr(cx.expr_str(sp, token::intern_and_get_ident(&accumulator[..])))
 }

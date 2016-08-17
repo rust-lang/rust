@@ -1715,6 +1715,15 @@ pub struct IntoIter<T> {
     end: *const T,
 }
 
+#[stable(feature = "vec_intoiter_debug", since = "")]
+impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("IntoIter")
+            .field(&self.as_slice())
+            .finish()
+    }
+}
+
 impl<T> IntoIter<T> {
     /// Returns the remaining items of this iterator as a slice.
     ///
