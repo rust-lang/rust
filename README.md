@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 165 lints included in this crate:
+There are 166 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -175,6 +175,7 @@ name                                                                            
 [unused_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes)                                 | warn    | unused lifetimes in function definitions
 [use_debug](https://github.com/Manishearth/rust-clippy/wiki#use_debug)                                               | allow   | use of `Debug`-based formatting
 [used_underscore_binding](https://github.com/Manishearth/rust-clippy/wiki#used_underscore_binding)                   | allow   | using a binding which is prefixed with an underscore
+[useless_attribute](https://github.com/Manishearth/rust-clippy/wiki#useless_attribute)                               | warn    | use of lint attributes on `extern crate` items
 [useless_format](https://github.com/Manishearth/rust-clippy/wiki#useless_format)                                     | warn    | useless use of `format!`
 [useless_let_if_seq](https://github.com/Manishearth/rust-clippy/wiki#useless_let_if_seq)                             | warn    | unidiomatic `let mut` declaration followed by initialization in `if`
 [useless_transmute](https://github.com/Manishearth/rust-clippy/wiki#useless_transmute)                               | warn    | transmutes that have the same to and from types or could be a cast/coercion
