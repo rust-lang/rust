@@ -9,6 +9,7 @@
 // except according to those terms.
 
 enum Foo<T> { Bar } //~ ERROR E0392
+                    //~| NOTE unused type parameter
 
 fn main() {
 }

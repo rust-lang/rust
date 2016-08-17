@@ -116,7 +116,7 @@ enum ResolutionError<'a> {
     /// error E0408: variable `{}` from pattern #{} is not bound in pattern #{}
     VariableNotBoundInPattern(Name, usize, usize),
     /// error E0409: variable is bound with different mode in pattern #{} than in pattern #1
-    VariableBoundWithDifferentMode(Name, usize),
+    VariableBoundWithDifferentMode(Name, usize, Span),
     /// error E0411: use of `Self` outside of an impl or trait
     SelfUsedOutsideImplOrTrait,
     /// error E0412: use of undeclared
@@ -269,14 +269,19 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              from,
                              to)
         }
-        ResolutionError::VariableBoundWithDifferentMode(variable_name, pattern_number) => {
-            struct_span_err!(resolver.session,
+        ResolutionError::VariableBoundWithDifferentMode(variable_name,
+                                                        pattern_number,
+                                                        first_binding_span) => {
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0409,
                              "variable `{}` is bound with different mode in pattern #{} than in \
                               pattern #1",
                              variable_name,
-                             pattern_number)
+                             pattern_number);
+            err.span_label(span, &format!("bound in different ways"));
+            err.span_label(first_binding_span, &format!("first binding"));
+            err
         }
         ResolutionError::SelfUsedOutsideImplOrTrait => {
             let mut err = struct_span_err!(resolver.session,
@@ -316,11 +321,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::DoesNotNameAStruct(name) => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0422,
                              "`{}` does not name a structure",
-                             name)
+                             name);
+            err.span_label(span, &format!("not a structure"));
+            err
         }
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
             struct_span_err!(resolver.session,
@@ -2028,8 +2035,10 @@ impl<'a> Resolver<'a> {
                         if binding_0.binding_mode != binding_i.binding_mode {
                             resolve_error(self,
                                           binding_i.span,
-                                          ResolutionError::VariableBoundWithDifferentMode(key.name,
-                                                                                          i + 1));
+                                          ResolutionError::VariableBoundWithDifferentMode(
+                                              key.name,
+                                              i + 1,
+                                              binding_0.span));
                         }
                     }
                 }

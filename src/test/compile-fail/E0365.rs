@@ -12,6 +12,9 @@ mod foo {
     pub const X: u32 = 1;
 }
 
-pub use foo as foo2; //~ ERROR E0365
+pub use foo as foo2;
+//~^ ERROR `foo` is private, and cannot be reexported [E0365]
+//~| NOTE reexport of private `foo`
+//~| NOTE consider declaring type or module `foo` with `pub`
 
 fn main() {}

@@ -1,7 +1,7 @@
 error[E0404]: `Bar` is not a trait
-  --> $DIR/two_files.rs:16:6
+  --> $DIR/two_files.rs:15:6
    |
-16 | impl Bar for Baz { }
+15 | impl Bar for Baz { }
    |      ^^^ not a trait
    |
    = note: type aliases cannot be used for traits

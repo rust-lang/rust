@@ -269,12 +269,17 @@ mod prim_pointer { }
 /// - `Borrow`, `BorrowMut`
 /// - `Default`
 ///
+/// This limitation to `N in 0..33` exists because Rust does not yet support
+/// generics over the size of an array type. `[Foo; 3]` and `[Bar; 3]` are
+/// instances of same generic type `[T; 3]`, but `[Foo; 3]` and `[Foo; 5]` are
+/// entirely different types. As a stopgap, trait implementations are
+/// statically generated for `N in 0..33`.
+///
 /// Arrays coerce to [slices (`[T]`)][slice], so their methods can be called on
-/// arrays.
+/// arrays. Slices are dynamic and do not coerce to arrays; consequently more
+/// methods are defined on `slice` where they support both types.
 ///
 /// [slice]: primitive.slice.html
-///
-/// Rust does not currently support generics over the size of an array type.
 ///
 /// # Examples
 ///
@@ -385,6 +390,10 @@ mod prim_slice { }
 ///
 /// [`.as_ptr()`]: #method.as_ptr
 /// [`len()`]: #method.len
+///
+/// Note: This example shows the internals of `&str`. `unsafe` should not be
+/// used to get a string slice under normal circumstances. Use `.as_slice()`
+/// instead.
 mod prim_str { }
 
 #[doc(primitive = "tuple")]
