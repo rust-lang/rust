@@ -146,12 +146,8 @@ pub fn main() {
                     if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root) {
                         std::process::exit(code);
                     }
-                } else if first == "bin" {
-                    if let Err(code) = process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root) {
-                        std::process::exit(code);
-                    }
-                } else if first == "example" {
-                    if let Err(code) = process(vec!["--example".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root) {
+                } else if ["bin", "example", "test", "bench"].contains(&&**first) {
+                    if let Err(code) = process(vec![format!("--{}", first), target.name].into_iter().chain(args), &dep_path, &sys_root) {
                         std::process::exit(code);
                     }
                 }
