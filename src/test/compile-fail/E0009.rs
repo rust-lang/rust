@@ -12,7 +12,7 @@ fn main() {
     struct X { x: (), }
     let x = Some((X { x: () }, X { x: () }));
     match x {
-        Some((y, ref z)) => {}, 
+        Some((y, ref z)) => {},
         //~^ ERROR E0009
         //~| NOTE by-move pattern here
         //~| NOTE both by-ref and by-move used
