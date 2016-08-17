@@ -233,7 +233,7 @@ impl<'a> Resolver<'a> {
             vis: vis,
         });
 
-        self.current_module.unresolved_imports.borrow_mut().push(directive);
+        self.indeterminate_imports.push(directive);
         match directive.subclass {
             SingleImport { target, .. } => {
                 for &ns in &[ValueNS, TypeNS] {
@@ -360,43 +360,52 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     /// point iteration.
     fn resolve_imports(&mut self) {
         let mut i = 0;
-        let mut prev_unresolved_imports = 0;
+        let mut prev_num_indeterminates = self.indeterminate_imports.len() + 1;
         let mut errors = Vec::new();
 
-        loop {
-            debug!("(resolving imports) iteration {}, {} imports left", i, self.unresolved_imports);
+        while self.indeterminate_imports.len() < prev_num_indeterminates {
+            prev_num_indeterminates = self.indeterminate_imports.len();
+            debug!("(resolving imports) iteration {}, {} imports left", i, prev_num_indeterminates);
 
-            // Attempt to resolve imports in all local modules.
-            for module in self.arenas.local_modules().iter() {
-                self.current_module = module;
-                self.resolve_imports_in_current_module(&mut errors);
-            }
+            let mut imports = Vec::new();
+            ::std::mem::swap(&mut imports, &mut self.indeterminate_imports);
 
-            if self.unresolved_imports == 0 {
-                debug!("(resolving imports) success");
-                for module in self.arenas.local_modules().iter() {
-                    self.finalize_resolutions_in(module, false);
+            for import in imports {
+                match self.resolve_import(&import) {
+                    Failed(err) => {
+                        let (span, help) = match err {
+                            Some((span, msg)) => (span, format!(". {}", msg)),
+                            None => (import.span, String::new()),
+                        };
+                        errors.push(ImportResolvingError {
+                            import_directive: import,
+                            span: span,
+                            help: help,
+                        });
+                    }
+                    Indeterminate => self.indeterminate_imports.push(import),
+                    Success(()) => {}
                 }
-                break;
-            }
-
-            if self.unresolved_imports == prev_unresolved_imports {
-                // resolving failed
-                // Report unresolved imports only if no hard error was already reported
-                // to avoid generating multiple errors on the same import.
-                // Imports that are still indeterminate at this point are actually blocked
-                // by errored imports, so there is no point reporting them.
-                for module in self.arenas.local_modules().iter() {
-                    self.finalize_resolutions_in(module, errors.len() == 0);
-                }
-                for e in errors {
-                    self.import_resolving_error(e)
-                }
-                break;
             }
 
             i += 1;
-            prev_unresolved_imports = self.unresolved_imports;
+        }
+
+        for module in self.arenas.local_modules().iter() {
+            self.finalize_resolutions_in(module);
+        }
+
+        // Report unresolved imports only if no hard error was already reported
+        // to avoid generating multiple errors on the same import.
+        if errors.len() == 0 {
+            if let Some(import) = self.indeterminate_imports.iter().next() {
+                let error = ResolutionError::UnresolvedImport(None);
+                resolve_error(self.resolver, import.span, error);
+            }
+        }
+
+        for e in errors {
+            self.import_resolving_error(e)
         }
     }
 
@@ -429,35 +438,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                       ResolutionError::UnresolvedImport(Some((&path, &e.help))));
     }
 
-    /// Attempts to resolve imports for the given module only.
-    fn resolve_imports_in_current_module(&mut self, errors: &mut Vec<ImportResolvingError<'b>>) {
-        let mut imports = Vec::new();
-        let mut unresolved_imports = self.current_module.unresolved_imports.borrow_mut();
-        ::std::mem::swap(&mut imports, &mut unresolved_imports);
-
-        for import_directive in imports {
-            match self.resolve_import(&import_directive) {
-                Failed(err) => {
-                    let (span, help) = match err {
-                        Some((span, msg)) => (span, format!(". {}", msg)),
-                        None => (import_directive.span, String::new()),
-                    };
-                    errors.push(ImportResolvingError {
-                        import_directive: import_directive,
-                        span: span,
-                        help: help,
-                    });
-                }
-                Indeterminate => unresolved_imports.push(import_directive),
-                Success(()) => {
-                    // Decrement the count of unresolved imports.
-                    assert!(self.unresolved_imports >= 1);
-                    self.unresolved_imports -= 1;
-                }
-            }
-        }
-    }
-
     /// Attempts to resolve the given import. The return value indicates
     /// failure if we're certain the name does not exist, indeterminate if we
     /// don't know whether the name exists at the moment due to other
@@ -467,6 +447,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
                names_to_string(&directive.module_path),
                module_to_string(self.current_module));
+
+        let module = directive.parent;
+        self.current_module = module;
 
         let target_module = match directive.target_module.get() {
             Some(module) => module,
@@ -490,7 +473,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let value_result = self.resolve_name_in_module(target_module, source, ValueNS, false, true);
         let type_result = self.resolve_name_in_module(target_module, source, TypeNS, false, true);
 
-        let module = self.current_module;
         let mut privacy_error = true;
         for &(ns, result, determined) in &[(ValueNS, &value_result, value_determined),
                                            (TypeNS, &type_result, type_determined)] {
@@ -658,7 +640,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
     // Miscellaneous post-processing, including recording reexports, reporting conflicts,
     // reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
-    fn finalize_resolutions_in(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
+    fn finalize_resolutions_in(&mut self, module: Module<'b>) {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
 
@@ -704,13 +686,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             if let Some(def_id) = module.def_id() {
                 let node_id = self.definitions.as_local_node_id(def_id).unwrap();
                 self.export_map.insert(node_id, reexports);
-            }
-        }
-
-        if report_unresolved_imports {
-            for import in module.unresolved_imports.borrow().iter() {
-                resolve_error(self.resolver, import.span, ResolutionError::UnresolvedImport(None));
-                break;
             }
         }
     }

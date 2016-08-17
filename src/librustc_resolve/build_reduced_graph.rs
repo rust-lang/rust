@@ -131,7 +131,6 @@ impl<'b> Resolver<'b> {
                         let subclass = ImportDirectiveSubclass::single(binding.name, source_name);
                         let span = view_path.span;
                         self.add_import_directive(module_path, subclass, span, item.id, vis);
-                        self.unresolved_imports += 1;
                     }
                     ViewPathList(_, ref source_items) => {
                         // Make sure there's at most one `mod` import in the list.
@@ -177,14 +176,12 @@ impl<'b> Resolver<'b> {
                             let subclass = ImportDirectiveSubclass::single(rename, name);
                             let (span, id) = (source_item.span, source_item.node.id());
                             self.add_import_directive(module_path, subclass, span, id, vis);
-                            self.unresolved_imports += 1;
                         }
                     }
                     ViewPathGlob(_) => {
                         let subclass = GlobImport { is_prelude: is_prelude };
                         let span = view_path.span;
                         self.add_import_directive(module_path, subclass, span, item.id, vis);
-                        self.unresolved_imports += 1;
                     }
                 }
             }
