@@ -198,8 +198,11 @@ impl<'tcx> Scope<'tcx> {
     ///
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a
     /// larger extent of code.
-    fn invalidate_cache(&mut self) {
-        self.cached_exits = FnvHashMap();
+    ///
+    /// `unwind` controls whether caches for the unwind branch are also invalidated.
+    fn invalidate_cache(&mut self, unwind: bool) {
+        self.cached_exits.clear();
+        if !unwind { return; }
         for dropdata in &mut self.drops {
             if let DropKind::Value { ref mut cached_block } = dropdata.kind {
                 *cached_block = None;
@@ -455,25 +458,29 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in self.scopes.iter_mut().rev() {
-            if scope.extent == extent {
+            let this_scope = scope.extent == extent;
+            // We must invalidate all the caches leading up to the scope we’re looking for, because
+            // the cached blocks will branch into build of scope not containing the new drop. If we
+            // add stuff to the currently inspected scope, then in some cases the non-unwind caches
+            // may become invalid, therefore we should invalidate these as well. The unwind caches
+            // will stay correct, because the already generated unwind blocks cannot be influenced
+            // by just added drop.
+            //
+            // If we’re scheduling cleanup for non-droppable type (i.e. DropKind::Storage), then we
+            // do not need to invalidate unwind branch, because DropKind::Storage does not end up
+            // built in the unwind branch currently.
+            let invalidate_unwind = needs_drop && !this_scope;
+            scope.invalidate_cache(invalidate_unwind);
+            if this_scope {
                 if let DropKind::Value { .. } = drop_kind {
                     scope.needs_cleanup = true;
                 }
-
-                // No need to invalidate any caches here. The just-scheduled drop will branch into
-                // the drop that comes before it in the vector.
                 scope.drops.push(DropData {
                     span: span,
                     location: lvalue.clone(),
                     kind: drop_kind
                 });
                 return;
-            } else {
-                // We must invalidate all the cached_blocks leading up to the scope we’re
-                // looking for, because all of the blocks in the chain will become incorrect.
-                if let DropKind::Value { .. } = drop_kind {
-                    scope.invalidate_cache()
-                }
             }
         }
         span_bug!(span, "extent {:?} not in scope to drop {:?}", extent, lvalue);
@@ -490,11 +497,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                              value: &Lvalue<'tcx>,
                              item_ty: Ty<'tcx>) {
         for scope in self.scopes.iter_mut().rev() {
+            // We must invalidate all the caches leading up to and including the scope we’re
+            // looking for, because otherwise some of the blocks in the chain will become
+            // incorrect and must be rebuilt.
+            scope.invalidate_cache(true);
             if scope.extent == extent {
                 assert!(scope.free.is_none(), "scope already has a scheduled free!");
-                // We also must invalidate the caches in the scope for which the free is scheduled
-                // because the drops must branch into the free we schedule here.
-                scope.invalidate_cache();
                 scope.needs_cleanup = true;
                 scope.free = Some(FreeData {
                     span: span,
@@ -503,11 +511,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     cached_block: None
                 });
                 return;
-            } else {
-                // We must invalidate all the cached_blocks leading up to the scope we’re looking
-                // for, because otherwise some/most of the blocks in the chain will become
-                // incorrect.
-                scope.invalidate_cache();
             }
         }
         span_bug!(span, "extent {:?} not in scope to free {:?}", extent, value);
