@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 26 |                   $arr.len() * size_of($arr[0]));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected u64, found usize
 ...
-38 |     write!(hello);
+37 |     write!(hello);
    |     -------------- in this macro invocation
 
 error: non-scalar cast: `{integer}` as `()`
@@ -13,7 +13,7 @@ error: non-scalar cast: `{integer}` as `()`
 32 |     ($x:expr) => ($x as ())
    |                   ^^^^^^^^
 ...
-39 |     cast!(2);
+38 |     cast!(2);
    |     --------- in this macro invocation
 
 error: aborting due to 2 previous errors
