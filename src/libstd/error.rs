@@ -302,6 +302,13 @@ impl<'a, T: ?Sized + Reflect> Error for cell::BorrowMutError<'a, T> {
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl Error for char::CharTryFromError {
+    fn description(&self) -> &str {
+        "converted integer out of range for `char`"
+    }
+}
+
 // copied from any.rs
 impl Error + 'static {
     /// Returns true if the boxed type is the same as `T`

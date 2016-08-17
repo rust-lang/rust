@@ -38,6 +38,7 @@
 #![feature(fused)]
 #![feature(lang_items)]
 #![feature(staged_api)]
+#![feature(try_from)]
 #![feature(unicode)]
 
 mod tables;

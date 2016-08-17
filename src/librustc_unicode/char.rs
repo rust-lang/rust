@@ -40,6 +40,8 @@ pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 pub use core::char::{EncodeUtf16, EncodeUtf8, EscapeDebug, EscapeDefault, EscapeUnicode};
 
 // unstable reexports
+#[unstable(feature = "try_from", issue = "33417")]
+pub use core::char::CharTryFromError;
 #[unstable(feature = "decode_utf8", issue = "33906")]
 pub use core::char::{DecodeUtf8, decode_utf8};
 #[unstable(feature = "unicode", issue = "27783")]

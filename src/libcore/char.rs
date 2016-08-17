@@ -16,6 +16,8 @@
 #![stable(feature = "core_char", since = "1.2.0")]
 
 use char_private::is_printable;
+use convert::TryFrom;
+use fmt;
 use iter::FusedIterator;
 use mem::transmute;
 
@@ -122,12 +124,7 @@ pub const MAX: char = '\u{10ffff}';
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_u32(i: u32) -> Option<char> {
-    // catch out-of-bounds and surrogates
-    if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
-        None
-    } else {
-        Some(unsafe { from_u32_unchecked(i) })
-    }
+    char::try_from(i).ok()
 }
 
 /// Converts a `u32` to a `char`, ignoring validity.
@@ -206,6 +203,32 @@ impl From<u8> for char {
     #[inline]
     fn from(i: u8) -> Self {
         i as char
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl TryFrom<u32> for char {
+    type Err = CharTryFromError;
+
+    #[inline]
+    fn try_from(i: u32) -> Result<Self, Self::Err> {
+        if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
+            Err(CharTryFromError(()))
+        } else {
+            Ok(unsafe { from_u32_unchecked(i) })
+        }
+    }
+}
+
+/// The error type returned when a conversion from u32 to char fails.
+#[unstable(feature = "try_from", issue = "33417")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CharTryFromError(());
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl fmt::Display for CharTryFromError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "converted integer out of range for `char`".fmt(f)
     }
 }
 
