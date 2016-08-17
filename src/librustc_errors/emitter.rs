@@ -465,7 +465,7 @@ impl EmitterWriter {
                                     span: &mut MultiSpan,
                                     children: &mut Vec<SubDiagnostic>) {
         let mut spans_updated = self.fix_multispan_in_std_macros(span);
-        for child in &mut children.iter_mut() {
+        for child in children.iter_mut() {
             spans_updated |= self.fix_multispan_in_std_macros(&mut child.span);
         }
         if spans_updated {
