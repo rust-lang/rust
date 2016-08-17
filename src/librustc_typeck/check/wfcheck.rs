@@ -251,6 +251,36 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         });
     }
 
+    fn check_auto_trait(&mut self,
+                                   trait_def_id: DefId,
+                                   span: Span)
+    {
+        let predicates = self.tcx().lookup_predicates(trait_def_id);
+
+        // If we must exclude the Self : Trait predicate contained by all
+        // traits.
+        let no_refl_predicates : Vec<_> =
+            predicates.predicates.iter().filter(|predicate| {
+                match *predicate {
+                    &ty::Predicate::Trait(ref poly_trait_ref) =>
+                        poly_trait_ref.def_id() != trait_def_id,
+                    _ => true,
+            }
+            }).collect();
+
+        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
+
+        // We use an if-else here, since the generics will also trigger
+        // an extraneous error message when we find predicates like
+        // `T : Sized` for a trait like: `trait Magic<T>`.
+        if !trait_def.generics.types.get_slice(ParamSpace::TypeSpace).is_empty() {
+            error_566(self.ccx, span);
+        } else if !no_refl_predicates.is_empty() {
+            error_565(self.ccx, span);
+        }
+
+    }
+
     fn check_trait(&mut self,
                    item: &hir::Item,
                    items: &[hir::TraitItem])
@@ -258,9 +288,18 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let trait_def_id = self.tcx().map.local_def_id(item.id);
 
         if self.tcx().trait_has_default_impl(trait_def_id) {
+            // We want to both ensure:
+            // 1) that there are no items contained within
+            // the trait defintion
+            //
+            // 2) that the definition doesn't violate the no-super trait rule
+            // for auto traits.
+
             if !items.is_empty() {
                 error_380(self.ccx, item.span);
             }
+
+            self.check_auto_trait(trait_def_id, item.span);
         }
 
         self.for_item(item).with_fcx(|fcx, this| {
@@ -271,6 +310,8 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             vec![]
         });
     }
+
+
 
     fn check_item_fn(&mut self,
                      item: &hir::Item,
@@ -635,6 +676,18 @@ fn error_380(ccx: &CrateCtxt, span: Span) {
     span_err!(ccx.tcx.sess, span, E0380,
               "traits with default impls (`e.g. unsafe impl \
                Trait for ..`) must have no methods or associated items")
+}
+
+fn error_565(ccx: &CrateCtxt, span: Span) {
+    span_err!(ccx.tcx.sess, span, E0565,
+              "traits with default impls (`e.g. unsafe impl \
+               Trait for ..`) can not have predicates")
+}
+
+fn error_566(ccx: &CrateCtxt, span: Span) {
+    span_err!(ccx.tcx.sess, span, E0566,
+              "traits with default impls (`e.g. unsafe impl \
+               Trait for ..`) can not have type parameters")
 }
 
 fn error_392<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, span: Span, param_name: ast::Name)
