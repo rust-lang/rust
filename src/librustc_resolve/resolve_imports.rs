@@ -135,14 +135,13 @@ impl<'a> NameResolution<'a> {
     }
 }
 
-impl<'a> ::ModuleS<'a> {
-    fn resolution(&self, name: Name, ns: Namespace) -> &'a RefCell<NameResolution<'a>> {
-        *self.resolutions.borrow_mut().entry((name, ns))
-             .or_insert_with(|| self.arenas.alloc_name_resolution())
-    }
-}
-
 impl<'a> Resolver<'a> {
+    fn resolution(&self, module: Module<'a>, name: Name, ns: Namespace)
+                  -> &'a RefCell<NameResolution<'a>> {
+        *module.resolutions.borrow_mut().entry((name, ns))
+               .or_insert_with(|| self.arenas.alloc_name_resolution())
+    }
+
     /// Attempts to resolve the supplied name in the given module for the given namespace.
     /// If successful, returns the binding corresponding to the name.
     pub fn resolve_name_in_module(&mut self,
@@ -154,7 +153,7 @@ impl<'a> Resolver<'a> {
                                   -> ResolveResult<&'a NameBinding<'a>> {
         self.populate_module_if_necessary(module);
 
-        let resolution = module.resolution(name, ns);
+        let resolution = self.resolution(module, name, ns);
         let resolution = match resolution.borrow_state() {
             ::std::cell::BorrowState::Unused => resolution.borrow_mut(),
             _ => return Failed(None), // This happens when there is a cycle of imports
@@ -240,8 +239,9 @@ impl<'a> Resolver<'a> {
                                 span: Span,
                                 id: NodeId,
                                 vis: ty::Visibility) {
+        let current_module = self.current_module;
         let directive = self.arenas.alloc_import_directive(ImportDirective {
-            parent: self.current_module,
+            parent: current_module,
             module_path: module_path,
             target_module: Cell::new(None),
             subclass: subclass,
@@ -254,7 +254,7 @@ impl<'a> Resolver<'a> {
         match directive.subclass {
             SingleImport { target, .. } => {
                 for &ns in &[ValueNS, TypeNS] {
-                    let mut resolution = self.current_module.resolution(target, ns).borrow_mut();
+                    let mut resolution = self.resolution(current_module, target, ns).borrow_mut();
                     resolution.single_imports.add_directive(directive);
                 }
             }
@@ -311,7 +311,7 @@ impl<'a> Resolver<'a> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (new_binding, t) = {
-            let mut resolution = &mut *module.resolution(name, ns).borrow_mut();
+            let mut resolution = &mut *self.resolution(module, name, ns).borrow_mut();
             let was_known = resolution.binding().is_some();
 
             let t = f(self, resolution);
