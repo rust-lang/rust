@@ -157,11 +157,6 @@ img {
     min-width: 70em;
 }
 
-nav.sub {
-    font-size: 16px;
-    text-transform: uppercase;
-}
-
 .sidebar {
     width: 200px;
     position: absolute;
@@ -171,6 +166,12 @@ nav.sub {
 }
 
 .content, nav { max-width: 960px; }
+
+nav.sub {
+    font-size: 16px;
+    text-transform: uppercase;
+    max-width: none;
+}
 
 /* Everything else */
 
@@ -299,7 +300,12 @@ h4 > code, h3 > code {
 }
 
 #main { position: relative; }
-#main > .since {
+#main > div {
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+}
+#main > div > .since {
     top: inherit;
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }

@@ -80,7 +80,7 @@ r##"<!DOCTYPE html>
         </form>
     </nav>
 
-    <section id='main' class="content {ty}">{content}</section>
+    <section id='main'><div class="content {ty}">{content}</div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
