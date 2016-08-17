@@ -335,8 +335,10 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
 
                 // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
                 if Some(trait_def_id) == self.tcx.lang_items.sized_trait() {
-                    span_err!(self.tcx.sess, item.span, E0322,
-                              "explicit impls for the `Sized` trait are not permitted");
+                    struct_span_err!(self.tcx.sess, item.span, E0322,
+                              "explicit impls for the `Sized` trait are not permitted")
+                        .span_label(item.span, &format!("impl of 'Sized' not allowed"))
+                        .emit();
                     return;
                 }
                 if Some(trait_def_id) == self.tcx.lang_items.unsize_trait() {
