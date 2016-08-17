@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 164 lints included in this crate:
+There are 165 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -130,6 +130,7 @@ name                                                                            
 [panic_params](https://github.com/Manishearth/rust-clippy/wiki#panic_params)                                         | warn    | missing parameters in `panic!` calls
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                             | warn    | operations where precedence may be unclear
 [print_stdout](https://github.com/Manishearth/rust-clippy/wiki#print_stdout)                                         | allow   | printing on stdout
+[print_with_newline](https://github.com/Manishearth/rust-clippy/wiki#print_with_newline)                             | warn    | using `print!()` with a format string that ends in a newline
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                                   | warn    | arguments of the type `&Vec<...>` (instead of `&[...]`) or `&String` (instead of `&str`)
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)                             | warn    | using `Range::step_by(0)`, which produces an infinite iterator
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                             | warn    | zipping iterator with a range when `enumerate()` would do

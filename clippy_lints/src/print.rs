@@ -3,6 +3,24 @@ use rustc::hir::map::Node::{NodeItem, NodeImplItem};
 use rustc::lint::*;
 use utils::paths;
 use utils::{is_expn_of, match_path, span_lint};
+use format::get_argument_fmtstr_parts;
+
+/// **What it does:** This lint warns when you using `print!()` with a format string that
+/// ends in a newline.
+///
+/// **Why is this bad?** You should use `println!()` instead, which appends the newline.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// print!("Hello {}!\n", name);
+/// ```
+declare_lint! {
+    pub PRINT_WITH_NEWLINE,
+    Warn,
+    "using `print!()` with a format string that ends in a newline"
+}
 
 /// **What it does:** Checks for printing on *stdout*. The purpose of this lint
 /// is to catch debugging remnants.
@@ -43,7 +61,7 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PRINT_STDOUT, USE_DEBUG)
+        lint_array!(PRINT_WITH_NEWLINE, PRINT_STDOUT, USE_DEBUG)
     }
 }
 
@@ -62,6 +80,26 @@ impl LateLintPass for Pass {
                         };
 
                         span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
+
+                        // Check print! with format string ending in "\n".
+                        if_let_chain!{[
+                            name == "print",
+                            // ensure we're calling Arguments::new_v1
+                            args.len() == 1,
+                            let ExprCall(ref args_fun, ref args_args) = args[0].node,
+                            let ExprPath(_, ref args_path) = args_fun.node,
+                            match_path(args_path, &paths::FMT_ARGUMENTS_NEWV1),
+                            args_args.len() == 2,
+                            // collect the format string parts and check the last one
+                            let Some(fmtstrs) = get_argument_fmtstr_parts(cx, &args_args[0]),
+                            let Some(last_str) = fmtstrs.last(),
+                            let Some(last_chr) = last_str.chars().last(),
+                            last_chr == '\n'
+                        ], {
+                            span_lint(cx, PRINT_WITH_NEWLINE, span,
+                                      "using `print!()` with a format string that ends in a \
+                                       newline, consider using `println!()` instead");
+                        }}
                     }
                 }
                 // Search for something like

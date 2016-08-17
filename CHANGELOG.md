@@ -255,6 +255,7 @@ All notable changes to this project will be documented in this file.
 [`panic_params`]: https://github.com/Manishearth/rust-clippy/wiki#panic_params
 [`precedence`]: https://github.com/Manishearth/rust-clippy/wiki#precedence
 [`print_stdout`]: https://github.com/Manishearth/rust-clippy/wiki#print_stdout
+[`print_with_newline`]: https://github.com/Manishearth/rust-clippy/wiki#print_with_newline
 [`ptr_arg`]: https://github.com/Manishearth/rust-clippy/wiki#ptr_arg
 [`range_step_by_zero`]: https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero
 [`range_zip_with_len`]: https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len
