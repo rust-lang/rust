@@ -8,7 +8,7 @@ use std::fmt;
 
 use quickcheck::{Arbitrary, Gen};
 
-use LargeInt;
+use int::LargeInt;
 
 // Generates values in the full range of the integer type
 macro_rules! arbitrary {
