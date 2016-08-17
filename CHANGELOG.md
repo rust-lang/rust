@@ -304,6 +304,7 @@ All notable changes to this project will be documented in this file.
 [`unused_lifetimes`]: https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes
 [`use_debug`]: https://github.com/Manishearth/rust-clippy/wiki#use_debug
 [`used_underscore_binding`]: https://github.com/Manishearth/rust-clippy/wiki#used_underscore_binding
+[`useless_attribute`]: https://github.com/Manishearth/rust-clippy/wiki#useless_attribute
 [`useless_format`]: https://github.com/Manishearth/rust-clippy/wiki#useless_format
 [`useless_let_if_seq`]: https://github.com/Manishearth/rust-clippy/wiki#useless_let_if_seq
 [`useless_transmute`]: https://github.com/Manishearth/rust-clippy/wiki#useless_transmute

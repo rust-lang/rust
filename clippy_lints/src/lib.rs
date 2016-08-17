@@ -308,6 +308,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_SEMVER,
         attrs::INLINE_ALWAYS,
+        attrs::USELESS_ATTRIBUTE,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
         blacklisted_name::BLACKLISTED_NAME,

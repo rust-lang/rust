@@ -6,7 +6,7 @@ use rustc::hir::*;
 use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind};
 use syntax::codemap::Span;
-use utils::{in_macro, match_path, span_lint};
+use utils::{in_macro, match_path, span_lint, span_lint_and_then, snippet_opt};
 use utils::paths;
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
@@ -35,6 +35,25 @@ declare_lint! {
     "use of `#[inline(always)]`"
 }
 
+/// **What it does:** Checks for `extern crate` and `use` items annotated with lint attributes
+///
+/// **Why is this bad?** Lint attributes have no effect on crate imports. Most likely a `!` was forgotten
+///
+/// **Known problems:** Technically one might allow `unused_import` on a `use` item, but it's easier to remove the unused item.
+///
+/// **Example:**
+/// ```rust
+/// #[deny(dead_code)]
+/// extern crate foo;
+/// #[allow(unused_import)]
+/// use foo::bar;
+/// ```
+declare_lint! {
+    pub USELESS_ATTRIBUTE,
+    Warn,
+    "use of lint attributes on `extern crate` items"
+}
+
 /// **What it does:** Checks for `#[deprecated]` annotations with a `since`
 /// field that is not a valid semantic version.
 ///
@@ -59,7 +78,7 @@ pub struct AttrPass;
 
 impl LintPass for AttrPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(INLINE_ALWAYS, DEPRECATED_SEMVER)
+        lint_array!(INLINE_ALWAYS, DEPRECATED_SEMVER, USELESS_ATTRIBUTE)
     }
 }
 
@@ -82,6 +101,29 @@ impl LateLintPass for AttrPass {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if is_relevant_item(item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
+        }
+        match item.node {
+            ItemExternCrate(_) |
+            ItemUse(_) => {
+                for attr in &item.attrs {
+                    if let MetaItemKind::List(ref name, _) = attr.node.value.node {
+                        match &**name {
+                            "allow" | "warn" | "deny" | "forbid" => {
+                                span_lint_and_then(cx, USELESS_ATTRIBUTE, attr.span,
+                                                   "useless lint attribute",
+                                                   |db| {
+                                    if let Some(mut sugg) = snippet_opt(cx, attr.span) {
+                                        sugg.insert(1, '!');
+                                        db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
+                                    }
+                                });
+                            },
+                            _ => {},
+                        }
+                    }
+                }
+            },
+            _ => {},
         }
     }
 
