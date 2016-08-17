@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// rustc-env:RUST_NEW_ERROR_FORMAT
 extern {
     fn write(fildes: i32, buf: *const i8, nbyte: u64) -> i64;
 }
