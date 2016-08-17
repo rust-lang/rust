@@ -73,12 +73,43 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         }
     }
 
+    /// Creates a Substs for generic parameter definitions,
+    /// by calling closures to obtain each region and type.
+    /// The closures get to observe the Substs as they're
+    /// being built, which can be used to correctly
+    /// substitute defaults of type parameters.
+    pub fn from_generics<FR, FT>(generics: &ty::Generics<'tcx>,
+                                 mut mk_region: FR,
+                                 mut mk_type: FT)
+                                 -> Substs<'tcx>
+    where FR: FnMut(&ty::RegionParameterDef, &Substs<'tcx>) -> ty::Region,
+          FT: FnMut(&ty::TypeParameterDef<'tcx>, &Substs<'tcx>) -> Ty<'tcx> {
+        let mut substs = Substs::empty();
+        for &space in &ParamSpace::all() {
+            for def in generics.regions.get_slice(space) {
+                let region = mk_region(def, &substs);
+                assert_eq!(substs.regions.len(def.space), def.index as usize);
+                substs.regions.push(def.space, region);
+            }
+            for def in generics.types.get_slice(space) {
+                let ty = mk_type(def, &substs);
+                assert_eq!(substs.types.len(def.space), def.index as usize);
+                substs.types.push(def.space, ty);
+            }
+        }
+        substs
+    }
+
     pub fn is_noop(&self) -> bool {
         self.regions.is_empty() && self.types.is_empty()
     }
 
     pub fn type_for_def(&self, ty_param_def: &ty::TypeParameterDef) -> Ty<'tcx> {
         *self.types.get(ty_param_def.space, ty_param_def.index as usize)
+    }
+
+    pub fn region_for_def(&self, def: &ty::RegionParameterDef) -> ty::Region {
+        *self.regions.get(def.space, def.index as usize)
     }
 
     pub fn self_ty(&self) -> Option<Ty<'tcx>> {

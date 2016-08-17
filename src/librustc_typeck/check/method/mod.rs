@@ -182,29 +182,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let trait_def = self.tcx.lookup_trait_def(trait_def_id);
 
-        let type_parameter_defs = trait_def.generics.types.get_slice(subst::TypeSpace);
-        let expected_number_of_input_types = type_parameter_defs.len();
-
+        if let Some(ref input_types) = opt_input_types {
+            assert_eq!(trait_def.generics.types.len(subst::TypeSpace), input_types.len());
+        }
         assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
         assert!(trait_def.generics.regions.is_empty());
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let mut substs = subst::Substs::new_trait(Vec::new(), Vec::new(), self_ty);
-
-        match opt_input_types {
-            Some(input_types) => {
-                assert_eq!(expected_number_of_input_types, input_types.len());
-                substs.types.replace(subst::ParamSpace::TypeSpace, input_types);
+        let type_defs = trait_def.generics.types.as_full_slice();
+        let region_defs = trait_def.generics.regions.as_full_slice();
+        let substs = subst::Substs::from_param_defs(region_defs, type_defs, |def| {
+            self.region_var_for_def(span, def)
+        }, |def, substs| {
+            if def.space == subst::SelfSpace {
+                self_ty
+            } else if let Some(ref input_types) = opt_input_types {
+                input_types[def.index as usize]
+            } else {
+                self.type_var_for_def(span, def, substs)
             }
-
-            None => {
-                self.type_vars_for_defs(
-                    span,
-                    subst::ParamSpace::TypeSpace,
-                    &mut substs,
-                    type_parameter_defs);
-            }
-        }
+        });
 
         let trait_ref = ty::TraitRef::new(trait_def_id, self.tcx.mk_substs(substs));
 

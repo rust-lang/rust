@@ -1358,27 +1358,15 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         trait_def.associated_type_names.contains(&assoc_name)
     }
 
-    fn ty_infer(&self,
-                ty_param_def: Option<ty::TypeParameterDef<'tcx>>,
-                substs: Option<&mut subst::Substs<'tcx>>,
-                space: Option<subst::ParamSpace>,
-                span: Span) -> Ty<'tcx> {
-        // Grab the default doing subsitution
-        let default = ty_param_def.and_then(|def| {
-            def.default.map(|ty| type_variable::Default {
-                ty: ty.subst_spanned(self.tcx(), substs.as_ref().unwrap(), Some(span)),
-                origin_span: span,
-                def_id: def.default_def_id
-            })
-        });
+    fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
+        self.next_ty_var()
+    }
 
-        let ty_var = self.next_ty_var_with_default(default);
-
-        // Finally we add the type variable to the substs
-        match substs {
-            None => ty_var,
-            Some(substs) => { substs.types.push(space.unwrap(), ty_var); ty_var }
-        }
+    fn ty_infer_for_def(&self,
+                        ty_param_def: &ty::TypeParameterDef<'tcx>,
+                        substs: &subst::Substs<'tcx>,
+                        span: Span) -> Ty<'tcx> {
+        self.type_var_for_def(span, ty_param_def, substs)
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -2785,20 +2773,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         span: Span, // (potential) receiver for this impl
                         did: DefId)
                         -> TypeAndSubsts<'tcx> {
-        let tcx = self.tcx;
+        let ity = self.tcx.lookup_item_type(did);
+        debug!("impl_self_ty: ity={:?}", ity);
 
-        let ity = tcx.lookup_item_type(did);
-        let (tps, rps, raw_ty) =
-            (ity.generics.types.get_slice(subst::TypeSpace),
-             ity.generics.regions.get_slice(subst::TypeSpace),
-             ity.ty);
-
-        debug!("impl_self_ty: tps={:?} rps={:?} raw_ty={:?}", tps, rps, raw_ty);
-
-        let rps = self.region_vars_for_defs(span, rps);
-        let mut substs = subst::Substs::new_type(vec![], rps);
-        self.type_vars_for_defs(span, ParamSpace::TypeSpace, &mut substs, tps);
-        let substd_ty = self.instantiate_type_scheme(span, &substs, &raw_ty);
+        let substs = self.fresh_substs_for_generics(span, &ity.generics);
+        let substd_ty = self.instantiate_type_scheme(span, &substs, &ity.ty);
 
         TypeAndSubsts { substs: substs, ty: substd_ty }
     }
@@ -4532,7 +4511,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // everything.
         if provided_len == 0 && !(require_type_space && space == subst::TypeSpace) {
             substs.types.replace(space, Vec::new());
-            self.type_vars_for_defs(span, space, substs, &desired[..]);
+            for def in desired {
+                let ty_var = self.type_var_for_def(span, def, substs);
+                substs.types.push(def.space, ty_var);
+            }
             return;
         }
 

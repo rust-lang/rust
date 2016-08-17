@@ -358,8 +358,7 @@ pub fn fresh_type_vars_for_impl<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
                                                 impl_def_id: DefId)
                                                 -> &'tcx Substs<'tcx>
 {
-    let tcx = infcx.tcx;
-    let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
+    let impl_generics = infcx.tcx.lookup_item_type(impl_def_id).generics;
     infcx.fresh_substs_for_generics(span, &impl_generics)
 }
 

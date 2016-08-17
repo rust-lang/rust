@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn fresh_receiver_substs(&mut self,
                              self_ty: Ty<'tcx>,
                              pick: &probe::Pick<'tcx>)
-                             -> subst::Substs<'tcx>
+                             -> &'tcx subst::Substs<'tcx>
     {
         match pick.kind {
             probe::InherentImplPick => {
@@ -231,7 +231,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                            original_poly_trait_ref,
                            upcast_trait_ref,
                            trait_def_id);
-                    upcast_trait_ref.substs.clone()
+                    upcast_trait_ref.substs
                 })
             }
 
@@ -249,9 +249,9 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 let impl_trait_ref =
                     self.instantiate_type_scheme(
                         self.span,
-                        &impl_polytype.substs,
+                        impl_polytype.substs,
                         &self.tcx.impl_trait_ref(impl_def_id).unwrap());
-                impl_trait_ref.substs.clone()
+                impl_trait_ref.substs
             }
 
             probe::TraitPick => {
@@ -271,7 +271,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             probe::WhereClausePick(ref poly_trait_ref) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                self.replace_late_bound_regions_with_fresh_var(&poly_trait_ref).substs.clone()
+                self.replace_late_bound_regions_with_fresh_var(&poly_trait_ref).substs
             }
         }
     }
@@ -303,8 +303,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
     fn instantiate_method_substs(&mut self,
                                  pick: &probe::Pick<'tcx>,
-                                 supplied_method_types: Vec<Ty<'tcx>>,
-                                 substs: subst::Substs<'tcx>)
+                                 mut supplied_method_types: Vec<Ty<'tcx>>,
+                                 substs: &subst::Substs<'tcx>)
                                  -> subst::Substs<'tcx>
     {
         // Determine the values for the generic parameters of the method.
@@ -312,50 +312,42 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // variables.
         let num_supplied_types = supplied_method_types.len();
         let method = pick.item.as_opt_method().unwrap();
-        let method_types = method.generics.types.get_slice(subst::FnSpace);
-        let num_method_types = method_types.len();
+        let num_method_types = method.generics.types.len(subst::FnSpace);
 
+        if num_supplied_types > 0 && num_supplied_types != num_method_types {
+            if num_method_types == 0 {
+                span_err!(self.tcx.sess, self.span, E0035,
+                    "does not take type parameters");
+            } else {
+                span_err!(self.tcx.sess, self.span, E0036,
+                    "incorrect number of type parameters given for this method: \
+                     expected {}, found {}",
+                    num_method_types, num_supplied_types);
+            }
+            supplied_method_types = vec![self.tcx.types.err; num_method_types];
+        }
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
         //
         // FIXME -- permit users to manually specify lifetimes
-        let method_regions =
-            self.region_vars_for_defs(
-                self.span,
-                pick.item.as_opt_method().unwrap()
-                    .generics.regions.get_slice(subst::FnSpace));
-
-        let subst::Substs { types, regions } = substs;
-        let regions = regions.with_slice(subst::FnSpace, &method_regions);
-        let mut final_substs = subst::Substs { types: types, regions: regions };
-
-        if num_supplied_types == 0 {
-            self.type_vars_for_defs(
-                self.span,
-                subst::FnSpace,
-                &mut final_substs,
-                method_types);
-        } else if num_method_types == 0 {
-            span_err!(self.tcx.sess, self.span, E0035,
-                "does not take type parameters");
-            self.type_vars_for_defs(
-                self.span,
-                subst::FnSpace,
-                &mut final_substs,
-                method_types);
-        } else if num_supplied_types != num_method_types {
-            span_err!(self.tcx.sess, self.span, E0036,
-                "incorrect number of type parameters given for this method: expected {}, found {}",
-                num_method_types, num_supplied_types);
-            final_substs.types.replace(
-                subst::FnSpace,
-                vec![self.tcx.types.err; num_method_types]);
-        } else {
-            final_substs.types.replace(subst::FnSpace, supplied_method_types);
-        }
-
-        return final_substs;
+        let type_defs = method.generics.types.as_full_slice();
+        let region_defs = method.generics.regions.as_full_slice();
+        subst::Substs::from_param_defs(region_defs, type_defs, |def| {
+            if def.space != subst::FnSpace {
+                substs.region_for_def(def)
+            } else {
+                self.region_var_for_def(self.span, def)
+            }
+        }, |def, cur_substs| {
+            if def.space != subst::FnSpace {
+                substs.type_for_def(def)
+            } else if supplied_method_types.is_empty() {
+                self.type_var_for_def(self.span, def, cur_substs)
+            } else {
+                supplied_method_types[def.index as usize]
+            }
+        })
     }
 
     fn unify_receivers(&mut self,
