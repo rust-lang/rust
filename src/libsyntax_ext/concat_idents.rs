@@ -18,8 +18,10 @@ use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax::tokenstream::TokenTree;
 
-pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
-                              -> Box<base::MacResult+'cx> {
+pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
+                              sp: Span,
+                              tts: &[TokenTree])
+                              -> Box<base::MacResult + 'cx> {
     if !cx.ecfg.enable_concat_idents() {
         feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
                                        "concat_idents",
@@ -33,35 +35,40 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {
             match *e {
-                TokenTree::Token(_, token::Comma) => {},
+                TokenTree::Token(_, token::Comma) => {}
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma.");
                     return DummyResult::expr(sp);
-                },
+                }
             }
         } else {
             match *e {
-                TokenTree::Token(_, token::Ident(ident)) => {
-                    res_str.push_str(&ident.name.as_str())
-                },
+                TokenTree::Token(_, token::Ident(ident)) => res_str.push_str(&ident.name.as_str()),
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
                     return DummyResult::expr(sp);
-                },
+                }
             }
         }
     }
     let res = str_to_ident(&res_str);
 
-    struct Result { ident: ast::Ident, span: Span };
+    struct Result {
+        ident: ast::Ident,
+        span: Span,
+    };
 
     impl Result {
         fn path(&self) -> ast::Path {
             let segment = ast::PathSegment {
                 identifier: self.ident,
-                parameters: ast::PathParameters::none()
+                parameters: ast::PathParameters::none(),
             };
-            ast::Path { span: self.span, global: false, segments: vec![segment] }
+            ast::Path {
+                span: self.span,
+                global: false,
+                segments: vec![segment],
+            }
         }
     }
 
@@ -84,5 +91,8 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
         }
     }
 
-    Box::new(Result { ident: res, span: sp })
+    Box::new(Result {
+        ident: res,
+        span: sp,
+    })
 }
