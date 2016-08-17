@@ -767,10 +767,6 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
         if let Some(ii) = impl_item_opt {
             encode_attributes(self.rbml_w, &ii.attrs);
             encode_defaultness(self.rbml_w, ii.defaultness);
-        } else {
-            // TODO this looks bogus and unnecessary
-            self.encode_predicates(&ecx.tcx.lookup_predicates(associated_type.def_id),
-                                   tag_item_generics);
         }
 
         if let Some(ty) = associated_type.ty {
