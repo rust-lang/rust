@@ -338,6 +338,34 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             };
 
             let (impl_err_span, trait_err_span) = match terr {
+                TypeError::Mutability => {
+                    if let Some(trait_m_node_id) = tcx.map.as_local_node_id(trait_m.def_id) {
+                        let trait_m_iter = match tcx.map.expect_trait_item(trait_m_node_id).node {
+                            TraitItem_::MethodTraitItem(ref trait_m_sig, _) =>
+                                trait_m_sig.decl.inputs.iter(),
+                            _ => bug!("{:?} is not a MethodTraitItem", trait_m)
+                        };
+
+                        impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
+                            match (&impl_arg.ty.node, &trait_arg.ty.node) {
+                                (&Ty_::TyRptr(_, ref impl_mt), &Ty_::TyRptr(_, ref trait_mt)) |
+                                (&Ty_::TyPtr(ref impl_mt), &Ty_::TyPtr(ref trait_mt)) =>
+                                    impl_mt.mutbl != trait_mt.mutbl,
+                                _ => false
+                            }
+                        }).map(|(ref impl_arg, ref trait_arg)| {
+                            match (impl_arg.to_self(), trait_arg.to_self()) {
+                                (Some(impl_self), Some(trait_self)) =>
+                                    (impl_self.span, Some(trait_self.span)),
+                                (None, None) => (impl_arg.ty.span, Some(trait_arg.ty.span)),
+                                _ => bug!("impl and trait fns have different first args, \
+                                           impl: {:?}, trait: {:?}", impl_arg, trait_arg)
+                            }
+                        }).unwrap_or((origin.span(), tcx.map.span_if_local(trait_m.def_id)))
+                    } else {
+                        (origin.span(), tcx.map.span_if_local(trait_m.def_id))
+                    }
+                }
                 TypeError::Sorts(ExpectedFound { expected, found }) => {
                     if let Some(trait_m_node_id) = tcx.map.as_local_node_id(trait_m.def_id) {
                         let trait_m_iter = match tcx.map.expect_trait_item(trait_m_node_id).node {
