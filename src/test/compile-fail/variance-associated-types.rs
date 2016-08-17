@@ -20,12 +20,12 @@ trait Trait<'a> {
 }
 
 #[rustc_variance]
-struct Foo<'a, T : Trait<'a>> { //~ ERROR ItemVariances(types=[[+];[];[]], regions=[[-];[];[]])
+struct Foo<'a, T : Trait<'a>> { //~ ERROR ItemVariances(types=[+], regions=[-])
     field: (T, &'a ())
 }
 
 #[rustc_variance]
-struct Bar<'a, T : Trait<'a>> { //~ ERROR ItemVariances(types=[[o];[];[]], regions=[[o];[];[]])
+struct Bar<'a, T : Trait<'a>> { //~ ERROR ItemVariances(types=[o], regions=[o])
     field: <T as Trait<'a>>::Type
 }
 

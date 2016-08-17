@@ -4018,7 +4018,7 @@ register_diagnostics! {
 //  E0141,
 //  E0159, // use of trait `{}` as struct constructor
 //  E0163, // merged into E0071
-    E0167,
+//  E0167,
 //  E0168,
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
@@ -4053,7 +4053,7 @@ register_diagnostics! {
 //  E0235, // structure constructor specifies a structure of type but
 //  E0236, // no lang item for range syntax
 //  E0237, // no lang item for range syntax
-    E0238, // parenthesized parameters may only be used with a trait
+//  E0238, // parenthesized parameters may only be used with a trait
 //  E0239, // `next` method of `Iterator` trait has unexpected type
 //  E0240,
 //  E0241,

@@ -15,8 +15,7 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst::{FnSpace, Subst, Substs};
-use rustc::ty::subst;
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, Reveal};
 use abi::FnType;
 use base::*;
@@ -221,20 +220,20 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     impl_id: DefId,
-                                    substs: &'tcx subst::Substs<'tcx>)
+                                    substs: &'tcx Substs<'tcx>)
                                     -> Vec<Option<ImplMethod<'tcx>>>
 {
     debug!("get_vtable_methods(impl_id={:?}, substs={:?}", impl_id, substs);
 
-    let trt_id = match tcx.impl_trait_ref(impl_id) {
+    let trait_id = match tcx.impl_trait_ref(impl_id) {
         Some(t_id) => t_id.def_id,
         None       => bug!("make_impl_vtable: don't know how to \
                             make a vtable for a type impl!")
     };
 
-    tcx.populate_implementations_for_trait_if_necessary(trt_id);
+    tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
-    let trait_item_def_ids = tcx.trait_item_def_ids(trt_id);
+    let trait_item_def_ids = tcx.trait_item_def_ids(trait_id);
     trait_item_def_ids
         .iter()
 
@@ -260,7 +259,7 @@ pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let name = trait_method_type.name;
 
             // Some methods cannot be called on an object; skip those.
-            if !tcx.is_vtable_safe_method(trt_id, &trait_method_type) {
+            if !tcx.is_vtable_safe_method(trait_id, &trait_method_type) {
                 debug!("get_vtable_methods: not vtable safe");
                 return None;
             }
@@ -270,15 +269,13 @@ pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // the method may have some early-bound lifetimes, add
             // regions for those
-            let num_dummy_regions = trait_method_type.generics.regions.len(FnSpace);
-            let dummy_regions = vec![ty::ReErased; num_dummy_regions];
-            let method_substs = substs.clone()
-                                      .with_method(vec![], dummy_regions);
-            let method_substs = tcx.mk_substs(method_substs);
+            let method_substs = Substs::for_item(tcx, trait_method_def_id,
+                                                 |_, _| ty::ReErased,
+                                                 |_, _| tcx.types.err);
 
             // The substitutions we have are on the impl, so we grab
             // the method type from the impl to substitute into.
-            let mth = get_impl_method(tcx, impl_id, method_substs, name);
+            let mth = get_impl_method(tcx, method_substs, impl_id, substs, name);
 
             debug!("get_vtable_methods: mth={:?}", mth);
 
@@ -289,7 +286,7 @@ pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // try and trans it, in that case. Issue #23435.
             if mth.is_provided {
                 let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
-                if !normalize_and_test_predicates(tcx, predicates.into_vec()) {
+                if !normalize_and_test_predicates(tcx, predicates) {
                     debug!("get_vtable_methods: predicates do not hold");
                     return None;
                 }
@@ -309,8 +306,9 @@ pub struct ImplMethod<'tcx> {
 
 /// Locates the applicable definition of a method, given its name.
 pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 impl_def_id: DefId,
                                  substs: &'tcx Substs<'tcx>,
+                                 impl_def_id: DefId,
+                                 impl_substs: &'tcx Substs<'tcx>,
                                  name: Name)
                                  -> ImplMethod<'tcx>
 {
@@ -322,6 +320,7 @@ pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
             let substs = tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+                let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);
                 let substs = traits::translate_substs(&infcx, impl_def_id,
                                                       substs, node_item.node);
                 tcx.lift(&substs).unwrap_or_else(|| {

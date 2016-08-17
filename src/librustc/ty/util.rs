@@ -11,7 +11,6 @@
 //! misc. type-system utilities too small to deserve their own file
 
 use hir::def_id::DefId;
-use ty::subst;
 use infer::InferCtxt;
 use hir::pat_util;
 use traits::{self, Reveal};
@@ -451,21 +450,21 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 // to sort them again by the name, in string form.
 
                 // Hash the whole principal trait ref.
-                self.def_id(data.principal_def_id());
+                self.def_id(data.principal.def_id());
                 data.principal.visit_with(self);
 
                 // Hash region and builtin bounds.
-                data.bounds.region_bound.visit_with(self);
-                self.hash(data.bounds.builtin_bounds);
+                data.region_bound.visit_with(self);
+                self.hash(data.builtin_bounds);
 
                 // Only projection bounds are left, sort and hash them.
-                let mut projection_bounds: Vec<_> = data.bounds.projection_bounds
+                let mut projection_bounds: Vec<_> = data.projection_bounds
                                                         .iter()
                                                         .map(|b| (b.item_name().as_str(), b))
                                                         .collect();
                 projection_bounds.sort_by_key(|&(ref name, _)| name.clone());
                 for (name, bound) in projection_bounds {
-                    self.def_id(bound.0.projection_ty.trait_ref.def_id);
+                    self.def_id(bound.0.trait_ref.def_id);
                     self.hash(name);
                     bound.visit_with(self);
                 }
@@ -477,7 +476,6 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 self.hash(tys.len());
             }
             TyParam(p) => {
-                self.hash(p.space);
                 self.hash(p.idx);
                 self.hash(p.name.as_str());
             }
@@ -695,12 +693,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         return false;
                     }
 
-                    let types_a = substs_a.types.get_slice(subst::TypeSpace);
-                    let types_b = substs_b.types.get_slice(subst::TypeSpace);
+                    let types_a = &substs_a.types;
+                    let types_b = &substs_b.types;
 
-                    let mut pairs = types_a.iter().zip(types_b);
-
-                    pairs.all(|(&a, &b)| same_type(a, b))
+                    types_a.iter().zip(types_b).all(|(&a, &b)| same_type(a, b))
                 }
                 _ => {
                     a == b

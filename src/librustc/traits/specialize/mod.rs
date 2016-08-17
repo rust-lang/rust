@@ -18,7 +18,7 @@
 // fits together with the rest of the trait machinery.
 
 use super::{SelectionContext, FulfillmentContext};
-use super::util::{fresh_type_vars_for_impl, impl_trait_ref_and_oblig};
+use super::util::impl_trait_ref_and_oblig;
 
 use rustc_data_structures::fnv::FnvHashMap;
 use hir::def_id::DefId;
@@ -44,11 +44,10 @@ pub struct OverlapError {
 /// When we have selected one impl, but are actually using item definitions from
 /// a parent impl providing a default, we need a way to translate between the
 /// type parameters of the two impls. Here the `source_impl` is the one we've
-/// selected, and `source_substs` is a substitution of its generics (and
-/// possibly some relevant `FnSpace` variables as well). And `target_node` is
-/// the impl/trait we're actually going to get the definition from. The resulting
-/// substitution will map from `target_node`'s generics to `source_impl`'s
-/// generics as instantiated by `source_subst`.
+/// selected, and `source_substs` is a substitution of its generics.
+/// And `target_node` is the impl/trait we're actually going to get the
+/// definition from. The resulting substitution will map from `target_node`'s
+/// generics to `source_impl`'s generics as instantiated by `source_subst`.
 ///
 /// For example, consider the following scenario:
 ///
@@ -101,7 +100,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     };
 
     // directly inherent the method generics, since those do not vary across impls
-    infcx.tcx.mk_substs(target_substs.with_method_from_subst(source_substs))
+    source_substs.rebase_onto(infcx.tcx, source_impl, target_substs)
 }
 
 /// Is impl1 a specialization of impl2?
@@ -141,11 +140,8 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     // create a parameter environment corresponding to a (skolemized) instantiation of impl1
-    let scheme = tcx.lookup_item_type(impl1_def_id);
-    let predicates = tcx.lookup_predicates(impl1_def_id);
     let mut penv = tcx.construct_parameter_environment(DUMMY_SP,
-                                                       &scheme.generics,
-                                                       &predicates,
+                                                       impl1_def_id,
                                                        region::DUMMY_CODE_EXTENT);
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id)
                              .unwrap()
@@ -188,10 +184,10 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        target_impl: DefId)
                                        -> Result<&'tcx Substs<'tcx>, ()> {
     let selcx = &mut SelectionContext::new(&infcx);
-    let target_substs = fresh_type_vars_for_impl(&infcx, DUMMY_SP, target_impl);
+    let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
     let (target_trait_ref, obligations) = impl_trait_ref_and_oblig(selcx,
                                                                    target_impl,
-                                                                   &target_substs);
+                                                                   target_substs);
 
     // do the impls unify? If not, no specialization.
     if let Err(_) = infcx.eq_trait_refs(true,

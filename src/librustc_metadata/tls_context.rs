@@ -74,7 +74,7 @@ impl<'a, 'tcx: 'a> tls::DecodingContext<'tcx> for DecodingContext<'a, 'tcx> {
         ty
     }
 
-    fn decode_substs(&self, decoder: &mut OpaqueDecoder) -> Substs<'tcx> {
+    fn decode_substs(&self, decoder: &mut OpaqueDecoder) -> &'tcx Substs<'tcx> {
         let def_id_convert = &mut |did| {
             decoder::translate_def_id(self.crate_metadata, did)
         };

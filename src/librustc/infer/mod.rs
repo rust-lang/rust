@@ -25,9 +25,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
 use mir::tcx::LvalueTy;
-use ty::subst;
-use ty::subst::Substs;
-use ty::subst::Subst;
+use ty::subst::{Subst, Substs};
 use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
@@ -1172,15 +1170,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(false))
     }
 
-    pub fn next_ty_var_with_default(&self,
-                                    default: Option<type_variable::Default<'tcx>>) -> Ty<'tcx> {
-        let ty_var_id = self.type_variables
-                            .borrow_mut()
-                            .new_var(false, default);
-
-        self.tcx.mk_var(ty_var_id)
-    }
-
     pub fn next_diverging_ty_var(&self) -> Ty<'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(true))
     }
@@ -1205,89 +1194,55 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         ty::ReVar(self.region_vars.new_region_var(origin))
     }
 
-    pub fn region_vars_for_defs(&self,
-                                span: Span,
-                                defs: &[ty::RegionParameterDef])
-                                -> Vec<ty::Region> {
-        defs.iter()
-            .map(|d| self.next_region_var(EarlyBoundRegion(span, d.name)))
-            .collect()
+    /// Create a region inference variable for the given
+    /// region parameter definition.
+    pub fn region_var_for_def(&self,
+                              span: Span,
+                              def: &ty::RegionParameterDef)
+                              -> ty::Region {
+        self.next_region_var(EarlyBoundRegion(span, def.name))
     }
 
-    // We have to take `&mut Substs` in order to provide the correct substitutions for defaults
-    // along the way, for this reason we don't return them.
-    pub fn type_vars_for_defs(&self,
-                              span: Span,
-                              space: subst::ParamSpace,
-                              substs: &mut Substs<'tcx>,
-                              defs: &[ty::TypeParameterDef<'tcx>]) {
+    /// Create a type inference variable for the given
+    /// type parameter definition. The substitutions are
+    /// for actual parameters that may be referred to by
+    /// the default of this type parameter, if it exists.
+    /// E.g. `struct Foo<A, B, C = (A, B)>(...);` when
+    /// used in a path such as `Foo::<T, U>::new()` will
+    /// use an inference variable for `C` with `[T, U]`
+    /// as the substitutions for the default, `(T, U)`.
+    pub fn type_var_for_def(&self,
+                            span: Span,
+                            def: &ty::TypeParameterDef<'tcx>,
+                            substs: &Substs<'tcx>)
+                            -> Ty<'tcx> {
+        let default = def.default.map(|default| {
+            type_variable::Default {
+                ty: default.subst_spanned(self.tcx, substs, Some(span)),
+                origin_span: span,
+                def_id: def.default_def_id
+            }
+        });
 
-        for def in defs.iter() {
-            let default = def.default.map(|default| {
-                type_variable::Default {
-                    ty: default.subst_spanned(self.tcx, substs, Some(span)),
-                    origin_span: span,
-                    def_id: def.default_def_id
-                }
-            });
 
-            let ty_var = self.next_ty_var_with_default(default);
-            substs.types.push(space, ty_var);
-        }
+        let ty_var_id = self.type_variables
+                            .borrow_mut()
+                            .new_var(false, default);
+
+        self.tcx.mk_var(ty_var_id)
     }
 
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
-    pub fn fresh_substs_for_generics(&self,
-                                     span: Span,
-                                     generics: &ty::Generics<'tcx>)
-                                     -> &'tcx subst::Substs<'tcx>
-    {
-        let type_params = subst::VecPerParamSpace::empty();
-
-        let region_params =
-            generics.regions.map(
-                |d| self.next_region_var(EarlyBoundRegion(span, d.name)));
-
-        let mut substs = subst::Substs::new(type_params, region_params);
-
-        for space in subst::ParamSpace::all().iter() {
-            self.type_vars_for_defs(
-                span,
-                *space,
-                &mut substs,
-                generics.types.get_slice(*space));
-        }
-
-        self.tcx.mk_substs(substs)
-    }
-
-    /// Given a set of generics defined on a trait, returns a substitution mapping each output
-    /// type/region parameter to a fresh inference variable, and mapping the self type to
-    /// `self_ty`.
-    pub fn fresh_substs_for_trait(&self,
-                                  span: Span,
-                                  generics: &ty::Generics<'tcx>,
-                                  self_ty: Ty<'tcx>)
-                                  -> subst::Substs<'tcx>
-    {
-
-        assert!(generics.types.len(subst::SelfSpace) == 1);
-        assert!(generics.types.len(subst::FnSpace) == 0);
-        assert!(generics.regions.len(subst::SelfSpace) == 0);
-        assert!(generics.regions.len(subst::FnSpace) == 0);
-
-        let type_params = Vec::new();
-
-        let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
-        let regions = self.region_vars_for_defs(span, region_param_defs);
-
-        let mut substs = subst::Substs::new_trait(type_params, regions, self_ty);
-
-        let type_parameter_defs = generics.types.get_slice(subst::TypeSpace);
-        self.type_vars_for_defs(span, subst::TypeSpace, &mut substs, type_parameter_defs);
-
-        return substs;
+    pub fn fresh_substs_for_item(&self,
+                                 span: Span,
+                                 def_id: DefId)
+                                 -> &'tcx Substs<'tcx> {
+        Substs::for_item(self.tcx, def_id, |def, _| {
+            self.region_var_for_def(span, def)
+        }, |def, substs| {
+            self.type_var_for_def(span, def, substs)
+        })
     }
 
     pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {

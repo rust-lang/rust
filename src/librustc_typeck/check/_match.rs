@@ -547,10 +547,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Type check the path.
-        let scheme = tcx.lookup_item_type(def.def_id());
-        let predicates = tcx.lookup_predicates(def.def_id());
-        let pat_ty = self.instantiate_value_path(segments, scheme, &predicates,
-                                                 opt_ty, def, pat.span, pat.id);
+        let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
         self.demand_suptype(pat.span, expected, pat_ty);
     }
 
@@ -607,18 +604,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Type check the path.
-        let scheme = tcx.lookup_item_type(def.def_id());
-        let scheme = if scheme.ty.is_fn() {
+        let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
+
+        let pat_ty = if pat_ty.is_fn() {
             // Replace constructor type with constructed type for tuple struct patterns.
-            let fn_ret = tcx.no_late_bound_regions(&scheme.ty.fn_ret()).unwrap();
-            ty::TypeScheme { ty: fn_ret, generics: scheme.generics }
+            tcx.no_late_bound_regions(&pat_ty.fn_ret()).unwrap()
         } else {
             // Leave the type as is for unit structs (backward compatibility).
-            scheme
+            pat_ty
         };
-        let predicates = tcx.lookup_predicates(def.def_id());
-        let pat_ty = self.instantiate_value_path(segments, scheme, &predicates,
-                                                 opt_ty, def, pat.span, pat.id);
+        self.write_ty(pat.id, pat_ty);
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.

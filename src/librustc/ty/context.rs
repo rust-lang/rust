@@ -23,13 +23,13 @@ use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
 use middle::stability;
-use ty::subst::{self, Substs};
+use ty::subst::Substs;
 use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants};
-use ty::{AdtDef, ClosureSubsts, ExistentialBounds, Region};
+use ty::{AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
-use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitTy};
+use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitObject};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
@@ -63,6 +63,7 @@ pub struct CtxtArenas<'tcx> {
     layout: TypedArena<Layout>,
 
     // references
+    generics: TypedArena<ty::Generics<'tcx>>,
     trait_defs: TypedArena<ty::TraitDef<'tcx>>,
     adt_defs: TypedArena<ty::AdtDefData<'tcx, 'tcx>>,
 }
@@ -78,6 +79,7 @@ impl<'tcx> CtxtArenas<'tcx> {
             stability: TypedArena::new(),
             layout: TypedArena::new(),
 
+            generics: TypedArena::new(),
             trait_defs: TypedArena::new(),
             adt_defs: TypedArena::new()
         }
@@ -341,7 +343,8 @@ pub struct GlobalCtxt<'tcx> {
     pub adt_defs: RefCell<DepTrackingMap<maps::AdtDefs<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
-    /// associated predicates.
+    /// associated generics and predicates.
+    pub generics: RefCell<DepTrackingMap<maps::Generics<'tcx>>>,
     pub predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
 
     /// Maps from the def-id of a trait to the list of
@@ -583,13 +586,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow_mut().node_types.insert(id, ty);
     }
 
+    pub fn alloc_generics(self, generics: ty::Generics<'gcx>)
+                          -> &'gcx ty::Generics<'gcx> {
+        self.global_interners.arenas.generics.alloc(generics)
+    }
+
     pub fn intern_trait_def(self, def: ty::TraitDef<'gcx>)
                             -> &'gcx ty::TraitDef<'gcx> {
         let did = def.trait_ref.def_id;
-        let interned = self.global_interners.arenas.trait_defs.alloc(def);
+        let interned = self.alloc_trait_def(def);
         if let Some(prev) = self.trait_defs.borrow_mut().insert(did, interned) {
             bug!("Tried to overwrite interned TraitDef: {:?}", prev)
         }
+        self.generics.borrow_mut().insert(did, interned.generics);
         interned
     }
 
@@ -711,6 +720,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             impl_trait_refs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             adt_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            generics: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             super_predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
@@ -1150,12 +1160,6 @@ impl_interners!('tcx,
     region: mk_region(Region, keep_local) -> Region
 );
 
-fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
-    bounds.is_empty() ||
-        bounds[1..].iter().enumerate().all(
-            |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
-}
-
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Create an unsafe fn ty based on a safe fn ty.
     pub fn safe_to_unsafe_fn_ty(self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
@@ -1288,18 +1292,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyFnPtr(fty))
     }
 
-    pub fn mk_trait(self,
-                    principal: ty::PolyTraitRef<'tcx>,
-                    bounds: ExistentialBounds<'tcx>)
-                    -> Ty<'tcx>
-    {
-        assert!(bound_list_is_sorted(&bounds.projection_bounds));
-
-        let inner = box TraitTy {
-            principal: principal,
-            bounds: bounds
-        };
-        self.mk_ty(TyTrait(inner))
+    pub fn mk_trait(self, mut obj: TraitObject<'tcx>) -> Ty<'tcx> {
+        obj.projection_bounds.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
+        self.mk_ty(TyTrait(box obj))
     }
 
     pub fn mk_projection(self,
@@ -1351,18 +1346,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_param(self,
-                    space: subst::ParamSpace,
                     index: u32,
                     name: Name) -> Ty<'tcx> {
-        self.mk_ty(TyParam(ParamTy { space: space, idx: index, name: name }))
+        self.mk_ty(TyParam(ParamTy { idx: index, name: name }))
     }
 
     pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_param(subst::SelfSpace, 0, keywords::SelfType.name())
+        self.mk_param(0, keywords::SelfType.name())
     }
 
     pub fn mk_param_from_def(self, def: &ty::TypeParameterDef) -> Ty<'tcx> {
-        self.mk_param(def.space, def.index, def.name)
+        self.mk_param(def.index, def.name)
     }
 
     pub fn mk_anon(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {

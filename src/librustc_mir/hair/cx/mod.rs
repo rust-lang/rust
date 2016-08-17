@@ -147,16 +147,16 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                         params: Vec<Ty<'tcx>>)
                         -> (Ty<'tcx>, Literal<'tcx>) {
         let method_name = token::intern(method_name);
-        let substs = Substs::new_trait(params, vec![], self_ty);
+        let substs = Substs::new_trait(self.tcx, params, vec![], self_ty);
         for trait_item in self.tcx.trait_items(trait_def_id).iter() {
             match *trait_item {
                 ty::ImplOrTraitItem::MethodTraitItem(ref method) => {
                     if method.name == method_name {
                         let method_ty = self.tcx.lookup_item_type(method.def_id);
-                        let method_ty = method_ty.ty.subst(self.tcx, &substs);
+                        let method_ty = method_ty.ty.subst(self.tcx, substs);
                         return (method_ty, Literal::Item {
                             def_id: method.def_id,
-                            substs: self.tcx.mk_substs(substs),
+                            substs: substs,
                         });
                     }
                 }

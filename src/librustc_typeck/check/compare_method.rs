@@ -13,7 +13,7 @@ use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty;
 use rustc::traits::{self, Reveal};
 use rustc::ty::error::ExpectedFound;
-use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::hir::map::Node;
 use rustc::hir::{ImplItemKind, TraitItem_};
 
@@ -95,8 +95,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }
     }
 
-    let num_impl_m_type_params = impl_m.generics.types.len(subst::FnSpace);
-    let num_trait_m_type_params = trait_m.generics.types.len(subst::FnSpace);
+    let num_impl_m_type_params = impl_m.generics.types.len();
+    let num_trait_m_type_params = trait_m.generics.types.len();
     if num_impl_m_type_params != num_trait_m_type_params {
         span_err!(tcx.sess, impl_m_span, E0049,
             "method `{}` has {} type parameter{} \
@@ -194,10 +194,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs =
-        trait_to_impl_substs
-        .subst(tcx, impl_to_skol_substs).clone()
-        .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                     impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
+        impl_to_skol_substs.rebase_onto(tcx, impl_m.container_id(),
+                                        trait_to_impl_substs.subst(tcx, impl_to_skol_substs));
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
            trait_to_skol_substs);
 
@@ -208,7 +206,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                            impl_m,
                                            &trait_m.generics,
                                            &impl_m.generics,
-                                           &trait_to_skol_substs,
+                                           trait_to_skol_substs,
                                            impl_to_skol_substs) {
         return;
     }
@@ -216,58 +214,49 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|mut infcx| {
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
-        // Normalize the associated types in the trait_bounds.
-        let trait_bounds = trait_m.predicates.instantiate(tcx, &trait_to_skol_substs);
-
         // Create obligations for each predicate declared by the impl
         // definition in the context of the trait's parameter
         // environment. We can't just use `impl_env.caller_bounds`,
         // however, because we want to replace all late-bound regions with
         // region variables.
-        let impl_bounds =
-            impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
+        let impl_predicates = tcx.lookup_predicates(impl_m.predicates.parent.unwrap());
+        let mut hybrid_preds = impl_predicates.instantiate(tcx, impl_to_skol_substs);
 
-        debug!("compare_impl_method: impl_bounds={:?}", impl_bounds);
-
-        // Obtain the predicate split predicate sets for each.
-        let trait_pred = trait_bounds.predicates.split();
-        let impl_pred = impl_bounds.predicates.split();
+        debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
 
         // This is the only tricky bit of the new way we check implementation methods
-        // We need to build a set of predicates where only the FnSpace bounds
+        // We need to build a set of predicates where only the method-level bounds
         // are from the trait and we assume all other bounds from the implementation
         // to be previously satisfied.
         //
         // We then register the obligations from the impl_m and check to see
         // if all constraints hold.
-        let hybrid_preds = VecPerParamSpace::new(
-            impl_pred.types,
-            impl_pred.selfs,
-            trait_pred.fns
-        );
+        hybrid_preds.predicates.extend(
+            trait_m.predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
 
         // Construct trait parameter environment and then shift it into the skolemized viewpoint.
         // The key step here is to update the caller_bounds's predicates to be
         // the new hybrid bounds we computed.
         let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
-        let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.into_vec());
+        let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.predicates);
         let trait_param_env = traits::normalize_param_env_or_error(tcx,
                                                                    trait_param_env,
                                                                    normalize_cause.clone());
         // FIXME(@jroesch) this seems ugly, but is a temporary change
         infcx.parameter_environment = trait_param_env;
 
-        debug!("compare_impl_method: trait_bounds={:?}",
+        debug!("compare_impl_method: caller_bounds={:?}",
             infcx.parameter_environment.caller_bounds);
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        let (impl_pred_fns, _) =
+        let impl_m_own_bounds = impl_m.predicates.instantiate_own(tcx, impl_to_skol_substs);
+        let (impl_m_own_bounds, _) =
             infcx.replace_late_bound_regions_with_fresh_var(
                 impl_m_span,
                 infer::HigherRankedType,
-                &ty::Binder(impl_pred.fns));
-        for predicate in impl_pred_fns {
+                &ty::Binder(impl_m_own_bounds.predicates));
+        for predicate in impl_m_own_bounds {
             let traits::Normalized { value: predicate, .. } =
                 traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
 
@@ -322,7 +311,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             infcx.parameter_environment.free_id_outlive,
             &trait_m.fty.sig);
         let trait_sig =
-            trait_sig.subst(tcx, &trait_to_skol_substs);
+            trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
             assoc::normalize_associated_types_in(&infcx,
                                                  &mut fulfillment_cx,
@@ -390,8 +379,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                     -> bool
     {
 
-        let trait_params = trait_generics.regions.get_slice(subst::FnSpace);
-        let impl_params = impl_generics.regions.get_slice(subst::FnSpace);
+        let trait_params = &trait_generics.regions[..];
+        let impl_params = &impl_generics.regions[..];
 
         debug!("check_region_bounds_on_impl_method: \
                trait_generics={:?} \
@@ -453,16 +442,14 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         // Create mapping from trait to skolemized.
         let trait_to_skol_substs =
-            trait_to_impl_substs
-            .subst(tcx, impl_to_skol_substs).clone()
-            .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                         impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
+            impl_to_skol_substs.rebase_onto(tcx, impl_c.container.id(),
+                                            trait_to_impl_substs.subst(tcx, impl_to_skol_substs));
         debug!("compare_const_impl: trait_to_skol_substs={:?}",
             trait_to_skol_substs);
 
         // Compute skolemized form of impl and trait const tys.
         let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
-        let trait_ty = trait_c.ty.subst(tcx, &trait_to_skol_substs);
+        let trait_ty = trait_c.ty.subst(tcx, trait_to_skol_substs);
         let mut origin = TypeOrigin::Misc(impl_c_span);
 
         let err = infcx.commit_if_ok(|_| {

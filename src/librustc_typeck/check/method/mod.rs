@@ -13,7 +13,7 @@
 use check::FnCtxt;
 use hir::def::Def;
 use hir::def_id::DefId;
-use rustc::ty::subst;
+use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
@@ -182,31 +182,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let trait_def = self.tcx.lookup_trait_def(trait_def_id);
 
-        let type_parameter_defs = trait_def.generics.types.get_slice(subst::TypeSpace);
-        let expected_number_of_input_types = type_parameter_defs.len();
-
-        assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
+        if let Some(ref input_types) = opt_input_types {
+            assert_eq!(trait_def.generics.types.len() - 1, input_types.len());
+        }
         assert!(trait_def.generics.regions.is_empty());
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let mut substs = subst::Substs::new_trait(Vec::new(), Vec::new(), self_ty);
-
-        match opt_input_types {
-            Some(input_types) => {
-                assert_eq!(expected_number_of_input_types, input_types.len());
-                substs.types.replace(subst::ParamSpace::TypeSpace, input_types);
+        let substs = Substs::for_item(self.tcx, trait_def_id, |def, _| {
+            self.region_var_for_def(span, def)
+        }, |def, substs| {
+            if def.index == 0 {
+                self_ty
+            } else if let Some(ref input_types) = opt_input_types {
+                input_types[def.index as usize - 1]
+            } else {
+                self.type_var_for_def(span, def, substs)
             }
+        });
 
-            None => {
-                self.type_vars_for_defs(
-                    span,
-                    subst::ParamSpace::TypeSpace,
-                    &mut substs,
-                    type_parameter_defs);
-            }
-        }
-
-        let trait_ref = ty::TraitRef::new(trait_def_id, self.tcx.mk_substs(substs));
+        let trait_ref = ty::TraitRef::new(trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = trait_ref.to_poly_trait_ref();
@@ -226,8 +220,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let method_item = self.trait_item(trait_def_id, m_name).unwrap();
         let method_ty = method_item.as_opt_method().unwrap();
-        assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
-        assert_eq!(method_ty.generics.regions.len(subst::FnSpace), 0);
+        assert_eq!(method_ty.generics.types.len(), 0);
+        assert_eq!(method_ty.generics.regions.len(), 0);
 
         debug!("lookup_in_trait_adjusted: method_item={:?} method_ty={:?}",
                method_item, method_ty);

@@ -232,12 +232,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                  args: IndexVec<mir::Arg, Const<'tcx>>)
                  -> Result<Const<'tcx>, ConstEvalFailure> {
         // Try to resolve associated constants.
-        if instance.substs.self_ty().is_some() {
-            // Only trait items can have a Self parameter.
-            let trait_item = ccx.tcx().impl_or_trait_item(instance.def);
-            let trait_id = trait_item.container().id();
-            let substs = instance.substs;
-            let trait_ref = ty::Binder(substs.to_trait_ref(ccx.tcx(), trait_id));
+        if let Some(trait_id) = ccx.tcx().trait_of_item(instance.def) {
+            let trait_ref = ty::TraitRef::new(trait_id, instance.substs);
+            let trait_ref = ty::Binder(trait_ref);
             let vtable = common::fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref);
             if let traits::VtableImpl(vtable_impl) = vtable {
                 let name = ccx.tcx().item_name(instance.def);

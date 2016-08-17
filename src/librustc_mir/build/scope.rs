@@ -89,7 +89,7 @@ should go to.
 use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary, ScopeId};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
-use rustc::ty::subst::{Substs, Subst, VecPerParamSpace};
+use rustc::ty::subst::{Substs, Subst};
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::repr::*;
 use syntax_pos::Span;
@@ -750,10 +750,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               -> TerminatorKind<'tcx> {
     let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
                        .unwrap_or_else(|e| tcx.sess.fatal(&e));
-    let substs = tcx.mk_substs(Substs::new(
-        VecPerParamSpace::new(vec![], vec![], vec![data.item_ty]),
-        VecPerParamSpace::new(vec![], vec![], vec![])
-    ));
+    let substs = Substs::new(tcx, vec![data.item_ty], vec![]);
     TerminatorKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,

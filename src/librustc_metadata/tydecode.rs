@@ -20,8 +20,7 @@ use rustc::hir;
 
 use rustc::hir::def_id::{DefId, DefIndex};
 use middle::region;
-use rustc::ty::subst;
-use rustc::ty::subst::VecPerParamSpace;
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use rbml;
@@ -129,24 +128,48 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    fn parse_vec_per_param_space<T, F>(&mut self, mut f: F) -> VecPerParamSpace<T> where
-        F: FnMut(&mut TyDecoder<'a, 'tcx>) -> T,
-    {
-        let mut r = VecPerParamSpace::empty();
-        for &space in &subst::ParamSpace::all() {
-            assert_eq!(self.next(), '[');
-            while self.peek() != ']' {
-                r.push(space, f(self));
-            }
-            assert_eq!(self.next(), ']');
+    pub fn parse_substs(&mut self) -> &'tcx Substs<'tcx> {
+        let mut regions = vec![];
+        let mut types = vec![];
+        assert_eq!(self.next(), '[');
+        while self.peek() != '|' {
+            regions.push(self.parse_region());
         }
-        r
+        assert_eq!(self.next(), '|');
+        while self.peek() != ']' {
+            types.push(self.parse_ty());
+        }
+        assert_eq!(self.next(), ']');
+
+        Substs::new(self.tcx, types, regions)
     }
 
-    pub fn parse_substs(&mut self) -> subst::Substs<'tcx> {
-        let regions = self.parse_vec_per_param_space(|this| this.parse_region());
-        let types = self.parse_vec_per_param_space(|this| this.parse_ty());
-        subst::Substs { types: types, regions: regions }
+    pub fn parse_generics(&mut self) -> &'tcx ty::Generics<'tcx> {
+        let parent = self.parse_opt(|this| this.parse_def());
+        let parent_regions = self.parse_u32();
+        assert_eq!(self.next(), '|');
+        let parent_types = self.parse_u32();
+
+        let mut regions = vec![];
+        let mut types = vec![];
+        assert_eq!(self.next(), '[');
+        while self.peek() != '|' {
+            regions.push(self.parse_region_param_def());
+        }
+        assert_eq!(self.next(), '|');
+        while self.peek() != ']' {
+            types.push(self.parse_type_param_def());
+        }
+        assert_eq!(self.next(), ']');
+
+        self.tcx.alloc_generics(ty::Generics {
+            parent: parent,
+            parent_regions: parent_regions,
+            parent_types: parent_types,
+            regions: regions,
+            types: types,
+            has_self: self.next() == 'S'
+        })
     }
 
     fn parse_bound_region(&mut self) -> ty::BoundRegion {
@@ -196,13 +219,10 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'B' => {
                 assert_eq!(self.next(), '[');
-                let space = self.parse_param_space();
-                assert_eq!(self.next(), '|');
                 let index = self.parse_u32();
                 assert_eq!(self.next(), '|');
                 let name = token::intern(&self.parse_str(']'));
                 ty::ReEarlyBound(ty::EarlyBoundRegion {
-                    space: space,
                     index: index,
                     name: name
                 })
@@ -302,9 +322,17 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     pub fn parse_trait_ref(&mut self) -> ty::TraitRef<'tcx> {
-        let def = self.parse_def();
-        let substs = self.tcx.mk_substs(self.parse_substs());
-        ty::TraitRef {def_id: def, substs: substs}
+        ty::TraitRef {
+            def_id: self.parse_def(),
+            substs: self.parse_substs()
+        }
+    }
+
+    pub fn parse_existential_trait_ref(&mut self) -> ty::ExistentialTraitRef<'tcx> {
+        ty::ExistentialTraitRef {
+            def_id: self.parse_def(),
+            substs: self.parse_substs()
+        }
     }
 
     pub fn parse_ty(&mut self) -> Ty<'tcx> {
@@ -336,23 +364,41 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 let substs = self.parse_substs();
                 assert_eq!(self.next(), ']');
                 let def = self.tcx.lookup_adt_def(did);
-                return tcx.mk_enum(def, self.tcx.mk_substs(substs));
+                return tcx.mk_enum(def, substs);
             }
             'x' => {
                 assert_eq!(self.next(), '[');
-                let trait_ref = ty::Binder(self.parse_trait_ref());
-                let bounds = self.parse_existential_bounds();
+                let trait_ref = ty::Binder(self.parse_existential_trait_ref());
+                let builtin_bounds = self.parse_builtin_bounds();
+                let region_bound = self.parse_region();
+                let mut projection_bounds = Vec::new();
+
+                loop {
+                    match self.next() {
+                        'P' => {
+                            let bound = self.parse_existential_projection();
+                            projection_bounds.push(ty::Binder(bound));
+                        }
+                        '.' => { break; }
+                        c => {
+                            bug!("parse_bounds: bad bounds ('{}')", c)
+                        }
+                    }
+                }
                 assert_eq!(self.next(), ']');
-                return tcx.mk_trait(trait_ref, bounds);
+                return tcx.mk_trait(ty::TraitObject {
+                    principal: trait_ref,
+                    region_bound: region_bound,
+                    builtin_bounds: builtin_bounds,
+                    projection_bounds: projection_bounds
+                });
             }
             'p' => {
                 assert_eq!(self.next(), '[');
                 let index = self.parse_u32();
                 assert_eq!(self.next(), '|');
-                let space = self.parse_param_space();
-                assert_eq!(self.next(), '|');
                 let name = token::intern(&self.parse_str(']'));
-                return tcx.mk_param(space, index, name);
+                return tcx.mk_param(index, name);
             }
             '~' => return tcx.mk_box(self.parse_ty()),
             '*' => return tcx.mk_ptr(self.parse_mt()),
@@ -380,7 +426,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'F' => {
                 let def_id = self.parse_def();
-                let substs = self.tcx.mk_substs(self.parse_substs());
+                let substs = self.parse_substs();
                 return tcx.mk_fn_def(def_id, substs, self.parse_bare_fn_ty());
             }
             'G' => {
@@ -426,7 +472,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 let substs = self.parse_substs();
                 assert_eq!(self.next(), ']');
                 let def = self.tcx.lookup_adt_def(did);
-                return self.tcx.mk_struct(def, self.tcx.mk_substs(substs));
+                return self.tcx.mk_struct(def, substs);
             }
             'k' => {
                 assert_eq!(self.next(), '[');
@@ -438,7 +484,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 }
                 assert_eq!(self.next(), '.');
                 assert_eq!(self.next(), ']');
-                return self.tcx.mk_closure(did, self.tcx.mk_substs(substs), tys);
+                return self.tcx.mk_closure(did, substs, tys);
             }
             'P' => {
                 assert_eq!(self.next(), '[');
@@ -451,7 +497,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 let def_id = self.parse_def();
                 let substs = self.parse_substs();
                 assert_eq!(self.next(), ']');
-                return self.tcx.mk_anon(def_id, self.tcx.mk_substs(substs));
+                return self.tcx.mk_anon(def_id, substs);
             }
             'e' => {
                 return tcx.types.err;
@@ -493,10 +539,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         let m = n as u32;
         assert_eq!(m as usize, n);
         m
-    }
-
-    fn parse_param_space(&mut self) -> subst::ParamSpace {
-        subst::ParamSpace::from_uint(self.parse_uint())
     }
 
     fn parse_abi_set(&mut self) -> abi::Abi {
@@ -588,11 +630,17 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    pub fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
+    fn parse_existential_projection(&mut self) -> ty::ExistentialProjection<'tcx> {
+        ty::ExistentialProjection {
+            trait_ref: self.parse_existential_trait_ref(),
+            item_name: token::intern(&self.parse_str('|')),
+            ty: self.parse_ty(),
+        }
+    }
+
+    fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
         let name = self.parse_name(':');
         let def_id = self.parse_def();
-        let space = self.parse_param_space();
-        assert_eq!(self.next(), '|');
         let index = self.parse_u32();
         assert_eq!(self.next(), '|');
         let default_def_id = self.parse_def();
@@ -602,7 +650,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::TypeParameterDef {
             name: name,
             def_id: def_id,
-            space: space,
             index: index,
             default_def_id: default_def_id,
             default: default,
@@ -610,11 +657,9 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    pub fn parse_region_param_def(&mut self) -> ty::RegionParameterDef {
+    fn parse_region_param_def(&mut self) -> ty::RegionParameterDef {
         let name = self.parse_name(':');
         let def_id = self.parse_def();
-        let space = self.parse_param_space();
-        assert_eq!(self.next(), '|');
         let index = self.parse_u32();
         assert_eq!(self.next(), '|');
         let mut bounds = vec![];
@@ -630,7 +675,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::RegionParameterDef {
             name: name,
             def_id: def_id,
-            space: space,
             index: index,
             bounds: bounds,
         }
@@ -647,27 +691,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             _ => bug!("parse_object_lifetime_default: bad input")
         }
-    }
-
-    pub fn parse_existential_bounds(&mut self) -> ty::ExistentialBounds<'tcx> {
-        let builtin_bounds = self.parse_builtin_bounds();
-        let region_bound = self.parse_region();
-        let mut projection_bounds = Vec::new();
-
-        loop {
-            match self.next() {
-                'P' => {
-                    projection_bounds.push(ty::Binder(self.parse_projection_predicate()));
-                }
-                '.' => { break; }
-                c => {
-                    bug!("parse_bounds: bad bounds ('{}')", c)
-                }
-            }
-        }
-
-        ty::ExistentialBounds::new(
-            region_bound, builtin_bounds, projection_bounds)
     }
 
     fn parse_builtin_bounds(&mut self) -> ty::BuiltinBounds {
