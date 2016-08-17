@@ -176,6 +176,22 @@ pub unsafe fn from_u32_unchecked(i: u32) -> char {
     transmute(i)
 }
 
+#[stable(feature = "char_convert", since = "1.12.0")]
+impl From<char> for u32 {
+    #[inline]
+    fn from(c: char) -> Self {
+        c as u32
+    }
+}
+
+#[stable(feature = "char_convert", since = "1.12.0")]
+impl From<u8> for char {
+    #[inline]
+    fn from(i: u8) -> Self {
+        i as char
+    }
+}
+
 /// Converts a digit in the given radix to a `char`.
 ///
 /// A 'radix' here is sometimes also called a 'base'. A radix of two
