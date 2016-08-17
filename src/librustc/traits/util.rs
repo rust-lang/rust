@@ -9,10 +9,8 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use infer::InferCtxt;
 use ty::subst::{Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
-use syntax_pos::Span;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
 
@@ -349,20 +347,6 @@ pub fn impl_trait_ref_and_oblig<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a,
     (impl_trait_ref, impl_obligations)
 }
 
-// determine the `self` type, using fresh variables for all variables
-// declared on the impl declaration e.g., `impl<A,B> for Box<[(A,B)]>`
-// would return ($0, $1) where $0 and $1 are freshly instantiated type
-// variables.
-pub fn fresh_type_vars_for_impl<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                                span: Span,
-                                                impl_def_id: DefId)
-                                                -> &'tcx Substs<'tcx>
-{
-    let tcx = infcx.tcx;
-    let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
-    infcx.fresh_substs_for_generics(span, &impl_generics)
-}
-
 /// See `super::obligations_for_generics`
 pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
                                      recursion_depth: usize,
@@ -402,7 +386,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Ok(def_id) => {
                 Ok(ty::TraitRef {
                     def_id: def_id,
-                    substs: self.mk_substs(Substs::empty().with_self_ty(param_ty))
+                    substs: Substs::new_trait(self, vec![], vec![], param_ty)
                 })
             }
             Err(e) => {
@@ -422,7 +406,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let trait_ref = ty::TraitRef {
             def_id: trait_def_id,
-            substs: self.mk_substs(Substs::new_trait(ty_params, vec![], param_ty))
+            substs: Substs::new_trait(self, ty_params, vec![], param_ty)
         };
         predicate_for_trait_ref(cause, trait_ref, recursion_depth)
     }
@@ -510,10 +494,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             TupleArgumentsFlag::No => sig.0.inputs[0],
             TupleArgumentsFlag::Yes => self.mk_tup(sig.0.inputs.to_vec()),
         };
-        let trait_substs = Substs::new_trait(vec![arguments_tuple], vec![], self_ty);
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,
-            substs: self.mk_substs(trait_substs),
+            substs: Substs::new_trait(self, vec![arguments_tuple], vec![], self_ty),
         };
         ty::Binder((trait_ref, sig.0.output))
     }

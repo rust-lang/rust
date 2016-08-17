@@ -13,7 +13,7 @@
 
 use intrinsics;
 use rustc::infer::TypeOrigin;
-use rustc::ty::subst::{self, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::FnSig;
 use rustc::ty::{self, Ty};
 use {CrateCtxt, require_same_types};
@@ -36,11 +36,11 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let def_id = tcx.map.local_def_id(it.id);
     let i_ty = tcx.lookup_item_type(def_id);
 
-    let mut substs = Substs::empty();
-    substs.types = i_ty.generics.types.map(|def| tcx.mk_param_from_def(def));
+    let substs = Substs::for_item(tcx, def_id,
+                                  |_, _| ty::ReErased,
+                                  |def, _| tcx.mk_param_from_def(def));
 
-    let fty = tcx.mk_fn_def(def_id, tcx.mk_substs(substs),
-                            tcx.mk_bare_fn(ty::BareFnTy {
+    let fty = tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: abi,
         sig: ty::Binder(FnSig {
@@ -49,7 +49,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             variadic: false,
         }),
     }));
-    let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
+    let i_n_tps = i_ty.generics.types.len();
     if i_n_tps != n_tps {
         struct_span_err!(tcx.sess, it.span, E0094,
             "intrinsic has wrong number of type \
@@ -70,7 +70,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
     fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
         let name = token::intern(&format!("P{}", n));
-        ccx.tcx.mk_param(subst::FnSpace, n, name)
+        ccx.tcx.mk_param(n, name)
     }
 
     let tcx = ccx.tcx;
@@ -316,12 +316,12 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                                      it: &hir::ForeignItem) {
     let param = |n| {
         let name = token::intern(&format!("P{}", n));
-        ccx.tcx.mk_param(subst::FnSpace, n, name)
+        ccx.tcx.mk_param(n, name)
     };
 
     let tcx = ccx.tcx;
     let i_ty = tcx.lookup_item_type(tcx.map.local_def_id(it.id));
-    let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
+    let i_n_tps = i_ty.generics.types.len();
     let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {

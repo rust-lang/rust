@@ -17,7 +17,7 @@ pub use self::ObligationCauseCode::*;
 
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
-use ty::subst;
+use ty::subst::Substs;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use infer::InferCtxt;
 
@@ -272,7 +272,7 @@ pub enum Vtable<'tcx, N> {
 #[derive(Clone, PartialEq, Eq)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: DefId,
-    pub substs: &'tcx subst::Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
     pub nested: Vec<N>
 }
 

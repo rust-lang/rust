@@ -142,7 +142,7 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
         // Auto trait obligations on `impl Trait`.
         if tcx.trait_has_default_impl(predicate.def_id()) {
             let substs = predicate.skip_binder().trait_ref.substs;
-            if substs.types.as_slice().len() == 1 && substs.regions.is_empty() {
+            if substs.types.len() == 1 && substs.regions.is_empty() {
                 if let ty::TyAnon(..) = predicate.skip_binder().self_ty().sty {
                     return true;
                 }
@@ -160,10 +160,9 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
             // We can resolve the `impl Trait` to its concrete type.
             if let Some(ty_scheme) = tcx.opt_lookup_item_type(def_id) {
                 let concrete_ty = ty_scheme.ty.subst(tcx, substs);
-                let concrete_substs = Substs::new_trait(vec![], vec![], concrete_ty);
                 let predicate = ty::TraitRef {
                     def_id: self.predicate.def_id(),
-                    substs: tcx.mk_substs(concrete_substs)
+                    substs: Substs::new_trait(tcx, vec![], vec![], concrete_ty)
                 }.to_predicate();
 
                 let original_obligation = Obligation::new(self.cause.clone(),

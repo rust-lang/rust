@@ -21,7 +21,6 @@
 
 use arena::TypedArena;
 use dep_graph::DepTrackingMapConfig;
-use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::ItemVariances;
 use std::fmt;
@@ -86,7 +85,6 @@ pub enum ParamKind {
 pub struct InferredInfo<'a> {
     pub item_id: ast::NodeId,
     pub kind: ParamKind,
-    pub space: ParamSpace,
     pub index: usize,
     pub param_id: ast::NodeId,
     pub term: VarianceTermPtr<'a>,
@@ -112,10 +110,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
 
         // cache and share the variance struct used for items with
         // no type/region parameters
-        empty_variances: Rc::new(ty::ItemVariances {
-            types: VecPerParamSpace::empty(),
-            regions: VecPerParamSpace::empty()
-        })
+        empty_variances: Rc::new(ty::ItemVariances::empty())
     };
 
     // See README.md for a discussion on dep-graph management.
@@ -167,17 +162,17 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
         let inferreds_on_entry = self.num_inferred();
 
-        if has_self {
-            self.add_inferred(item_id, TypeParam, SelfSpace, 0, item_id);
-        }
-
         for (i, p) in generics.lifetimes.iter().enumerate() {
             let id = p.lifetime.id;
-            self.add_inferred(item_id, RegionParam, TypeSpace, i, id);
+            self.add_inferred(item_id, RegionParam, i, id);
         }
 
+        if has_self {
+            self.add_inferred(item_id, TypeParam, 0, item_id);
+        }
         for (i, p) in generics.ty_params.iter().enumerate() {
-            self.add_inferred(item_id, TypeParam, TypeSpace, i, p.id);
+            let i = has_self as usize + i;
+            self.add_inferred(item_id, TypeParam, i, p.id);
         }
 
         // If this item has no type or lifetime parameters,
@@ -200,15 +195,13 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferred(&mut self,
                     item_id: ast::NodeId,
                     kind: ParamKind,
-                    space: ParamSpace,
                     index: usize,
                     param_id: ast::NodeId) {
         let inf_index = InferredIndex(self.inferred_infos.len());
         let term = self.arena.alloc(InferredTerm(inf_index));
-        let initial_variance = self.pick_initial_variance(item_id, space, index);
+        let initial_variance = self.pick_initial_variance(item_id, index);
         self.inferred_infos.push(InferredInfo { item_id: item_id,
                                                 kind: kind,
-                                                space: space,
                                                 index: index,
                                                 param_id: param_id,
                                                 term: term,
@@ -219,33 +212,23 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         debug!("add_inferred(item_path={}, \
                 item_id={}, \
                 kind={:?}, \
-                space={:?}, \
                 index={}, \
                 param_id={}, \
                 inf_index={:?}, \
                 initial_variance={:?})",
                self.tcx.item_path_str(self.tcx.map.local_def_id(item_id)),
-               item_id, kind, space, index, param_id, inf_index,
+               item_id, kind, index, param_id, inf_index,
                initial_variance);
     }
 
     fn pick_initial_variance(&self,
                              item_id: ast::NodeId,
-                             space: ParamSpace,
                              index: usize)
                              -> ty::Variance
     {
-        match space {
-            SelfSpace | FnSpace => {
-                ty::Bivariant
-            }
-
-            TypeSpace => {
-                match self.lang_items.iter().find(|&&(n, _)| n == item_id) {
-                    Some(&(_, ref variances)) => variances[index],
-                    None => ty::Bivariant
-                }
-            }
+        match self.lang_items.iter().find(|&&(n, _)| n == item_id) {
+            Some(&(_, ref variances)) => variances[index],
+            None => ty::Bivariant
         }
     }
 

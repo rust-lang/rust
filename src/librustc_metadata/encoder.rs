@@ -26,7 +26,6 @@ use rustc::hir::def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use rustc::dep_graph::{DepGraph, DepNode, DepTask};
-use rustc::ty::subst;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::util::IntTypeExt;
@@ -176,8 +175,7 @@ fn encode_bounds_and_type<'a, 'tcx>(rbml_w: &mut Encoder,
                                     index: &mut CrateIndex<'a, 'tcx>,
                                     scheme: &ty::TypeScheme<'tcx>,
                                     predicates: &ty::GenericPredicates<'tcx>) {
-    encode_generics(rbml_w, ecx, index,
-                    &scheme.generics, &predicates, tag_item_generics);
+    encode_generics(rbml_w, ecx, index, &scheme.generics, &predicates);
     encode_type(ecx, rbml_w, scheme.ty);
 }
 
@@ -511,56 +509,29 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
                              ecx: &EncodeContext<'a, 'tcx>,
                              index: &mut CrateIndex<'a, 'tcx>,
                              generics: &ty::Generics<'tcx>,
-                             predicates: &ty::GenericPredicates<'tcx>,
-                             tag: usize)
+                             predicates: &ty::GenericPredicates<'tcx>)
 {
-    rbml_w.start_tag(tag);
-
-    for param in &generics.types {
-        rbml_w.start_tag(tag_type_param_def);
-        tyencode::enc_type_param_def(rbml_w.writer, &ecx.ty_str_ctxt(), param);
-        rbml_w.mark_stable_position();
-        rbml_w.end_tag();
-    }
-
-    // Region parameters
-    for param in &generics.regions {
-        rbml_w.start_tag(tag_region_param_def);
-        tyencode::enc_region_param_def(rbml_w.writer, &ecx.ty_str_ctxt(), param);
-        rbml_w.mark_stable_position();
-        rbml_w.end_tag();
-    }
-
-    encode_predicates_in_current_doc(rbml_w, ecx, index, predicates);
-
+    rbml_w.start_tag(tag_item_generics);
+    tyencode::enc_generics(rbml_w.writer, &ecx.ty_str_ctxt(), generics);
+    rbml_w.mark_stable_position();
     rbml_w.end_tag();
-}
 
-fn encode_predicates_in_current_doc<'a,'tcx>(rbml_w: &mut Encoder,
-                                             _ecx: &EncodeContext<'a,'tcx>,
-                                             index: &mut CrateIndex<'a, 'tcx>,
-                                             predicates: &ty::GenericPredicates<'tcx>)
-{
-    for (space, _, predicate) in predicates.predicates.iter_enumerated() {
-        let tag = match space {
-            subst::TypeSpace => tag_type_predicate,
-            subst::SelfSpace => tag_self_predicate,
-            subst::FnSpace => tag_fn_predicate
-        };
-
-        rbml_w.wr_tagged_u32(tag,
-            index.add_xref(XRef::Predicate(predicate.clone())));
-    }
+    encode_predicates(rbml_w, index, predicates, tag_item_predicates);
 }
 
 fn encode_predicates<'a,'tcx>(rbml_w: &mut Encoder,
-                              ecx: &EncodeContext<'a,'tcx>,
                               index: &mut CrateIndex<'a, 'tcx>,
                               predicates: &ty::GenericPredicates<'tcx>,
                               tag: usize)
 {
     rbml_w.start_tag(tag);
-    encode_predicates_in_current_doc(rbml_w, ecx, index, predicates);
+    if let Some(def_id) = predicates.parent {
+        rbml_w.wr_tagged_u64(tag_items_data_parent_item, def_to_u64(def_id));
+    }
+    for predicate in &predicates.predicates {
+        rbml_w.wr_tagged_u32(tag_predicate,
+            index.add_xref(XRef::Predicate(predicate.clone())));
+    }
     rbml_w.end_tag();
 }
 
@@ -571,8 +542,7 @@ fn encode_method_ty_fields<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_def_id_and_key(ecx, rbml_w, method_ty.def_id);
     encode_name(rbml_w, method_ty.name);
     encode_generics(rbml_w, ecx, index,
-                    &method_ty.generics, &method_ty.predicates,
-                    tag_method_ty_generics);
+                    &method_ty.generics, &method_ty.predicates);
     encode_visibility(rbml_w, method_ty.vis);
     encode_explicit_self(rbml_w, &method_ty.explicit_self);
     match method_ty.explicit_self {
@@ -653,9 +623,9 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     if let Some(impl_item) = impl_item_opt {
         if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
             encode_attributes(rbml_w, &impl_item.attrs);
-            let scheme = ecx.tcx.lookup_item_type(m.def_id);
-            let any_types = !scheme.generics.types.is_empty();
-            let needs_inline = any_types || is_default_impl ||
+            let generics = ecx.tcx.lookup_generics(m.def_id);
+            let types = generics.parent_types as usize + generics.types.len();
+            let needs_inline = types > 0 || is_default_impl ||
                                attr::requests_inline(&impl_item.attrs);
             if needs_inline || sig.constness == hir::Constness::Const {
                 encode_inlined_item(ecx,
@@ -702,7 +672,7 @@ fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_attributes(rbml_w, &ii.attrs);
         encode_defaultness(rbml_w, ii.defaultness);
     } else {
-        encode_predicates(rbml_w, ecx, index,
+        encode_predicates(rbml_w, index,
                           &ecx.tcx.lookup_predicates(associated_type.def_id),
                           tag_item_generics);
     }
@@ -1141,9 +1111,8 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_defaulted(rbml_w, tcx.trait_has_default_impl(def_id));
         encode_associated_type_names(rbml_w, &trait_def.associated_type_names);
         encode_generics(rbml_w, ecx, index,
-                        &trait_def.generics, &trait_predicates,
-                        tag_item_generics);
-        encode_predicates(rbml_w, ecx, index,
+                        &trait_def.generics, &trait_predicates);
+        encode_predicates(rbml_w, index,
                           &tcx.lookup_super_predicates(def_id),
                           tag_item_super_predicates);
         encode_trait_ref(rbml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);

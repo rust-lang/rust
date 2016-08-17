@@ -20,8 +20,7 @@ use rustc::middle::region::{self, CodeExtent};
 use rustc::middle::region::CodeExtentData;
 use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
-use rustc::ty::subst;
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
@@ -276,19 +275,17 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx.mk_tup(vec![ty1, ty2])
     }
 
-    pub fn t_param(&self, space: subst::ParamSpace, index: u32) -> Ty<'tcx> {
+    pub fn t_param(&self, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        self.infcx.tcx.mk_param(space, index, token::intern(&name[..]))
+        self.infcx.tcx.mk_param(index, token::intern(&name[..]))
     }
 
     pub fn re_early_bound(&self,
-                          space: subst::ParamSpace,
                           index: u32,
                           name: &'static str)
                           -> ty::Region {
         let name = token::intern(name);
         ty::ReEarlyBound(ty::EarlyBoundRegion {
-            space: space,
             index: index,
             name: name,
         })
@@ -674,12 +671,12 @@ fn subst_ty_renumber_bound() {
 
         // t_source = fn(A)
         let t_source = {
-            let t_param = env.t_param(subst::TypeSpace, 0);
+            let t_param = env.t_param(0);
             env.t_fn(&[t_param], env.t_nil())
         };
 
-        let substs = subst::Substs::new_type(vec![t_rptr_bound1], vec![]);
-        let t_substituted = t_source.subst(env.infcx.tcx, &substs);
+        let substs = Substs::new(env.infcx.tcx, vec![t_rptr_bound1], vec![]);
+        let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
         let t_expected = {
@@ -709,12 +706,12 @@ fn subst_ty_renumber_some_bounds() {
 
         // t_source = (A, fn(A))
         let t_source = {
-            let t_param = env.t_param(subst::TypeSpace, 0);
+            let t_param = env.t_param(0);
             env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
         };
 
-        let substs = subst::Substs::new_type(vec![t_rptr_bound1], vec![]);
-        let t_substituted = t_source.subst(env.infcx.tcx, &substs);
+        let substs = Substs::new(env.infcx.tcx, vec![t_rptr_bound1], vec![]);
+        let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = (&'a isize, fn(&'a isize))
         //
@@ -755,7 +752,7 @@ fn escaping() {
         assert!(t_rptr_bound2.has_escaping_regions());
 
         // t_fn = fn(A)
-        let t_param = env.t_param(subst::TypeSpace, 0);
+        let t_param = env.t_param(0);
         assert!(!t_param.has_escaping_regions());
         let t_fn = env.t_fn(&[t_param], env.t_nil());
         assert!(!t_fn.has_escaping_regions());
@@ -771,12 +768,12 @@ fn subst_region_renumber_region() {
 
         // type t_source<'a> = fn(&'a isize)
         let t_source = {
-            let re_early = env.re_early_bound(subst::TypeSpace, 0, "'a");
+            let re_early = env.re_early_bound(0, "'a");
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
         };
 
-        let substs = subst::Substs::new_type(vec![], vec![re_bound1]);
-        let t_substituted = t_source.subst(env.infcx.tcx, &substs);
+        let substs = Substs::new(env.infcx.tcx, vec![], vec![re_bound1]);
+        let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
         //

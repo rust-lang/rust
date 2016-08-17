@@ -34,7 +34,7 @@ pub struct TraitDef<'tcx> {
     /// `Eq`, there is a single bound `Self : Eq`). This is so that
     /// default methods get to assume that the `Self` parameters
     /// implements the trait.
-    pub generics: ty::Generics<'tcx>,
+    pub generics: &'tcx ty::Generics<'tcx>,
 
     pub trait_ref: ty::TraitRef<'tcx>,
 
@@ -76,7 +76,7 @@ pub struct TraitDef<'tcx> {
 impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
     pub fn new(unsafety: hir::Unsafety,
                paren_sugar: bool,
-               generics: ty::Generics<'tcx>,
+               generics: &'tcx ty::Generics<'tcx>,
                trait_ref: ty::TraitRef<'tcx>,
                associated_type_names: Vec<Name>)
                -> TraitDef<'tcx> {

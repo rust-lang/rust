@@ -41,7 +41,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::fold::Folder;
 use rustc::hir::print as pprust;
-use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
+use rustc::ty::subst::Substs;
 use rustc::ty;
 use rustc::middle::stability;
 
@@ -79,12 +79,6 @@ pub trait Clean<T> {
 impl<T: Clean<U>, U> Clean<Vec<U>> for [T] {
     fn clean(&self, cx: &DocContext) -> Vec<U> {
         self.iter().map(|x| x.clean(cx)).collect()
-    }
-}
-
-impl<T: Clean<U>, U> Clean<VecPerParamSpace<U>> for VecPerParamSpace<T> {
-    fn clean(&self, cx: &DocContext) -> VecPerParamSpace<U> {
-        self.map(|x| x.clean(cx))
     }
 }
 
@@ -630,33 +624,10 @@ impl Clean<TyParamBound> for hir::TyParamBound {
     }
 }
 
-impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBounds<'tcx> {
-    fn clean(&self, cx: &DocContext) -> (Vec<TyParamBound>, Vec<TypeBinding>) {
-        let mut tp_bounds = vec![];
-        self.region_bound.clean(cx).map(|b| tp_bounds.push(RegionBound(b)));
-        for bb in &self.builtin_bounds {
-            tp_bounds.push(bb.clean(cx));
-        }
-
-        let mut bindings = vec![];
-        for &ty::Binder(ref pb) in &self.projection_bounds {
-            bindings.push(TypeBinding {
-                name: pb.projection_ty.item_name.clean(cx),
-                ty: pb.ty.clean(cx)
-            });
-        }
-
-        (tp_bounds, bindings)
-    }
-}
-
-fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
-                        bindings: Vec<TypeBinding>, substs: &subst::Substs) -> PathParameters {
-    let lifetimes = substs.regions.get_slice(subst::TypeSpace)
-                    .iter()
-                    .filter_map(|v| v.clean(cx))
-                    .collect();
-    let types = substs.types.get_slice(subst::TypeSpace).to_vec();
+fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: bool,
+                        bindings: Vec<TypeBinding>, substs: &Substs) -> PathParameters {
+    let lifetimes = substs.regions.iter().filter_map(|v| v.clean(cx)).collect();
+    let types = substs.types[has_self as usize..].to_vec();
 
     match (trait_did, cx.tcx_opt()) {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
@@ -695,13 +666,13 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
-fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>,
-                 bindings: Vec<TypeBinding>, substs: &subst::Substs) -> Path {
+fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self: bool,
+                 bindings: Vec<TypeBinding>, substs: &Substs) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
             name: name.to_string(),
-            params: external_path_params(cx, trait_did, bindings, substs)
+            params: external_path_params(cx, trait_did, has_self, bindings, substs)
         }],
     }
 }
@@ -712,20 +683,20 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
             Some(tcx) => tcx,
             None => return RegionBound(Lifetime::statik())
         };
-        let empty = subst::Substs::empty();
+        let empty = Substs::empty(tcx);
         let (did, path) = match *self {
             ty::BoundSend =>
                 (tcx.lang_items.send_trait().unwrap(),
-                 external_path(cx, "Send", None, vec![], &empty)),
+                 external_path(cx, "Send", None, false, vec![], empty)),
             ty::BoundSized =>
                 (tcx.lang_items.sized_trait().unwrap(),
-                 external_path(cx, "Sized", None, vec![], &empty)),
+                 external_path(cx, "Sized", None, false, vec![], empty)),
             ty::BoundCopy =>
                 (tcx.lang_items.copy_trait().unwrap(),
-                 external_path(cx, "Copy", None, vec![], &empty)),
+                 external_path(cx, "Copy", None, false, vec![], empty)),
             ty::BoundSync =>
                 (tcx.lang_items.sync_trait().unwrap(),
-                 external_path(cx, "Sync", None, vec![], &empty)),
+                 external_path(cx, "Sync", None, false, vec![], empty)),
         };
         inline::record_extern_fqn(cx, did, TypeTrait);
         TraitBound(PolyTrait {
@@ -748,14 +719,14 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         };
         inline::record_extern_fqn(cx, self.def_id, TypeTrait);
         let path = external_path(cx, &tcx.item_name(self.def_id).as_str(),
-                                 Some(self.def_id), vec![], self.substs);
+                                 Some(self.def_id), true, vec![], self.substs);
 
-        debug!("ty::TraitRef\n  substs.types(TypeSpace): {:?}\n",
-               self.substs.types.get_slice(ParamSpace::TypeSpace));
+        debug!("ty::TraitRef\n  substs.types: {:?}\n",
+               &self.input_types()[1..]);
 
         // collect any late bound regions
         let mut late_bounds = vec![];
-        for &ty_s in self.substs.types.get_slice(ParamSpace::TypeSpace) {
+        for &ty_s in &self.input_types()[1..] {
             if let ty::TyTuple(ts) = ty_s.sty {
                 for &ty_s in ts {
                     if let ty::TyRef(ref reg, _) = ty_s.sty {
@@ -785,10 +756,11 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
+impl<'tcx> Clean<Option<Vec<TyParamBound>>> for Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
-        v.extend(self.regions.iter().filter_map(|r| r.clean(cx)).map(RegionBound));
+        v.extend(self.regions.iter().filter_map(|r| r.clean(cx))
+                     .map(RegionBound));
         v.extend(self.types.iter().map(|t| TraitBound(PolyTrait {
             trait_: t.clean(cx),
             lifetimes: vec![]
@@ -910,7 +882,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
 impl<'a> Clean<WherePredicate> for ty::TraitPredicate<'a> {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
         WherePredicate::BoundPredicate {
-            ty: self.trait_ref.substs.self_ty().clean(cx).unwrap(),
+            ty: self.trait_ref.self_ty().clean(cx),
             bounds: vec![self.trait_ref.clean(cx)]
         }
     }
@@ -991,27 +963,30 @@ impl Clean<Generics> for hir::Generics {
 }
 
 impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
-                                    &'a ty::GenericPredicates<'tcx>,
-                                    subst::ParamSpace) {
+                                    &'a ty::GenericPredicates<'tcx>) {
     fn clean(&self, cx: &DocContext) -> Generics {
         use self::WherePredicate as WP;
 
-        let (gens, preds, space) = *self;
+        let (gens, preds) = *self;
 
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
-        let stripped_typarams = gens.types.get_slice(space).iter().map(|tp| {
-            tp.clean(cx)
+        let stripped_typarams = gens.types.iter().filter_map(|tp| {
+            if tp.name == keywords::SelfType.name() {
+                assert_eq!(tp.index, 0);
+                None
+            } else {
+                Some(tp.clean(cx))
+            }
         }).collect::<Vec<_>>();
-        let stripped_lifetimes = gens.regions.get_slice(space).iter().map(|rp| {
+        let stripped_lifetimes = gens.regions.iter().map(|rp| {
             let mut srp = rp.clone();
             srp.bounds = Vec::new();
             srp.clean(cx)
         }).collect::<Vec<_>>();
 
-        let mut where_predicates = preds.predicates.get_slice(space)
-                                                   .to_vec().clean(cx);
+        let mut where_predicates = preds.predicates.to_vec().clean(cx);
 
         // Type parameters and have a Sized bound by default unless removed with
         // ?Sized.  Scan through the predicates and mark any type parameter with
@@ -1363,8 +1338,7 @@ impl Clean<Item> for hir::ImplItem {
 
 impl<'tcx> Clean<Item> for ty::Method<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let generics = (&self.generics, &self.predicates,
-                        subst::FnSpace).clean(cx);
+        let generics = (self.generics, &self.predicates).clean(cx);
         let mut decl = (self.def_id, &self.fty.sig).clean(cx);
         match self.explicit_self {
             ty::ExplicitSelfCategory::ByValue => {
@@ -1653,7 +1627,7 @@ impl<'a, 'tcx: 'a, 'b: 'tcx> Folder for SubstAlias<'a, 'tcx> {
     fn fold_lifetime(&mut self, lt: hir::Lifetime) -> hir::Lifetime {
         let def = self.tcx.named_region_map.defs.get(&lt.id).cloned();
         match def {
-            Some(DefEarlyBoundRegion(_, _, node_id)) |
+            Some(DefEarlyBoundRegion(_, node_id)) |
             Some(DefLateBoundRegion(_, node_id)) |
             Some(DefFreeRegion(_, node_id)) => {
                 if let Some(lt) = self.lt_substs.get(&node_id).cloned() {
@@ -1830,7 +1804,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
-                                         None, vec![], substs);
+                                         None, false, vec![], substs);
                 ResolvedPath {
                     path: path,
                     typarams: None,
@@ -1838,12 +1812,26 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
-                let did = principal.def_id();
+            ty::TyTrait(ref obj) => {
+                let did = obj.principal.def_id();
                 inline::record_extern_fqn(cx, did, TypeTrait);
-                let (typarams, bindings) = bounds.clean(cx);
+
+                let mut typarams = vec![];
+                obj.region_bound.clean(cx).map(|b| typarams.push(RegionBound(b)));
+                for bb in &obj.builtin_bounds {
+                    typarams.push(bb.clean(cx));
+                }
+
+                let mut bindings = vec![];
+                for &ty::Binder(ref pb) in &obj.projection_bounds {
+                    bindings.push(TypeBinding {
+                        name: pb.item_name.clean(cx),
+                        ty: pb.ty.clean(cx)
+                    });
+                }
+
                 let path = external_path(cx, &cx.tcx().item_name(did).as_str(),
-                                         Some(did), bindings, principal.substs());
+                                         Some(did), false, bindings, obj.principal.0.substs);
                 ResolvedPath {
                     path: path,
                     typarams: Some(typarams),
@@ -1863,8 +1851,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 let item_predicates = cx.tcx().lookup_predicates(def_id);
                 let substs = cx.tcx().lift(&substs).unwrap();
                 let bounds = item_predicates.instantiate(cx.tcx(), substs);
-                let predicates = bounds.predicates.into_vec();
-                ImplTrait(predicates.into_iter().filter_map(|predicate| {
+                ImplTrait(bounds.predicates.into_iter().filter_map(|predicate| {
                     predicate.to_opt_poly_trait_ref().clean(cx)
                 }).collect())
             }
@@ -2920,7 +2907,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             // applied to this associated type in question.
             let def = cx.tcx().lookup_trait_def(did);
             let predicates = cx.tcx().lookup_predicates(did);
-            let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
+            let generics = (def.generics, &predicates).clean(cx);
             generics.where_predicates.iter().filter_map(|pred| {
                 let (name, self_type, trait_, bounds) = match *pred {
                     WherePredicate::BoundPredicate {
@@ -2963,17 +2950,6 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             def_id: self.def_id,
             stability: cx.tcx().lookup_stability(self.def_id).clean(cx),
             deprecation: cx.tcx().lookup_deprecation(self.def_id).clean(cx),
-        }
-    }
-}
-
-impl<'a> Clean<Typedef> for (ty::TypeScheme<'a>, ty::GenericPredicates<'a>,
-                             ParamSpace) {
-    fn clean(&self, cx: &DocContext) -> Typedef {
-        let (ref ty_scheme, ref predicates, ps) = *self;
-        Typedef {
-            type_: ty_scheme.ty.clean(cx),
-            generics: (&ty_scheme.generics, predicates, ps).clean(cx)
         }
     }
 }

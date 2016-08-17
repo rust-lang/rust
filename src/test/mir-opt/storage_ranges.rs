@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 fn main() {
     let a = 0;
     {
@@ -25,7 +27,7 @@ fn main() {
 //         StorageLive(tmp1);               // scope 1 at storage_ranges.rs:14:18: 14:25
 //         StorageLive(tmp2);               // scope 1 at storage_ranges.rs:14:23: 14:24
 //         tmp2 = var0;                     // scope 1 at storage_ranges.rs:14:23: 14:24
-//         tmp1 = std::prelude::v1::Some<i32>(tmp2,); // scope 1 at storage_ranges.rs:14:18: 14:25
+//         tmp1 = std::option::Option<i32>::Some(tmp2,); // scope 1 at storage_ranges.rs:14:18: 14:25
 //         var1 = &tmp1;                    // scope 1 at storage_ranges.rs:14:17: 14:25
 //         StorageDead(tmp2);               // scope 1 at storage_ranges.rs:14:23: 14:24
 //         tmp0 = ();                       // scope 2 at storage_ranges.rs:13:5: 15:6

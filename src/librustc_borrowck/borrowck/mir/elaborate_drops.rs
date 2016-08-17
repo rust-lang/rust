@@ -16,7 +16,7 @@ use super::{drop_flag_effects_for_location, on_all_children_bits};
 use super::{DropFlagState, MoveDataParamEnv};
 use super::patch::MirPatch;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Subst, Substs, VecPerParamSpace};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::mir::repr::*;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
@@ -859,10 +859,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let unit_temp = Lvalue::Temp(self.patch.new_temp(tcx.mk_nil()));
         let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
             .unwrap_or_else(|e| tcx.sess.fatal(&e));
-        let substs = tcx.mk_substs(Substs::new(
-            VecPerParamSpace::new(vec![], vec![], vec![ty]),
-            VecPerParamSpace::new(vec![], vec![], vec![])
-        ));
+        let substs = Substs::new(tcx, vec![ty], vec![]);
         let fty = tcx.lookup_item_type(free_func).ty.subst(tcx, substs);
 
         self.patch.new_block(BasicBlockData {

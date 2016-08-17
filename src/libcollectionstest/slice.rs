@@ -646,6 +646,24 @@ fn test_iter_size_hints() {
 }
 
 #[test]
+fn test_iter_as_slice() {
+    let xs = [1, 2, 5, 10, 11];
+    let mut iter = xs.iter();
+    assert_eq!(iter.as_slice(), &[1, 2, 5, 10, 11]);
+    iter.next();
+    assert_eq!(iter.as_slice(), &[2, 5, 10, 11]);
+}
+
+#[test]
+fn test_iter_as_ref() {
+    let xs = [1, 2, 5, 10, 11];
+    let mut iter = xs.iter();
+    assert_eq!(iter.as_ref(), &[1, 2, 5, 10, 11]);
+    iter.next();
+    assert_eq!(iter.as_ref(), &[2, 5, 10, 11]);
+}
+
+#[test]
 fn test_iter_clone() {
     let xs = [1, 2, 5];
     let mut it = xs.iter();

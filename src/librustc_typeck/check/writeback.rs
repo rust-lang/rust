@@ -18,7 +18,6 @@ use hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
-use rustc::ty::subst::ParamSpace;
 use rustc::infer::{InferCtxt, FixupError};
 use rustc::util::nodemap::DefIdMap;
 use write_substs_to_tcx;
@@ -68,7 +67,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
-        wbcx.visit_anon_types();
+        wbcx.visit_anon_types(item_id);
         wbcx.visit_deferred_obligations(item_id);
     }
 }
@@ -104,22 +103,19 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
 
         let free_substs = fcx.parameter_environment.free_substs;
-        for &space in &ParamSpace::all() {
-            for (i, r) in free_substs.regions.get_slice(space).iter().enumerate() {
-                match *r {
-                    ty::ReFree(ty::FreeRegion {
-                        bound_region: ty::BoundRegion::BrNamed(def_id, name, _), ..
-                    }) => {
-                        let bound_region = ty::ReEarlyBound(ty::EarlyBoundRegion {
-                            space: space,
-                            index: i as u32,
-                            name: name,
-                        });
-                        wbcx.free_to_bound_regions.insert(def_id, bound_region);
-                    }
-                    _ => {
-                        bug!("{:?} is not a free region for an early-bound lifetime", r);
-                    }
+        for (i, r) in free_substs.regions.iter().enumerate() {
+            match *r {
+                ty::ReFree(ty::FreeRegion {
+                    bound_region: ty::BoundRegion::BrNamed(def_id, name, _), ..
+                }) => {
+                    let bound_region = ty::ReEarlyBound(ty::EarlyBoundRegion {
+                        index: i as u32,
+                        name: name,
+                    });
+                    wbcx.free_to_bound_regions.insert(def_id, bound_region);
+                }
+                _ => {
+                    bug!("{:?} is not a free region for an early-bound lifetime", r);
                 }
             }
         }
@@ -300,10 +296,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_anon_types(&self) {
+    fn visit_anon_types(&self, item_id: ast::NodeId) {
         if self.fcx.writeback_errors.get() {
             return
         }
+
+        let item_def_id = self.fcx.tcx.map.local_def_id(item_id);
 
         let gcx = self.tcx().global_tcx();
         for (&def_id, &concrete_ty) in self.fcx.anon_types.borrow().iter() {
@@ -345,9 +343,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             });
 
-            gcx.tcache.borrow_mut().insert(def_id, ty::TypeScheme {
+            gcx.register_item_type(def_id, ty::TypeScheme {
                 ty: outside_ty,
-                generics: ty::Generics::empty()
+                generics: gcx.lookup_generics(item_def_id)
             });
         }
     }

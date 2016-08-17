@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ty::subst;
+use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
 pub struct FlagComputation {
@@ -77,7 +77,7 @@ impl FlagComputation {
 
             &ty::TyParam(ref p) => {
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
-                if p.space == subst::SelfSpace {
+                if p.is_self() {
                     self.add_flags(TypeFlags::HAS_SELF);
                 } else {
                     self.add_flags(TypeFlags::HAS_PARAMS);
@@ -116,17 +116,16 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
+            &ty::TyTrait(ref obj) => {
                 let mut computation = FlagComputation::new();
-                computation.add_substs(principal.0.substs);
-                for projection_bound in &bounds.projection_bounds {
+                computation.add_substs(obj.principal.skip_binder().substs);
+                for projection_bound in &obj.projection_bounds {
                     let mut proj_computation = FlagComputation::new();
-                    proj_computation.add_projection_predicate(&projection_bound.0);
+                    proj_computation.add_existential_projection(&projection_bound.0);
                     self.add_bound_computation(&proj_computation);
                 }
                 self.add_bound_computation(&computation);
-
-                self.add_bounds(bounds);
+                self.add_region(obj.region_bound);
             }
 
             &ty::TyBox(tt) | &ty::TyArray(tt, _) | &ty::TySlice(tt) => {
@@ -199,23 +198,19 @@ impl FlagComputation {
         }
     }
 
-    fn add_projection_predicate(&mut self, projection_predicate: &ty::ProjectionPredicate) {
-        self.add_projection_ty(&projection_predicate.projection_ty);
-        self.add_ty(projection_predicate.ty);
+    fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection) {
+        self.add_substs(projection.trait_ref.substs);
+        self.add_ty(projection.ty);
     }
 
     fn add_projection_ty(&mut self, projection_ty: &ty::ProjectionTy) {
         self.add_substs(projection_ty.trait_ref.substs);
     }
 
-    fn add_substs(&mut self, substs: &subst::Substs) {
-        self.add_tys(substs.types.as_slice());
+    fn add_substs(&mut self, substs: &Substs) {
+        self.add_tys(&substs.types);
         for &r in &substs.regions {
             self.add_region(r);
         }
-    }
-
-    fn add_bounds(&mut self, bounds: &ty::ExistentialBounds) {
-        self.add_region(bounds.region_bound);
     }
 }

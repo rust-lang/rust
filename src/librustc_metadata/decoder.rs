@@ -35,7 +35,6 @@ use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex};
 use middle::lang_items;
-use rustc::ty::subst;
 use rustc::ty::{ImplContainer, TraitContainer};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
 
@@ -265,11 +264,6 @@ fn maybe_doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: 
     })
 }
 
-pub fn item_type<'a, 'tcx>(_item_id: DefId, item: rbml::Doc,
-                           tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd) -> Ty<'tcx> {
-    doc_type(item, tcx, cdata)
-}
-
 fn doc_trait_ref<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd)
                            -> ty::TraitRef<'tcx> {
     TyDecoder::with_doc(tcx, cdata.cnum, doc,
@@ -384,7 +378,7 @@ pub fn get_trait_def<'a, 'tcx>(cdata: Cmd,
                                tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::TraitDef<'tcx>
 {
     let item_doc = cdata.lookup_item(item_id);
-    let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
+    let generics = doc_generics(item_doc, tcx, cdata);
     let unsafety = parse_unsafety(item_doc);
     let associated_type_names = parse_associated_type_names(item_doc);
     let paren_sugar = parse_paren_sugar(item_doc);
@@ -494,7 +488,7 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
             // from the ctor.
             debug!("evaluating the ctor-type of {:?}",
                    variant.name);
-            let ctor_ty = get_type(cdata, variant.did.index, tcx).ty;
+            let ctor_ty = get_type(cdata, variant.did.index, tcx);
             debug!("evaluating the ctor-type of {:?}.. {:?}",
                    variant.name,
                    ctor_ty);
@@ -514,7 +508,7 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
         } else {
             for field in &variant.fields {
                 debug!("evaluating the type of {:?}::{:?}", variant.name, field.name);
-                let ty = get_type(cdata, field.did.index, tcx).ty;
+                let ty = get_type(cdata, field.did.index, tcx);
                 field.fulfill_ty(ty);
                 debug!("evaluating the type of {:?}::{:?}: {:?}",
                        variant.name, field.name, ty);
@@ -531,7 +525,7 @@ pub fn get_predicates<'a, 'tcx>(cdata: Cmd,
                                 -> ty::GenericPredicates<'tcx>
 {
     let item_doc = cdata.lookup_item(item_id);
-    doc_predicates(item_doc, tcx, cdata, tag_item_generics)
+    doc_predicates(item_doc, tcx, cdata, tag_item_predicates)
 }
 
 pub fn get_super_predicates<'a, 'tcx>(cdata: Cmd,
@@ -543,17 +537,20 @@ pub fn get_super_predicates<'a, 'tcx>(cdata: Cmd,
     doc_predicates(item_doc, tcx, cdata, tag_item_super_predicates)
 }
 
+pub fn get_generics<'a, 'tcx>(cdata: Cmd,
+                              item_id: DefIndex,
+                              tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                              -> &'tcx ty::Generics<'tcx>
+{
+    let item_doc = cdata.lookup_item(item_id);
+    doc_generics(item_doc, tcx, cdata)
+}
+
 pub fn get_type<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                          -> ty::TypeScheme<'tcx>
+                          -> Ty<'tcx>
 {
     let item_doc = cdata.lookup_item(id);
-    let t = item_type(DefId { krate: cdata.cnum, index: id }, item_doc, tcx,
-                      cdata);
-    let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
-    ty::TypeScheme {
-        generics: generics,
-        ty: t
-    }
+    doc_type(item_doc, tcx, cdata)
 }
 
 pub fn get_stability(cdata: Cmd, id: DefIndex) -> Option<attr::Stability> {
@@ -961,8 +958,8 @@ pub fn get_impl_or_trait_item<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a
             }))
         }
         Some('r') | Some('p') => {
-            let generics = doc_generics(item_doc, tcx, cdata, tag_method_ty_generics);
-            let predicates = doc_predicates(item_doc, tcx, cdata, tag_method_ty_generics);
+            let generics = doc_generics(item_doc, tcx, cdata);
+            let predicates = doc_predicates(item_doc, tcx, cdata, tag_item_predicates);
             let ity = tcx.lookup_item_type(def_id).ty;
             let fty = match ity.sty {
                 ty::TyFnDef(_, _, fty) => fty,
@@ -1394,10 +1391,7 @@ pub fn each_implementation_for_trait<F>(cdata: Cmd,
     }
 }
 
-pub fn get_trait_of_item<'a, 'tcx>(cdata: Cmd,
-                                   id: DefIndex,
-                                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                   -> Option<DefId> {
+pub fn get_trait_of_item(cdata: Cmd, id: DefIndex) -> Option<DefId> {
     let item_doc = cdata.lookup_item(id);
     let parent_item_id = match item_parent_item(cdata, item_doc) {
         None => return None,
@@ -1406,10 +1400,6 @@ pub fn get_trait_of_item<'a, 'tcx>(cdata: Cmd,
     let parent_item_doc = cdata.lookup_item(parent_item_id.index);
     match item_family(parent_item_doc) {
         Trait => Some(item_def_id(parent_item_doc, cdata)),
-        Impl | DefaultImpl => {
-            reader::maybe_get_doc(parent_item_doc, tag_item_trait_ref)
-                .map(|_| item_trait_ref(parent_item_doc, tcx, cdata).def_id)
-        }
         _ => None
     }
 }
@@ -1538,11 +1528,7 @@ pub fn is_extern_item<'a, 'tcx>(cdata: Cmd,
     };
     let applicable = match item_family(item_doc) {
         ImmStatic | MutStatic => true,
-        Fn => {
-            let ty::TypeScheme { generics, .. } = get_type(cdata, id, tcx);
-            let no_generics = generics.types.is_empty();
-            no_generics
-        },
+        Fn => get_generics(cdata, id, tcx).types.is_empty(),
         _ => false,
     };
 
@@ -1574,31 +1560,13 @@ pub fn is_impl(cdata: Cmd, id: DefIndex) -> bool {
 
 fn doc_generics<'a, 'tcx>(base_doc: rbml::Doc,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          cdata: Cmd,
-                          tag: usize)
-                          -> ty::Generics<'tcx>
+                          cdata: Cmd)
+                          -> &'tcx ty::Generics<'tcx>
 {
-    let doc = reader::get_doc(base_doc, tag);
-
-    let mut types = subst::VecPerParamSpace::empty();
-    for p in reader::tagged_docs(doc, tag_type_param_def) {
-        let bd =
-            TyDecoder::with_doc(tcx, cdata.cnum, p,
-                                &mut |did| translate_def_id(cdata, did))
-            .parse_type_param_def();
-        types.push(bd.space, bd);
-    }
-
-    let mut regions = subst::VecPerParamSpace::empty();
-    for p in reader::tagged_docs(doc, tag_region_param_def) {
-        let bd =
-            TyDecoder::with_doc(tcx, cdata.cnum, p,
-                                &mut |did| translate_def_id(cdata, did))
-            .parse_region_param_def();
-        regions.push(bd.space, bd);
-    }
-
-    ty::Generics { types: types, regions: regions }
+    let doc = reader::get_doc(base_doc, tag_item_generics);
+    TyDecoder::with_doc(tcx, cdata.cnum, doc,
+                        &mut |did| translate_def_id(cdata, did))
+        .parse_generics()
 }
 
 fn doc_predicate<'a, 'tcx>(cdata: Cmd,
@@ -1622,21 +1590,12 @@ fn doc_predicates<'a, 'tcx>(base_doc: rbml::Doc,
 {
     let doc = reader::get_doc(base_doc, tag);
 
-    let mut predicates = subst::VecPerParamSpace::empty();
-    for predicate_doc in reader::tagged_docs(doc, tag_type_predicate) {
-        predicates.push(subst::TypeSpace,
-                        doc_predicate(cdata, predicate_doc, tcx));
+    ty::GenericPredicates {
+        parent: item_parent_item(cdata, doc),
+        predicates: reader::tagged_docs(doc, tag_predicate).map(|predicate_doc| {
+            doc_predicate(cdata, predicate_doc, tcx)
+        }).collect()
     }
-    for predicate_doc in reader::tagged_docs(doc, tag_self_predicate) {
-        predicates.push(subst::SelfSpace,
-                        doc_predicate(cdata, predicate_doc, tcx));
-    }
-    for predicate_doc in reader::tagged_docs(doc, tag_fn_predicate) {
-        predicates.push(subst::FnSpace,
-                        doc_predicate(cdata, predicate_doc, tcx));
-    }
-
-    ty::GenericPredicates { predicates: predicates }
 }
 
 pub fn is_defaulted_trait(cdata: Cmd, trait_id: DefIndex) -> bool {

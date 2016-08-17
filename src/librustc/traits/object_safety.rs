@@ -20,7 +20,6 @@
 use super::elaborate_predicates;
 
 use hir::def_id::DefId;
-use ty::subst::{self, SelfSpace, TypeSpace};
 use traits;
 use ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use std::rc::Rc;
@@ -146,10 +145,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match predicate {
                     ty::Predicate::Trait(ref data) => {
                         // In the case of a trait predicate, we can skip the "self" type.
-                        data.0.trait_ref.substs.types.get_slice(TypeSpace)
-                                                     .iter()
-                                                     .cloned()
-                                                     .any(|t| t.has_self_ty())
+                        data.0.trait_ref.input_types()[1..].iter().any(|t| t.has_self_ty())
                     }
                     ty::Predicate::Projection(..) |
                     ty::Predicate::WellFormed(..) |
@@ -166,25 +162,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn trait_has_sized_self(self, trait_def_id: DefId) -> bool {
-        let trait_def = self.lookup_trait_def(trait_def_id);
-        let trait_predicates = self.lookup_predicates(trait_def_id);
-        self.generics_require_sized_self(&trait_def.generics, &trait_predicates)
+        self.generics_require_sized_self(trait_def_id)
     }
 
-    fn generics_require_sized_self(self,
-                                   generics: &ty::Generics<'gcx>,
-                                   predicates: &ty::GenericPredicates<'gcx>)
-                                   -> bool
-    {
+    fn generics_require_sized_self(self, def_id: DefId) -> bool {
         let sized_def_id = match self.lang_items.sized_trait() {
             Some(def_id) => def_id,
             None => { return false; /* No Sized trait, can't require it! */ }
         };
 
         // Search for a predicate like `Self : Sized` amongst the trait bounds.
-        let free_substs = self.construct_free_substs(generics,
+        let free_substs = self.construct_free_substs(def_id,
             self.region_maps.node_extent(ast::DUMMY_NODE_ID));
-        let predicates = predicates.instantiate(self, &free_substs).predicates.into_vec();
+        let predicates = self.lookup_predicates(def_id);
+        let predicates = predicates.instantiate(self, free_substs).predicates;
         elaborate_predicates(self, predicates)
             .any(|predicate| {
                 match predicate {
@@ -214,7 +205,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         // Any method that has a `Self : Sized` requisite is otherwise
         // exempt from the regulations.
-        if self.generics_require_sized_self(&method.generics, &method.predicates) {
+        if self.generics_require_sized_self(method.def_id) {
             return None;
         }
 
@@ -231,7 +222,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  -> bool
     {
         // Any method that has a `Self : Sized` requisite can't be called.
-        if self.generics_require_sized_self(&method.generics, &method.predicates) {
+        if self.generics_require_sized_self(method.def_id) {
             return false;
         }
 
@@ -274,7 +265,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.
-        if !method.generics.types.is_empty_in(subst::FnSpace) {
+        if !method.generics.types.is_empty() {
             return Some(MethodViolationCode::Generic);
         }
 
@@ -330,7 +321,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ty.maybe_walk(|ty| {
             match ty.sty {
                 ty::TyParam(ref param_ty) => {
-                    if param_ty.space == SelfSpace {
+                    if param_ty.is_self() {
                         error = true;
                     }
 

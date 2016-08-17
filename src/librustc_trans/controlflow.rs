@@ -401,7 +401,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let expr_file_line = consts::addr_of(ccx, expr_file_line_const, align, "panic_loc");
     let args = vec!(expr_file_line);
     let did = langcall(bcx.tcx(), Some(call_info.span), "", PanicFnLangItem);
-    Callee::def(ccx, did, ccx.tcx().mk_substs(Substs::empty()))
+    Callee::def(ccx, did, Substs::empty(ccx.tcx()))
         .call(bcx, call_info.debug_loc(), ArgVals(&args), None).bcx
 }
 
@@ -429,6 +429,6 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let file_line = consts::addr_of(ccx, file_line_const, align, "panic_bounds_check_loc");
     let args = vec!(file_line, index, len);
     let did = langcall(bcx.tcx(), Some(call_info.span), "", PanicBoundsCheckFnLangItem);
-    Callee::def(ccx, did, ccx.tcx().mk_substs(Substs::empty()))
+    Callee::def(ccx, did, Substs::empty(ccx.tcx()))
         .call(bcx, call_info.debug_loc(), ArgVals(&args), None).bcx
 }

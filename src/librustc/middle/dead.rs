@@ -88,15 +88,24 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn lookup_and_handle_definition(&mut self, id: ast::NodeId) {
         use ty::TypeVariants::{TyEnum, TyStruct};
 
-        // If `bar` is a trait item, make sure to mark Foo as alive in `Foo::bar`
-        self.tcx.tables.borrow().item_substs.get(&id)
-            .and_then(|substs| substs.substs.self_ty())
-            .map(|ty| match ty.sty {
-                TyEnum(tyid, _) | TyStruct(tyid, _) => self.check_def_id(tyid.did),
-                _ => (),
-            });
-
         let def = self.tcx.expect_def(id);
+
+        // If `bar` is a trait item, make sure to mark Foo as alive in `Foo::bar`
+        match def {
+            Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_)
+            if self.tcx.trait_of_item(def.def_id()).is_some() => {
+                if let Some(substs) = self.tcx.tables.borrow().item_substs.get(&id) {
+                    match substs.substs.types[0].sty {
+                        TyEnum(tyid, _) | TyStruct(tyid, _) => {
+                            self.check_def_id(tyid.did)
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+
         match def {
             Def::Const(_) | Def::AssociatedConst(..) => {
                 self.check_def_id(def.def_id());

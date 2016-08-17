@@ -486,7 +486,8 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // its self-type. If the self-type does not provide a characteristic
             // DefId, we use the location of the impl after all.
 
-            if let Some(self_ty) = instance.substs.self_ty() {
+            if tcx.trait_of_item(instance.def).is_some() {
+                let self_ty = instance.substs.types[0];
                 // This is an implementation of a trait method.
                 return characteristic_def_id_of_type(self_ty).or(Some(instance.def));
             }

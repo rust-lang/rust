@@ -30,11 +30,11 @@ use std::mem;
 use std::collections::BTreeMap;
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst;
+use rustc::ty;
 
 use clean::PathParameters as PP;
 use clean::WherePredicate as WP;
-use clean::{self, Clean};
+use clean;
 use core::DocContext;
 
 pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
@@ -153,27 +153,16 @@ fn trait_is_same_or_supertrait(cx: &DocContext, child: DefId,
     if child == trait_ {
         return true
     }
-    let def = cx.tcx().lookup_trait_def(child);
-    let predicates = cx.tcx().lookup_predicates(child);
-    let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
-    generics.where_predicates.iter().filter_map(|pred| {
-        match *pred {
-            clean::WherePredicate::BoundPredicate {
-                ty: clean::Generic(ref s),
-                ref bounds
-            } if *s == "Self" => Some(bounds),
-            _ => None,
-        }
-    }).flat_map(|bounds| bounds).any(|bound| {
-        let poly_trait = match *bound {
-            clean::TraitBound(ref t, _) => t,
-            _ => return false,
-        };
-        match poly_trait.trait_ {
-            clean::ResolvedPath { did, .. } => {
-                trait_is_same_or_supertrait(cx, did, trait_)
+    let predicates = cx.tcx().lookup_super_predicates(child).predicates;
+    predicates.iter().filter_map(|pred| {
+        if let ty::Predicate::Trait(ref pred) = *pred {
+            if pred.0.trait_ref.self_ty().is_self() {
+                Some(pred.def_id())
+            } else {
+                None
             }
-            _ => false,
+        } else {
+            None
         }
-    })
+    }).any(|did| trait_is_same_or_supertrait(cx, did, trait_))
 }
