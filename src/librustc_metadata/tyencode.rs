@@ -19,8 +19,7 @@ use std::io::prelude::*;
 
 use rustc::hir::def_id::DefId;
 use middle::region;
-use rustc::ty::subst::{self, Substs, VecPerParamSpace};
-use rustc::ty::ParamTy;
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FnvHashMap;
 
@@ -163,8 +162,8 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         ty::TyInfer(_) => {
             bug!("cannot encode inference variable types");
         }
-        ty::TyParam(ParamTy {space, idx, name}) => {
-            write!(w, "p[{}|{}|{}]", idx, space.to_uint(), name);
+        ty::TyParam(p) => {
+            write!(w, "p[{}|{}]", p.idx, p.name);
         }
         ty::TyStruct(def, substs) => {
             write!(w, "a[{}|", (cx.ds)(cx.tcx, def.did));
@@ -249,27 +248,17 @@ fn enc_opt<T, F>(w: &mut Cursor<Vec<u8>>, t: Option<T>, enc_f: F) where
     }
 }
 
-fn enc_vec_per_param_space<'a, 'tcx, T, F>(w: &mut Cursor<Vec<u8>>,
-                                           cx: &ctxt<'a, 'tcx>,
-                                           v: &VecPerParamSpace<T>,
-                                           mut op: F) where
-    F: FnMut(&mut Cursor<Vec<u8>>, &ctxt<'a, 'tcx>, &T),
-{
-    for &space in &subst::ParamSpace::all() {
-        write!(w, "[");
-        for t in v.get_slice(space) {
-            op(w, cx, t);
-        }
-        write!(w, "]");
-    }
-}
-
 pub fn enc_substs<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                             substs: &Substs<'tcx>) {
-    enc_vec_per_param_space(w, cx, &substs.regions,
-                            |w, cx, &r| enc_region(w, cx, r));
-    enc_vec_per_param_space(w, cx, &substs.types,
-                            |w, cx, &ty| enc_ty(w, cx, ty));
+    write!(w, "[");
+    for &r in &substs.regions {
+        enc_region(w, cx, r);
+    }
+    write!(w, "|");
+    for &ty in &substs.types {
+        enc_ty(w, cx, ty);
+    }
+    write!(w, "]");
 }
 
 pub fn enc_generics<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
@@ -284,7 +273,7 @@ pub fn enc_generics<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     for r in &generics.regions {
         enc_region_param_def(w, cx, r)
     }
-    write!(w, "][");
+    write!(w, "|");
     for t in &generics.types {
         enc_type_param_def(w, cx, t);
     }
@@ -305,8 +294,7 @@ pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: ty::Region) {
             write!(w, "]");
         }
         ty::ReEarlyBound(ref data) => {
-            write!(w, "B[{}|{}|{}]",
-                   data.space.to_uint(),
+            write!(w, "B[{}|{}]",
                    data.index,
                    data.name);
         }
@@ -446,18 +434,17 @@ fn enc_builtin_bounds(w: &mut Cursor<Vec<u8>>, _cx: &ctxt, bs: &ty::BuiltinBound
 
 fn enc_type_param_def<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                                 v: &ty::TypeParameterDef<'tcx>) {
-    write!(w, "{}:{}|{}|{}|{}|",
-             v.name, (cx.ds)(cx.tcx, v.def_id),
-             v.space.to_uint(), v.index, (cx.ds)(cx.tcx, v.default_def_id));
+    write!(w, "{}:{}|{}|{}|",
+           v.name, (cx.ds)(cx.tcx, v.def_id),
+           v.index, (cx.ds)(cx.tcx, v.default_def_id));
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
     enc_object_lifetime_default(w, cx, v.object_lifetime_default);
 }
 
 fn enc_region_param_def(w: &mut Cursor<Vec<u8>>, cx: &ctxt,
                         v: &ty::RegionParameterDef) {
-    write!(w, "{}:{}|{}|{}|",
-             v.name, (cx.ds)(cx.tcx, v.def_id),
-             v.space.to_uint(), v.index);
+    write!(w, "{}:{}|{}|",
+           v.name, (cx.ds)(cx.tcx, v.def_id), v.index);
     for &r in &v.bounds {
         write!(w, "R");
         enc_region(w, cx, r);

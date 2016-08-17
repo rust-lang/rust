@@ -31,7 +31,7 @@ use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
 use ty::fold::TypeFolder;
-use ty::subst::{Subst, TypeSpace};
+use ty::subst::Subst;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
@@ -232,8 +232,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if let Ok(..) = self.can_equate(&trait_self_ty, &impl_self_ty) {
                     self_match_impls.push(def_id);
 
-                    if trait_ref.substs.types.get_slice(TypeSpace)[1..].iter()
-                        .zip(&impl_trait_ref.substs.types.get_slice(TypeSpace)[1..])
+                    if trait_ref.substs.types[1..].iter()
+                        .zip(&impl_trait_ref.substs.types[1..])
                         .all(|(u,v)| self.fuzzy_match_tys(u, v))
                     {
                         fuzzy_match_impls.push(def_id);

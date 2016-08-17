@@ -55,7 +55,7 @@ use hir::def_id::DefId;
 use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
-use rustc::ty::subst::{TypeSpace, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -207,9 +207,8 @@ pub fn ast_region_to_region(tcx: TyCtxt, lifetime: &hir::Lifetime)
                                                   issue_32330))
         }
 
-        Some(&rl::DefEarlyBoundRegion(space, index, _)) => {
+        Some(&rl::DefEarlyBoundRegion(index, _)) => {
             ty::ReEarlyBound(ty::EarlyBoundRegion {
-                space: space,
                 index: index,
                 name: lifetime.name
             })
@@ -473,10 +472,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let mut output_assoc_binding = None;
         let substs = Substs::for_item(tcx, def_id, |def, _| {
-            assert_eq!(def.space, TypeSpace);
             regions[def.index as usize]
         }, |def, substs| {
-            assert!(def.space == TypeSpace);
             let i = def.index as usize;
 
             // Handle Self first, so we can adjust the index to match the AST.
@@ -940,8 +937,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // FIXME(#12938): This is a hack until we have full support for DST.
         if Some(did) == self.tcx().lang_items.owned_box() {
-            assert_eq!(substs.types.len(TypeSpace), 1);
-            return self.tcx().mk_box(*substs.types.get(TypeSpace, 0));
+            assert_eq!(substs.types.len(), 1);
+            return self.tcx().mk_box(substs.types[0]);
         }
 
         decl_ty.subst(self.tcx(), substs)

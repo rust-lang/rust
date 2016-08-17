@@ -750,7 +750,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               -> TerminatorKind<'tcx> {
     let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
                        .unwrap_or_else(|e| tcx.sess.fatal(&e));
-    let substs = Substs::new_fn(tcx, vec![data.item_ty], vec![]);
+    let substs = Substs::new(tcx, vec![data.item_ty], vec![]);
     TerminatorKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,

@@ -13,7 +13,7 @@
 
 use intrinsics;
 use rustc::infer::TypeOrigin;
-use rustc::ty::subst::{self, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::FnSig;
 use rustc::ty::{self, Ty};
 use {CrateCtxt, require_same_types};
@@ -70,7 +70,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
     fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
         let name = token::intern(&format!("P{}", n));
-        ccx.tcx.mk_param(subst::FnSpace, n, name)
+        ccx.tcx.mk_param(n, name)
     }
 
     let tcx = ccx.tcx;
@@ -316,7 +316,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                                      it: &hir::ForeignItem) {
     let param = |n| {
         let name = token::intern(&format!("P{}", n));
-        ccx.tcx.mk_param(subst::FnSpace, n, name)
+        ccx.tcx.mk_param(n, name)
     };
 
     let tcx = ccx.tcx;

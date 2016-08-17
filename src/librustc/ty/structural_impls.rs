@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use infer::type_variable;
-use ty::subst::{Substs, VecPerParamSpace};
+use ty::subst::Substs;
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
@@ -450,16 +450,6 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for P<[T]> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for VecPerParamSpace<T> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        self.map(|elem| elem.fold_with(folder))
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.as_full_slice().iter().any(|elem| elem.visit_with(visitor))
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TraitObject {
@@ -780,7 +770,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
         ty::TypeParameterDef {
             name: self.name,
             def_id: self.def_id,
-            space: self.space,
             index: self.index,
             default: self.default.fold_with(folder),
             default_def_id: self.default_def_id,
@@ -821,7 +810,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef {
         ty::RegionParameterDef {
             name: self.name,
             def_id: self.def_id,
-            space: self.space,
             index: self.index,
             bounds: self.bounds.fold_with(folder),
         }

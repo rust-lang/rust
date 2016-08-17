@@ -36,7 +36,7 @@ use super::util;
 use hir::def_id::DefId;
 use infer;
 use infer::{InferCtxt, InferOk, TypeFreshener, TypeOrigin};
-use ty::subst::{Subst, Substs, TypeSpace};
+use ty::subst::{Subst, Substs};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use traits;
 use ty::fast_reject;
@@ -1936,7 +1936,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             // for `PhantomData<T>`, we pass `T`
             ty::TyStruct(def, substs) if def.is_phantom_data() => {
-                substs.types.as_full_slice().to_vec()
+                substs.types.to_vec()
             }
 
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
@@ -2585,11 +2585,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 } else {
                     return Err(Unimplemented);
                 };
-                let mut ty_params = BitVector::new(substs_a.types.len(TypeSpace));
+                let mut ty_params = BitVector::new(substs_a.types.len());
                 let mut found = false;
                 for ty in field.walk() {
                     if let ty::TyParam(p) = ty.sty {
-                        assert!(p.space == TypeSpace);
                         ty_params.insert(p.idx as usize);
                         found = true;
                     }
@@ -2602,13 +2601,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // TyError and ensure they do not affect any other fields.
                 // This could be checked after type collection for any struct
                 // with a potentially unsized trailing field.
-                let types = substs_a.types.map_enumerated(|(_, i, ty)| {
+                let types = substs_a.types.iter().enumerate().map(|(i, ty)| {
                     if ty_params.contains(i) {
                         tcx.types.err
                     } else {
                         ty
                     }
-                });
+                }).collect();
                 let substs = Substs::new(tcx, types, substs_a.regions.clone());
                 for &ty in fields.split_last().unwrap().1 {
                     if ty.subst(tcx, substs).references_error() {
@@ -2622,13 +2621,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 // Check that the source structure with the target's
                 // type parameters is a subtype of the target.
-                let types = substs_a.types.map_enumerated(|(_, i, ty)| {
+                let types = substs_a.types.iter().enumerate().map(|(i, ty)| {
                     if ty_params.contains(i) {
-                        *substs_b.types.get(TypeSpace, i)
+                        substs_b.types[i]
                     } else {
                         ty
                     }
-                });
+                }).collect();
                 let substs = Substs::new(tcx, types, substs_a.regions.clone());
                 let new_struct = tcx.mk_struct(def, substs);
                 let origin = TypeOrigin::Misc(obligation.cause.span);

@@ -208,8 +208,8 @@ impl FlagComputation {
     }
 
     fn add_substs(&mut self, substs: &Substs) {
-        self.add_tys(substs.types.as_full_slice());
-        for &r in substs.regions.as_full_slice() {
+        self.add_tys(&substs.types);
+        for &r in &substs.regions {
             self.add_region(r);
         }
     }

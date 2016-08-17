@@ -13,7 +13,7 @@
 use check::FnCtxt;
 use hir::def::Def;
 use hir::def_id::DefId;
-use rustc::ty::subst::{self, Substs};
+use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
@@ -191,7 +191,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self.tcx, trait_def_id, |def, _| {
             self.region_var_for_def(span, def)
         }, |def, substs| {
-            assert_eq!(def.space, subst::TypeSpace);
             if def.index == 0 {
                 self_ty
             } else if let Some(ref input_types) = opt_input_types {

@@ -88,7 +88,7 @@ use hir::def::{Def, PathResolution};
 use hir::def_id::DefId;
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
-use rustc::ty::subst::{self, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
@@ -1333,7 +1333,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                   .filter_map(|predicate| {
                                       match *predicate {
                                           ty::Predicate::Trait(ref data) => {
-                                              if data.0.self_ty().is_param(def.space, def.index) {
+                                              if data.0.self_ty().is_param(def.index) {
                                                   Some(data.to_poly_trait_ref())
                                               } else {
                                                   None
@@ -1887,7 +1887,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Registers obligations that all types appearing in `substs` are well-formed.
     pub fn add_wf_bounds(&self, substs: &Substs<'tcx>, expr: &hir::Expr)
     {
-        for &ty in substs.types.as_full_slice() {
+        for &ty in &substs.types {
             self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
         }
     }
@@ -4223,20 +4223,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
-        self.check_path_parameter_count(subst::TypeSpace,
-                                        span,
-                                        !require_type_space,
-                                        &mut type_segment);
-        self.check_path_parameter_count(subst::FnSpace,
-                                        span,
-                                        true,
-                                        &mut fn_segment);
+        self.check_path_parameter_count(span, !require_type_space, &mut type_segment);
+        self.check_path_parameter_count(span, true, &mut fn_segment);
 
         let substs = Substs::for_item(self.tcx, def.def_id(), |def, _| {
-            let i = def.index as usize;
-            let segment = match def.space {
-                subst::TypeSpace => type_segment,
-                subst::FnSpace => fn_segment
+            let mut i = def.index as usize;
+            let type_regions = match (type_segment, fn_segment) {
+                (_, Some((_, generics))) => generics.parent_regions as usize,
+                (Some((_, generics)), None) => generics.regions.len(),
+                (None, None) => 0
+            };
+
+            let segment = if i < type_regions {
+                type_segment
+            } else {
+                i -= type_regions;
+                fn_segment
             };
             let lifetimes = match segment.map(|(s, _)| &s.parameters) {
                 Some(&hir::AngleBracketedParameters(ref data)) => &data.lifetimes[..],
@@ -4251,25 +4253,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }, |def, substs| {
             let mut i = def.index as usize;
-            let segment = match def.space {
-                subst::TypeSpace => {
-                    // Handle Self first, so we can adjust the index to match the AST.
-                    match (type_segment, fn_segment) {
-                        (Some((_, generics)), _) | (_, Some((_, generics))) => {
-                            if generics.has_self {
-                                if i == 0 {
-                                    return opt_self_ty.unwrap_or_else(|| {
-                                        self.type_var_for_def(span, def, substs)
-                                    });
-                                }
-                                i -= 1;
-                            }
-                        }
-                        _ => {}
-                    }
-                    type_segment
+            let (type_types, has_self) = match (type_segment, fn_segment) {
+                (_, Some((_, generics))) => {
+                    (generics.parent_types as usize, generics.has_self)
                 }
-                subst::FnSpace => fn_segment
+                (Some((_, generics)), None) => {
+                    (generics.types.len(), generics.has_self)
+                }
+                (None, None) => (0, false)
+            };
+
+            let can_omit = i >= type_types || !require_type_space;
+            let segment = if i < type_types {
+                // Handle Self first, so we can adjust the index to match the AST.
+                if has_self && i == 0 {
+                    return opt_self_ty.unwrap_or_else(|| {
+                        self.type_var_for_def(span, def, substs)
+                    });
+                }
+                i -= has_self as usize;
+                type_segment
+            } else {
+                i -= type_types;
+                fn_segment
             };
             let types = match segment.map(|(s, _)| &s.parameters) {
                 Some(&hir::AngleBracketedParameters(ref data)) => &data.types[..],
@@ -4277,16 +4283,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 None => &[]
             };
 
-            let can_omit = def.space != subst::TypeSpace || !require_type_space;
-            let default = if can_omit && types.len() == 0 {
-                def.default
-            } else {
-                None
-            };
+            let omitted = can_omit && types.is_empty();
             if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
                 self.to_ty(ast_ty)
-            } else if let Some(default) = default {
+            } else if let (false, Some(default)) = (omitted, def.default) {
                 // No type parameter provided, but a default exists.
                 default.subst_spanned(self.tcx, substs, Some(span))
             } else {
@@ -4323,10 +4324,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
             let impl_scheme = self.tcx.lookup_item_type(impl_def_id);
-            assert_eq!(substs.types.len(subst::TypeSpace),
-                       impl_scheme.generics.types.len());
-            assert_eq!(substs.regions.len(subst::TypeSpace),
-                       impl_scheme.generics.regions.len());
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
             match self.sub_types(false, TypeOrigin::Misc(span), self_ty, impl_ty) {
@@ -4355,7 +4352,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Report errors if the provided parameters are too few or too many.
     fn check_path_parameter_count(&self,
-                                  space: subst::ParamSpace,
                                   span: Span,
                                   can_omit: bool,
                                   segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
@@ -4392,7 +4388,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Check provided type parameters.
         let type_defs = segment.map_or(&[][..], |(_, generics)| {
-            if space == subst::TypeSpace {
+            if generics.parent.is_none() {
                 &generics.types[generics.has_self as usize..]
             } else {
                 &generics.types

@@ -12,7 +12,7 @@ use super::probe;
 
 use check::{FnCtxt, callee};
 use hir::def_id::DefId;
-use rustc::ty::subst::{self, Substs};
+use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
@@ -328,18 +328,18 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         //
         // FIXME -- permit users to manually specify lifetimes
         Substs::for_item(self.tcx, method.def_id, |def, _| {
-            if def.space != subst::FnSpace {
-                substs.region_for_def(def)
+            if let Some(&r) = substs.regions.get(def.index as usize) {
+                r
             } else {
                 self.region_var_for_def(self.span, def)
             }
         }, |def, cur_substs| {
-            if def.space != subst::FnSpace {
-                substs.type_for_def(def)
+            if let Some(&ty) = substs.types.get(def.index as usize) {
+                ty
             } else if supplied_method_types.is_empty() {
                 self.type_var_for_def(self.span, def, cur_substs)
             } else {
-                supplied_method_types[def.index as usize]
+                supplied_method_types[def.index as usize - substs.types.len()]
             }
         })
     }

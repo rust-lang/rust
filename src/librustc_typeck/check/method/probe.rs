@@ -16,7 +16,7 @@ use super::suggest;
 use check::{FnCtxt};
 use hir::def_id::DefId;
 use hir::def::Def;
-use rustc::ty::subst::{self, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::infer::{InferOk, TypeOrigin};
@@ -519,9 +519,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                        trait_ref.substs,
                        m);
                 assert_eq!(m.generics.parent_types as usize,
-                           trait_ref.substs.types.len(subst::TypeSpace));
+                           trait_ref.substs.types.len());
                 assert_eq!(m.generics.parent_regions as usize,
-                           trait_ref.substs.regions.len(subst::TypeSpace));
+                           trait_ref.substs.regions.len());
             }
 
             // Because this trait derives from a where-clause, it
@@ -1220,8 +1220,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // are given do not include type/lifetime parameters for the
         // method yet. So create fresh variables here for those too,
         // if there are any.
-        assert_eq!(substs.types.len(subst::FnSpace), 0);
-        assert_eq!(substs.regions.len(subst::FnSpace), 0);
+        assert_eq!(substs.types.len(), method.generics.parent_types as usize);
+        assert_eq!(substs.regions.len(), method.generics.parent_regions as usize);
 
         if self.mode == Mode::Path {
             return impl_ty;
@@ -1236,16 +1236,16 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             xform_self_ty.subst(self.tcx, substs)
         } else {
             let substs = Substs::for_item(self.tcx, method.def_id, |def, _| {
-                if def.space != subst::FnSpace {
-                    substs.region_for_def(def)
+                if let Some(&r) = substs.regions.get(def.index as usize) {
+                    r
                 } else {
                     // In general, during probe we erase regions. See
                     // `impl_self_ty()` for an explanation.
                     ty::ReErased
                 }
             }, |def, cur_substs| {
-                if def.space != subst::FnSpace {
-                    substs.type_for_def(def)
+                if let Some(&ty) = substs.types.get(def.index as usize) {
+                    ty
                 } else {
                     self.type_var_for_def(self.span, def, cur_substs)
                 }

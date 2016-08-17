@@ -358,7 +358,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          name_to_append_suffix_to: &mut String)
                                          -> DIArray
     {
-        let actual_types = param_substs.types.as_full_slice();
+        let actual_types = &param_substs.types;
 
         if actual_types.is_empty() {
             return create_DIArray(DIB(cx), &[]);

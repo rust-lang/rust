@@ -20,7 +20,7 @@ use rustc::hir;
 
 use rustc::hir::def_id::{DefId, DefIndex};
 use middle::region;
-use rustc::ty::subst::{self, Substs, VecPerParamSpace};
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use rbml;
@@ -128,23 +128,19 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    fn parse_vec_per_param_space<T, F>(&mut self, mut f: F) -> VecPerParamSpace<T> where
-        F: FnMut(&mut TyDecoder<'a, 'tcx>) -> T,
-    {
-        let (mut a, mut b) =  (vec![], vec![]);
-        for r in &mut [&mut a, &mut b] {
-            assert_eq!(self.next(), '[');
-            while self.peek() != ']' {
-                r.push(f(self));
-            }
-            assert_eq!(self.next(), ']');
-        }
-        VecPerParamSpace::new(a, b)
-    }
-
     pub fn parse_substs(&mut self) -> &'tcx Substs<'tcx> {
-        let regions = self.parse_vec_per_param_space(|this| this.parse_region());
-        let types = self.parse_vec_per_param_space(|this| this.parse_ty());
+        let mut regions = vec![];
+        let mut types = vec![];
+        assert_eq!(self.next(), '[');
+        while self.peek() != '|' {
+            regions.push(self.parse_region());
+        }
+        assert_eq!(self.next(), '|');
+        while self.peek() != ']' {
+            types.push(self.parse_ty());
+        }
+        assert_eq!(self.next(), ']');
+
         Substs::new(self.tcx, types, regions)
     }
 
@@ -155,14 +151,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         let parent_types = self.parse_u32();
 
         let mut regions = vec![];
-        assert_eq!(self.next(), '[');
-        while self.peek() != ']' {
-            regions.push(self.parse_region_param_def());
-        }
-        assert_eq!(self.next(), ']');
-
         let mut types = vec![];
         assert_eq!(self.next(), '[');
+        while self.peek() != '|' {
+            regions.push(self.parse_region_param_def());
+        }
+        assert_eq!(self.next(), '|');
         while self.peek() != ']' {
             types.push(self.parse_type_param_def());
         }
@@ -225,13 +219,10 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'B' => {
                 assert_eq!(self.next(), '[');
-                let space = self.parse_param_space();
-                assert_eq!(self.next(), '|');
                 let index = self.parse_u32();
                 assert_eq!(self.next(), '|');
                 let name = token::intern(&self.parse_str(']'));
                 ty::ReEarlyBound(ty::EarlyBoundRegion {
-                    space: space,
                     index: index,
                     name: name
                 })
@@ -406,10 +397,8 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 assert_eq!(self.next(), '[');
                 let index = self.parse_u32();
                 assert_eq!(self.next(), '|');
-                let space = self.parse_param_space();
-                assert_eq!(self.next(), '|');
                 let name = token::intern(&self.parse_str(']'));
-                return tcx.mk_param(space, index, name);
+                return tcx.mk_param(index, name);
             }
             '~' => return tcx.mk_box(self.parse_ty()),
             '*' => return tcx.mk_ptr(self.parse_mt()),
@@ -552,10 +541,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         m
     }
 
-    fn parse_param_space(&mut self) -> subst::ParamSpace {
-        subst::ParamSpace::from_uint(self.parse_uint())
-    }
-
     fn parse_abi_set(&mut self) -> abi::Abi {
         assert_eq!(self.next(), '[');
         let bytes = self.scan(|c| c == ']');
@@ -656,8 +641,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
         let name = self.parse_name(':');
         let def_id = self.parse_def();
-        let space = self.parse_param_space();
-        assert_eq!(self.next(), '|');
         let index = self.parse_u32();
         assert_eq!(self.next(), '|');
         let default_def_id = self.parse_def();
@@ -667,7 +650,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::TypeParameterDef {
             name: name,
             def_id: def_id,
-            space: space,
             index: index,
             default_def_id: default_def_id,
             default: default,
@@ -678,8 +660,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     fn parse_region_param_def(&mut self) -> ty::RegionParameterDef {
         let name = self.parse_name(':');
         let def_id = self.parse_def();
-        let space = self.parse_param_space();
-        assert_eq!(self.next(), '|');
         let index = self.parse_u32();
         assert_eq!(self.next(), '|');
         let mut bounds = vec![];
@@ -695,7 +675,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::RegionParameterDef {
             name: name,
             def_id: def_id,
-            space: space,
             index: index,
             bounds: bounds,
         }

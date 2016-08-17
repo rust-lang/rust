@@ -476,7 +476,6 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 self.hash(tys.len());
             }
             TyParam(p) => {
-                self.hash(p.space);
                 self.hash(p.idx);
                 self.hash(p.name.as_str());
             }
@@ -694,8 +693,8 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         return false;
                     }
 
-                    let types_a = substs_a.types.as_full_slice();
-                    let types_b = substs_b.types.as_full_slice();
+                    let types_a = &substs_a.types;
+                    let types_b = &substs_b.types;
 
                     types_a.iter().zip(types_b).all(|(&a, &b)| same_type(a, b))
                 }
