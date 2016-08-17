@@ -175,6 +175,40 @@ pub unsafe fn from_u32_unchecked(i: u32) -> char {
     transmute(i)
 }
 
+#[stable(feature = "char_convert", since = "1.13.0")]
+impl From<char> for u32 {
+    #[inline]
+    fn from(c: char) -> Self {
+        c as u32
+    }
+}
+
+/// Maps a byte in 0x00...0xFF to a `char` whose code point has the same value, in U+0000 to U+00FF.
+///
+/// Unicode is designed such that this effectively decodes bytes
+/// with the character encoding that IANA calls ISO-8859-1.
+/// This encoding is compatible with ASCII.
+///
+/// Note that this is different from ISO/IEC 8859-1 a.k.a. ISO 8859-1 (with one less hypen),
+/// which leaves some "blanks", byte values that are not assigned to any character.
+/// ISO-8859-1 (the IANA one) assigns them to the C0 and C1 control codes.
+///
+/// Note that this is *also* different from Windows-1252 a.k.a. code page 1252,
+/// which is a superset ISO/IEC 8859-1 that assigns some (not all!) blanks
+/// to punctuation and various Latin characters.
+///
+/// To confuse things further, [on the Web](https://encoding.spec.whatwg.org/)
+/// `ascii`, `iso-8859-1`, and `windows-1252` are all aliases
+/// for a superset of Windows-1252 that fills the remaining blanks with corresponding
+/// C0 and C1 control codes.
+#[stable(feature = "char_convert", since = "1.13.0")]
+impl From<u8> for char {
+    #[inline]
+    fn from(i: u8) -> Self {
+        i as char
+    }
+}
+
 /// Converts a digit in the given radix to a `char`.
 ///
 /// A 'radix' here is sometimes also called a 'base'. A radix of two

@@ -11,6 +11,14 @@
 use std::char;
 
 #[test]
+fn test_convert() {
+    assert_eq!(u32::from('a'), 0x61);
+    assert_eq!(char::from(b'\0'), '\0');
+    assert_eq!(char::from(b'a'), 'a');
+    assert_eq!(char::from(b'\xFF'), '\u{FF}');
+}
+
+#[test]
 fn test_is_lowercase() {
     assert!('a'.is_lowercase());
     assert!('ö'.is_lowercase());
