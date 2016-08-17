@@ -624,8 +624,10 @@ fn error_380(ccx: &CrateCtxt, span: Span) {
 
 fn error_392<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, span: Span, param_name: ast::Name)
                        -> DiagnosticBuilder<'tcx> {
-    struct_span_err!(ccx.tcx.sess, span, E0392,
-                     "parameter `{}` is never used", param_name)
+    let mut err = struct_span_err!(ccx.tcx.sess, span, E0392,
+                  "parameter `{}` is never used", param_name);
+    err.span_label(span, &format!("unused type parameter"));
+    err
 }
 
 fn error_194(tcx: TyCtxt, span: Span, name: ast::Name) {
