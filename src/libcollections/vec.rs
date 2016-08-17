@@ -1453,10 +1453,11 @@ impl<T> IntoIterator for Vec<T> {
             } else {
                 begin.offset(self.len() as isize) as *const T
             };
-            let buf = ptr::read(&self.buf);
+            let cap = self.buf.cap();
             mem::forget(self);
             IntoIter {
-                _buf: buf,
+                buf: Shared::new(begin),
+                cap: cap,
                 ptr: begin,
                 end: end,
             }
@@ -1708,8 +1709,9 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
 /// [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
-    _buf: RawVec<T>,
-    ptr: *mut T,
+    buf: Shared<T>,
+    cap: usize,
+    ptr: *const T,
     end: *const T,
 }
 
@@ -1750,7 +1752,7 @@ impl<T> IntoIter<T> {
     #[unstable(feature = "vec_into_iter_as_slice", issue = "35601")]
     pub fn as_mut_slice(&self) -> &mut [T] {
         unsafe {
-            slice::from_raw_parts_mut(self.ptr, self.len())
+            slice::from_raw_parts_mut(self.ptr as *mut T, self.len())
         }
     }
 }
@@ -1846,9 +1848,10 @@ impl<T> Drop for IntoIter<T> {
     #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // destroy the remaining elements
-        for _x in self {}
+        for _x in self.by_ref() {}
 
         // RawVec handles deallocation
+        let _ = unsafe { RawVec::from_raw_parts(*self.buf, self.cap) };
     }
 }
 
