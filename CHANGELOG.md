@@ -1,8 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.83 — TBD
+* New lints: [`print_with_newline`], [`useless_attribute`]
+
 ## 0.0.82 — 2016-08-17
 * Rustup to *rustc 1.12.0-nightly (197be89f3 2016-08-15)*
+* New lint: [`module_inception`]
 
 ## 0.0.81 - 2016-08-14
 * Rustup to *rustc 1.12.0-nightly (1deb02ea6 2016-08-12)*
@@ -15,6 +19,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.80 — 2016-07-31
 * Rustup to *rustc 1.12.0-nightly (1225e122f 2016-07-30)*
+* New lints: [`misrefactored_assign_op`], [`serde_api_misuse`]
 
 ## 0.0.79 — 2016-07-10
 * Rustup to *rustc 1.12.0-nightly (f93aaf84c 2016-07-09)*
@@ -22,7 +27,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.78 — 2016-07-02
 * Rustup to *rustc 1.11.0-nightly (01411937f 2016-07-01)*
-* New lints: [`wrong_transmute`], [`double_neg`]
+* New lints: [`wrong_transmute`], [`double_neg`], [`filter_map`]
 * For compatibility, `cargo clippy` does not defines the `clippy` feature
   introduced in 0.0.76 anymore
 * [`collapsible_if`] now considers `if let`
