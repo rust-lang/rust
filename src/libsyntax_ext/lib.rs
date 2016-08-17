@@ -23,7 +23,8 @@
 #![feature(staged_api)]
 
 extern crate fmt_macros;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
@@ -52,16 +53,13 @@ pub fn register_builtins(env: &mut SyntaxEnv) {
         NormalTT(Box::new(f), None, false)
     }
 
-    env.insert(intern("asm"),
-               builtin_normal_expander(asm::expand_asm));
-    env.insert(intern("cfg"),
-               builtin_normal_expander(cfg::expand_cfg));
+    env.insert(intern("asm"), builtin_normal_expander(asm::expand_asm));
+    env.insert(intern("cfg"), builtin_normal_expander(cfg::expand_cfg));
     env.insert(intern("concat"),
                builtin_normal_expander(concat::expand_syntax_ext));
     env.insert(intern("concat_idents"),
                builtin_normal_expander(concat_idents::expand_syntax_ext));
-    env.insert(intern("env"),
-               builtin_normal_expander(env::expand_env));
+    env.insert(intern("env"), builtin_normal_expander(env::expand_env));
     env.insert(intern("option_env"),
                builtin_normal_expander(env::expand_option_env));
     env.insert(intern("format_args"),

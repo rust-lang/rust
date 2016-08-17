@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
- * Inline assembly support.
- */
+// Inline assembly support.
+//
 use self::State::*;
 
 use syntax::ast;
@@ -31,43 +30,48 @@ enum State {
     Inputs,
     Clobbers,
     Options,
-    StateNone
+    StateNone,
 }
 
 impl State {
     fn next(&self) -> State {
         match *self {
-            Asm       => Outputs,
-            Outputs   => Inputs,
-            Inputs    => Clobbers,
-            Clobbers  => Options,
-            Options   => StateNone,
-            StateNone => StateNone
+            Asm => Outputs,
+            Outputs => Inputs,
+            Inputs => Clobbers,
+            Clobbers => Options,
+            Options => StateNone,
+            StateNone => StateNone,
         }
     }
 }
 
 const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
-pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
-                       -> Box<base::MacResult+'cx> {
+pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
+                       sp: Span,
+                       tts: &[tokenstream::TokenTree])
+                       -> Box<base::MacResult + 'cx> {
     if !cx.ecfg.enable_asm() {
-        feature_gate::emit_feature_err(
-            &cx.parse_sess.span_diagnostic, "asm", sp,
-            feature_gate::GateIssue::Language,
-            feature_gate::EXPLAIN_ASM);
+        feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+                                       "asm",
+                                       sp,
+                                       feature_gate::GateIssue::Language,
+                                       feature_gate::EXPLAIN_ASM);
         return DummyResult::expr(sp);
     }
 
     // Split the tts before the first colon, to avoid `asm!("x": y)`  being
     // parsed as `asm!(z)` with `z = "x": y` which is type ascription.
-    let first_colon = tts.iter().position(|tt| {
-        match *tt {
-            tokenstream::TokenTree::Token(_, token::Colon) |
-            tokenstream::TokenTree::Token(_, token::ModSep) => true,
-            _ => false
-        }
-    }).unwrap_or(tts.len());
+    let first_colon = tts.iter()
+        .position(|tt| {
+            match *tt {
+                tokenstream::TokenTree::Token(_, token::Colon) |
+                tokenstream::TokenTree::Token(_, token::ModSep) => true,
+                _ => false,
+            }
+        })
+        .unwrap_or(tts.len());
     let mut p = cx.new_parser_from_tts(&tts[first_colon..]);
     let mut asm = token::InternedString::new("");
     let mut asm_str_style = None;
@@ -91,8 +95,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
                 }
                 // Nested parser, stop before the first colon (see above).
                 let mut p2 = cx.new_parser_from_tts(&tts[..first_colon]);
-                let (s, style) = match expr_to_string(cx, panictry!(p2.parse_expr()),
-                                                   "inline assembly must be a string literal") {
+                let (s, style) = match expr_to_string(cx,
+                                                      panictry!(p2.parse_expr()),
+                                                      "inline assembly must be a string literal") {
                     Some((s, st)) => (s, st),
                     // let compilation continue
                     None => return DummyResult::expr(sp),
@@ -109,9 +114,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
                 asm_str_style = Some(style);
             }
             Outputs => {
-                while p.token != token::Eof &&
-                      p.token != token::Colon &&
-                      p.token != token::ModSep {
+                while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
 
                     if !outputs.is_empty() {
                         p.eat(&token::Comma);
@@ -136,8 +139,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
                     let output = match ch.next() {
                         Some('=') => None,
                         Some('+') => {
-                            Some(token::intern_and_get_ident(&format!(
-                                        "={}", ch.as_str())))
+                            Some(token::intern_and_get_ident(&format!("={}", ch.as_str())))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");
@@ -156,9 +158,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
                 }
             }
             Inputs => {
-                while p.token != token::Eof &&
-                      p.token != token::Colon &&
-                      p.token != token::ModSep {
+                while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
 
                     if !inputs.is_empty() {
                         p.eat(&token::Comma);
@@ -180,9 +180,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
                 }
             }
             Clobbers => {
-                while p.token != token::Eof &&
-                      p.token != token::Colon &&
-                      p.token != token::ModSep {
+                while p.token != token::Eof && p.token != token::Colon && p.token != token::ModSep {
 
                     if !clobs.is_empty() {
                         p.eat(&token::Comma);
@@ -218,25 +216,25 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
                     p.eat(&token::Comma);
                 }
             }
-            StateNone => ()
+            StateNone => (),
         }
 
         loop {
             // MOD_SEP is a double colon '::' without space in between.
             // When encountered, the state must be advanced twice.
             match (&p.token, state.next(), state.next().next()) {
-                (&token::Colon, StateNone, _)   |
+                (&token::Colon, StateNone, _) |
                 (&token::ModSep, _, StateNone) => {
                     p.bump();
                     break 'statement;
                 }
-                (&token::Colon, st, _)   |
+                (&token::Colon, st, _) |
                 (&token::ModSep, _, st) => {
                     p.bump();
                     state = st;
                 }
                 (&token::Eof, _, _) => break 'statement,
-                _ => break
+                _ => break,
             }
         }
     }
