@@ -2,9 +2,13 @@ use core::intrinsics;
 
 // NOTE These functions are implemented using assembly because they using a custom
 // calling convention which can't be implemented using a normal Rust function
+
+// NOTE These functions are never mangled as they are not tested against compiler-rt
+// and mangling ___chkstk would break the `jmp ___chkstk` instruction in __alloca
+
 #[cfg(windows)]
 #[naked]
-#[cfg_attr(not(test), no_mangle)]
+#[no_mangle]
 pub unsafe fn ___chkstk_ms() {
     asm!("push   %rcx
           push   %rax
@@ -28,7 +32,7 @@ pub unsafe fn ___chkstk_ms() {
 
 #[cfg(windows)]
 #[naked]
-#[cfg_attr(not(test), no_mangle)]
+#[no_mangle]
 pub unsafe fn __alloca() {
     asm!("mov    %rcx,%rax  // x64 _alloca is a normal function with parameter in rcx
           jmp    ___chkstk  // Jump to ___chkstk since fallthrough may be unreliable");
@@ -37,7 +41,7 @@ pub unsafe fn __alloca() {
 
 #[cfg(windows)]
 #[naked]
-#[cfg_attr(not(test), no_mangle)]
+#[no_mangle]
 pub unsafe fn ___chkstk() {
     asm!("push   %rcx
           cmp    $$0x1000,%rax
