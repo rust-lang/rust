@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.82 — 2016-08-17
+* Rustup to *rustc 1.12.0-nightly (197be89f3 2016-08-15)*
+
 ## 0.0.81 - 2016-08-14
 * Rustup to *rustc 1.12.0-nightly (1deb02ea6 2016-08-12)*
 * New lints: [`eval_order_dependence`], [`mixed_case_hex_literals`], [`unseparated_literal_suffix`]

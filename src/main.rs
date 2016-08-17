@@ -15,7 +15,7 @@ use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
 use std::path::PathBuf;
 use std::process::Command;
-use syntax::{ast};
+use syntax::ast;
 
 use clippy_lints::utils::cargo;
 
