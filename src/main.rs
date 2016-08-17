@@ -143,11 +143,18 @@ pub fn main() {
             let args = std::env::args().skip(2);
             if let Some(first) = target.kind.get(0) {
                 if target.kind.len() > 1 || first.ends_with("lib") {
+                    println!("compiling library");
                     if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args), &dep_path, &sys_root) {
                         std::process::exit(code);
                     }
                 } else if first == "bin" {
+                    println!("compiling bin target `{}`", target.name);
                     if let Err(code) = process(vec!["--bin".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root) {
+                        std::process::exit(code);
+                    }
+                } else if first == "example" {
+                    println!("compiling example target `{}`", target.name);
+                    if let Err(code) = process(vec!["--example".to_owned(), target.name].into_iter().chain(args), &dep_path, &sys_root) {
                         std::process::exit(code);
                     }
                 }
