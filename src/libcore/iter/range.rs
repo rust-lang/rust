@@ -295,20 +295,8 @@ impl<A: Step> ops::Range<A> {
     ///
     /// ```
     /// #![feature(step_by)]
-    ///
-    /// for i in (0..10).step_by(2) {
-    ///     println!("{}", i);
-    /// }
-    /// ```
-    ///
-    /// This prints:
-    ///
-    /// ```text
-    /// 0
-    /// 2
-    /// 4
-    /// 6
-    /// 8
+    /// let result: Vec<_> = (0..10).step_by(2).collect();
+    /// assert_eq!(result, vec![0, 2, 4, 6, 8]);
     /// ```
     #[unstable(feature = "step_by", reason = "recent addition",
                issue = "27741")]
@@ -650,4 +638,3 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> where
         n
     }
 }
-
