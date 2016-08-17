@@ -18,12 +18,10 @@ pub use self::CalleeData::*;
 
 use arena::TypedArena;
 use back::symbol_names;
-use llvm::{ValueRef, get_params};
-use middle::cstore::LOCAL_CRATE;
+use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
-use rustc::hir::map as hir_map;
 use abi::{Abi, FnType};
 use attributes;
 use base;
@@ -34,18 +32,15 @@ use common::{self, Block, Result, CrateContext, FunctionContext};
 use consts;
 use debuginfo::DebugLoc;
 use declare;
-use inline;
 use meth;
 use monomorphize::{self, Instance};
 use trans_item::TransItem;
 use type_of;
-use value::Value;
 use Disr;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::hir;
 
 use syntax_pos::DUMMY_SP;
-use errors;
 
 #[derive(Debug)]
 pub enum CalleeData {
@@ -102,35 +97,28 @@ impl<'tcx> Callee<'tcx> {
             return Callee::trait_method(ccx, trait_id, def_id, substs);
         }
 
-        let maybe_node_id = inline::get_local_instance(ccx, def_id)
-            .and_then(|def_id| tcx.map.as_local_node_id(def_id));
-        let maybe_ast_node = maybe_node_id.and_then(|node_id| {
-            tcx.map.find(node_id)
-        });
-
-        let data = match maybe_ast_node {
-            Some(hir_map::NodeStructCtor(_)) => {
-                NamedTupleConstructor(Disr(0))
+        let fn_ty = def_ty(tcx, def_id, substs);
+        if let ty::TyFnDef(_, _, f) = fn_ty.sty {
+            if f.abi == Abi::RustIntrinsic || f.abi == Abi::PlatformIntrinsic {
+                return Callee {
+                    data: Intrinsic,
+                    ty: fn_ty
+                };
             }
-            Some(hir_map::NodeVariant(_)) => {
-                let vinfo = common::inlined_variant_def(ccx, maybe_node_id.unwrap());
-                NamedTupleConstructor(Disr::from(vinfo.disr_val))
-            }
-            Some(hir_map::NodeForeignItem(fi)) if {
-                let abi = tcx.map.get_foreign_abi(fi.id);
-                abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic
-            } => Intrinsic,
-
-            _ => {
-                let (llfn, ty) = get_fn(ccx, def_id, substs);
-                return Callee::ptr(llfn, ty);
-            }
-        };
-
-        Callee {
-            data: data,
-            ty: def_ty(tcx, def_id, substs)
         }
+
+        // FIXME(eddyb) Detect ADT constructors more efficiently.
+        if let Some(adt_def) = fn_ty.fn_ret().skip_binder().ty_adt_def() {
+            if let Some(v) = adt_def.variants.iter().find(|v| def_id == v.did) {
+                return Callee {
+                    data: NamedTupleConstructor(Disr::from(v.disr_val)),
+                    ty: fn_ty
+                };
+            }
+        }
+
+        let (llfn, ty) = get_fn(ccx, def_id, substs);
+        Callee::ptr(llfn, ty)
     }
 
     /// Trait method, which has to be resolved to an impl method.
@@ -168,24 +156,14 @@ impl<'tcx> Callee<'tcx> {
                                                          trait_closure_kind);
 
                 let method_ty = def_ty(tcx, def_id, substs);
-                let fn_ptr_ty = match method_ty.sty {
-                    ty::TyFnDef(_, _, fty) => tcx.mk_fn_ptr(fty),
-                    _ => bug!("expected fn item type, found {}",
-                              method_ty)
-                };
-                Callee::ptr(llfn, fn_ptr_ty)
+                Callee::ptr(llfn, method_ty)
             }
             traits::VtableFnPointer(vtable_fn_pointer) => {
                 let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
                 let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, vtable_fn_pointer.fn_ty);
 
                 let method_ty = def_ty(tcx, def_id, substs);
-                let fn_ptr_ty = match method_ty.sty {
-                    ty::TyFnDef(_, _, fty) => tcx.mk_fn_ptr(fty),
-                    _ => bug!("expected fn item type, found {}",
-                              method_ty)
-                };
-                Callee::ptr(llfn, fn_ptr_ty)
+                Callee::ptr(llfn, method_ty)
             }
             traits::VtableObject(ref data) => {
                 Callee {
@@ -242,9 +220,21 @@ impl<'tcx> Callee<'tcx> {
             Virtual(idx) => {
                 meth::trans_object_shim(ccx, self.ty, idx)
             }
-            NamedTupleConstructor(_) => match self.ty.sty {
+            NamedTupleConstructor(disr) => match self.ty.sty {
                 ty::TyFnDef(def_id, substs, _) => {
-                    return get_fn(ccx, def_id, substs).0;
+                    let instance = Instance::new(def_id, substs);
+                    if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
+                        return llfn;
+                    }
+
+                    let sym = ccx.symbol_map().get_or_compute(ccx.shared(),
+                                                              TransItem::Fn(instance));
+                    assert!(!ccx.codegen_unit().contains_item(&TransItem::Fn(instance)));
+                    let lldecl = declare::define_internal_fn(ccx, &sym, self.ty);
+                    base::trans_ctor_shim(ccx, def_id, substs, disr, lldecl);
+                    ccx.instances().borrow_mut().insert(instance, lldecl);
+
+                    lldecl
                 }
                 _ => bug!("expected fn item type, found {}", self.ty)
             },
@@ -412,83 +402,20 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     assert!(!substs.types.needs_infer());
     assert!(!substs.types.has_escaping_regions());
+    assert!(!substs.types.has_param_types());
 
-    // Check whether this fn has an inlined copy and, if so, redirect
-    // def_id to the local id of the inlined copy.
-    let def_id = inline::maybe_instantiate_inline(ccx, def_id);
+    let substs = tcx.normalize_associated_type(&substs);
+    let instance = Instance::new(def_id, substs);
+    let item_ty = ccx.tcx().lookup_item_type(def_id).ty;
+    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), substs, &item_ty);
 
-    fn is_named_tuple_constructor(tcx: TyCtxt, def_id: DefId) -> bool {
-        let node_id = match tcx.map.as_local_node_id(def_id) {
-            Some(n) => n,
-            None => { return false; }
-        };
-        let map_node = errors::expect(
-            &tcx.sess.diagnostic(),
-            tcx.map.find(node_id),
-            || "local item should be in ast map".to_string());
-
-        match map_node {
-            hir_map::NodeVariant(v) => {
-                v.node.data.is_tuple()
-            }
-            hir_map::NodeStructCtor(_) => true,
-            _ => false
-        }
-    }
-    let must_monomorphise =
-        !substs.types.is_empty() || is_named_tuple_constructor(tcx, def_id);
-
-    debug!("get_fn({:?}) must_monomorphise: {}",
-           def_id, must_monomorphise);
-
-    // Create a monomorphic version of generic functions
-    if must_monomorphise {
-        // Should be either intra-crate or inlined.
-        assert_eq!(def_id.krate, LOCAL_CRATE);
-
-        let substs = tcx.normalize_associated_type(&substs);
-        let (val, fn_ty) = monomorphize::monomorphic_fn(ccx, def_id, substs);
-        let fn_ptr_ty = match fn_ty.sty {
-            ty::TyFnDef(_, _, fty) => {
-                // Create a fn pointer with the substituted signature.
-                tcx.mk_fn_ptr(fty)
-            }
-            _ => bug!("expected fn item type, found {}", fn_ty)
-        };
-        assert_eq!(type_of::type_of(ccx, fn_ptr_ty), common::val_ty(val));
-        return (val, fn_ptr_ty);
-    }
-
-    // Find the actual function pointer.
-    let ty = ccx.tcx().lookup_item_type(def_id).ty;
-    let fn_ptr_ty = match ty.sty {
-        ty::TyFnDef(_, _, ref fty) => {
-            // Create a fn pointer with the normalized signature.
-            tcx.mk_fn_ptr(tcx.normalize_associated_type(fty))
-        }
-        _ => bug!("expected fn item type, found {}", ty)
-    };
-
-    let instance = Instance::mono(ccx.shared(), def_id);
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
-        return (llfn, fn_ptr_ty);
+        return (llfn, fn_ty);
     }
 
-    let local_id = ccx.tcx().map.as_local_node_id(def_id);
-    let local_item = match local_id.and_then(|id| tcx.map.find(id)) {
-        Some(hir_map::NodeItem(&hir::Item {
-            span, node: hir::ItemFn(..), ..
-        })) |
-        Some(hir_map::NodeTraitItem(&hir::TraitItem {
-            span, node: hir::MethodTraitItem(_, Some(_)), ..
-        })) |
-        Some(hir_map::NodeImplItem(&hir::ImplItem {
-            span, node: hir::ImplItemKind::Method(..), ..
-        })) => {
-            Some(span)
-        }
-        _ => None
-    };
+    let sym = ccx.symbol_map().get_or_compute(ccx.shared(),
+                                              TransItem::Fn(instance));
+    debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
 
     // This is subtle and surprising, but sometimes we have to bitcast
     // the resulting fn pointer.  The reason has to do with external
@@ -514,23 +441,17 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
 
-    let sym = ccx.symbol_map().get_or_compute(ccx.shared(),
-                                              TransItem::Fn(instance));
-
-    let llptrty = type_of::type_of(ccx, fn_ptr_ty);
-    let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
-        if let Some(span) = local_item {
-            if declare::get_defined_value(ccx, &sym).is_some() {
-                ccx.sess().span_fatal(span,
-                    &format!("symbol `{}` is already defined", &sym));
-            }
+    let fn_ptr_ty = match fn_ty.sty {
+        ty::TyFnDef(_, _, fty) => {
+            // Create a fn pointer with the substituted signature.
+            tcx.mk_fn_ptr(fty)
         }
+        _ => bug!("expected fn item type, found {}", fn_ty)
+    };
+    let llptrty = type_of::type_of(ccx, fn_ptr_ty);
 
+    let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
         if common::val_ty(llfn) != llptrty {
-            if local_item.is_some() {
-                bug!("symbol `{}` previously declared as {:?}, now wanted as {:?}",
-                     sym, Value(llfn), llptrty);
-            }
             debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
             consts::ptrcast(llfn, llptrty)
         } else {
@@ -538,15 +459,21 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(ccx, &sym, ty);
+        let llfn = declare::declare_fn(ccx, &sym, fn_ty);
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
         let attrs = ccx.tcx().get_attrs(def_id);
         attributes::from_fn_attrs(ccx, &attrs, llfn);
-        if local_item.is_some() {
+
+        let is_local_def = ccx.shared().translation_items().borrow()
+                              .contains(&TransItem::Fn(instance));
+        if is_local_def {
             // FIXME(eddyb) Doubt all extern fn should allow unwinding.
             attributes::unwind(llfn, true);
+            unsafe {
+                llvm::LLVMSetLinkage(llfn, llvm::ExternalLinkage);
+            }
         }
 
         llfn
@@ -554,7 +481,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     ccx.instances().borrow_mut().insert(instance, llfn);
 
-    (llfn, fn_ptr_ty)
+    (llfn, fn_ty)
 }
 
 // ______________________________________________________________________

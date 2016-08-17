@@ -105,14 +105,10 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                 let defined_in_current_codegen_unit = ccx.codegen_unit()
                                                          .items()
                                                          .contains_key(&TransItem::Static(id));
-                if defined_in_current_codegen_unit {
-                    if declare::get_declared_value(ccx, sym).is_none() {
-                        span_bug!(span, "trans: Static not properly pre-defined?");
-                    }
-                } else {
-                    if declare::get_declared_value(ccx, sym).is_some() {
-                        span_bug!(span, "trans: Conflicting symbol names for static?");
-                    }
+                assert!(!defined_in_current_codegen_unit);
+
+                if declare::get_declared_value(ccx, sym).is_some() {
+                    span_bug!(span, "trans: Conflicting symbol names for static?");
                 }
 
                 let g = declare::define_global(ccx, sym, llty).unwrap();

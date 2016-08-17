@@ -53,9 +53,7 @@ pub struct Stats {
     pub n_glues_created: Cell<usize>,
     pub n_null_glues: Cell<usize>,
     pub n_real_glues: Cell<usize>,
-    pub n_fallback_instantiations: Cell<usize>,
     pub n_fns: Cell<usize>,
-    pub n_monos: Cell<usize>,
     pub n_inlines: Cell<usize>,
     pub n_closures: Cell<usize>,
     pub n_llvm_insns: Cell<usize>,
@@ -103,7 +101,6 @@ pub struct LocalCrateContext<'tcx> {
     drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FnvHashMap<Instance<'tcx>, ValueRef>>,
-    monomorphizing: RefCell<DefIdMap<usize>>,
     /// Cache generated vtables
     vtables: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, ValueRef>>,
     /// Cache of constant strings,
@@ -488,9 +485,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                 n_glues_created: Cell::new(0),
                 n_null_glues: Cell::new(0),
                 n_real_glues: Cell::new(0),
-                n_fallback_instantiations: Cell::new(0),
                 n_fns: Cell::new(0),
-                n_monos: Cell::new(0),
                 n_inlines: Cell::new(0),
                 n_closures: Cell::new(0),
                 n_llvm_insns: Cell::new(0),
@@ -626,7 +621,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 fn_pointer_shims: RefCell::new(FnvHashMap()),
                 drop_glues: RefCell::new(FnvHashMap()),
                 instances: RefCell::new(FnvHashMap()),
-                monomorphizing: RefCell::new(DefIdMap()),
                 vtables: RefCell::new(FnvHashMap()),
                 const_cstr_cache: RefCell::new(FnvHashMap()),
                 const_unsized: RefCell::new(FnvHashMap()),
@@ -828,10 +822,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn instances<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {
         &self.local().instances
-    }
-
-    pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<usize>> {
-        &self.local().monomorphizing
     }
 
     pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, ValueRef>> {

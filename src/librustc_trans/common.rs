@@ -199,12 +199,6 @@ pub fn gensym_name(name: &str) -> ast::Name {
 
 use Disr;
 
-#[derive(Copy, Clone)]
-pub struct NodeIdAndSpan {
-    pub id: ast::NodeId,
-    pub span: Span,
-}
-
 /// The concrete version of ty::FieldDef. The name is the field index if
 /// the field is numeric.
 pub struct Field<'tcx>(pub ast::Name, pub Ty<'tcx>);
@@ -1064,34 +1058,6 @@ pub fn langcall(tcx: TyCtxt,
             }
         }
     }
-}
-
-/// Return the VariantDef corresponding to an inlined variant node
-pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                     inlined_vid: ast::NodeId)
-                                     -> ty::VariantDef<'tcx>
-{
-    let ctor_ty = ccx.tcx().node_id_to_type(inlined_vid);
-    debug!("inlined_variant_def: ctor_ty={:?} inlined_vid={:?}", ctor_ty,
-           inlined_vid);
-    let adt_def = match ctor_ty.sty {
-        ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
-            output, ..
-        }), ..}) => output,
-        _ => ctor_ty
-    }.ty_adt_def().unwrap();
-    let variant_def_id = if ccx.tcx().map.is_inlined_node_id(inlined_vid) {
-        ccx.defid_for_inlined_node(inlined_vid).unwrap()
-    } else {
-        ccx.tcx().map.local_def_id(inlined_vid)
-    };
-
-    adt_def.variants
-           .iter()
-           .find(|v| variant_def_id == v.did)
-           .unwrap_or_else(|| {
-                bug!("no variant for {:?}::{}", adt_def, inlined_vid)
-            })
 }
 
 // To avoid UB from LLVM, these two functions mask RHS with an

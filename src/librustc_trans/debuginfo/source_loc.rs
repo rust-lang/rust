@@ -11,7 +11,7 @@
 use self::InternalDebugLocation::*;
 
 use super::utils::{debug_context, span_start};
-use super::metadata::{scope_metadata,UNKNOWN_COLUMN_NUMBER};
+use super::metadata::{UNKNOWN_COLUMN_NUMBER};
 use super::{FunctionDebugContext, DebugLoc};
 
 use llvm;
@@ -47,9 +47,6 @@ pub fn set_source_location(fcx: &FunctionContext,
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
         let (scope, span) = match debug_loc {
-            DebugLoc::At(node_id, span) => {
-                (scope_metadata(fcx, node_id, span), span)
-            }
             DebugLoc::ScopeAt(scope, span) => (scope, span),
             DebugLoc::None => {
                 set_debug_location(fcx.ccx, builder, UnknownLocation);
