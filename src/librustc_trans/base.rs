@@ -66,7 +66,6 @@ use consts;
 use context::{SharedCrateContext, CrateContextList};
 use debuginfo::{self, DebugLoc};
 use declare;
-use inline;
 use machine;
 use machine::{llalign_of_min, llsize_of};
 use meth;
@@ -949,14 +948,17 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             false
         };
 
-        let debug_context = if let (false, Some((instance, sig, abi))) = (no_debug, definition) {
-            debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfndecl)
+        let mir = def_id.and_then(|id| ccx.get_mir(id));
+
+        let debug_context = if let (false, Some((instance, sig, abi)), &Some(ref mir)) =
+                (no_debug, definition, &mir) {
+            debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfndecl, mir)
         } else {
             debuginfo::empty_function_debug_context(ccx)
         };
 
         FunctionContext {
-            mir: def_id.and_then(|id| ccx.get_mir(id)),
+            mir: mir,
             llfn: llfndecl,
             llretslotptr: Cell::new(None),
             param_env: ccx.tcx().empty_parameter_environment(),
@@ -1134,8 +1136,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     let sig = ccx.tcx().normalize_associated_type(&sig);
     let abi = fn_ty.fn_abi();
 
-    let local_instance = inline::maybe_inline_instance(ccx, instance);
-    let lldecl = match ccx.instances().borrow().get(&local_instance) {
+    let lldecl = match ccx.instances().borrow().get(&instance) {
         Some(&val) => val,
         None => bug!("Instance `{:?}` not already declared", instance)
     };
@@ -1144,12 +1145,15 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                 ctor_id: ast::NodeId,
+                                 def_id: DefId,
+                                 substs: &'tcx Substs<'tcx>,
                                  disr: Disr,
-                                 param_substs: &'tcx Substs<'tcx>,
                                  llfndecl: ValueRef) {
-    let ctor_ty = ccx.tcx().node_id_to_type(ctor_id);
-    let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
+    attributes::inline(llfndecl, attributes::InlineAttr::Hint);
+    attributes::set_frame_pointer_elimination(ccx, llfndecl);
+
+    let ctor_ty = ccx.tcx().lookup_item_type(def_id).ty;
+    let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), substs, &ctor_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
     let sig = ccx.tcx().normalize_associated_type(&sig);
@@ -1742,10 +1746,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         println!("n_null_glues: {}", stats.n_null_glues.get());
         println!("n_real_glues: {}", stats.n_real_glues.get());
 
-        println!("n_fallback_instantiations: {}", stats.n_fallback_instantiations.get());
-
         println!("n_fns: {}", stats.n_fns.get());
-        println!("n_monos: {}", stats.n_monos.get());
         println!("n_inlines: {}", stats.n_inlines.get());
         println!("n_closures: {}", stats.n_closures.get());
         println!("fn stats:");

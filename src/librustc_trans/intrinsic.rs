@@ -111,7 +111,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let name = tcx.item_name(def_id).as_str();
 
     let span = match call_debug_location {
-        DebugLoc::At(_, span) | DebugLoc::ScopeAt(_, span) => span,
+        DebugLoc::ScopeAt(_, span) => span,
         DebugLoc::None => {
             span_bug!(fcx.span.unwrap_or(DUMMY_SP),
                       "intrinsic `{}` called with missing span", name);

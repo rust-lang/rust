@@ -114,7 +114,6 @@ mod debuginfo;
 mod declare;
 mod disr;
 mod glue;
-mod inline;
 mod intrinsic;
 mod machine;
 mod meth;

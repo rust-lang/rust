@@ -40,7 +40,6 @@ use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
 use std::rc::Rc;
 use std::u32;
-use syntax::abi::Abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
 use syntax::attr::{self,AttrMetaMethods,AttributeMethods};
 use errors::Handler;
@@ -626,11 +625,6 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
 
                 if body.is_some() {
                     encode_item_sort(self.rbml_w, 'p');
-                    encode_inlined_item(ecx,
-                                        self.rbml_w,
-                                        InlinedItemRef::TraitItem(
-                                            trait_def_id,
-                                            trait_item));
                     self.encode_mir(trait_item.id);
                 } else {
                     encode_item_sort(self.rbml_w, 'r');
@@ -728,12 +722,14 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 let types = generics.parent_types as usize + generics.types.len();
                 let needs_inline = types > 0 || is_default_impl ||
                     attr::requests_inline(&impl_item.attrs);
-                if needs_inline || sig.constness == hir::Constness::Const {
+                if sig.constness == hir::Constness::Const {
                     encode_inlined_item(
                         ecx,
                         self.rbml_w,
                         InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
                                                  impl_item));
+                }
+                if needs_inline || sig.constness == hir::Constness::Const {
                     self.encode_mir(impl_item.id);
                 }
                 encode_constness(self.rbml_w, sig.constness);
@@ -934,8 +930,10 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_name(self.rbml_w, item.name);
                 encode_attributes(self.rbml_w, &item.attrs);
                 let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
-                if needs_inline || constness == hir::Constness::Const {
+                if constness == hir::Constness::Const {
                     encode_inlined_item(ecx, self.rbml_w, InlinedItemRef::Item(def_id, item));
+                }
+                if needs_inline || constness == hir::Constness::Const {
                     self.encode_mir(item.id);
                 }
                 encode_constness(self.rbml_w, constness);
@@ -982,8 +980,6 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 for v in &enum_definition.variants {
                     encode_variant_id(self.rbml_w, ecx.tcx.map.local_def_id(v.node.data.id()));
                 }
-                encode_inlined_item(ecx, self.rbml_w, InlinedItemRef::Item(def_id, item));
-                self.encode_mir(item.id);
 
                 // Encode inherent implementations for self enumeration.
                 encode_inherent_implementations(ecx, self.rbml_w, def_id);
@@ -1018,9 +1014,6 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 for methods, write all the stuff get_trait_method
                 needs to know*/
                 self.encode_struct_fields(variant);
-
-                encode_inlined_item(ecx, self.rbml_w, InlinedItemRef::Item(def_id, item));
-                self.encode_mir(item.id);
 
                 // Encode inherent implementations for self structure.
                 encode_inherent_implementations(ecx, self.rbml_w, def_id);
@@ -1265,7 +1258,6 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
         let ecx = self.ecx();
 
         debug!("writing foreign item {}", ecx.tcx.node_path_str(nitem.id));
-        let abi = ecx.tcx.map.get_foreign_abi(nitem.id);
 
         encode_def_id_and_key(ecx, self.rbml_w, def_id);
         let parent_id = ecx.tcx.map.get_parent(nitem.id);
@@ -1276,12 +1268,6 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_family(self.rbml_w, FN_FAMILY);
                 self.encode_bounds_and_type_for_item(nitem.id);
                 encode_name(self.rbml_w, nitem.name);
-                if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-                    encode_inlined_item(ecx,
-                                        self.rbml_w,
-                                        InlinedItemRef::Foreign(def_id, nitem));
-                    self.encode_mir(nitem.id);
-                }
                 encode_attributes(self.rbml_w, &nitem.attrs);
                 let stab = ecx.tcx.lookup_stability(ecx.tcx.map.local_def_id(nitem.id));
                 let depr = ecx.tcx.lookup_deprecation(ecx.tcx.map.local_def_id(nitem.id));

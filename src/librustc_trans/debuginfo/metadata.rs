@@ -28,7 +28,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::hir;
 use {type_of, adt, machine, monomorphize};
-use common::{CrateContext, FunctionContext};
+use common::CrateContext;
 use type_::Type;
 use rustc::ty::{self, Ty};
 use session::config;
@@ -880,26 +880,6 @@ fn file_metadata_(cx: &CrateContext, key: &str, file_name: &str, work_dir: &str)
     let mut created_files = debug_context(cx).created_files.borrow_mut();
     created_files.insert(key.to_string(), file_metadata);
     file_metadata
-}
-
-/// Finds the scope metadata node for the given AST node.
-pub fn scope_metadata(fcx: &FunctionContext,
-                  node_id: ast::NodeId,
-                  error_reporting_span: Span)
-               -> DIScope {
-    let scope_map = &fcx.debug_context
-                        .get_ref(error_reporting_span)
-                        .scope_map;
-    match scope_map.borrow().get(&node_id).cloned() {
-        Some(scope_metadata) => scope_metadata,
-        None => {
-            let node = fcx.ccx.tcx().map.get(node_id);
-
-            span_bug!(error_reporting_span,
-                      "debuginfo: Could not find scope info for node {:?}",
-                      node);
-        }
-    }
 }
 
 fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
