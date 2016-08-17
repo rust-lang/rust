@@ -26,7 +26,7 @@ h1.fqn {
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
     border-bottom-color: #DDDDDD;
 }
-.in-band, code {
+.in-band {
     background-color: white;
 }
 

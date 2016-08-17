@@ -12,7 +12,6 @@ use llvm::ValueRef;
 use llvm;
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
-use rustc::ty::subst;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
 use attributes;
@@ -33,7 +32,7 @@ use trans_item::TransItem;
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: DefId,
-                                psubsts: &'tcx subst::Substs<'tcx>)
+                                psubsts: &'tcx Substs<'tcx>)
                                 -> (ValueRef, Ty<'tcx>) {
     debug!("monomorphic_fn(fn_id={:?}, real_substs={:?})", fn_id, psubsts);
     assert!(!psubsts.types.needs_infer() && !psubsts.types.has_param_types());
@@ -174,7 +173,7 @@ pub struct Instance<'tcx> {
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        ppaux::parameterized(f, &self.substs, self.def, ppaux::Ns::Value, &[], |_| None)
+        ppaux::parameterized(f, &self.substs, self.def, ppaux::Ns::Value, &[])
     }
 }
 

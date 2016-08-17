@@ -41,6 +41,16 @@ name = "log"
 version = "0.0.0"
 
 [[package]]
+name = "proc_macro"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc_plugin 0.0.0",
+ "syntax 0.0.0",
+ "syntax_pos 0.0.0",
+]
+
+[[package]]
 name = "rbml"
 version = "0.0.0"
 dependencies = [
@@ -136,6 +146,7 @@ dependencies = [
  "flate 0.0.0",
  "graphviz 0.0.0",
  "log 0.0.0",
+ "proc_macro 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_borrowck 0.0.0",

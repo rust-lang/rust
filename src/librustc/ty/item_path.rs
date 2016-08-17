@@ -322,7 +322,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyStruct(adt_def, _) |
         ty::TyEnum(adt_def, _) => Some(adt_def.did),
 
-        ty::TyTrait(ref data) => Some(data.principal_def_id()),
+        ty::TyTrait(ref data) => Some(data.principal.def_id()),
 
         ty::TyArray(subty, _) |
         ty::TySlice(subty) |

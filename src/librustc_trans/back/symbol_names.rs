@@ -252,7 +252,7 @@ impl<'a, 'tcx> Instance<'tcx> {
         // and should not matter anyhow.
         let instance_ty = scx.tcx().erase_regions(&instance_ty.ty);
 
-        let hash = get_symbol_hash(scx, &def_path, instance_ty, substs.types.as_slice());
+        let hash = get_symbol_hash(scx, &def_path, instance_ty, &substs.types);
 
         let mut buffer = SymbolPathBuffer {
             names: Vec::with_capacity(def_path.data.len())

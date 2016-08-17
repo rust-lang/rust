@@ -21,7 +21,6 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::subst;
 
 use rustc_const_eval::lookup_const_by_id;
 
@@ -161,7 +160,7 @@ pub fn build_external_trait<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tc
     let def = tcx.lookup_trait_def(did);
     let trait_items = tcx.trait_items(did).clean(cx);
     let predicates = tcx.lookup_predicates(did);
-    let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
+    let generics = (def.generics, &predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     clean::Trait {
@@ -189,7 +188,7 @@ fn build_external_function<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx
     let predicates = tcx.lookup_predicates(did);
     clean::Function {
         decl: decl,
-        generics: (&t.generics, &predicates, subst::FnSpace).clean(cx),
+        generics: (t.generics, &predicates).clean(cx),
         unsafety: style,
         constness: constness,
         abi: abi,
@@ -209,7 +208,7 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &[..] if variant.kind == ty::VariantKind::Tuple => doctree::Tuple,
             _ => doctree::Plain,
         },
-        generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
+        generics: (t.generics, &predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,
     }
@@ -222,7 +221,7 @@ fn build_type<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match t.ty.sty {
         ty::TyEnum(edef, _) if !tcx.sess.cstore.is_typedef(did) => {
             return clean::EnumItem(clean::Enum {
-                generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
+                generics: (t.generics, &predicates).clean(cx),
                 variants_stripped: false,
                 variants: edef.variants.clean(cx),
             })
@@ -232,7 +231,7 @@ fn build_type<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     clean::TypedefItem(clean::Typedef {
         type_: t.ty.clean(cx),
-        generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
+        generics: (t.generics, &predicates).clean(cx),
     }, false)
 }
 
@@ -389,14 +388,14 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
             }
             ty::TypeTraitItem(ref assoc_ty) => {
                 let did = assoc_ty.def_id;
-                let type_scheme = ty::TypeScheme {
-                    ty: assoc_ty.ty.unwrap(),
-                    generics: ty::Generics::empty()
+                let typedef = clean::Typedef {
+                    type_: assoc_ty.ty.unwrap().clean(cx),
+                    generics: clean::Generics {
+                        lifetimes: vec![],
+                        type_params: vec![],
+                        where_predicates: vec![]
+                    }
                 };
-                // Not sure the choice of ParamSpace actually matters here,
-                // because an associated type won't have generics on the LHS
-                let typedef = (type_scheme, ty::GenericPredicates::empty(),
-                               subst::ParamSpace::TypeSpace).clean(cx);
                 Some(clean::Item {
                     name: Some(assoc_ty.name.clean(cx)),
                     inner: clean::TypedefItem(typedef, true),
@@ -434,7 +433,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
             provided_trait_methods: provided,
             trait_: trait_,
             for_: for_,
-            generics: (&ty.generics, &predicates, subst::TypeSpace).clean(cx),
+            generics: (ty.generics, &predicates).clean(cx),
             items: trait_items,
             polarity: polarity.map(|p| { p.clean(cx) }),
         }),
@@ -512,11 +511,32 @@ fn build_static<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// its associated types as well. We specifically move these clauses to the
 /// associated types instead when displaying, so when we're genering the
 /// generics for the trait itself we need to be sure to remove them.
+/// We also need to remove the implied "recursive" Self: Trait bound.
 ///
 /// The inverse of this filtering logic can be found in the `Clean`
 /// implementation for `AssociatedType`
 fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
                              -> clean::Generics {
+    for pred in &mut g.where_predicates {
+        match *pred {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::Generic(ref s),
+                ref mut bounds
+            } if *s == "Self" => {
+                bounds.retain(|bound| {
+                    match *bound {
+                        clean::TyParamBound::TraitBound(clean::PolyTrait {
+                            trait_: clean::ResolvedPath { did, .. },
+                            ..
+                        }, _) => did != trait_did,
+                        _ => true
+                    }
+                });
+            }
+            _ => {}
+        }
+    }
+
     g.where_predicates.retain(|pred| {
         match *pred {
             clean::WherePredicate::BoundPredicate {
@@ -524,8 +544,8 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
                     self_type: box clean::Generic(ref s),
                     trait_: box clean::ResolvedPath { did, .. },
                     name: ref _name,
-                }, ..
-            } => *s != "Self" || did != trait_did,
+                }, ref bounds
+            } => !(*s == "Self" && did == trait_did) && !bounds.is_empty(),
             _ => true,
         }
     });

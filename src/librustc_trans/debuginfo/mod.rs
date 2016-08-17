@@ -266,7 +266,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let generics = cx.tcx().lookup_item_type(fn_def_id).generics;
+    let generics = cx.tcx().lookup_generics(fn_def_id);
     let template_parameters = get_template_parameters(cx,
                                                       &generics,
                                                       instance.substs,
@@ -358,7 +358,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          name_to_append_suffix_to: &mut String)
                                          -> DIArray
     {
-        let actual_types = param_substs.types.as_slice();
+        let actual_types = &param_substs.types;
 
         if actual_types.is_empty() {
             return create_DIArray(DIB(cx), &[]);
@@ -381,10 +381,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         // Again, only create type information if full debuginfo is enabled
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
-            generics.types.as_slice().iter().enumerate().map(|(i, param)| {
-                let actual_type = cx.tcx().normalize_associated_type(&actual_types[i]);
+            let names = get_type_parameter_names(cx, generics);
+            actual_types.iter().zip(names).map(|(ty, name)| {
+                let actual_type = cx.tcx().normalize_associated_type(ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
-                let name = CString::new(param.name.as_str().as_bytes()).unwrap();
+                let name = CString::new(name.as_str().as_bytes()).unwrap();
                 unsafe {
                     llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
@@ -401,6 +402,16 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         };
 
         return create_DIArray(DIB(cx), &template_params[..]);
+    }
+
+    fn get_type_parameter_names<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                          generics: &ty::Generics<'tcx>)
+                                          -> Vec<ast::Name> {
+        let mut names = generics.parent.map_or(vec![], |def_id| {
+            get_type_parameter_names(cx, cx.tcx().lookup_generics(def_id))
+        });
+        names.extend(generics.types.iter().map(|param| param.name));
+        names
     }
 
     fn get_containing_scope_and_span<'ccx, 'tcx>(cx: &CrateContext<'ccx, 'tcx>,

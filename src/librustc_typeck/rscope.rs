@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use rustc::ty::{self, TyCtxt};
+use rustc::hir::def_id::DefId;
+use rustc::ty;
 use rustc::ty::subst::Substs;
+
+use astconv::AstConv;
 
 use std::cell::Cell;
 use syntax_pos::Span;
@@ -71,33 +73,34 @@ pub trait RegionScope {
 }
 
 #[derive(Copy, Clone)]
-pub struct AnonTypeScope<'a> {
-    generics: &'a ty::Generics<'a>
+pub struct AnonTypeScope {
+    enclosing_item: DefId
 }
 
-impl<'a, 'b, 'gcx, 'tcx> AnonTypeScope<'a> {
-    pub fn new(generics: &'a ty::Generics<'a>) -> AnonTypeScope<'a> {
+impl<'gcx: 'tcx, 'tcx> AnonTypeScope {
+    pub fn new(enclosing_item: DefId) -> AnonTypeScope {
         AnonTypeScope {
-            generics: generics
+            enclosing_item: enclosing_item
         }
     }
 
-    pub fn fresh_substs(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx Substs<'tcx> {
+    pub fn fresh_substs(&self, astconv: &AstConv<'gcx, 'tcx>, span: Span)
+                        -> &'tcx Substs<'tcx> {
         use collect::mk_item_substs;
 
-        mk_item_substs(tcx, self.generics)
+        mk_item_substs(astconv, span, self.enclosing_item)
     }
 }
 
 /// A scope wrapper which optionally allows anonymized types.
 #[derive(Copy, Clone)]
-pub struct MaybeWithAnonTypes<'a, R> {
+pub struct MaybeWithAnonTypes<R> {
     base_scope: R,
-    anon_scope: Option<AnonTypeScope<'a>>
+    anon_scope: Option<AnonTypeScope>
 }
 
-impl<'a, R: RegionScope> MaybeWithAnonTypes<'a, R>  {
-    pub fn new(base_scope: R, anon_scope: Option<AnonTypeScope<'a>>) -> Self {
+impl<R: RegionScope> MaybeWithAnonTypes<R>  {
+    pub fn new(base_scope: R, anon_scope: Option<AnonTypeScope>) -> Self {
         MaybeWithAnonTypes {
             base_scope: base_scope,
             anon_scope: anon_scope
@@ -105,7 +108,7 @@ impl<'a, R: RegionScope> MaybeWithAnonTypes<'a, R>  {
     }
 }
 
-impl<'a, R: RegionScope> RegionScope for MaybeWithAnonTypes<'a, R> {
+impl<R: RegionScope> RegionScope for MaybeWithAnonTypes<R> {
     fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
         self.base_scope.object_lifetime_default(span)
     }

@@ -49,7 +49,6 @@ use rustc::lint;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty;
-use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
@@ -561,7 +560,7 @@ impl<'a> Visitor for Resolver<'a> {
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
         let type_parameters = match foreign_item.node {
             ForeignItemKind::Fn(_, ref generics) => {
-                HasTypeParameters(generics, FnSpace, ItemRibKind)
+                HasTypeParameters(generics, ItemRibKind)
             }
             ForeignItemKind::Static(..) => NoTypeParameters,
         };
@@ -628,10 +627,6 @@ enum TypeParameters<'a, 'b> {
     NoTypeParameters,
     HasTypeParameters(// Type parameters.
                       &'b Generics,
-
-                      // Identifies the things that these parameters
-                      // were declared on (type, fn, etc)
-                      ParamSpace,
 
                       // The kind of the rib used for type parameters.
                       RibKind<'a>),
@@ -1617,12 +1612,9 @@ impl<'a> Resolver<'a> {
         match item.node {
             ItemKind::Enum(_, ref generics) |
             ItemKind::Ty(_, ref generics) |
-            ItemKind::Struct(_, ref generics) => {
-                self.with_type_parameter_rib(HasTypeParameters(generics, TypeSpace, ItemRibKind),
-                                             |this| visit::walk_item(this, item));
-            }
+            ItemKind::Struct(_, ref generics) |
             ItemKind::Fn(_, _, _, _, ref generics, _) => {
-                self.with_type_parameter_rib(HasTypeParameters(generics, FnSpace, ItemRibKind),
+                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind),
                                              |this| visit::walk_item(this, item));
             }
 
@@ -1638,10 +1630,7 @@ impl<'a> Resolver<'a> {
 
             ItemKind::Trait(_, ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
-                self.with_type_parameter_rib(HasTypeParameters(generics,
-                                                               TypeSpace,
-                                                               ItemRibKind),
-                                             |this| {
+                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
                     let local_def_id = this.definitions.local_def_id(item.id);
                     this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
@@ -1664,7 +1653,6 @@ impl<'a> Resolver<'a> {
                                 TraitItemKind::Method(ref sig, _) => {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
-                                                          FnSpace,
                                                           MethodRibKind(!sig.decl.has_self()));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
@@ -1733,10 +1721,10 @@ impl<'a> Resolver<'a> {
         where F: FnOnce(&mut Resolver)
     {
         match type_parameters {
-            HasTypeParameters(generics, space, rib_kind) => {
+            HasTypeParameters(generics, rib_kind) => {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = HashMap::new();
-                for (index, type_parameter) in generics.ty_params.iter().enumerate() {
+                for type_parameter in &generics.ty_params {
                     let name = type_parameter.ident.name;
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
 
@@ -1751,7 +1739,7 @@ impl<'a> Resolver<'a> {
 
                     // plain insert (no renaming)
                     let def_id = self.definitions.local_def_id(type_parameter.id);
-                    let def = Def::TyParam(space, index as u32, def_id, name);
+                    let def = Def::TyParam(def_id);
                     function_type_rib.bindings.insert(ast::Ident::with_empty_ctxt(name), def);
                     self.record_def(type_parameter.id, PathResolution::new(def));
                 }
@@ -1923,10 +1911,7 @@ impl<'a> Resolver<'a> {
                               item_id: NodeId,
                               impl_items: &[ImplItem]) {
         // If applicable, create a rib for the type parameters.
-        self.with_type_parameter_rib(HasTypeParameters(generics,
-                                                       TypeSpace,
-                                                       ItemRibKind),
-                                     |this| {
+        self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
             // Resolve the type parameters.
             this.visit_generics(generics);
 
@@ -1959,7 +1944,6 @@ impl<'a> Resolver<'a> {
                                     // specific type parameters.
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
-                                                          FnSpace,
                                                           MethodRibKind(!sig.decl.has_self()));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_impl_item(this, impl_item);

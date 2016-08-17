@@ -30,7 +30,7 @@ use monomorphize::Instance;
 use partitioning::CodegenUnit;
 use trans_item::TransItem;
 use type_::{Type, TypeNames};
-use rustc::ty::subst::{Substs, VecPerParamSpace};
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
@@ -571,16 +571,9 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     /// Given the def-id of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        let scheme = self.tcx().lookup_item_type(item_def_id);
-        self.empty_substs_for_scheme(&scheme)
-    }
-
-    pub fn empty_substs_for_scheme(&self, scheme: &ty::TypeScheme<'tcx>)
-                                   -> &'tcx Substs<'tcx> {
-        assert!(scheme.generics.types.is_empty());
-        self.tcx().mk_substs(
-            Substs::new(VecPerParamSpace::empty(),
-                        scheme.generics.regions.map(|_| ty::ReErased)))
+        Substs::for_item(self.tcx(), item_def_id, |_, _| ty::ReErased, |_, _| {
+            bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
+        })
     }
 
     pub fn symbol_hasher(&self) -> &RefCell<Sha256> {
@@ -998,11 +991,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
         self.shared().empty_substs_for_def_id(item_def_id)
-    }
-
-    pub fn empty_substs_for_scheme(&self, scheme: &ty::TypeScheme<'tcx>)
-                                   -> &'tcx Substs<'tcx> {
-        self.shared().empty_substs_for_scheme(scheme)
     }
 }
 

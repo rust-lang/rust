@@ -17,7 +17,7 @@
 
 use hir::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
-use rustc::ty::subst::{self, Subst};
+use rustc::ty::subst::Subst;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::traits::{self, Reveal};
 use rustc::ty::{ImplOrTraitItemId, ConstTraitItemId};
@@ -75,7 +75,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             }
 
             TyTrait(ref t) => {
-                Some(t.principal_def_id())
+                Some(t.principal.def_id())
             }
 
             TyBox(_) => {
@@ -386,7 +386,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
             let source = tcx.lookup_item_type(impl_did).ty;
             let trait_ref = self.crate_context.tcx.impl_trait_ref(impl_did).unwrap();
-            let target = *trait_ref.substs.types.get(subst::TypeSpace, 0);
+            let target = trait_ref.substs.types[1];
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (bound)",
                    source, target);
 

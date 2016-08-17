@@ -11,7 +11,7 @@
 use std::borrow::Cow;
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
-use std::vec::Drain;
+use std::vec::{Drain, IntoIter};
 
 use test::Bencher;
 
@@ -537,6 +537,7 @@ fn test_cow_from() {
 #[allow(dead_code)]
 fn assert_covariance() {
     fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> { d }
+    fn into_iter<'new>(i: IntoIter<&'static str>) -> IntoIter<&'new str> { i }
 }
 
 #[bench]

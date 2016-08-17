@@ -13,7 +13,6 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv::AstConv;
-use rustc::ty::subst;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
 use syntax::abi::Abi;
@@ -102,12 +101,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match expected_ty.sty {
             ty::TyTrait(ref object_type) => {
-                let proj_bounds = object_type.projection_bounds_with_self_ty(self.tcx,
-                                                                             self.tcx.types.err);
-                let sig = proj_bounds.iter()
-                                     .filter_map(|pb| self.deduce_sig_from_projection(pb))
-                                     .next();
-                let kind = self.tcx.lang_items.fn_trait_kind(object_type.principal_def_id());
+                let sig = object_type.projection_bounds.iter().filter_map(|pb| {
+                    let pb = pb.with_self_ty(self.tcx, self.tcx.types.err);
+                    self.deduce_sig_from_projection(&pb)
+                }).next();
+                let kind = self.tcx.lang_items.fn_trait_kind(object_type.principal.def_id());
                 (sig, kind)
             }
             ty::TyInfer(ty::TyVar(vid)) => {
@@ -205,7 +203,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        let arg_param_ty = *trait_ref.substs().types.get(subst::TypeSpace, 0);
+        let arg_param_ty = trait_ref.substs().types[1];
         let arg_param_ty = self.resolve_type_vars_if_possible(&arg_param_ty);
         debug!("deduce_sig_from_projection: arg_param_ty {:?}", arg_param_ty);
 

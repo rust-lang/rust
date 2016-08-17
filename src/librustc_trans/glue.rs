@@ -50,7 +50,7 @@ pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let def_id = langcall(bcx.tcx(), None, "", ExchangeFreeFnLangItem);
     let args = [PointerCast(bcx, v, Type::i8p(bcx.ccx())), size, align];
-    Callee::def(bcx.ccx(), def_id, bcx.tcx().mk_substs(Substs::empty()))
+    Callee::def(bcx.ccx(), def_id, Substs::empty(bcx.tcx()))
         .call(bcx, debug_loc, ArgVals(&args), None).bcx
 }
 
@@ -356,7 +356,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: tcx.lang_items.drop_trait().unwrap(),
-        substs: tcx.mk_substs(Substs::empty().with_self_ty(t))
+        substs: Substs::new_trait(tcx, vec![], vec![], t)
     });
     let vtbl = match fulfill_obligation(bcx.ccx().shared(), DUMMY_SP, trait_ref) {
         traits::VtableImpl(data) => data,
