@@ -584,12 +584,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                        source);
                     self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
                 } else {
-                    let msg = format!("`{}` is private, and cannot be reexported", source);
-                    let note_msg =
-                        format!("consider declaring type or module `{}` with `pub`", source);
-                    struct_span_err!(self.session, directive.span, E0365, "{}", &msg)
-                        .span_note(directive.span, &note_msg)
-                        .emit();
+                    let mut err = struct_span_err!(self.session, directive.span, E0365,
+                                                     "`{}` is private, and cannot be reexported",
+                                                     source);
+                    err.span_label(directive.span, &format!("reexport of private `{}`", source));
+                    err.note(&format!("consider declaring type or module `{}` with `pub`", source));
+                    err.emit();
                 }
             }
 
