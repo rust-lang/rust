@@ -13,7 +13,7 @@
 use middle::cstore;
 use hir::def_id::DefId;
 use middle::region;
-use ty::subst::{self, Substs};
+use ty::subst::Substs;
 use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TyS, TypeFoldable};
 use util::common::ErrorReported;
 
@@ -304,8 +304,8 @@ pub struct TraitObject<'tcx> {
 ///     T : Foo<U>
 ///
 /// This would be represented by a trait-reference where the def-id is the
-/// def-id for the trait `Foo` and the substs defines `T` as parameter 0 in the
-/// `TypeSpace` and `U` as parameter 1 in the `TypeSpace`.
+/// def-id for the trait `Foo` and the substs define `T` as parameter 0,
+/// and `U` as parameter 1.
 ///
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the substitutions.
@@ -365,7 +365,7 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
         // associated types.
-        self.substs.types.as_full_slice()
+        &self.substs.types
     }
 }
 
@@ -498,34 +498,29 @@ impl<'tcx> PolyFnSig<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ParamTy {
-    pub space: subst::ParamSpace,
     pub idx: u32,
     pub name: Name,
 }
 
 impl<'a, 'gcx, 'tcx> ParamTy {
-    pub fn new(space: subst::ParamSpace,
-               index: u32,
-               name: Name)
-               -> ParamTy {
-        ParamTy { space: space, idx: index, name: name }
+    pub fn new(index: u32, name: Name) -> ParamTy {
+        ParamTy { idx: index, name: name }
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(subst::TypeSpace, 0, keywords::SelfType.name())
+        ParamTy::new(0, keywords::SelfType.name())
     }
 
     pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {
-        ParamTy::new(def.space, def.index, def.name)
+        ParamTy::new(def.index, def.name)
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        tcx.mk_param(self.space, self.idx, self.name)
+        tcx.mk_param(self.idx, self.name)
     }
 
     pub fn is_self(&self) -> bool {
         if self.name == keywords::SelfType.name() {
-            assert_eq!(self.space, subst::TypeSpace);
             assert_eq!(self.idx, 0);
             true
         } else {
@@ -682,7 +677,6 @@ pub enum Region {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
-    pub space: subst::ParamSpace,
     pub index: u32,
     pub name: Name,
 }
@@ -951,9 +945,9 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_bool(&self) -> bool { self.sty == TyBool }
 
-    pub fn is_param(&self, space: subst::ParamSpace, index: u32) -> bool {
+    pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
-            ty::TyParam(ref data) => data.space == space && data.idx == index,
+            ty::TyParam(ref data) => data.idx == index,
             _ => false,
         }
     }
@@ -1219,19 +1213,19 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             TyTrait(ref obj) => {
                 let mut v = vec![obj.region_bound];
-                v.extend_from_slice(obj.principal.skip_binder().substs.regions.as_full_slice());
+                v.extend_from_slice(&obj.principal.skip_binder().substs.regions);
                 v
             }
             TyEnum(_, substs) |
             TyStruct(_, substs) |
             TyAnon(_, substs) => {
-                substs.regions.as_full_slice().to_vec()
+                substs.regions.to_vec()
             }
             TyClosure(_, ref substs) => {
-                substs.func_substs.regions.as_full_slice().to_vec()
+                substs.func_substs.regions.to_vec()
             }
             TyProjection(ref data) => {
-                data.trait_ref.substs.regions.as_full_slice().to_vec()
+                data.trait_ref.substs.regions.to_vec()
             }
             TyFnDef(..) |
             TyFnPtr(_) |

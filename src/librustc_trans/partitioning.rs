@@ -125,7 +125,6 @@ use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
-use rustc::ty::subst;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher, SipHasher};
 use std::sync::Arc;
@@ -488,7 +487,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // DefId, we use the location of the impl after all.
 
             if tcx.trait_of_item(instance.def).is_some() {
-                let self_ty = *instance.substs.types.get(subst::TypeSpace, 0);
+                let self_ty = instance.substs.types[0];
                 // This is an implementation of a trait method.
                 return characteristic_def_id_of_type(self_ty).or(Some(instance.def));
             }

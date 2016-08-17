@@ -41,7 +41,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::fold::Folder;
 use rustc::hir::print as pprust;
-use rustc::ty::subst::{self, Substs, VecPerParamSpace};
+use rustc::ty::subst::Substs;
 use rustc::ty;
 use rustc::middle::stability;
 
@@ -79,12 +79,6 @@ pub trait Clean<T> {
 impl<T: Clean<U>, U> Clean<Vec<U>> for [T] {
     fn clean(&self, cx: &DocContext) -> Vec<U> {
         self.iter().map(|x| x.clean(cx)).collect()
-    }
-}
-
-impl<T: Clean<U>, U> Clean<VecPerParamSpace<U>> for VecPerParamSpace<T> {
-    fn clean(&self, cx: &DocContext) -> VecPerParamSpace<U> {
-        self.map(|x| x.clean(cx))
     }
 }
 
@@ -632,12 +626,8 @@ impl Clean<TyParamBound> for hir::TyParamBound {
 
 fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: bool,
                         bindings: Vec<TypeBinding>, substs: &Substs) -> PathParameters {
-    let lifetimes = substs.regions.get_slice(subst::TypeSpace)
-                    .iter()
-                    .filter_map(|v| v.clean(cx))
-                    .collect();
-    let types = substs.types.get_slice(subst::TypeSpace);
-    let types = types[has_self as usize..].to_vec();
+    let lifetimes = substs.regions.iter().filter_map(|v| v.clean(cx)).collect();
+    let types = substs.types[has_self as usize..].to_vec();
 
     match (trait_did, cx.tcx_opt()) {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
@@ -731,7 +721,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         let path = external_path(cx, &tcx.item_name(self.def_id).as_str(),
                                  Some(self.def_id), true, vec![], self.substs);
 
-        debug!("ty::TraitRef\n  substs.types(TypeSpace): {:?}\n",
+        debug!("ty::TraitRef\n  substs.types: {:?}\n",
                &self.input_types()[1..]);
 
         // collect any late bound regions
@@ -769,9 +759,9 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
 impl<'tcx> Clean<Option<Vec<TyParamBound>>> for Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
-        v.extend(self.regions.as_full_slice().iter().filter_map(|r| r.clean(cx))
+        v.extend(self.regions.iter().filter_map(|r| r.clean(cx))
                      .map(RegionBound));
-        v.extend(self.types.as_full_slice().iter().map(|t| TraitBound(PolyTrait {
+        v.extend(self.types.iter().map(|t| TraitBound(PolyTrait {
             trait_: t.clean(cx),
             lifetimes: vec![]
         }, hir::TraitBoundModifier::None)));
@@ -1637,7 +1627,7 @@ impl<'a, 'tcx: 'a, 'b: 'tcx> Folder for SubstAlias<'a, 'tcx> {
     fn fold_lifetime(&mut self, lt: hir::Lifetime) -> hir::Lifetime {
         let def = self.tcx.named_region_map.defs.get(&lt.id).cloned();
         match def {
-            Some(DefEarlyBoundRegion(_, _, node_id)) |
+            Some(DefEarlyBoundRegion(_, node_id)) |
             Some(DefLateBoundRegion(_, node_id)) |
             Some(DefFreeRegion(_, node_id)) => {
                 if let Some(lt) = self.lt_substs.get(&node_id).cloned() {

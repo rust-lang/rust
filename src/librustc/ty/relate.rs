@@ -146,41 +146,18 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
     where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
 {
     let tcx = relation.tcx();
-    let mut result = Ok(());
 
-    let types = a_subst.types.map_enumerated(|(space, i, a_ty)| {
-        if result.is_err() { return tcx.types.err; }
+    let types = a_subst.types.iter().enumerate().map(|(i, a_ty)| {
+        let b_ty = &b_subst.types[i];
+        let variance = variances.map_or(ty::Invariant, |v| v.types[i]);
+        relation.relate_with_variance(variance, a_ty, b_ty)
+    }).collect()?;
 
-        let b_ty = b_subst.types.get(space, i);
-        let variance = variances.map_or(ty::Invariant, |v| {
-            *v.types.get(space, i)
-        });
-        match relation.relate_with_variance(variance, a_ty, b_ty) {
-            Ok(ty) => ty,
-            Err(e) => {
-                result = Err(e);
-                tcx.types.err
-            }
-        }
-    });
-    result?;
-
-    let regions = a_subst.regions.map_enumerated(|(space, i, a_r)| {
-        if result.is_err() { return ty::ReStatic; }
-
-        let b_r = b_subst.regions.get(space, i);
-        let variance = variances.map_or(ty::Invariant, |v| {
-            *v.regions.get(space, i)
-        });
-        match relation.relate_with_variance(variance, a_r, b_r) {
-            Ok(r) => r,
-            Err(e) => {
-                result = Err(e);
-                ty::ReStatic
-            }
-        }
-    });
-    result?;
+    let regions = a_subst.regions.iter().enumerate().map(|(i, a_r)| {
+        let b_r = &b_subst.regions[i];
+        let variance = variances.map_or(ty::Invariant, |v| v.regions[i]);
+        relation.relate_with_variance(variance, a_r, b_r)
+    }).collect()?;
 
     Ok(Substs::new(tcx, types, regions))
 }
@@ -433,7 +410,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         }
 
         (&ty::TyParam(ref a_p), &ty::TyParam(ref b_p))
-            if a_p.idx == b_p.idx && a_p.space == b_p.space =>
+            if a_p.idx == b_p.idx =>
         {
             Ok(a)
         }

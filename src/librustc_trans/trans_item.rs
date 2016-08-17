@@ -28,7 +28,7 @@ use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::subst::{Substs, VecPerParamSpace};
+use rustc::ty::subst::Substs;
 use rustc_const_eval::fatal_const_eval_err;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
@@ -560,7 +560,7 @@ fn push_item_name(tcx: TyCtxt,
 }
 
 fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              types: &'tcx VecPerParamSpace<Ty<'tcx>>,
+                              types: &[Ty<'tcx>],
                               projections: &[ty::PolyExistentialProjection<'tcx>],
                               output: &mut String) {
     if types.is_empty() && projections.is_empty() {
@@ -569,7 +569,7 @@ fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     output.push('<');
 
-    for &type_parameter in types.as_full_slice() {
+    for &type_parameter in types {
         push_unique_type_name(tcx, type_parameter, output);
         output.push_str(", ");
     }

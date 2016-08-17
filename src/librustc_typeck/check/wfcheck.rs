@@ -14,7 +14,6 @@ use CrateCtxt;
 use hir::def_id::DefId;
 use middle::region::{CodeExtent};
 use rustc::infer::TypeOrigin;
-use rustc::ty::subst;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 
@@ -459,9 +458,9 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
         let mut constrained_parameters: HashSet<_> =
             variances.types
-                     .iter_enumerated()
-                     .filter(|&(_, _, &variance)| variance != ty::Bivariant)
-                     .map(|(_, index, _)| self.param_ty(ast_generics, index))
+                     .iter().enumerate()
+                     .filter(|&(_, &variance)| variance != ty::Bivariant)
+                     .map(|(index, _)| self.param_ty(ast_generics, index))
                      .map(|p| Parameter::Type(p))
                      .collect();
 
@@ -469,9 +468,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                                          None,
                                          &mut constrained_parameters);
 
-        for (space, index, _) in variances.types.iter_enumerated() {
-            assert_eq!(space, subst::TypeSpace);
-
+        for (index, _) in variances.types.iter().enumerate() {
             let param_ty = self.param_ty(ast_generics, index);
             if constrained_parameters.contains(&Parameter::Type(param_ty)) {
                 continue;
@@ -480,9 +477,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             self.report_bivariance(span, param_ty.name);
         }
 
-        for (space, index, &variance) in variances.regions.iter_enumerated() {
-            assert_eq!(space, subst::TypeSpace);
-
+        for (index, &variance) in variances.regions.iter().enumerate() {
             if variance != ty::Bivariant {
                 continue;
             }
@@ -495,7 +490,6 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
     fn param_ty(&self, ast_generics: &hir::Generics, index: usize) -> ty::ParamTy {
         ty::ParamTy {
-            space: subst::TypeSpace,
             idx: index as u32,
             name: ast_generics.ty_params[index].name
         }
@@ -603,7 +597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Trait impl: take implied bounds from all types that
                 // appear in the trait reference.
                 let trait_ref = self.instantiate_type_scheme(span, free_substs, trait_ref);
-                trait_ref.substs.types.as_full_slice().to_vec()
+                trait_ref.substs.types.to_vec()
             }
 
             None => {

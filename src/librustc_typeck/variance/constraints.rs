@@ -16,7 +16,7 @@
 use dep_graph::DepTrackingMapConfig;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use rustc::ty::subst::{self, ParamSpace, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::ItemVariances;
 use rustc::hir::map as hir_map;
@@ -144,7 +144,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let tcx = self.terms_cx.tcx;
         assert!(is_lifetime(&tcx.map, param_id));
         match tcx.named_region_map.defs.get(&param_id) {
-            Some(&rl::DefEarlyBoundRegion(_, _, lifetime_decl_id))
+            Some(&rl::DefEarlyBoundRegion(_, lifetime_decl_id))
                 => lifetime_decl_id,
             Some(_) => bug!("should not encounter non early-bound cases"),
 
@@ -210,7 +210,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                          param_def_id: DefId,
                          item_def_id: DefId,
                          kind: ParamKind,
-                         space: ParamSpace,
                          index: usize)
                          -> VarianceTermPtr<'a> {
         assert_eq!(param_def_id.krate, item_def_id.krate);
@@ -226,8 +225,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             // variance already inferred, just look it up.
             let variances = self.tcx().item_variances(item_def_id);
             let variance = match kind {
-                TypeParam => *variances.types.get(space, index),
-                RegionParam => *variances.regions.get(space, index),
+                TypeParam => variances.types[index],
+                RegionParam => variances.regions[index],
             };
             self.constant_term(variance)
         }
@@ -401,8 +400,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyParam(ref data) => {
-                assert_eq!(data.space, subst::TypeSpace);
                 assert_eq!(generics.parent, None);
+                assert!((data.idx as usize) < generics.types.len());
                 let def_id = generics.types[data.idx as usize].def_id;
                 let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
                 match self.terms_cx.inferred_map.get(&node_id) {
@@ -450,8 +449,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         for p in type_param_defs {
             let variance_decl =
-                self.declared_variance(p.def_id, def_id, TypeParam,
-                                       p.space, p.index as usize);
+                self.declared_variance(p.def_id, def_id, TypeParam, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
             let substs_ty = substs.type_for_def(p);
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
@@ -461,8 +459,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         for p in region_param_defs {
             let variance_decl =
-                self.declared_variance(p.def_id, def_id,
-                                       RegionParam, p.space, p.index as usize);
+                self.declared_variance(p.def_id, def_id, RegionParam, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
             let substs_r = substs.region_for_def(p);
             self.add_constraints_from_region(generics, substs_r, variance_i);
@@ -490,8 +487,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(ref data) => {
-                assert_eq!(data.space, subst::TypeSpace);
                 assert_eq!(generics.parent, None);
+                assert!((data.index as usize) < generics.regions.len());
                 let def_id = generics.regions[data.index as usize].def_id;
                 let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {

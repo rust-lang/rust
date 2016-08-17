@@ -44,11 +44,10 @@ pub struct OverlapError {
 /// When we have selected one impl, but are actually using item definitions from
 /// a parent impl providing a default, we need a way to translate between the
 /// type parameters of the two impls. Here the `source_impl` is the one we've
-/// selected, and `source_substs` is a substitution of its generics (and
-/// possibly some relevant `FnSpace` variables as well). And `target_node` is
-/// the impl/trait we're actually going to get the definition from. The resulting
-/// substitution will map from `target_node`'s generics to `source_impl`'s
-/// generics as instantiated by `source_subst`.
+/// selected, and `source_substs` is a substitution of its generics.
+/// And `target_node` is the impl/trait we're actually going to get the
+/// definition from. The resulting substitution will map from `target_node`'s
+/// generics to `source_impl`'s generics as instantiated by `source_subst`.
 ///
 /// For example, consider the following scenario:
 ///

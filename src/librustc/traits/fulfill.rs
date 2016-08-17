@@ -142,7 +142,7 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
         // Auto trait obligations on `impl Trait`.
         if tcx.trait_has_default_impl(predicate.def_id()) {
             let substs = predicate.skip_binder().trait_ref.substs;
-            if substs.types.as_full_slice().len() == 1 && substs.regions.is_empty() {
+            if substs.types.len() == 1 && substs.regions.is_empty() {
                 if let ty::TyAnon(..) = predicate.skip_binder().self_ty().sty {
                     return true;
                 }

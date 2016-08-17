@@ -23,7 +23,7 @@ use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
 use middle::stability;
-use ty::subst::{self, Substs};
+use ty::subst::Substs;
 use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants};
@@ -1346,18 +1346,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_param(self,
-                    space: subst::ParamSpace,
                     index: u32,
                     name: Name) -> Ty<'tcx> {
-        self.mk_ty(TyParam(ParamTy { space: space, idx: index, name: name }))
+        self.mk_ty(TyParam(ParamTy { idx: index, name: name }))
     }
 
     pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_param(subst::TypeSpace, 0, keywords::SelfType.name())
+        self.mk_param(0, keywords::SelfType.name())
     }
 
     pub fn mk_param_from_def(self, def: &ty::TypeParameterDef) -> Ty<'tcx> {
-        self.mk_param(def.space, def.index, def.name)
+        self.mk_param(def.index, def.name)
     }
 
     pub fn mk_anon(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {

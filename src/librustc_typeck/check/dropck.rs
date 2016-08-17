@@ -15,7 +15,7 @@ use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use rustc::infer;
 use middle::region;
-use rustc::ty::subst::{self, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, Reveal};
 use util::nodemap::FnvHashSet;
@@ -438,7 +438,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
 
         ty::TyStruct(def, substs) if def.is_phantom_data() => {
             // PhantomData<T> - behaves identically to T
-            let ity = *substs.types.get(subst::TypeSpace, 0);
+            let ity = substs.types[0];
             iterate_over_potentially_unsafe_regions_in_type(
                 cx, context, ity, depth+1)
         }

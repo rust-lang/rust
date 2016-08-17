@@ -225,7 +225,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
 
         // This is the only tricky bit of the new way we check implementation methods
-        // We need to build a set of predicates where only the FnSpace bounds
+        // We need to build a set of predicates where only the method-level bounds
         // are from the trait and we assume all other bounds from the implementation
         // to be previously satisfied.
         //

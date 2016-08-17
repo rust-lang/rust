@@ -346,7 +346,7 @@ impl<'tcx> TypeMap<'tcx> {
             // Add the def-index as the second part
             output.push_str(&format!("{:x}", def_id.index.as_usize()));
 
-            let tps = substs.types.as_full_slice();
+            let tps = &substs.types;
             if !tps.is_empty() {
                 output.push('<');
 

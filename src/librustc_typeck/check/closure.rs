@@ -13,7 +13,6 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv::AstConv;
-use rustc::ty::subst;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
 use syntax::abi::Abi;
@@ -204,7 +203,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        let arg_param_ty = *trait_ref.substs().types.get(subst::TypeSpace, 1);
+        let arg_param_ty = trait_ref.substs().types[1];
         let arg_param_ty = self.resolve_type_vars_if_possible(&arg_param_ty);
         debug!("deduce_sig_from_projection: arg_param_ty {:?}", arg_param_ty);
 

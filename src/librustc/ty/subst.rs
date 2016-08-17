@@ -10,54 +10,30 @@
 
 // Type substitutions.
 
-pub use self::ParamSpace::*;
-
 use middle::cstore;
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
-use std::fmt;
 use syntax_pos::{Span, DUMMY_SP};
 
 ///////////////////////////////////////////////////////////////////////////
 
-/// A substitution mapping type/region parameters to new values. We
-/// identify each in-scope parameter by an *index* and a *parameter
-/// space* (which indices where the parameter is defined; see
-/// `ParamSpace`).
+/// A substitution mapping type/region parameters to new values.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Substs<'tcx> {
-    pub types: VecPerParamSpace<Ty<'tcx>>,
-    pub regions: VecPerParamSpace<ty::Region>,
+    pub types: Vec<Ty<'tcx>>,
+    pub regions: Vec<ty::Region>,
 }
 
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               t: VecPerParamSpace<Ty<'tcx>>,
-               r: VecPerParamSpace<ty::Region>)
+               t: Vec<Ty<'tcx>>,
+               r: Vec<ty::Region>)
                -> &'tcx Substs<'tcx>
     {
         tcx.mk_substs(Substs { types: t, regions: r })
-    }
-
-    pub fn new_fn(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                  t: Vec<Ty<'tcx>>,
-                  r: Vec<ty::Region>)
-                  -> &'tcx Substs<'tcx>
-    {
-        Substs::new(tcx, VecPerParamSpace::new(vec![], t),
-                    VecPerParamSpace::new(vec![], r))
-    }
-
-    pub fn new_type(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    t: Vec<Ty<'tcx>>,
-                    r: Vec<ty::Region>)
-                    -> &'tcx Substs<'tcx>
-    {
-        Substs::new(tcx, VecPerParamSpace::new(t, vec![]),
-                    VecPerParamSpace::new(r, vec![]))
     }
 
     pub fn new_trait(tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -67,13 +43,11 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                     -> &'tcx Substs<'tcx>
     {
         t.insert(0, s);
-        Substs::new(tcx, VecPerParamSpace::new(t, vec![]),
-                    VecPerParamSpace::new(r, vec![]))
+        Substs::new(tcx, t, r)
     }
 
     pub fn empty(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx Substs<'tcx> {
-        Substs::new(tcx, VecPerParamSpace::empty(),
-                    VecPerParamSpace::empty())
+        Substs::new(tcx, vec![], vec![])
     }
 
     /// Creates a Substs for generic parameter definitions,
@@ -92,14 +66,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         let num_regions = defs.parent_regions as usize + defs.regions.len();
         let num_types = defs.parent_types as usize + defs.types.len();
         let mut substs = Substs {
-            regions: VecPerParamSpace {
-                type_limit: 0,
-                content: Vec::with_capacity(num_regions)
-            },
-            types: VecPerParamSpace {
-                type_limit: 0,
-                content: Vec::with_capacity(num_types)
-            }
+            regions: Vec::with_capacity(num_regions),
+            types: Vec::with_capacity(num_types)
         };
 
         substs.fill_item(tcx, defs, &mut mk_region, &mut mk_type);
@@ -121,22 +89,14 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
 
         for def in &defs.regions {
             let region = mk_region(def, self);
-            self.regions.content.push(region);
-
-            if def.space == TypeSpace {
-                self.regions.type_limit += 1;
-                assert_eq!(self.regions.content.len(), self.regions.type_limit);
-            }
+            assert_eq!(def.index as usize, self.regions.len());
+            self.regions.push(region);
         }
 
         for def in &defs.types {
             let ty = mk_type(def, self);
-            self.types.content.push(ty);
-
-            if def.space == TypeSpace {
-                self.types.type_limit += 1;
-                assert_eq!(self.types.content.len(), self.types.type_limit);
-            }
+            assert_eq!(def.index as usize, self.types.len());
+            self.types.push(ty);
         }
     }
 
@@ -145,11 +105,11 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     pub fn type_for_def(&self, ty_param_def: &ty::TypeParameterDef) -> Ty<'tcx> {
-        *self.types.get(ty_param_def.space, ty_param_def.index as usize)
+        self.types[ty_param_def.index as usize]
     }
 
     pub fn region_for_def(&self, def: &ty::RegionParameterDef) -> ty::Region {
-        *self.regions.get(def.space, def.index as usize)
+        self.regions[def.index as usize]
     }
 
     /// Transform from substitutions for a child of `source_ancestor`
@@ -162,14 +122,10 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                        target_substs: &Substs<'tcx>)
                        -> &'tcx Substs<'tcx> {
         let defs = tcx.lookup_generics(source_ancestor);
-        assert_eq!(self.types.len(TypeSpace), defs.types.len());
-        assert_eq!(target_substs.types.len(FnSpace), 0);
-        assert_eq!(self.regions.len(TypeSpace), defs.regions.len());
-        assert_eq!(target_substs.regions.len(FnSpace), 0);
-
-        let Substs { mut types, mut regions } = target_substs.clone();
-        types.content.extend(&self.types.as_full_slice()[defs.types.len()..]);
-        regions.content.extend(&self.regions.as_full_slice()[defs.regions.len()..]);
+        let regions = target_substs.regions.iter()
+            .chain(&self.regions[defs.regions.len()..]).cloned().collect();
+        let types = target_substs.types.iter()
+            .chain(&self.types[defs.types.len()..]).cloned().collect();
         Substs::new(tcx, types, regions)
     }
 }
@@ -190,200 +146,6 @@ impl<'tcx> Decodable for &'tcx Substs<'tcx> {
         });
 
         Ok(substs)
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// ParamSpace
-
-#[derive(PartialOrd, Ord, PartialEq, Eq, Copy,
-           Clone, Hash, RustcEncodable, RustcDecodable, Debug)]
-pub enum ParamSpace {
-    TypeSpace,  // Type parameters attached to a type definition, trait, or impl
-    FnSpace,    // Type parameters attached to a method or fn
-}
-
-impl ParamSpace {
-    pub fn all() -> [ParamSpace; 2] {
-        [TypeSpace, FnSpace]
-    }
-
-    pub fn to_uint(self) -> usize {
-        match self {
-            TypeSpace => 0,
-            FnSpace => 1,
-        }
-    }
-
-    pub fn from_uint(u: usize) -> ParamSpace {
-        match u {
-            0 => TypeSpace,
-            1 => FnSpace,
-            _ => bug!("Invalid ParamSpace: {}", u)
-        }
-    }
-}
-
-/// Vector of things sorted by param space. Used to keep
-/// the set of things declared on the type, self, or method
-/// distinct.
-#[derive(PartialEq, Eq, Clone, Hash, RustcEncodable, RustcDecodable)]
-pub struct VecPerParamSpace<T> {
-    // This was originally represented as a tuple with one Vec<T> for
-    // each variant of ParamSpace, and that remains the abstraction
-    // that it provides to its clients.
-    //
-    // Here is how the representation corresponds to the abstraction
-    // i.e. the "abstraction function" AF:
-    //
-    // AF(self) = (self.content[..self.type_limit],
-    //             self.content[self.type_limit..])
-    type_limit: usize,
-    content: Vec<T>,
-}
-
-impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[{:?};{:?}]",
-               self.get_slice(TypeSpace),
-               self.get_slice(FnSpace))
-    }
-}
-
-impl<T> VecPerParamSpace<T> {
-    fn limits(&self, space: ParamSpace) -> (usize, usize) {
-        match space {
-            TypeSpace => (0, self.type_limit),
-            FnSpace => (self.type_limit, self.content.len()),
-        }
-    }
-
-    pub fn empty() -> VecPerParamSpace<T> {
-        VecPerParamSpace {
-            type_limit: 0,
-            content: Vec::new()
-        }
-    }
-
-    /// `t` is the type space.
-    /// `f` is the fn space.
-    pub fn new(t: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
-        let type_limit = t.len();
-
-        let mut content = t;
-        content.extend(f);
-
-        VecPerParamSpace {
-            type_limit: type_limit,
-            content: content,
-        }
-    }
-
-    fn new_internal(content: Vec<T>, type_limit: usize) -> VecPerParamSpace<T> {
-        VecPerParamSpace {
-            type_limit: type_limit,
-            content: content,
-        }
-    }
-
-    pub fn len(&self, space: ParamSpace) -> usize {
-        self.get_slice(space).len()
-    }
-
-    pub fn is_empty_in(&self, space: ParamSpace) -> bool {
-        self.len(space) == 0
-    }
-
-    pub fn get_slice<'a>(&'a self, space: ParamSpace) -> &'a [T] {
-        let (start, limit) = self.limits(space);
-        &self.content[start.. limit]
-    }
-
-    pub fn get<'a>(&'a self, space: ParamSpace, index: usize) -> &'a T {
-        &self.get_slice(space)[index]
-    }
-
-    pub fn iter_enumerated<'a>(&'a self) -> EnumeratedItems<'a,T> {
-        EnumeratedItems::new(self)
-    }
-
-    pub fn as_full_slice(&self) -> &[T] {
-        &self.content
-    }
-
-    pub fn all<P>(&self, pred: P) -> bool where P: FnMut(&T) -> bool {
-        self.as_full_slice().iter().all(pred)
-    }
-
-    pub fn any<P>(&self, pred: P) -> bool where P: FnMut(&T) -> bool {
-        self.as_full_slice().iter().any(pred)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.content.is_empty()
-    }
-
-    pub fn map<U, P>(&self, pred: P) -> VecPerParamSpace<U> where P: FnMut(&T) -> U {
-        let result = self.as_full_slice().iter().map(pred).collect();
-        VecPerParamSpace::new_internal(result, self.type_limit)
-    }
-
-    pub fn map_enumerated<U, P>(&self, pred: P) -> VecPerParamSpace<U> where
-        P: FnMut((ParamSpace, usize, &T)) -> U,
-    {
-        let result = self.iter_enumerated().map(pred).collect();
-        VecPerParamSpace::new_internal(result, self.type_limit)
-    }
-}
-
-#[derive(Clone)]
-pub struct EnumeratedItems<'a,T:'a> {
-    vec: &'a VecPerParamSpace<T>,
-    space_index: usize,
-    elem_index: usize
-}
-
-impl<'a,T> EnumeratedItems<'a,T> {
-    fn new(v: &'a VecPerParamSpace<T>) -> EnumeratedItems<'a,T> {
-        let mut result = EnumeratedItems { vec: v, space_index: 0, elem_index: 0 };
-        result.adjust_space();
-        result
-    }
-
-    fn adjust_space(&mut self) {
-        let spaces = ParamSpace::all();
-        while
-            self.space_index < spaces.len() &&
-            self.elem_index >= self.vec.len(spaces[self.space_index])
-        {
-            self.space_index += 1;
-            self.elem_index = 0;
-        }
-    }
-}
-
-impl<'a,T> Iterator for EnumeratedItems<'a,T> {
-    type Item = (ParamSpace, usize, &'a T);
-
-    fn next(&mut self) -> Option<(ParamSpace, usize, &'a T)> {
-        let spaces = ParamSpace::all();
-        if self.space_index < spaces.len() {
-            let space = spaces[self.space_index];
-            let index = self.elem_index;
-            let item = self.vec.get(space, index);
-
-            self.elem_index += 1;
-            self.adjust_space();
-
-            Some((space, index, item))
-        } else {
-            None
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.vec.as_full_slice().len();
-        (size, Some(size))
     }
 }
 
@@ -461,7 +223,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
         // the specialized routine `ty::replace_late_regions()`.
         match r {
             ty::ReEarlyBound(data) => {
-                match self.substs.regions.get_slice(data.space).get(data.index as usize) {
+                match self.substs.regions.get(data.index as usize) {
                     Some(&r) => {
                         self.shift_region_through_binders(r)
                     }
@@ -471,10 +233,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
                             span,
                             "Region parameter out of range \
                              when substituting in region {} (root type={:?}) \
-                             (space={:?}, index={})",
+                             (index={})",
                             data.name,
                             self.root_ty,
-                            data.space,
                             data.index);
                     }
                 }
@@ -517,18 +278,17 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     fn ty_for_param(&self, p: ty::ParamTy, source_ty: Ty<'tcx>) -> Ty<'tcx> {
         // Look up the type in the substitutions. It really should be in there.
-        let opt_ty = self.substs.types.get_slice(p.space).get(p.idx as usize);
+        let opt_ty = self.substs.types.get(p.idx as usize);
         let ty = match opt_ty {
             Some(t) => *t,
             None => {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 span_bug!(
                     span,
-                    "Type parameter `{:?}` ({:?}/{:?}/{}) out of range \
+                    "Type parameter `{:?}` ({:?}/{}) out of range \
                          when substituting (root type={:?}) substs={:?}",
                     p,
                     source_ty,
-                    p.space,
                     p.idx,
                     self.root_ty,
                     self.substs);
@@ -606,10 +366,9 @@ impl<'a, 'gcx, 'tcx> ty::TraitRef<'tcx> {
                        trait_id: DefId,
                        substs: &Substs<'tcx>)
                        -> ty::TraitRef<'tcx> {
-        let Substs { mut types, mut regions } = substs.clone();
         let defs = tcx.lookup_generics(trait_id);
-        types.content.truncate(defs.types.len());
-        regions.content.truncate(defs.regions.len());
+        let regions = substs.regions[..defs.regions.len()].to_vec();
+        let types = substs.types[..defs.types.len()].to_vec();
 
         ty::TraitRef {
             def_id: trait_id,
@@ -624,8 +383,7 @@ impl<'a, 'gcx, 'tcx> ty::ExistentialTraitRef<'tcx> {
                          -> ty::ExistentialTraitRef<'tcx> {
         let Substs { mut types, regions } = trait_ref.substs.clone();
 
-        types.type_limit -= 1;
-        types.content.remove(0);
+        types.remove(0);
 
         ty::ExistentialTraitRef {
             def_id: trait_ref.def_id,
@@ -648,8 +406,7 @@ impl<'a, 'gcx, 'tcx> ty::PolyExistentialTraitRef<'tcx> {
         self.map_bound(|trait_ref| {
             let Substs { mut types, regions } = trait_ref.substs.clone();
 
-            types.type_limit += 1;
-            types.content.insert(0, self_ty);
+            types.insert(0, self_ty);
 
             ty::TraitRef {
                 def_id: trait_ref.def_id,

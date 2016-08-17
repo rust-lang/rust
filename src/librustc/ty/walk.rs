@@ -79,7 +79,7 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
             stack.push(mt.ty);
         }
         ty::TyProjection(ref data) => {
-            push_reversed(stack, data.trait_ref.substs.types.as_full_slice());
+            push_reversed(stack, &data.trait_ref.substs.types);
         }
         ty::TyTrait(ref obj) => {
             push_reversed(stack, obj.principal.input_types());
@@ -90,17 +90,17 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
         ty::TyEnum(_, ref substs) |
         ty::TyStruct(_, ref substs) |
         ty::TyAnon(_, ref substs) => {
-            push_reversed(stack, substs.types.as_full_slice());
+            push_reversed(stack, &substs.types);
         }
         ty::TyClosure(_, ref substs) => {
-            push_reversed(stack, substs.func_substs.types.as_full_slice());
+            push_reversed(stack, &substs.func_substs.types);
             push_reversed(stack, &substs.upvar_tys);
         }
         ty::TyTuple(ref ts) => {
             push_reversed(stack, ts);
         }
         ty::TyFnDef(_, substs, ref ft) => {
-            push_reversed(stack, substs.types.as_full_slice());
+            push_reversed(stack, &substs.types);
             push_sig_subtypes(stack, &ft.sig);
         }
         ty::TyFnPtr(ref ft) => {

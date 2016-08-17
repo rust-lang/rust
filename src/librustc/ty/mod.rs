@@ -28,7 +28,7 @@ use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangIte
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
 use traits;
 use ty;
-use ty::subst::{Subst, Substs, VecPerParamSpace};
+use ty::subst::{Subst, Substs};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
 use util::nodemap::NodeSet;
@@ -426,15 +426,15 @@ pub struct AssociatedType<'tcx> {
 
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct ItemVariances {
-    pub types: VecPerParamSpace<Variance>,
-    pub regions: VecPerParamSpace<Variance>,
+    pub types: Vec<Variance>,
+    pub regions: Vec<Variance>,
 }
 
 impl ItemVariances {
     pub fn empty() -> ItemVariances {
         ItemVariances {
-            types: VecPerParamSpace::empty(),
-            regions: VecPerParamSpace::empty(),
+            types: vec![],
+            regions: vec![],
         }
     }
 }
@@ -723,7 +723,6 @@ pub enum ObjectLifetimeDefault {
 pub struct TypeParameterDef<'tcx> {
     pub name: Name,
     pub def_id: DefId,
-    pub space: subst::ParamSpace,
     pub index: u32,
     pub default_def_id: DefId, // for use in error reporing about defaults
     pub default: Option<Ty<'tcx>>,
@@ -734,7 +733,6 @@ pub struct TypeParameterDef<'tcx> {
 pub struct RegionParameterDef {
     pub name: Name,
     pub def_id: DefId,
-    pub space: subst::ParamSpace,
     pub index: u32,
     pub bounds: Vec<ty::Region>,
 }
@@ -742,7 +740,6 @@ pub struct RegionParameterDef {
 impl RegionParameterDef {
     pub fn to_early_bound_region(&self) -> ty::Region {
         ty::ReEarlyBound(ty::EarlyBoundRegion {
-            space: self.space,
             index: self.index,
             name: self.name,
         })
@@ -812,7 +809,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
 pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo : Bar<A,B,C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
-    /// would be the parameters in the `TypeSpace`.
+    /// would be the type parameters.
     Trait(PolyTraitPredicate<'tcx>),
 
     /// A predicate created by RFC1592
@@ -837,9 +834,9 @@ pub enum Predicate<'tcx> {
     /// trait must be object-safe
     ObjectSafe(DefId),
 
-    /// No direct syntax. May be thought of as `where T : FnFoo<...>` for some 'TypeSpace'
-    /// substitutions `...` and T being a closure type.  Satisfied (or refuted) once we know the
-    /// closure's kind.
+    /// No direct syntax. May be thought of as `where T : FnFoo<...>`
+    /// for some substitutions `...` and T being a closure type.
+    /// Satisfied (or refuted) once we know the closure's kind.
     ClosureKind(DefId, ClosureKind),
 }
 
@@ -975,7 +972,7 @@ impl<'tcx> TraitPredicate<'tcx> {
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
-        self.trait_ref.substs.types.as_full_slice()
+        &self.trait_ref.substs.types
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
@@ -1117,7 +1114,7 @@ impl<'tcx> Predicate<'tcx> {
     pub fn walk_tys(&self) -> IntoIter<Ty<'tcx>> {
         let vec: Vec<_> = match *self {
             ty::Predicate::Trait(ref data) => {
-                data.0.trait_ref.substs.types.as_full_slice().to_vec()
+                data.0.trait_ref.input_types().to_vec()
             }
             ty::Predicate::Rfc1592(ref data) => {
                 return data.walk_tys()
@@ -1132,8 +1129,7 @@ impl<'tcx> Predicate<'tcx> {
                 vec![]
             }
             ty::Predicate::Projection(ref data) => {
-                let trait_inputs = data.0.projection_ty.trait_ref.substs
-                                       .types.as_full_slice();
+                let trait_inputs = data.0.projection_ty.trait_ref.input_types();
                 trait_inputs.iter()
                             .cloned()
                             .chain(Some(data.0.ty))
@@ -1217,7 +1213,7 @@ impl<'tcx> TraitRef<'tcx> {
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
-        *self.substs.types.get(subst::TypeSpace, 0)
+        self.substs.types[0]
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
@@ -1225,7 +1221,7 @@ impl<'tcx> TraitRef<'tcx> {
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
         // associated types.
-        self.substs.types.as_full_slice()
+        &self.substs.types
     }
 }
 

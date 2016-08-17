@@ -256,18 +256,13 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           // avoids creating more than one copy of the enum when one
           // of the enum's variants refers to the enum itself.
           let repr = adt::represent_type(cx, t);
-          let tps = substs.types.as_full_slice();
-          let name = llvm_type_name(cx, def.did, tps);
+          let name = llvm_type_name(cx, def.did, &substs.types);
           adt::incomplete_type_of(cx, &repr, &name[..])
       }
       ty::TyClosure(..) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache.
           let repr = adt::represent_type(cx, t);
-          // Unboxed closures can have substitutions in all spaces
-          // inherited from their environment, so we use entire
-          // contents of the VecPerParamSpace to construct the llvm
-          // name
           adt::incomplete_type_of(cx, &repr, "closure")
       }
 
@@ -335,8 +330,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
               // in *after* placing it into the type cache. This prevents
               // infinite recursion with recursive struct types.
               let repr = adt::represent_type(cx, t);
-              let tps = substs.types.as_full_slice();
-              let name = llvm_type_name(cx, def.did, tps);
+              let name = llvm_type_name(cx, def.did, &substs.types);
               adt::incomplete_type_of(cx, &repr, &name[..])
           }
       }

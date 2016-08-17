@@ -388,8 +388,6 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
             }
             ty::TypeTraitItem(ref assoc_ty) => {
                 let did = assoc_ty.def_id;
-                // Not sure the choice of ParamSpace actually matters here,
-                // because an associated type won't have generics on the LHS
                 let typedef = clean::Typedef {
                     type_: assoc_ty.ty.unwrap().clean(cx),
                     generics: clean::Generics {
