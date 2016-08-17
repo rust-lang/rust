@@ -35,8 +35,11 @@ fi
 
 # Pull requests and commits to other branches shouldn't try to deploy, just build to verify
 if [ "$TRAVIS_PULL_REQUEST" != "false" ] || [ "$TRAVIS_BRANCH" != "$SOURCE_BRANCH" ]; then
-    echo "Generated, won't push"
-    exit 0
+    # Tags should deploy
+    if [ -z "$TRAVIS_TAG" ]; then
+        echo "Generated, won't push"
+        exit 0
+    fi
 fi
 
 # Get the deploy key by using Travis's stored variables to decrypt deploy_key.enc
