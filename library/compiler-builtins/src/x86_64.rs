@@ -30,12 +30,9 @@ pub unsafe fn ___chkstk_ms() {
 #[naked]
 #[cfg_attr(not(test), no_mangle)]
 pub unsafe fn __alloca() {
-    asm!("mov    %rcx,%rax  // x64 _alloca is a normal function with parameter in rcx");
-    // The original behavior had __alloca fall through to ___chkstk here, but
-    // I don't believe that this behavior is guaranteed, and a program that uses
-    // only __alloca could have ___chkstk removed by --gc-sections. Call 
-    // ___chkstk here to guarantee that neither of those happen.
-    ___chkstk();
+    asm!("mov    %rcx,%rax  // x64 _alloca is a normal function with parameter in rcx
+          jmp    ___chkstk  // Jump to ___chkstk since fallthrough may be unreliable");
+    intrinsics::unreachable();
 }
 
 #[cfg(windows)]
