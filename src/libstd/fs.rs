@@ -350,12 +350,24 @@ impl File {
     }
 
     /// Reads a number of bytes starting from a given offset.
+    ///
+    /// The offset is relative to the file start and thus independent from the
+    /// current cursor.
+    ///
+    /// Note that similar to `File::read`, it is not an error to return a short
+    /// read.
     #[unstable(feature = "file_offset", issue = "0")]
     pub fn read_offset(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.inner.read_offset(buf, offset)
     }
 
     /// Writes a number of bytes starting from a given offset.
+    ///
+    /// The offset is relative to the file start and thus independent from the
+    /// current cursor.
+    ///
+    /// Note that similar to `File::write`, it is not an error to return a
+    /// short write.
     #[unstable(feature = "file_offset", issue = "0")]
     pub fn write_offset(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.inner.write_offset(buf, offset)
