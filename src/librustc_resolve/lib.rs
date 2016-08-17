@@ -765,17 +765,12 @@ pub struct ModuleS<'a> {
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
-
-    arenas: &'a ResolverArenas<'a>,
 }
 
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
-    fn new(parent_link: ParentLink<'a>,
-           def: Option<Def>,
-           external: bool,
-           arenas: &'a ResolverArenas<'a>) -> Self {
+    fn new(parent_link: ParentLink<'a>, def: Option<Def>, external: bool) -> Self {
         ModuleS {
             parent_link: parent_link,
             def: def,
@@ -786,7 +781,6 @@ impl<'a> ModuleS<'a> {
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(!external),
-            arenas: arenas
         }
     }
 
@@ -1136,7 +1130,7 @@ impl<'a> Resolver<'a> {
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let graph_root =
-            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, arenas);
+            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false);
         let graph_root = arenas.alloc_module(graph_root);
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
@@ -1211,12 +1205,12 @@ impl<'a> Resolver<'a> {
 
     fn new_module(&self, parent_link: ParentLink<'a>, def: Option<Def>, external: bool)
                   -> Module<'a> {
-        self.arenas.alloc_module(ModuleS::new(parent_link, def, external, self.arenas))
+        self.arenas.alloc_module(ModuleS::new(parent_link, def, external))
     }
 
     fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def, local_node_id: NodeId)
                                -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), false, self.arenas);
+        let mut module = ModuleS::new(parent_link, Some(def), false);
         module.extern_crate_id = Some(local_node_id);
         self.arenas.modules.alloc(module)
     }
