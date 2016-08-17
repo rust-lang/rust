@@ -38,23 +38,23 @@ impl<'a> Resolver<'a> {
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
-pub enum ImportDirectiveSubclass {
+pub enum ImportDirectiveSubclass<'a> {
     SingleImport {
         target: Name,
         source: Name,
-        type_determined: Cell<bool>,
-        value_determined: Cell<bool>,
+        value_result: Cell<Result<&'a NameBinding<'a>, bool /* determined? */>>,
+        type_result: Cell<Result<&'a NameBinding<'a>, bool /* determined? */>>,
     },
     GlobImport { is_prelude: bool },
 }
 
-impl ImportDirectiveSubclass {
+impl<'a> ImportDirectiveSubclass<'a> {
     pub fn single(target: Name, source: Name) -> Self {
         SingleImport {
             target: target,
             source: source,
-            type_determined: Cell::new(false),
-            value_determined: Cell::new(false),
+            type_result: Cell::new(Err(false)),
+            value_result: Cell::new(Err(false)),
         }
     }
 }
@@ -66,7 +66,7 @@ pub struct ImportDirective<'a> {
     parent: Module<'a>,
     module_path: Vec<Name>,
     target_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
-    subclass: ImportDirectiveSubclass,
+    subclass: ImportDirectiveSubclass<'a>,
     span: Span,
     vis: ty::Visibility, // see note in ImportResolutionPerNamespace about how to use this
 }
@@ -235,7 +235,7 @@ impl<'a> Resolver<'a> {
     // Add an import directive to the current module.
     pub fn add_import_directive(&mut self,
                                 module_path: Vec<Name>,
-                                subclass: ImportDirectiveSubclass,
+                                subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
                                 id: NodeId,
                                 vis: ty::Visibility) {
@@ -488,30 +488,35 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         directive.target_module.set(Some(target_module));
-        let (source, target, value_determined, type_determined) = match directive.subclass {
-            SingleImport { source, target, ref value_determined, ref type_determined } =>
-                (source, target, value_determined, type_determined),
+        let (source, target, value_result, type_result) = match directive.subclass {
+            SingleImport { source, target, ref value_result, ref type_result } =>
+                (source, target, value_result, type_result),
             GlobImport { .. } => return self.resolve_glob_import(target_module, directive),
         };
 
-        // We need to resolve both namespaces for this to succeed.
-        let span = directive.span;
-        let value_result =
-            self.resolve_name_in_module(target_module, source, ValueNS, false, Some(span));
-        let type_result =
-            self.resolve_name_in_module(target_module, source, TypeNS, false, Some(span));
-
         let mut privacy_error = true;
-        for &(ns, result, determined) in &[(ValueNS, &value_result, value_determined),
-                                           (TypeNS, &type_result, type_determined)] {
-            match *result {
-                Failed(..) if !determined.get() => {
-                    determined.set(true);
+        for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
+            let was_determined = if let Err(false) = result.get() {
+                result.set({
+                    let span = Some(directive.span);
+                    match self.resolve_name_in_module(target_module, source, ns, false, span) {
+                        Success(binding) => Ok(binding),
+                        Indeterminate => Err(false),
+                        Failed(_) => Err(true),
+                    }
+                });
+                false
+            } else {
+                true
+            };
+
+            match result.get() {
+                Err(true) if !was_determined => {
                     self.update_resolution(module, target, ns, |_, resolution| {
                         resolution.single_imports.directive_failed()
                     });
                 }
-                Success(binding) if !binding.is_importable() => {
+                Ok(binding) if !binding.is_importable() => {
                     let msg = format!("`{}` is not directly importable", target);
                     struct_span_err!(self.session, directive.span, E0253, "{}", &msg)
                         .span_label(directive.span, &format!("cannot be imported directly"))
@@ -521,9 +526,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     self.import_dummy_binding(directive);
                     return Success(());
                 }
-                Success(binding) if !self.is_accessible(binding.vis) => {}
-                Success(binding) if !determined.get() => {
-                    determined.set(true);
+                Ok(binding) if !self.is_accessible(binding.vis) => {}
+                Ok(binding) if !was_determined => {
                     let imported_binding = self.import(binding, directive);
                     let conflict = self.try_define(module, target, ns, imported_binding);
                     if let Err(old_binding) = conflict {
@@ -532,14 +536,15 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     }
                     privacy_error = false;
                 }
-                Success(_) => privacy_error = false,
+                Ok(_) => privacy_error = false,
                 _ => {}
             }
         }
 
-        match (&value_result, &type_result) {
-            (&Indeterminate, _) | (_, &Indeterminate) => return Indeterminate,
-            (&Failed(_), &Failed(_)) => {
+        let (value_result, type_result) = (value_result.get(), type_result.get());
+        match (value_result, type_result) {
+            (Err(false), _) | (_, Err(false)) => return Indeterminate,
+            (Err(true), Err(true)) => {
                 let resolutions = target_module.resolutions.borrow();
                 let names = resolutions.iter().filter_map(|(&(ref name, _), resolution)| {
                     if *name == source { return None; } // Never suggest the same name
@@ -565,17 +570,17 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         if privacy_error {
-            for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
-                let binding = match *result { Success(binding) => binding, _ => continue };
+            for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
+                let binding = match result { Ok(binding) => binding, _ => continue };
                 self.privacy_errors.push(PrivacyError(directive.span, source, binding));
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(module, target, ns, imported_binding);
             }
         }
 
-        match (&value_result, &type_result) {
-            (&Success(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis, self) &&
-                                      self.is_accessible(binding.vis) => {
+        match (value_result, type_result) {
+            (Ok(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis, self) &&
+                                self.is_accessible(binding.vis) => {
                 let msg = format!("`{}` is private, and cannot be reexported", source);
                 let note_msg = format!("consider marking `{}` as `pub` in the imported module",
                                         source);
@@ -584,8 +589,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     .emit();
             }
 
-            (_, &Success(binding)) if !binding.pseudo_vis().is_at_least(directive.vis, self) &&
-                                      self.is_accessible(binding.vis) => {
+            (_, Ok(binding)) if !binding.pseudo_vis().is_at_least(directive.vis, self) &&
+                                self.is_accessible(binding.vis) => {
                 if binding.is_extern_crate() {
                     let msg = format!("extern crate `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring with `pub`",
@@ -607,9 +612,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // Record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        let def = match type_result.success().and_then(NameBinding::def) {
+        let def = match type_result.ok().and_then(NameBinding::def) {
             Some(def) => def,
-            None => value_result.success().and_then(NameBinding::def).unwrap(),
+            None => value_result.ok().and_then(NameBinding::def).unwrap(),
         };
         let path_resolution = PathResolution::new(def);
         self.def_map.insert(directive.id, path_resolution);
