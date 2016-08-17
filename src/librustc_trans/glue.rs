@@ -221,10 +221,6 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     g,
                     TransItem::DropGlue(g).to_raw_string(),
                     ccx.codegen_unit().name());
-
-            ccx.stats().n_fallback_instantiations.set(ccx.stats()
-                                                         .n_fallback_instantiations
-                                                         .get() + 1);
         }
     }
 

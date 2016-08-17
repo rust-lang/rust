@@ -96,8 +96,7 @@ pub enum DefLike {
 pub enum InlinedItem {
     Item(DefId /* def-id in source crate */, P<hir::Item>),
     TraitItem(DefId /* impl id */, P<hir::TraitItem>),
-    ImplItem(DefId /* impl id */, P<hir::ImplItem>),
-    Foreign(DefId /* extern item */, P<hir::ForeignItem>),
+    ImplItem(DefId /* impl id */, P<hir::ImplItem>)
 }
 
 /// A borrowed version of `hir::InlinedItem`.
@@ -105,8 +104,7 @@ pub enum InlinedItem {
 pub enum InlinedItemRef<'a> {
     Item(DefId, &'a hir::Item),
     TraitItem(DefId, &'a hir::TraitItem),
-    ImplItem(DefId, &'a hir::ImplItem),
-    Foreign(DefId, &'a hir::ForeignItem)
+    ImplItem(DefId, &'a hir::ImplItem)
 }
 
 /// Item definitions in the currently-compiled crate would have the CrateNum
@@ -286,7 +284,6 @@ impl InlinedItem {
     {
         match *self {
             InlinedItem::Item(_, ref i) => visitor.visit_item(&i),
-            InlinedItem::Foreign(_, ref i) => visitor.visit_foreign_item(&i),
             InlinedItem::TraitItem(_, ref ti) => visitor.visit_trait_item(ti),
             InlinedItem::ImplItem(_, ref ii) => visitor.visit_impl_item(ii),
         }
