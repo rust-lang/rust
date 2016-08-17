@@ -21,6 +21,7 @@ extern crate core;
 extern crate rlibc;
 
 pub mod int;
+pub mod float;
 
 #[cfg(target_arch = "arm")]
 pub mod arm;

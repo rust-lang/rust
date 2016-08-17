@@ -26,8 +26,8 @@ See [rust-lang/rust#35437][0].
 
 ## Progress
 
-- [ ] adddf3.c
-- [ ] addsf3.c
+- [x] adddf3.c
+- [x] addsf3.c
 - [ ] arm/adddf3vfp.S
 - [ ] arm/addsf3vfp.S
 - [ ] arm/aeabi_dcmp.S
