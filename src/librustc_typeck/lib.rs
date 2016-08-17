@@ -132,7 +132,7 @@ pub mod coherence;
 pub mod variance;
 
 pub struct TypeAndSubsts<'tcx> {
-    pub substs: Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
     pub ty: Ty<'tcx>,
 }
 

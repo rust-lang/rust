@@ -55,7 +55,7 @@ use hir::def_id::DefId;
 use hir::print as pprust;
 use middle::resolve_lifetime as rl;
 use rustc::lint;
-use rustc::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
+use rustc::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -115,11 +115,15 @@ pub trait AstConv<'gcx, 'tcx> {
     fn get_free_substs(&self) -> Option<&Substs<'tcx>>;
 
     /// What type should we use when a type is omitted?
-    fn ty_infer(&self,
-                param_and_substs: Option<ty::TypeParameterDef<'tcx>>,
-                substs: Option<&mut Substs<'tcx>>,
-                space: Option<ParamSpace>,
-                span: Span) -> Ty<'tcx>;
+    fn ty_infer(&self, span: Span) -> Ty<'tcx>;
+
+    /// Same as ty_infer, but with a known type parameter definition.
+    fn ty_infer_for_def(&self,
+                        _def: &ty::TypeParameterDef<'tcx>,
+                        _substs: &Substs<'tcx>,
+                        span: Span) -> Ty<'tcx> {
+        self.ty_infer(span)
+    }
 
     /// Projecting an associated type from a (potentially)
     /// higher-ranked trait reference is more complicated, because of
@@ -535,26 +539,28 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                 self_ty: Option<Ty<'tcx>>)
                                 -> Vec<Ty<'tcx>>
     {
-        fn default_type_parameter<'tcx>(p: &ty::TypeParameterDef<'tcx>, self_ty: Option<Ty<'tcx>>)
-                                        -> Option<ty::TypeParameterDef<'tcx>>
-        {
+        let use_default = |p: &ty::TypeParameterDef<'tcx>| {
             if let Some(ref default) = p.default {
                 if self_ty.is_none() && default.has_self_ty() {
                     // There is no suitable inference default for a type parameter
                     // that references self with no self-type provided.
-                    return None;
+                    return false;
                 }
             }
 
-            Some(p.clone())
-        }
+            true
+        };
 
         if param_mode == PathParamMode::Optional && types_provided.is_empty() {
-            ty_param_defs
-                .iter()
-                .map(|p| self.ty_infer(default_type_parameter(p, self_ty), Some(&mut substs),
-                                       Some(TypeSpace), span))
-                .collect()
+            ty_param_defs.iter().map(|def| {
+                let ty_var = if use_default(def) {
+                    self.ty_infer_for_def(def, &substs, span)
+                } else {
+                    self.ty_infer(span)
+                };
+                substs.types.push(def.space, ty_var);
+                ty_var
+            }).collect()
         } else {
             types_provided
         }
@@ -1828,7 +1834,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // values in a ExprClosure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
-                self.ty_infer(None, None, None, ast_ty.span)
+                self.ty_infer(ast_ty.span)
             }
         };
 
@@ -1845,7 +1851,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     {
         match a.ty.node {
             hir::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
-            hir::TyInfer => self.ty_infer(None, None, None, a.ty.span),
+            hir::TyInfer => self.ty_infer(a.ty.span),
             _ => self.ast_ty_to_ty(rscope, &a.ty),
         }
     }
@@ -2067,8 +2073,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let output_ty = match decl.output {
             _ if is_infer && expected_ret_ty.is_some() =>
                 expected_ret_ty.unwrap(),
-            _ if is_infer =>
-                self.ty_infer(None, None, None, decl.output.span()),
+            _ if is_infer => self.ty_infer(decl.output.span()),
             hir::Return(ref output) =>
                 self.ast_ty_to_ty(&rb, &output),
             hir::DefaultReturn(..) => bug!(),

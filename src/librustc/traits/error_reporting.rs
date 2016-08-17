@@ -31,7 +31,7 @@ use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
 use ty::fold::TypeFolder;
-use ty::subst::{self, Subst, TypeSpace};
+use ty::subst::{Subst, TypeSpace};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
@@ -167,27 +167,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         });
     }
 
-    fn impl_substs(&self,
-                   did: DefId,
-                   obligation: PredicateObligation<'tcx>)
-                   -> subst::Substs<'tcx> {
-        let tcx = self.tcx;
-
-        let ity = tcx.lookup_item_type(did);
-        let (tps, rps, _) =
-            (ity.generics.types.get_slice(TypeSpace),
-             ity.generics.regions.get_slice(TypeSpace),
-             ity.ty);
-
-        let rps = self.region_vars_for_defs(obligation.cause.span, rps);
-        let mut substs = subst::Substs::new_type(vec![], rps);
-        self.type_vars_for_defs(obligation.cause.span,
-                                TypeSpace,
-                                &mut substs,
-                                tps);
-        substs
-    }
-
     fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
@@ -242,10 +221,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.lookup_trait_def(trait_ref.def_id)
             .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
+                let ity = tcx.lookup_item_type(def_id);
+                let impl_substs = self.fresh_substs_for_generics(obligation.cause.span,
+                                                                 &ity.generics);
                 let impl_trait_ref = tcx
                     .impl_trait_ref(def_id)
                     .unwrap()
-                    .subst(tcx, &self.impl_substs(def_id, obligation.clone()));
+                    .subst(tcx, impl_substs);
 
                 let impl_self_ty = impl_trait_ref.self_ty();
 

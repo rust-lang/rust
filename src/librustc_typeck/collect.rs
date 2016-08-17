@@ -362,11 +362,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         None
     }
 
-    fn ty_infer(&self,
-                _ty_param_def: Option<ty::TypeParameterDef<'tcx>>,
-                _substs: Option<&mut Substs<'tcx>>,
-                _space: Option<ParamSpace>,
-                span: Span) -> Ty<'tcx> {
+    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         struct_span_err!(
             self.tcx().sess,
             span,

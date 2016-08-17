@@ -464,7 +464,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.declared_variance(p.def_id, def_id, TypeParam,
                                        p.space, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_ty = *substs.types.get(p.space, p.index as usize);
+            let substs_ty = substs.type_for_def(p);
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
                    variance_decl, variance_i);
             self.add_constraints_from_ty(generics, substs_ty, variance_i);
@@ -475,7 +475,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.declared_variance(p.def_id, def_id,
                                        RegionParam, p.space, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_r = *substs.regions.get(p.space, p.index as usize);
+            let substs_r = substs.region_for_def(p);
             self.add_constraints_from_region(generics, substs_r, variance_i);
         }
     }

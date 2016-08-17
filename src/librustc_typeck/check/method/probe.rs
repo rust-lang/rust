@@ -1227,28 +1227,29 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             return impl_ty;
         }
 
-        let mut placeholder;
+        let placeholder;
         let mut substs = substs;
         if
             !method.generics.types.is_empty_in(subst::FnSpace) ||
             !method.generics.regions.is_empty_in(subst::FnSpace)
         {
-            // In general, during probe we erase regions. See
-            // `impl_self_ty()` for an explanation.
-            let method_regions =
-                method.generics.regions.get_slice(subst::FnSpace)
-                .iter()
-                .map(|_| ty::ReErased)
-                .collect();
-
-            placeholder = (*substs).clone().with_method(Vec::new(), method_regions);
-
-            self.type_vars_for_defs(
-                self.span,
-                subst::FnSpace,
-                &mut placeholder,
-                method.generics.types.get_slice(subst::FnSpace));
-
+            let type_defs = method.generics.types.as_full_slice();
+            let region_defs = method.generics.regions.as_full_slice();
+            placeholder = subst::Substs::from_param_defs(region_defs, type_defs, |def| {
+                if def.space != subst::FnSpace {
+                    substs.region_for_def(def)
+                } else {
+                    // In general, during probe we erase regions. See
+                    // `impl_self_ty()` for an explanation.
+                    ty::ReErased
+                }
+            }, |def, cur_substs| {
+                if def.space != subst::FnSpace {
+                    substs.type_for_def(def)
+                } else {
+                    self.type_var_for_def(self.span, def, cur_substs)
+                }
+            });
             substs = &placeholder;
         }
 
