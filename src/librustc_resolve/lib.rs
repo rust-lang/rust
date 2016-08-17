@@ -756,7 +756,7 @@ pub struct ModuleS<'a> {
 
     no_implicit_prelude: Cell<bool>,
 
-    glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective<'a>)>>,
+    glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.

@@ -63,6 +63,7 @@ impl ImportDirectiveSubclass {
 #[derive(Debug,Clone)]
 pub struct ImportDirective<'a> {
     pub id: NodeId,
+    parent: Module<'a>,
     module_path: Vec<Name>,
     target_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
     subclass: ImportDirectiveSubclass,
@@ -223,6 +224,7 @@ impl<'a> Resolver<'a> {
                                 id: NodeId,
                                 vis: ty::Visibility) {
         let directive = self.arenas.alloc_import_directive(ImportDirective {
+            parent: self.current_module,
             module_path: module_path,
             target_module: Cell::new(None),
             subclass: subclass,
@@ -306,9 +308,9 @@ impl<'a> Resolver<'a> {
 
         // Define `new_binding` in `module`s glob importers.
         if new_binding.is_importable() && new_binding.is_pseudo_public() {
-            for &(importer, directive) in module.glob_importers.borrow_mut().iter() {
+            for directive in module.glob_importers.borrow_mut().iter() {
                 let imported_binding = self.import(new_binding, directive);
-                let _ = self.try_define(importer, name, ns, imported_binding);
+                let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
         }
 
@@ -317,8 +319,6 @@ impl<'a> Resolver<'a> {
 }
 
 struct ImportResolvingError<'a> {
-    /// Module where the error happened
-    source_module: Module<'a>,
     import_directive: &'a ImportDirective<'a>,
     span: Span,
     help: String,
@@ -402,9 +402,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
     // Define a "dummy" resolution containing a Def::Err as a placeholder for a
     // failed resolution
-    fn import_dummy_binding(&mut self,
-                            source_module: Module<'b>,
-                            directive: &'b ImportDirective<'b>) {
+    fn import_dummy_binding(&mut self, directive: &'b ImportDirective<'b>) {
         if let SingleImport { target, .. } = directive.subclass {
             let dummy_binding = self.arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err),
@@ -413,8 +411,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             });
             let dummy_binding = self.import(dummy_binding, directive);
 
-            let _ = self.try_define(source_module, target, ValueNS, dummy_binding.clone());
-            let _ = self.try_define(source_module, target, TypeNS, dummy_binding);
+            let _ = self.try_define(directive.parent, target, ValueNS, dummy_binding.clone());
+            let _ = self.try_define(directive.parent, target, TypeNS, dummy_binding);
         }
     }
 
@@ -423,7 +421,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     fn import_resolving_error(&mut self, e: ImportResolvingError<'b>) {
         // If the error is a single failed import then create a "fake" import
         // resolution for it so that later resolve stages won't complain.
-        self.import_dummy_binding(e.source_module, e.import_directive);
+        self.import_dummy_binding(e.import_directive);
         let path = import_path_to_string(&e.import_directive.module_path,
                                          &e.import_directive.subclass);
         resolve_error(self.resolver,
@@ -445,7 +443,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         None => (import_directive.span, String::new()),
                     };
                     errors.push(ImportResolvingError {
-                        source_module: self.current_module,
                         import_directive: import_directive,
                         span: span,
                         help: help,
@@ -511,7 +508,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         .emit();
                     // Do not import this illegal binding. Import a dummy binding and pretend
                     // everything is fine
-                    self.import_dummy_binding(module, directive);
+                    self.import_dummy_binding(directive);
                     return Success(());
                 }
                 Success(binding) if !self.is_accessible(binding.vis) => {}
@@ -635,7 +632,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         // Add to target_module's glob_importers
-        target_module.glob_importers.borrow_mut().push((module, directive));
+        target_module.glob_importers.borrow_mut().push(directive);
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
