@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ty::subst;
 use infer::type_variable;
 use ty::{self, BoundRegion, Region, Ty, TyCtxt};
 
@@ -243,7 +242,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyFnDef(..) => format!("fn item"),
             ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyTrait(ref inner) => {
-                format!("trait {}", tcx.item_path_str(inner.principal_def_id()))
+                format!("trait {}", tcx.item_path_str(inner.principal.def_id()))
             }
             ty::TyStruct(def, _) => {
                 format!("struct `{}`", tcx.item_path_str(def.did))
@@ -258,7 +257,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyInfer(ty::FreshFloatTy(_)) => "skolemized floating-point type".to_string(),
             ty::TyProjection(_) => "associated type".to_string(),
             ty::TyParam(ref p) => {
-                if p.space == subst::SelfSpace {
+                if p.is_self() {
                     "Self".to_string()
                 } else {
                     "type parameter".to_string()

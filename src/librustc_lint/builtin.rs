@@ -465,16 +465,14 @@ impl LateLintPass for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
-                (def, cx.tcx.mk_struct(def,
-                                       cx.tcx.mk_substs(Substs::empty())))
+                (def, cx.tcx.mk_struct(def, Substs::empty(cx.tcx)))
             }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
-                (def, cx.tcx.mk_enum(def,
-                                     cx.tcx.mk_substs(Substs::empty())))
+                (def, cx.tcx.mk_enum(def, Substs::empty(cx.tcx)))
             }
             _ => return,
         };
@@ -898,7 +896,7 @@ impl LateLintPass for UnconditionalRecursion {
                 // A trait method, from any number of possible sources.
                 // Attempt to select a concrete impl before checking.
                 ty::TraitContainer(trait_def_id) => {
-                    let trait_ref = callee_substs.to_trait_ref(tcx, trait_def_id);
+                    let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, callee_substs);
                     let trait_ref = ty::Binder(trait_ref);
                     let span = tcx.map.span(expr_id);
                     let obligation =
@@ -918,8 +916,7 @@ impl LateLintPass for UnconditionalRecursion {
                             // If `T` is `Self`, then this call is inside
                             // a default method definition.
                             Ok(Some(traits::VtableParam(_))) => {
-                                let self_ty = callee_substs.self_ty();
-                                let on_self = self_ty.map_or(false, |t| t.is_self());
+                                let on_self = trait_ref.self_ty().is_self();
                                 // We can only be recurring in a default
                                 // method if we're being called literally
                                 // on the `Self` type.

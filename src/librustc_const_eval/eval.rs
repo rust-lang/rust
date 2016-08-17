@@ -22,8 +22,9 @@ use rustc::traits;
 use rustc::hir::def::{Def, PathResolution};
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::def_to_path;
-use rustc::ty::{self, Ty, TyCtxt, subst};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::util::IntTypeExt;
+use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
@@ -93,7 +94,7 @@ fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// This generally happens in late/trans const evaluation.
 pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
-                                        substs: Option<&'tcx subst::Substs<'tcx>>)
+                                        substs: Option<&'tcx Substs<'tcx>>)
                                         -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)> {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         match tcx.map.find(node_id) {
@@ -110,7 +111,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         // If we have a trait item and the substitutions for it,
                         // `resolve_trait_associated_const` will select an impl
                         // or the default.
-                        let trait_id = tcx.trait_of_item(def_id).unwrap();
+                        let trait_id = tcx.map.get_parent(node_id);
+                        let trait_id = tcx.map.local_def_id(trait_id);
                         resolve_trait_associated_const(tcx, ti, trait_id, substs)
                     } else {
                         // Technically, without knowing anything about the
@@ -1045,16 +1047,14 @@ fn infer<'a, 'tcx>(i: ConstInt,
 fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 ti: &'tcx hir::TraitItem,
                                                 trait_id: DefId,
-                                                rcvr_substs: &'tcx subst::Substs<'tcx>)
+                                                rcvr_substs: &'tcx Substs<'tcx>)
                                                 -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>
 {
-    let trait_ref = ty::Binder(
-        rcvr_substs.clone().erase_regions().to_trait_ref(tcx, trait_id)
-    );
+    let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, rcvr_substs));
     debug!("resolve_trait_associated_const: trait_ref={:?}",
            trait_ref);
 
-    tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
+    tcx.populate_implementations_for_trait_if_necessary(trait_id);
     tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
         let mut selcx = traits::SelectionContext::new(&infcx);
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),

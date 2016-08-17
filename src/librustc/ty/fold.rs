@@ -40,7 +40,7 @@
 //! and does not need to visit anything else.
 
 use middle::region;
-use ty::subst;
+use ty::subst::Substs;
 use ty::adjustment;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
@@ -140,17 +140,13 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         t.super_fold_with(self)
     }
 
-    fn fold_trait_ref(&mut self, t: &ty::TraitRef<'tcx>) -> ty::TraitRef<'tcx> {
-        t.super_fold_with(self)
-    }
-
     fn fold_impl_header(&mut self, imp: &ty::ImplHeader<'tcx>) -> ty::ImplHeader<'tcx> {
         imp.super_fold_with(self)
     }
 
     fn fold_substs(&mut self,
-                   substs: &'tcx subst::Substs<'tcx>)
-                   -> &'tcx subst::Substs<'tcx> {
+                   substs: &'tcx Substs<'tcx>)
+                   -> &'tcx Substs<'tcx> {
         substs.super_fold_with(self)
     }
 
@@ -175,11 +171,6 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         r.super_fold_with(self)
-    }
-
-    fn fold_existential_bounds(&mut self, s: &ty::ExistentialBounds<'tcx>)
-                               -> ty::ExistentialBounds<'tcx> {
-        s.super_fold_with(self)
     }
 
     fn fold_autoref(&mut self, ar: &adjustment::AutoRef<'tcx>)

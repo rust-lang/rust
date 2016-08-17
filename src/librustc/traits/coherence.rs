@@ -14,7 +14,6 @@ use super::{SelectionContext, Obligation, ObligationCause};
 
 use middle::cstore::LOCAL_CRATE;
 use hir::def_id::DefId;
-use ty::subst::TypeSpace;
 use ty::{self, Ty, TyCtxt};
 use infer::{InferCtxt, TypeOrigin};
 use syntax_pos::DUMMY_SP;
@@ -160,12 +159,9 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
 
     // First, create an ordered iterator over all the type parameters to the trait, with the self
     // type appearing first.
-    let input_tys = Some(trait_ref.self_ty());
-    let input_tys = input_tys.iter().chain(trait_ref.substs.types.get_slice(TypeSpace));
-
     // Find the first input type that either references a type parameter OR
     // some local type.
-    for input_ty in input_tys {
+    for input_ty in trait_ref.input_types() {
         if ty_is_local(tcx, input_ty, infer_is_local) {
             debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
 
@@ -231,7 +227,7 @@ fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
         ty::TyEnum(def, _) | ty::TyStruct(def, _) =>
             def.is_fundamental(),
         ty::TyTrait(ref data) =>
-            tcx.has_attr(data.principal_def_id(), "fundamental"),
+            tcx.has_attr(data.principal.def_id(), "fundamental"),
         _ =>
             false
     }
@@ -275,7 +271,7 @@ fn ty_is_local_constructor(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal)-> 
         }
 
         ty::TyTrait(ref tt) => {
-            tt.principal_def_id().is_local()
+            tt.principal.def_id().is_local()
         }
 
         ty::TyError => {

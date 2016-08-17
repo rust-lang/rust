@@ -39,7 +39,7 @@ use rustc::cfg;
 use rustc::hir::def_id::DefId;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::hir::pat_util::simple_name;
-use rustc::ty::subst::{self, Substs};
+use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::adjustment::CustomCoerceUnsized;
@@ -218,7 +218,7 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Allocate space:
     let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
-    let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().mk_substs(Substs::empty()))
+    let r = Callee::def(bcx.ccx(), def_id, Substs::empty(bcx.tcx()))
         .call(bcx, debug_loc, ArgVals(&[size, align]), None);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
@@ -562,14 +562,9 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::TyTrait(box ty::TraitTy { ref principal, .. })) => {
-            // Note that we preserve binding levels here:
-            let substs = principal.0.substs.with_self_ty(source).erase_regions();
-            let substs = ccx.tcx().mk_substs(substs);
-            let trait_ref = ty::Binder(ty::TraitRef {
-                def_id: principal.def_id(),
-                substs: substs,
-            });
+        (_, &ty::TyTrait(ref data)) => {
+            let trait_ref = data.principal.with_self_ty(ccx.tcx(), source);
+            let trait_ref = ccx.tcx().erase_regions(&trait_ref);
             consts::ptrcast(meth::get_vtable(ccx, trait_ref),
                             Type::vtable_ptr(ccx))
         }
@@ -675,14 +670,9 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
                                              source_ty: Ty<'tcx>,
                                              target_ty: Ty<'tcx>)
                                              -> CustomCoerceUnsized {
-    let trait_substs = Substs::new(subst::VecPerParamSpace::new(vec![target_ty],
-                                                                vec![source_ty],
-                                                                Vec::new()),
-                                   subst::VecPerParamSpace::empty());
-
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
-        substs: scx.tcx().mk_substs(trait_substs)
+        substs: Substs::new_trait(scx.tcx(), vec![target_ty], vec![], source_ty)
     });
 
     match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
@@ -1418,7 +1408,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 common::validate_substs(instance.substs);
                 (instance.substs, Some(instance.def), Some(inlined_id))
             }
-            None => (ccx.tcx().mk_substs(Substs::empty()), None, None)
+            None => (Substs::empty(ccx.tcx()), None, None)
         };
 
         let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
@@ -2183,7 +2173,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                     Ok(id) => id,
                     Err(s) => ccx.sess().fatal(&s)
                 };
-                let empty_substs = ccx.tcx().mk_substs(Substs::empty());
+                let empty_substs = Substs::empty(ccx.tcx());
                 let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx).val;
                 let args = {
                     let opaque_rust_main =
@@ -2480,8 +2470,8 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
             hir_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.map.local_def_id(id);
-                let scheme = tcx.lookup_item_type(def_id);
-                scheme.generics.types.is_empty()
+                let generics = tcx.lookup_generics(def_id);
+                generics.parent_types == 0 && generics.types.is_empty()
             }
 
             _ => false

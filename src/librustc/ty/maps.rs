@@ -10,7 +10,7 @@
 
 use dep_graph::{DepNode, DepTrackingMapConfig};
 use hir::def_id::DefId;
-use ty;
+use ty::{self, Ty};
 use std::marker::PhantomData;
 use std::rc::Rc;
 use syntax::{attr, ast};
@@ -30,7 +30,8 @@ macro_rules! dep_map_ty {
 }
 
 dep_map_ty! { ImplOrTraitItems: ImplOrTraitItems(DefId) -> ty::ImplOrTraitItem<'tcx> }
-dep_map_ty! { Tcache: ItemSignature(DefId) -> ty::TypeScheme<'tcx> }
+dep_map_ty! { Tcache: ItemSignature(DefId) -> Ty<'tcx> }
+dep_map_ty! { Generics: ItemSignature(DefId) -> &'tcx ty::Generics<'tcx> }
 dep_map_ty! { Predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
 dep_map_ty! { SuperPredicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
 dep_map_ty! { TraitItemDefIds: TraitItemDefIds(DefId) -> Rc<Vec<ty::ImplOrTraitItemId>> }

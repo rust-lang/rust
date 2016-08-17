@@ -31,7 +31,7 @@ use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
 use ty::fold::TypeFolder;
-use ty::subst::{self, Subst, TypeSpace};
+use ty::subst::Subst;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
@@ -167,29 +167,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         });
     }
 
-    fn impl_substs(&self,
-                   did: DefId,
-                   obligation: PredicateObligation<'tcx>)
-                   -> subst::Substs<'tcx> {
-        let tcx = self.tcx;
-
-        let ity = tcx.lookup_item_type(did);
-        let (tps, rps, _) =
-            (ity.generics.types.get_slice(TypeSpace),
-             ity.generics.regions.get_slice(TypeSpace),
-             ity.ty);
-
-        let rps = self.region_vars_for_defs(obligation.cause.span, rps);
-        let mut substs = subst::Substs::new(
-            subst::VecPerParamSpace::empty(),
-            subst::VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
-        self.type_vars_for_defs(obligation.cause.span,
-                                TypeSpace,
-                                &mut substs,
-                                tps);
-        substs
-    }
-
     fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
@@ -244,18 +221,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.lookup_trait_def(trait_ref.def_id)
             .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
+                let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
                 let impl_trait_ref = tcx
                     .impl_trait_ref(def_id)
                     .unwrap()
-                    .subst(tcx, &self.impl_substs(def_id, obligation.clone()));
+                    .subst(tcx, impl_substs);
 
                 let impl_self_ty = impl_trait_ref.self_ty();
 
                 if let Ok(..) = self.can_equate(&trait_self_ty, &impl_self_ty) {
                     self_match_impls.push(def_id);
 
-                    if trait_ref.substs.types.get_slice(TypeSpace).iter()
-                        .zip(impl_trait_ref.substs.types.get_slice(TypeSpace))
+                    if trait_ref.substs.types[1..].iter()
+                        .zip(&impl_trait_ref.substs.types[1..])
                         .all(|(u,v)| self.fuzzy_match_tys(u, v))
                     {
                         fuzzy_match_impls.push(def_id);
@@ -293,14 +271,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let def = self.tcx.lookup_trait_def(trait_ref.def_id);
                 let trait_str = def.trait_ref.to_string();
                 if let Some(ref istring) = item.value_str() {
-                    let mut generic_map = def.generics.types.iter_enumerated()
-                                             .map(|(param, i, gen)| {
-                                                   (gen.name.as_str().to_string(),
-                                                    trait_ref.substs.types.get(param, i)
-                                                             .to_string())
-                                                  }).collect::<FnvHashMap<String, String>>();
-                    generic_map.insert("Self".to_string(),
-                                       trait_ref.self_ty().to_string());
+                    let generic_map = def.generics.types.iter().map(|param| {
+                        (param.name.as_str().to_string(),
+                         trait_ref.substs.type_for_def(param).to_string())
+                    }).collect::<FnvHashMap<String, String>>();
                     let parser = Parser::new(&istring);
                     let mut errored = false;
                     let err: String = parser.filter_map(|p| {

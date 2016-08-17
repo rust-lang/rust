@@ -824,11 +824,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             }
 
             /*From:*/ (_,
-            /*To:  */  &ty::TyTrait(box ty::TraitTy { ref bounds, .. })) => {
+            /*To:  */  &ty::TyTrait(ref obj)) => {
                 // When T is existentially quantified as a trait
                 // `Foo+'to`, it must outlive the region bound `'to`.
                 self.type_must_outlive(infer::RelateObjectBound(cast_expr.span),
-                                       from_ty, bounds.region_bound);
+                                       from_ty, obj.region_bound);
             }
 
             /*From:*/ (&ty::TyBox(from_referent_ty),
@@ -1571,10 +1571,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
-        let needs_infer = {
-            projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) ||
-                projection_ty.trait_ref.substs.regions.iter().any(|r| r.needs_infer())
-        };
+        let needs_infer = projection_ty.trait_ref.needs_infer();
         if env_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
@@ -1757,6 +1754,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         //
         // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
         let trait_predicates = self.tcx.lookup_predicates(projection_ty.trait_ref.def_id);
+        assert_eq!(trait_predicates.parent, None);
         let predicates = trait_predicates.predicates.as_slice().to_vec();
         traits::elaborate_predicates(self.tcx, predicates)
             .filter_map(|predicate| {

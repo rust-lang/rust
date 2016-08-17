@@ -261,7 +261,6 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         let cause = self.cause(traits::MiscObligation);
         self.out.extend(
             trait_ref.substs.types
-                            .as_slice()
                             .iter()
                             .filter(|ty| !ty.has_escaping_regions())
                             .map(|ty| traits::Obligation::new(cause.clone(),
@@ -406,13 +405,13 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // FIXME(#33243): remove RFC1592
                     self.out.push(traits::Obligation::new(
                         cause.clone(),
-                        ty::Predicate::ObjectSafe(data.principal_def_id())
+                        ty::Predicate::ObjectSafe(data.principal.def_id())
                     ));
                     let component_traits =
-                        data.bounds.builtin_bounds.iter().flat_map(|bound| {
+                        data.builtin_bounds.iter().flat_map(|bound| {
                             tcx.lang_items.from_builtin_kind(bound).ok()
                         });
-//                        .chain(Some(data.principal_def_id()));
+//                        .chain(Some(data.principal.def_id()));
                     self.out.extend(
                         component_traits.map(|did| { traits::Obligation::new(
                             cause.clone(),
@@ -476,7 +475,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                   .collect()
     }
 
-    fn from_object_ty(&mut self, ty: Ty<'tcx>, data: &ty::TraitTy<'tcx>) {
+    fn from_object_ty(&mut self, ty: Ty<'tcx>, data: &ty::TraitObject<'tcx>) {
         // Imagine a type like this:
         //
         //     trait Foo { }
@@ -512,10 +511,10 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         if !data.has_escaping_regions() {
             let implicit_bounds =
                 object_region_bounds(self.infcx.tcx,
-                                     &data.principal,
-                                     data.bounds.builtin_bounds);
+                                     data.principal,
+                                     data.builtin_bounds);
 
-            let explicit_bound = data.bounds.region_bound;
+            let explicit_bound = data.region_bound;
 
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
@@ -534,7 +533,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 /// `ty::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    principal: &ty::PolyTraitRef<'tcx>,
+    principal: ty::PolyExistentialTraitRef<'tcx>,
     others: ty::BuiltinBounds)
     -> Vec<ty::Region>
 {
@@ -543,13 +542,8 @@ pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     // a skolemized type.
     let open_ty = tcx.mk_infer(ty::FreshTy(0));
 
-    // Note that we preserve the overall binding levels here.
-    assert!(!open_ty.has_escaping_regions());
-    let substs = tcx.mk_substs(principal.0.substs.with_self_ty(open_ty));
-    let trait_refs = vec!(ty::Binder(ty::TraitRef::new(principal.0.def_id, substs)));
-
     let mut predicates = others.to_predicates(tcx, open_ty);
-    predicates.extend(trait_refs.iter().map(|t| t.to_predicate()));
+    predicates.push(principal.with_self_ty(tcx, open_ty).to_predicate());
 
     tcx.required_region_bounds(open_ty, predicates)
 }

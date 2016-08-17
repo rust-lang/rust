@@ -27,7 +27,7 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util;
-use rustc::ty::subst;
+use rustc::ty::subst::Substs;
 use rustc::hir::map as hir_map;
 use rustc::hir::{self, PatKind};
 use {type_of, adt, machine, monomorphize};
@@ -315,7 +315,7 @@ impl<'tcx> TypeMap<'tcx> {
         fn from_def_id_and_substs<'a, 'tcx>(type_map: &mut TypeMap<'tcx>,
                                             cx: &CrateContext<'a, 'tcx>,
                                             def_id: DefId,
-                                            substs: &subst::Substs<'tcx>,
+                                            substs: &Substs<'tcx>,
                                             output: &mut String) {
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
@@ -346,7 +346,7 @@ impl<'tcx> TypeMap<'tcx> {
             // Add the def-index as the second part
             output.push_str(&format!("{:x}", def_id.index.as_usize()));
 
-            let tps = substs.types.get_slice(subst::TypeSpace);
+            let tps = &substs.types;
             if !tps.is_empty() {
                 output.push('<');
 
@@ -627,7 +627,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // But it does not describe the trait's methods.
 
     let def_id = match trait_type.sty {
-        ty::TyTrait(ref data) => data.principal_def_id(),
+        ty::TyTrait(ref data) => data.principal.def_id(),
         _ => {
             bug!("debuginfo: Unexpected trait-object type in \
                   trait_pointer_metadata(): {:?}",
@@ -1086,7 +1086,7 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
     variant: ty::VariantDef<'tcx>,
-    substs: &'tcx subst::Substs<'tcx>,
+    substs: &'tcx Substs<'tcx>,
     is_simd: bool,
     span: Span,
 }

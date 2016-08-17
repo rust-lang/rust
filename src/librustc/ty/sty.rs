@@ -13,7 +13,7 @@
 use middle::cstore;
 use hir::def_id::DefId;
 use middle::region;
-use ty::subst::{self, Substs};
+use ty::subst::Substs;
 use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TyS, TypeFoldable};
 use util::common::ErrorReported;
 
@@ -152,7 +152,7 @@ pub enum TypeVariants<'tcx> {
     TyFnPtr(&'tcx BareFnTy<'tcx>),
 
     /// A trait, defined with `trait`.
-    TyTrait(Box<TraitTy<'tcx>>),
+    TyTrait(Box<TraitObject<'tcx>>),
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
@@ -291,57 +291,11 @@ impl<'tcx> Decodable for ClosureSubsts<'tcx> {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct TraitTy<'tcx> {
-    pub principal: ty::PolyTraitRef<'tcx>,
-    pub bounds: ExistentialBounds<'tcx>,
-}
-
-impl<'a, 'gcx, 'tcx> TraitTy<'tcx> {
-    pub fn principal_def_id(&self) -> DefId {
-        self.principal.0.def_id
-    }
-
-    /// Object types don't have a self-type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self-type. A common choice is `mk_err()`
-    /// or some skolemized type.
-    pub fn principal_trait_ref_with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            self_ty: Ty<'tcx>)
-                                            -> ty::PolyTraitRef<'tcx>
-    {
-        // otherwise the escaping regions would be captured by the binder
-        assert!(!self_ty.has_escaping_regions());
-
-        ty::Binder(TraitRef {
-            def_id: self.principal.0.def_id,
-            substs: tcx.mk_substs(self.principal.0.substs.with_self_ty(self_ty)),
-        })
-    }
-
-    pub fn projection_bounds_with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                          self_ty: Ty<'tcx>)
-                                          -> Vec<ty::PolyProjectionPredicate<'tcx>>
-    {
-        // otherwise the escaping regions would be captured by the binders
-        assert!(!self_ty.has_escaping_regions());
-
-        self.bounds.projection_bounds.iter()
-            .map(|in_poly_projection_predicate| {
-                let in_projection_ty = &in_poly_projection_predicate.0.projection_ty;
-                let substs = tcx.mk_substs(in_projection_ty.trait_ref.substs.with_self_ty(self_ty));
-                let trait_ref = ty::TraitRef::new(in_projection_ty.trait_ref.def_id,
-                                              substs);
-                let projection_ty = ty::ProjectionTy {
-                    trait_ref: trait_ref,
-                    item_name: in_projection_ty.item_name
-                };
-                ty::Binder(ty::ProjectionPredicate {
-                    projection_ty: projection_ty,
-                    ty: in_poly_projection_predicate.0.ty
-                })
-            })
-            .collect()
-    }
+pub struct TraitObject<'tcx> {
+    pub principal: PolyExistentialTraitRef<'tcx>,
+    pub region_bound: ty::Region,
+    pub builtin_bounds: BuiltinBounds,
+    pub projection_bounds: Vec<PolyExistentialProjection<'tcx>>,
 }
 
 /// A complete reference to a trait. These take numerous guises in syntax,
@@ -350,8 +304,8 @@ impl<'a, 'gcx, 'tcx> TraitTy<'tcx> {
 ///     T : Foo<U>
 ///
 /// This would be represented by a trait-reference where the def-id is the
-/// def-id for the trait `Foo` and the substs defines `T` as parameter 0 in the
-/// `SelfSpace` and `U` as parameter 0 in the `TypeSpace`.
+/// def-id for the trait `Foo` and the substs define `T` as parameter 0,
+/// and `U` as parameter 1.
 ///
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the substitutions.
@@ -389,6 +343,42 @@ impl<'tcx> PolyTraitRef<'tcx> {
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
         // Note that we preserve binding levels
         Binder(ty::TraitPredicate { trait_ref: self.0.clone() })
+    }
+}
+
+/// An existential reference to a trait, where `Self` is erased.
+/// For example, the trait object `Trait<'a, 'b, X, Y>` is:
+///
+///     exists T. T: Trait<'a, 'b, X, Y>
+///
+/// The substitutions don't include the erased `Self`, only trait
+/// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ExistentialTraitRef<'tcx> {
+    pub def_id: DefId,
+    pub substs: &'tcx Substs<'tcx>,
+}
+
+impl<'tcx> ExistentialTraitRef<'tcx> {
+    pub fn input_types(&self) -> &[Ty<'tcx>] {
+        // Select only the "input types" from a trait-reference. For
+        // now this is all the types that appear in the
+        // trait-reference, but it should eventually exclude
+        // associated types.
+        &self.substs.types
+    }
+}
+
+pub type PolyExistentialTraitRef<'tcx> = Binder<ExistentialTraitRef<'tcx>>;
+
+impl<'tcx> PolyExistentialTraitRef<'tcx> {
+    pub fn def_id(&self) -> DefId {
+        self.0.def_id
+    }
+
+    pub fn input_types(&self) -> &[Ty<'tcx>] {
+        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
+        self.0.input_types()
     }
 }
 
@@ -508,33 +498,34 @@ impl<'tcx> PolyFnSig<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ParamTy {
-    pub space: subst::ParamSpace,
     pub idx: u32,
     pub name: Name,
 }
 
 impl<'a, 'gcx, 'tcx> ParamTy {
-    pub fn new(space: subst::ParamSpace,
-               index: u32,
-               name: Name)
-               -> ParamTy {
-        ParamTy { space: space, idx: index, name: name }
+    pub fn new(index: u32, name: Name) -> ParamTy {
+        ParamTy { idx: index, name: name }
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(subst::SelfSpace, 0, keywords::SelfType.name())
+        ParamTy::new(0, keywords::SelfType.name())
     }
 
     pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {
-        ParamTy::new(def.space, def.index, def.name)
+        ParamTy::new(def.index, def.name)
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        tcx.mk_param(self.space, self.idx, self.name)
+        tcx.mk_param(self.idx, self.name)
     }
 
     pub fn is_self(&self) -> bool {
-        self.space == subst::SelfSpace && self.idx == 0
+        if self.name == keywords::SelfType.name() {
+            assert_eq!(self.idx, 0);
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -686,7 +677,6 @@ pub enum Region {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
-    pub space: subst::ParamSpace,
     pub index: u32,
     pub name: Name,
 }
@@ -730,27 +720,40 @@ pub enum InferTy {
     FreshFloatTy(u32)
 }
 
-/// Bounds suitable for an existentially quantified type parameter
-/// such as those that appear in object types or closure types.
-#[derive(PartialEq, Eq, Hash, Clone)]
-pub struct ExistentialBounds<'tcx> {
-    pub region_bound: ty::Region,
-    pub builtin_bounds: BuiltinBounds,
-    pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
+/// A `ProjectionPredicate` for an `ExistentialTraitRef`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct ExistentialProjection<'tcx> {
+    pub trait_ref: ExistentialTraitRef<'tcx>,
+    pub item_name: Name,
+    pub ty: Ty<'tcx>
 }
 
-impl<'tcx> ExistentialBounds<'tcx> {
-    pub fn new(region_bound: ty::Region,
-               builtin_bounds: BuiltinBounds,
-               projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>)
-               -> Self {
-        let mut projection_bounds = projection_bounds;
-        projection_bounds.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
-        ExistentialBounds {
-            region_bound: region_bound,
-            builtin_bounds: builtin_bounds,
-            projection_bounds: projection_bounds
-        }
+pub type PolyExistentialProjection<'tcx> = Binder<ExistentialProjection<'tcx>>;
+
+impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
+    pub fn item_name(&self) -> Name {
+        self.0.item_name // safe to skip the binder to access a name
+    }
+
+    pub fn sort_key(&self) -> (DefId, Name) {
+        (self.0.trait_ref.def_id, self.0.item_name)
+    }
+
+    pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                        self_ty: Ty<'tcx>)
+                        -> ty::PolyProjectionPredicate<'tcx>
+    {
+        // otherwise the escaping regions would be captured by the binders
+        assert!(!self_ty.has_escaping_regions());
+
+        let trait_ref = self.map_bound(|proj| proj.trait_ref);
+        self.map_bound(|proj| ty::ProjectionPredicate {
+            projection_ty: ty::ProjectionTy {
+                trait_ref: trait_ref.with_self_ty(tcx, self_ty).0,
+                item_name: proj.item_name
+            },
+            ty: proj.ty
+        })
     }
 }
 
@@ -942,16 +945,16 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_bool(&self) -> bool { self.sty == TyBool }
 
-    pub fn is_param(&self, space: subst::ParamSpace, index: u32) -> bool {
+    pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
-            ty::TyParam(ref data) => data.space == space && data.idx == index,
+            ty::TyParam(ref data) => data.idx == index,
             _ => false,
         }
     }
 
     pub fn is_self(&self) -> bool {
         match self.sty {
-            TyParam(ref p) => p.space == subst::SelfSpace,
+            TyParam(ref p) => p.is_self(),
             _ => false
         }
     }
@@ -1185,7 +1188,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn ty_to_def_id(&self) -> Option<DefId> {
         match self.sty {
-            TyTrait(ref tt) => Some(tt.principal_def_id()),
+            TyTrait(ref tt) => Some(tt.principal.def_id()),
             TyStruct(def, _) |
             TyEnum(def, _) => Some(def.did),
             TyClosure(id, _) => Some(id),
@@ -1209,21 +1212,20 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 vec![*region]
             }
             TyTrait(ref obj) => {
-                let mut v = vec![obj.bounds.region_bound];
-                v.extend_from_slice(obj.principal.skip_binder()
-                                       .substs.regions.as_slice());
+                let mut v = vec![obj.region_bound];
+                v.extend_from_slice(&obj.principal.skip_binder().substs.regions);
                 v
             }
             TyEnum(_, substs) |
             TyStruct(_, substs) |
             TyAnon(_, substs) => {
-                substs.regions.as_slice().to_vec()
+                substs.regions.to_vec()
             }
             TyClosure(_, ref substs) => {
-                substs.func_substs.regions.as_slice().to_vec()
+                substs.func_substs.regions.to_vec()
             }
             TyProjection(ref data) => {
-                data.trait_ref.substs.regions.as_slice().to_vec()
+                data.trait_ref.substs.regions.to_vec()
             }
             TyFnDef(..) |
             TyFnPtr(_) |

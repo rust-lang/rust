@@ -16,8 +16,7 @@
 use dep_graph::DepTrackingMapConfig;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use rustc::ty::subst;
-use rustc::ty::subst::ParamSpace;
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::ItemVariances;
 use rustc::hir::map as hir_map;
@@ -145,7 +144,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let tcx = self.terms_cx.tcx;
         assert!(is_lifetime(&tcx.map, param_id));
         match tcx.named_region_map.defs.get(&param_id) {
-            Some(&rl::DefEarlyBoundRegion(_, _, lifetime_decl_id))
+            Some(&rl::DefEarlyBoundRegion(_, lifetime_decl_id))
                 => lifetime_decl_id,
             Some(_) => bug!("should not encounter non early-bound cases"),
 
@@ -211,7 +210,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                          param_def_id: DefId,
                          item_def_id: DefId,
                          kind: ParamKind,
-                         space: ParamSpace,
                          index: usize)
                          -> VarianceTermPtr<'a> {
         assert_eq!(param_def_id.krate, item_def_id.krate);
@@ -227,8 +225,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             // variance already inferred, just look it up.
             let variances = self.tcx().item_variances(item_def_id);
             let variance = match kind {
-                TypeParam => *variances.types.get(space, index),
-                RegionParam => *variances.regions.get(space, index),
+                TypeParam => variances.types[index],
+                RegionParam => variances.regions[index],
             };
             self.constant_term(variance)
         }
@@ -302,8 +300,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         self.add_constraints_from_substs(
             generics,
             trait_ref.def_id,
-            trait_def.generics.types.as_slice(),
-            trait_def.generics.regions.as_slice(),
+            &trait_def.generics.types,
+            &trait_def.generics.regions,
             trait_ref.substs,
             variance);
     }
@@ -360,18 +358,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // README.md for a discussion on dep-graph management.
                 self.tcx().dep_graph.read(ItemVariances::to_dep_node(&def.did));
 
-                // All type parameters on enums and structs should be
-                // in the TypeSpace.
-                assert!(item_type.generics.types.is_empty_in(subst::SelfSpace));
-                assert!(item_type.generics.types.is_empty_in(subst::FnSpace));
-                assert!(item_type.generics.regions.is_empty_in(subst::SelfSpace));
-                assert!(item_type.generics.regions.is_empty_in(subst::FnSpace));
-
                 self.add_constraints_from_substs(
                     generics,
                     def.did,
-                    item_type.generics.types.get_slice(subst::TypeSpace),
-                    item_type.generics.regions.get_slice(subst::TypeSpace),
+                    &item_type.generics.types,
+                    &item_type.generics.regions,
                     substs,
                     variance);
             }
@@ -388,33 +379,30 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_substs(
                     generics,
                     trait_ref.def_id,
-                    trait_def.generics.types.as_slice(),
-                    trait_def.generics.regions.as_slice(),
+                    &trait_def.generics.types,
+                    &trait_def.generics.regions,
                     trait_ref.substs,
                     variance);
             }
 
             ty::TyTrait(ref data) => {
-                let poly_trait_ref =
-                    data.principal_trait_ref_with_self_ty(self.tcx(),
-                                                          self.tcx().types.err);
-
                 // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
                 let contra = self.contravariant(variance);
-                self.add_constraints_from_region(generics, data.bounds.region_bound, contra);
+                self.add_constraints_from_region(generics, data.region_bound, contra);
 
-                // Ignore the SelfSpace, it is erased.
+                let poly_trait_ref =
+                    data.principal.with_self_ty(self.tcx(), self.tcx().types.err);
                 self.add_constraints_from_trait_ref(generics, poly_trait_ref.0, variance);
 
-                let projections = data.projection_bounds_with_self_ty(self.tcx(),
-                                                                      self.tcx().types.err);
-                for projection in &projections {
+                for projection in &data.projection_bounds {
                     self.add_constraints_from_ty(generics, projection.0.ty, self.invariant);
                 }
             }
 
             ty::TyParam(ref data) => {
-                let def_id = generics.types.get(data.space, data.idx as usize).def_id;
+                assert_eq!(generics.parent, None);
+                assert!((data.idx as usize) < generics.types.len());
+                let def_id = generics.types[data.idx as usize].def_id;
                 let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
                 match self.terms_cx.inferred_map.get(&node_id) {
                     Some(&index) => {
@@ -452,7 +440,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    def_id: DefId,
                                    type_param_defs: &[ty::TypeParameterDef<'tcx>],
                                    region_param_defs: &[ty::RegionParameterDef],
-                                   substs: &subst::Substs<'tcx>,
+                                   substs: &Substs<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?}, substs={:?}, variance={:?})",
                def_id,
@@ -461,10 +449,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         for p in type_param_defs {
             let variance_decl =
-                self.declared_variance(p.def_id, def_id, TypeParam,
-                                       p.space, p.index as usize);
+                self.declared_variance(p.def_id, def_id, TypeParam, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_ty = *substs.types.get(p.space, p.index as usize);
+            let substs_ty = substs.type_for_def(p);
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
                    variance_decl, variance_i);
             self.add_constraints_from_ty(generics, substs_ty, variance_i);
@@ -472,10 +459,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         for p in region_param_defs {
             let variance_decl =
-                self.declared_variance(p.def_id, def_id,
-                                       RegionParam, p.space, p.index as usize);
+                self.declared_variance(p.def_id, def_id, RegionParam, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_r = *substs.regions.get(p.space, p.index as usize);
+            let substs_r = substs.region_for_def(p);
             self.add_constraints_from_region(generics, substs_r, variance_i);
         }
     }
@@ -501,8 +487,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(ref data) => {
-                let def_id =
-                    generics.regions.get(data.space, data.index as usize).def_id;
+                assert_eq!(generics.parent, None);
+                assert!((data.index as usize) < generics.regions.len());
+                let def_id = generics.regions[data.index as usize].def_id;
                 let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {
                     let index = self.inferred_index(node_id);
