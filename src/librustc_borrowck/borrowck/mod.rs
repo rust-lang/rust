@@ -43,7 +43,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
-use syntax_pos::{MultiSpan, Span, BytePos};
+use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
@@ -963,14 +963,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             .emit();
     }
 
-    fn convert_region_to_span(&self, region: ty::Region) -> Option<Span> {
+    fn region_end_span(&self, region: ty::Region) -> Option<Span> {
         match region {
             ty::ReScope(scope) => {
                 match scope.span(&self.tcx.region_maps, &self.tcx.map) {
                     Some(s) => {
-                        let mut last_span = s;
-                        last_span.lo = BytePos(last_span.hi.0 - 1);
-                        Some(last_span)
+                        Some(s.end_point())
                     }
                     None => {
                         None
@@ -1024,6 +1022,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             err_out_of_scope(super_scope, sub_scope, cause) => {
                 match cause {
                     euv::ClosureCapture(s) => {
+                        // The primary span starts out as the closure creation point.
+                        // Change the primary span here to highlight the use of the variable
+                        // in the closure, because it seems more natural. Highlight
+                        // closure creation point as a secondary span.
                         match db.span.primary_span() {
                             Some(primary) => {
                                 db.span = MultiSpan::from_span(s);
@@ -1038,8 +1040,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }
                 }
 
-                let sub_span = self.convert_region_to_span(sub_scope);
-                let super_span = self.convert_region_to_span(super_scope);
+                let sub_span = self.region_end_span(sub_scope);
+                let super_span = self.region_end_span(super_scope);
 
                 match (sub_span, super_span) {
                     (Some(s1), Some(s2)) if s1 == s2 => {

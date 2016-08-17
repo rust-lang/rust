@@ -27,8 +27,8 @@ fn escaping_borrow_of_closure_params_1() {
         //~| NOTE values in a scope are dropped in the opposite order they are created
         return f;
     };
-    //~^ NOTE borrowed value dropped before borrower 
-    //~| NOTE borrowed value dropped before borrower 
+    //~^ NOTE borrowed value dropped before borrower
+    //~| NOTE borrowed value dropped before borrower
 
     // We delberately do not call `g`; this small version of the test,
     // after adding such a call, was (properly) rejected even when the
@@ -50,8 +50,8 @@ fn escaping_borrow_of_closure_params_2() {
         //~| NOTE values in a scope are dropped in the opposite order they are created
         f
     };
-    //~^ NOTE borrowed value dropped before borrower 
-    //~| NOTE borrowed value dropped before borrower 
+    //~^ NOTE borrowed value dropped before borrower
+    //~| NOTE borrowed value dropped before borrower
 
     // (we don't call `g`; see above)
 }
