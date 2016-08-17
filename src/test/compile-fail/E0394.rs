@@ -9,7 +9,10 @@
 // except according to those terms.
 
 static A: u32 = 0;
-static B: u32 = A; //~ ERROR E0394
+static B: u32 = A;
+//~^ ERROR E0394
+//~| NOTE referring to another static by value
+//~| NOTE use the address-of operator or a constant instead
 
 fn main() {
 }
