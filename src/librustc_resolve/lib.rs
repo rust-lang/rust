@@ -752,7 +752,6 @@ pub struct ModuleS<'a> {
     extern_crate_id: Option<NodeId>,
 
     resolutions: RefCell<HashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    unresolved_imports: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     no_implicit_prelude: Cell<bool>,
 
@@ -782,7 +781,6 @@ impl<'a> ModuleS<'a> {
             def: def,
             extern_crate_id: None,
             resolutions: RefCell::new(HashMap::new()),
-            unresolved_imports: RefCell::new(Vec::new()),
             no_implicit_prelude: Cell::new(false),
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
@@ -965,8 +963,8 @@ pub struct Resolver<'a> {
 
     structs: FnvHashMap<DefId, Vec<Name>>,
 
-    // The number of imports that are currently unresolved.
-    unresolved_imports: usize,
+    // All indeterminate imports (i.e. imports not known to succeed or fail).
+    indeterminate_imports: Vec<&'a ImportDirective<'a>>,
 
     // The module that represents the current item scope.
     current_module: Module<'a>,
@@ -1153,7 +1151,7 @@ impl<'a> Resolver<'a> {
             trait_item_map: FnvHashMap(),
             structs: FnvHashMap(),
 
-            unresolved_imports: 0,
+            indeterminate_imports: Vec::new(),
 
             current_module: graph_root,
             value_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
