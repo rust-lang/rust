@@ -284,12 +284,18 @@ h3.impl > .out-of-band {
     font-size: 21px;
 }
 
-h4 > code, h3 > code {
+h4 > code, h3 > code, invisible > code {
     position: inherit;
 }
 
 .in-band, code {
     z-index: 5;
+}
+
+.invisible {
+    background: rgba(0, 0, 0, 0);
+    width: 100%;
+    display: inline-block;
 }
 
 .content .in-band {
@@ -660,6 +666,7 @@ span.since {
 
 :target > code {
    background: #FDFFD3;
+   opacity: 1;
 }
 
 /* Media Queries */
