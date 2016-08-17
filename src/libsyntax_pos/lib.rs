@@ -221,6 +221,25 @@ impl MultiSpan {
         &self.primary_spans
     }
 
+    /// Replaces all occurances of one Span with another. Used to move Spans in areas that don't
+    /// display well (like std macros). Returns true of replacements occurred.
+    pub fn replace(&mut self, before: Span, after: Span) -> bool {
+        let mut replacements_occurred = false;
+        for i in 0..self.primary_spans.len() {
+            if self.primary_spans[i] == before {
+                self.primary_spans[i] = after;
+                replacements_occurred = true;
+            }
+        }
+        for i in 0..self.span_labels.len() {
+            if self.span_labels[i].0 == before {
+                self.span_labels[i].0 = after;
+                replacements_occurred = true;
+            }
+        }
+        replacements_occurred
+    }
+
     /// Returns the strings to highlight. We always ensure that there
     /// is an entry for each of the primary spans -- for each primary
     /// span P, if there is at least one label with span P, we return

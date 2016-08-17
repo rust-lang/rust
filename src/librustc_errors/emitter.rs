@@ -12,7 +12,7 @@ use self::Destination::*;
 
 use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, CodeMapper};
+use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
 use RenderSpan::*;
 use snippet::{StyledString, Style, Annotation, Line};
 use styled_buffer::StyledBuffer;
@@ -30,7 +30,10 @@ pub trait Emitter {
 
 impl Emitter for EmitterWriter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
-        self.emit_messages_default(db);
+        let mut primary_span = db.span.clone();
+        let mut children = db.children.clone();
+        self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
+        self.emit_messages_default(&db.level, &db.message, &db.code, &primary_span, &children);
     }
 }
 
@@ -381,17 +384,67 @@ impl EmitterWriter {
         max
     }
 
-    fn get_max_line_num(&mut self, db: &DiagnosticBuilder) -> usize {
+    fn get_max_line_num(&mut self, span: &MultiSpan, children: &Vec<SubDiagnostic>) -> usize {
         let mut max = 0;
 
-        let primary = self.get_multispan_max_line_num(&db.span);
+        let primary = self.get_multispan_max_line_num(span);
         max = if primary > max { primary } else { max };
 
-        for sub in &db.children {
+        for sub in children {
             let sub_result = self.get_multispan_max_line_num(&sub.span);
             max = if sub_result > max { primary } else { max };
         }
         max
+    }
+
+    fn fix_multispan_in_std_macros(&mut self, span: &mut MultiSpan) -> bool {
+        let mut spans_updated = false;
+
+        if let Some(ref cm) = self.cm {
+            let mut before_after: Vec<(Span, Span)> = vec![];
+
+            // First, find all the spans in <std macros> and point instead at their use site
+            for sp in span.primary_spans() {
+                if cm.span_to_filename(sp.clone()) == "<std macros>" {
+                    let v = cm.macro_backtrace(sp.clone());
+                    if let Some(use_site) = v.last() {
+                        before_after.push((sp.clone(), use_site.call_site.clone()));
+                    };
+                }
+            }
+            for sp_label in span.span_labels() {
+                if cm.span_to_filename(sp_label.span.clone()) == "<std macros>" {
+                    let v = cm.macro_backtrace(sp_label.span.clone());
+                    if let Some(use_site) = v.last() {
+                        before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
+                    };
+                }
+            }
+            // After we have them, make sure we replace these 'bad' def sites with their use sites
+            for (before, after) in before_after {
+                span.replace(before, after);
+                spans_updated = true;
+            }
+        }
+
+        spans_updated
+    }
+
+    fn fix_multispans_in_std_macros(&mut self,
+                                    span: &mut MultiSpan,
+                                    children: &mut Vec<SubDiagnostic>) {
+        let mut spans_updated = self.fix_multispan_in_std_macros(span);
+        for i in 0..children.len() {
+            spans_updated |= self.fix_multispan_in_std_macros(&mut children[i].span);
+        }
+        if spans_updated {
+            children.push(SubDiagnostic {
+                level: Level::Note,
+                message: "this error originates in a macro from the standard library".to_string(),
+                span: MultiSpan::new(),
+                render_span: None
+            });
+        }
     }
 
     fn emit_message_default(&mut self,
@@ -578,26 +631,31 @@ impl EmitterWriter {
         }
         Ok(())
     }
-    fn emit_messages_default(&mut self, db: &DiagnosticBuilder) {
-        let max_line_num = self.get_max_line_num(db);
+    fn emit_messages_default(&mut self,
+                             level: &Level,
+                             message: &String,
+                             code: &Option<String>,
+                             span: &MultiSpan,
+                             children: &Vec<SubDiagnostic>) {
+        let max_line_num = self.get_max_line_num(span, children);
         let max_line_num_len = max_line_num.to_string().len();
 
-        match self.emit_message_default(&db.span,
-                                        &db.message,
-                                        &db.code,
-                                        &db.level,
+        match self.emit_message_default(span,
+                                        message,
+                                        code,
+                                        level,
                                         max_line_num_len,
                                         false) {
             Ok(()) => {
-                if !db.children.is_empty() {
+                if !children.is_empty() {
                     let mut buffer = StyledBuffer::new();
                     draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
-                    match emit_to_destination(&buffer.render(), &db.level, &mut self.dst) {
+                    match emit_to_destination(&buffer.render(), level, &mut self.dst) {
                         Ok(()) => (),
                         Err(e) => panic!("failed to emit error: {}", e)
                     }
                 }
-                for child in &db.children {
+                for child in children {
                     match child.render_span {
                         Some(FullSpan(ref msp)) => {
                             match self.emit_message_default(msp,
