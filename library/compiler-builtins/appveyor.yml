@@ -17,6 +17,7 @@ test_script:
   - cargo build --release
   - cargo test
   - cargo test --release
+  - CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
   - dumpbin /disasm target/debug/librustc_builtins.rlib
   - dumpbin /disasm target/release/librustc_builtins.rlib
 
