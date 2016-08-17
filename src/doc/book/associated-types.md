@@ -67,7 +67,7 @@ trait Graph {
 Simple enough. Associated types use the `type` keyword, and go inside the body
 of the trait, with the functions.
 
-These `type` declarations can have all the same thing as functions do. For example,
+These type declarations work the same way as those for functions. For example,
 if we wanted our `N` type to implement `Display`, so we can print the nodes out,
 we could do this:
 
