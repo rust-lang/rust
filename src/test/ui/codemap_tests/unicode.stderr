@@ -1,7 +1,7 @@
 error: invalid ABI: expected one of [cdecl, stdcall, fastcall, vectorcall, aapcs, win64, Rust, C, system, rust-intrinsic, rust-call, platform-intrinsic], found `路濫狼á́́`
-  --> $DIR/unicode.rs:12:8
+  --> $DIR/unicode.rs:11:8
    |
-12 | extern "路濫狼á́́" fn foo() {}
+11 | extern "路濫狼á́́" fn foo() {}
    |        ^^^^^^^^
 
 error: aborting due to previous error
