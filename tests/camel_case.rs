@@ -1,7 +1,6 @@
-#[allow(plugin_as_library)]
-extern crate clippy;
+extern crate clippy_lints;
 
-use clippy::utils::{camel_case_from, camel_case_until};
+use clippy_lints::utils::{camel_case_from, camel_case_until};
 
 #[test]
 fn from_full() {

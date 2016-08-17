@@ -1,13 +1,12 @@
-#![allow(plugin_as_library)]
 #![feature(rustc_private)]
 
-extern crate clippy;
+extern crate clippy_lints;
 extern crate rustc;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;
 extern crate syntax;
 
-use clippy::consts::{constant_simple, Constant, FloatWidth};
+use clippy_lints::consts::{constant_simple, Constant, FloatWidth};
 use rustc_const_math::ConstInt;
 use rustc::hir::*;
 use syntax::ast::{LitIntType, LitKind, StrStyle};
