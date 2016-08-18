@@ -15,7 +15,7 @@ use CrateCtxt;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::Def;
 use hir::def_id::DefId;
-use rustc::infer;
+use rustc::{infer, traits};
 use rustc::ty::{self, LvaluePreference, Ty};
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -56,7 +56,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let callee_ty = autoderef.unambiguous_final_ty();
         autoderef.finalize(LvaluePreference::NoPreference, Some(callee_expr));
 
-        match result {
+        let output = match result {
             None => {
                 // this will report an error since original_callee_ty is not a fn
                 self.confirm_builtin_call(call_expr, original_callee_ty, arg_exprs, expected)
@@ -74,7 +74,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.confirm_overloaded_call(call_expr, callee_expr,
                                              arg_exprs, expected, method_callee)
             }
-        }
+        };
+
+        // we must check that return type of called functions is WF:
+        self.register_wf_obligation(output, call_expr.span, traits::MiscObligation);
+
+        output
     }
 
     fn try_overloaded_call_step(&self,
@@ -244,7 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   fn_sig.variadic,
                                   TupleArgumentsFlag::DontTupleArguments);
 
-        self.write_ty(call_expr.id, fn_sig.output)
+        fn_sig.output
     }
 
     fn confirm_deferred_closure_call(&self,
@@ -271,7 +276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   fn_sig.variadic,
                                   TupleArgumentsFlag::TupleArguments);
 
-        self.write_ty(call_expr.id, fn_sig.output)
+        fn_sig.output
     }
 
     fn confirm_overloaded_call(&self,
@@ -288,10 +293,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              arg_exprs,
                                              TupleArgumentsFlag::TupleArguments,
                                              expected);
-        let ty = self.write_ty(call_expr.id, output_type);
 
         self.write_overloaded_call_method_map(call_expr, method_callee);
-        ty
+        output_type
     }
 
     fn write_overloaded_call_method_map(&self,
