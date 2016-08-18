@@ -3551,15 +3551,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               ret_ty
           }
           hir::ExprMethodCall(name, ref tps, ref args) => {
-              let ty = self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref);
-              let arg_tys = args.iter().map(|a| self.expr_ty(&a));
-              let args_err = arg_tys.fold(false, |rest_err, a| rest_err || a.references_error());
-              if args_err {
-                  self.write_error(id)
-              }
-              else {
-                  ty
-              }
+              self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref)
           }
           hir::ExprCast(ref e, ref t) => {
             if let hir::TyFixedLengthVec(_, ref count_expr) = t.node {
