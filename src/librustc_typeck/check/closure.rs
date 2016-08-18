@@ -70,8 +70,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.parameter_environment.free_substs,
             upvar_tys);
 
-        let ty = self.write_ty(expr.id, closure_type);
-
         let fn_sig = self.tcx.liberate_late_bound_regions(
             self.tcx.region_maps.call_site_extent(expr.id, body.id), &fn_ty.sig);
         let fn_sig =
@@ -94,7 +92,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             None => { }
         }
 
-        ty
+        closure_type
     }
 
     fn deduce_expectations_from_expected_type(&self, expected_ty: Ty<'tcx>)
