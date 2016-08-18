@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use self::Determinacy::*;
 use self::ImportDirectiveSubclass::*;
 
 use Module;
@@ -36,14 +37,20 @@ impl<'a> Resolver<'a> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum Determinacy {
+    Determined,
+    Undetermined,
+}
+
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
 pub enum ImportDirectiveSubclass<'a> {
     SingleImport {
         target: Name,
         source: Name,
-        value_result: Cell<Result<&'a NameBinding<'a>, bool /* determined? */>>,
-        type_result: Cell<Result<&'a NameBinding<'a>, bool /* determined? */>>,
+        value_result: Cell<Result<&'a NameBinding<'a>, Determinacy>>,
+        type_result: Cell<Result<&'a NameBinding<'a>, Determinacy>>,
     },
     GlobImport { is_prelude: bool },
 }
@@ -53,8 +60,8 @@ impl<'a> ImportDirectiveSubclass<'a> {
         SingleImport {
             target: target,
             source: source,
-            type_result: Cell::new(Err(false)),
-            value_result: Cell::new(Err(false)),
+            type_result: Cell::new(Err(Undetermined)),
+            value_result: Cell::new(Err(Undetermined)),
         }
     }
 }
@@ -497,12 +504,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         let mut indeterminate = false;
         for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
-            if let Err(false) = result.get() {
+            if let Err(Undetermined) = result.get() {
                 result.set({
                     match self.resolve_name_in_module(module, source, ns, false, None) {
                         Success(binding) => Ok(binding),
-                        Indeterminate => Err(false),
-                        Failed(_) => Err(true),
+                        Indeterminate => Err(Undetermined),
+                        Failed(_) => Err(Determined),
                     }
                 });
             } else {
@@ -510,8 +517,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             };
 
             match result.get() {
-                Err(false) => indeterminate = true,
-                Err(true) => {
+                Err(Undetermined) => indeterminate = true,
+                Err(Determined) => {
                     self.update_resolution(directive.parent, target, ns, |_, resolution| {
                         resolution.single_imports.directive_failed()
                     });
