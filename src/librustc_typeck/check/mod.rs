@@ -1530,21 +1530,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn write_ty(&self, node_id: ast::NodeId, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn write_ty(&self, node_id: ast::NodeId, ty: Ty<'tcx>) {
         debug!("write_ty({}, {:?}) in fcx {}",
                node_id, ty, self.tag());
         self.tables.borrow_mut().node_types.insert(node_id, ty);
-
-        // Add adjustments to !-expressions
-        if ty.is_never() {
-            if let Some(hir::map::NodeExpr(_)) = self.tcx.map.find(node_id) {
-                let adj_ty = self.next_diverging_ty_var();
-                let adj = adjustment::AdjustNeverToAny(adj_ty);
-                self.write_adjustment(node_id, adj);
-                return adj_ty;
-            }
-        }
-        ty
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts<'tcx>) {
@@ -1717,16 +1706,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty_substituted
     }
 
-    pub fn write_nil(&self, node_id: ast::NodeId) -> Ty<'tcx> {
-        self.write_ty(node_id, self.tcx.mk_nil())
+    pub fn write_nil(&self, node_id: ast::NodeId) {
+        self.write_ty(node_id, self.tcx.mk_nil());
     }
 
-    pub fn write_never(&self, node_id: ast::NodeId) -> Ty<'tcx> {
-        self.write_ty(node_id, self.tcx.types.never)
+    pub fn write_never(&self, node_id: ast::NodeId) {
+        self.write_ty(node_id, self.tcx.types.never);
     }
 
-    pub fn write_error(&self, node_id: ast::NodeId) -> Ty<'tcx> {
-        self.write_ty(node_id, self.tcx.types.err)
+    pub fn write_error(&self, node_id: ast::NodeId) {
+        self.write_ty(node_id, self.tcx.types.err);
     }
 
     pub fn require_type_meets(&self,
@@ -3314,20 +3303,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             });
             let referent_ty = self.check_expr_with_expectation(subexpr, expected_inner);
-            self.write_ty(id, tcx.mk_box(referent_ty))
+            tcx.mk_box(referent_ty)
           }
 
           hir::ExprLit(ref lit) => {
-            let typ = self.check_lit(&lit, expected);
-            self.write_ty(id, typ)
+            self.check_lit(&lit, expected)
           }
           hir::ExprBinary(op, ref lhs, ref rhs) => {
-            let ty = self.check_binop(expr, op, lhs, rhs);
-            self.write_ty(id, ty)
+            self.check_binop(expr, op, lhs, rhs)
           }
           hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-            let ty = self.check_binop_assign(expr, op, lhs, rhs);
-            self.write_ty(id, ty)
+            self.check_binop_assign(expr, op, lhs, rhs)
           }
           hir::ExprUnary(unop, ref oprnd) => {
             let expected_inner = match unop {
@@ -3386,7 +3372,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            self.write_ty(id, oprnd_t)
+            oprnd_t
           }
           hir::ExprAddrOf(mutbl, ref oprnd) => {
             let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
@@ -3408,7 +3394,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let ty = self.check_expr_with_expectation_and_lvalue_pref(&oprnd, hint, lvalue_pref);
 
             let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
-            let oprnd_t = if tm.ty.references_error() {
+            if tm.ty.references_error() {
                 tcx.types.err
             } else {
                 // Note: at this point, we cannot say what the best lifetime
@@ -3426,8 +3412,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // as long as it needs to live.
                 let region = self.next_region_var(infer::AddrOfRegion(expr.span));
                 tcx.mk_ref(region, tm)
-            };
-            self.write_ty(id, oprnd_t)
+            }
           }
           hir::ExprPath(ref opt_qself, ref path) => {
               let opt_self_ty = opt_qself.as_ref().map(|qself| self.to_ty(&qself.ty));
@@ -3446,7 +3431,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   self.add_wf_bounds(&item_substs.substs, expr);
               });
 
-              self.write_ty(id, ty)
+              ty
           }
           hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
               for output in outputs {
@@ -3455,10 +3440,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               for input in inputs {
                   self.check_expr(input);
               }
-              self.write_nil(id)
+              tcx.mk_nil()
           }
-          hir::ExprBreak(_) => { self.write_never(id) }
-          hir::ExprAgain(_) => { self.write_never(id) }
+          hir::ExprBreak(_) => { tcx.types.never }
+          hir::ExprAgain(_) => { tcx.types.never }
           hir::ExprRet(ref expr_opt) => {
             if let Some(ref e) = *expr_opt {
                 self.check_expr_coercable_to_type(&e, self.ret_ty);
@@ -3476,7 +3461,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         .emit();
                 }
             }
-            self.write_never(id)
+            tcx.types.never
           }
           hir::ExprAssign(ref lhs, ref rhs) => {
             let lhs_ty = self.check_expr_with_lvalue_pref(&lhs, PreferMutLvalue);
@@ -3497,55 +3482,49 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
             if lhs_ty.references_error() || rhs_ty.references_error() {
-                self.write_error(id)
+                tcx.types.err
             } else {
-                self.write_nil(id)
+                tcx.mk_nil()
             }
           }
           hir::ExprIf(ref cond, ref then_blk, ref opt_else_expr) => {
-            let if_ty = self.check_then_else(&cond, &then_blk, opt_else_expr.as_ref().map(|e| &**e),
-                                 expr.span, expected);
-            self.write_ty(id, if_ty)
+            self.check_then_else(&cond, &then_blk, opt_else_expr.as_ref().map(|e| &**e),
+                                 expr.span, expected)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
             let cond_ty = self.check_expr_has_type(&cond, tcx.types.bool);
             self.check_block_no_value(&body);
             let body_ty = self.node_ty(body.id);
             if cond_ty.references_error() || body_ty.references_error() {
-                self.write_error(id)
+                tcx.types.err
             }
             else {
-                self.write_nil(id)
+                tcx.mk_nil()
             }
           }
           hir::ExprLoop(ref body, _) => {
             self.check_block_no_value(&body);
             if !may_break(tcx, expr.id, &body) {
-                self.write_never(id)
+                tcx.types.never
             } else {
-                self.write_nil(id)
+                tcx.mk_nil()
             }
           }
           hir::ExprMatch(ref discrim, ref arms, match_src) => {
-            let result_ty = self.check_match(expr, &discrim, arms, expected, match_src);
-            self.write_ty(expr.id, result_ty)
+            self.check_match(expr, &discrim, arms, expected, match_src)
           }
           hir::ExprClosure(capture, ref decl, ref body, _) => {
-              let ty = self.check_expr_closure(expr, capture, &decl, &body, expected);
-              self.write_ty(id, ty)
+              self.check_expr_closure(expr, capture, &decl, &body, expected)
           }
           hir::ExprBlock(ref b) => {
             self.check_block_with_expected(&b, expected);
-            let ty = self.node_ty(b.id);
-            self.write_ty(id, ty)
+            self.node_ty(b.id)
           }
           hir::ExprCall(ref callee, ref args) => {
-              let ret_ty = self.check_call(expr, &callee, &args[..], expected);
-              self.write_ty(id, ret_ty)
+              self.check_call(expr, &callee, &args[..], expected)
           }
           hir::ExprMethodCall(name, ref tps, ref args) => {
-              let ret_ty = self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref);
-              self.write_ty(id, ret_ty)
+              self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref)
           }
           hir::ExprCast(ref e, ref t) => {
             if let hir::TyFixedLengthVec(_, ref count_expr) = t.node {
@@ -3561,17 +3540,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Eagerly check for some obvious errors.
             if t_expr.references_error() || t_cast.references_error() {
-                self.write_error(id)
+                tcx.types.err
             } else {
                 // Defer other checks until we're done type checking.
                 let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
                 match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
                     Ok(cast_check) => {
                         deferred_cast_checks.push(cast_check);
-                        self.write_ty(id, t_cast)
+                        t_cast
                     }
                     Err(ErrorReported) => {
-                        self.write_error(id)
+                        tcx.types.err
                     }
                 }
             }
@@ -3579,7 +3558,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprType(ref e, ref t) => {
             let typ = self.to_ty(&t);
             self.check_expr_eq_type(&e, typ);
-            self.write_ty(id, typ)
+            typ
           }
           hir::ExprVec(ref args) => {
             let uty = expected.to_option(self).and_then(|uty| {
@@ -3611,7 +3590,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            self.write_ty(id, tcx.mk_array(unified, args.len()))
+            tcx.mk_array(unified, args.len())
           }
           hir::ExprRepeat(ref element, ref count_expr) => {
             self.check_expr_has_type(&count_expr, tcx.types.usize);
@@ -3647,10 +3626,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
 
             if element_ty.references_error() {
-                self.write_error(id)
+                tcx.types.err
             } else {
-                let t = tcx.mk_array(t, count);
-                self.write_ty(id, t)
+                tcx.mk_array(t, count)
             }
           }
           hir::ExprTup(ref elts) => {
@@ -3677,29 +3655,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 t
             }).collect();
             if err_field {
-                self.write_error(id)
+                tcx.types.err
             } else {
-                let typ = tcx.mk_tup(elt_ts);
-                self.write_ty(id, typ)
+                tcx.mk_tup(elt_ts)
             }
           }
           hir::ExprStruct(ref path, ref fields, ref base_expr) => {
-            let ty = self.check_expr_struct(expr, path, fields, base_expr);
-            self.write_ty(id, ty)
+            self.check_expr_struct(expr, path, fields, base_expr)
           }
           hir::ExprField(ref base, ref field) => {
-            let ty = self.check_field(expr, lvalue_pref, &base, field);
-            self.write_ty(id, ty)
+            self.check_field(expr, lvalue_pref, &base, field)
           }
           hir::ExprTupField(ref base, idx) => {
-            let ty = self.check_tup_field(expr, lvalue_pref, &base, idx);
-            self.write_ty(id, ty)
+            self.check_tup_field(expr, lvalue_pref, &base, idx)
           }
           hir::ExprIndex(ref base, ref idx) => {
               let base_t = self.check_expr_with_lvalue_pref(&base, lvalue_pref);
               let idx_t = self.check_expr(&idx);
 
-              let ty = if base_t.references_error() {
+              if base_t.references_error() {
                   base_t
               } else if idx_t.references_error() {
                   idx_t
@@ -3747,16 +3721,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           self.tcx().types.err
                       }
                   }
-              };
-              self.write_ty(id, ty)
+              }
            }
         };
+        self.write_ty(id, ty);
 
         debug!("type of expr({}) {} is...", expr.id,
                pprust::expr_to_string(expr));
         debug!("... {:?}, expected is {:?}",
                ty,
                expected);
+
+        // Add adjustments to !-expressions
+        if ty.is_never() {
+            if let Some(hir::map::NodeExpr(_)) = self.tcx.map.find(id) {
+                let adj_ty = self.next_diverging_ty_var();
+                let adj = adjustment::AdjustNeverToAny(adj_ty);
+                self.write_adjustment(id, adj);
+                return adj_ty;
+            }
+        }
         ty
     }
 
