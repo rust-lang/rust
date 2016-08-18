@@ -2847,7 +2847,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                       DontTupleArguments,
                                                       expected);
 
-        self.write_ty(expr.id, ret_ty)
+        ret_ty
     }
 
     // A generic function for checking the then and else in an if
@@ -3541,13 +3541,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprCall(ref callee, ref args) => {
               let ret_ty = self.check_call(expr, &callee, &args[..], expected);
-
-              // we must check that return type of called functions is WF:
-              self.register_wf_obligation(ret_ty, expr.span, traits::MiscObligation);
-              ret_ty
+              self.write_ty(id, ret_ty)
           }
           hir::ExprMethodCall(name, ref tps, ref args) => {
-              self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref)
+              let ret_ty = self.check_method_call(expr, name, &args[..], &tps[..], expected, lvalue_pref);
+              self.write_ty(id, ret_ty)
           }
           hir::ExprCast(ref e, ref t) => {
             if let hir::TyFixedLengthVec(_, ref count_expr) = t.node {
