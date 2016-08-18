@@ -438,7 +438,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
 
         ty::TyStruct(def, substs) if def.is_phantom_data() => {
             // PhantomData<T> - behaves identically to T
-            let ity = substs.types[0];
+            let ity = substs.type_at(0);
             iterate_over_potentially_unsafe_regions_in_type(
                 cx, context, ity, depth+1)
         }

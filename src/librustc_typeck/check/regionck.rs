@@ -1445,11 +1445,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let origin = infer::ParameterInScope(origin, expr_span);
 
-        for &region in &substs.regions {
+        for &region in substs.regions() {
             self.sub_regions(origin.clone(), expr_region, region);
         }
 
-        for &ty in &substs.types {
+        for &ty in substs.types() {
             let ty = self.resolve_type(ty);
             self.type_must_outlive(origin.clone(), ty, expr_region);
         }
@@ -1575,11 +1575,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         if env_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
-            for &component_ty in &projection_ty.trait_ref.substs.types {
+            for &component_ty in projection_ty.trait_ref.substs.types() {
                 self.type_must_outlive(origin.clone(), component_ty, region);
             }
 
-            for &r in &projection_ty.trait_ref.substs.regions {
+            for &r in projection_ty.trait_ref.substs.regions() {
                 self.sub_regions(origin.clone(), region, r);
             }
 
@@ -1597,10 +1597,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
             let unique_bound = env_bounds[0];
             debug!("projection_must_outlive: unique declared bound = {:?}", unique_bound);
-            if projection_ty.trait_ref.substs.regions
-                                             .iter()
-                                             .any(|r| env_bounds.contains(r))
-            {
+            if projection_ty.trait_ref.substs.regions().any(|r| env_bounds.contains(r)) {
                 debug!("projection_must_outlive: unique declared bound appears in trait ref");
                 self.sub_regions(origin.clone(), region, unique_bound);
                 return;

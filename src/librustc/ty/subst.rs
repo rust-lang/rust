@@ -13,18 +13,20 @@
 use middle::cstore;
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
-use ty::fold::{TypeFoldable, TypeFolder};
+use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
 
+use std::slice;
+
 ///////////////////////////////////////////////////////////////////////////
 
 /// A substitution mapping type/region parameters to new values.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Substs<'tcx> {
-    pub types: Vec<Ty<'tcx>>,
-    pub regions: Vec<ty::Region>,
+    types: Vec<Ty<'tcx>>,
+    regions: Vec<ty::Region>,
 }
 
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
@@ -104,12 +106,34 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         self.regions.is_empty() && self.types.is_empty()
     }
 
-    pub fn type_for_def(&self, ty_param_def: &ty::TypeParameterDef) -> Ty<'tcx> {
-        self.types[ty_param_def.index as usize]
+    #[inline]
+    pub fn types(&self) -> slice::Iter<Ty<'tcx>> {
+        self.types.iter()
     }
 
+    #[inline]
+    pub fn regions(&self) -> slice::Iter<ty::Region> {
+        self.regions.iter()
+    }
+
+    #[inline]
+    pub fn type_at(&self, i: usize) -> Ty<'tcx> {
+        self.types[i]
+    }
+
+    #[inline]
+    pub fn region_at(&self, i: usize) -> ty::Region {
+        self.regions[i]
+    }
+
+    #[inline]
+    pub fn type_for_def(&self, ty_param_def: &ty::TypeParameterDef) -> Ty<'tcx> {
+        self.type_at(ty_param_def.index as usize)
+    }
+
+    #[inline]
     pub fn region_for_def(&self, def: &ty::RegionParameterDef) -> ty::Region {
-        self.regions[def.index as usize]
+        self.region_at(def.index as usize)
     }
 
     /// Transform from substitutions for a child of `source_ancestor`
@@ -127,6 +151,22 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         let types = target_substs.types.iter()
             .chain(&self.types[defs.types.len()..]).cloned().collect();
         Substs::new(tcx, types, regions)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let types = self.types.fold_with(folder);
+        let regions = self.regions.fold_with(folder);
+        Substs::new(folder.tcx(), types, regions)
+    }
+
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        folder.fold_substs(self)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.types.visit_with(visitor) || self.regions.visit_with(visitor)
     }
 }
 

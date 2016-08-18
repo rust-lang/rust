@@ -19,8 +19,9 @@ use util::common::ErrorReported;
 
 use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
-use std::ops;
 use std::mem;
+use std::ops;
+use std::slice;
 use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::parse::token::keywords;
@@ -335,7 +336,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
         self.0.substs
     }
 
-    pub fn input_types(&self) -> &[Ty<'tcx>] {
+    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>> {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
     }
@@ -360,12 +361,12 @@ pub struct ExistentialTraitRef<'tcx> {
 }
 
 impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn input_types(&self) -> &[Ty<'tcx>] {
+    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>>{
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
         // associated types.
-        &self.substs.types
+        self.substs.types()
     }
 }
 
@@ -376,7 +377,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
         self.0.def_id
     }
 
-    pub fn input_types(&self) -> &[Ty<'tcx>] {
+    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>> {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
     }
@@ -1213,19 +1214,19 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             TyTrait(ref obj) => {
                 let mut v = vec![obj.region_bound];
-                v.extend_from_slice(&obj.principal.skip_binder().substs.regions);
+                v.extend(obj.principal.skip_binder().substs.regions());
                 v
             }
             TyEnum(_, substs) |
             TyStruct(_, substs) |
             TyAnon(_, substs) => {
-                substs.regions.to_vec()
+                substs.regions().cloned().collect()
             }
             TyClosure(_, ref substs) => {
-                substs.func_substs.regions.to_vec()
+                substs.func_substs.regions().cloned().collect()
             }
             TyProjection(ref data) => {
-                data.trait_ref.substs.regions.to_vec()
+                data.trait_ref.substs.regions().cloned().collect()
             }
             TyFnDef(..) |
             TyFnPtr(_) |

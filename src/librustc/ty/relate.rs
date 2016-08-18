@@ -147,14 +147,12 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 {
     let tcx = relation.tcx();
 
-    let types = a_subst.types.iter().enumerate().map(|(i, a_ty)| {
-        let b_ty = &b_subst.types[i];
+    let types = a_subst.types().zip(b_subst.types()).enumerate().map(|(i, (a_ty, b_ty))| {
         let variance = variances.map_or(ty::Invariant, |v| v.types[i]);
         relation.relate_with_variance(variance, a_ty, b_ty)
     }).collect::<Result<_, _>>()?;
 
-    let regions = a_subst.regions.iter().enumerate().map(|(i, a_r)| {
-        let b_r = &b_subst.regions[i];
+    let regions = a_subst.regions().zip(b_subst.regions()).enumerate().map(|(i, (a_r, b_r))| {
         let variance = variances.map_or(ty::Invariant, |v| v.regions[i]);
         relation.relate_with_variance(variance, a_r, b_r)
     }).collect::<Result<_, _>>()?;

@@ -1899,7 +1899,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Registers obligations that all types appearing in `substs` are well-formed.
     pub fn add_wf_bounds(&self, substs: &Substs<'tcx>, expr: &hir::Expr)
     {
-        for &ty in &substs.types {
+        for &ty in substs.types() {
             self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
         }
     }

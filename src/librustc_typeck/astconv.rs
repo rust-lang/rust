@@ -937,8 +937,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // FIXME(#12938): This is a hack until we have full support for DST.
         if Some(did) == self.tcx().lang_items.owned_box() {
-            assert_eq!(substs.types.len(), 1);
-            return self.tcx().mk_box(substs.types[0]);
+            assert_eq!(substs.types().count(), 1);
+            return self.tcx().mk_box(substs.type_at(0));
         }
 
         decl_ty.subst(self.tcx(), substs)

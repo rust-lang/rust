@@ -1152,7 +1152,7 @@ fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 impl_interners!('tcx,
     type_list: mk_type_list(Vec<Ty<'tcx>>, keep_local) -> [Ty<'tcx>],
     substs: mk_substs(Substs<'tcx>, |substs: &Substs| {
-        keep_local(&substs.types) || keep_local(&substs.regions)
+        substs.types().any(keep_local) || substs.regions().any(keep_local)
     }) -> Substs<'tcx>,
     bare_fn: mk_bare_fn(BareFnTy<'tcx>, |fty: &BareFnTy| {
         keep_local(&fty.sig)

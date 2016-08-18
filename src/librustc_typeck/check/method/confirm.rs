@@ -328,18 +328,20 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         //
         // FIXME -- permit users to manually specify lifetimes
         Substs::for_item(self.tcx, method.def_id, |def, _| {
-            if let Some(&r) = substs.regions.get(def.index as usize) {
-                r
+            let i = def.index as usize;
+            if i < substs.regions().count() {
+                substs.region_at(i)
             } else {
                 self.region_var_for_def(self.span, def)
             }
         }, |def, cur_substs| {
-            if let Some(&ty) = substs.types.get(def.index as usize) {
-                ty
+            let i = def.index as usize;
+            if i < substs.types().count() {
+                substs.type_at(i)
             } else if supplied_method_types.is_empty() {
                 self.type_var_for_def(self.span, def, cur_substs)
             } else {
-                supplied_method_types[def.index as usize - substs.types.len()]
+                supplied_method_types[i - substs.types().count()]
             }
         })
     }

@@ -17,6 +17,7 @@ use common::*;
 use machine;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::subst::Substs;
 
 use type_::Type;
 
@@ -256,7 +257,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           // avoids creating more than one copy of the enum when one
           // of the enum's variants refers to the enum itself.
           let repr = adt::represent_type(cx, t);
-          let name = llvm_type_name(cx, def.did, &substs.types);
+          let name = llvm_type_name(cx, def.did, substs);
           adt::incomplete_type_of(cx, &repr, &name[..])
       }
       ty::TyClosure(..) => {
@@ -330,7 +331,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
               // in *after* placing it into the type cache. This prevents
               // infinite recursion with recursive struct types.
               let repr = adt::represent_type(cx, t);
-              let name = llvm_type_name(cx, def.did, &substs.types);
+              let name = llvm_type_name(cx, def.did, substs);
               adt::incomplete_type_of(cx, &repr, &name[..])
           }
       }
@@ -367,10 +368,10 @@ pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
 
 fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             did: DefId,
-                            tps: &[Ty<'tcx>])
+                            substs: &Substs<'tcx>)
                             -> String {
     let base = cx.tcx().item_path_str(did);
-    let strings: Vec<String> = tps.iter().map(|t| t.to_string()).collect();
+    let strings: Vec<String> = substs.types().map(|t| t.to_string()).collect();
     let tstr = if strings.is_empty() {
         base
     } else {

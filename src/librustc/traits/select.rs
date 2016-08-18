@@ -644,8 +644,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // This suffices to allow chains like `FnMut` implemented in
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
-        let input_types = stack.fresh_trait_ref.0.input_types();
-        let unbound_input_types = input_types.iter().any(|ty| ty.is_fresh());
+        let unbound_input_types = stack.fresh_trait_ref.input_types().any(|ty| ty.is_fresh());
         if unbound_input_types && self.intercrate {
             debug!("evaluate_stack({:?}) --> unbound argument, intercrate -->  ambiguous",
                    stack.fresh_trait_ref);
@@ -1064,9 +1063,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match *candidate {
             Ok(Some(_)) | Err(_) => true,
-            Ok(None) => {
-                cache_fresh_trait_pred.0.trait_ref.substs.types.has_infer_types()
-            }
+            Ok(None) => cache_fresh_trait_pred.has_infer_types()
         }
     }
 
@@ -1603,7 +1600,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 return;
             }
         };
-        let target = obligation.predicate.skip_binder().input_types()[1];
+        let target = obligation.predicate.skip_binder().trait_ref.substs.type_at(1);
 
         debug!("assemble_candidates_for_unsizing(source={:?}, target={:?})",
                source, target);
@@ -1936,7 +1933,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             // for `PhantomData<T>`, we pass `T`
             ty::TyStruct(def, substs) if def.is_phantom_data() => {
-                substs.types.to_vec()
+                substs.types().cloned().collect()
             }
 
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
@@ -2180,12 +2177,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         match self_ty.sty {
             ty::TyTrait(ref data) => {
                 // OK to skip the binder, it is reintroduced below
-                let input_types = data.principal.skip_binder().input_types();
+                let input_types = data.principal.input_types();
                 let assoc_types = data.projection_bounds.iter()
                                       .map(|pb| pb.skip_binder().ty);
-                let all_types: Vec<_> = input_types.iter().cloned()
-                                                          .chain(assoc_types)
-                                                          .collect();
+                let all_types: Vec<_> = input_types.cloned()
+                                                   .chain(assoc_types)
+                                                   .collect();
 
                 // reintroduce the two binding levels we skipped, then flatten into one
                 let all_types = ty::Binder(ty::Binder(all_types));
@@ -2476,7 +2473,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // regions here. See the comment there for more details.
         let source = self.infcx.shallow_resolve(
             tcx.no_late_bound_regions(&obligation.self_ty()).unwrap());
-        let target = obligation.predicate.skip_binder().input_types()[1];
+        let target = obligation.predicate.skip_binder().trait_ref.substs.type_at(1);
         let target = self.infcx.shallow_resolve(target);
 
         debug!("confirm_builtin_unsize_candidate(source={:?}, target={:?})",
@@ -2585,7 +2582,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 } else {
                     return Err(Unimplemented);
                 };
-                let mut ty_params = BitVector::new(substs_a.types.len());
+                let mut ty_params = BitVector::new(substs_a.types().count());
                 let mut found = false;
                 for ty in field.walk() {
                     if let ty::TyParam(p) = ty.sty {
@@ -2601,14 +2598,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // TyError and ensure they do not affect any other fields.
                 // This could be checked after type collection for any struct
                 // with a potentially unsized trailing field.
-                let types = substs_a.types.iter().enumerate().map(|(i, ty)| {
+                let types = substs_a.types().enumerate().map(|(i, ty)| {
                     if ty_params.contains(i) {
                         tcx.types.err
                     } else {
                         ty
                     }
                 }).collect();
-                let substs = Substs::new(tcx, types, substs_a.regions.clone());
+                let substs = Substs::new(tcx, types, substs_a.regions().cloned().collect());
                 for &ty in fields.split_last().unwrap().1 {
                     if ty.subst(tcx, substs).references_error() {
                         return Err(Unimplemented);
@@ -2621,14 +2618,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 // Check that the source structure with the target's
                 // type parameters is a subtype of the target.
-                let types = substs_a.types.iter().enumerate().map(|(i, ty)| {
+                let types = substs_a.types().enumerate().map(|(i, ty)| {
                     if ty_params.contains(i) {
-                        substs_b.types[i]
+                        substs_b.type_at(i)
                     } else {
                         ty
                     }
                 }).collect();
-                let substs = Substs::new(tcx, types, substs_a.regions.clone());
+                let substs = Substs::new(tcx, types, substs_a.regions().cloned().collect());
                 let new_struct = tcx.mk_struct(def, substs);
                 let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
@@ -2753,7 +2750,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // substitution if we find that any of the input types, when
         // simplified, do not match.
 
-        obligation.predicate.0.input_types().iter()
+        obligation.predicate.skip_binder().input_types()
             .zip(impl_trait_ref.input_types())
             .any(|(&obligation_ty, &impl_ty)| {
                 let simplified_obligation_ty =

@@ -951,7 +951,6 @@ impl<'tcx> TraitPredicate<'tcx> {
         // leads to more recompilation.
         let def_ids: Vec<_> =
             self.input_types()
-                .iter()
                 .flat_map(|t| t.walk())
                 .filter_map(|t| match t.sty {
                     ty::TyStruct(adt_def, _) |
@@ -964,8 +963,8 @@ impl<'tcx> TraitPredicate<'tcx> {
         DepNode::TraitSelect(self.def_id(), def_ids)
     }
 
-    pub fn input_types(&self) -> &[Ty<'tcx>] {
-        &self.trait_ref.substs.types
+    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>> {
+        self.trait_ref.input_types()
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
@@ -1107,7 +1106,7 @@ impl<'tcx> Predicate<'tcx> {
     pub fn walk_tys(&self) -> IntoIter<Ty<'tcx>> {
         let vec: Vec<_> = match *self {
             ty::Predicate::Trait(ref data) => {
-                data.0.trait_ref.input_types().to_vec()
+                data.skip_binder().input_types().cloned().collect()
             }
             ty::Predicate::Rfc1592(ref data) => {
                 return data.walk_tys()
@@ -1123,8 +1122,7 @@ impl<'tcx> Predicate<'tcx> {
             }
             ty::Predicate::Projection(ref data) => {
                 let trait_inputs = data.0.projection_ty.trait_ref.input_types();
-                trait_inputs.iter()
-                            .cloned()
+                trait_inputs.cloned()
                             .chain(Some(data.0.ty))
                             .collect()
             }
@@ -1206,15 +1204,15 @@ impl<'tcx> TraitRef<'tcx> {
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
-        self.substs.types[0]
+        self.substs.type_at(0)
     }
 
-    pub fn input_types(&self) -> &[Ty<'tcx>] {
+    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>> {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
         // associated types.
-        &self.substs.types
+        self.substs.types()
     }
 }
 

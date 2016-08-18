@@ -307,7 +307,7 @@ pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  name: Name)
                                  -> ImplMethod<'tcx>
 {
-    assert!(!substs.types.needs_infer());
+    assert!(!substs.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
