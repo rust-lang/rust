@@ -340,7 +340,7 @@ fn call_with_ref<'a, F>(some_closure:F) -> i32
     where F: Fn(&'a i32) -> i32 {
 ```
 
-However this presents a problem with in our case. When you specify the explicit
+However this presents a problem in our case. When you specify the explicit
 lifetime on a function it binds that lifetime to the *entire* scope of the function
 instead of just the invocation scope of our closure. This means that the borrow checker
 will see a mutable reference in the same lifetime as our immutable reference and fail
