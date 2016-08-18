@@ -109,14 +109,16 @@ impl LateLintPass for AttrPass {
                     if let MetaItemKind::List(ref name, _) = attr.node.value.node {
                         match &**name {
                             "allow" | "warn" | "deny" | "forbid" => {
-                                span_lint_and_then(cx, USELESS_ATTRIBUTE, attr.span,
-                                                   "useless lint attribute",
-                                                   |db| {
-                                    if let Some(mut sugg) = snippet_opt(cx, attr.span) {
-                                        sugg.insert(1, '!');
-                                        db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
+                                if let Some(mut sugg) = snippet_opt(cx, attr.span) {
+                                    if sugg.len() > 1 {
+                                        span_lint_and_then(cx, USELESS_ATTRIBUTE, attr.span,
+                                                           "useless lint attribute",
+                                                           |db| {
+                                            sugg.insert(1, '!');
+                                            db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
+                                        });
                                     }
-                                });
+                                }
                             },
                             _ => {},
                         }
