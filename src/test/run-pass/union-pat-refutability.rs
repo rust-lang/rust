@@ -41,12 +41,14 @@ union W {
 }
 
 fn refut(w: W) {
-    match w {
-        W { a: 10 } => {
-            panic!();
-        }
-        W { b } => {
-            assert_eq!(b, 11);
+    unsafe {
+        match w {
+            W { a: 10 } => {
+                panic!();
+            }
+            W { b } => {
+                assert_eq!(b, 11);
+            }
         }
     }
 }
