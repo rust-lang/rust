@@ -3332,10 +3332,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.write_ty(id, typ)
           }
           hir::ExprBinary(op, ref lhs, ref rhs) => {
-            self.check_binop(expr, op, lhs, rhs)
+            let ty = self.check_binop(expr, op, lhs, rhs);
+            self.write_ty(id, ty)
           }
           hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-            self.check_binop_assign(expr, op, lhs, rhs)
+            let ty = self.check_binop_assign(expr, op, lhs, rhs);
+            self.write_ty(id, ty)
           }
           hir::ExprUnary(unop, ref oprnd) => {
             let expected_inner = match unop {
