@@ -699,38 +699,29 @@ mod impls {
 
     ord_impl! { char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
-    // Note: This macro is a temporary hack that can be remove once we are building with a compiler
-    // that supports `!`
-    macro_rules! not_stage0 {
-        () => {
-            #[unstable(feature = "never_type", issue = "35121")]
-            impl PartialEq for ! {
-                fn eq(&self, _: &!) -> bool {
-                    *self
-                }
-            }
-
-            #[unstable(feature = "never_type", issue = "35121")]
-            impl Eq for ! {}
-
-            #[unstable(feature = "never_type", issue = "35121")]
-            impl PartialOrd for ! {
-                fn partial_cmp(&self, _: &!) -> Option<Ordering> {
-                    *self
-                }
-            }
-
-            #[unstable(feature = "never_type", issue = "35121")]
-            impl Ord for ! {
-                fn cmp(&self, _: &!) -> Ordering {
-                    *self
-                }
-            }
+    #[unstable(feature = "never_type", issue = "35121")]
+    impl PartialEq for ! {
+        fn eq(&self, _: &!) -> bool {
+            *self
         }
     }
 
-    #[cfg(not(stage0))]
-    not_stage0!();
+    #[unstable(feature = "never_type", issue = "35121")]
+    impl Eq for ! {}
+
+    #[unstable(feature = "never_type", issue = "35121")]
+    impl PartialOrd for ! {
+        fn partial_cmp(&self, _: &!) -> Option<Ordering> {
+            *self
+        }
+    }
+
+    #[unstable(feature = "never_type", issue = "35121")]
+    impl Ord for ! {
+        fn cmp(&self, _: &!) -> Ordering {
+            *self
+        }
+    }
 
     // & pointers
 

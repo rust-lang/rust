@@ -81,21 +81,6 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send> {
 // This is considered acceptable, because the behavior of throwing exceptions
 // through a C ABI boundary is undefined.
 
-// *** Delete after a new snapshot ***
-#[cfg(stage0)]
-#[lang = "eh_personality_catch"]
-#[cfg(not(test))]
-unsafe extern "C" fn rust_eh_personality_catch(exceptionRecord: *mut c::EXCEPTION_RECORD,
-                                               establisherFrame: c::LPVOID,
-                                               contextRecord: *mut c::CONTEXT,
-                                               dispatcherContext: *mut c::DISPATCHER_CONTEXT)
-                                               -> c::EXCEPTION_DISPOSITION {
-    rust_eh_personality(exceptionRecord,
-                        establisherFrame,
-                        contextRecord,
-                        dispatcherContext)
-}
-
 #[lang = "eh_personality"]
 #[cfg(not(test))]
 unsafe extern "C" fn rust_eh_personality(exceptionRecord: *mut c::EXCEPTION_RECORD,
