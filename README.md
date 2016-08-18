@@ -19,7 +19,7 @@ Read ["Installing Rust"] from [The Book].
    * `g++` 4.7 or later or `clang++` 3.x
    * `python` 2.7 (but not 3.x)
    * GNU `make` 3.81 or later
-   * `cmake` 2.8.8 or later
+   * `cmake` 3.4.3 or later
    * `curl`
    * `git`
 
