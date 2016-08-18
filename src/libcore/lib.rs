@@ -67,8 +67,6 @@
 #![deny(missing_debug_implementations)]
 #![cfg_attr(not(stage0), deny(warnings))]
 
-#![cfg_attr(stage0, allow(unused_attributes))]
-
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_type_defaults)]
@@ -92,9 +90,7 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(question_mark)]
-
-// NOTE: remove the cfg_attr next snapshot
-#![cfg_attr(not(stage0), feature(never_type))]
+#![feature(never_type)]
 
 #[macro_use]
 mod macros;
