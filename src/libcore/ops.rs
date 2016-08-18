@@ -1462,13 +1462,24 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 ///
 /// # Examples
 ///
+/// The `..` syntax is a `RangeFull`:
+///
 /// ```
 /// assert_eq!((..), std::ops::RangeFull);
+/// ```
 ///
-/// // for i in .. {
-/// //     println!("This errors because .. has no IntoIterator impl");
-/// // }
+/// It does not have an `IntoIterator` implementation, so you can't use it in a
+/// `for` loop directly. This won't compile:
 ///
+/// ```ignore
+/// for i in .. {
+///    // ...
+/// }
+/// ```
+///
+/// Used as a slicing index, `RangeFull` produces the full array as a slice.
+///
+/// ```
 /// let arr = [0, 1, 2, 3];
 /// assert_eq!(arr[ .. ], [0,1,2,3]);  // RangeFull
 /// assert_eq!(arr[ ..3], [0,1,2  ]);
