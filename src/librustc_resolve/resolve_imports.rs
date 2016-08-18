@@ -342,12 +342,6 @@ impl<'a> Resolver<'a> {
     }
 }
 
-struct ImportResolvingError<'a> {
-    import_directive: &'a ImportDirective<'a>,
-    span: Span,
-    help: String,
-}
-
 struct ImportResolver<'a, 'b: 'a> {
     resolver: &'a mut Resolver<'b>,
 }
@@ -416,33 +410,32 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             self.finalize_resolutions_in(module);
         }
 
-        let mut errors = Vec::new();
+        let mut errors = false;
         for i in 0 .. self.determined_imports.len() {
             let import = self.determined_imports[i];
             if let Failed(err) = self.finalize_import(import) {
+                errors = true;
                 let (span, help) = match err {
                     Some((span, msg)) => (span, format!(". {}", msg)),
                     None => (import.span, String::new()),
                 };
-                errors.push(ImportResolvingError {
-                    import_directive: import,
-                    span: span,
-                    help: help,
-                });
+
+                // If the error is a single failed import then create a "fake" import
+                // resolution for it so that later resolve stages won't complain.
+                self.import_dummy_binding(import);
+                let path = import_path_to_string(&import.module_path, &import.subclass);
+                let error = ResolutionError::UnresolvedImport(Some((&path, &help)));
+                resolve_error(self.resolver, span, error);
             }
         }
 
         // Report unresolved imports only if no hard error was already reported
         // to avoid generating multiple errors on the same import.
-        if errors.len() == 0 {
+        if !errors {
             if let Some(import) = self.indeterminate_imports.iter().next() {
                 let error = ResolutionError::UnresolvedImport(None);
                 resolve_error(self.resolver, import.span, error);
             }
-        }
-
-        for e in errors {
-            self.import_resolving_error(e)
         }
     }
 
@@ -460,19 +453,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             let _ = self.try_define(directive.parent, target, ValueNS, dummy_binding.clone());
             let _ = self.try_define(directive.parent, target, TypeNS, dummy_binding);
         }
-    }
-
-    /// Resolves an `ImportResolvingError` into the correct enum discriminant
-    /// and passes that on to `resolve_error`.
-    fn import_resolving_error(&mut self, e: ImportResolvingError<'b>) {
-        // If the error is a single failed import then create a "fake" import
-        // resolution for it so that later resolve stages won't complain.
-        self.import_dummy_binding(e.import_directive);
-        let path = import_path_to_string(&e.import_directive.module_path,
-                                         &e.import_directive.subclass);
-        resolve_error(self.resolver,
-                      e.span,
-                      ResolutionError::UnresolvedImport(Some((&path, &e.help))));
     }
 
     /// Attempts to resolve the given import. The return value indicates
