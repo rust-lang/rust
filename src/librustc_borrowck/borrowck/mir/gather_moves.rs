@@ -616,7 +616,7 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
 
             TerminatorKind::Return => {
                 let source = Location { block: bb,
-                                        index: bb_data.statements.len() };
+                                        statement_index: bb_data.statements.len() };
                 debug!("gather_moves Return on_move_out_lval return {:?}", source);
                 bb_ctxt.on_move_out_lval(SK::Return, &Lvalue::ReturnPointer, source);
             }
