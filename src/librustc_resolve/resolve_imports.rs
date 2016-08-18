@@ -68,7 +68,7 @@ pub struct ImportDirective<'a> {
     target_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
     subclass: ImportDirectiveSubclass<'a>,
     span: Span,
-    vis: ty::Visibility, // see note in ImportResolutionPerNamespace about how to use this
+    vis: Cell<ty::Visibility>,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -191,7 +191,7 @@ impl<'a> Resolver<'a> {
 
         // Check if the globs are determined
         for directive in module.globs.borrow().iter() {
-            if self.is_accessible(directive.vis) {
+            if self.is_accessible(directive.vis.get()) {
                 if let Some(target_module) = directive.target_module.get() {
                     let result = self.resolve_name_in_module(target_module, name, ns, true, None);
                     if let Indeterminate = result {
@@ -219,7 +219,7 @@ impl<'a> Resolver<'a> {
         // Check if a single import can still define the name.
         match resolution.single_imports {
             SingleImports::AtLeastOne => return Some(Indeterminate),
-            SingleImports::MaybeOne(directive) if self.is_accessible(directive.vis) => {
+            SingleImports::MaybeOne(directive) if self.is_accessible(directive.vis.get()) => {
                 let target_module = match directive.target_module.get() {
                     Some(target_module) => target_module,
                     None => return Some(Indeterminate),
@@ -254,7 +254,7 @@ impl<'a> Resolver<'a> {
             subclass: subclass,
             span: span,
             id: id,
-            vis: vis,
+            vis: Cell::new(vis),
         });
 
         self.indeterminate_imports.push(directive);
@@ -282,7 +282,7 @@ impl<'a> Resolver<'a> {
                 directive: directive,
             },
             span: directive.span,
-            vis: directive.vis,
+            vis: directive.vis.get(),
         }
     }
 
@@ -488,13 +488,22 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let module = directive.parent;
         self.set_current_module(module);
 
-        let target_module = match directive.target_module.get() {
-            Some(module) => module,
-            _ => match self.resolve_module_path(&directive.module_path, DontUseLexicalScope, None) {
+        let target_module = if let Some(module) = directive.target_module.get() {
+            module
+        } else {
+            let vis = directive.vis.get();
+            // For better failure detection, pretend that the import will not define any names
+            // while resolving its module path.
+            directive.vis.set(ty::Visibility::PrivateExternal);
+            let result =
+                self.resolve_module_path(&directive.module_path, DontUseLexicalScope, None);
+            directive.vis.set(vis);
+
+            match result {
                 Success(module) => module,
                 Indeterminate => return Indeterminate,
                 Failed(err) => return Failed(err),
-            },
+            }
         };
 
         directive.target_module.set(Some(target_module));
@@ -614,7 +623,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         match (value_result, type_result) {
-            (Ok(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis, self) => {
+            (Ok(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
                 let msg = format!("`{}` is private, and cannot be reexported", source);
                 let note_msg = format!("consider marking `{}` as `pub` in the imported module",
                                         source);
@@ -623,7 +632,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     .emit();
             }
 
-            (_, Ok(binding)) if !binding.pseudo_vis().is_at_least(directive.vis, self) => {
+            (_, Ok(binding)) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
                 if binding.is_extern_crate() {
                     let msg = format!("extern crate `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring with `pub`",
