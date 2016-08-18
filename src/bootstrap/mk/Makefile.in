@@ -22,6 +22,10 @@ BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py $(BOOTSTRAP_
 all:
 	$(Q)$(BOOTSTRAP)
 
+# Don’t use $(Q) here, always show how to invoke the bootstrap script directly
+help:
+	$(BOOTSTRAP) --help
+
 clean:
 	$(Q)$(BOOTSTRAP) --clean
 
