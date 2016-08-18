@@ -1711,7 +1711,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.add_obligations_for_parameters(cause, &bounds);
 
         let ty_substituted = self.instantiate_type_scheme(path.span, substs, &ty);
-        self.write_ty(node_id, ty_substituted);
         self.write_substs(node_id, ty::ItemSubsts {
             substs: substs
         });
@@ -3190,12 +3189,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_struct_fields_on_error(&self,
-                                    id: ast::NodeId,
                                     fields: &'gcx [hir::Field],
-                                    base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx> {
-        // Make sure to still write the types
-        // otherwise we might ICE
-        let ty = self.write_error(id);
+                                    base_expr: &'gcx Option<P<hir::Expr>>) {
         for field in fields {
             self.check_expr(&field.expr);
         }
@@ -3205,7 +3200,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             },
             None => {}
         }
-        ty
     }
 
     pub fn check_struct_path(&self,
@@ -3262,7 +3256,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                                   expr.span) {
             variant_ty
         } else {
-            return self.check_struct_fields_on_error(expr.id, fields, base_expr);
+            self.check_struct_fields_on_error(fields, base_expr);
+            return self.tcx().types.err;
         };
 
         self.check_expr_struct_fields(expr_t, path.span, variant, fields,
@@ -3286,6 +3281,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
+        self.require_type_is_sized(expr_t, expr.span, traits::StructInitializerSized);
         expr_t
     }
 
@@ -3690,9 +3686,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprStruct(ref path, ref fields, ref base_expr) => {
             let ty = self.check_expr_struct(expr, path, fields, base_expr);
-
-            self.require_type_is_sized(ty, expr.span, traits::StructInitializerSized);
-            ty
+            self.write_ty(id, ty)
           }
           hir::ExprField(ref base, ref field) => {
             let ty = self.check_field(expr, lvalue_pref, &base, field);
