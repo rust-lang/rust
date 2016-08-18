@@ -2857,7 +2857,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        cond_expr: &'gcx hir::Expr,
                        then_blk: &'gcx hir::Block,
                        opt_else_expr: Option<&'gcx hir::Expr>,
-                       id: ast::NodeId,
                        sp: Span,
                        expected: Expectation<'tcx>) -> Ty<'tcx> {
         let cond_ty = self.check_expr_has_type(cond_expr, self.tcx.types.bool);
@@ -2909,7 +2908,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  }))
         };
 
-        let if_ty = match result {
+        match result {
             Ok(ty) => {
                 if cond_ty.references_error() {
                     self.tcx.types.err
@@ -2921,9 +2920,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.report_mismatched_types(origin, expected, found, e);
                 self.tcx.types.err
             }
-        };
-
-        self.write_ty(id, if_ty)
+        }
     }
 
     // Check field access expressions
@@ -3447,7 +3444,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   self.instantiate_value_path(segments, opt_ty, def, expr.span, id)
               } else {
                   self.set_tainted_by_errors();
-                  self.write_error(id)
+                  tcx.types.err
               };
 
               // We always require that the type provided as the value for
@@ -3455,7 +3452,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               self.opt_node_ty_substs(expr.id, |item_substs| {
                   self.add_wf_bounds(&item_substs.substs, expr);
               });
-              ty
+
+              self.write_ty(id, ty)
           }
           hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
               for output in outputs {
@@ -3512,8 +3510,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
           }
           hir::ExprIf(ref cond, ref then_blk, ref opt_else_expr) => {
-            self.check_then_else(&cond, &then_blk, opt_else_expr.as_ref().map(|e| &**e),
-                                 id, expr.span, expected)
+            let if_ty = self.check_then_else(&cond, &then_blk, opt_else_expr.as_ref().map(|e| &**e),
+                                 expr.span, expected);
+            self.write_ty(id, if_ty)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
             let cond_ty = self.check_expr_has_type(&cond, tcx.types.bool);
@@ -3535,7 +3534,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
           }
           hir::ExprMatch(ref discrim, ref arms, match_src) => {
-            self.check_match(expr, &discrim, arms, expected, match_src)
+            let result_ty = self.check_match(expr, &discrim, arms, expected, match_src);
+            self.write_ty(expr.id, result_ty)
           }
           hir::ExprClosure(capture, ref decl, ref body, _) => {
               self.check_expr_closure(expr, capture, &decl, &body, expected)
@@ -3571,16 +3571,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if t_expr.references_error() || t_cast.references_error() {
                 self.write_error(id)
             } else {
-                // Write a type for the whole expression, assuming everything is going
-                // to work out Ok.
-                let ty = self.write_ty(id, t_cast);
-
                 // Defer other checks until we're done type checking.
                 let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
                 match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
                     Ok(cast_check) => {
                         deferred_cast_checks.push(cast_check);
-                        ty
+                        self.write_ty(id, t_cast)
                     }
                     Err(ErrorReported) => {
                         self.write_error(id)
@@ -4328,7 +4324,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
                ty_substituted);
-        self.write_ty(node_id, ty_substituted);
         self.write_substs(node_id, ty::ItemSubsts {
             substs: substs
         });

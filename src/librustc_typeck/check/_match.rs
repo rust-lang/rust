@@ -473,8 +473,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
         }
-
-        self.write_ty(expr.id, result_ty)
+        
+        result_ty
     }
 }
 
@@ -545,6 +545,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
+        self.write_ty(pat.id, pat_ty);
         self.demand_suptype(pat.span, expected, pat_ty);
     }
 
@@ -603,6 +604,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
+        self.write_ty(pat.id, pat_ty);
 
         let pat_ty = if pat_ty.is_fn() {
             // Replace constructor type with constructed type for tuple struct patterns.
