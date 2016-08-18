@@ -3109,17 +3109,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             ty: Ty<'tcx>,
                             variant: ty::VariantDef<'tcx>,
                             field: &hir::Field,
-                            skip_fields: &[hir::Field]) {
+                            skip_fields: &[hir::Field],
+                            kind_name: &str) {
         let mut err = self.type_error_struct_with_diag(
             field.name.span,
             |actual| if let ty::TyEnum(..) = ty.sty {
                 struct_span_err!(self.tcx.sess, field.name.span, E0559,
-                                 "struct variant `{}::{}` has no field named `{}`",
-                                 actual, variant.name.as_str(), field.name.node)
+                                 "{} `{}::{}` has no field named `{}`",
+                                 kind_name, actual, variant.name.as_str(), field.name.node)
             } else {
                 struct_span_err!(self.tcx.sess, field.name.span, E0560,
-                                 "structure `{}` has no field named `{}`",
-                                 actual, field.name.node)
+                                 "{} `{}` has no field named `{}`",
+                                 kind_name, actual, field.name.node)
             },
             ty);
         // prevent all specified fields from being suggested
@@ -3135,8 +3136,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 ast_fields: &'gcx [hir::Field],
                                 check_completeness: bool) {
         let tcx = self.tcx;
-        let substs = match adt_ty.sty {
-            ty::TyStruct(_, substs) | ty::TyUnion(_, substs) | ty::TyEnum(_, substs) => substs,
+        let (substs, kind_name) = match adt_ty.sty {
+            ty::TyEnum(_, substs) => (substs, "variant"),
+            ty::TyStruct(_, substs) => (substs, "struct"),
+            ty::TyUnion(_, substs) => (substs, "union"),
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
@@ -3175,7 +3178,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     err.emit();
                 } else {
-                    self.report_unknown_field(adt_ty, variant, field, ast_fields);
+                    self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name);
                 }
             }
 
@@ -3184,11 +3187,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_expr_coercable_to_type(&field.expr, expected_field_type);
         }
 
-            // Make sure the programmer specified all the fields.
-        if check_completeness &&
-            !error_happened &&
-            !remaining_fields.is_empty()
-        {
+        // Make sure the programmer specified correct number of fields.
+        if kind_name == "union" {
+            if ast_fields.len() != 1 {
+                tcx.sess.span_err(span, "union expressions should have exactly one field");
+            }
+        } else if check_completeness && !error_happened && !remaining_fields.is_empty() {
             span_err!(tcx.sess, span, E0063,
                       "missing field{} {} in initializer of `{}`",
                       if remaining_fields.len() == 1 {""} else {"s"},
@@ -3198,7 +3202,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       .join(", "),
                       adt_ty);
         }
-
     }
 
     fn check_struct_fields_on_error(&self,

@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A {
-    foo : i32,
-    car : i32,
-    barr : i32
-}
+#![feature(untagged_unions)]
 
 fn main() {
-    let a = A {
-        foo : 5,
-        bar : 42,//~ ERROR struct `A` has no field named `bar`
-        //~^ HELP did you mean `car`?
-    };
+    let union = 10;
+
+    union;
+
+    union as u8;
+
+    union U {
+        a: u8,
+    }
 }
