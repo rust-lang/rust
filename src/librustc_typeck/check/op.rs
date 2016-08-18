@@ -38,7 +38,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             return_ty
         };
-        let ty = self.write_ty(expr.id, ty);
 
         let tcx = self.tcx;
         if !tcx.expr_is_lval(lhs_expr) {
@@ -72,7 +71,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let lhs_ty = self.check_expr(lhs_expr);
         let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
-        let ty = match BinOpCategory::from(op) {
+        match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
                 // && and || are a simple case.
                 self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
@@ -111,8 +110,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 return_ty
             }
-        };
-        self.write_ty(expr.id, ty)
+        }
     }
 
     fn enforce_builtin_binop_types(&self,
