@@ -12,10 +12,9 @@ use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty;
 use rustc::traits::{self, Reveal};
-use rustc::ty::error::ExpectedFound;
+use rustc::ty::error::{ExpectedFound, TypeError};
 use rustc::ty::subst::{Subst, Substs};
-use rustc::hir::map::Node;
-use rustc::hir::{ImplItemKind, TraitItem_};
+use rustc::hir::{ImplItemKind, TraitItem_, Ty_};
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -300,6 +299,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &impl_sig);
+        let impl_args = impl_sig.inputs.clone();
         let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: impl_m.fty.unsafety,
             abi: impl_m.fty.abi,
@@ -318,6 +318,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &trait_sig);
+        let trait_args = trait_sig.inputs.clone();
         let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: trait_m.fty.unsafety,
             abi: trait_m.fty.abi,
@@ -331,16 +332,82 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                    impl_fty,
                    trait_fty);
 
+            let impl_m_iter = match tcx.map.expect_impl_item(impl_m_node_id).node {
+                ImplItemKind::Method(ref impl_m_sig, _) => impl_m_sig.decl.inputs.iter(),
+                _ => bug!("{:?} is not a method", impl_m)
+            };
+
+            let (impl_err_span, trait_err_span) = match terr {
+                TypeError::Mutability => {
+                    if let Some(trait_m_node_id) = tcx.map.as_local_node_id(trait_m.def_id) {
+                        let trait_m_iter = match tcx.map.expect_trait_item(trait_m_node_id).node {
+                            TraitItem_::MethodTraitItem(ref trait_m_sig, _) =>
+                                trait_m_sig.decl.inputs.iter(),
+                            _ => bug!("{:?} is not a MethodTraitItem", trait_m)
+                        };
+
+                        impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
+                            match (&impl_arg.ty.node, &trait_arg.ty.node) {
+                                (&Ty_::TyRptr(_, ref impl_mt), &Ty_::TyRptr(_, ref trait_mt)) |
+                                (&Ty_::TyPtr(ref impl_mt), &Ty_::TyPtr(ref trait_mt)) =>
+                                    impl_mt.mutbl != trait_mt.mutbl,
+                                _ => false
+                            }
+                        }).map(|(ref impl_arg, ref trait_arg)| {
+                            match (impl_arg.to_self(), trait_arg.to_self()) {
+                                (Some(impl_self), Some(trait_self)) =>
+                                    (impl_self.span, Some(trait_self.span)),
+                                (None, None) => (impl_arg.ty.span, Some(trait_arg.ty.span)),
+                                _ => bug!("impl and trait fns have different first args, \
+                                           impl: {:?}, trait: {:?}", impl_arg, trait_arg)
+                            }
+                        }).unwrap_or((origin.span(), tcx.map.span_if_local(trait_m.def_id)))
+                    } else {
+                        (origin.span(), tcx.map.span_if_local(trait_m.def_id))
+                    }
+                }
+                TypeError::Sorts(ExpectedFound { expected, found }) => {
+                    if let Some(trait_m_node_id) = tcx.map.as_local_node_id(trait_m.def_id) {
+                        let trait_m_iter = match tcx.map.expect_trait_item(trait_m_node_id).node {
+                            TraitItem_::MethodTraitItem(ref trait_m_sig, _) =>
+                                trait_m_sig.decl.inputs.iter(),
+                            _ => bug!("{:?} is not a MethodTraitItem", trait_m)
+                        };
+                        let impl_iter = impl_args.iter();
+                        let trait_iter = trait_args.iter();
+                        let arg_idx = impl_iter.zip(trait_iter)
+                                               .position(|(impl_arg_ty, trait_arg_ty)| {
+                                                *impl_arg_ty == found && *trait_arg_ty == expected
+                                               }).unwrap();
+                        impl_m_iter.zip(trait_m_iter)
+                                   .nth(arg_idx)
+                                   .map(|(impl_arg, trait_arg)|
+                                        (impl_arg.ty.span, Some(trait_arg.ty.span)))
+                                   .unwrap_or(
+                                    (origin.span(), tcx.map.span_if_local(trait_m.def_id)))
+                    } else {
+                        (origin.span(), tcx.map.span_if_local(trait_m.def_id))
+                    }
+                }
+                _ => (origin.span(), tcx.map.span_if_local(trait_m.def_id))
+            };
+
+            let origin = TypeOrigin::MethodCompatCheck(impl_err_span);
+
             let mut diag = struct_span_err!(
                 tcx.sess, origin.span(), E0053,
                 "method `{}` has an incompatible type for trait", trait_m.name
             );
+
             infcx.note_type_err(
-                &mut diag, origin,
+                &mut diag,
+                origin,
+                trait_err_span.map(|sp| (sp, format!("original trait requirement"))),
                 Some(infer::ValuePairs::Types(ExpectedFound {
-                    expected: trait_fty,
-                    found: impl_fty
-                })), &terr
+                     expected: trait_fty,
+                     found: impl_fty
+                })),
+                &terr
             );
             diag.emit();
             return
@@ -487,12 +554,9 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                    trait_ty);
 
             // Locate the Span containing just the type of the offending impl
-            if let Some(impl_trait_node) = tcx.map.get_if_local(impl_c.def_id) {
-                if let Node::NodeImplItem(impl_trait_item) = impl_trait_node {
-                    if let ImplItemKind::Const(ref ty, _) = impl_trait_item.node {
-                        origin = TypeOrigin::Misc(ty.span);
-                    }
-                }
+            match tcx.map.expect_impl_item(impl_c_node_id).node {
+                ImplItemKind::Const(ref ty, _) => origin = TypeOrigin::Misc(ty.span),
+                _ => bug!("{:?} is not a impl const", impl_c)
             }
 
             let mut diag = struct_span_err!(
@@ -502,16 +566,16 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             );
 
             // Add a label to the Span containing just the type of the item
-            if let Some(orig_trait_node) = tcx.map.get_if_local(trait_c.def_id) {
-                if let Node::NodeTraitItem(orig_trait_item) = orig_trait_node {
-                    if let TraitItem_::ConstTraitItem(ref ty, _) = orig_trait_item.node {
-                        diag.span_label(ty.span, &format!("original trait requirement"));
-                    }
-                }
-            }
+            let trait_c_node_id = tcx.map.as_local_node_id(trait_c.def_id).unwrap();
+            let trait_c_span = match tcx.map.expect_trait_item(trait_c_node_id).node {
+                TraitItem_::ConstTraitItem(ref ty, _) => ty.span,
+                _ => bug!("{:?} is not a trait const", trait_c)
+            };
 
             infcx.note_type_err(
-                &mut diag, origin,
+                &mut diag,
+                origin,
+                Some((trait_c_span, format!("original trait requirement"))),
                 Some(infer::ValuePairs::Types(ExpectedFound {
                     expected: trait_ty,
                     found: impl_ty

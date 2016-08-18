@@ -18,7 +18,11 @@ trait Foo {
 trait Bar : Foo {
     type A: T2;
     fn do_something() {
-        let _: Self::A; //~ ERROR E0221
+        let _: Self::A;
+        //~^ ERROR E0221
+        //~| NOTE ambiguous associated type `A`
+        //~| NOTE associated type `Self` could derive from `Foo`
+        //~| NOTE associated type `Self` could derive from `Bar`
     }
 }
 

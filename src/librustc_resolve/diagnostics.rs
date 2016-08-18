@@ -891,7 +891,7 @@ A `struct` variant name was used like a function name.
 Erroneous code example:
 
 ```compile_fail,E0423
-struct Foo { a: bool};
+struct Foo { a: bool };
 
 let f = Foo();
 // error: `Foo` is a struct variant name, but this expression uses

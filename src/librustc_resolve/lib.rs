@@ -102,7 +102,7 @@ enum ResolutionError<'a> {
     /// error E0402: cannot use an outer type parameter in this context
     OuterTypeParameterContext,
     /// error E0403: the name is already used for a type parameter in this type parameter list
-    NameAlreadyUsedInTypeParameterList(Name),
+    NameAlreadyUsedInTypeParameterList(Name, &'a Span),
     /// error E0404: is not a trait
     IsNotATrait(&'a str),
     /// error E0405: use of undeclared trait name
@@ -209,13 +209,17 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              E0402,
                              "cannot use an outer type parameter in this context")
         }
-        ResolutionError::NameAlreadyUsedInTypeParameterList(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0403,
-                             "the name `{}` is already used for a type parameter in this type \
-                              parameter list",
-                             name)
+        ResolutionError::NameAlreadyUsedInTypeParameterList(name, first_use_span) => {
+             let mut err = struct_span_err!(resolver.session,
+                                            span,
+                                            E0403,
+                                            "the name `{}` is already used for a type parameter \
+                                            in this type parameter list",
+                                            name);
+             err.span_label(span, &format!("already used"));
+             err.span_label(first_use_span.clone(), &format!("first use of `{}`", name));
+             err
+
         }
         ResolutionError::IsNotATrait(name) => {
             let mut err = struct_span_err!(resolver.session,
@@ -237,12 +241,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0407,
-                             "method `{}` is not a member of trait `{}`",
-                             method,
-                             trait_)
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0407,
+                                           "method `{}` is not a member of trait `{}`",
+                                           method,
+                                           trait_);
+            err.span_label(span, &format!("not a member of `{}`", trait_));
+            err
         }
         ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
             struct_span_err!(resolver.session,
@@ -1726,17 +1732,19 @@ impl<'a> Resolver<'a> {
         match type_parameters {
             HasTypeParameters(generics, rib_kind) => {
                 let mut function_type_rib = Rib::new(rib_kind);
-                let mut seen_bindings = HashSet::new();
+                let mut seen_bindings = HashMap::new();
                 for type_parameter in &generics.ty_params {
                     let name = type_parameter.ident.name;
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
 
-                    if seen_bindings.contains(&name) {
+                    if seen_bindings.contains_key(&name) {
+                        let span = seen_bindings.get(&name).unwrap();
                         resolve_error(self,
                                       type_parameter.span,
-                                      ResolutionError::NameAlreadyUsedInTypeParameterList(name));
+                                      ResolutionError::NameAlreadyUsedInTypeParameterList(name,
+                                                                                          span));
                     }
-                    seen_bindings.insert(name);
+                    seen_bindings.entry(name).or_insert(type_parameter.span);
 
                     // plain insert (no renaming)
                     let def_id = self.definitions.local_def_id(type_parameter.id);

@@ -8,18 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// rustc-env:RUST_NEW_ERROR_FORMAT
+
 trait Foo {
-    fn a();
+    fn foo(x: u16);
+    fn bar(&mut self, bar: &mut Bar);
 }
 
 struct Bar;
 
 impl Foo for Bar {
-    fn a() {}
-    fn b() {}
-    //~^ ERROR E0407
-    //~| NOTE not a member of `Foo`
+    fn foo(x: i16) { }
+    fn bar(&mut self, bar: &Bar) { }
 }
 
 fn main() {
 }
+

@@ -161,7 +161,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.tcx.sess, origin.span(), E0271,
                 "type mismatch resolving `{}`", predicate
             );
-            self.note_type_err(&mut diag, origin, values, err);
+            self.note_type_err(&mut diag, origin, None, values, err);
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit();
         });
