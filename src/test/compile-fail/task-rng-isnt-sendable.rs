@@ -16,5 +16,4 @@ fn test_send<S: Send>() {}
 
 pub fn main() {
     test_send::<rand::ThreadRng>();
-    //~^ ERROR : std::marker::Send` is not satisfied
 }
