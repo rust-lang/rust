@@ -762,16 +762,6 @@ pub struct GenericPredicates<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
-    pub fn empty() -> GenericPredicates<'tcx> {
-        GenericPredicates {
-            predicates: VecPerParamSpace::empty(),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.predicates.is_empty()
-    }
-
     pub fn instantiate(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
                        -> InstantiatedPredicates<'tcx> {
         let mut instantiated = InstantiatedPredicates::empty();
