@@ -21,4 +21,46 @@ mod a {
     }
 }
 
+mod foo { pub fn f() {} }
+mod bar { pub fn f() {} }
+
+pub fn f() -> bool { true }
+
+// Items and explicit imports shadow globs.
+fn g() {
+    use foo::*;
+    use bar::*;
+    fn f() -> bool { true }
+    let _: bool = f();
+}
+
+fn h() {
+    use foo::*;
+    use bar::*;
+    use f;
+    let _: bool = f();
+}
+
+// Here, there appears to be shadowing but isn't because of namespaces.
+mod b {
+    use foo::*; // This imports `f` in the value namespace.
+    use super::b as f; // This imports `f` only in the type namespace,
+    fn test() { self::f(); } // so the glob isn't shadowed.
+}
+
+// Here, there is shadowing in one namespace, but not the other.
+mod c {
+    mod test {
+        pub fn f() {}
+        pub mod f {}
+    }
+    use self::test::*; // This glob-imports `f` in both namespaces.
+    mod f { pub fn f() {} } // This shadows the glob only in the value namespace.
+
+    fn test() {
+        self::f(); // Check that the glob-imported value isn't shadowed.
+        self::f::f(); // Check that the glob-imported module is shadowed.
+    }
+}
+
 fn main() {}
