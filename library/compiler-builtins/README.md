@@ -40,9 +40,9 @@ See [rust-lang/rust#35437][0].
 - [x] arm/aeabi_uidivmod.S
 - [x] arm/aeabi_uldivmod.S
 - [ ] arm/divdf3vfp.S
-- [ ] arm/divmodsi4.S
+- [ ] arm/divmodsi4.S (generic version is done)
 - [ ] arm/divsf3vfp.S
-- [ ] arm/divsi3.S
+- [ ] arm/divsi3.S (generic version is done)
 - [ ] arm/eqdf2vfp.S
 - [ ] arm/eqsf2vfp.S
 - [ ] arm/extendsfdf2vfp.S
@@ -62,7 +62,7 @@ See [rust-lang/rust#35437][0].
 - [ ] arm/lesf2vfp.S
 - [ ] arm/ltdf2vfp.S
 - [ ] arm/ltsf2vfp.S
-- [ ] arm/modsi3.S
+- [ ] arm/modsi3.S (generic version is done)
 - [ ] arm/muldf3vfp.S
 - [ ] arm/mulsf3vfp.S
 - [ ] arm/nedf2vfp.S
@@ -73,17 +73,19 @@ See [rust-lang/rust#35437][0].
 - [ ] arm/subdf3vfp.S
 - [ ] arm/subsf3vfp.S
 - [ ] arm/truncdfsf2vfp.S
-- [ ] arm/udivmodsi4.S
-- [ ] arm/udivsi3.S
-- [ ] arm/umodsi3.S
+- [ ] arm/udivmodsi4.S (generic version is done)
+- [ ] arm/udivsi3.S (generic version is done)
+- [ ] arm/umodsi3.S (generic version is done)
 - [ ] arm/unorddf2vfp.S
 - [ ] arm/unordsf2vfp.S
 - [x] ashldi3.c
 - [x] ashrdi3.c
 - [ ] divdf3.c
-- [ ] divdi3.c
+- [x] divdi3.c
+- [x] divmoddi4.c
+- [x] divmodsi4.c
 - [ ] divsf3.c
-- [ ] divsi3.c
+- [x] divsi3.c
 - [ ] extendhfsf2.c
 - [ ] extendsfdf2.c
 - [ ] fixdfdi.c
@@ -113,8 +115,8 @@ See [rust-lang/rust#35437][0].
 - [ ] i386/udivdi3.S
 - [ ] i386/umoddi3.S
 - [x] lshrdi3.c
-- [ ] moddi3.c
-- [ ] modsi3.c
+- [x] moddi3.c
+- [x] modsi3.c
 - [ ] muldf3.c
 - [x] muldi3.c
 - [x] mulodi4.c
@@ -251,8 +253,6 @@ These builtins are never called by LLVM.
 - ~~ctzdi2.c~~
 - ~~ctzsi2.c~~
 - ~~ctzti2.c~~
-- ~~divmoddi4.c~~
-- ~~divmodsi4.c~~
 - ~~ffsdi2.c~~
 - ~~ffsti2.c~~
 - ~~mulvdi3.c~~

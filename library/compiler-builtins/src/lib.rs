@@ -24,6 +24,7 @@ extern crate rlibc;
 pub mod arm;
 
 pub mod udiv;
+pub mod sdiv;
 pub mod mul;
 pub mod shift;
 
