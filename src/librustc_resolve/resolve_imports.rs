@@ -571,7 +571,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             Failed(err) => return Failed(err),
         };
 
-        let (source, value_result, type_result) = match directive.subclass {
+        let (name, value_result, type_result) = match directive.subclass {
             SingleImport { source, ref value_result, ref type_result, .. } =>
                 (source, value_result.get(), type_result.get()),
             GlobImport { .. } if module.def_id() == directive.parent.def_id() => {
@@ -584,34 +584,34 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
             if let Ok(binding) = result {
-                self.record_use(source, ns, binding);
+                self.record_use(name, ns, binding);
             }
         }
 
         if value_result.is_err() && type_result.is_err() {
             let (value_result, type_result);
-            value_result = self.resolve_name_in_module(module, source, ValueNS, false, Some(span));
-            type_result = self.resolve_name_in_module(module, source, TypeNS, false, Some(span));
+            value_result = self.resolve_name_in_module(module, name, ValueNS, false, Some(span));
+            type_result = self.resolve_name_in_module(module, name, TypeNS, false, Some(span));
 
             return if let (Failed(_), Failed(_)) = (value_result, type_result) {
                 let resolutions = module.resolutions.borrow();
-                let names = resolutions.iter().filter_map(|(&(ref name, _), resolution)| {
-                    if *name == source { return None; } // Never suggest the same name
+                let names = resolutions.iter().filter_map(|(&(ref n, _), resolution)| {
+                    if *n == name { return None; } // Never suggest the same name
                     match *resolution.borrow() {
-                        NameResolution { binding: Some(_), .. } => Some(name),
+                        NameResolution { binding: Some(_), .. } => Some(n),
                         NameResolution { single_imports: SingleImports::None, .. } => None,
-                        _ => Some(name),
+                        _ => Some(n),
                     }
                 });
-                let lev_suggestion = match find_best_match_for_name(names, &source.as_str(), None) {
+                let lev_suggestion = match find_best_match_for_name(names, &name.as_str(), None) {
                     Some(name) => format!(". Did you mean to use `{}`?", name),
                     None => "".to_owned(),
                 };
                 let module_str = module_to_string(module);
                 let msg = if &module_str == "???" {
-                    format!("There is no `{}` in the crate root{}", source, lev_suggestion)
+                    format!("There is no `{}` in the crate root{}", name, lev_suggestion)
                 } else {
-                    format!("There is no `{}` in `{}`{}", source, module_str, lev_suggestion)
+                    format!("There is no `{}` in `{}`{}", name, module_str, lev_suggestion)
                 };
                 Failed(Some((directive.span, msg)))
             } else {
@@ -623,9 +623,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         match (value_result, type_result) {
             (Ok(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
-                let msg = format!("`{}` is private, and cannot be reexported", source);
-                let note_msg = format!("consider marking `{}` as `pub` in the imported module",
-                                        source);
+                let msg = format!("`{}` is private, and cannot be reexported", name);
+                let note_msg =
+                    format!("consider marking `{}` as `pub` in the imported module", name);
                 struct_span_err!(self.session, directive.span, E0364, "{}", &msg)
                     .span_note(directive.span, &note_msg)
                     .emit();
@@ -635,15 +635,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 if binding.is_extern_crate() {
                     let msg = format!("extern crate `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring with `pub`",
-                                       source);
+                                       name);
                     self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
                 } else {
-                    let mut err = struct_span_err!(self.session, directive.span, E0365,
-                                                     "`{}` is private, and cannot be reexported",
-                                                     source);
-                    err.span_label(directive.span, &format!("reexport of private `{}`", source));
-                    err.note(&format!("consider declaring type or module `{}` with `pub`", source));
-                    err.emit();
+                    struct_span_err!(self.session, directive.span, E0365,
+                                     "`{}` is private, and cannot be reexported", name)
+                        .span_label(directive.span, &format!("reexport of private `{}`", name))
+                        .note(&format!("consider declaring type or module `{}` with `pub`", name))
+                        .emit();
                 }
             }
 
