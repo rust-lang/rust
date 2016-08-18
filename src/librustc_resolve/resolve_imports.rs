@@ -65,7 +65,7 @@ pub struct ImportDirective<'a> {
     pub id: NodeId,
     parent: Module<'a>,
     module_path: Vec<Name>,
-    target_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
+    imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
     subclass: ImportDirectiveSubclass<'a>,
     span: Span,
     vis: Cell<ty::Visibility>,
@@ -192,8 +192,8 @@ impl<'a> Resolver<'a> {
         // Check if the globs are determined
         for directive in module.globs.borrow().iter() {
             if self.is_accessible(directive.vis.get()) {
-                if let Some(target_module) = directive.target_module.get() {
-                    let result = self.resolve_name_in_module(target_module, name, ns, true, None);
+                if let Some(module) = directive.imported_module.get() {
+                    let result = self.resolve_name_in_module(module, name, ns, true, None);
                     if let Indeterminate = result {
                         return Indeterminate;
                     }
@@ -220,15 +220,15 @@ impl<'a> Resolver<'a> {
         match resolution.single_imports {
             SingleImports::AtLeastOne => return Some(Indeterminate),
             SingleImports::MaybeOne(directive) if self.is_accessible(directive.vis.get()) => {
-                let target_module = match directive.target_module.get() {
-                    Some(target_module) => target_module,
+                let module = match directive.imported_module.get() {
+                    Some(module) => module,
                     None => return Some(Indeterminate),
                 };
                 let name = match directive.subclass {
                     SingleImport { source, .. } => source,
                     GlobImport { .. } => unreachable!(),
                 };
-                match self.resolve_name_in_module(target_module, name, ns, true, None) {
+                match self.resolve_name_in_module(module, name, ns, true, None) {
                     Failed(_) => {}
                     _ => return Some(Indeterminate),
                 }
@@ -250,7 +250,7 @@ impl<'a> Resolver<'a> {
         let directive = self.arenas.alloc_import_directive(ImportDirective {
             parent: current_module,
             module_path: module_path,
-            target_module: Cell::new(None),
+            imported_module: Cell::new(None),
             subclass: subclass,
             span: span,
             id: id,
@@ -485,10 +485,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                names_to_string(&directive.module_path),
                module_to_string(self.current_module));
 
-        let module = directive.parent;
-        self.set_current_module(module);
+        self.set_current_module(directive.parent);
 
-        let target_module = if let Some(module) = directive.target_module.get() {
+        let module = if let Some(module) = directive.imported_module.get() {
             module
         } else {
             let vis = directive.vis.get();
@@ -506,7 +505,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         };
 
-        directive.target_module.set(Some(target_module));
+        directive.imported_module.set(Some(module));
         let (source, target, value_result, type_result) = match directive.subclass {
             SingleImport { source, target, ref value_result, ref type_result } =>
                 (source, target, value_result, type_result),
@@ -520,7 +519,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
             if let Err(false) = result.get() {
                 result.set({
-                    match self.resolve_name_in_module(target_module, source, ns, false, None) {
+                    match self.resolve_name_in_module(module, source, ns, false, None) {
                         Success(binding) => Ok(binding),
                         Indeterminate => Err(false),
                         Failed(_) => Err(true),
@@ -533,7 +532,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             match result.get() {
                 Err(false) => indeterminate = true,
                 Err(true) => {
-                    self.update_resolution(module, target, ns, |_, resolution| {
+                    self.update_resolution(directive.parent, target, ns, |_, resolution| {
                         resolution.single_imports.directive_failed()
                     });
                 }
@@ -549,10 +548,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
                 Ok(binding) => {
                     let imported_binding = self.import(binding, directive);
-                    let conflict = self.try_define(module, target, ns, imported_binding);
+                    let conflict = self.try_define(directive.parent, target, ns, imported_binding);
                     if let Err(old_binding) = conflict {
                         let binding = &self.import(binding, directive);
-                        self.report_conflict(module, target, ns, binding, old_binding);
+                        self.report_conflict(directive.parent, target, ns, binding, old_binding);
                     }
                 }
             }
@@ -666,38 +665,37 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     }
 
     fn resolve_glob_import(&mut self, directive: &'b ImportDirective<'b>) {
-        let target_module = directive.target_module.get().unwrap();
-        self.populate_module_if_necessary(target_module);
+        let module = directive.imported_module.get().unwrap();
+        self.populate_module_if_necessary(module);
 
-        if let Some(Def::Trait(_)) = target_module.def {
+        if let Some(Def::Trait(_)) = module.def {
             self.session.span_err(directive.span, "items in traits are not importable.");
         }
 
-        let module = directive.parent;
-        if target_module.def_id() == module.def_id()  {
+        if module.def_id() == directive.parent.def_id()  {
             return;
         } else if let GlobImport { is_prelude: true } = directive.subclass {
-            self.prelude = Some(target_module);
+            self.prelude = Some(module);
             return;
         }
 
-        // Add to target_module's glob_importers
-        target_module.glob_importers.borrow_mut().push(directive);
+        // Add to module's glob_importers
+        module.glob_importers.borrow_mut().push(directive);
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
-        let bindings = target_module.resolutions.borrow().iter().filter_map(|(name, resolution)| {
+        let bindings = module.resolutions.borrow().iter().filter_map(|(name, resolution)| {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
             if binding.is_importable() && binding.is_pseudo_public() {
                 let imported_binding = self.import(binding, directive);
-                let _ = self.try_define(module, name, ns, imported_binding);
+                let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
         }
 
         // Record the destination of this import
-        if let Some(did) = target_module.def_id() {
+        if let Some(did) = module.def_id() {
             let resolution = PathResolution::new(Def::Mod(did));
             self.def_map.insert(directive.id, resolution);
         }
