@@ -565,7 +565,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
                     def.struct_variant().field_named(field.node).did
                 }
                 _ => span_bug!(e.span,
-                               "stability::check_expr: named field access on non-struct")
+                               "stability::check_expr: named field access on non-struct/union")
             }
         }
         hir::ExprTupField(ref base_e, ref field) => {
@@ -601,7 +601,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
                 _ => {
                     span_bug!(e.span,
                               "stability::check_expr: struct construction \
-                               of non-struct, type {:?}",
+                               of non-struct/union, type {:?}",
                               type_);
                 }
             }

@@ -136,7 +136,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
                 self.insert_def_id(def.struct_variant().field_named(name).did);
             }
-            _ => span_bug!(lhs.span, "named field access on non-struct"),
+            _ => span_bug!(lhs.span, "named field access on non-struct/union"),
         }
     }
 

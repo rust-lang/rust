@@ -133,6 +133,7 @@ impl ItemType {
     pub fn name_space(&self) -> NameSpace {
         match *self {
             ItemType::Struct |
+            ItemType::Union |
             ItemType::Enum |
             ItemType::Module |
             ItemType::Typedef |

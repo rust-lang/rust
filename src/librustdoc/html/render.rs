@@ -2565,10 +2565,8 @@ fn render_union(w: &mut fmt::Formatter, it: &clean::Item,
            if structhead {"union "} else {""},
            it.name.as_ref().unwrap())?;
     if let Some(g) = g {
-        write!(w, "{}", g)?
-    }
-    if let Some(g) = g {
-        write!(w, "{}", WhereClause(g))?
+        write!(w, "{}", g)?;
+        write!(w, "{}", WhereClause(g))?;
     }
 
     write!(w, " {{\n{}", tab)?;
