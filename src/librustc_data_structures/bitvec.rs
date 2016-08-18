@@ -272,17 +272,11 @@ fn word_mask(index: usize) -> (usize, u64) {
 #[test]
 fn bitvec_iter_works() {
     let mut bitvec = BitVector::new(100);
-    bitvec.insert(1);
-    bitvec.insert(10);
-    bitvec.insert(19);
-    bitvec.insert(62);
-    bitvec.insert(63);
-    bitvec.insert(64);
-    bitvec.insert(65);
-    bitvec.insert(66);
-    bitvec.insert(99);
-    assert_eq!(bitvec.iter().collect::<Vec<_>>(),
-               [1, 10, 19, 62, 63, 64, 65, 66, 99]);
+    let ids = [1, 10, 19, 62, 63, 64, 65, 66, 99];
+    for &i in &ids {
+        bitvec.insert(i);
+    }
+    assert_eq!(bitvec.iter().collect::<Vec<_>>(), ids);
 }
 
 
@@ -416,16 +410,50 @@ fn matrix_iter() {
 #[test]
 fn bitvec_pop() {
     let mut bitvec = BitVector::new(100);
-    bitvec.insert(1);
-    bitvec.insert(10);
-    bitvec.insert(19);
-    bitvec.insert(62);
-    bitvec.insert(63);
-    bitvec.insert(64);
-    bitvec.insert(65);
-    bitvec.insert(66);
-    bitvec.insert(99);
+    let ids = [1, 10, 19, 62, 63, 64, 65, 66, 99];
+    for &i in &ids {
+        bitvec.insert(i);
+    }
     let mut idxs = vec![];
     while let Some(idx) = bitvec.pop() { idxs.push(idx); }
-    assert_eq!(idxs, [99, 66, 65, 64, 63, 62, 19, 10, 1]);
+    idxs.reverse();
+    assert_eq!(idxs, ids);
+}
+
+#[test]
+fn bitvec_invert() {
+    let mut bitvec = BitVector::new(100);
+    let ids = [1, 10, 19, 62, 63, 64, 65, 66, 99];
+    for &i in &ids {
+        bitvec.insert(i);
+    }
+    bitvec.invert();
+    for &i in &ids {
+        assert!(!bitvec.contains(i));
+    }
+    assert!(bitvec.contains(0));
+    assert!(bitvec.contains(2));
+    assert!(bitvec.contains(9));
+    assert!(bitvec.contains(11));
+    assert!(bitvec.contains(61));
+    assert!(bitvec.contains(67));
+}
+
+#[test]
+fn bitvec_remove() {
+    let mut bitvec = BitVector::new(100);
+    let ids = [1, 10, 19, 62, 63, 64, 65, 66, 99];
+    for &i in &ids {
+        bitvec.insert(i);
+    }
+    bitvec.invert();
+    for &i in &ids {
+        assert!(!bitvec.contains(i));
+    }
+    assert!(bitvec.contains(0));
+    assert!(bitvec.contains(2));
+    assert!(bitvec.contains(9));
+    assert!(bitvec.contains(11));
+    assert!(bitvec.contains(61));
+    assert!(bitvec.contains(67));
 }
