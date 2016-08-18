@@ -690,15 +690,21 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             };
 
             // Report conflicts
-            for duplicate_glob in resolution.duplicate_globs.iter() {
-                // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
-                if !binding.is_import() {
-                    if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
-                        if binding.is_import() { continue }
+            if !self.new_import_semantics {
+                for duplicate_glob in resolution.duplicate_globs.iter() {
+                    // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
+                    if !binding.is_import() {
+                        if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
+                            if binding.is_import() { continue }
+                        }
                     }
-                }
 
-                self.report_conflict(module, name, ns, duplicate_glob, binding);
+                    self.report_conflict(module, name, ns, duplicate_glob, binding);
+                }
+            } else if binding.is_glob_import() {
+                for duplicate_glob in resolution.duplicate_globs.iter() {
+                    self.report_conflict(module, name, ns, duplicate_glob, binding);
+                }
             }
 
             if binding.vis == ty::Visibility::Public &&
