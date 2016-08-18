@@ -894,25 +894,36 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `AddAssign`. When `Foo += Foo` happens, it ends up
-/// calling `add_assign`, and therefore, `main` prints `Adding!`.
+/// This example creates a `Point` struct that implements the `AddAssign`
+/// trait, and then demonstrates add-assigning to a mutable `Point`.
 ///
 /// ```
 /// use std::ops::AddAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
 ///
-/// impl AddAssign for Foo {
-///     fn add_assign(&mut self, _rhs: Foo) {
-///         println!("Adding!");
+/// impl AddAssign for Point {
+///     fn add_assign(&mut self, other: Point) {
+///         *self = Point {
+///             x: self.x + other.x,
+///             y: self.y + other.y,
+///         };
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo += Foo;
+/// impl PartialEq for Point {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.x == other.x && self.y == other.y
+///     }
 /// }
+///
+/// let mut point = Point { x: 1, y: 0 };
+/// point += Point { x: 2, y: 3 };
+/// assert_eq!(point, Point { x: 3, y: 3 });
 /// ```
 #[lang = "add_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
