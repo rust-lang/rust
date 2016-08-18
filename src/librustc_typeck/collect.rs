@@ -1587,6 +1587,11 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
                         ccx.tcx.mk_struct(def, substs)
                     }
+                    ItemUnion(ref un, ref generics) => {
+                        let def = convert_union_def(ccx, item, un);
+                        let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
+                        ccx.tcx.mk_union(def, substs)
+                    }
                     ItemDefaultImpl(..) |
                     ItemTrait(..) |
                     ItemImpl(..) |

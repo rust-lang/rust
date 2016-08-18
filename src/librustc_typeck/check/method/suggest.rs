@@ -166,7 +166,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     for (ty, _) in self.autoderef(span, rcvr_ty) {
                         match ty.sty {
                             ty::TyStruct(def, substs) | ty::TyUnion(def, substs) => {
-                                if let Some(field) = def.struct_variant().find_field_named(item_name) {
+                                if let Some(field) = def.struct_variant().
+                                                         find_field_named(item_name) {
                                     let snippet = tcx.sess.codemap().span_to_snippet(expr.span);
                                     let expr_string = match snippet {
                                         Ok(expr_string) => expr_string,
@@ -179,8 +180,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                                     if self.is_fn_ty(&field_ty, span) {
                                         err.span_note(span, &format!(
-                                            "use `({0}.{1})(...)` if you meant to call the function \
-                                             stored in the `{1}` field",
+                                            "use `({0}.{1})(...)` if you meant to call the \
+                                             function stored in the `{1}` field",
                                             expr_string, item_name));
                                     } else {
                                         err.span_note(span, &format!(

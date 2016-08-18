@@ -227,7 +227,7 @@ fn build_union<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     clean::Union {
         struct_type: doctree::Plain,
-        generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
+        generics: (t.generics, &predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,
     }

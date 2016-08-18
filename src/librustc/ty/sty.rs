@@ -112,7 +112,7 @@ pub enum TypeVariants<'tcx> {
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `TyEnum` corresponds to an enum
     /// definition and not a concrete use of it. This is true for `TyStruct`
-    /// as well.
+    /// and `TyUnion` as well.
     TyEnum(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// A structure type, defined with `struct`.

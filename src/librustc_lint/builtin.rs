@@ -475,8 +475,7 @@ impl LateLintPass for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
-                (def, cx.tcx.mk_union(def,
-                                      cx.tcx.mk_substs(Substs::empty())))
+                (def, cx.tcx.mk_union(def, Substs::empty(cx.tcx)))
             }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
