@@ -497,6 +497,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             return;
         };
+        self.write_ty(pat.id, pat_ty);
 
         // Type check the path.
         self.demand_eqtype(pat.span, expected, pat_ty);
