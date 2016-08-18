@@ -2942,9 +2942,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
                             autoderef.finalize(lvalue_pref, Some(base));
-                            let ty = self.write_ty(expr.id, field_ty);
                             self.write_autoderef_adjustment(base.id, autoderefs);
-                            return ty;
+                            return field_ty;
                         }
                         private_candidate = Some((base_def.did, field_ty));
                     }
@@ -2956,7 +2955,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = self.tcx().item_path_str(did);
-            let ty = self.write_ty(expr.id, field_ty);
             let msg = format!("field `{}` of struct `{}` is private", field.node, struct_path);
             let mut err = self.tcx().sess.struct_span_err(expr.span, &msg);
             // Also check if an accessible method exists, which is often what is meant.
@@ -2965,9 +2963,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   field.node));
             }
             err.emit();
-            ty
+            field_ty
         } else if field.node == keywords::Invalid.name() {
-            self.write_error(expr.id)
+            self.tcx().types.err
         } else if self.method_exists(field.span, field.node, expr_t, expr.id, true) {
             self.type_error_struct(field.span, |actual| {
                 format!("attempted to take value of method `{}` on type \
@@ -2976,7 +2974,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .help("maybe a `()` to call it is missing? \
                        If not, try an anonymous function")
                 .emit();
-            self.write_error(expr.id)
+            self.tcx().types.err
         } else {
             let mut err = self.type_error_struct(expr.span, |actual| {
                 format!("attempted access of field `{}` on type `{}`, \
@@ -2994,7 +2992,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 _ => {}
             }
             err.emit();
-            self.write_error(expr.id)
+            self.tcx().types.err
         }
     }
 
@@ -3059,9 +3057,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let Some(field_ty) = field {
                 autoderef.finalize(lvalue_pref, Some(base));
-                let ty = self.write_ty(expr.id, field_ty);
                 self.write_autoderef_adjustment(base.id, autoderefs);
-                return ty;
+                return field_ty;
             }
         }
         autoderef.unambiguous_final_ty();
@@ -3070,7 +3067,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let struct_path = self.tcx().item_path_str(did);
             let msg = format!("field `{}` of struct `{}` is private", idx.node, struct_path);
             self.tcx().sess.span_err(expr.span, &msg);
-            return self.write_ty(expr.id, field_ty)
+            return field_ty;
         }
 
         self.type_error_message(
@@ -3090,7 +3087,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             },
             expr_t);
 
-        self.write_error(expr.id)
+        self.tcx().types.err
     }
 
     fn report_unknown_field(&self,
@@ -3698,25 +3695,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty
           }
           hir::ExprField(ref base, ref field) => {
-            self.check_field(expr, lvalue_pref, &base, field)
+            let ty = self.check_field(expr, lvalue_pref, &base, field);
+            self.write_ty(id, ty)
           }
           hir::ExprTupField(ref base, idx) => {
-            self.check_tup_field(expr, lvalue_pref, &base, idx)
+            let ty = self.check_tup_field(expr, lvalue_pref, &base, idx);
+            self.write_ty(id, ty)
           }
           hir::ExprIndex(ref base, ref idx) => {
               let base_t = self.check_expr_with_lvalue_pref(&base, lvalue_pref);
               let idx_t = self.check_expr(&idx);
 
-              if base_t.references_error() {
-                  self.write_ty(id, base_t)
+              let ty = if base_t.references_error() {
+                  base_t
               } else if idx_t.references_error() {
-                  self.write_ty(id, idx_t)
+                  idx_t
               } else {
                   let base_t = self.structurally_resolved_type(expr.span, base_t);
                   match self.lookup_indexing(expr, base, base_t, idx_t, lvalue_pref) {
                       Some((index_ty, element_ty)) => {
                           self.demand_eqtype(expr.span, index_ty, idx_t);
-                          self.write_ty(id, element_ty)
+                          element_ty
                       }
                       None => {
                           self.check_expr_has_type(&idx, self.tcx.types.err);
@@ -3752,10 +3751,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               }
                           }
                           err.emit();
-                          self.write_ty(id, self.tcx().types.err)
+                          self.tcx().types.err
                       }
                   }
-              }
+              };
+              self.write_ty(id, ty)
            }
         };
 
