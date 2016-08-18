@@ -8,18 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn a();
+static mut DROP: bool = false;
+
+struct ConnWrap(Conn);
+impl ::std::ops::Deref for ConnWrap {
+    type Target=Conn;
+    fn deref(&self) -> &Conn { &self.0 }
 }
 
-struct Bar;
+struct Conn;
+impl Drop for  Conn {
+    fn drop(&mut self) { unsafe { DROP = true; } }
+}
 
-impl Foo for Bar {
-    fn a() {}
-    fn b() {}
-    //~^ ERROR E0407
-    //~| NOTE not a member of `Foo`
+fn inner() {
+    let conn = &*match Some(ConnWrap(Conn)) {
+        Some(val) => val,
+        None => return,
+    };
+    return;
 }
 
 fn main() {
+    inner();
+    unsafe {
+        assert_eq!(DROP, true);
+    }
 }

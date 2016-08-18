@@ -301,8 +301,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             }
 
             ref other => {
-                span_err!(tcx.sess, it.span, E0093,
-                          "unrecognized intrinsic function: `{}`", *other);
+                struct_span_err!(tcx.sess, it.span, E0093,
+                                "unrecognized intrinsic function: `{}`",
+                                *other)
+                                .span_label(it.span, &format!("unrecognized intrinsic"))
+                                .emit();
                 return;
             }
         };

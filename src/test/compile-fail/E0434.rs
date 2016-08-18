@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn a();
+fn foo() {
+    let y = 5;
+    fn bar() -> u32 {
+        y //~ ERROR E0434
+    }
 }
 
-struct Bar;
-
-impl Foo for Bar {
-    fn a() {}
-    fn b() {}
-    //~^ ERROR E0407
-    //~| NOTE not a member of `Foo`
-}
-
-fn main() {
+fn main () {
 }

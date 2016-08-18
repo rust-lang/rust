@@ -9,17 +9,10 @@
 // except according to those terms.
 
 trait Foo {
-    fn a();
+    fn bar() {
+        Self; //~ ERROR E0425
+    }
 }
 
-struct Bar;
-
-impl Foo for Bar {
-    fn a() {}
-    fn b() {}
-    //~^ ERROR E0407
-    //~| NOTE not a member of `Foo`
-}
-
-fn main() {
+fn main () {
 }

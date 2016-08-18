@@ -9,15 +9,21 @@
 // except according to those terms.
 
 trait Foo {
-    fn foo(x: u16);
-    fn bar(&self);
+    fn foo(x: u16); //~ NOTE original trait requirement
+    fn bar(&self); //~ NOTE original trait requirement
 }
 
 struct Bar;
 
 impl Foo for Bar {
-    fn foo(x: i16) { } //~ ERROR E0053
-    fn bar(&mut self) { } //~ ERROR E0053
+    fn foo(x: i16) { }
+    //~^ ERROR method `foo` has an incompatible type for trait
+    //~| NOTE expected u16
+    fn bar(&mut self) { }
+    //~^ ERROR method `bar` has an incompatible type for trait
+    //~| NOTE values differ in mutability
+    //~| NOTE expected type `fn(&Bar)`
+    //~| NOTE found type `fn(&mut Bar)`
 }
 
 fn main() {

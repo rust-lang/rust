@@ -8,18 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn a();
-}
+fn main () {
+    struct Foo { a: bool };
 
-struct Bar;
-
-impl Foo for Bar {
-    fn a() {}
-    fn b() {}
-    //~^ ERROR E0407
-    //~| NOTE not a member of `Foo`
-}
-
-fn main() {
+    let f = Foo(); //~ ERROR E0423
 }

@@ -569,6 +569,13 @@ impl<'ast> Map<'ast> {
         }
     }
 
+    pub fn expect_impl_item(&self, id: NodeId) -> &'ast ImplItem {
+        match self.find(id) {
+            Some(NodeImplItem(item)) => item,
+            _ => bug!("expected impl item, found {}", self.node_to_string(id))
+        }
+    }
+
     pub fn expect_trait_item(&self, id: NodeId) -> &'ast TraitItem {
         match self.find(id) {
             Some(NodeTraitItem(item)) => item,

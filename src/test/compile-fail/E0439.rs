@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn a();
+#![feature(platform_intrinsics)]
+
+extern "platform-intrinsic" {
+    fn simd_shuffle<A,B>(a: A, b: A, c: [u32; 8]) -> B; //~ ERROR E0439
 }
 
-struct Bar;
-
-impl Foo for Bar {
-    fn a() {}
-    fn b() {}
-    //~^ ERROR E0407
-    //~| NOTE not a member of `Foo`
-}
-
-fn main() {
+fn main () {
 }

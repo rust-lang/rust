@@ -3000,6 +3000,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          but no field with that name was found",
                         field.node, actual)
             }, expr_t);
+            if let ty::TyRawPtr(..) = expr_t.sty {
+                err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
+                                  `(*{0}).{1}`", pprust::expr_to_string(base), field.node));
+            }
             if let ty::TyStruct(def, _) = expr_t.sty {
                 Self::suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
             }
