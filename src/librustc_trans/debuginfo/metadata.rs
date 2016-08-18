@@ -1302,6 +1302,9 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     ]
                 }
             }
+            adt::UntaggedUnion(..) => {
+                unimplemented_unions!();
+            }
             adt::RawNullablePointer { nndiscr: non_null_variant_index, nnty, .. } => {
                 // As far as debuginfo is concerned, the pointer this enum
                 // represents is still wrapped in a struct. This is to make the
@@ -1616,7 +1619,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         adt::RawNullablePointer { .. }           |
         adt::StructWrappedNullablePointer { .. } |
-        adt::Univariant(..)                      => None,
+        adt::Univariant(..) | adt::UntaggedUnion(..) => None,
         adt::General(inttype, _) => Some(discriminant_type_metadata(inttype)),
     };
 
