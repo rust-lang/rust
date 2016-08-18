@@ -25,6 +25,12 @@ union W {
     b: u64,
 }
 
+#[repr(C)]
+union Y {
+    f1: u16,
+    f2: [u8; 4],
+}
+
 fn main() {
     assert_eq!(size_of::<U>(), 1);
     assert_eq!(size_of::<U64>(), 8);
@@ -32,6 +38,8 @@ fn main() {
     assert_eq!(align_of::<U>(), 1);
     assert_eq!(align_of::<U64>(), align_of::<u64>());
     assert_eq!(align_of::<W>(), align_of::<u64>());
+    assert_eq!(size_of::<Y>(), 4);
+    assert_eq!(align_of::<Y>(), 2);
 
     let u = U { a: 10 };
     assert_eq!(u.a, 10);

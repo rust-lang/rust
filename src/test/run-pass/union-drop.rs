@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A {
-    foo : i32,
-    car : i32,
-    barr : i32
+// Drop works for union itself.
+
+#![feature(untagged_unions)]
+
+union U {
+    a: u8
+}
+
+impl Drop for U {
+    fn drop(&mut self) {}
 }
 
 fn main() {
-    let a = A {
-        foo : 5,
-        bar : 42,//~ ERROR struct `A` has no field named `bar`
-        //~^ HELP did you mean `car`?
-    };
+    // 'unions are not fully implemented', src/librustc_trans/glue.rs:567
+    // let u = U { a: 1 };
 }

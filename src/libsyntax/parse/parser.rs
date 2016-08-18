@@ -5957,8 +5957,10 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if self.eat_keyword(keywords::Union) {
+        if self.check_keyword(keywords::Union) &&
+                self.look_ahead(1, |t| t.is_ident() && !t.is_any_keyword()) {
             // UNION ITEM
+            self.bump();
             let (ident, item_, extra_attrs) = self.parse_item_union()?;
             let last_span = self.last_span;
             let item = self.mk_item(lo,
