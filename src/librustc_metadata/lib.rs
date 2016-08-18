@@ -54,6 +54,7 @@ pub mod def_key;
 pub mod tyencode;
 pub mod tydecode;
 pub mod encoder;
+mod index_builder;
 pub mod decoder;
 pub mod creader;
 pub mod csearch;
