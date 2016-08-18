@@ -241,12 +241,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0407,
-                             "method `{}` is not a member of trait `{}`",
-                             method,
-                             trait_)
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0407,
+                                           "method `{}` is not a member of trait `{}`",
+                                           method,
+                                           trait_);
+            err.span_label(span, &format!("not a member of `{}`", trait_));
+            err
         }
         ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
             struct_span_err!(resolver.session,

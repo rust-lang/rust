@@ -16,7 +16,9 @@ struct Bar;
 
 impl Foo for Bar {
     fn a() {}
-    fn b() {} //~ ERROR E0407
+    fn b() {}
+    //~^ ERROR E0407
+    //~| NOTE not a member of `Foo`
 }
 
 fn main() {
