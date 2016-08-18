@@ -106,7 +106,8 @@ fn check_hash_peq<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, span: Span, trait_re
             let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
 
             // Only care about `impl PartialEq<Foo> for Foo`
-            if trait_ref.input_types()[0] == ty {
+            // For `impl PartialEq<B> for A, input_types is [A, B]
+            if trait_ref.input_types()[1] == ty {
                 let mess = if peq_is_automatically_derived {
                     "you are implementing `Hash` explicitly but have derived `PartialEq`"
                 } else {

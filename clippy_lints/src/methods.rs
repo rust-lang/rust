@@ -2,7 +2,6 @@ use rustc::hir;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::const_qualif::ConstQualif;
-use rustc::ty::subst::TypeSpace;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
@@ -1085,7 +1084,7 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
         return None;
     }
     if let ty::TyEnum(_, substs) = ty.sty {
-        if let Some(err_ty) = substs.types.opt_get(TypeSpace, 1) {
+        if let Some(err_ty) = substs.types.get(1) {
             return Some(err_ty);
         }
     }
