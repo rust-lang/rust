@@ -473,7 +473,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
         }
-        
+
         result_ty
     }
 }
