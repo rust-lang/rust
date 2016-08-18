@@ -26,8 +26,8 @@ fn main() {
         let y = &x; //~ ERROR `x` does not live long enough
 
         scoped(|| {
-            //~^ ERROR `y` does not live long enough
             let _z = y;
+            //~^ ERROR `y` does not live long enough
         })
     };
 

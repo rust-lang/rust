@@ -96,7 +96,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         //! Reports an error if `loan_region` is larger than `max_scope`
 
         if !self.bccx.is_subregion_of(self.loan_region, max_scope) {
-            Err(self.report_error(err_out_of_scope(max_scope, self.loan_region)))
+            Err(self.report_error(err_out_of_scope(max_scope, self.loan_region, self.cause)))
         } else {
             Ok(())
         }

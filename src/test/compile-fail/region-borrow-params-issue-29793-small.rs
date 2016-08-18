@@ -16,15 +16,19 @@
 
 fn escaping_borrow_of_closure_params_1() {
     let g = |x: usize, y:usize| {
-        //~^ NOTE reference must be valid for the scope of call-site for function
-        //~| NOTE ...but borrowed value is only valid for the scope of function body
-        //~| NOTE reference must be valid for the scope of call-site for function
-        //~| NOTE ...but borrowed value is only valid for the scope of function body
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
         //~^ ERROR `x` does not live long enough
         //~| ERROR `y` does not live long enough
+        //~| NOTE capture occurs here
+        //~| NOTE capture occurs here
+        //~| NOTE does not live long enough
+        //~| NOTE does not live long enough
+        //~| NOTE values in a scope are dropped in the opposite order they are created
+        //~| NOTE values in a scope are dropped in the opposite order they are created
         return f;
     };
+    //~^ NOTE borrowed value dropped before borrower
+    //~| NOTE borrowed value dropped before borrower
 
     // We delberately do not call `g`; this small version of the test,
     // after adding such a call, was (properly) rejected even when the
@@ -35,15 +39,19 @@ fn escaping_borrow_of_closure_params_1() {
 
 fn escaping_borrow_of_closure_params_2() {
     let g = |x: usize, y:usize| {
-        //~^ NOTE reference must be valid for the scope of call-site for function
-        //~| NOTE ...but borrowed value is only valid for the scope of function body
-        //~| NOTE reference must be valid for the scope of call-site for function
-        //~| NOTE ...but borrowed value is only valid for the scope of function body
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
         //~^ ERROR `x` does not live long enough
         //~| ERROR `y` does not live long enough
+        //~| NOTE capture occurs here
+        //~| NOTE capture occurs here
+        //~| NOTE does not live long enough
+        //~| NOTE does not live long enough
+        //~| NOTE values in a scope are dropped in the opposite order they are created
+        //~| NOTE values in a scope are dropped in the opposite order they are created
         f
     };
+    //~^ NOTE borrowed value dropped before borrower
+    //~| NOTE borrowed value dropped before borrower
 
     // (we don't call `g`; see above)
 }

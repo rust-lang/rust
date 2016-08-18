@@ -14,10 +14,10 @@
 fn borrow<'a, T>(_: &'a mut T) -> impl Copy { () }
 
 fn main() {
-    //~^ NOTE reference must be valid for the block
     let long;
     let mut short = 0;
-    //~^ NOTE but borrowed value is only valid for the block suffix following statement 1
     long = borrow(&mut short);
     //~^ ERROR `short` does not live long enough
-}
+    //~| NOTE does not live long enough
+    //~| NOTE values in a scope are dropped in the opposite order they are created
+} //~ borrowed value dropped before borrower
