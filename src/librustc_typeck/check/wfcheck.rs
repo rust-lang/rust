@@ -296,26 +296,28 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         // as it seems confusing to report an error about
         // extraneous predicates created by things like
         // an associated type inside the trait.
-
+        let mut err = None;
         if !items.is_empty() {
             error_380(self.ccx, span);
         } else if has_ty_params {
-            span_err!(self.tcx().sess, span, E0566,
-                "traits with auto impls (`e.g. unsafe impl \
-                    Trait for ..`) can not have type parameters")
+            err = Some(struct_span_err!(self.tcx().sess, span, E0566,
+                "traits with auto impls (`e.g. impl \
+                    Trait for ..`) can not have type parameters"));
         } else if has_predicates {
-            span_err!(self.tcx().sess, span, E0565,
-                "traits with auto impls (`e.g. unsafe impl \
-                    Trait for ..`) can not have predicates")
+            err = Some(struct_span_err!(self.tcx().sess, span, E0565,
+                "traits with auto impls (`e.g. impl \
+                    Trait for ..`) cannot have predicates"));
         }
 
         // Finally if either of the above conditions apply we should add a note
         // indicating that this error is the result of a recent soundness fix.
-        if has_ty_params || has_predicates {
-            self.tcx().sess.span_note_without_error(
-                span,
-                "the new auto trait rules are the result of a \
-                    recent soundness fix; see #29859 for more details")
+        match err {
+            None => {},
+            Some(mut e) => {
+                e.note("the new auto trait rules are the result of a \
+                          recent soundness fix; see #29859 for more details");
+                e.emit();
+            }
         }
     }
 
@@ -325,8 +327,6 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
     {
         let trait_def_id = self.tcx().map.local_def_id(item.id);
 
-        // TODO: in a second pass, globally rename to auto_trait,
-        // from default_impl.
         if self.tcx().trait_has_default_impl(trait_def_id) {
             self.check_auto_trait(trait_def_id, items, item.span);
         }
@@ -701,7 +701,7 @@ fn error_192(ccx: &CrateCtxt, span: Span) {
 
 fn error_380(ccx: &CrateCtxt, span: Span) {
     span_err!(ccx.tcx.sess, span, E0380,
-              "traits with default impls (`e.g. unsafe impl \
+              "traits with default impls (`e.g. impl \
                Trait for ..`) must have no methods or associated items")
 }
 
