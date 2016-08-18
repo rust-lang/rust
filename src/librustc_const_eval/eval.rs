@@ -277,7 +277,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ExprTup(ref exprs) =>
             PatKind::Tuple(try!(exprs.iter()
                                      .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
-                                     .collect()), None),
+                                     .collect::<Result<_, _>>()), None),
 
         hir::ExprCall(ref callee, ref args) => {
             let def = tcx.expect_def(callee.id);
@@ -297,7 +297,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let pats = try!(args.iter()
                                 .map(|expr| const_expr_to_pat(tcx, &**expr,
                                                               pat_id, span))
-                                .collect());
+                                .collect::<Result<_, _>>());
             PatKind::TupleStruct(path, pats, None)
         }
 
@@ -313,7 +313,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    is_shorthand: false,
                                },
                            }))
-                           .collect());
+                           .collect::<Result<_, _>>());
             PatKind::Struct(path.clone(), field_pats, false)
         }
 
@@ -321,7 +321,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let pats = try!(exprs.iter()
                                  .map(|expr| const_expr_to_pat(tcx, &expr,
                                                                pat_id, span))
-                                 .collect());
+                                 .collect::<Result<_, _>>());
             PatKind::Vec(pats, None, hir::HirVec::new())
         }
 

@@ -218,6 +218,7 @@ macro_rules! debug_assert_eq {
 ///     Ok(())
 /// }
 /// ```
+#[cfg(stage0)]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! try {
@@ -227,6 +228,12 @@ macro_rules! try {
             return $crate::result::Result::Err($crate::convert::From::from(err))
         }
     })
+}
+#[cfg(not(stage0))]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+macro_rules! try {
+    ($expr:expr) => ($expr?)
 }
 
 /// Write formatted data into a buffer

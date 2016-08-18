@@ -261,12 +261,12 @@ declare_features! (
     // a...b and ...b
     (active, inclusive_range_syntax, "1.7.0", Some(28237)),
 
-    // `expr?`
-    (active, question_mark, "1.9.0", Some(31436)),
-
     // impl specialization (RFC 1210)
     (active, specialization, "1.7.0", Some(31844)),
 
+    // `expr?`
+    (active, question_mark, "1.9.0", Some(31436)),
+    
     // pub(restricted) visibilities (RFC 1422)
     (active, pub_restricted, "1.9.0", Some(32409)),
 
@@ -998,9 +998,6 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, inclusive_range_syntax,
                                   e.span,
                                   "inclusive range syntax is experimental");
-            }
-            ast::ExprKind::Try(..) => {
-                gate_feature_post!(&self, question_mark, e.span, "the `?` operator is not stable");
             }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
