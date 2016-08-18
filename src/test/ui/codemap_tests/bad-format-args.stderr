@@ -1,0 +1,26 @@
+error: requires at least a format string argument
+  --> $DIR/bad-format-args.rs:12:5
+   |
+12 |     format!();
+   |     ^^^^^^^^^^
+   |
+   = note: this error originates in a macro from the standard library
+
+error: expected token: `,`
+  --> $DIR/bad-format-args.rs:13:5
+   |
+13 |     format!("" 1);
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro from the standard library
+
+error: expected token: `,`
+  --> $DIR/bad-format-args.rs:14:5
+   |
+14 |     format!("", 1 1);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro from the standard library
+
+error: aborting due to 3 previous errors
+
