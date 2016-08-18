@@ -523,6 +523,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn note_type_err(&self,
                          diag: &mut DiagnosticBuilder<'tcx>,
                          origin: TypeOrigin,
+                         secondary_span: Option<(Span, String)>,
                          values: Option<ValuePairs<'tcx>>,
                          terr: &TypeError<'tcx>)
     {
@@ -553,6 +554,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         diag.span_label(span, &terr);
+        if let Some((sp, msg)) = secondary_span {
+            diag.span_label(sp, &msg);
+        }
 
         self.note_error_origin(diag, &origin);
         self.check_and_note_conflicting_crates(diag, terr, span);
@@ -569,7 +573,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             self.tcx.sess, trace.origin.span(), E0308,
             "{}", trace.origin.as_failure_str()
         );
-        self.note_type_err(&mut diag, trace.origin, Some(trace.values), terr);
+        self.note_type_err(&mut diag, trace.origin, None, Some(trace.values), terr);
         diag
     }
 
