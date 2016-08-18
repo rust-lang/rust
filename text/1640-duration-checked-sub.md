@@ -1,7 +1,7 @@
-- Feature Name: duration_checked_sub
+- Feature Name: `duration_checked`
 - Start Date: 2016-06-04
-- RFC PR:
-- Rust Issue:
+- RFC PR: [rust-lang/rfcs#1640](https://github.com/rust-lang/rfcs/pull/1640)
+- Rust Issue: [rust-lang/rust#35774](https://github.com/rust-lang/rust/issues/35774)
 
 # Summary
 [summary]: #summary
