@@ -40,8 +40,10 @@ fn main() {
     });
     let cx = &mut cx;
 
+    println!("{}", pprust::expr_to_string(&*quote_expr!(&cx, 23)));
     assert_eq!(pprust::expr_to_string(&*quote_expr!(&cx, 23)), "23");
 
     let expr = quote_expr!(&cx, let x isize = 20;);
+    println!("{}", pprust::expr_to_string(&*expr));
     assert_eq!(pprust::expr_to_string(&*expr), "let x isize = 20;");
 }

@@ -1,0 +1,11 @@
+error: invalid reference to argument `0` (no arguments given)
+  --> $DIR/macro-backtrace-println.rs:24:30
+   |
+24 |     ($fmt:expr) => (myprint!(concat!($fmt, "/n")));
+   |                              ^^^^^^^^^^^^^^^^^^^
+...
+28 |     myprintln!("{}");
+   |     ----------------- in this macro invocation
+
+error: aborting due to previous error
+

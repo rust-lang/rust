@@ -12,7 +12,7 @@ use self::Destination::*;
 
 use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, CodeMapper};
+use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
 use RenderSpan::*;
 use snippet::{StyledString, Style, Annotation, Line};
 use styled_buffer::StyledBuffer;
@@ -30,7 +30,10 @@ pub trait Emitter {
 
 impl Emitter for EmitterWriter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
-        self.emit_messages_default(db);
+        let mut primary_span = db.span.clone();
+        let mut children = db.children.clone();
+        self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
+        self.emit_messages_default(&db.level, &db.message, &db.code, &primary_span, &children);
     }
 }
 
@@ -381,17 +384,98 @@ impl EmitterWriter {
         max
     }
 
-    fn get_max_line_num(&mut self, db: &DiagnosticBuilder) -> usize {
+    fn get_max_line_num(&mut self, span: &MultiSpan, children: &Vec<SubDiagnostic>) -> usize {
         let mut max = 0;
 
-        let primary = self.get_multispan_max_line_num(&db.span);
+        let primary = self.get_multispan_max_line_num(span);
         max = if primary > max { primary } else { max };
 
-        for sub in &db.children {
+        for sub in children {
             let sub_result = self.get_multispan_max_line_num(&sub.span);
             max = if sub_result > max { primary } else { max };
         }
         max
+    }
+
+    // This "fixes" MultiSpans that contain Spans that are pointing to locations inside of
+    // <*macros>. Since these locations are often difficult to read, we move these Spans from
+    // <*macros> to their corresponding use site.
+    fn fix_multispan_in_std_macros(&mut self, span: &mut MultiSpan) -> bool {
+        let mut spans_updated = false;
+
+        if let Some(ref cm) = self.cm {
+            let mut before_after: Vec<(Span, Span)> = vec![];
+            let mut new_labels: Vec<(Span, String)> = vec![];
+
+            // First, find all the spans in <*macros> and point instead at their use site
+            for sp in span.primary_spans() {
+                if (*sp == COMMAND_LINE_SP) || (*sp == DUMMY_SP) {
+                    continue;
+                }
+                if cm.span_to_filename(sp.clone()).contains("macros>") {
+                    let v = cm.macro_backtrace(sp.clone());
+                    if let Some(use_site) = v.last() {
+                        before_after.push((sp.clone(), use_site.call_site.clone()));
+                    }
+                }
+                for trace in cm.macro_backtrace(sp.clone()).iter().rev() {
+                    // Only show macro locations that are local
+                    // and display them like a span_note
+                    if let Some(def_site) = trace.def_site_span {
+                        if (def_site == COMMAND_LINE_SP) || (def_site == DUMMY_SP) {
+                            continue;
+                        }
+                        // Check to make sure we're not in any <*macros>
+                        if !cm.span_to_filename(def_site).contains("macros>") {
+                            new_labels.push((trace.call_site,
+                                             "in this macro invocation".to_string()));
+                            break;
+                        }
+                    }
+                }
+            }
+            for (label_span, label_text) in new_labels {
+                span.push_span_label(label_span, label_text);
+            }
+            for sp_label in span.span_labels() {
+                if (sp_label.span == COMMAND_LINE_SP) || (sp_label.span == DUMMY_SP) {
+                    continue;
+                }
+                if cm.span_to_filename(sp_label.span.clone()).contains("macros>") {
+                    let v = cm.macro_backtrace(sp_label.span.clone());
+                    if let Some(use_site) = v.last() {
+                        before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
+                    }
+                }
+            }
+            // After we have them, make sure we replace these 'bad' def sites with their use sites
+            for (before, after) in before_after {
+                span.replace(before, after);
+                spans_updated = true;
+            }
+        }
+
+        spans_updated
+    }
+
+    // This does a small "fix" for multispans by looking to see if it can find any that
+    // point directly at <*macros>. Since these are often difficult to read, this
+    // will change the span to point at the use site.
+    fn fix_multispans_in_std_macros(&mut self,
+                                    span: &mut MultiSpan,
+                                    children: &mut Vec<SubDiagnostic>) {
+        let mut spans_updated = self.fix_multispan_in_std_macros(span);
+        for child in children.iter_mut() {
+            spans_updated |= self.fix_multispan_in_std_macros(&mut child.span);
+        }
+        if spans_updated {
+            children.push(SubDiagnostic {
+                level: Level::Note,
+                message: "this error originates in a macro from the standard library".to_string(),
+                span: MultiSpan::new(),
+                render_span: None
+            });
+        }
     }
 
     fn emit_message_default(&mut self,
@@ -528,10 +612,6 @@ impl EmitterWriter {
             }
         }
 
-        if let Some(ref primary_span) = msp.primary_span().as_ref() {
-            self.render_macro_backtrace_old_school(primary_span, &mut buffer)?;
-        }
-
         // final step: take our styled buffer, render it, then output it
         emit_to_destination(&buffer.render(), level, &mut self.dst)?;
 
@@ -578,26 +658,31 @@ impl EmitterWriter {
         }
         Ok(())
     }
-    fn emit_messages_default(&mut self, db: &DiagnosticBuilder) {
-        let max_line_num = self.get_max_line_num(db);
+    fn emit_messages_default(&mut self,
+                             level: &Level,
+                             message: &String,
+                             code: &Option<String>,
+                             span: &MultiSpan,
+                             children: &Vec<SubDiagnostic>) {
+        let max_line_num = self.get_max_line_num(span, children);
         let max_line_num_len = max_line_num.to_string().len();
 
-        match self.emit_message_default(&db.span,
-                                        &db.message,
-                                        &db.code,
-                                        &db.level,
+        match self.emit_message_default(span,
+                                        message,
+                                        code,
+                                        level,
                                         max_line_num_len,
                                         false) {
             Ok(()) => {
-                if !db.children.is_empty() {
+                if !children.is_empty() {
                     let mut buffer = StyledBuffer::new();
                     draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
-                    match emit_to_destination(&buffer.render(), &db.level, &mut self.dst) {
+                    match emit_to_destination(&buffer.render(), level, &mut self.dst) {
                         Ok(()) => (),
                         Err(e) => panic!("failed to emit error: {}", e)
                     }
                 }
-                for child in &db.children {
+                for child in children {
                     match child.render_span {
                         Some(FullSpan(ref msp)) => {
                             match self.emit_message_default(msp,
@@ -639,29 +724,6 @@ impl EmitterWriter {
             Err(e) => panic!("failed to emit error: {}", e),
             _ => ()
         }
-    }
-    fn render_macro_backtrace_old_school(&mut self,
-                                         sp: &Span,
-                                         buffer: &mut StyledBuffer) -> io::Result<()> {
-        if let Some(ref cm) = self.cm {
-            for trace in cm.macro_backtrace(sp.clone()) {
-                let line_offset = buffer.num_lines();
-
-                let mut diag_string =
-                    format!("in this expansion of {}", trace.macro_decl_name);
-                if let Some(def_site_span) = trace.def_site_span {
-                    diag_string.push_str(
-                        &format!(" (defined in {})",
-                            cm.span_to_filename(def_site_span)));
-                }
-                let snippet = cm.span_to_string(trace.call_site);
-                buffer.append(line_offset, &format!("{} ", snippet), Style::NoStyle);
-                buffer.append(line_offset, "note", Style::Level(Level::Note));
-                buffer.append(line_offset, ": ", Style::NoStyle);
-                buffer.append(line_offset, &diag_string, Style::OldSchoolNoteText);
-            }
-        }
-        Ok(())
     }
 }
 

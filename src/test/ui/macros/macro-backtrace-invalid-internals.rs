@@ -12,46 +12,46 @@
 
 macro_rules! fake_method_stmt {
      () => {
-          1.fake() //~ ERROR no method named `fake` found
+          1.fake()
      }
 }
 
 macro_rules! fake_field_stmt {
      () => {
-          1.fake //~ ERROR no field with that name
+          1.fake
      }
 }
 
 macro_rules! fake_anon_field_stmt {
      () => {
-          (1).0 //~ ERROR type was not a tuple
+          (1).0
      }
 }
 
 macro_rules! fake_method_expr {
      () => {
-          1.fake() //~ ERROR no method named `fake` found
+          1.fake()
      }
 }
 
 macro_rules! fake_field_expr {
      () => {
-          1.fake //~ ERROR no field with that name
+          1.fake
      }
 }
 
 macro_rules! fake_anon_field_expr {
      () => {
-          (1).0 //~ ERROR type was not a tuple
+          (1).0
      }
 }
 
 fn main() {
-    fake_method_stmt!(); //~ NOTE in this expansion of
-    fake_field_stmt!(); //~ NOTE in this expansion of
-    fake_anon_field_stmt!(); //~ NOTE in this expansion of
+    fake_method_stmt!();
+    fake_field_stmt!();
+    fake_anon_field_stmt!();
 
-    let _ = fake_method_expr!(); //~ NOTE in this expansion of
-    let _ = fake_field_expr!(); //~ NOTE in this expansion of
-    let _ = fake_anon_field_expr!(); //~ NOTE in this expansion of
+    let _ = fake_method_expr!();
+    let _ = fake_field_expr!();
+    let _ = fake_anon_field_expr!();
 }
