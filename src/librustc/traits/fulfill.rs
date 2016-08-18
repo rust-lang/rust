@@ -142,7 +142,7 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
         // Auto trait obligations on `impl Trait`.
         if tcx.trait_has_default_impl(predicate.def_id()) {
             let substs = predicate.skip_binder().trait_ref.substs;
-            if substs.types.len() == 1 && substs.regions.is_empty() {
+            if substs.types().count() == 1 && substs.regions().next().is_none() {
                 if let ty::TyAnon(..) = predicate.skip_binder().self_ty().sty {
                     return true;
                 }
@@ -440,7 +440,6 @@ fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 't
 {
     t.skip_binder() // ok b/c this check doesn't care about regions
      .input_types()
-     .iter()
      .map(|t| selcx.infcx().resolve_type_vars_if_possible(t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())

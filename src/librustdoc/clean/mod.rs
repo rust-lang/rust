@@ -642,8 +642,8 @@ impl Clean<TyParamBound> for hir::TyParamBound {
 
 fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: bool,
                         bindings: Vec<TypeBinding>, substs: &Substs) -> PathParameters {
-    let lifetimes = substs.regions.iter().filter_map(|v| v.clean(cx)).collect();
-    let types = substs.types[has_self as usize..].to_vec();
+    let lifetimes = substs.regions().filter_map(|v| v.clean(cx)).collect();
+    let types = substs.types().skip(has_self as usize).cloned().collect::<Vec<_>>();
 
     match (trait_did, cx.tcx_opt()) {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
@@ -737,12 +737,11 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         let path = external_path(cx, &tcx.item_name(self.def_id).as_str(),
                                  Some(self.def_id), true, vec![], self.substs);
 
-        debug!("ty::TraitRef\n  substs.types: {:?}\n",
-               &self.input_types()[1..]);
+        debug!("ty::TraitRef\n  subst: {:?}\n", self.substs);
 
         // collect any late bound regions
         let mut late_bounds = vec![];
-        for &ty_s in &self.input_types()[1..] {
+        for &ty_s in self.input_types().skip(1) {
             if let ty::TyTuple(ts) = ty_s.sty {
                 for &ty_s in ts {
                     if let ty::TyRef(ref reg, _) = ty_s.sty {
@@ -775,9 +774,9 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
 impl<'tcx> Clean<Option<Vec<TyParamBound>>> for Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
-        v.extend(self.regions.iter().filter_map(|r| r.clean(cx))
+        v.extend(self.regions().filter_map(|r| r.clean(cx))
                      .map(RegionBound));
-        v.extend(self.types.iter().map(|t| TraitBound(PolyTrait {
+        v.extend(self.types().map(|t| TraitBound(PolyTrait {
             trait_: t.clean(cx),
             lifetimes: vec![]
         }, hir::TraitBoundModifier::None)));

@@ -103,7 +103,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
 
         let free_substs = fcx.parameter_environment.free_substs;
-        for (i, r) in free_substs.regions.iter().enumerate() {
+        for (i, r) in free_substs.regions().enumerate() {
             match *r {
                 ty::ReFree(ty::FreeRegion {
                     bound_region: ty::BoundRegion::BrNamed(def_id, name, _), ..

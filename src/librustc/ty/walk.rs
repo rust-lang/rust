@@ -79,7 +79,7 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
             stack.push(mt.ty);
         }
         ty::TyProjection(ref data) => {
-            push_reversed(stack, &data.trait_ref.substs.types);
+            push_reversed(stack, data.trait_ref.substs.types());
         }
         ty::TyTrait(ref obj) => {
             push_reversed(stack, obj.principal.input_types());
@@ -90,17 +90,17 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
         ty::TyEnum(_, ref substs) |
         ty::TyStruct(_, ref substs) |
         ty::TyAnon(_, ref substs) => {
-            push_reversed(stack, &substs.types);
+            push_reversed(stack, substs.types());
         }
         ty::TyClosure(_, ref substs) => {
-            push_reversed(stack, &substs.func_substs.types);
-            push_reversed(stack, &substs.upvar_tys);
+            push_reversed(stack, substs.func_substs.types());
+            push_reversed(stack, substs.upvar_tys);
         }
-        ty::TyTuple(ref ts) => {
+        ty::TyTuple(ts) => {
             push_reversed(stack, ts);
         }
         ty::TyFnDef(_, substs, ref ft) => {
-            push_reversed(stack, &substs.types);
+            push_reversed(stack, substs.types());
             push_sig_subtypes(stack, &ft.sig);
         }
         ty::TyFnPtr(ref ft) => {
@@ -114,14 +114,17 @@ fn push_sig_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, sig: &ty::PolyFnSig<'tcx>)
     push_reversed(stack, &sig.0.inputs);
 }
 
-fn push_reversed<'tcx>(stack: &mut Vec<Ty<'tcx>>, tys: &[Ty<'tcx>]) {
+fn push_reversed<'a, 'tcx: 'a, I>(stack: &mut Vec<Ty<'tcx>>, tys: I)
+    where I: IntoIterator<Item=&'a Ty<'tcx>>,
+          I::IntoIter: DoubleEndedIterator
+{
     // We push slices on the stack in reverse order so as to
     // maintain a pre-order traversal. As of the time of this
     // writing, the fact that the traversal is pre-order is not
     // known to be significant to any code, but it seems like the
     // natural order one would expect (basically, the order of the
     // types as they are written).
-    for &ty in tys.iter().rev() {
+    for &ty in tys.into_iter().rev() {
         stack.push(ty);
     }
 }

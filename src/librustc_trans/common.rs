@@ -265,7 +265,7 @@ pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
 }
 
 pub fn validate_substs(substs: &Substs) {
-    assert!(!substs.types.needs_infer());
+    assert!(!substs.needs_infer());
 }
 
 // Function context.  Every LLVM function we create will have one of

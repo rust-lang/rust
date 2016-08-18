@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use infer::type_variable;
-use ty::subst::Substs;
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
@@ -689,22 +688,6 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Region {
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         visitor.visit_region(**self)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let types = self.types.fold_with(folder);
-        let regions = self.regions.fold_with(folder);
-        Substs::new(folder.tcx(), types, regions)
-    }
-
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_substs(self)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.types.visit_with(visitor) || self.regions.visit_with(visitor)
     }
 }
 

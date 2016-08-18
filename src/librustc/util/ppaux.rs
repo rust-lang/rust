@@ -22,6 +22,8 @@ use ty::fold::{TypeFolder, TypeVisitor};
 
 use std::cell::Cell;
 use std::fmt;
+use std::usize;
+
 use syntax::abi::Abi;
 use syntax::parse::token;
 use syntax::ast::CRATE_NODE_ID;
@@ -80,15 +82,17 @@ pub fn parameterized(f: &mut fmt::Formatter,
         verbose = tcx.sess.verbose();
         has_self = generics.has_self;
 
+        let mut child_types = 0;
         if let Some(def_id) = generics.parent {
             // Methods.
             assert_eq!(ns, Ns::Value);
+            child_types = generics.types.len();
             generics = tcx.lookup_generics(def_id);
             num_regions = generics.regions.len();
             num_types = generics.types.len();
 
             if has_self {
-                write!(f, "<{} as ", substs.types[0])?;
+                write!(f, "<{} as ", substs.type_at(0))?;
             }
 
             item_name = Some(tcx.item_name(did));
@@ -107,8 +111,8 @@ pub fn parameterized(f: &mut fmt::Formatter,
         if !verbose {
             if generics.types.last().map_or(false, |def| def.default.is_some()) {
                 if let Some(substs) = tcx.lift(&substs) {
-                    let tps = &substs.types[..num_types];
-                    for (def, actual) in generics.types.iter().zip(tps).rev() {
+                    let tps = substs.types().rev().skip(child_types);
+                    for (def, actual) in generics.types.iter().rev().zip(tps) {
                         if def.default.subst(tcx, substs) != Some(actual) {
                             break;
                         }
@@ -124,7 +128,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
 
     if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
         let projection_ty = projections[0].ty;
-        if let TyTuple(ref args) = substs.types[1].sty {
+        if let TyTuple(ref args) = substs.type_at(1).sty {
             return fn_sig(f, args, false, projection_ty);
         }
     }
@@ -139,13 +143,15 @@ pub fn parameterized(f: &mut fmt::Formatter,
         }
     };
 
-    let print_regions = |f: &mut fmt::Formatter, start: &str, regions: &[ty::Region]| {
+    let print_regions = |f: &mut fmt::Formatter, start: &str, regions| {
         // Don't print any regions if they're all erased.
-        if regions.iter().all(|r| *r == ty::ReErased) {
+        if Iterator::all(&mut Clone::clone(&regions),
+                         |r: &ty::Region| *r == ty::ReErased) {
             return Ok(());
         }
 
         for region in regions {
+            let region: &ty::Region = region;
             start_or_continue(f, start, ", ")?;
             if verbose {
                 write!(f, "{:?}", region)?;
@@ -167,11 +173,12 @@ pub fn parameterized(f: &mut fmt::Formatter,
         Ok(())
     };
 
-    print_regions(f, "<", &substs.regions[..num_regions])?;
+    print_regions(f, "<", substs.regions().take(num_regions).skip(0))?;
 
-    let tps = &substs.types[..num_types];
+    let tps = substs.types().take(num_types - num_supplied_defaults)
+                            .skip(has_self as usize);
 
-    for &ty in &tps[has_self as usize..tps.len() - num_supplied_defaults] {
+    for &ty in tps {
         start_or_continue(f, "<", ", ")?;
         write!(f, "{}", ty)?;
     }
@@ -197,10 +204,10 @@ pub fn parameterized(f: &mut fmt::Formatter,
             write!(f, "::{}", item_name)?;
         }
 
-        print_regions(f, "::<", &substs.regions[num_regions..])?;
+        print_regions(f, "::<", substs.regions().take(usize::MAX).skip(num_regions))?;
 
         // FIXME: consider being smart with defaults here too
-        for ty in &substs.types[num_types..] {
+        for ty in substs.types().skip(num_types) {
             start_or_continue(f, "::<", ", ")?;
             write!(f, "{}", ty)?;
         }
@@ -365,13 +372,6 @@ impl<'tcx> fmt::Display for ty::TypeAndMut<'tcx> {
         write!(f, "{}{}",
                if self.mutbl == hir::MutMutable { "mut " } else { "" },
                self.ty)
-    }
-}
-
-impl<'tcx> fmt::Debug for Substs<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Substs[types={:?}, regions={:?}]",
-               self.types, self.regions)
     }
 }
 

@@ -597,7 +597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Trait impl: take implied bounds from all types that
                 // appear in the trait reference.
                 let trait_ref = self.instantiate_type_scheme(span, free_substs, trait_ref);
-                trait_ref.substs.types.to_vec()
+                trait_ref.substs.types().cloned().collect()
             }
 
             None => {
