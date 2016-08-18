@@ -16,6 +16,7 @@ use mir::repr::{Mir, Promoted};
 use ty::TyCtxt;
 use syntax::ast::NodeId;
 use util::common::time;
+use session::Session;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -81,6 +82,11 @@ pub trait Pass {
         } else {
             Cow::from(name)
         }
+    }
+    fn should_run(&self, session: &Session) -> bool {
+        // Always run passes by default unless MIR passes have been explicitly turned off with -Z
+        // mir-opt-level=0
+        session.opts.mir_opt_level >= 1
     }
     fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> { None }
 }
@@ -167,7 +173,9 @@ impl<'a, 'tcx> Passes {
         let Passes { ref mut passes, ref mut plugin_passes, ref mut pass_hooks } = *self;
         for pass in plugin_passes.iter_mut().chain(passes.iter_mut()) {
             let name = pass.name();
-            time(tcx.sess.time_passes(), &*name, || pass.run_pass(tcx, map, pass_hooks));
+            if pass.should_run(&tcx.sess) {
+                time(tcx.sess.time_passes(), &*name, || pass.run_pass(tcx, map, pass_hooks));
+            }
         }
     }
 

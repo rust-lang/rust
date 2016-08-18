@@ -20,15 +20,22 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node4.ConstPropagate.before.mir
 // bb0: {
+//     StorageLive(var0);
 //     var0 = const 10i32;
+//     StorageLive(var1);
 //     var1 = const 20usize;
+//     StorageLive(tmp0);
+//     StorageLive(tmp1);
 //     tmp1 = var0;
 //     tmp0 = Eq(tmp1, const 12i32);
 //     if(tmp0) -> [true: bb1, false: bb2];
 // }
 //
 // bb1: {
+//     StorageLive(tmp3);
+//     StorageLive(tmp4);
 //     tmp4 = [const 42u8];
+//     StorageLive(tmp5);
 //     tmp5 = var1;
 //     tmp6 = Len(tmp4);
 //     tmp7 = Lt(tmp5, tmp6);
@@ -36,18 +43,30 @@ fn main() {
 // }
 //
 // bb2: {
+//     StorageLive(tmp9);
 //     return = ();
+//     StorageDead(var1);
+//     StorageDead(var0);
+//     StorageDead(tmp0);
+//     StorageDead(tmp1);
 //     goto -> bb4;
 // }
 //
 // bb3: {
 //     tmp3 = tmp4[tmp5];
 //     tmp2 = tmp3;
+//     StorageDead(tmp3);
+//     StorageDead(tmp5);
+//     StorageDead(tmp4);
 //     return = ();
+//     StorageDead(var1);
+//     StorageDead(var0);
+//     StorageDead(tmp0);
+//     StorageDead(tmp1);
 //     goto -> bb4;
 // }
 // END rustc.node4.ConstPropagate.before.mir
-// START rustc.node4.DeadCode.after.mir
+// START rustc.node4.SimplifyLocals.after.mir
 // bb0: {
 //     goto -> bb1;
 // }
@@ -56,4 +75,4 @@ fn main() {
 //     return = ();
 //     return;
 // }
-// END rustc.node4.DeadCode.after.mir
+// END rustc.node4.SimplifyLocals.after.mir

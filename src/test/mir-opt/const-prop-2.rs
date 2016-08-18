@@ -16,7 +16,11 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node4.ConstPropagate.before.mir
 // bb0: {
+//     StorageLive(var0);
 //     var0 = const false;
+//     StorageLive(var1);
+//     StorageLive(tmp0);
+//     StorageLive(tmp1);
 //     tmp1 = var0;
 //     if(tmp1) -> [true: bb1, false: bb2];
 // }
@@ -33,13 +37,18 @@ fn main() {
 //
 // bb3: {
 //     var1 = Add(const 42i32, tmp0);
-//     tmp4 = var1;
-//     tmp3 = Sub(tmp4, const 42i32);
-//     std::process::exit(tmp3);
+//     StorageDead(tmp0);
+//     StorageDead(tmp1);
+//     StorageLive(tmp3);
+//     StorageLive(tmp4);
+//     StorageLive(tmp5);
+//     tmp5 = var1;
+//     tmp4 = Sub(tmp5, const 42i32);
+//     std::process::exit(tmp4);
 // }
 // END rustc.node4.ConstPropagate.before.mir
-// START rustc.node4.DeadCode.after.mir
+// START rustc.node4.SimplifyLocals.after.mir
 // bb1: {
 //     std::process::exit(const 0i32);
 // }
-// END rustc.node4.DeadCode.after.mir
+// END rustc.node4.SimplifyLocals.after.mir

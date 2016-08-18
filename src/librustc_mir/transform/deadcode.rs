@@ -18,7 +18,15 @@ use super::dataflow::*;
 
 pub struct DeadCode;
 
-impl Pass for DeadCode {}
+impl Pass for DeadCode {
+    fn should_run(&self, sess: &::rustc::session::Session) -> bool {
+        if sess.opts.debuginfo.is_enabled() {
+            sess.opts.mir_opt_level >= 2
+        } else {
+            sess.opts.mir_opt_level >= 1
+        }
+    }
+}
 
 impl<'tcx> MirPass<'tcx> for DeadCode {
     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {

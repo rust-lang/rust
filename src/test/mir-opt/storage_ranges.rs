@@ -27,7 +27,7 @@ fn main() {
 //     StorageLive(tmp1);
 //     StorageLive(tmp2);
 //     tmp2 = var0;
-//     tmp1 = std::prelude::v1::Some<i32>(tmp2,);
+//     tmp1 = std::option::Option<i32>::Some(tmp2,);
 //     var1 = &tmp1;
 //     StorageDead(tmp2);
 //     tmp0 = ();

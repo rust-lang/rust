@@ -28,52 +28,50 @@ fn main() {
 // bb1: {
 //     StorageLive(var5);
 //     var5 = var0;
-//     StorageLive(tmp4);
-//     tmp4 = var5;
-//     std::process::exit(tmp4);
+//     StorageLive(tmp8);
+//     StorageLive(tmp9);
+//     tmp9 = var5;
+//     std::process::exit(tmp9);
 // }
 //
 // bb2: {
 //     StorageLive(var1);
 //     var1 = var0;
 //     StorageLive(tmp0);
-//     tmp0 = var1;
-//     std::process::exit(tmp0);
+//     StorageLive(tmp1);
+//     tmp1 = var1;
+//     std::process::exit(tmp1);
 // }
 //
 // bb3: {
 //     StorageLive(var2);
 //     var2 = var0;
-//     StorageLive(tmp1);
-//     tmp1 = var2;
-//     std::process::exit(tmp1);
+//     StorageLive(tmp2);
+//     StorageLive(tmp3);
+//     tmp3 = var2;
+//     std::process::exit(tmp3);
 // }
 //
 // bb4: {
 //     StorageLive(var3);
 //     var3 = var0;
-//     StorageLive(tmp2);
-//     tmp2 = var3;
-//     std::process::exit(tmp2);
+//     StorageLive(tmp4);
+//     StorageLive(tmp5);
+//     tmp5 = var3;
+//     std::process::exit(tmp5);
 // }
 //
 // bb5: {
 //     StorageLive(var4);
 //     var4 = var0;
-//     StorageLive(tmp3);
-//     tmp3 = var4;
-//     std::process::exit(tmp3);
+//     StorageLive(tmp6);
+//     StorageLive(tmp7);
+//     tmp7 = var4;
+//     std::process::exit(tmp7);
 // }
 // END rustc.node4.ConstPropagate.before.mir
-// START rustc.node4.DeadCode.after.mir
-// bb0: {
-//     StorageLive(var0);
-//     goto -> bb1;
-// }
-//
+// START rustc.node4.SimplifyLocals.after.mir
 // bb1: {
-//     StorageLive(var1);
-//     StorageLive(tmp0);
 //     std::process::exit(const 0i32);
 // }
-// END rustc.node4.DeadCode.after.mir
+// END rustc.node4.SimplifyLocals.after.mir

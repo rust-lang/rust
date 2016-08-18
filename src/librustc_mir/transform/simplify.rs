@@ -259,6 +259,13 @@ pub struct SimplifyLocals;
 
 impl Pass for SimplifyLocals {
     fn name(&self) -> ::std::borrow::Cow<'static, str> { "SimplifyLocals".into() }
+    fn should_run(&self, sess: &::rustc::session::Session) -> bool {
+        if sess.opts.debuginfo.is_enabled() {
+            sess.opts.mir_opt_level >= 2
+        } else {
+            sess.opts.mir_opt_level >= 1
+        }
+    }
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {

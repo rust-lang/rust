@@ -67,6 +67,12 @@ pub enum DebugInfoLevel {
     FullDebugInfo,
 }
 
+impl DebugInfoLevel {
+    pub fn is_enabled(&self) -> bool {
+        if let NoDebugInfo = *self { false } else { true }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord,
          RustcEncodable, RustcDecodable)]
 pub enum OutputType {
@@ -1334,8 +1340,6 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         debugging_opts.orbit = true;
     }
 
-    let mir_opt_level = debugging_opts.mir_opt_level.unwrap_or(1);
-
     let mut output_types = BTreeMap::new();
     if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
@@ -1438,6 +1442,17 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             }
         }
     };
+    // MIR opt level defaults to opt-level + 1 (mir-opt-level=0 is considered to disable MIR
+    // passes)
+    let mir_opt_level = debugging_opts.mir_opt_level.unwrap_or(match opt_level {
+        OptLevel::No => 1,
+        OptLevel::Less => 2,
+        OptLevel::Default => 3,
+        OptLevel::Aggressive => 4,
+        OptLevel::Size => 1,
+        OptLevel::SizeMin => 1,
+    });
+
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = if matches.opt_present("g") {
         if cg.debuginfo.is_some() {
