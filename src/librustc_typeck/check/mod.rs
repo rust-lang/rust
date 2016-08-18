@@ -3531,7 +3531,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.write_ty(expr.id, result_ty)
           }
           hir::ExprClosure(capture, ref decl, ref body, _) => {
-              self.check_expr_closure(expr, capture, &decl, &body, expected)
+              let ty = self.check_expr_closure(expr, capture, &decl, &body, expected);
+              self.write_ty(id, ty)
           }
           hir::ExprBlock(ref b) => {
             self.check_block_with_expected(&b, expected);
