@@ -9,6 +9,8 @@
 // except according to those terms.
 
 fn foo<T, T>(s: T, u: T) {} //~ ERROR E0403
+                            //~| NOTE already used
+                            //~| NOTE first use of `T`
 
 fn main() {
 }
