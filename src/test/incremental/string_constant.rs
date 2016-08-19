@@ -17,10 +17,6 @@
 // Here the only thing which changes is the string constant in `x`.
 // Therefore, the compiler deduces (correctly) that typeck is not
 // needed even for callers of `x`.
-//
-// It is not entirely clear why `TransCrateItem` invalidates `y` and
-// `z`, actually, I think it's because of the structure of
-// trans. -nmatsakis
 
 fn main() { }
 
@@ -41,10 +37,8 @@ mod x {
 mod y {
     use x;
 
-    // FIXME(#35078) -- when body of `x` changes, we treat it as
-    // though signature changed.
-    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
-    #[rustc_dirty(label="TransCrateItem", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
+    #[rustc_clean(label="TransCrateItem", cfg="rpass2")]
     pub fn y() {
         x::x();
     }
