@@ -106,17 +106,29 @@ impl LateLintPass for AttrPass {
             ItemExternCrate(_) |
             ItemUse(_) => {
                 for attr in &item.attrs {
-                    if let MetaItemKind::List(ref name, _) = attr.node.value.node {
+                    if let MetaItemKind::List(ref name, ref lint_list) = attr.node.value.node {
                         match &**name {
                             "allow" | "warn" | "deny" | "forbid" => {
-                                span_lint_and_then(cx, USELESS_ATTRIBUTE, attr.span,
-                                                   "useless lint attribute",
-                                                   |db| {
-                                    if let Some(mut sugg) = snippet_opt(cx, attr.span) {
-                                        sugg.insert(1, '!');
-                                        db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
+                                // whitelist `unused_imports`
+                                for lint in lint_list {
+                                    if let MetaItemKind::Word(ref word) = lint.node {
+                                        if word == "unused_imports" {
+                                            if let ItemUse(_) = item.node {
+                                                return;
+                                            }
+                                        }
                                     }
-                                });
+                                }
+                                if let Some(mut sugg) = snippet_opt(cx, attr.span) {
+                                    if sugg.len() > 1 {
+                                        span_lint_and_then(cx, USELESS_ATTRIBUTE, attr.span,
+                                                           "useless lint attribute",
+                                                           |db| {
+                                            sugg.insert(1, '!');
+                                            db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
+                                        });
+                                    }
+                                }
                             },
                             _ => {},
                         }
