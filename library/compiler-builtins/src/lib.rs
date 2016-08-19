@@ -27,6 +27,7 @@ pub mod arm;
 pub mod x86_64;
 
 pub mod udiv;
+pub mod sdiv;
 pub mod mul;
 pub mod shift;
 

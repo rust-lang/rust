@@ -4,7 +4,7 @@ macro_rules! ashl {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns `a << b`, requires `b < $ty::bits()`
         #[cfg_attr(not(test), no_mangle)]
-        pub extern fn $intrinsic(a: $ty, b: u32) -> $ty {
+        pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
             let half_bits = <$ty>::bits() / 2;
             if b & half_bits != 0 {
                 <$ty>::from_parts(0, a.low() << (b - half_bits))
@@ -21,7 +21,7 @@ macro_rules! ashr {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns arithmetic `a >> b`, requires `b < $ty::bits()`
         #[cfg_attr(not(test), no_mangle)]
-        pub extern fn $intrinsic(a: $ty, b: u32) -> $ty {
+        pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
             let half_bits = <$ty>::bits() / 2;
             if b & half_bits != 0 {
                 <$ty>::from_parts((a.high() >> (b - half_bits)) as <$ty as LargeInt>::LowHalf,
@@ -41,7 +41,7 @@ macro_rules! lshr {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns logical `a >> b`, requires `b < $ty::bits()`
         #[cfg_attr(not(test), no_mangle)]
-        pub extern fn $intrinsic(a: $ty, b: u32) -> $ty {
+        pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
             let half_bits = <$ty>::bits() / 2;
             if b & half_bits != 0 {
                 <$ty>::from_parts(a.high() >> (b - half_bits), 0)

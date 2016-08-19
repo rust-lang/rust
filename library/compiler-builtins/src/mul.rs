@@ -4,7 +4,7 @@ macro_rules! mul {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns `a * b`
         #[cfg_attr(not(test), no_mangle)]
-        pub extern fn $intrinsic(a: $ty, b: $ty) -> $ty {
+        pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $ty {
             let half_bits = <$ty>::bits() / 4;
             let lower_mask = !0 >> half_bits;
             let mut low = (a.low() & lower_mask) * (b.low() & lower_mask);
@@ -29,7 +29,7 @@ macro_rules! mulo {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns `a * b` and sets `*overflow = 1` if `a * b` overflows
         #[cfg_attr(not(test), no_mangle)]
-        pub extern fn $intrinsic(a: $ty, b: $ty, overflow: &mut i32) -> $ty {
+        pub extern "C" fn $intrinsic(a: $ty, b: $ty, overflow: &mut i32) -> $ty {
             *overflow = 0;
             let result = a.wrapping_mul(b);
             if a == <$ty>::min_value() {
