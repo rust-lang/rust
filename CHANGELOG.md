@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.85 — 2016-08-19
+* Fix ICE with [`useless_attribute`]
+* [`useless_attribute`] ignores [`unused_imports`] on `use` statements
+
 ## 0.0.84 — 2016-08-18
 * Rustup to *rustc 1.13.0-nightly (aef6971ca 2016-08-17)*
 
