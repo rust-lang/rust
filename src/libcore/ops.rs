@@ -67,8 +67,7 @@
 //! }
 //! ```
 //!
-//! See the documentation for each trait for a minimum implementation that
-//! prints something to the screen.
+//! See the documentation for each trait for an example implementation.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -171,25 +170,38 @@ macro_rules! forward_ref_binop {
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Add`. When `Foo + Foo` happens, it ends up
-/// calling `add`, and therefore, `main` prints `Adding!`.
+/// This example creates a `Point` struct that implements the `Add` trait, and
+/// then demonstrates adding two `Point`s.
 ///
 /// ```
 /// use std::ops::Add;
 ///
-/// struct Foo;
+/// #[derive(Debug)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
 ///
-/// impl Add for Foo {
-///     type Output = Foo;
+/// impl Add for Point {
+///     type Output = Point;
 ///
-///     fn add(self, _rhs: Foo) -> Foo {
-///         println!("Adding!");
-///         self
+///     fn add(self, other: Point) -> Point {
+///         Point {
+///             x: self.x + other.x,
+///             y: self.y + other.y,
+///         }
+///     }
+/// }
+///
+/// impl PartialEq for Point {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.x == other.x && self.y == other.y
 ///     }
 /// }
 ///
 /// fn main() {
-///     Foo + Foo;
+///     assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
+///                Point { x: 3, y: 3 });
 /// }
 /// ```
 #[lang = "add"]
