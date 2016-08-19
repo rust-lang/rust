@@ -37,11 +37,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.write_ty(pat.id, expected);
             }
             PatKind::Lit(ref lt) => {
-                let expr_t = self.check_expr(&lt);
+                let ty = self.check_expr(&lt);
 
                 // Byte string patterns behave the same way as array patterns
                 // They can denote both statically and dynamically sized byte arrays
-                let mut pat_ty = expr_t;
+                let mut pat_ty = ty;
                 if let hir::ExprLit(ref lt) = lt.node {
                     if let ast::LitKind::ByteStr(_) = lt.node {
                         let expected_ty = self.structurally_resolved_type(pat.span, expected);
@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // relation at all but rather that there exists a LUB (so
                 // that they can be compared). However, in practice,
                 // constants are always scalars or strings.  For scalars
-                // subtyping is irrelevant, and for strings `expr_t` is
+                // subtyping is irrelevant, and for strings `ty` is
                 // type is `&'static str`, so if we say that
                 //
                 //     &'static str <: expected
