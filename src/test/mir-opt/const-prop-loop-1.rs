@@ -52,7 +52,7 @@ fn main() {
 //     goto -> bb6;
 // }
 // END rustc.node17.ConstPropagate.before.mir
-// START rustc.node17.CsPropagate.after.mir
+// START rustc.node17.ConstPropagate.after.mir
 // bb6: {
 //     tmp1 = var2;
 //     tmp2 = var1;
@@ -77,4 +77,4 @@ fn main() {
 //     tmp3 = ();
 //     goto -> bb6;
 // }
-// END rustc.node17.CsPropagate.after.mir
+// END rustc.node17.ConstPropagate.after.mir

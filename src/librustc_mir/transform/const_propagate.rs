@@ -58,17 +58,24 @@ struct ConstLattice<'tcx> {
     statics: FnvHashMap<DefId, Constant<'tcx>>,
     // key must not be a static or a projection.
     locals: FnvHashMap<Lvalue<'tcx>, Constant<'tcx>>,
+    // List of potentially aliased variables (reference taken), this is joined with union
+    // operation! FIXME: should use proper alias analysis store, similar to one LLVM has.
+    aliased: FnvHashMap<Lvalue<'tcx>, ()>
 }
 
 impl<'tcx> ConstLattice<'tcx> {
     fn new() -> ConstLattice<'tcx> {
         ConstLattice {
             statics: FnvHashMap(),
-            locals: FnvHashMap()
+            locals: FnvHashMap(),
+            aliased: FnvHashMap(),
         }
     }
 
     fn insert(&mut self, key: &Lvalue<'tcx>, val: Constant<'tcx>) {
+        if self.aliased.contains_key(key) {
+            return;
+        }
         // FIXME: HashMap has no way to insert stuff without cloning the key even if it exists
         // already.
         match *key {
@@ -106,6 +113,11 @@ impl<'tcx> ConstLattice<'tcx> {
             _ => { self.locals.remove(key); }
         }
     }
+
+    fn mark_aliased(&mut self, key: &Lvalue<'tcx>) {
+        self.top(key.base());
+        self.aliased.insert(key.base().clone(), ());
+    }
 }
 
 fn intersect_map<K, V>(this: &mut FnvHashMap<K, V>, mut other: FnvHashMap<K, V>) -> bool
@@ -142,6 +154,7 @@ where K: Eq + ::std::hash::Hash, V: PartialEq
 impl<'tcx> Lattice for ConstLattice<'tcx> {
     fn bottom() -> Self { unimplemented!() }
     fn join(&mut self, other: Self) -> bool {
+        self.aliased.join(other.aliased) |
         intersect_map(&mut self.locals, other.locals) |
         intersect_map(&mut self.statics, other.statics)
     }
@@ -180,7 +193,7 @@ impl<'a, 'tcx> Transfer<'tcx> for ConstTransfer<'a, 'tcx> {
             // a way to query stuff about reference/pointer aliasing.
             Rvalue::Ref(_, _, ref referee) => {
                 lat.top(lval);
-                lat.top(referee);
+                lat.mark_aliased(referee);
             }
             // FIXME: should calculate length of statically sized arrays and store it.
             Rvalue::Len(_) => { lat.top(lval); }

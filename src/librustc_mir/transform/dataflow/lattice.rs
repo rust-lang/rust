@@ -173,3 +173,10 @@ where K: Clone + Eq + ::std::hash::Hash,
         changed
     }
 }
+
+impl Lattice for () {
+    fn bottom() -> Self { () }
+    fn join(&mut self, _: Self) -> bool {
+        false
+    }
+}
