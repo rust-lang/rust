@@ -155,9 +155,8 @@ know that data with a shorter lifetime has been inserted.  (This is
 traditionally called "invariant".)
 
 Finally, there can be cases where it is ok to make a lifetime
-*longer*, but not shorter. This comes up when the lifetime is used in
-a function return type (and only a fn return type). This is very
-unusual in Rust but it can happen.
+*longer*, but not shorter. This comes up (for example) in a type like
+`fn(&'a u8)`, which may be safely treated as a `fn(&'static u8)`.
 
 [v]: http://en.wikipedia.org/wiki/Covariance_and_contravariance_%28computer_science%29
 
