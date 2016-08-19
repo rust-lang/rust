@@ -23,8 +23,9 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
 
         options: TargetOptions {
-            features: "+v7,+vfp3,+neon".to_string(),
-            cpu: "cortex-a8".to_string(),
+            // Info about features at https://wiki.debian.org/ArmHardFloatPort
+            features: "+v7,+vfp3,+d16,+thumb2".to_string(),
+            cpu: "generic".to_string(),
             max_atomic_width: 64,
             .. base
         }
