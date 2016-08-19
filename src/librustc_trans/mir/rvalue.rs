@@ -110,9 +110,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
-                    mir::AggregateKind::Adt(adt_def, index, _) => {
+                    mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
                         let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
-                        let disr = Disr::from(adt_def.variants[index].disr_val);
+                        let disr = Disr::from(adt_def.variants[variant_index].disr_val);
                         bcx.with_block(|bcx| {
                             adt::trans_set_discr(bcx, &repr, dest.llval, Disr::from(disr));
                         });
@@ -121,8 +121,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx(), op.ty) {
                                 let val = adt::MaybeSizedValue::sized(dest.llval);
-                                let lldest_i = adt::trans_field_ptr_builder(&bcx, &repr,
-                                                                            val, disr, i);
+                                let field_index = active_field_index.unwrap_or(i);
+                                let lldest_i = adt::trans_field_ptr_builder(&bcx, &repr, val,
+                                                                            disr, field_index);
                                 self.store_operand(&bcx, lldest_i, op);
                             }
                         }

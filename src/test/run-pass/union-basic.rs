@@ -48,12 +48,12 @@ fn main() {
         assert_eq!(a, 10);
     }
 
-    let mut w: W = unsafe { zeroed() };
+    let mut w = W { b: 0 };
     unsafe {
         assert_eq!(w.a, 0);
         assert_eq!(w.b, 0);
         // w.a = 1;
-        // assert_eq!(w.a, 0);
-        // assert_eq!(w.b, 0);
+        assert_eq!(w.a, 0);
+        assert_eq!(w.b, 0);
     }
 }

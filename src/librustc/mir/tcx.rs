@@ -187,7 +187,7 @@ impl<'tcx> Rvalue<'tcx> {
                             ops.iter().map(|op| op.ty(mir, tcx)).collect()
                         ))
                     }
-                    AggregateKind::Adt(def, _, substs) => {
+                    AggregateKind::Adt(def, _, substs, _) => {
                         Some(tcx.lookup_item_type(def.did).ty.subst(tcx, substs))
                     }
                     AggregateKind::Closure(did, substs) => {

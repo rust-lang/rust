@@ -54,11 +54,9 @@ fn refut(w: W) {
 }
 
 fn main() {
-    // ICE
-    // let v = Value { tag: Tag::I, u: U { i: 1 } };
-    // assert_eq!(is_zero(v), false);
+    let v = Value { tag: Tag::I, u: U { i: 1 } };
+    assert_eq!(is_zero(v), false);
 
-    // ICE
-    // let w = W { a: 11 };
-    // refut(w);
+    let w = W { a: 11 };
+    refut(w);
 }
