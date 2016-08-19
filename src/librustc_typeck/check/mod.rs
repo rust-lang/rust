@@ -3291,10 +3291,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                    lvalue_pref: LvaluePreference) -> Ty<'tcx> {
         debug!(">> typechecking: expr={:?} expected={:?}",
                expr, expected);
+        let ty = self.check_expr_kind(expr, expected, lvalue_pref);
 
+        self.write_ty(expr.id, ty);
+
+        debug!("type of expr({}) {} is...", expr.id,
+               pprust::expr_to_string(expr));
+        debug!("... {:?}, expected is {:?}",
+               ty,
+               expected);
+
+        // Add adjustments to !-expressions
+        if ty.is_never() {
+            if let Some(hir::map::NodeExpr(_)) = self.tcx.map.find(expr.id) {
+                let adj_ty = self.next_diverging_ty_var();
+                let adj = adjustment::AdjustNeverToAny(adj_ty);
+                self.write_adjustment(expr.id, adj);
+                return adj_ty;
+            }
+        }
+        ty
+    }
+
+    fn check_expr_kind(&self,
+                       expr: &'gcx hir::Expr,
+                       expected: Expectation<'tcx>,
+                       lvalue_pref: LvaluePreference) -> Ty<'tcx> {
         let tcx = self.tcx;
         let id = expr.id;
-        let ty = match expr.node {
+        match expr.node {
           hir::ExprBox(ref subexpr) => {
             let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
                 match ty.sty {
@@ -3723,25 +3748,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   }
               }
            }
-        };
-        self.write_ty(id, ty);
-
-        debug!("type of expr({}) {} is...", expr.id,
-               pprust::expr_to_string(expr));
-        debug!("... {:?}, expected is {:?}",
-               ty,
-               expected);
-
-        // Add adjustments to !-expressions
-        if ty.is_never() {
-            if let Some(hir::map::NodeExpr(_)) = self.tcx.map.find(id) {
-                let adj_ty = self.next_diverging_ty_var();
-                let adj = adjustment::AdjustNeverToAny(adj_ty);
-                self.write_adjustment(id, adj);
-                return adj_ty;
-            }
         }
-        ty
     }
 
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
