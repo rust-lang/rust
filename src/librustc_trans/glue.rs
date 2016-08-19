@@ -267,7 +267,8 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  t: Ty<'tcx>,
-                                 v0: ValueRef)
+                                 v0: ValueRef,
+                                 shallow_drop: bool)
                                  -> Block<'blk, 'tcx>
 {
     debug!("trans_struct_drop t: {}", t);
@@ -286,7 +287,9 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Issue #23611: schedule cleanup of contents, re-inspecting the
     // discriminant (if any) in case of variant swap in drop code.
-    bcx.fcx.schedule_drop_adt_contents(contents_scope, v0, t);
+    if !shallow_drop {
+        bcx.fcx.schedule_drop_adt_contents(contents_scope, v0, t);
+    }
 
     let (sized_args, unsized_args);
     let args: &[ValueRef] = if type_is_sized(tcx, t) {
@@ -470,9 +473,6 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
             }
         }
-        ty::TyUnion(..) => {
-            unimplemented_unions!();
-        }
         ty::TyTrait(..) => {
             // No support in vtable for distinguishing destroying with
             // versus without calling Drop::drop. Assert caller is
@@ -490,6 +490,13 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
         ty::TyStruct(def, _) | ty::TyEnum(def, _)
                 if def.dtor_kind().is_present() && !skip_dtor => {
             trans_struct_drop(bcx, t, v0)
+        }
+        ty::TyUnion(def, _) => {
+            if def.dtor_kind().is_present() && !skip_dtor {
+                trans_struct_drop(bcx, t, v0, true)
+            } else {
+                bcx
+            }
         }
         _ => {
             if bcx.fcx.type_needs_drop(t) {

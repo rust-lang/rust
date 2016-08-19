@@ -1164,3 +1164,36 @@ impl LateLintPass for UnstableFeatures {
         }
     }
 }
+
+/// Lint for unions that contain fields with possibly non-trivial destructors.
+pub struct UnionsWithDropFields;
+
+declare_lint! {
+    UNIONS_WITH_DROP_FIELDS,
+    Warn,
+    "use of unions that contain fields with possibly non-trivial drop code"
+}
+
+impl LintPass for UnionsWithDropFields {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNIONS_WITH_DROP_FIELDS)
+    }
+}
+
+impl LateLintPass for UnionsWithDropFields {
+    fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
+        if let hir::ItemUnion(ref vdata, _) = item.node {
+            let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
+            for field in vdata.fields() {
+                let field_ty = ctx.tcx.node_id_to_type(field.id);
+                if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
+                    ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
+                                  field.span,
+                                  "union contains a field with possibly non-trivial drop code, \
+                                   drop code of union fields is ignored when dropping the union");
+                    return;
+                }
+            }
+        }
+    }
+}
