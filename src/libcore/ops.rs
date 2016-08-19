@@ -470,26 +470,37 @@ rem_impl_float! { f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Neg`. When `-Foo` happens, it ends up calling
-/// `neg`, and therefore, `main` prints `Negating!`.
+/// An implementation of `Neg` for `Sign`, which allows the use of `-` to
+/// negate its value.
 ///
 /// ```
 /// use std::ops::Neg;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// enum Sign {
+///     Negative,
+///     Zero,
+///     Positive,
+/// }
 ///
-/// impl Neg for Foo {
-///     type Output = Foo;
+/// impl Neg for Sign {
+///     type Output = Sign;
 ///
-///     fn neg(self) -> Foo {
-///         println!("Negating!");
-///         self
+///     fn neg(self) -> Sign {
+///         match self {
+///             Sign::Negative => Sign::Positive,
+///             Sign::Zero => Sign::Zero,
+///             Sign::Positive => Sign::Negative,
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     -Foo;
-/// }
+/// // a negative positive is a negative
+/// assert_eq!(-Sign::Positive, Sign::Negative);
+/// // a double negative is a positive
+/// assert_eq!(-Sign::Negative, Sign::Positive);
+/// // zero is its own negation
+/// assert_eq!(-Sign::Zero, Sign::Zero);
 /// ```
 #[lang = "neg"]
 #[stable(feature = "rust1", since = "1.0.0")]
