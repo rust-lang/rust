@@ -144,6 +144,10 @@ impl Condvar {
     /// differences that may not cause the maximum amount of time
     /// waited to be precisely `ms`.
     ///
+    /// Note that the best effort is made to ensure that the time waited is
+    /// measured with a monotonic clock, and not affected by the changes made to
+    /// the system time.
+    ///
     /// The returned boolean is `false` only if the timeout is known
     /// to have elapsed.
     ///
@@ -167,6 +171,10 @@ impl Condvar {
     /// method should not be used for precise timing due to anomalies such as
     /// preemption or platform differences that may not cause the maximum
     /// amount of time waited to be precisely `dur`.
+    ///
+    /// Note that the best effort is made to ensure that the time waited is
+    /// measured with a monotonic clock, and not affected by the changes made to
+    /// the system time.
     ///
     /// The returned `WaitTimeoutResult` value indicates if the timeout is
     /// known to have elapsed.
