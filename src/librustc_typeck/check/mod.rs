@@ -2850,8 +2850,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let cond_ty = self.check_expr_has_type(cond_expr, self.tcx.types.bool);
 
         let expected = expected.adjust_for_branches(self);
-        self.check_block_with_expected(then_blk, expected);
-        let then_ty = self.node_ty(then_blk.id);
+        let then_ty = self.check_block_with_expected(then_blk, expected);
 
         let unit = self.tcx.mk_nil();
         let (origin, expected, found, result) =
@@ -3542,8 +3541,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               self.check_expr_closure(expr, capture, &decl, &body, expected)
           }
           hir::ExprBlock(ref b) => {
-            self.check_block_with_expected(&b, expected);
-            self.node_ty(b.id)
+            self.check_block_with_expected(&b, expected)
           }
           hir::ExprCall(ref callee, ref args) => {
               self.check_call(expr, &callee, &args[..], expected)
@@ -3911,8 +3909,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_block_no_value(&self, blk: &'gcx hir::Block)  {
-        self.check_block_with_expected(blk, ExpectHasType(self.tcx.mk_nil()));
-        let blkty = self.node_ty(blk.id);
+        let blkty = self.check_block_with_expected(blk, ExpectHasType(self.tcx.mk_nil()));
         if blkty.references_error() {
             self.write_error(blk.id);
         } else {
@@ -3923,7 +3920,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_block_with_expected(&self,
                                  blk: &'gcx hir::Block,
-                                 expected: Expectation<'tcx>) {
+                                 expected: Expectation<'tcx>) -> Ty<'tcx> {
         let prev = {
             let mut fcx_ps = self.ps.borrow_mut();
             let unsafety_state = fcx_ps.recurse(blk);
@@ -3960,13 +3957,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            s_ty.is_never();
             any_err = any_err || s_ty.references_error();
         }
-        match blk.expr {
+        let ty = match blk.expr {
             None => if any_err {
-                self.write_error(blk.id);
+                self.tcx.types.err
             } else if any_diverges {
-                self.write_ty(blk.id, self.next_diverging_ty_var());
+                self.next_diverging_ty_var()
             } else {
-                self.write_nil(blk.id);
+                self.tcx.mk_nil()
             },
             Some(ref e) => {
                 if any_diverges && !warned {
@@ -3988,16 +3985,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
 
                 if any_err {
-                    self.write_error(blk.id);
+                    self.tcx.types.err
                 } else if any_diverges {
-                    self.write_ty(blk.id, self.next_diverging_ty_var());
+                    self.next_diverging_ty_var()
                 } else {
-                    self.write_ty(blk.id, ety);
+                    ety
                 }
             }
         };
+        self.write_ty(blk.id, ty);
 
         *self.ps.borrow_mut() = prev;
+        ty
     }
 
     // Instantiates the given path, which must refer to an item with the given
