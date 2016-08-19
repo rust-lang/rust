@@ -252,6 +252,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "type `{}` is not a member of trait `{}`",
                              type_,
                              trait_)
+                             .span_label(span, &format!("not a member of trait `Foo`")).emit()
         }
         ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
             struct_span_err!(resolver.session,
@@ -260,6 +261,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "const `{}` is not a member of trait `{}`",
                              const_,
                              trait_)
+                             .span_label(span, &format!("not a member of trait `Foo`")).emit()
         }
         ResolutionError::VariableNotBoundInPattern(variable_name, from, to) => {
             struct_span_err!(resolver.session,
@@ -427,6 +429,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              span,
                              E0435,
                              "attempt to use a non-constant value in a constant")
+                             .span_label(span, &format!("non-constant used with constant")).emit()
         }
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
             let shadows_what = PathResolution::new(binding.def().unwrap()).kind_name();
