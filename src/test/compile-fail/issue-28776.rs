@@ -13,5 +13,5 @@ use std::ptr;
 fn main() {
     (&ptr::write)(1 as *mut _, 42);
     //~^ ERROR E0133
-    //~| NOTE unsafe call requires unsafe function or block
+    //~| NOTE call to unsafe function
 }
