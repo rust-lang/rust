@@ -133,8 +133,8 @@ See [rust-lang/rust#35437][0].
 - [x] udivsi3.c
 - [x] umoddi3.c
 - [x] umodsi3.c
-- [ ] x86_64/chkstk.S
-- [ ] x86_64/chkstk2.S
+- [x] x86_64/chkstk.S
+- [x] x86_64/chkstk2.S
 
 These builtins are needed to support 128-bit integers, which are in the process of being added to Rust.
 
