@@ -538,26 +538,31 @@ neg_impl_numeric! { isize i8 i16 i32 i64 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Not`. When `!Foo` happens, it ends up calling
-/// `not`, and therefore, `main` prints `Not-ing!`.
+/// An implementation of `Not` for `Answer`, which enables the use of `!` to
+/// invert its value.
 ///
 /// ```
 /// use std::ops::Not;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// enum Answer {
+///     Yes,
+///     No,
+/// }
 ///
-/// impl Not for Foo {
-///     type Output = Foo;
+/// impl Not for Answer {
+///     type Output = Answer;
 ///
-///     fn not(self) -> Foo {
-///         println!("Not-ing!");
-///         self
+///     fn not(self) -> Answer {
+///         match self {
+///             Answer::Yes => Answer::No,
+///             Answer::No => Answer::Yes
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     !Foo;
-/// }
+/// assert_eq!(!Answer::Yes, Answer::No);
+/// assert_eq!(!Answer::No, Answer::Yes);
 /// ```
 #[lang = "not"]
 #[stable(feature = "rust1", since = "1.0.0")]
