@@ -7,4 +7,8 @@
 //~| SUGGESTION #![allow(dead_code)]
 extern crate clippy_lints;
 
+// don't lint on unused_import for `use` items
+#[allow(unused_imports)]
+use std::collections;
+
 fn main() {}
