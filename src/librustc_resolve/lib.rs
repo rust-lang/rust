@@ -885,10 +885,6 @@ impl<'a> NameBinding<'a> {
         }
     }
 
-    fn is_pseudo_public(&self) -> bool {
-        self.pseudo_vis() == ty::Visibility::Public
-    }
-
     // We sometimes need to treat variants as `pub` for backwards compatibility
     fn pseudo_vis(&self) -> ty::Visibility {
         if self.is_variant() { ty::Visibility::Public } else { self.vis }
