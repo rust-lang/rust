@@ -128,3 +128,84 @@ pub unsafe extern "C" fn __aeabi_memclr4(dest: *mut u8, n: usize) {
 pub unsafe extern "C" fn __aeabi_memclr8(dest: *mut u8, n: usize) {
     memset(dest, 0, n);
 }
+
+
+#[cfg(test)]
+mod tests {
+    use quickcheck::TestResult;
+    use qc::{U32, U64};
+
+    quickcheck!{
+        fn uldivmod(n: U64, d: U64) -> TestResult {
+            let (n, d) = (n.0, d.0);
+            if d == 0 {
+                TestResult::discard()
+            } else {
+                let q: u64;
+                let r: u64;
+                unsafe {
+                    // The inline asm is a bit tricky here, LLVM will allocate
+                    // both r0 and r1 when we specify a 64-bit value for {r0}.
+                    asm!("bl __aeabi_uldivmod"
+                         : "={r0}" (q), "={r2}" (r)
+                         : "{r0}" (n), "{r2}" (d)
+                         : "r12", "lr", "flags");
+                }
+                TestResult::from_bool(q == n / d && r == n % d)
+            }
+        }
+
+        fn uidivmod(n: U32, d: U32) -> TestResult {
+            let (n, d) = (n.0, d.0);
+            if d == 0 {
+                TestResult::discard()
+            } else {
+                let q: u32;
+                let r: u32;
+                unsafe {
+                    asm!("bl __aeabi_uidivmod"
+                         : "={r0}" (q), "={r1}" (r)
+                         : "{r0}" (n), "{r1}" (d)
+                         : "r2", "r3", "r12", "lr", "flags");
+                }
+                TestResult::from_bool(q == n / d && r == n % d)
+            }
+        }
+
+        fn ldivmod(n: U64, d: U64) -> TestResult {
+            let (n, d) = (n.0 as i64, d.0 as i64);
+            if d == 0 {
+                TestResult::discard()
+            } else {
+                let q: i64;
+                let r: i64;
+                unsafe {
+                    // The inline asm is a bit tricky here, LLVM will allocate
+                    // both r0 and r1 when we specify a 64-bit value for {r0}.
+                    asm!("bl __aeabi_ldivmod"
+                         : "={r0}" (q), "={r2}" (r)
+                         : "{r0}" (n), "{r2}" (d)
+                         : "r12", "lr", "flags");
+                }
+                TestResult::from_bool(q == n / d && r == n % d)
+            }
+        }
+
+        fn idivmod(n: U32, d: U32) -> TestResult {
+            let (n, d) = (n.0 as i32, d.0 as i32);
+            if d == 0 {
+                TestResult::discard()
+            } else {
+                let q: i32;
+                let r: i32;
+                unsafe {
+                    asm!("bl __aeabi_idivmod"
+                         : "={r0}" (q), "={r1}" (r)
+                         : "{r0}" (n), "{r1}" (d)
+                         : "r2", "r3", "r12", "lr", "flags");
+                }
+                TestResult::from_bool(q == n / d && r == n % d)
+            }
+        }
+    }
+}
