@@ -681,9 +681,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                     self.add(Qualif::NOT_CONST);
                     if self.mode != Mode::Fn {
-                        span_err!(self.tcx.sess, self.span, E0395,
-                                  "raw pointers cannot be compared in {}s",
-                                  self.mode);
+                        struct_span_err!(
+                            self.tcx.sess, self.span, E0395,
+                            "raw pointers cannot be compared in {}s",
+                            self.mode)
+                        .span_label(
+                            self.span,
+                            &format!("comparing raw pointers in static"))
+                        .emit();
                     }
                 }
             }
