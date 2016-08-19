@@ -3382,7 +3382,11 @@ impl<'a> Resolver<'a> {
             },
             (true, _) | (_, true) => struct_span_err!(self.session, span, E0260, "{}", msg),
             _ => match (old_binding.is_import(), binding.is_import()) {
-                (false, false) => struct_span_err!(self.session, span, E0428, "{}", msg),
+                (false, false) => {
+                    let mut e = struct_span_err!(self.session, span, E0428, "{}", msg);
+                    e.span_label(span, &format!("already defined"));
+                    e
+                },
                 (true, true) => {
                     let mut e = struct_span_err!(self.session, span, E0252, "{}", msg);
                     e.span_label(span, &format!("already imported"));

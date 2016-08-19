@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn id<T>(t: T) -> T { t }
-fn main() {
-    const A: bool = id::<u8> as *const () < id::<u16> as *const ();
-    //~^ ERROR raw pointers cannot be compared in constants [E0395]
-    //~^^ NOTE comparing raw pointers in static
-    println!("{}", A);
+trait Foo {
+    fn dummy(&self) { }
 }
+
+pub trait Bar : Foo {} //~ ERROR E0445
+pub struct Bar2<T: Foo>(pub T); //~ ERROR E0445
+pub fn foo<T: Foo> (t: T) {} //~ ERROR E0445
+
+fn main() {}

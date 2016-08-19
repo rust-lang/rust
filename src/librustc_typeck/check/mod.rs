@@ -903,9 +903,12 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 }
             }
         } else {
-            span_err!(ccx.tcx.sess, attr.span, E0232,
-                                  "this attribute must have a value, \
-                                   eg `#[rustc_on_unimplemented = \"foo\"]`")
+            struct_span_err!(
+                ccx.tcx.sess, attr.span, E0232,
+                "this attribute must have a value")
+                .span_label(attr.span, &format!("attribute requires a value"))
+                .note(&format!("eg `#[rustc_on_unimplemented = \"foo\"]`"))
+                .emit();
         }
     }
 }
@@ -1245,8 +1248,11 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let hint = *ccx.tcx.lookup_repr_hints(def_id).get(0).unwrap_or(&attr::ReprAny);
 
     if hint != attr::ReprAny && vs.is_empty() {
-        span_err!(ccx.tcx.sess, sp, E0084,
-            "unsupported representation for zero-variant enum");
+        struct_span_err!(
+            ccx.tcx.sess, sp, E0084,
+            "unsupported representation for zero-variant enum")
+            .span_label(sp, &format!("unsupported enum representation"))
+            .emit();
     }
 
     let repr_type_ty = ccx.tcx.enum_repr_type(Some(&hint)).to_ty(ccx.tcx);

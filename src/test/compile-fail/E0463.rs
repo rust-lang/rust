@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn id<T>(t: T) -> T { t }
+#![feature(plugin)]
+#![plugin(cookie_monster)] //~ ERROR E0463
+extern crate cake_is_a_lie;
+
 fn main() {
-    const A: bool = id::<u8> as *const () < id::<u16> as *const ();
-    //~^ ERROR raw pointers cannot be compared in constants [E0395]
-    //~^^ NOTE comparing raw pointers in static
-    println!("{}", A);
 }

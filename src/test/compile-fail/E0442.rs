@@ -8,10 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
+#![feature(repr_simd)]
+#![feature(platform_intrinsics)]
 
-const VALUE: u8 = unsafe { *REG_ADDR }; //~ ERROR E0396
-                  //~| NOTE dereference of raw pointer in constant
+#[repr(simd)]
+struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8,
+             i8, i8, i8, i8, i8, i8, i8, i8);
+#[repr(simd)]
+struct i32x4(i32, i32, i32, i32);
+#[repr(simd)]
+struct i64x2(i64, i64);
 
-fn main() {
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
+    //~^ ERROR E0442
+    //~| ERROR E0442
+    //~| ERROR E0442
 }
+
+fn main() {}
