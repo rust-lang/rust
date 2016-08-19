@@ -8,8 +8,19 @@
 
 Enable the compiler to select whether a target dynamically or statically links
 to a platform's standard C runtime through the introduction of three orthogonal
-and otherwise general purpose features, one of which would likely never become
-stable.
+and otherwise general purpose features, one of which will likely never become
+stable and can be considered an implementation detail of std. These features
+require rustc to have no intrinsic knowledge of the existence of C runtimes.
+
+The end result is that rustc will be able to reuse its existing standard library
+binaries for the MSVC and musl targets for building code that links either
+statically or dynamically to libc.
+
+The design herein additionally paves the way for improved support for
+dllimport/dllexport and cpu-specific features, particularly when combined with a
+[std-aware cargo].
+
+[std-aware cargo]: https://github.com/rust-lang/rfcs/pull/1133
 
 # Motivation
 [motivation]: #motivation
@@ -22,67 +33,74 @@ however, where these decisions are not suitable. For example binaries on Alpine
 Linux want to link dynamically to musl and redistributable binaries on Windows
 are best done by linking statically to MSVCRT.
 
-The actual underlying code essentially never needs to change depending on how
-the C runtime is being linked, just the mechanics of how it's actually all
-linked together. As a result it's a common desire to take the target libraries
-"off the shelf" and change how the C runtime is linked in as well.
-
-The purpose of this RFC is to provide a cross-platform solution spanning both
-Cargo and the compiler which allows configuration of how the C runtime is
-linked. The idea is that the standard MSVC and musl targets can be used as they
-are today with an extra compiler flag to change how the C runtime is linked by
-default.
-
-This RFC does *not* propose unifying how the C runtime is linked across
-platforms (e.g. always dynamically or always statically) but instead leaves that
-decision to each target.
+Today rustc has no mechanism for accomplishing this besides defining an entirely
+new target specification and distributing a build of the standard library for
+it. Because target specifications must be described by a target triple, and
+target triples have preexisting conventions into which such a scheme does not
+fit, we have resisted doing so.
 
 # Detailed design
 [design]: #detailed-design
 
-This RFC proposed introducing three separate features to the compiler and Cargo.
-When combined together they will enable the compiler to change whether the C
-standard library is linked dynamically or statically, but in isolation each
-should be useful in its own right.
+This RFC introduces three separate features to the compiler and Cargo.  When
+combined together they will enable the compiler to change whether the C standard
+library is linked dynamically or statically. In isolation each feature is a
+natural extension of existing features, should be useful on their own.
 
-### A `crt_link` cfg directive
+A key insight is that, for practical purposes, the object code _for the standard
+library_ does not need to change based on how the C runtime is being linked;
+though it is true that on Windows, it is _generally_ important to properly
+manage the use of dllimport/dllexport attributes based on the linkage type, and
+C code does need to be compiled with specific options based on the linkage type.
+So it is technically possible to produce Rust executables and dynamic libraries
+that either link to libc statically or dynamically from a single std binary by
+correctly manipulating the arguments to the linker.
 
-The compiler will first define a new `crt_link` `#[cfg]` directive. This
-directive will behave similarly to directives like `target_os` where they're
-defined by the compiler for all targets. The compiler will set this value to
-either `"dynamic"` or `"static"` depending on how the C runtime is requested to
-being linked.
+A second insight is that there are multiple existing, unserved use cases for
+configuring features of the hardware architecture, underlying platform, or
+runtime [1], which require the entire 'world', possibly including std, to be
+compiled a certain way. C runtime linkage is another example of this
+requirement.
 
-For example, crates can then indicate:
+[1]: https://internals.rust-lang.org/t/pre-rfc-a-vision-for-platform-architecture-configuration-specific-apis/3502
 
-```rust
-#[cfg_attr(crt_link = "static", link(name = "c", kind = "static"))]
-#[cfg_attr(crt_link = "dynamic", link(name = "c"))]
-extern {
-    // ...
-}
-```
+From these observations we can design a cross-platform solution spanning both
+Cargo and the compiler by which Rust programs may link to either a dynamic or
+static C library, using only a single std binary. As future work it discusses
+how the proposed scheme scheme can be extended to rebuild std specifically for a
+particular C-linkage scenario, which may have minor advantages on Windows due to
+issues around dllimport and dllexport; and how this scheme naturally extends
+to recompiling std in the presence of modified CPU features.
 
-This will notably be used in the `libc` crate where the linkage to the C
-runtime is defined.
+This RFC does *not* propose unifying how the C runtime is linked across
+platforms (e.g. always dynamically or always statically) but instead leaves that
+decision to each target, and to future work.
 
-Finally, the compiler will *also* allow defining this attribute from the
-command line. For example:
+In summary the new mechanics are:
 
-```
-rustc --cfg 'crt_link = "static"' foo.rs
-```
+- Specifying C runtime linkage via `-C target-feature=+crt-static` or `-C
+  target-feature=-crt-static`. This extends `-C target-feature` to mean not just
+  "CPU feature" ala LLVM, but "feature of the Rust target". Several existing
+  properties of this flag, the ability to add, with `+`, _or remove_, with `-`,
+  the feature, as well as the automatic lowering to `cfg` values, are crucial to
+  later aspects of the design. This target feature will be added to targets via
+  a small extension to the compiler's target specification.
+- Lowering `cfg` values to Cargo build script environment variables. TODO describe
+  key points.
+- Lazy link attributes. TODO. This feature is only required by std's own copy of the
+  libc crate, since std is distributed in binary form, and it may yet be a long
+  time before Cargo itself can rebuild std.
 
-This will override the compiler's default definition of `crt_link` and use this
-one instead. Again, though, the only valid values for this directive are
-`"static"` and `"dynamic"`.
+### Specifying dynamic/static C runtime linkage
 
-In isolation, however, this directive is not too useful, It would still require
-rebuilding the `libc` crate (which the standard library links to) if the
-linkage to the C runtime needs to change. This is where the two other features
-this RFC proposes come into play though!
+`-C target-feature=crt-static`
 
-### Forwarding `#[cfg]` to build scripts
+TODO An extension to target specifications that allows custom target-features to be
+defined, as well as to indicate whether that feature is on by default. Most
+existing targets will define `crt-static`; the existing "musl" targets will
+enable `crt-static` by default.
+
+### Lowering `cfg` values to Cargo build script environment variables
 
 The first feature proposed is enabling Cargo to forward `#[cfg]` directives from
 the compiler into build scripts. Currently the compiler supports `--print cfg`
@@ -125,17 +143,40 @@ export CARGO_CFG_DEBUG_ASSERTIONS
 ```
 
 As mentioned in the previous section, the linkage of the C standard library
-will be a `#[cfg]` directive defined by the compiler, and through this method
-build scripts will be able to learn how the C standard library is being linked.
-This is crucially important for the MSVC target where code needs to be compiled
-differently depending on how the C library is linked.
+will be specified as a target feature, which is lowered to a `cfg` value.
+One important complication here is that `cfg` values in Rust may be defined
+multiple times, and this is the case with target features. When a
+`cfg` value is defined multiple times, Cargo will create a single environment
+variable with a comma-seperated list of values.
+
+So for a target with the following features enabled
+
+```
+target_feature="sse"
+target_feature="crt-static"
+```
+
+Cargo would convert it to the following environment variable:
+
+```
+export CARGO_CFG_TARGET_FEATURE=sse,crt-static
+```
+
+Through this method build scripts will be able to learn how the C standard
+library is being linked.  This is crucially important for the MSVC target where
+code needs to be compiled differently depending on how the C library is linked.
 
 This feature ends up having the added benefit of informing build scripts about
 selected CPU features as well. For example once the `target_feature` `#[cfg]`
 is stabilized build scripts will know whether SSE/AVX/etc are enabled features
 for the C code they might be compiling.
 
-### "Lazy Linking"
+After this change, the gcc-rs crate will be modified to check for the
+`CARGO_CFG_TARGET_FEATURE` directive, and parse it into a list of enabled
+features. If the `crt-static` feature is not enabled it will compile C code with
+`/MD`. Otherwise if the value is `static` it will compile code with `/MT`.
+
+### Lazy link attributes
 
 The final feature that will be added to the compiler is the ability to "lazily"
 link a native library depending on values of `#[cfg]` at compile time of
@@ -172,12 +213,12 @@ First, the `libc` crate will be modified to contain blocks along the lines of:
 ```rust
 cfg_if! {
     if #[cfg(target_env = "musl")] {
-        #[link(name = "c", cfg(crt_link = "static"), kind = "static")]
-        #[link(name = "c", cfg(crt_link = "dynamic"))]
+        #[link(name = "c", cfg(target_feature = "crt-static"), kind = "static")]
+        #[link(name = "c", cfg(not(target_feature = "crt-static")))]
         extern {}
     } else if #[cfg(target_env = "msvc")] {
-        #[link(name = "msvcrt", cfg(crt_link = "dynamic"))]
-        #[link(name = "libcmt", cfg(crt_link = "static"))]
+        #[link(name = "msvcrt", cfg(not(target_feature = "crt-static")))]
+        #[link(name = "libcmt", cfg(target_feature = "crt-static"))]
         extern {}
     } else {
         // ...
@@ -191,23 +232,18 @@ CRT is linked dynamically, however, then the library named `c` will be linked
 dynamically. Similarly for MSVC, a static CRT implies linking to `libcmt` and a
 dynamic CRT implies linking to `msvcrt` (as we do today).
 
-After this change, the gcc-rs crate will be modified to check for the
-`CARGO_CFG_CRT_LINK` directive. If it is not present or value is `dynamic`, then
-it will compile C code with `/MD`. Otherwise if the value is `static` it will
-compile code with `/MT`.
-
 Finally, an example of compiling for MSVC linking statically to the C runtime
 would look like:
 
 ```
-RUSTFLAGS='--cfg crt_link="static"' cargo build --target x86_64-pc-windows-msvc
+RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-pc-windows-msvc
 ```
 
 and similarly, compiling for musl but linking dynamically to the C runtime would
 look like:
 
 ```
-RUSTFLAGS='--cfg crt_link="dynamic"' cargo build --target x86_64-unknown-linux-musl
+RUSTFLAGS='-C target-feature=-crt-static' cargo build --target x86_64-unknown-linux-musl
 ```
 
 ### Future work
@@ -218,15 +254,16 @@ that it's somewhat cumbersome to select the non-default linkage of the CRT.
 Similarly, however, it's cumbersome to select target CPU features which are not
 the default, and these two situations are very similar. Eventually it's intended
 that there's an ergonomic method for informing the compiler and Cargo of all
-"compilation codegen options" over the usage of `RUSTFLAGS` today. It's assume
-that configuration of `crt_link` will be included in this ergonomic
-configuration as well.
+"compilation codegen options" over the usage of `RUSTFLAGS` today.
 
 Furthermore, it would have arguably been a "more correct" choice for Rust to by
 default statically link to the CRT on MSVC rather than dynamically. While this
 would be a breaking change today due to how C components are compiled, if this
 RFC is implemented it should not be a breaking change to switch the defaults in
 the future.
+
+TODO: discuss how this could with std-aware cargo to apply dllimport/export correctly
+to the standard library's code-generation.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -265,4 +302,10 @@ the future.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-None, yet.
+* What happens during the `cfg` to environment variable conversion for values
+  that contain commas? It's an unusual corner case, and build scripts should not
+  depend on such values, but it needs to be handled sanely.
+
+* Is it really true that lazy linking is only needed by std's libc? What about
+  in a world where we distribute more precompiled binaries than just std?
+
