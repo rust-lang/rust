@@ -66,7 +66,7 @@ macro_rules! mulo {
     }
 }
 
-mul!(__muldi4: u64);
+mul!(__muldi3: u64);
 mulo!(__mulosi4: i32);
 mulo!(__mulodi4: i64);
 
@@ -77,7 +77,7 @@ mod tests {
     quickcheck! {
         fn muldi(a: U64, b: U64) -> bool {
             let (a, b) = (a.0, b.0);
-            let r = super::__muldi4(a, b);
+            let r = super::__muldi3(a, b);
             r == a.wrapping_mul(b)
         }
 
