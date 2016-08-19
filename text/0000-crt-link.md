@@ -9,8 +9,8 @@
 Enable the compiler to select whether a target dynamically or statically links
 to a platform's standard C runtime through the introduction of three orthogonal
 and otherwise general purpose features, one of which will likely never become
-stable and can be considered an implementation detail of std. These features
-require rustc to have no intrinsic knowledge of the existence of C runtimes.
+stable and can be considered an implementation detail of std. These features do
+not require rustc to have intrinsic knowledge of the existence of C runtimes.
 
 The end result is that rustc will be able to reuse its existing standard library
 binaries for the MSVC and musl targets for building code that links either
@@ -85,27 +85,39 @@ In summary the new mechanics are:
   the feature, as well as the automatic lowering to `cfg` values, are crucial to
   later aspects of the design. This target feature will be added to targets via
   a small extension to the compiler's target specification.
-- Lowering `cfg` values to Cargo build script environment variables. TODO describe
-  key points.
-- Lazy link attributes. TODO. This feature is only required by std's own copy of the
+- Lowering `cfg` values to Cargo build script environment variables. This will
+  enable build scripts to understand all enabled features of a target (like
+  `crt-static` above) to, for example, compile C code correctly on MSVC.
+- Lazy link attributes. This feature is only required by std's own copy of the
   libc crate, since std is distributed in binary form, and it may yet be a long
   time before Cargo itself can rebuild std.
 
 ### Specifying dynamic/static C runtime linkage
 
-`-C target-feature=crt-static`
+A new `target-feature` flag will now be supported by the compiler for relevant
+targets: `crt-static`. This can be enabled and disabled in the compiler via:
 
-TODO An extension to target specifications that allows custom target-features to be
-defined, as well as to indicate whether that feature is on by default. Most
-existing targets will define `crt-static`; the existing "musl" targets will
-enable `crt-static` by default.
+```
+rustc -C target-feature=+crt-static ...
+rustc -C target-feature=-crt-static ...
+```
+
+Currently all `target-feature` flags are passed through straight to LLVM, but
+this proposes extending the meaning of `target-feature` to Rust-target-specific
+features as well. Target specifications will be able to indicate what custom
+target-features can be defined, and most existing target will define a new
+`crt-static` feature which is turned off by default (except for musl).
+
+The default of `crt-static` will be different depending on the target. For
+example `x86_64-unknown-linux-musl` will have it on by default, whereas
+`arm-unknown-linux-musleabi` will have it turned off by default.
 
 ### Lowering `cfg` values to Cargo build script environment variables
 
-The first feature proposed is enabling Cargo to forward `#[cfg]` directives from
-the compiler into build scripts. Currently the compiler supports `--print cfg`
-as a flag to print out internal cfg directives, which Cargo currently uses to
-implement platform-specific dependencies.
+Cargo will begin to forward `#[cfg]` directives from the compiler into build
+scripts. Currently the compiler supports `--print cfg` as a flag to print out
+internal cfg directives, which Cargo currently uses to implement
+platform-specific dependencies.
 
 When Cargo runs a build script it already sets a [number of environment
 variables][cargo-build-env], and it will now set a family of `CARGO_CFG_*`
@@ -147,7 +159,7 @@ will be specified as a target feature, which is lowered to a `cfg` value.
 One important complication here is that `cfg` values in Rust may be defined
 multiple times, and this is the case with target features. When a
 `cfg` value is defined multiple times, Cargo will create a single environment
-variable with a comma-seperated list of values.
+variable with a comma-separated list of values.
 
 So for a target with the following features enabled
 
@@ -173,8 +185,9 @@ for the C code they might be compiling.
 
 After this change, the gcc-rs crate will be modified to check for the
 `CARGO_CFG_TARGET_FEATURE` directive, and parse it into a list of enabled
-features. If the `crt-static` feature is not enabled it will compile C code with
-`/MD`. Otherwise if the value is `static` it will compile code with `/MT`.
+features. If the `crt-static` feature is not enabled it will compile C code on
+the MSVC target with `/MD`. Otherwise if the value is `static` it will compile
+code with `/MT`.
 
 ### Lazy link attributes
 
@@ -201,7 +214,7 @@ in two ways:
 
 * When deciding what native libraries should be linked, the compiler will
   evaluate whether they should be linked or not depending on the current
-  compilation's `#[cfg]` directives nad the upstream `#[link]` directives.
+  compilation's `#[cfg]` directives and the upstream `#[link]` directives.
 
 ### Customizing linkage to the C runtime
 
@@ -262,8 +275,16 @@ would be a breaking change today due to how C components are compiled, if this
 RFC is implemented it should not be a breaking change to switch the defaults in
 the future.
 
-TODO: discuss how this could with std-aware cargo to apply dllimport/export correctly
-to the standard library's code-generation.
+The support in this RFC implies that the exact artifacts that we're shipping
+will be usable for both dynamically and statically linking the CRT.
+Unfortunately, however, on MSVC code is compiled differently if it's linking to
+a dynamic library or not. The standard library uses very little of the MSVCRT,
+so this won't be a problem in practice for now, but runs the risk of binding our
+hands in the future. It's intended, though, that Cargo [will eventually support
+custom-compiling the standard library][std-aware cargo]. The `crt-static`
+feature would simply be another input to this logic, so Cargo would
+custom-compile the standard library if it differed from the upstream artifacts,
+solving this problem.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -289,7 +310,7 @@ to the standard library's code-generation.
   heavyweight solution as we'd have to start distributing new artifacts and
   such.
 
-* Another possibility would be to start storing metdata in the "target name"
+* Another possibility would be to start storing metadata in the "target name"
   along the lines of `x86_64-pc-windows-msvc+static`. This is a pretty big
   design space, though, which may not play well with Cargo and build scripts, so
   for now it's preferred to avoid this rabbit hole of design if possible.
