@@ -285,13 +285,20 @@ impl<'a> Resolver<'a> {
     // return the corresponding binding defined by the import directive.
     fn import(&mut self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
               -> NameBinding<'a> {
+        let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
+                     !directive.is_glob() && binding.is_extern_crate() { // c.f. `PRIVATE_IN_PUBLIC`
+            directive.vis.get()
+        } else {
+            binding.pseudo_vis()
+        };
+
         NameBinding {
             kind: NameBindingKind::Import {
                 binding: binding,
                 directive: directive,
             },
             span: directive.span,
-            vis: directive.vis.get(),
+            vis: vis,
         }
     }
 
@@ -597,22 +604,44 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         }
 
+        let session = self.session;
+        let reexport_error = || {
+            let msg = format!("`{}` is private, and cannot be reexported", name);
+            let note_msg =
+                format!("consider marking `{}` as `pub` in the imported module", name);
+            struct_span_err!(session, directive.span, E0364, "{}", &msg)
+                .span_note(directive.span, &note_msg)
+                .emit();
+        };
+
+        let extern_crate_lint = || {
+            let msg = format!("extern crate `{}` is private, and cannot be reexported \
+                               (error E0364), consider declaring with `pub`",
+                               name);
+            session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
+        };
+
         match (value_result, type_result) {
+            // With `#![feature(item_like_imports)]`, all namespaces
+            // must be re-exported with extra visibility for an error to occur.
+            (Ok(value_binding), Ok(type_binding)) if self.new_import_semantics => {
+                let vis = directive.vis.get();
+                if !value_binding.pseudo_vis().is_at_least(vis, self) &&
+                   !type_binding.pseudo_vis().is_at_least(vis, self) {
+                    reexport_error();
+                } else if type_binding.is_extern_crate() &&
+                          !type_binding.vis.is_at_least(vis, self) {
+                    extern_crate_lint();
+                }
+            }
+
             (Ok(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
-                let msg = format!("`{}` is private, and cannot be reexported", name);
-                let note_msg =
-                    format!("consider marking `{}` as `pub` in the imported module", name);
-                struct_span_err!(self.session, directive.span, E0364, "{}", &msg)
-                    .span_note(directive.span, &note_msg)
-                    .emit();
+                reexport_error();
             }
 
             (_, Ok(binding)) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
                 if binding.is_extern_crate() {
-                    let msg = format!("extern crate `{}` is private, and cannot be reexported \
-                                       (error E0364), consider declaring with `pub`",
-                                       name);
-                    self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
+                    extern_crate_lint();
                 } else {
                     struct_span_err!(self.session, directive.span, E0365,
                                      "`{}` is private, and cannot be reexported", name)
