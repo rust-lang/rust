@@ -3241,19 +3241,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
     {
         // Find the relevant variant
-        let (variant, expr_t) = if let Some(variant_ty) = self.check_struct_path(path, expr.id,
-                                                                                  expr.span) {
+        let (variant, struct_ty) = if let Some(variant_ty) = self.check_struct_path(path, expr.id,
+                                                                                    expr.span) {
             variant_ty
         } else {
             self.check_struct_fields_on_error(fields, base_expr);
             return self.tcx().types.err;
         };
 
-        self.check_expr_struct_fields(expr_t, path.span, variant, fields,
+        self.check_expr_struct_fields(struct_ty, path.span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
-            self.check_expr_has_type(base_expr, expr_t);
-            match expr_t.sty {
+            self.check_expr_has_type(base_expr, struct_ty);
+            match struct_ty.sty {
                 ty::TyStruct(adt, substs) => {
                     self.tables.borrow_mut().fru_field_types.insert(
                         expr.id,
@@ -3270,8 +3270,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
-        self.require_type_is_sized(expr_t, expr.span, traits::StructInitializerSized);
-        expr_t
+        self.require_type_is_sized(struct_ty, expr.span, traits::StructInitializerSized);
+        struct_ty
     }
 
 
@@ -3881,15 +3881,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::StmtExpr(ref expr, id) => {
             node_id = id;
             // Check with expected type of ()
-            let expr_t = self.check_expr_has_type(&expr, self.tcx.mk_nil());
-            saw_bot = saw_bot || self.type_var_diverges(expr_t);
-            saw_err = saw_err || expr_t.references_error();
+            let ty = self.check_expr_has_type(&expr, self.tcx.mk_nil());
+            saw_bot = saw_bot || self.type_var_diverges(ty);
+            saw_err = saw_err || ty.references_error();
           }
           hir::StmtSemi(ref expr, id) => {
             node_id = id;
-            let expr_t = self.check_expr(&expr);
-            saw_bot |= self.type_var_diverges(expr_t);
-            saw_err |= expr_t.references_error();
+            let ty = self.check_expr(&expr);
+            saw_bot |= self.type_var_diverges(ty);
+            saw_err |= ty.references_error();
           }
         }
         if saw_bot {
