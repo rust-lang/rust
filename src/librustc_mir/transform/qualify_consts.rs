@@ -493,9 +493,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             if let ty::TyRawPtr(_) = base_ty.sty {
                                 this.add(Qualif::NOT_CONST);
                                 if this.mode != Mode::Fn {
-                                    span_err!(this.tcx.sess, this.span, E0396,
-                                              "raw pointers cannot be dereferenced in {}s",
-                                              this.mode);
+                                    struct_span_err!(this.tcx.sess,
+                                        this.span, E0396,
+                                        "raw pointers cannot be dereferenced in {}s",
+                                        this.mode)
+                                    .span_label(this.span,
+                                        &format!("dereference of raw pointer in constant"))
+                                    .emit();
                                 }
                             }
                         }
