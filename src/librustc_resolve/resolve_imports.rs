@@ -168,7 +168,7 @@ impl<'a> Resolver<'a> {
         };
 
         let is_disallowed_private_import = |binding: &NameBinding| {
-            !allow_private_imports && !binding.is_pseudo_public() && binding.is_import()
+            !allow_private_imports && binding.vis != ty::Visibility::Public && binding.is_import()
         };
 
         if let Some(span) = record_used {
@@ -338,7 +338,7 @@ impl<'a> Resolver<'a> {
         };
 
         // Define `new_binding` in `module`s glob importers.
-        if new_binding.is_importable() && new_binding.is_pseudo_public() {
+        if new_binding.vis == ty::Visibility::Public {
             for directive in module.glob_importers.borrow_mut().iter() {
                 let imported_binding = self.import(new_binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
@@ -656,9 +656,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         if let Some(Def::Trait(_)) = module.def {
             self.session.span_err(directive.span, "items in traits are not importable.");
-        }
-
-        if module.def_id() == directive.parent.def_id()  {
+            return;
+        } else if module.def_id() == directive.parent.def_id()  {
             return;
         } else if let GlobImport { is_prelude: true } = directive.subclass {
             self.prelude = Some(module);
@@ -674,7 +673,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
-            if binding.is_importable() && binding.is_pseudo_public() {
+            if binding.pseudo_vis() == ty::Visibility::Public {
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
