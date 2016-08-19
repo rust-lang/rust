@@ -234,7 +234,7 @@ impl PpSourceMode {
                                                                  resolutions.clone(),
                                                                  arenas,
                                                                  id,
-                                                                 |tcx, _, _, _| {
+                                                                 |tcx, _, _, _, _| {
                     let annotation = TypedAnnotation {
                         tcx: tcx,
                     };
@@ -951,7 +951,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      resolutions.clone(),
                                                      arenas,
                                                      crate_name,
-                                                     |tcx, mir_map, _, _| {
+                                                     |tcx, mir_map, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(mir_map) = mir_map {
