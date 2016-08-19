@@ -1450,7 +1450,8 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
                     ItemTy(_, ref generics) |
                     ItemEnum(_, ref generics) |
-                    ItemStruct(_, ref generics) => {
+                    ItemStruct(_, ref generics) |
+                    ItemUnion(_, ref generics) => {
                         allow_defaults = true;
                         generics
                     }
