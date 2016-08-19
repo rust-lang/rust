@@ -2,7 +2,7 @@ error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/trait-impl-fn-incompatibility.rs:21:15
    |
 14 |     fn foo(x: u16);
-   |               --- original trait requirement
+   |               --- type in trait
 ...
 21 |     fn foo(x: i16) { }
    |               ^^^ expected u16, found i16
@@ -11,10 +11,10 @@ error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/trait-impl-fn-incompatibility.rs:22:28
    |
 15 |     fn bar(&mut self, bar: &mut Bar);
-   |                            -------- original trait requirement
+   |                            -------- type in trait
 ...
 22 |     fn bar(&mut self, bar: &Bar) { }
-   |                            ^^^^ values differ in mutability
+   |                            ^^^^ types differ in mutability
    |
    = note: expected type `fn(&mut Bar, &mut Bar)`
    = note:    found type `fn(&mut Bar, &Bar)`

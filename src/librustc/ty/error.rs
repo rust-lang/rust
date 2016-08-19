@@ -98,9 +98,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.expected,
                        values.found)
             }
-            Mutability => write!(f, "values differ in mutability"),
+            Mutability => write!(f, "types differ in mutability"),
             BoxMutability => {
-                write!(f, "boxed values differ in mutability")
+                write!(f, "boxed types differ in mutability")
             }
             VecMutability => write!(f, "vectors differ in mutability"),
             PtrMutability => write!(f, "pointers differ in mutability"),
