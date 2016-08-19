@@ -10,7 +10,10 @@
 
 #![feature(on_unimplemented)]
 
-#[rustc_on_unimplemented] //~ ERROR E0232
+#[rustc_on_unimplemented]
+//~^ ERROR E0232
+//~| NOTE attribute requires a value
+//~| NOTE eg `#[rustc_on_unimplemented = "foo"]`
 trait Bar {}
 
 fn main() {
