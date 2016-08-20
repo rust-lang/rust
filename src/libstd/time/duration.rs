@@ -97,6 +97,17 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn subsec_nanos(&self) -> u32 { self.nanos }
+
+    /// Returns this duration in nanoseconds.
+    ///
+    /// This method returns `None` if the duration is more than `u64::MAX` nanoseconds,
+    /// which is more than 584 years.
+    #[unstable(feature = "duration_as_nanos", issue = "0")]
+    #[inline]
+    pub fn to_nanos(&self) -> Option<u64> {
+        self.secs.checked_mul(u64::from(NANOS_PER_SEC))
+                 .and_then(|n| n.checked_add(u64::from(self.nanos)))
+    }
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
@@ -197,6 +208,7 @@ impl DivAssign<u32> for Duration {
 #[cfg(test)]
 mod tests {
     use super::Duration;
+    use u64;
 
     #[test]
     fn creation() {
@@ -224,6 +236,18 @@ mod tests {
         assert_eq!(Duration::from_secs(1).subsec_nanos(), 0);
         assert_eq!(Duration::from_millis(999).subsec_nanos(), 999 * 1_000_000);
         assert_eq!(Duration::from_millis(1001).subsec_nanos(), 1 * 1_000_000);
+    }
+
+    #[test]
+    fn to_nanos() {
+        assert_eq!(Duration::new(0, 0).to_nanos(), Some(0));
+        assert_eq!(Duration::new(0, 5).to_nanos(), Some(5));
+        assert_eq!(Duration::new(0, 1_000_000_001).to_nanos(), Some(1_000_000_001));
+        assert_eq!(Duration::from_secs(1).to_nanos(), Some(1_000_000_000));
+        assert_eq!(Duration::from_millis(999).to_nanos(), Some(999 * 1_000_000));
+        assert_eq!(Duration::from_millis(1001).to_nanos(), Some(1001 * 1_000_000));
+        assert_eq!(Duration::new(18_446_744_073, 709_551_615).to_nanos(), Some(u64::MAX));
+        assert_eq!(Duration::new(18_446_744_073, 709_551_616).to_nanos(), None);
     }
 
     #[test]
