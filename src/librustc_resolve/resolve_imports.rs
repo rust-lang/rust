@@ -167,8 +167,10 @@ impl<'a> Resolver<'a> {
             _ => return Failed(None), // This happens when there is a cycle of imports
         };
 
+        let new_import_semantics = self.new_import_semantics;
         let is_disallowed_private_import = |binding: &NameBinding| {
-            !allow_private_imports && binding.vis != ty::Visibility::Public && binding.is_import()
+            !new_import_semantics && !allow_private_imports && // disallowed
+            binding.vis != ty::Visibility::Public && binding.is_import() // non-`pub` import
         };
 
         if let Some(span) = record_used {
