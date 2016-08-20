@@ -12,7 +12,7 @@
 // ignore-cross-compile
 // build-aux-docs
 
-// @has issue_26606_macro/macro.make_item!.html
+// @has issue_26606_macro/macro.make_item.html
 #[macro_use]
 extern crate issue_26606_macro;
 

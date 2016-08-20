@@ -27,7 +27,7 @@
 /// assert!(!bool_val);
 /// ```
 ///
-/// [`assert!`]: macro.assert!.html
+/// [`assert!`]: macro.assert.html
 /// [`if`]: ../book/if.html
 /// [`BitAnd`]: ops/trait.BitAnd.html
 /// [`BitOr`]: ops/trait.BitOr.html
