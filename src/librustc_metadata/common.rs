@@ -45,25 +45,12 @@ pub const tag_items_closure_kind: usize = 0x2a;
 pub const tag_items_closure_ty: usize = 0x2b;
 pub const tag_def_key: usize = 0x2c;
 
-// GAP 0x2d 0x2e
+// GAP 0x2d 0x34
 
 pub const tag_index: usize = 0x110; // top-level only
 pub const tag_xref_index: usize = 0x111; // top-level only
 pub const tag_xref_data: usize = 0x112; // top-level only
-
-pub const tag_meta_item_name_value: usize = 0x2f;
-
-pub const tag_meta_item_name: usize = 0x30;
-
-pub const tag_meta_item_value: usize = 0x31;
-
 pub const tag_attributes: usize = 0x101; // top-level only
-
-pub const tag_attribute: usize = 0x32;
-
-pub const tag_meta_item_word: usize = 0x33;
-
-pub const tag_meta_item_list: usize = 0x34;
 
 // The list of crates that this crate depends on
 pub const tag_crate_deps: usize = 0x102; // top-level only
