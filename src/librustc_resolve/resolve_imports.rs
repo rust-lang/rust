@@ -181,7 +181,9 @@ impl<'a> Resolver<'a> {
                 if is_disallowed_private_import(binding) {
                     return Failed(None);
                 }
-                self.record_use(name, ns, binding);
+                if self.record_use(name, ns, binding, span) {
+                    return Success(self.dummy_binding);
+                }
                 if !self.is_accessible(binding.vis) {
                     self.privacy_errors.push(PrivacyError(span, name, binding));
                 }
@@ -323,7 +325,18 @@ impl<'a> Resolver<'a> {
                     if !this.new_import_semantics || !old_binding.is_glob_import() {
                         resolution.duplicate_globs.push(binding);
                     } else if binding.def() != old_binding.def() {
-                        resolution.duplicate_globs.push(binding);
+                        resolution.binding = Some(this.arenas.alloc_name_binding(NameBinding {
+                            kind: NameBindingKind::Ambiguity {
+                                b1: old_binding,
+                                b2: binding,
+                            },
+                            vis: if old_binding.vis.is_at_least(binding.vis, this) {
+                                old_binding.vis
+                            } else {
+                                binding.vis
+                            },
+                            span: old_binding.span,
+                        }));
                     } else if !old_binding.vis.is_at_least(binding.vis, this) {
                         // We are glob-importing the same item but with greater visibility.
                         resolution.binding = Some(binding);
@@ -597,7 +610,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
             if let Ok(binding) = result {
-                self.record_use(name, ns, binding);
+                if self.record_use(name, ns, binding, directive.span) {
+                    self.resolution(module, name, ns).borrow_mut().binding =
+                        Some(self.dummy_binding);
+                }
             }
         }
 
@@ -761,15 +777,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
                     self.report_conflict(module, name, ns, duplicate_glob, binding);
                 }
-            } else if binding.is_glob_import() {
-                for duplicate_glob in resolution.duplicate_globs.iter() {
-                    self.report_conflict(module, name, ns, duplicate_glob, binding);
-                }
             }
 
             if binding.vis == ty::Visibility::Public &&
                (binding.is_import() || binding.is_extern_crate()) {
-                reexports.push(Export { name: name, def_id: binding.def().def_id() });
+                let def = binding.def();
+                if def != Def::Err {
+                    reexports.push(Export { name: name, def_id: def.def_id() });
+                }
             }
 
             if let NameBindingKind::Import { binding: orig_binding, directive, .. } = binding.kind {

@@ -874,6 +874,10 @@ enum NameBindingKind<'a> {
         binding: &'a NameBinding<'a>,
         directive: &'a ImportDirective<'a>,
     },
+    Ambiguity {
+        b1: &'a NameBinding<'a>,
+        b2: &'a NameBinding<'a>,
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -885,6 +889,7 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Module(module) => Some(module),
             NameBindingKind::Def(_) => None,
             NameBindingKind::Import { binding, .. } => binding.module(),
+            NameBindingKind::Ambiguity { ..  } => None,
         }
     }
 
@@ -893,6 +898,7 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Def(def) => def,
             NameBindingKind::Module(module) => module.def.unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
+            NameBindingKind::Ambiguity { .. } => Def::Err,
         }
     }
 
@@ -922,6 +928,7 @@ impl<'a> NameBinding<'a> {
     fn is_glob_import(&self) -> bool {
         match self.kind {
             NameBindingKind::Import { directive, .. } => directive.is_glob(),
+            NameBindingKind::Ambiguity { .. } => true,
             _ => false,
         }
     }
@@ -930,6 +937,14 @@ impl<'a> NameBinding<'a> {
         match self.def() {
             Def::AssociatedConst(..) | Def::Method(..) | Def::AssociatedTy(..) => false,
             _ => true,
+        }
+    }
+
+    fn ambiguity(&self) -> Option<(&'a NameBinding<'a>, &'a NameBinding<'a>)> {
+        match self.kind {
+            NameBindingKind::Ambiguity { b1, b2 } => Some((b1, b2)),
+            NameBindingKind::Import { binding, .. } => binding.ambiguity(),
+            _ => None,
         }
     }
 }
@@ -1249,7 +1264,8 @@ impl<'a> Resolver<'a> {
         match ns { ValueNS => &mut self.value_ribs, TypeNS => &mut self.type_ribs }
     }
 
-    fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
+    fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
+                  -> bool /* true if an error was reported */ {
         // track extern crates for unused_extern_crate lint
         if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleS::def_id) {
             self.used_crates.insert(krate);
@@ -1259,6 +1275,19 @@ impl<'a> Resolver<'a> {
             self.used_imports.insert((directive.id, ns));
             self.add_to_glob_map(directive.id, name);
         }
+
+        if let Some((b1, b2)) = binding.ambiguity() {
+            let msg1 = format!("`{}` could resolve to the name imported here", name);
+            let msg2 = format!("`{}` could also resolve to the name imported here", name);
+            self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
+                .span_note(b1.span, &msg1)
+                .span_note(b2.span, &msg2)
+                .note(&format!("Consider adding an explicit import of `{}` to disambiguate", name))
+                .emit();
+            return true;
+        }
+
+        false
     }
 
     fn add_to_glob_map(&mut self, id: NodeId, name: Name) {
@@ -2294,7 +2323,8 @@ impl<'a> Resolver<'a> {
                             Def::Struct(..) | Def::Variant(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
-                                self.record_use(ident.node.name, ValueNS, binding.unwrap());
+                                let name = ident.node.name;
+                                self.record_use(name, ValueNS, binding.unwrap(), ident.span);
                                 Some(PathResolution::new(def))
                             }
                             Def::Struct(..) | Def::Variant(..) |
