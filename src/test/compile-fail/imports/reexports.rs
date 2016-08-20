@@ -16,6 +16,7 @@ mod a {
 
     mod a {
         pub use super::foo; //~ ERROR cannot be reexported
+        pub use super::*; //~ ERROR must import something with the glob's visibility
     }
 }
 
@@ -27,11 +28,17 @@ mod b {
         pub use super::foo; // This is OK since the value `foo` is visible enough.
         fn f(_: foo::S) {} // `foo` is imported in the type namespace (but not `pub` reexported).
     }
+
+    pub mod b {
+        pub use super::*; // This is also OK since the value `foo` is visible enough.
+        fn f(_: foo::S) {} // Again, the module `foo` is imported (but not `pub` reexported).
+    }
 }
 
 mod c {
     // Test that `foo` is not reexported.
     use b::a::foo::S; //~ ERROR `foo`
+    use b::b::foo::S as T; //~ ERROR `foo`
 }
 
 fn main() {}

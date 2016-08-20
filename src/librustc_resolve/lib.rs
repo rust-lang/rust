@@ -3255,6 +3255,10 @@ impl<'a> Resolver<'a> {
         vis.is_accessible_from(self.current_module.normal_ancestor_id, self)
     }
 
+    fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
+        vis.is_accessible_from(module.normal_ancestor_id, self)
+    }
+
     fn report_privacy_errors(&self) {
         if self.privacy_errors.len() == 0 { return }
         let mut reported_spans = FnvHashSet();
