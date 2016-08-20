@@ -1353,7 +1353,7 @@ impl Context {
         // these modules are recursed into, but not rendered normally
         // (a flag on the context).
         if !self.render_redirect_pages {
-            self.render_redirect_pages = self.maybe_ignore_item(&item);
+            self.render_redirect_pages = maybe_ignore_item(&item);
         }
 
         if item.is_mod() {
@@ -1436,7 +1436,7 @@ impl Context {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map = BTreeMap::new();
         for item in &m.items {
-            if self.maybe_ignore_item(item) { continue }
+            if maybe_ignore_item(item) { continue }
 
             let short = item_type(item).css_class();
             let myname = match item.name {
@@ -1452,17 +1452,6 @@ impl Context {
             items.sort();
         }
         return map;
-    }
-
-    fn maybe_ignore_item(&self, it: &clean::Item) -> bool {
-        match it.inner {
-            clean::StrippedItem(..) => true,
-            clean::ModuleItem(ref m) => {
-                it.doc_value().is_none() && m.items.is_empty()
-                                         && it.visibility != Some(clean::Public)
-            },
-            _ => false,
-        }
     }
 }
 
@@ -1706,7 +1695,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         if let clean::DefaultImplItem(..) = items[*i].inner {
             return false;
         }
-        !cx.maybe_ignore_item(&items[*i])
+        !maybe_ignore_item(&items[*i])
     }).collect::<Vec<usize>>();
 
     // the order of item types in the listing
@@ -1852,6 +1841,17 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         write!(w, "</table>")?;
     }
     Ok(())
+}
+
+fn maybe_ignore_item(it: &clean::Item) -> bool {
+    match it.inner {
+        clean::StrippedItem(..) => true,
+        clean::ModuleItem(ref m) => {
+            it.doc_value().is_none() && m.items.is_empty()
+                                     && it.visibility != Some(clean::Public)
+        },
+        _ => false,
+    }
 }
 
 fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
