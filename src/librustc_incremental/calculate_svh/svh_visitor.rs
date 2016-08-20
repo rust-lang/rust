@@ -25,25 +25,33 @@ use rustc::hir::def::{Def, PathResolution};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::hir::intravisit::{Visitor, FnKind};
-use rustc::hir::map::DefPath;
 use rustc::ty::TyCtxt;
+use rustc::util::nodemap::DefIdMap;
 
 use std::hash::{Hash, SipHasher};
 
 pub struct StrictVersionHashVisitor<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub st: &'a mut SipHasher,
+
+    // collect a deterministic hash of def-ids that we have seen
+    def_id_hashes: DefIdMap<u64>,
 }
 
 impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
     pub fn new(st: &'a mut SipHasher,
                tcx: TyCtxt<'a, 'tcx, 'tcx>)
                -> Self {
-        StrictVersionHashVisitor { st: st, tcx: tcx }
+        StrictVersionHashVisitor { st: st, tcx: tcx, def_id_hashes: DefIdMap() }
     }
 
-    fn hash_def_path(&mut self, path: &DefPath) {
-        path.deterministic_hash_to(self.tcx, self.st);
+    fn compute_def_id_hash(&mut self, def_id: DefId) -> u64 {
+        let tcx = self.tcx;
+        *self.def_id_hashes.entry(def_id)
+                           .or_insert_with(|| {
+                               let def_path = tcx.def_path(def_id);
+                               def_path.deterministic_hash(tcx)
+                           })
     }
 }
 
@@ -376,15 +384,22 @@ impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
         if let Some(traits) = self.tcx.trait_map.get(&id) {
             debug!("hash_resolve: id={:?} traits={:?} st={:?}", id, traits, self.st);
             traits.len().hash(self.st);
-            for candidate in traits {
-                self.hash_def_id(candidate.def_id);
-            }
+
+            // The ordering of the candidates is not fixed. So we hash
+            // the def-ids and then sort them and hash the collection.
+            let mut candidates: Vec<_> =
+                traits.iter()
+                      .map(|&TraitCandidate { def_id, import_id: _ }| {
+                          self.compute_def_id_hash(def_id)
+                      })
+                      .collect();
+            candidates.sort();
+            candidates.hash(self.st);
         }
     }
 
     fn hash_def_id(&mut self, def_id: DefId) {
-        let def_path = self.tcx.def_path(def_id);
-        self.hash_def_path(&def_path);
+        self.compute_def_id_hash(def_id).hash(self.st);
     }
 
     fn hash_partial_def(&mut self, def: &PathResolution) {
