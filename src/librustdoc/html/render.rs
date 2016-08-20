@@ -509,7 +509,7 @@ pub fn run(mut krate: clean::Crate,
     } = renderinfo;
 
     let external_paths = external_paths.into_iter()
-        .map(|(k, (v, t))| (k, (v, ItemType::from_type_kind(t))))
+        .map(|(k, (v, t))| (k, (v, ItemType::from(t))))
         .collect();
 
     let mut cache = Cache {
