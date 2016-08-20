@@ -33,6 +33,20 @@ mod e {
     pub use c::*; // ok
 }
 
+mod f {
+    pub use a::*; //~ NOTE `foo` could resolve to the name imported here
+    pub use b::*; //~ NOTE `foo` could also resolve to the name imported here
+}
+
+mod g {
+    pub use a::*; //~ NOTE `foo` could resolve to the name imported here
+    pub use f::*; //~ NOTE `foo` could also resolve to the name imported here
+}
+
 fn main() {
     e::foo();
+    f::foo(); //~ ERROR `foo` is ambiguous
+              //~| NOTE Consider adding an explicit import of `foo` to disambiguate
+    g::foo(); //~ ERROR `foo` is ambiguous
+              //~| NOTE Consider adding an explicit import of `foo` to disambiguate
 }

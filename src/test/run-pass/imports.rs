@@ -63,4 +63,14 @@ mod c {
     }
 }
 
+// Unused names can be ambiguous.
+mod d {
+    pub use foo::*; // This imports `f` in the value namespace.
+    pub use bar::*; // This also imports `f` in the value namespace.
+}
+
+mod e {
+    pub use d::*; // n.b. Since `e::f` is not used, this is not considered to be a use of `d::f`.
+}
+
 fn main() {}
