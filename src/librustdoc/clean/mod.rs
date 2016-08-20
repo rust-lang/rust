@@ -380,6 +380,23 @@ pub enum ItemEnum {
     StrippedItem(Box<ItemEnum>),
 }
 
+impl ItemEnum {
+    pub fn generics(&self) -> Option<&Generics> {
+        Some(match *self {
+            ItemEnum::StructItem(ref s) => &s.generics,
+            ItemEnum::EnumItem(ref e) => &e.generics,
+            ItemEnum::FunctionItem(ref f) => &f.generics,
+            ItemEnum::TypedefItem(ref t, _) => &t.generics,
+            ItemEnum::TraitItem(ref t) => &t.generics,
+            ItemEnum::ImplItem(ref i) => &i.generics,
+            ItemEnum::TyMethodItem(ref i) => &i.generics,
+            ItemEnum::MethodItem(ref i) => &i.generics,
+            ItemEnum::ForeignFunctionItem(ref f) => &f.generics,
+            _ => return None,
+        })
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Module {
     pub items: Vec<Item>,
