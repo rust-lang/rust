@@ -12,5 +12,5 @@ fn foo<T>() {}
 
 fn main() {
     foo::<f64, bool>(); //~ ERROR E0087
-    //~^ NOTE expected
+    //~^ NOTE too many type parameters
 }

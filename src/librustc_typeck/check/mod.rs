@@ -1016,7 +1016,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                          // We can only get the spans from local trait definition
                          // Same for E0324 and E0325
                          if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
-                            err.span_label(trait_span, &format!("original trait requirement"));
+                            err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
@@ -1044,7 +1044,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
                          if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
-                            err.span_label(trait_span, &format!("original trait requirement"));
+                            err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
@@ -1067,7 +1067,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
                          if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
-                            err.span_label(trait_span, &format!("original trait requirement"));
+                            err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
@@ -4414,8 +4414,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               expected at most {}, found {}",
                              count(type_defs.len()),
                              count(types.len()))
-                .span_label(span, &format!("expected {}",
-                            count(type_defs.len()))).emit();
+                .span_label(span, &format!("too many type parameters")).emit();
 
             // To prevent derived errors to accumulate due to extra
             // type parameters, we force instantiate_value_path to

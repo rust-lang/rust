@@ -572,7 +572,7 @@ impl Foo for Bar {
     // error, expected u16, found i16
     fn foo(x: i16) { }
 
-    // error, values differ in mutability
+    // error, types differ in mutability
     fn bar(&mut self) { }
 }
 ```
