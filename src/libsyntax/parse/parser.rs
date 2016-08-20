@@ -520,12 +520,21 @@ impl<'a> Parser<'a> {
                 self.bug("ident interpolation not converted to real token");
             }
             _ => {
-                let mut err = self.fatal(&format!("expected identifier, found `{}`",
-                                                  self.this_token_to_string()));
-                if self.token == token::Underscore {
-                    err.note("`_` is a wildcard pattern, not an identifier");
-                }
-                Err(err)
+                let last_token = self.last_token.clone().map(|t| *t);
+                Err(match last_token {
+                    Some(token::DocComment(_)) => self.span_fatal_help(self.last_span,
+                        "found a documentation comment that doesn't document anything",
+                        "doc comments must come before what they document, maybe a comment was \
+                        intended with `//`?"),
+                    _ => {
+                        let mut err = self.fatal(&format!("expected identifier, found `{}`",
+                                                          self.this_token_to_string()));
+                        if self.token == token::Underscore {
+                            err.note("`_` is a wildcard pattern, not an identifier");
+                        }
+                        err
+                    }
+                })
             }
         }
     }
@@ -927,6 +936,7 @@ impl<'a> Parser<'a> {
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         self.last_token = if self.token.is_ident() ||
                           self.token.is_path() ||
+                          self.token.is_doc_comment() ||
                           self.token == token::Comma {
             Some(Box::new(self.token.clone()))
         } else {
@@ -1017,6 +1027,11 @@ impl<'a> Parser<'a> {
     }
     pub fn span_err(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
+    }
+    pub fn span_err_help(&self, sp: Span, m: &str, h: &str) {
+        let mut err = self.sess.span_diagnostic.mut_span_err(sp, m);
+        err.help(h);
+        err.emit();
     }
     pub fn span_bug(&self, sp: Span, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
@@ -4021,8 +4036,14 @@ impl<'a> Parser<'a> {
                 None => {
                     let unused_attrs = |attrs: &[_], s: &mut Self| {
                         if attrs.len() > 0 {
-                            s.span_err(s.span,
-                                "expected statement after outer attribute");
+                            let last_token = s.last_token.clone().map(|t| *t);
+                            match last_token {
+                                Some(token::DocComment(_)) => s.span_err_help(s.last_span,
+                                    "found a documentation comment that doesn't document anything",
+                                    "doc comments must come before what they document, maybe a \
+                                    comment was intended with `//`?"),
+                                _ => s.span_err(s.span, "expected statement after outer attribute"),
+                            }
                         }
                     };
 
@@ -5127,14 +5148,13 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
             token::CloseDelim(token::Brace) => {}
-            _ => {
-                let span = self.span;
-                let token_str = self.this_token_to_string();
-                return Err(self.span_fatal_help(span,
-                                     &format!("expected `,`, or `}}`, found `{}`",
-                                             token_str),
-                                     "struct fields should be separated by commas"))
-            }
+            token::DocComment(_) => return Err(self.span_fatal_help(self.span,
+                        "found a documentation comment that doesn't document anything",
+                        "doc comments must come before what they document, maybe a comment was \
+                        intended with `//`?")),
+            _ => return Err(self.span_fatal_help(self.span,
+                    &format!("expected `,`, or `}}`, found `{}`", self.this_token_to_string()),
+                    "struct fields should be separated by commas")),
         }
         Ok(a_var)
     }
