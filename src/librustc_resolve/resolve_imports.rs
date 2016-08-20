@@ -356,8 +356,11 @@ impl<'a> Resolver<'a> {
         };
 
         // Define `binding` in `module`s glob importers.
-        if binding.vis == ty::Visibility::Public {
-            for directive in module.glob_importers.borrow_mut().iter() {
+        for directive in module.glob_importers.borrow_mut().iter() {
+            if match self.new_import_semantics {
+                true => self.is_accessible_from(binding.vis, directive.parent),
+                false => binding.vis == ty::Visibility::Public,
+            } {
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
@@ -708,7 +711,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
-            if binding.pseudo_vis() == ty::Visibility::Public {
+            if binding.pseudo_vis() == ty::Visibility::Public ||
+               self.new_import_semantics && self.is_accessible(binding.vis) {
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
