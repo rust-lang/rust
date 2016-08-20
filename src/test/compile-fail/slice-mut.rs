@@ -18,5 +18,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `&mut [_]`
     //~| found type `&[isize]`
-    //~| values differ in mutability
+    //~| types differ in mutability
 }
