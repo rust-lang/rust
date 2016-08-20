@@ -459,7 +459,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
-            let shadows_what = PathResolution::new(binding.def().unwrap()).kind_name();
+            let shadows_what = PathResolution::new(binding.def()).kind_name();
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0530,
@@ -739,7 +739,7 @@ impl<'a> LexicalScopeBinding<'a> {
     fn local_def(self) -> LocalDef {
         match self {
             LexicalScopeBinding::LocalDef(local_def) => local_def,
-            LexicalScopeBinding::Item(binding) => LocalDef::from_def(binding.def().unwrap()),
+            LexicalScopeBinding::Item(binding) => LocalDef::from_def(binding.def()),
         }
     }
 
@@ -877,10 +877,10 @@ impl<'a> NameBinding<'a> {
         }
     }
 
-    fn def(&self) -> Option<Def> {
+    fn def(&self) -> Def {
         match self.kind {
-            NameBindingKind::Def(def) => Some(def),
-            NameBindingKind::Module(module) => module.def,
+            NameBindingKind::Def(def) => def,
+            NameBindingKind::Module(module) => module.def.unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
         }
     }
@@ -916,7 +916,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_importable(&self) -> bool {
-        match self.def().unwrap() {
+        match self.def() {
             Def::AssociatedConst(..) | Def::Method(..) | Def::AssociatedTy(..) => false,
             _ => true,
         }
@@ -1097,7 +1097,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_generated_global_path(&mut self, path: &hir::Path, is_value: bool) -> Def {
         let namespace = if is_value { ValueNS } else { TypeNS };
         match self.resolve_crate_relative_path(path.span, &path.segments, namespace) {
-            Ok(binding) => binding.def().unwrap(),
+            Ok(binding) => binding.def(),
             Err(true) => Def::Err,
             Err(false) => {
                 let path_name = &format!("{}", path);
@@ -1693,7 +1693,7 @@ impl<'a> Resolver<'a> {
                                                                    &prefix.segments,
                                                                    TypeNS) {
                                 Ok(binding) => {
-                                    let def = binding.def().unwrap();
+                                    let def = binding.def();
                                     self.record_def(item.id, PathResolution::new(def));
                                 }
                                 Err(true) => self.record_def(item.id, err_path_resolution()),
@@ -2309,7 +2309,7 @@ impl<'a> Resolver<'a> {
                     // entity, then fall back to a fresh binding.
                     let binding = self.resolve_ident_in_lexical_scope(ident.node, ValueNS, None)
                                       .and_then(LexicalScopeBinding::item);
-                    let resolution = binding.and_then(NameBinding::def).and_then(|def| {
+                    let resolution = binding.map(NameBinding::def).and_then(|def| {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
                         match def {
@@ -2443,7 +2443,7 @@ impl<'a> Resolver<'a> {
 
         if path.global {
             let binding = self.resolve_crate_relative_path(span, segments, namespace);
-            return binding.map(|binding| mk_res(binding.def().unwrap()));
+            return binding.map(|binding| mk_res(binding.def()));
         }
 
         // Try to find a path to an item in a module.
@@ -2481,7 +2481,7 @@ impl<'a> Resolver<'a> {
         let unqualified_def = resolve_identifier_with_fallback(self, None);
         let qualified_binding = self.resolve_module_relative_path(span, segments, namespace);
         match (qualified_binding, unqualified_def) {
-            (Ok(binding), Some(ref ud)) if binding.def().unwrap() == ud.def => {
+            (Ok(binding), Some(ref ud)) if binding.def() == ud.def => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id,
@@ -2491,7 +2491,7 @@ impl<'a> Resolver<'a> {
             _ => {}
         }
 
-        qualified_binding.map(|binding| mk_res(binding.def().unwrap()))
+        qualified_binding.map(|binding| mk_res(binding.def()))
     }
 
     // Resolve a single identifier
@@ -3114,7 +3114,7 @@ impl<'a> Resolver<'a> {
                     let mut collected_traits = Vec::new();
                     module.for_each_child(|name, ns, binding| {
                         if ns != TypeNS { return }
-                        if let Some(Def::Trait(_)) = binding.def() {
+                        if let Def::Trait(_) = binding.def() {
                             collected_traits.push((name, binding));
                         }
                     });
@@ -3122,7 +3122,7 @@ impl<'a> Resolver<'a> {
                 }
 
                 for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
-                    let trait_def_id = binding.def().unwrap().def_id();
+                    let trait_def_id = binding.def().def_id();
                     if this.trait_item_map.contains_key(&(name, trait_def_id)) {
                         let mut import_id = None;
                         if let NameBindingKind::Import { directive, .. } = binding.kind {
@@ -3181,8 +3181,8 @@ impl<'a> Resolver<'a> {
                 if name_binding.is_import() { return; }
 
                 // collect results based on the filter function
-                if let Some(def) = name_binding.def() {
-                    if name == lookup_name && ns == namespace && filter_fn(def) {
+                if name == lookup_name && ns == namespace {
+                    if filter_fn(name_binding.def()) {
                         // create the path
                         let ident = ast::Ident::with_empty_ctxt(name);
                         let params = PathParameters::none();
@@ -3302,7 +3302,7 @@ impl<'a> Resolver<'a> {
                 let msg = format!("extern crate `{}` is private", name);
                 self.session.add_lint(lint::builtin::INACCESSIBLE_EXTERN_CRATE, node_id, span, msg);
             } else {
-                let def = binding.def().unwrap();
+                let def = binding.def();
                 self.session.span_err(span, &format!("{} `{}` is private", def.kind_name(), name));
             }
         }
