@@ -287,34 +287,34 @@ impl Item {
         }
     }
     pub fn is_mod(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Module
+        ItemType::from(self) == ItemType::Module
     }
     pub fn is_trait(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Trait
+        ItemType::from(self) == ItemType::Trait
     }
     pub fn is_struct(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Struct
+        ItemType::from(self) == ItemType::Struct
     }
     pub fn is_enum(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Module
+        ItemType::from(self) == ItemType::Module
     }
     pub fn is_fn(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Function
+        ItemType::from(self) == ItemType::Function
     }
     pub fn is_associated_type(&self) -> bool {
-        ItemType::from_item(self) == ItemType::AssociatedType
+        ItemType::from(self) == ItemType::AssociatedType
     }
     pub fn is_associated_const(&self) -> bool {
-        ItemType::from_item(self) == ItemType::AssociatedConst
+        ItemType::from(self) == ItemType::AssociatedConst
     }
     pub fn is_method(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Method
+        ItemType::from(self) == ItemType::Method
     }
     pub fn is_ty_method(&self) -> bool {
-        ItemType::from_item(self) == ItemType::TyMethod
+        ItemType::from(self) == ItemType::TyMethod
     }
     pub fn is_primitive(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Primitive
+        ItemType::from(self) == ItemType::Primitive
     }
     pub fn is_stripped(&self) -> bool {
         match self.inner { StrippedItem(..) => true, _ => false }
