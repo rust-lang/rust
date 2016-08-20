@@ -38,13 +38,19 @@ fn main() {
     // is passed (a bit janky...)
     let target = args.windows(2).find(|w| &*w[0] == "--target")
                                 .and_then(|w| w[1].to_str());
+    let version = args.iter().find(|w| &**w == "-vV");
 
     // Build scripts always use the snapshot compiler which is guaranteed to be
     // able to produce an executable, whereas intermediate compilers may not
     // have the standard library built yet and may not be able to produce an
     // executable. Otherwise we just use the standard compiler we're
     // bootstrapping with.
-    let (rustc, libdir) = if target.is_none() {
+    //
+    // Also note that cargo will detect the version of the compiler to trigger
+    // a rebuild when the compiler changes. If this happens, we want to make
+    // sure to use the actual compiler instead of the snapshot compiler becase
+    // that's the one that's actually changing.
+    let (rustc, libdir) = if target.is_none() && version.is_none() {
         ("RUSTC_SNAPSHOT", "RUSTC_SNAPSHOT_LIBDIR")
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")

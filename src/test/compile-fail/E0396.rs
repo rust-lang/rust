@@ -11,6 +11,7 @@
 const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
 
 const VALUE: u8 = unsafe { *REG_ADDR }; //~ ERROR E0396
+                  //~| NOTE dereference of raw pointer in constant
 
 fn main() {
 }

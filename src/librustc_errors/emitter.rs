@@ -426,7 +426,9 @@ impl EmitterWriter {
                             continue;
                         }
                         // Check to make sure we're not in any <*macros>
-                        if !cm.span_to_filename(def_site).contains("macros>") {
+                        if !cm.span_to_filename(def_site).contains("macros>") &&
+                            !trace.macro_decl_name.starts_with("#[")
+                        {
                             new_labels.push((trace.call_site,
                                              "in this macro invocation".to_string()));
                             break;

@@ -9,7 +9,9 @@
 // except according to those terms.
 
 #[repr(i32)]
-enum Foo {} //~ ERROR E0084
+enum Foo {}
+//~^ ERROR E0084
+//~| unsupported enum representation
 
 fn main() {
 }

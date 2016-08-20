@@ -16,7 +16,7 @@ fn main() {
      let &_ //~  ERROR mismatched types
             //~| expected type `&mut {integer}`
             //~| found type `&_`
-            //~| values differ in mutability
+            //~| types differ in mutability
         = foo;
     let &mut _ = foo;
 
@@ -25,6 +25,6 @@ fn main() {
     let &mut _ //~  ERROR mismatched types
                //~| expected type `&{integer}`
                //~| found type `&mut _`
-               //~| values differ in mutability
+               //~| types differ in mutability
          = bar;
 }

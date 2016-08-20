@@ -402,7 +402,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             infcx.note_type_err(
                 &mut diag,
                 origin,
-                trait_err_span.map(|sp| (sp, format!("original trait requirement"))),
+                trait_err_span.map(|sp| (sp, format!("type in trait"))),
                 Some(infer::ValuePairs::Types(ExpectedFound {
                      expected: trait_fty,
                      found: impl_fty
@@ -575,7 +575,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             infcx.note_type_err(
                 &mut diag,
                 origin,
-                Some((trait_c_span, format!("original trait requirement"))),
+                Some((trait_c_span, format!("type in trait"))),
                 Some(infer::ValuePairs::Types(ExpectedFound {
                     expected: trait_ty,
                     found: impl_ty

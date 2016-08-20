@@ -67,8 +67,7 @@
 //! }
 //! ```
 //!
-//! See the documentation for each trait for a minimum implementation that
-//! prints something to the screen.
+//! See the documentation for each trait for an example implementation.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -106,6 +105,13 @@ pub trait Drop {
     /// If it were, `self` would be a dangling reference.
     ///
     /// After this function is over, the memory of `self` will be deallocated.
+    ///
+    /// This function cannot be called explicitly. This is compiler error
+    /// [0040]. However, the [`std::mem::drop`] function in the prelude can be
+    /// used to call the argument's `Drop` implementation.
+    ///
+    /// [0040]: https://doc.rust-lang.org/error-index.html#E0040
+    /// [`std::mem::drop`]: https://doc.rust-lang.org/std/mem/fn.drop.html
     ///
     /// # Panics
     ///
@@ -171,25 +177,38 @@ macro_rules! forward_ref_binop {
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Add`. When `Foo + Foo` happens, it ends up
-/// calling `add`, and therefore, `main` prints `Adding!`.
+/// This example creates a `Point` struct that implements the `Add` trait, and
+/// then demonstrates adding two `Point`s.
 ///
 /// ```
 /// use std::ops::Add;
 ///
-/// struct Foo;
+/// #[derive(Debug)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
 ///
-/// impl Add for Foo {
-///     type Output = Foo;
+/// impl Add for Point {
+///     type Output = Point;
 ///
-///     fn add(self, _rhs: Foo) -> Foo {
-///         println!("Adding!");
-///         self
+///     fn add(self, other: Point) -> Point {
+///         Point {
+///             x: self.x + other.x,
+///             y: self.y + other.y,
+///         }
+///     }
+/// }
+///
+/// impl PartialEq for Point {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.x == other.x && self.y == other.y
 ///     }
 /// }
 ///
 /// fn main() {
-///     Foo + Foo;
+///     assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
+///                Point { x: 3, y: 3 });
 /// }
 /// ```
 #[lang = "add"]
@@ -300,6 +319,37 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     Foo * Foo;
 /// }
 /// ```
+///
+/// Note that `RHS = Self` by default, but this is not mandatory. Here is an
+/// implementation which enables multiplication of vectors by scalars, as is
+/// done in linear algebra.
+///
+/// ```
+/// use std::ops::Mul;
+///
+/// struct Scalar {value: usize};
+///
+/// #[derive(Debug)]
+/// struct Vector {value: Vec<usize>};
+///
+/// impl Mul<Vector> for Scalar {
+///     type Output = Vector;
+///
+///     fn mul(self, rhs: Vector) -> Vector {
+///         Vector {value: rhs.value.iter().map(|v| self.value * v).collect()}
+///     }
+/// }
+///
+/// impl PartialEq<Vector> for Vector {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.value == other.value
+///     }
+/// }
+///
+/// let scalar = Scalar{value: 3};
+/// let vector = Vector{value: vec![2, 4, 6]};
+/// assert_eq!(scalar * vector, Vector{value: vec![6, 12, 18]});
+/// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Mul<RHS=Self> {
@@ -353,6 +403,37 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// fn main() {
 ///     Foo / Foo;
 /// }
+/// ```
+///
+/// Note that `RHS = Self` by default, but this is not mandatory. Here is an
+/// implementation which enables division of vectors by scalars, as is done in
+/// linear algebra.
+///
+/// ```
+/// use std::ops::Div;
+///
+/// struct Scalar {value: f32};
+///
+/// #[derive(Debug)]
+/// struct Vector {value: Vec<f32>};
+///
+/// impl Div<Scalar> for Vector {
+///     type Output = Vector;
+///
+///     fn div(self, rhs: Scalar) -> Vector {
+///         Vector {value: self.value.iter().map(|v| v / rhs.value).collect()}
+///     }
+/// }
+///
+/// impl PartialEq<Vector> for Vector {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.value == other.value
+///     }
+/// }
+///
+/// let scalar = Scalar{value: 2f32};
+/// let vector = Vector{value: vec![2f32, 4f32, 6f32]};
+/// assert_eq!(vector / scalar, Vector{value: vec![1f32, 2f32, 3f32]});
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -475,26 +556,37 @@ rem_impl_float! { f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Neg`. When `-Foo` happens, it ends up calling
-/// `neg`, and therefore, `main` prints `Negating!`.
+/// An implementation of `Neg` for `Sign`, which allows the use of `-` to
+/// negate its value.
 ///
 /// ```
 /// use std::ops::Neg;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// enum Sign {
+///     Negative,
+///     Zero,
+///     Positive,
+/// }
 ///
-/// impl Neg for Foo {
-///     type Output = Foo;
+/// impl Neg for Sign {
+///     type Output = Sign;
 ///
-///     fn neg(self) -> Foo {
-///         println!("Negating!");
-///         self
+///     fn neg(self) -> Sign {
+///         match self {
+///             Sign::Negative => Sign::Positive,
+///             Sign::Zero => Sign::Zero,
+///             Sign::Positive => Sign::Negative,
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     -Foo;
-/// }
+/// // a negative positive is a negative
+/// assert_eq!(-Sign::Positive, Sign::Negative);
+/// // a double negative is a positive
+/// assert_eq!(-Sign::Negative, Sign::Positive);
+/// // zero is its own negation
+/// assert_eq!(-Sign::Zero, Sign::Zero);
 /// ```
 #[lang = "neg"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -543,26 +635,31 @@ neg_impl_numeric! { isize i8 i16 i32 i64 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Not`. When `!Foo` happens, it ends up calling
-/// `not`, and therefore, `main` prints `Not-ing!`.
+/// An implementation of `Not` for `Answer`, which enables the use of `!` to
+/// invert its value.
 ///
 /// ```
 /// use std::ops::Not;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// enum Answer {
+///     Yes,
+///     No,
+/// }
 ///
-/// impl Not for Foo {
-///     type Output = Foo;
+/// impl Not for Answer {
+///     type Output = Answer;
 ///
-///     fn not(self) -> Foo {
-///         println!("Not-ing!");
-///         self
+///     fn not(self) -> Answer {
+///         match self {
+///             Answer::Yes => Answer::No,
+///             Answer::No => Answer::Yes
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     !Foo;
-/// }
+/// assert_eq!(!Answer::Yes, Answer::No);
+/// assert_eq!(!Answer::No, Answer::Yes);
 /// ```
 #[lang = "not"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -899,25 +996,36 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `AddAssign`. When `Foo += Foo` happens, it ends up
-/// calling `add_assign`, and therefore, `main` prints `Adding!`.
+/// This example creates a `Point` struct that implements the `AddAssign`
+/// trait, and then demonstrates add-assigning to a mutable `Point`.
 ///
 /// ```
 /// use std::ops::AddAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
 ///
-/// impl AddAssign for Foo {
-///     fn add_assign(&mut self, _rhs: Foo) {
-///         println!("Adding!");
+/// impl AddAssign for Point {
+///     fn add_assign(&mut self, other: Point) {
+///         *self = Point {
+///             x: self.x + other.x,
+///             y: self.y + other.y,
+///         };
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo += Foo;
+/// impl PartialEq for Point {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.x == other.x && self.y == other.y
+///     }
 /// }
+///
+/// let mut point = Point { x: 1, y: 0 };
+/// point += Point { x: 2, y: 3 };
+/// assert_eq!(point, Point { x: 3, y: 3 });
 /// ```
 #[lang = "add_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
@@ -1467,16 +1575,29 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 ///
 /// # Examples
 ///
-/// ```
-/// fn main() {
-///     assert_eq!((..), std::ops::RangeFull);
+/// The `..` syntax is a `RangeFull`:
 ///
-///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);  // RangeFull
-///     assert_eq!(arr[ ..3], [0,1,2  ]);
-///     assert_eq!(arr[1.. ], [  1,2,3]);
-///     assert_eq!(arr[1..3], [  1,2  ]);
+/// ```
+/// assert_eq!((..), std::ops::RangeFull);
+/// ```
+///
+/// It does not have an `IntoIterator` implementation, so you can't use it in a
+/// `for` loop directly. This won't compile:
+///
+/// ```ignore
+/// for i in .. {
+///    // ...
 /// }
+/// ```
+///
+/// Used as a slicing index, `RangeFull` produces the full array as a slice.
+///
+/// ```
+/// let arr = [0, 1, 2, 3];
+/// assert_eq!(arr[ .. ], [0,1,2,3]);  // RangeFull
+/// assert_eq!(arr[ ..3], [0,1,2  ]);
+/// assert_eq!(arr[1.. ], [  1,2,3]);
+/// assert_eq!(arr[1..3], [  1,2  ]);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
