@@ -203,7 +203,7 @@ impl Token {
     pub fn is_lit(&self) -> bool {
         match *self {
             Literal(_, _) => true,
-            _          => false,
+            _             => false,
         }
     }
 
@@ -212,6 +212,14 @@ impl Token {
         match *self {
             Ident(..)   => true,
             _           => false,
+        }
+    }
+
+    /// Returns `true` if the token is a documentation comment.
+    pub fn is_doc_comment(&self) -> bool {
+        match *self {
+            DocComment(..)   => true,
+            _                => false,
         }
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
-fn main() {
-    println!("Hi"); /// hi
+// compile-flags: -Z continue-parse-after-error
+struct X {
+    a: u8,
+    /// document
     //~^ ERROR found a documentation comment that doesn't document anything
     //~| HELP maybe a comment was intended
+}
+
+fn main() {
+    let y = X {a = 1};
 }

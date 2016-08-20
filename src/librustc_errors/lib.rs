@@ -564,6 +564,15 @@ impl Handler {
         self.bump_err_count();
         self.panic_if_treat_err_as_bug();
     }
+    pub fn mut_span_err<'a, S: Into<MultiSpan>>(&'a self,
+                                                sp: S,
+                                                msg: &str)
+                                                -> DiagnosticBuilder<'a> {
+        let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
+        result.set_span(sp);
+        self.bump_err_count();
+        result
+    }
     pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
         self.emit_with_code(&sp.into(), msg, code, Error);
         self.bump_err_count();
