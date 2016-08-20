@@ -17,6 +17,7 @@ mod Foo { }
 #[allow(dead_code)]
 struct Foo;
 //~^ ERROR a module named `Foo` has already been defined in this module
+//~| NOTE already defined
 
 #[allow(non_snake_case)]
 mod Bar { }
@@ -25,6 +26,7 @@ mod Bar { }
 #[allow(dead_code)]
 struct Bar(i32);
 //~^ ERROR a module named `Bar` has already been defined
+//~| NOTE already defined
 
 
 #[allow(dead_code)]
@@ -34,6 +36,7 @@ struct Baz(i32);
 #[allow(non_snake_case)]
 mod Baz { }
 //~^ ERROR a type named `Baz` has already been defined
+//~| NOTE already defined
 
 
 #[allow(dead_code)]
@@ -43,6 +46,7 @@ struct Qux { x: bool }
 #[allow(non_snake_case)]
 mod Qux { }
 //~^ ERROR a type named `Qux` has already been defined
+//~| NOTE already defined
 
 
 #[allow(dead_code)]
@@ -52,6 +56,7 @@ struct Quux;
 #[allow(non_snake_case)]
 mod Quux { }
 //~^ ERROR a type named `Quux` has already been defined
+//~| NOTE already defined
 
 
 #[allow(dead_code)]
@@ -61,5 +66,6 @@ enum Corge { A, B }
 #[allow(non_snake_case)]
 mod Corge { }
 //~^ ERROR a type named `Corge` has already been defined
+//~| NOTE already defined
 
 fn main() { }

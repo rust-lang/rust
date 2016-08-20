@@ -11,6 +11,7 @@
 trait Foo {
     fn orange(&self); //~ NOTE previous definition of `orange` here
     fn orange(&self); //~ ERROR a value named `orange` has already been defined in this trait
+                      //~| NOTE already define
 }
 
 fn main() {}
