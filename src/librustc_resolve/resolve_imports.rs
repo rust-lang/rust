@@ -324,7 +324,7 @@ impl<'a> Resolver<'a> {
     {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
-        let (new_binding, t) = {
+        let (binding, t) = {
             let mut resolution = &mut *self.resolution(module, name, ns).borrow_mut();
             let was_known = resolution.binding().is_some();
 
@@ -337,10 +337,10 @@ impl<'a> Resolver<'a> {
             }
         };
 
-        // Define `new_binding` in `module`s glob importers.
-        if new_binding.vis == ty::Visibility::Public {
+        // Define `binding` in `module`s glob importers.
+        if binding.vis == ty::Visibility::Public {
             for directive in module.glob_importers.borrow_mut().iter() {
-                let imported_binding = self.import(new_binding, directive);
+                let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
         }
