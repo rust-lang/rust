@@ -530,7 +530,7 @@ use string;
 /// assert_eq!(s, "Hello, world!");
 /// ```
 ///
-/// [format!]: ../macro.format!.html
+/// [format!]: ../macro.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments) -> string::String {
     let mut output = string::String::new();
