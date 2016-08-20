@@ -319,6 +319,37 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     Foo * Foo;
 /// }
 /// ```
+///
+/// Note that `RHS = Self` by default, but this is not mandatory. Here is an
+/// implementation which enables multiplication of vectors by scalars, as is
+/// done in linear algebra.
+///
+/// ```
+/// use std::ops::Mul;
+///
+/// struct Scalar {value: usize};
+///
+/// #[derive(Debug)]
+/// struct Vector {value: Vec<usize>};
+///
+/// impl Mul<Vector> for Scalar {
+///     type Output = Vector;
+///
+///     fn mul(self, rhs: Vector) -> Vector {
+///         Vector {value: rhs.value.iter().map(|v| self.value * v).collect()}
+///     }
+/// }
+///
+/// impl PartialEq<Vector> for Vector {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.value == other.value
+///     }
+/// }
+///
+/// let scalar = Scalar{value: 3};
+/// let vector = Vector{value: vec![2, 4, 6]};
+/// assert_eq!(scalar * vector, Vector{value: vec![6, 12, 18]});
+/// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Mul<RHS=Self> {
@@ -372,6 +403,37 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// fn main() {
 ///     Foo / Foo;
 /// }
+/// ```
+///
+/// Note that `RHS = Self` by default, but this is not mandatory. Here is an
+/// implementation which enables division of vectors by scalars, as is done in
+/// linear algebra.
+///
+/// ```
+/// use std::ops::Div;
+///
+/// struct Scalar {value: f32};
+///
+/// #[derive(Debug)]
+/// struct Vector {value: Vec<f32>};
+///
+/// impl Div<Scalar> for Vector {
+///     type Output = Vector;
+///
+///     fn div(self, rhs: Scalar) -> Vector {
+///         Vector {value: self.value.iter().map(|v| v / rhs.value).collect()}
+///     }
+/// }
+///
+/// impl PartialEq<Vector> for Vector {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.value == other.value
+///     }
+/// }
+///
+/// let scalar = Scalar{value: 2f32};
+/// let vector = Vector{value: vec![2f32, 4f32, 6f32]};
+/// assert_eq!(vector / scalar, Vector{value: vec![1f32, 2f32, 3f32]});
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
