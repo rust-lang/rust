@@ -175,7 +175,7 @@
 //! [`atomic`]: sync/atomic/index.html
 //! [`collections`]: collections/index.html
 //! [`for`]: ../book/loops.html#for
-//! [`format!`]: macro.format!.html
+//! [`format!`]: macro.format.html
 //! [`fs`]: fs/index.html
 //! [`io`]: io/index.html
 //! [`iter`]: iter/index.html
