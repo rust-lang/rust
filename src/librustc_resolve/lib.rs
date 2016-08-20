@@ -1287,7 +1287,7 @@ impl<'a> Resolver<'a> {
         while index < module_path_len {
             let name = module_path[index];
             match self.resolve_name_in_module(search_module, name, TypeNS, false, span) {
-                Failed(None) => {
+                Failed(_) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
                     let msg = if "???" == &module_name {
@@ -1314,7 +1314,6 @@ impl<'a> Resolver<'a> {
 
                     return Failed(span.map(|span| (span, msg)));
                 }
-                Failed(err) => return Failed(err),
                 Indeterminate => {
                     debug!("(resolving module path for import) module resolution is \
                             indeterminate: {}",
@@ -1383,7 +1382,11 @@ impl<'a> Resolver<'a> {
                         let ident = ast::Ident::with_empty_ctxt(module_path[0]);
                         match self.resolve_ident_in_lexical_scope(ident, TypeNS, span)
                                   .and_then(LexicalScopeBinding::module) {
-                            None => return Failed(None),
+                            None => {
+                                let msg =
+                                    format!("Use of undeclared type or module `{}`", ident.name);
+                                return Failed(span.map(|span| (span, msg)));
+                            }
                             Some(containing_module) => {
                                 search_module = containing_module;
                                 start_index = 1;
@@ -2614,16 +2617,9 @@ impl<'a> Resolver<'a> {
         let containing_module;
         match self.resolve_module_path(&module_path, UseLexicalScope, Some(span)) {
             Failed(err) => {
-                let (span, msg) = match err {
-                    Some((span, msg)) => (span, msg),
-                    None => {
-                        let msg = format!("Use of undeclared type or module `{}`",
-                                          names_to_string(&module_path));
-                        (span, msg)
-                    }
-                };
-
-                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                if let Some((span, msg)) = err {
+                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                }
                 return Err(true);
             }
             Indeterminate => return Err(false),
@@ -2651,16 +2647,9 @@ impl<'a> Resolver<'a> {
         let containing_module;
         match self.resolve_module_path_from_root(root_module, &module_path, 0, Some(span)) {
             Failed(err) => {
-                let (span, msg) = match err {
-                    Some((span, msg)) => (span, msg),
-                    None => {
-                        let msg = format!("Use of undeclared module `::{}`",
-                                          names_to_string(&module_path));
-                        (span, msg)
-                    }
-                };
-
-                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                if let Some((span, msg)) = err {
+                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                }
                 return Err(true);
             }
 
@@ -3270,12 +3259,11 @@ impl<'a> Resolver<'a> {
                 path_resolution = PathResolution::new(def);
                 ty::Visibility::Restricted(self.definitions.as_local_node_id(def.def_id()).unwrap())
             }
-            Failed(Some((span, msg))) => {
-                self.session.span_err(span, &format!("failed to resolve module path. {}", msg));
-                ty::Visibility::Public
-            }
-            _ => {
-                self.session.span_err(path.span, "unresolved module path");
+            Indeterminate => unreachable!(),
+            Failed(err) => {
+                if let Some((span, msg)) = err {
+                    self.session.span_err(span, &format!("failed to resolve module path. {}", msg));
+                }
                 ty::Visibility::Public
             }
         };
