@@ -223,19 +223,19 @@ pub struct BinaryHeap<T> {
 /// on `BinaryHeap`. See its documentation for details.
 ///
 /// [`peek_mut()`]: struct.BinaryHeap.html#method.peek_mut
-#[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+#[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
     heap: &'a mut BinaryHeap<T>
 }
 
-#[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+#[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<'a, T: Ord> Drop for PeekMut<'a, T> {
     fn drop(&mut self) {
         self.heap.sift_down(0);
     }
 }
 
-#[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+#[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<'a, T: Ord> Deref for PeekMut<'a, T> {
     type Target = T;
     fn deref(&self) -> &T {
@@ -243,7 +243,7 @@ impl<'a, T: Ord> Deref for PeekMut<'a, T> {
     }
 }
 
-#[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+#[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<'a, T: Ord> DerefMut for PeekMut<'a, T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.heap.data[0]
@@ -366,7 +366,6 @@ impl<T: Ord> BinaryHeap<T> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(binary_heap_peek_mut)]
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
     /// assert!(heap.peek_mut().is_none());
@@ -380,7 +379,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// assert_eq!(heap.peek(), Some(&2));
     /// ```
-    #[unstable(feature = "binary_heap_peek_mut", issue = "34392")]
+    #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<T>> {
         if self.is_empty() {
             None

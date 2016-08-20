@@ -1640,13 +1640,18 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         self.elem.read().0
     }
 
+    /// Deprecated, renamed to `remove_entry`
+    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
+    #[rustc_deprecated(since = "1.12.0", reason = "renamed to `remove_entry`")]
+    pub fn remove_pair(self) -> (K, V) {
+        self.remove_entry()
+    }
+
     /// Take the ownership of the key and value from the map.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_entry_recover_keys)]
-    ///
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
     ///
@@ -1655,13 +1660,13 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///
     /// if let Entry::Occupied(o) = map.entry("poneyland") {
     ///     // We delete the entry from the map.
-    ///     o.remove_pair();
+    ///     o.remove_entry();
     /// }
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
     /// ```
-    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
-    pub fn remove_pair(self) -> (K, V) {
+    #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
+    pub fn remove_entry(self) -> (K, V) {
         pop_internal(self.elem)
     }
 
@@ -1808,8 +1813,6 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_entry_recover_keys)]
-    ///
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
     ///
@@ -1819,7 +1822,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     ///     v.into_key();
     /// }
     /// ```
-    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
+    #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
     pub fn into_key(self) -> K {
         self.key
     }
