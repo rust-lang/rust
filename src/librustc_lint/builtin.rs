@@ -44,8 +44,8 @@ use lint::{LintPass, LateLintPass};
 use std::collections::HashSet;
 
 use syntax::{ast};
-use syntax::attr::{self, AttrMetaMethods, AttributeMethods};
-use syntax_pos::Span;
+use syntax::attr::{self, AttrMetaMethods, AttrNestedMetaItemMethods, AttributeMethods};
+use syntax_pos::{Span};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
@@ -317,7 +317,7 @@ impl LateLintPass for MissingDoc {
         let doc_hidden = self.doc_hidden() || attrs.iter().any(|attr| {
             attr.check_name("doc") && match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::contains_name(&l[..], "hidden"),
+                Some(l) => attr::list_contains_name(&l[..], "hidden"),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#![feature(attr_literals)]
 
-// Issue #623 - non-string meta items are not serialized correctly;
-// for now just forbid them
+// repr currently doesn't support literals
+#[repr("C")] //~ ERROR E0565
+struct A {  }
 
-#[foo = 1] //~ ERROR: non-string literals are not allowed in meta-items
-fn main() { }
+fn main() {  }

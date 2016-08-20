@@ -19,8 +19,7 @@ use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use attr::AttrMetaMethods;
-use attr;
+use attr::{self, AttrMetaMethods, AttrNestedMetaItemMethods};
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
 use std::rc::Rc;
 
@@ -210,9 +209,8 @@ impl fold::Folder for EntryPointCleaner {
                 folded.map(|ast::Item {id, ident, attrs, node, vis, span}| {
                     let allow_str = InternedString::new("allow");
                     let dead_code_str = InternedString::new("dead_code");
-                    let allow_dead_code_item =
-                        attr::mk_list_item(allow_str,
-                                           vec![attr::mk_word_item(dead_code_str)]);
+                    let word_vec = vec![attr::mk_list_word_item(dead_code_str)];
+                    let allow_dead_code_item = attr::mk_list_item(allow_str, word_vec);
                     let allow_dead_code = attr::mk_attr_outer(attr::mk_attr_id(),
                                                               allow_dead_code_item);
 
@@ -413,6 +411,7 @@ fn should_panic(i: &ast::Item) -> ShouldPanic {
         Some(attr) => {
             let msg = attr.meta_item_list()
                 .and_then(|list| list.iter().find(|mi| mi.check_name("expected")))
+                .and_then(|li| li.meta_item())
                 .and_then(|mi| mi.value_str());
             ShouldPanic::Yes(msg)
         }

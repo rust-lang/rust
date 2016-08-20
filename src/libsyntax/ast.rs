@@ -439,6 +439,22 @@ pub struct Crate {
     pub exported_macros: Vec<MacroDef>,
 }
 
+/// A spanned compile-time attribute list item.
+pub type NestedMetaItem = Spanned<NestedMetaItemKind>;
+
+/// Possible values inside of compile-time attribute lists.
+///
+/// E.g. the '..' in `#[name(..)]`.
+#[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug, PartialEq)]
+pub enum NestedMetaItemKind {
+    /// A full MetaItem, for recursive meta items.
+    MetaItem(P<MetaItem>),
+    /// A literal.
+    ///
+    /// E.g. "foo", 64, true
+    Literal(Lit),
+}
+
 /// A spanned compile-time attribute item.
 ///
 /// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
@@ -456,7 +472,7 @@ pub enum MetaItemKind {
     /// List meta item.
     ///
     /// E.g. `derive(..)` as in `#[derive(..)]`
-    List(InternedString, Vec<P<MetaItem>>),
+    List(InternedString, Vec<NestedMetaItem>),
     /// Name value meta item.
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
@@ -472,19 +488,21 @@ impl PartialEq for MetaItemKind {
                 Word(ref no) => (*ns) == (*no),
                 _ => false
             },
+            List(ref ns, ref miss) => match *other {
+                List(ref no, ref miso) => {
+                    ns == no &&
+                        miss.iter().all(|mi| {
+                            miso.iter().any(|x| x.node == mi.node)
+                        })
+                }
+                _ => false
+            },
             NameValue(ref ns, ref vs) => match *other {
                 NameValue(ref no, ref vo) => {
                     (*ns) == (*no) && vs.node == vo.node
                 }
                 _ => false
             },
-            List(ref ns, ref miss) => match *other {
-                List(ref no, ref miso) => {
-                    ns == no &&
-                        miss.iter().all(|mi| miso.iter().any(|x| x.node == mi.node))
-                }
-                _ => false
-            }
         }
     }
 }
@@ -1104,6 +1122,30 @@ impl LitKind {
             LitKind::Str(..) => true,
             _ => false,
         }
+    }
+
+    /// Returns true if this literal has no suffix. Note: this will return true
+    /// for literals with prefixes such as raw strings and byte strings.
+    pub fn is_unsuffixed(&self) -> bool {
+        match *self {
+            // unsuffixed variants
+            LitKind::Str(..) => true,
+            LitKind::ByteStr(..) => true,
+            LitKind::Byte(..) => true,
+            LitKind::Char(..) => true,
+            LitKind::Int(_, LitIntType::Unsuffixed) => true,
+            LitKind::FloatUnsuffixed(..) => true,
+            LitKind::Bool(..) => true,
+            // suffixed variants
+            LitKind::Int(_, LitIntType::Signed(..)) => false,
+            LitKind::Int(_, LitIntType::Unsigned(..)) => false,
+            LitKind::Float(..) => false,
+        }
+    }
+
+    /// Returns true if this literal has a suffix.
+    pub fn is_suffixed(&self) -> bool {
+        !self.is_unsuffixed()
     }
 }
 

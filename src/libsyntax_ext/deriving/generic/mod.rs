@@ -623,7 +623,7 @@ impl<'a> TraitDef<'a> {
         let unused_qual = cx.attribute(self.span,
                                        cx.meta_list(self.span,
                                                     InternedString::new("allow"),
-                                                    vec![cx.meta_word(self.span,
+                                                    vec![cx.meta_list_item_word(self.span,
                                            InternedString::new("unused_qualifications"))]));
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());

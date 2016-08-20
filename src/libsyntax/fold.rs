@@ -47,6 +47,10 @@ pub trait Folder : Sized {
         noop_fold_meta_items(meta_items, self)
     }
 
+    fn fold_meta_list_item(&mut self, list_item: NestedMetaItem) -> NestedMetaItem {
+        noop_fold_meta_list_item(list_item, self)
+    }
+
     fn fold_meta_item(&mut self, meta_item: P<MetaItem>) -> P<MetaItem> {
         noop_fold_meta_item(meta_item, self)
     }
@@ -513,12 +517,25 @@ pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
     }
 }
 
+pub fn noop_fold_meta_list_item<T: Folder>(li: NestedMetaItem, fld: &mut T)
+    -> NestedMetaItem {
+    Spanned {
+        node: match li.node {
+            NestedMetaItemKind::MetaItem(mi) =>  {
+                NestedMetaItemKind::MetaItem(fld.fold_meta_item(mi))
+            },
+            NestedMetaItemKind::Literal(lit) => NestedMetaItemKind::Literal(lit)
+        },
+        span: fld.new_span(li.span)
+    }
+}
+
 pub fn noop_fold_meta_item<T: Folder>(mi: P<MetaItem>, fld: &mut T) -> P<MetaItem> {
     mi.map(|Spanned {node, span}| Spanned {
         node: match node {
             MetaItemKind::Word(id) => MetaItemKind::Word(id),
             MetaItemKind::List(id, mis) => {
-                MetaItemKind::List(id, mis.move_map(|e| fld.fold_meta_item(e)))
+                MetaItemKind::List(id, mis.move_map(|e| fld.fold_meta_list_item(e)))
             }
             MetaItemKind::NameValue(id, s) => MetaItemKind::NameValue(id, s)
         },

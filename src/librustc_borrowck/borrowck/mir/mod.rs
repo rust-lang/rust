@@ -11,7 +11,7 @@
 use borrowck::BorrowckCtxt;
 
 use syntax::ast::{self, MetaItem};
-use syntax::attr::AttrMetaMethods;
+use syntax::attr::{AttrMetaMethods, AttrNestedMetaItemMethods};
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -43,8 +43,9 @@ fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<P<MetaItem
         if attr.check_name("rustc_mir") {
             let items = attr.meta_item_list();
             for item in items.iter().flat_map(|l| l.iter()) {
-                if item.check_name(name) {
-                    return Some(item.clone())
+                match item.meta_item() {
+                    Some(mi) if mi.check_name(name) => return Some(mi.clone()),
+                    _ => continue
                 }
             }
         }
