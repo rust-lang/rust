@@ -13,5 +13,5 @@ unsafe fn f() { return; }
 fn main() {
     f();
     //~^ ERROR E0133
-    //~| NOTE unsafe call requires unsafe function or block
+    //~| NOTE call to unsafe function
 }

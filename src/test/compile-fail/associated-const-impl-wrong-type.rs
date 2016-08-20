@@ -11,7 +11,7 @@
 #![feature(associated_consts)]
 
 trait Foo {
-    const BAR: u32; //~ NOTE original trait requirement
+    const BAR: u32; //~ NOTE type in trait
 }
 
 struct SignedBar;

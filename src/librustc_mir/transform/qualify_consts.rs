@@ -493,9 +493,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             if let ty::TyRawPtr(_) = base_ty.sty {
                                 this.add(Qualif::NOT_CONST);
                                 if this.mode != Mode::Fn {
-                                    span_err!(this.tcx.sess, this.span, E0396,
-                                              "raw pointers cannot be dereferenced in {}s",
-                                              this.mode);
+                                    struct_span_err!(this.tcx.sess,
+                                        this.span, E0396,
+                                        "raw pointers cannot be dereferenced in {}s",
+                                        this.mode)
+                                    .span_label(this.span,
+                                        &format!("dereference of raw pointer in constant"))
+                                    .emit();
                                 }
                             }
                         }
@@ -681,9 +685,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                     self.add(Qualif::NOT_CONST);
                     if self.mode != Mode::Fn {
-                        span_err!(self.tcx.sess, self.span, E0395,
-                                  "raw pointers cannot be compared in {}s",
-                                  self.mode);
+                        struct_span_err!(
+                            self.tcx.sess, self.span, E0395,
+                            "raw pointers cannot be compared in {}s",
+                            self.mode)
+                        .span_label(
+                            self.span,
+                            &format!("comparing raw pointers in static"))
+                        .emit();
                     }
                 }
             }

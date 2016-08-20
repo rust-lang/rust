@@ -903,9 +903,12 @@ fn check_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 }
             }
         } else {
-            span_err!(ccx.tcx.sess, attr.span, E0232,
-                                  "this attribute must have a value, \
-                                   eg `#[rustc_on_unimplemented = \"foo\"]`")
+            struct_span_err!(
+                ccx.tcx.sess, attr.span, E0232,
+                "this attribute must have a value")
+                .span_label(attr.span, &format!("attribute requires a value"))
+                .note(&format!("eg `#[rustc_on_unimplemented = \"foo\"]`"))
+                .emit();
         }
     }
 }
@@ -1013,7 +1016,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                          // We can only get the spans from local trait definition
                          // Same for E0324 and E0325
                          if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
-                            err.span_label(trait_span, &format!("original trait requirement"));
+                            err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
@@ -1041,7 +1044,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
                          if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
-                            err.span_label(trait_span, &format!("original trait requirement"));
+                            err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
@@ -1064,7 +1067,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, &format!("does not match trait"));
                          if let Some(trait_span) = tcx.map.span_if_local(ty_trait_item.def_id()) {
-                            err.span_label(trait_span, &format!("original trait requirement"));
+                            err.span_label(trait_span, &format!("item in trait"));
                          }
                          err.emit()
                     }
@@ -1245,8 +1248,11 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let hint = *ccx.tcx.lookup_repr_hints(def_id).get(0).unwrap_or(&attr::ReprAny);
 
     if hint != attr::ReprAny && vs.is_empty() {
-        span_err!(ccx.tcx.sess, sp, E0084,
-            "unsupported representation for zero-variant enum");
+        struct_span_err!(
+            ccx.tcx.sess, sp, E0084,
+            "unsupported representation for zero-variant enum")
+            .span_label(sp, &format!("unsupported enum representation"))
+            .emit();
     }
 
     let repr_type_ty = ccx.tcx.enum_repr_type(Some(&hint)).to_ty(ccx.tcx);
@@ -4408,8 +4414,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               expected at most {}, found {}",
                              count(type_defs.len()),
                              count(types.len()))
-                .span_label(span, &format!("expected {}",
-                            count(type_defs.len()))).emit();
+                .span_label(span, &format!("too many type parameters")).emit();
 
             // To prevent derived errors to accumulate due to extra
             // type parameters, we force instantiate_value_path to

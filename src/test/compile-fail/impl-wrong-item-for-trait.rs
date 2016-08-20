@@ -12,9 +12,9 @@
 
 trait Foo {
     fn bar(&self);
-    //~^ NOTE original trait requirement
-    //~| NOTE original trait requirement
-    const MY_CONST: u32; //~ NOTE original trait requirement
+    //~^ NOTE item in trait
+    //~| NOTE item in trait
+    const MY_CONST: u32; //~ NOTE item in trait
 }
 
 pub struct FooConstForMethod;
