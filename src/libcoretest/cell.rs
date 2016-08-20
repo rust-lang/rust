@@ -176,21 +176,21 @@ fn ref_mut_map_accessor() {
 }
 
 #[test]
-fn as_unsafe_cell() {
+fn as_ptr() {
     let c1: Cell<usize> = Cell::new(0);
     c1.set(1);
-    assert_eq!(1, unsafe { *c1.as_unsafe_cell().get() });
+    assert_eq!(1, unsafe { *c1.as_ptr() });
 
     let c2: Cell<usize> = Cell::new(0);
-    unsafe { *c2.as_unsafe_cell().get() = 1; }
+    unsafe { *c2.as_ptr() = 1; }
     assert_eq!(1, c2.get());
 
     let r1: RefCell<usize> = RefCell::new(0);
     *r1.borrow_mut() = 1;
-    assert_eq!(1, unsafe { *r1.as_unsafe_cell().get() });
+    assert_eq!(1, unsafe { *r1.as_ptr() });
 
     let r2: RefCell<usize> = RefCell::new(0);
-    unsafe { *r2.as_unsafe_cell().get() = 1; }
+    unsafe { *r2.as_ptr() = 1; }
     assert_eq!(1, *r2.borrow());
 }
 

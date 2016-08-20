@@ -63,8 +63,7 @@ impl IpAddr {
     /// Returns true for the special 'unspecified' address ([IPv4], [IPv6]).
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_unspecified
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_unspecified
-    #[unstable(feature="ip", issue="27709",
-               reason="recently added and depends on unstable Ipv4Addr.is_unspecified()")]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
     pub fn is_unspecified(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_unspecified(),
@@ -75,7 +74,7 @@ impl IpAddr {
     /// Returns true if this is a loopback address ([IPv4], [IPv6]).
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_loopback
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_loopback
-    #[unstable(feature="ip", reason="recently added", issue="27709")]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
     pub fn is_loopback(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_loopback(),
@@ -86,8 +85,6 @@ impl IpAddr {
     /// Returns true if the address appears to be globally routable ([IPv4], [IPv6]).
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_global
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_global
-    #[unstable(feature="ip", issue="27709",
-               reason="recently added and depends on unstable Ip{v4,v6}Addr.is_global()")]
     pub fn is_global(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_global(),
@@ -98,7 +95,7 @@ impl IpAddr {
     /// Returns true if this is a multicast address ([IPv4], [IPv6]).
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_multicast
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_multicast
-    #[unstable(feature="ip", reason="recently added", issue="27709")]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
     pub fn is_multicast(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_multicast(),
@@ -109,8 +106,6 @@ impl IpAddr {
     /// Returns true if this address is in a range designated for documentation ([IPv4], [IPv6]).
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_documentation
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_documentation
-    #[unstable(feature="ip", issue="27709",
-               reason="recently added and depends on unstable Ipv6Addr.is_documentation()")]
     pub fn is_documentation(&self) -> bool {
         match *self {
             IpAddr::V4(ref a) => a.is_documentation(),
@@ -147,6 +142,7 @@ impl Ipv4Addr {
     /// This property is defined in _UNIX Network Programming, Second Edition_,
     /// W. Richard Stevens, p. 891; see also [ip7]
     /// [ip7][http://man7.org/linux/man-pages/man7/ip.7.html]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
     pub fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
     }
@@ -515,8 +511,7 @@ impl Ipv6Addr {
     }
 
     /// Returns the sixteen eight-bit integers the IPv6 address consists of.
-    #[unstable(feature = "ipv6_to_octets", reason = "needs some testing",
-               issue = "32313")]
+    #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
     pub fn octets(&self) -> [u8; 16] {
         self.inner.s6_addr
     }

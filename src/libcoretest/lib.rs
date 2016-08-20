@@ -10,7 +10,6 @@
 
 #![deny(warnings)]
 
-#![feature(as_unsafe_cell)]
 #![feature(borrow_state)]
 #![feature(box_syntax)]
 #![feature(cell_extras)]
