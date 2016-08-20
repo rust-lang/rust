@@ -59,7 +59,9 @@ impl cat {
 impl cat {
   fn meow() {
     if self.whiskers > 3 {
-        //~^ ERROR: `self` is not available in a static method. Maybe a `self` argument is missing?
+        //~^ ERROR `self` is not available in a static method [E0424]
+        //~| NOTE not available in static method
+        //~| NOTE maybe a `self` argument is missing?
         println!("MEOW");
     }
   }
