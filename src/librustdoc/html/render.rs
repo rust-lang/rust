@@ -833,7 +833,7 @@ fn mkdir(path: &Path) -> io::Result<()> {
 
 /// Returns a documentation-level item type from the item.
 fn item_type(item: &clean::Item) -> ItemType {
-    ItemType::from_item(item)
+    ItemType::from(item)
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
