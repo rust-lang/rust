@@ -639,9 +639,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // Record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        let def = match type_result.ok().and_then(NameBinding::def) {
+        let def = match type_result.ok().map(NameBinding::def) {
             Some(def) => def,
-            None => value_result.ok().and_then(NameBinding::def).unwrap(),
+            None => value_result.ok().map(NameBinding::def).unwrap(),
         };
         let path_resolution = PathResolution::new(def);
         self.def_map.insert(directive.id, path_resolution);
@@ -714,9 +714,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
             if binding.vis == ty::Visibility::Public &&
                (binding.is_import() || binding.is_extern_crate()) {
-                if let Some(def) = binding.def() {
-                    reexports.push(Export { name: name, def_id: def.def_id() });
-                }
+                reexports.push(Export { name: name, def_id: binding.def().def_id() });
             }
 
             if let NameBindingKind::Import { binding: orig_binding, directive, .. } = binding.kind {
