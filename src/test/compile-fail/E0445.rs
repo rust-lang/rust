@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-26606-macro.rs
-// ignore-cross-compile
-// build-aux-docs
+trait Foo {
+    fn dummy(&self) { }
+}
 
-// @has issue_26606_macro/macro.make_item.html
-#[macro_use]
-extern crate issue_26606_macro;
+pub trait Bar : Foo {} //~ ERROR E0445
+pub struct Bar2<T: Foo>(pub T); //~ ERROR E0445
+pub fn foo<T: Foo> (t: T) {} //~ ERROR E0445
 
-// @has issue_26606/constant.FOO.html
-// @!has - '//a/@href' '../src/'
-make_item!(FOO);
+fn main() {}

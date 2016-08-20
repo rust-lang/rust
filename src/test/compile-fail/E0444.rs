@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-26606-macro.rs
-// ignore-cross-compile
-// build-aux-docs
+#![feature(repr_simd)]
+#![feature(platform_intrinsics)]
 
-// @has issue_26606_macro/macro.make_item.html
-#[macro_use]
-extern crate issue_26606_macro;
+#[repr(simd)]
+struct f64x2(f64, f64);
 
-// @has issue_26606/constant.FOO.html
-// @!has - '//a/@href' '../src/'
-make_item!(FOO);
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd(x: f64x2, y: f64x2, z: f64x2) -> i32; //~ ERROR E0444
+}
+
+fn main() {}

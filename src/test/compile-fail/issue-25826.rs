@@ -12,5 +12,6 @@ fn id<T>(t: T) -> T { t }
 fn main() {
     const A: bool = id::<u8> as *const () < id::<u16> as *const ();
     //~^ ERROR raw pointers cannot be compared in constants [E0395]
+    //~^^ NOTE comparing raw pointers in static
     println!("{}", A);
 }

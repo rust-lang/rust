@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-26606-macro.rs
-// ignore-cross-compile
-// build-aux-docs
+struct Bar;
 
-// @has issue_26606_macro/macro.make_item.html
-#[macro_use]
-extern crate issue_26606_macro;
+trait Foo {
+    fn foo();
+}
 
-// @has issue_26606/constant.FOO.html
-// @!has - '//a/@href' '../src/'
-make_item!(FOO);
+pub impl Bar {} //~ ERROR E0449
+
+pub impl Foo for Bar { //~ ERROR E0449
+    pub fn foo() {} //~ ERROR E0449
+}
+
+fn main() {
+}

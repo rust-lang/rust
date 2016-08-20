@@ -59,7 +59,7 @@ handling is reducing the amount of explicit case analysis the programmer has to
 do while keeping code composable.
 
 Keeping code composable is important, because without that requirement, we
-could [`panic`](../std/macro.panic!.html) whenever we
+could [`panic`](../std/macro.panic.html) whenever we
 come across something unexpected. (`panic` causes the current task to unwind,
 and in most cases, the entire program aborts.) Here's an example:
 
@@ -944,7 +944,7 @@ macro_rules! try {
 }
 ```
 
-(The [real definition](../std/macro.try!.html) is a bit more
+(The [real definition](../std/macro.try.html) is a bit more
 sophisticated. We will address that later.)
 
 Using the `try!` macro makes it very easy to simplify our last example. Since
@@ -1271,7 +1271,7 @@ macro_rules! try {
 ```
 
 This is not its real definition. Its real definition is
-[in the standard library](../std/macro.try!.html):
+[in the standard library](../std/macro.try.html):
 
 <span id="code-try-def"></span>
 
@@ -2178,7 +2178,7 @@ heuristics!
   [`From`](../std/convert/trait.From.html)
   and
   [`Error`](../std/error/trait.Error.html)
-  impls to make the [`try!`](../std/macro.try!.html)
+  impls to make the [`try!`](../std/macro.try.html)
   macro more ergonomic.
 * If you're writing a library and your code can produce errors, define your own
   error type and implement the
