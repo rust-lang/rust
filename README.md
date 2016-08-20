@@ -187,6 +187,7 @@ name                                                                            
 [wrong_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_self_convention)                       | warn    | defining a method named with an established prefix (like "into_") that takes `self` with the wrong convention
 [wrong_transmute](https://github.com/Manishearth/rust-clippy/wiki#wrong_transmute)                                   | warn    | transmutes that are confusing at best, undefined behaviour at worst and always useless
 [zero_divided_by_zero](https://github.com/Manishearth/rust-clippy/wiki#zero_divided_by_zero)                         | warn    | usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN
+[zero_prefixed_literal](https://github.com/Manishearth/rust-clippy/wiki#zero_prefixed_literal)                       | warn    | integer literals starting with `0`
 [zero_width_space](https://github.com/Manishearth/rust-clippy/wiki#zero_width_space)                                 | deny    | using a zero-width space in a string literal, which is confusing
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!

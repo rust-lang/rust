@@ -387,6 +387,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc_early::MIXED_CASE_HEX_LITERALS,
         misc_early::REDUNDANT_CLOSURE_CALL,
         misc_early::UNNEEDED_FIELD_PATTERN,
+        misc_early::ZERO_PREFIXED_LITERAL,
         module_inception::MODULE_INCEPTION,
         mut_reference::UNNECESSARY_MUT_PASSED,
         mutex_atomic::MUTEX_ATOMIC,
