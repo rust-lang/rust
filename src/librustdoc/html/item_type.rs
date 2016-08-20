@@ -85,8 +85,8 @@ impl<'a> From<&'a clean::Item> for ItemType {
     }
 }
 
-impl ItemType {
-    pub fn from_type_kind(kind: clean::TypeKind) -> ItemType {
+impl From<clean::TypeKind> for ItemType {
+    fn from(kind: clean::TypeKind) -> ItemType {
         match kind {
             clean::TypeStruct   => ItemType::Struct,
             clean::TypeEnum     => ItemType::Enum,
@@ -99,7 +99,9 @@ impl ItemType {
             clean::TypeTypedef  => ItemType::Typedef,
         }
     }
+}
 
+impl ItemType {
     pub fn css_class(&self) -> &'static str {
         match *self {
             ItemType::Module          => "mod",
