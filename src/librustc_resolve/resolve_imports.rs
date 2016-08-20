@@ -52,7 +52,10 @@ pub enum ImportDirectiveSubclass<'a> {
         value_result: Cell<Result<&'a NameBinding<'a>, Determinacy>>,
         type_result: Cell<Result<&'a NameBinding<'a>, Determinacy>>,
     },
-    GlobImport { is_prelude: bool },
+    GlobImport {
+        is_prelude: bool,
+        max_vis: Cell<ty::Visibility>, // The visibility of the greatest reexport.
+    },
 }
 
 impl<'a> ImportDirectiveSubclass<'a> {
@@ -276,7 +279,7 @@ impl<'a> Resolver<'a> {
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
-            GlobImport { is_prelude: true } => {}
+            GlobImport { is_prelude: true, .. } => {}
             GlobImport { .. } => self.current_module.globs.borrow_mut().push(directive),
         }
     }
@@ -291,6 +294,12 @@ impl<'a> Resolver<'a> {
         } else {
             binding.pseudo_vis()
         };
+
+        if let GlobImport { ref max_vis, .. } = directive.subclass {
+            if vis == directive.vis.get() || vis.is_at_least(max_vis.get(), self) {
+                max_vis.set(vis)
+            }
+        }
 
         NameBinding {
             kind: NameBindingKind::Import {
@@ -562,7 +571,15 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let msg = "Cannot glob-import a module into itself.".into();
                 return Failed(Some((directive.span, msg)));
             }
-            GlobImport { .. } => return Success(()),
+            GlobImport { is_prelude, ref max_vis } => {
+                if !is_prelude &&
+                   max_vis.get() != ty::Visibility::PrivateExternal && // Allow empty globs.
+                   !max_vis.get().is_at_least(directive.vis.get(), self) {
+                    let msg = "A non-empty glob must import something with the glob's visibility";
+                    self.session.span_err(directive.span, msg);
+                }
+                return Success(());
+            }
         };
 
         for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
@@ -677,7 +694,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             return;
         } else if module.def_id() == directive.parent.def_id()  {
             return;
-        } else if let GlobImport { is_prelude: true } = directive.subclass {
+        } else if let GlobImport { is_prelude: true, .. } = directive.subclass {
             self.prelude = Some(module);
             return;
         }

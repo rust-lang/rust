@@ -26,6 +26,8 @@ use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty::{self, VariantKind};
 
+use std::cell::Cell;
+
 use syntax::ast::Name;
 use syntax::attr;
 use syntax::parse::token;
@@ -176,7 +178,10 @@ impl<'b> Resolver<'b> {
                         }
                     }
                     ViewPathGlob(_) => {
-                        let subclass = GlobImport { is_prelude: is_prelude };
+                        let subclass = GlobImport {
+                            is_prelude: is_prelude,
+                            max_vis: Cell::new(ty::Visibility::PrivateExternal),
+                        };
                         let span = view_path.span;
                         self.add_import_directive(module_path, subclass, span, item.id, vis);
                     }
