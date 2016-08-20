@@ -274,26 +274,63 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Mul`. When `Foo * Foo` happens, it ends up
-/// calling `mul`, and therefore, `main` prints `Multiplying!`.
+/// Implementing a `Mul`tipliable rational number struct:
 ///
 /// ```
 /// use std::ops::Mul;
 ///
-/// struct Foo;
+/// // The uniqueness of rational numbers in lowest terms is a consequence of
+/// // the fundamental theorem of arithmetic.
+/// #[derive(Eq)]
+/// #[derive(PartialEq, Debug)]
+/// struct Rational {
+///     nominator: usize,
+///     denominator: usize,
+/// }
 ///
-/// impl Mul for Foo {
-///     type Output = Foo;
+/// impl Rational {
+///     fn new(nominator: usize, denominator: usize) -> Self {
+///         if denominator == 0 {
+///             panic!("Zero is an invalid denominator!");
+///         }
 ///
-///     fn mul(self, _rhs: Foo) -> Foo {
-///         println!("Multiplying!");
-///         self
+///         // Reduce to lowest terms by dividing by the greatest common
+///         // divisor.
+///         let gcd = gcd(nominator, denominator);
+///         Rational {
+///             nominator: nominator / gcd,
+///             denominator: denominator / gcd,
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo * Foo;
+/// impl Mul for Rational {
+///     // The multiplication of rational numbers is a closed operation.
+///     type Output = Self;
+///
+///     fn mul(self, rhs: Self) -> Self {
+///         let nominator = self.nominator * rhs.nominator;
+///         let denominator = self.denominator * rhs.denominator;
+///         Rational::new(nominator, denominator)
+///     }
 /// }
+///
+/// // Euclid's two-thousand-year-old algorithm for finding the greatest common
+/// // divisor.
+/// fn gcd(x: usize, y: usize) -> usize {
+///     let mut x = x;
+///     let mut y = y;
+///     while y != 0 {
+///         let t = y;
+///         y = x % y;
+///         x = t;
+///     }
+///     x
+/// }
+///
+/// assert_eq!(Rational::new(1, 2), Rational::new(2, 4));
+/// assert_eq!(Rational::new(2, 3) * Rational::new(3, 4),
+///            Rational::new(1, 2));
 /// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
