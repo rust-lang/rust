@@ -317,10 +317,17 @@ impl<'a> Resolver<'a> {
         where T: ToNameBinding<'a>
     {
         let binding = self.arenas.alloc_name_binding(binding.to_name_binding());
-        self.update_resolution(module, name, ns, |_, resolution| {
+        self.update_resolution(module, name, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
-                    resolution.duplicate_globs.push(binding);
+                    if !this.new_import_semantics || !old_binding.is_glob_import() {
+                        resolution.duplicate_globs.push(binding);
+                    } else if binding.def() != old_binding.def() {
+                        resolution.duplicate_globs.push(binding);
+                    } else if !old_binding.vis.is_at_least(binding.vis, this) {
+                        // We are glob-importing the same item but with greater visibility.
+                        resolution.binding = Some(binding);
+                    }
                 } else if old_binding.is_glob_import() {
                     resolution.duplicate_globs.push(old_binding);
                     resolution.binding = Some(binding);
@@ -344,14 +351,17 @@ impl<'a> Resolver<'a> {
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t) = {
             let mut resolution = &mut *self.resolution(module, name, ns).borrow_mut();
-            let was_known = resolution.binding().is_some();
+            let old_binding = resolution.binding();
 
             let t = f(self, resolution);
 
-            if was_known { return t; }
             match resolution.binding() {
-                Some(binding) => (binding, t),
+                _ if !self.new_import_semantics && old_binding.is_some() => return t,
                 None => return t,
+                Some(binding) => match old_binding {
+                    Some(old_binding) if old_binding as *const _ == binding as *const _ => return t,
+                    _ => (binding, t),
+                }
             }
         };
 
