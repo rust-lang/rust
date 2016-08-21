@@ -758,11 +758,10 @@ pub struct ModuleS<'a> {
     extern_crate_id: Option<NodeId>,
 
     resolutions: RefCell<HashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    unresolved_imports: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     no_implicit_prelude: Cell<bool>,
 
-    glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective<'a>)>>,
+    glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.
@@ -772,29 +771,22 @@ pub struct ModuleS<'a> {
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
-
-    arenas: &'a ResolverArenas<'a>,
 }
 
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
-    fn new(parent_link: ParentLink<'a>,
-           def: Option<Def>,
-           external: bool,
-           arenas: &'a ResolverArenas<'a>) -> Self {
+    fn new(parent_link: ParentLink<'a>, def: Option<Def>, external: bool) -> Self {
         ModuleS {
             parent_link: parent_link,
             def: def,
             extern_crate_id: None,
             resolutions: RefCell::new(HashMap::new()),
-            unresolved_imports: RefCell::new(Vec::new()),
             no_implicit_prelude: Cell::new(false),
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(!external),
-            arenas: arenas
         }
     }
 
@@ -971,11 +963,18 @@ pub struct Resolver<'a> {
 
     structs: FnvHashMap<DefId, Vec<Name>>,
 
-    // The number of imports that are currently unresolved.
-    unresolved_imports: usize,
+    // All imports known to succeed or fail.
+    determined_imports: Vec<&'a ImportDirective<'a>>,
+
+    // All non-determined imports.
+    indeterminate_imports: Vec<&'a ImportDirective<'a>>,
 
     // The module that represents the current item scope.
     current_module: Module<'a>,
+
+    // The visibility of `pub(self)` items in the current scope.
+    // Equivalently, the visibility required for an item to be accessible from the current scope.
+    current_vis: ty::Visibility,
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
@@ -1140,7 +1139,7 @@ impl<'a> Resolver<'a> {
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let graph_root =
-            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, arenas);
+            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false);
         let graph_root = arenas.alloc_module(graph_root);
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
@@ -1159,9 +1158,11 @@ impl<'a> Resolver<'a> {
             trait_item_map: FnvHashMap(),
             structs: FnvHashMap(),
 
-            unresolved_imports: 0,
+            determined_imports: Vec::new(),
+            indeterminate_imports: Vec::new(),
 
             current_module: graph_root,
+            current_vis: ty::Visibility::Restricted(ast::CRATE_NODE_ID),
             value_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
             type_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
             label_ribs: Vec::new(),
@@ -1205,6 +1206,7 @@ impl<'a> Resolver<'a> {
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
         self.current_module = self.graph_root;
+        self.current_vis = ty::Visibility::Restricted(ast::CRATE_NODE_ID);
         visit::walk_crate(self, krate);
 
         check_unused::check_crate(self, krate);
@@ -1213,12 +1215,12 @@ impl<'a> Resolver<'a> {
 
     fn new_module(&self, parent_link: ParentLink<'a>, def: Option<Def>, external: bool)
                   -> Module<'a> {
-        self.arenas.alloc_module(ModuleS::new(parent_link, def, external, self.arenas))
+        self.arenas.alloc_module(ModuleS::new(parent_link, def, external))
     }
 
     fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def, local_node_id: NodeId)
                                -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), false, self.arenas);
+        let mut module = ModuleS::new(parent_link, Some(def), false);
         module.extern_crate_id = Some(local_node_id);
         self.arenas.modules.alloc(module)
     }
@@ -1250,14 +1252,15 @@ impl<'a> Resolver<'a> {
                                      mut search_module: Module<'a>,
                                      module_path: &[Name],
                                      index: usize,
-                                     span: Span)
+                                     span: Option<Span>)
                                      -> ResolveResult<Module<'a>> {
-        fn search_parent_externals(needle: Name, module: Module) -> Option<Module> {
-            match module.resolve_name(needle, TypeNS, false) {
+        fn search_parent_externals<'a>(this: &mut Resolver<'a>, needle: Name, module: Module<'a>)
+                                       -> Option<Module<'a>> {
+            match this.resolve_name_in_module(module, needle, TypeNS, false, None) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
                 _ => match module.parent_link {
                     ModuleParentLink(ref parent, _) => {
-                        search_parent_externals(needle, parent)
+                        search_parent_externals(this, needle, parent)
                     }
                     _ => None,
                 },
@@ -1272,16 +1275,17 @@ impl<'a> Resolver<'a> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index];
-            match self.resolve_name_in_module(search_module, name, TypeNS, false, true) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, span) {
                 Failed(None) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
                     let msg = if "???" == &module_name {
-                        match search_parent_externals(name, &self.current_module) {
+                        let current_module = self.current_module;
+                        match search_parent_externals(self, name, current_module) {
                             Some(module) => {
                                 let path_str = names_to_string(module_path);
                                 let target_mod_str = module_to_string(&module);
-                                let current_mod_str = module_to_string(&self.current_module);
+                                let current_mod_str = module_to_string(current_module);
 
                                 let prefix = if target_mod_str == current_mod_str {
                                     "self::".to_string()
@@ -1297,7 +1301,7 @@ impl<'a> Resolver<'a> {
                         format!("Could not find `{}` in `{}`", segment_name, module_name)
                     };
 
-                    return Failed(Some((span, msg)));
+                    return Failed(span.map(|span| (span, msg)));
                 }
                 Failed(err) => return Failed(err),
                 Indeterminate => {
@@ -1310,11 +1314,10 @@ impl<'a> Resolver<'a> {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
                     if let Some(module_def) = binding.module() {
-                        self.check_privacy(name, binding, span);
                         search_module = module_def;
                     } else {
                         let msg = format!("Not a module `{}`", name);
-                        return Failed(Some((span, msg)));
+                        return Failed(span.map(|span| (span, msg)));
                     }
                 }
             }
@@ -1330,7 +1333,7 @@ impl<'a> Resolver<'a> {
     fn resolve_module_path(&mut self,
                            module_path: &[Name],
                            use_lexical_scope: UseLexicalScopeFlag,
-                           span: Span)
+                           span: Option<Span>)
                            -> ResolveResult<Module<'a>> {
         if module_path.len() == 0 {
             return Success(self.graph_root) // Use the crate root
@@ -1367,7 +1370,7 @@ impl<'a> Resolver<'a> {
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
                         let ident = ast::Ident::with_empty_ctxt(module_path[0]);
-                        match self.resolve_ident_in_lexical_scope(ident, TypeNS, true)
+                        match self.resolve_ident_in_lexical_scope(ident, TypeNS, span)
                                   .and_then(LexicalScopeBinding::module) {
                             None => return Failed(None),
                             Some(containing_module) => {
@@ -1384,10 +1387,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        self.resolve_module_path_from_root(search_module,
-                                           module_path,
-                                           start_index,
-                                           span)
+        self.resolve_module_path_from_root(search_module, module_path, start_index, span)
     }
 
     /// This resolves the identifier `ident` in the namespace `ns` in the current lexical scope.
@@ -1410,7 +1410,7 @@ impl<'a> Resolver<'a> {
     fn resolve_ident_in_lexical_scope(&mut self,
                                       mut ident: ast::Ident,
                                       ns: Namespace,
-                                      record_used: bool)
+                                      record_used: Option<Span>)
                                       -> Option<LexicalScopeBinding<'a>> {
         if ns == TypeNS {
             ident = ast::Ident::with_empty_ctxt(ident.name);
@@ -1438,8 +1438,8 @@ impl<'a> Resolver<'a> {
                 if module.def.is_some() {
                     return match self.prelude {
                         Some(prelude) if !module.no_implicit_prelude.get() => {
-                            prelude.resolve_name(name, ns, false).success()
-                                   .map(LexicalScopeBinding::Item)
+                            self.resolve_name_in_module(prelude, name, ns, false, None).success()
+                                .map(LexicalScopeBinding::Item)
                         }
                         _ => None,
                     };
@@ -1491,7 +1491,7 @@ impl<'a> Resolver<'a> {
     /// Resolves a "module prefix". A module prefix is one or both of (a) `self::`;
     /// (b) some chain of `super::`.
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
-    fn resolve_module_prefix(&mut self, module_path: &[Name], span: Span)
+    fn resolve_module_prefix(&mut self, module_path: &[Name], span: Option<Span>)
                              -> ResolveResult<ModulePrefixResult<'a>> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
@@ -1510,7 +1510,7 @@ impl<'a> Resolver<'a> {
             match self.get_nearest_normal_module_parent(containing_module) {
                 None => {
                     let msg = "There are too many initial `super`s.".into();
-                    return Failed(Some((span, msg)));
+                    return Failed(span.map(|span| (span, msg)));
                 }
                 Some(new_module) => {
                     containing_module = new_module;
@@ -1523,27 +1523,6 @@ impl<'a> Resolver<'a> {
                module_to_string(&containing_module));
 
         return Success(PrefixFound(containing_module, i));
-    }
-
-    /// Attempts to resolve the supplied name in the given module for the
-    /// given namespace. If successful, returns the binding corresponding to
-    /// the name.
-    fn resolve_name_in_module(&mut self,
-                              module: Module<'a>,
-                              name: Name,
-                              namespace: Namespace,
-                              use_lexical_scope: bool,
-                              record_used: bool)
-                              -> ResolveResult<&'a NameBinding<'a>> {
-        debug!("(resolving name in module) resolving `{}` in `{}`", name, module_to_string(module));
-
-        self.populate_module_if_necessary(module);
-        module.resolve_name(name, namespace, use_lexical_scope).and_then(|binding| {
-            if record_used {
-                self.record_use(name, namespace, binding);
-            }
-            Success(binding)
-        })
     }
 
     // AST resolution
@@ -1570,13 +1549,15 @@ impl<'a> Resolver<'a> {
         let module = self.module_map.get(&id).cloned(); // clones a reference
         if let Some(module) = module {
             // Move down in the graph.
-            let orig_module = ::std::mem::replace(&mut self.current_module, module);
+            let orig_module = replace(&mut self.current_module, module);
+            let orig_vis = replace(&mut self.current_vis, ty::Visibility::Restricted(id));
             self.value_ribs.push(Rib::new(ModuleRibKind(module)));
             self.type_ribs.push(Rib::new(ModuleRibKind(module)));
 
             f(self);
 
             self.current_module = orig_module;
+            self.current_vis = orig_vis;
             self.value_ribs.pop();
             self.type_ribs.pop();
         } else {
@@ -2314,7 +2295,7 @@ impl<'a> Resolver<'a> {
                 PatKind::Ident(bmode, ref ident, ref opt_pat) => {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
-                    let binding = self.resolve_ident_in_lexical_scope(ident.node, ValueNS, false)
+                    let binding = self.resolve_ident_in_lexical_scope(ident.node, ValueNS, None)
                                       .and_then(LexicalScopeBinding::item);
                     let resolution = binding.and_then(NameBinding::def).and_then(|def| {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
@@ -2481,11 +2462,11 @@ impl<'a> Resolver<'a> {
             //
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
-            let def = resolve_identifier_with_fallback(self, true).ok_or(false);
+            let def = resolve_identifier_with_fallback(self, Some(span)).ok_or(false);
             return def.and_then(|def| self.adjust_local_def(def, span).ok_or(true)).map(mk_res);
         }
 
-        let unqualified_def = resolve_identifier_with_fallback(self, false);
+        let unqualified_def = resolve_identifier_with_fallback(self, None);
         let qualified_binding = self.resolve_module_relative_path(span, segments, namespace);
         match (qualified_binding, unqualified_def) {
             (Ok(binding), Some(ref ud)) if binding.def().unwrap() == ud.def => {
@@ -2505,7 +2486,7 @@ impl<'a> Resolver<'a> {
     fn resolve_identifier(&mut self,
                           identifier: ast::Ident,
                           namespace: Namespace,
-                          record_used: bool)
+                          record_used: Option<Span>)
                           -> Option<LocalDef> {
         if identifier.name == keywords::Invalid.name() {
             return None;
@@ -2619,7 +2600,7 @@ impl<'a> Resolver<'a> {
                                   .collect::<Vec<_>>();
 
         let containing_module;
-        match self.resolve_module_path(&module_path, UseLexicalScope, span) {
+        match self.resolve_module_path(&module_path, UseLexicalScope, Some(span)) {
             Failed(err) => {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
@@ -2640,11 +2621,9 @@ impl<'a> Resolver<'a> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
-        result.success().map(|binding| {
-            self.check_privacy(name, binding, span);
-            binding
-        }).ok_or(false)
+        let result =
+            self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
+        result.success().ok_or(false)
     }
 
     /// Invariant: This must be called only during main resolution, not during
@@ -2658,10 +2637,7 @@ impl<'a> Resolver<'a> {
         let root_module = self.graph_root;
 
         let containing_module;
-        match self.resolve_module_path_from_root(root_module,
-                                                 &module_path,
-                                                 0,
-                                                 span) {
+        match self.resolve_module_path_from_root(root_module, &module_path, 0, Some(span)) {
             Failed(err) => {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
@@ -2684,11 +2660,9 @@ impl<'a> Resolver<'a> {
         }
 
         let name = segments.last().unwrap().name();
-        let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
-        result.success().map(|binding| {
-            self.check_privacy(name, binding, span);
-            binding
-        }).ok_or(false)
+        let result =
+            self.resolve_name_in_module(containing_module, name, namespace, false, Some(span));
+        result.success().ok_or(false)
     }
 
     fn with_no_errors<T, F>(&mut self, f: F) -> T
@@ -2716,7 +2690,6 @@ impl<'a> Resolver<'a> {
     fn with_empty_ribs<T, F>(&mut self, f: F) -> T
         where F: FnOnce(&mut Resolver<'a>) -> T,
     {
-        use ::std::mem::replace;
         let value_ribs = replace(&mut self.value_ribs, Vec::new());
         let type_ribs = replace(&mut self.type_ribs, Vec::new());
         let label_ribs = replace(&mut self.label_ribs, Vec::new());
@@ -2941,7 +2914,7 @@ impl<'a> Resolver<'a> {
 
                                     match self.resolve_module_path(&name_path[..],
                                                                    UseLexicalScope,
-                                                                   expr.span) {
+                                                                   Some(expr.span)) {
                                         Success(e) => {
                                             if let Some(def_type) = e.def {
                                                 def = def_type;
@@ -3274,18 +3247,12 @@ impl<'a> Resolver<'a> {
             ast::Visibility::Public => return ty::Visibility::Public,
             ast::Visibility::Crate(_) => return ty::Visibility::Restricted(ast::CRATE_NODE_ID),
             ast::Visibility::Restricted { ref path, id } => (path, id),
-            ast::Visibility::Inherited => {
-                let current_module =
-                    self.get_nearest_normal_module_parent_or_self(self.current_module);
-                let id =
-                    self.definitions.as_local_node_id(current_module.def_id().unwrap()).unwrap();
-                return ty::Visibility::Restricted(id);
-            }
+            ast::Visibility::Inherited => return self.current_vis,
         };
 
         let segments: Vec<_> = path.segments.iter().map(|seg| seg.identifier.name).collect();
         let mut path_resolution = err_path_resolution();
-        let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, path.span) {
+        let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, Some(path.span)) {
             Success(module) => {
                 let def = module.def.unwrap();
                 path_resolution = PathResolution::new(def);
@@ -3309,15 +3276,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_accessible(&self, vis: ty::Visibility) -> bool {
-        let current_module = self.get_nearest_normal_module_parent_or_self(self.current_module);
-        let node_id = self.definitions.as_local_node_id(current_module.def_id().unwrap()).unwrap();
-        vis.is_accessible_from(node_id, self)
-    }
-
-    fn check_privacy(&mut self, name: Name, binding: &'a NameBinding<'a>, span: Span) {
-        if !self.is_accessible(binding.vis) {
-            self.privacy_errors.push(PrivacyError(span, name, binding));
-        }
+        vis.is_at_least(self.current_vis, self)
     }
 
     fn report_privacy_errors(&self) {

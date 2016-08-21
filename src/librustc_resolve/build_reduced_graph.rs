@@ -56,12 +56,7 @@ impl<'b> Resolver<'b> {
     pub fn build_reduced_graph(&mut self, krate: &Crate) {
         let no_implicit_prelude = attr::contains_name(&krate.attrs, "no_implicit_prelude");
         self.graph_root.no_implicit_prelude.set(no_implicit_prelude);
-
-        let mut visitor = BuildReducedGraphVisitor {
-            parent: self.graph_root,
-            resolver: self,
-        };
-        visit::walk_crate(&mut visitor, krate);
+        visit::walk_crate(&mut BuildReducedGraphVisitor { resolver: self }, krate);
     }
 
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
@@ -84,11 +79,11 @@ impl<'b> Resolver<'b> {
     }
 
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &Item, parent_ref: &mut Module<'b>) {
-        let parent = *parent_ref;
+    fn build_reduced_graph_for_item(&mut self, item: &Item) {
+        let parent = self.current_module;
+        let parent_vis = self.current_vis;
         let name = item.ident.name;
         let sp = item.span;
-        self.current_module = parent;
         let vis = self.resolve_visibility(&item.vis);
 
         match item.node {
@@ -130,8 +125,7 @@ impl<'b> Resolver<'b> {
 
                         let subclass = ImportDirectiveSubclass::single(binding.name, source_name);
                         let span = view_path.span;
-                        parent.add_import_directive(module_path, subclass, span, item.id, vis);
-                        self.unresolved_imports += 1;
+                        self.add_import_directive(module_path, subclass, span, item.id, vis);
                     }
                     ViewPathList(_, ref source_items) => {
                         // Make sure there's at most one `mod` import in the list.
@@ -176,15 +170,13 @@ impl<'b> Resolver<'b> {
                             };
                             let subclass = ImportDirectiveSubclass::single(rename, name);
                             let (span, id) = (source_item.span, source_item.node.id());
-                            parent.add_import_directive(module_path, subclass, span, id, vis);
-                            self.unresolved_imports += 1;
+                            self.add_import_directive(module_path, subclass, span, id, vis);
                         }
                     }
                     ViewPathGlob(_) => {
                         let subclass = GlobImport { is_prelude: is_prelude };
                         let span = view_path.span;
-                        parent.add_import_directive(module_path, subclass, span, item.id, vis);
-                        self.unresolved_imports += 1;
+                        self.add_import_directive(module_path, subclass, span, item.id, vis);
                     }
                 }
             }
@@ -216,7 +208,10 @@ impl<'b> Resolver<'b> {
                 });
                 self.define(parent, name, TypeNS, (module, sp, vis));
                 self.module_map.insert(item.id, module);
-                *parent_ref = module;
+
+                // Descend into the module.
+                self.current_module = module;
+                self.current_vis = ty::Visibility::Restricted(item.id);
             }
 
             ItemKind::ForeignMod(..) => {}
@@ -309,6 +304,10 @@ impl<'b> Resolver<'b> {
             }
             ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
         }
+
+        visit::walk_item(&mut BuildReducedGraphVisitor { resolver: self }, item);
+        self.current_module = parent;
+        self.current_vis = parent_vis;
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
@@ -333,9 +332,8 @@ impl<'b> Resolver<'b> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item(&mut self,
-                                            foreign_item: &ForeignItem,
-                                            parent: Module<'b>) {
+    fn build_reduced_graph_for_foreign_item(&mut self, foreign_item: &ForeignItem) {
+        let parent = self.current_module;
         let name = foreign_item.ident.name;
 
         let def = match foreign_item.node {
@@ -346,12 +344,12 @@ impl<'b> Resolver<'b> {
                 Def::Static(self.definitions.local_def_id(foreign_item.id), m)
             }
         };
-        self.current_module = parent;
         let vis = self.resolve_visibility(&foreign_item.vis);
         self.define(parent, name, ValueNS, (def, foreign_item.span, vis));
     }
 
-    fn build_reduced_graph_for_block(&mut self, block: &Block, parent: &mut Module<'b>) {
+    fn build_reduced_graph_for_block(&mut self, block: &Block) {
+        let parent = self.current_module;
         if self.block_needs_anonymous_module(block) {
             let block_id = block.id;
 
@@ -362,8 +360,11 @@ impl<'b> Resolver<'b> {
             let parent_link = BlockParentLink(parent, block_id);
             let new_module = self.new_module(parent_link, None, false);
             self.module_map.insert(block_id, new_module);
-            *parent = new_module;
+            self.current_module = new_module; // Descend into the block.
         }
+
+        visit::walk_block(&mut BuildReducedGraphVisitor { resolver: self }, block);
+        self.current_module = parent;
     }
 
     /// Builds the reduced graph for a single item in an external crate.
@@ -487,25 +488,18 @@ impl<'b> Resolver<'b> {
 
 struct BuildReducedGraphVisitor<'a, 'b: 'a> {
     resolver: &'a mut Resolver<'b>,
-    parent: Module<'b>,
 }
 
 impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &Item) {
-        let old_parent = self.parent;
-        self.resolver.build_reduced_graph_for_item(item, &mut self.parent);
-        visit::walk_item(self, item);
-        self.parent = old_parent;
+        self.resolver.build_reduced_graph_for_item(item);
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
-        self.resolver.build_reduced_graph_for_foreign_item(foreign_item, &self.parent);
+        self.resolver.build_reduced_graph_for_foreign_item(foreign_item);
     }
 
     fn visit_block(&mut self, block: &Block) {
-        let old_parent = self.parent;
-        self.resolver.build_reduced_graph_for_block(block, &mut self.parent);
-        visit::walk_block(self, block);
-        self.parent = old_parent;
+        self.resolver.build_reduced_graph_for_block(block);
     }
 }

@@ -21,10 +21,10 @@ use use_from_trait_xc::Trait::Assoc;
 use use_from_trait_xc::Trait::CONST;
 //~^ ERROR `CONST` is not directly importable
 
-use use_from_trait_xc::Foo::new;
+use use_from_trait_xc::Foo::new; //~ ERROR struct `Foo` is private
 //~^ ERROR unresolved import `use_from_trait_xc::Foo::new`
 
-use use_from_trait_xc::Foo::C;
+use use_from_trait_xc::Foo::C; //~ ERROR struct `Foo` is private
 //~^ ERROR unresolved import `use_from_trait_xc::Foo::C`
 
 use use_from_trait_xc::Bar::new as bnew;
