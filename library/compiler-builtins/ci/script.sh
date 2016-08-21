@@ -2,6 +2,11 @@ set -ex
 
 . $(dirname $0)/env.sh
 
+gist() {
+    wgetpaste -s gists -d "'$1' from commit '$TRAVIS_COMMIT' on branch '$TRAVIS_BRANCH'"
+    echo "Disassembly available at the above URL."
+}
+
 build() {
     ${CARGO:-cargo} build --target $TARGET
     ${CARGO:-cargo} build --target $TARGET --release
@@ -11,7 +16,7 @@ inspect() {
     $PREFIX$NM -g --defined-only target/**/debug/*.rlib
 
     set +e
-    $PREFIX$OBJDUMP -Cd target/**/release/*.rlib
+    $PREFIX$OBJDUMP -Cd target/**/release/*.rlib | gist "$TARGET/rustc-builtins.rlib"
     set -e
 
     # Check presence of weak symbols
