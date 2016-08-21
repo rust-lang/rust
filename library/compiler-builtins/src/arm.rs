@@ -60,12 +60,12 @@ pub unsafe fn __aeabi_ldivmod() {
 // TODO: These two functions should be defined as aliases
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __aeabi_uidiv(a: u32, b: u32) -> u32 {
-    ::udiv::__udivsi3(a, b)
+    ::int::udiv::__udivsi3(a, b)
 }
 
 #[cfg_attr(not(test), no_mangle)]
 pub extern "C" fn __aeabi_idiv(a: i32, b: i32) -> i32 {
-    ::sdiv::__divsi3(a, b)
+    ::int::sdiv::__divsi3(a, b)
 }
 
 extern "C" {

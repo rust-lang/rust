@@ -1,4 +1,4 @@
-use {Int, LargeInt};
+use int::{Int, LargeInt};
 
 macro_rules! mul {
     ($intrinsic:ident: $ty:ty) => {

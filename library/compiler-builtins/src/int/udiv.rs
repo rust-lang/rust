@@ -1,5 +1,5 @@
 use core::mem;
-use {Int, LargeInt};
+use int::{Int, LargeInt};
 
 /// Returns `n / d`
 #[cfg_attr(not(test), no_mangle)]

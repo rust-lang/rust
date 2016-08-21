@@ -1,4 +1,4 @@
-use Int;
+use int::Int;
 
 macro_rules! div {
     ($intrinsic:ident: $ty:ty, $uty:ty) => {
