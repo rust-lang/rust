@@ -238,8 +238,8 @@ fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext,
                                                 header: &str) -> String {
     let cond_code = &snippet(ctx, data.if_cond.span, "..").into_owned();
 
-    let if_code   = &format!("if {} {{\n    continue;\n}}\n", cond_code);
-                                    /*  ^^^^--- Four spaces of indentation. */
+    let if_code   = format!("if {} {{\n    continue;\n}}\n", cond_code);
+                                   /*  ^^^^--- Four spaces of indentation. */
     // region B
     let else_code = snippet(ctx, data.else_expr.span, "..").into_owned();
     let else_code = erode_block(&else_code);
