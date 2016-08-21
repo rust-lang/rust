@@ -20,7 +20,18 @@ macro_rules! arbitrary {
             fn arbitrary<G>(g: &mut G) -> $TY
                 where G: Gen
             {
-                $TY(g.gen())
+                // NOTE Generate edge cases with a 10% chance
+                let t = if g.gen_weighted_bool(10) {
+                    *g.choose(&[
+                        $ty::min_value(),
+                        0,
+                        $ty::max_value(),
+                    ]).unwrap()
+                } else {
+                    g.gen()
+                };
+
+                $TY(t)
             }
 
             fn shrink(&self) -> Box<Iterator<Item=$TY>> {
@@ -76,13 +87,23 @@ macro_rules! arbitrary_large {
             fn arbitrary<G>(g: &mut G) -> $TY
                 where G: Gen
             {
-                if g.gen() {
-                    $TY($ty::from_parts(g.gen(), g.gen()))
-                } else if g.gen() {
-                    $TY($ty::from_parts(0, g.gen()))
+                // NOTE Generate edge cases with a 10% chance
+                let t = if g.gen_weighted_bool(10) {
+                    *g.choose(&[
+                        $ty::min_value(),
+                        0,
+                        $ty::max_value(),
+                    ]).unwrap()
                 } else {
-                    $TY($ty::from_parts(g.gen(), 0))
-                }
+                    match g.gen_range(0, 3) {
+                        0 => $ty::from_parts(g.gen(), g.gen()),
+                        1 => $ty::from_parts(0, g.gen()),
+                        2 => $ty::from_parts(g.gen(), 0),
+                        _ => unreachable!(),
+                    }
+                };
+
+                $TY(t)
             }
 
             fn shrink(&self) -> Box<Iterator<Item=$TY>> {
