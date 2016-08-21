@@ -74,9 +74,7 @@ macro_rules! add {
 
             // Swap a and b if necessary so that a has the larger absolute value.
             if b_abs > a_abs {
-                let temp = a_rep;
-                a_rep = b_rep;
-                b_rep = temp;
+                ::core::mem::swap(&mut a_rep, &mut b_rep);
             }
 
             // Extract the exponent and significand from the (possibly swapped) a and b.
