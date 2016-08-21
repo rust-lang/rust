@@ -16,6 +16,12 @@ pub trait Float: Sized {
     /// Returns `self` transmuted to `Self::Int`
     fn repr(self) -> Self::Int;
 
+    #[cfg(test)]
+    /// Checks if two floats have the same bit representation. *Except* for NaNs! NaN can be
+    /// represented in multiple different ways. This methods returns `true` if two NaNs are
+    /// compared.
+    fn eq_repr(self, rhs: Self) -> bool;
+
     /// Returns a `Self::Int` transmuted back to `Self` 
     fn from_repr(a: Self::Int) -> Self;
 
@@ -33,6 +39,14 @@ impl Float for f32 {
     }
     fn repr(self) -> Self::Int {
         unsafe { mem::transmute(self) }
+    }
+    #[cfg(test)]
+    fn eq_repr(self, rhs: Self) -> bool {
+        if self.is_nan() && rhs.is_nan() {
+            true
+        } else {
+            self.repr() == rhs.repr()
+        }
     }
     fn from_repr(a: Self::Int) -> Self {
         unsafe { mem::transmute(a) }
@@ -53,6 +67,14 @@ impl Float for f64 {
     }
     fn repr(self) -> Self::Int {
         unsafe { mem::transmute(self) }
+    }
+    #[cfg(test)]
+    fn eq_repr(self, rhs: Self) -> bool {
+        if self.is_nan() && rhs.is_nan() {
+            true
+        } else {
+            self.repr() == rhs.repr()
+        }
     }
     fn from_repr(a: Self::Int) -> Self {
         unsafe { mem::transmute(a) }

@@ -1,4 +1,6 @@
+use core::mem;
 use core::num::Wrapping;
+
 use float::Float;
 
 macro_rules! add {
@@ -74,7 +76,7 @@ macro_rules! add {
 
             // Swap a and b if necessary so that a has the larger absolute value.
             if b_abs > a_abs {
-                ::core::mem::swap(&mut a_rep, &mut b_rep);
+                mem::swap(&mut a_rep, &mut b_rep);
             }
 
             // Extract the exponent and significand from the (possibly swapped) a and b.
@@ -212,22 +214,14 @@ mod tests {
             let (a, b) = (f32::from_repr(a.0), f32::from_repr(b.0));
             let x = super::__addsf3(a, b);
             let y = a + b;
-            if !(x.is_nan() && y.is_nan()) {
-                x.repr() == y.repr()
-            } else {
-                true
-            }
+            x.eq_repr(y)
         }
 
         fn adddf3(a: U64, b: U64) -> bool {
             let (a, b) = (f64::from_repr(a.0), f64::from_repr(b.0));
             let x = super::__adddf3(a, b);
             let y = a + b;
-            if !(x.is_nan() && y.is_nan()) {
-                x.repr() == y.repr()
-            } else {
-                true
-            }
+            x.eq_repr(y)
         }
     }
     
@@ -237,14 +231,14 @@ mod tests {
     fn test_float_tiny_plus_tiny() {
         let tiny = f32::from_repr(1);
         let r = super::__addsf3(tiny, tiny);
-        assert_eq!(r, tiny + tiny);
+        assert!(r.eq_repr(tiny + tiny));
     }
 
     #[test]
     fn test_double_tiny_plus_tiny() {
         let tiny = f64::from_repr(1);
         let r = super::__adddf3(tiny, tiny);
-        assert_eq!(r, tiny + tiny);
+        assert!(r.eq_repr(tiny + tiny));
     }
 
     #[test]
@@ -252,7 +246,7 @@ mod tests {
         let a = f32::from_repr(327);
         let b = f32::from_repr(256);
         let r = super::__addsf3(a, b);
-        assert_eq!(r, a + b);
+        assert!(r.eq_repr(a + b));
     }
 
     #[test]
@@ -260,19 +254,19 @@ mod tests {
         let a = f64::from_repr(327);
         let b = f64::from_repr(256);
         let r = super::__adddf3(a, b);
-        assert_eq!(r, a + b);
+        assert!(r.eq_repr(a + b));
     }
 
     #[test]
     fn test_float_one_plus_one() {
         let r = super::__addsf3(1f32, 1f32);
-        assert_eq!(r, 1f32 + 1f32);
+        assert!(r.eq_repr(1f32 + 1f32));
     }
 
     #[test]
     fn test_double_one_plus_one() {
         let r = super::__adddf3(1f64, 1f64);
-        assert_eq!(r, 1f64 + 1f64);
+        assert!(r.eq_repr(1f64 + 1f64));
     }
 
     #[test]
@@ -281,9 +275,7 @@ mod tests {
         let b = f32::from_repr(0b11111111100100010001001010101010);
         let x = super::__addsf3(a, b);
         let y = a + b;
-        if !(x.is_nan() && y.is_nan()) {
-            assert_eq!(x.repr(), y.repr());
-        }
+        assert!(x.eq_repr(y));
     }
 
     #[test]
@@ -293,9 +285,7 @@ mod tests {
             0b1111111111110010001000100101010101001000101010000110100011101011);
         let x = super::__adddf3(a, b);
         let y = a + b;
-        if !(x.is_nan() && y.is_nan()) {
-            assert_eq!(x.repr(), y.repr());
-        }
+        assert!(x.eq_repr(y));
     }
 
     #[test]
