@@ -143,7 +143,7 @@ fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
         ], {
             ret = true;
         }}
-    }).unwrap_or(());
+    });
     ret
 }
 
@@ -230,8 +230,7 @@ fn emit_warning<'a>(ctx: &EarlyContext,
              data.if_expr)
         }
     };
-    span_help_and_lint(ctx, NEEDLESS_CONTINUE, expr.span, message,
-                       &format!("{}", snip));
+    span_help_and_lint(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
 }
 
 fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext,
@@ -242,7 +241,7 @@ fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext,
     let if_code   = &format!("if {} {{\n    continue;\n}}\n", cond_code);
                                     /*  ^^^^--- Four spaces of indentation. */
     // region B
-    let else_code = &snippet(ctx, data.else_expr.span, "..").into_owned();
+    let else_code = snippet(ctx, data.else_expr.span, "..").into_owned();
     let else_code = erode_block(&else_code);
     let else_code = trim_indent(&else_code, false);
 
