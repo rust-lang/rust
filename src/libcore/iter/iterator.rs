@@ -1673,6 +1673,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
+    /// #![feature(iter_max_by)]
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().max_by(|x, y| x.cmp(y)).unwrap(), 5);
     /// ```
@@ -1722,6 +1723,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
+    /// #![feature(iter_min_by)]
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by(|x, y| x.cmp(y)).unwrap(), -10);
     /// ```
