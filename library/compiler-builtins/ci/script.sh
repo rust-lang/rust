@@ -11,7 +11,6 @@ inspect() {
     $PREFIX$NM -g --defined-only target/**/debug/*.rlib
 
     set +e
-    $PREFIX$OBJDUMP -Cd target/**/debug/*.rlib
     $PREFIX$OBJDUMP -Cd target/**/release/*.rlib
     set -e
 
