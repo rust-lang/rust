@@ -42,17 +42,6 @@ install_xargo() {
     fi
 }
 
-install_wgetpaste() {
-    if [[ $TRAVIS_OS_NAME == "osx" ]]; then
-        brew install wgetpaste
-    else
-        curl -O http://wgetpaste.zlin.dk/wgetpaste-2.28.tar.bz2
-        tar -xvf wgetpaste-2.28.tar.bz2
-        sudo mv ./wgetpaste-2.28/wgetpaste /usr/bin
-        rm -r wgetpaste-2.28*
-    fi
-}
-
 main() {
     if [[ $TRAVIS_OS_NAME == "osx" || ${IN_DOCKER_CONTAINER:-n} == "y" ]]; then
         install_qemu
@@ -60,7 +49,6 @@ main() {
         install_rust
         add_rustup_target
         install_xargo
-        install_wgetpaste
     fi
 }
 

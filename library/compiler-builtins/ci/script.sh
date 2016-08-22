@@ -2,8 +2,8 @@ set -ex
 
 . $(dirname $0)/env.sh
 
-gist() {
-    wgetpaste -s gists -d "'$1' from commit '$TRAVIS_COMMIT' on branch '$TRAVIS_BRANCH'"
+gist_it() {
+    gist -ap -f "'$1' from commit '$TRAVIS_COMMIT' on branch '$TRAVIS_BRANCH'"
     echo "Disassembly available at the above URL."
 }
 
@@ -16,18 +16,24 @@ inspect() {
     $PREFIX$NM -g --defined-only target/**/debug/*.rlib
 
     set +e
-    $PREFIX$OBJDUMP -Cd target/**/release/*.rlib | gist "$TARGET/rustc-builtins.rlib"
+    case $TRAVIS_OS_NAME in
+        linux)
+            $PREFIX$OBJDUMP -Cd target/**/release/*.rlib | gist_it "$TARGET/rustc-builtins.rlib"
+            ;;
+        osx)
+            $PREFIX$OBJDUMP -Cd target/**/release/*.rlib
+            ;;
+    esac
     set -e
 
     # Check presence of weak symbols
-    case $TRAVIS_OS_NAME in
-        linux)
-            local symbols=( memcmp memcpy memmove memset )
-            for symbol in "${symbols[@]}"; do
-                $PREFIX$NM target/**/debug/deps/librlibc*.rlib | grep -q "W $symbol"
-            done
-            ;;
-    esac
+    if [[ $TRAVIS_OS_NAME = "linux" ]]; then
+        local symbols=( memcmp memcpy memmove memset )
+        for symbol in "${symbols[@]}"; do
+            $PREFIX$NM target/**/debug/deps/librlibc*.rlib | grep -q "W $symbol"
+        done
+    fi
+
 }
 
 run_tests() {
@@ -43,12 +49,14 @@ run_tests() {
 
 main() {
     if [[ $TRAVIS_OS_NAME == "linux" && ${IN_DOCKER_CONTAINER:-n} == "n" ]]; then
-        local tag=2016-08-13
+        local tag=2016-08-22
 
         docker run \
                --privileged \
                -e IN_DOCKER_CONTAINER=y \
                -e TARGET=$TARGET \
+               -e TRAVIS_BRANCH=$TRAVIS_BRANCH \
+               -e TRAVIS_COMMIT=$TRAVIS_COMMIT \
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
                -v $(pwd):/mnt \
                japaric/rustc-builtins:$tag \
