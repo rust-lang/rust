@@ -224,6 +224,7 @@ impl CString {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
+        v.reserve_exact(1);
         v.push(0);
         CString { inner: v.into_boxed_slice() }
     }
