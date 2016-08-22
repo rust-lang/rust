@@ -10,7 +10,6 @@
 
 //! Buffering wrappers for I/O traits
 
-use prelude::v1::*;
 use io::prelude::*;
 
 use marker::Reflect;
@@ -788,7 +787,6 @@ impl<W: Write> fmt::Debug for LineWriter<W> where W: fmt::Debug {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use io::prelude::*;
     use io::{self, BufReader, BufWriter, LineWriter, SeekFrom};
     use sync::atomic::{AtomicUsize, Ordering};

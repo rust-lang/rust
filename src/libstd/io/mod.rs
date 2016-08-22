@@ -253,15 +253,8 @@ use cmp;
 use rustc_unicode::str as core_str;
 use error as std_error;
 use fmt;
-use iter::{Iterator};
-use marker::Sized;
-use ops::{Drop, FnOnce};
-use option::Option::{self, Some, None};
-use result::Result::{Ok, Err};
 use result;
-use string::String;
 use str;
-use vec::Vec;
 use memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1734,7 +1727,6 @@ impl<B: BufRead> Iterator for Lines<B> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use io::prelude::*;
     use io;
     use super::Cursor;

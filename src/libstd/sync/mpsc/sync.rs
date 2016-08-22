@@ -36,7 +36,6 @@
 pub use self::Failure::*;
 use self::Blocker::*;
 
-use vec::Vec;
 use core::mem;
 use core::ptr;
 

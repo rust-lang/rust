@@ -191,7 +191,6 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use sys_common;
     macro_rules! t { ($a:expr, $b:expr) => ({
         let mut m = Vec::new();

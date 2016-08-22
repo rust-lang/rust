@@ -233,7 +233,6 @@ impl Drop for Key {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use super::{Key, StaticKey};
 
     fn assert_sync<T: Sync>() {}

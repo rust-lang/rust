@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use fmt;
 use hash;
 use io;
@@ -523,7 +521,6 @@ impl<'a, T: ToSocketAddrs + ?Sized> ToSocketAddrs for &'a T {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use net::*;
     use net::test::{tsa, sa6, sa4};
 

@@ -21,8 +21,6 @@
 //! manner we pay a semi-large one-time cost up front for detecting whether a
 //! function is available but afterwards it's just a load and a jump.
 
-use prelude::v1::*;
-
 use ffi::CString;
 use sync::atomic::{AtomicUsize, Ordering};
 use sys::c;

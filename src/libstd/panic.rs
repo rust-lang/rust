@@ -13,7 +13,6 @@
 #![stable(feature = "std_panic", since = "1.9.0")]
 
 use any::Any;
-use boxed::Box;
 use cell::UnsafeCell;
 use ops::{Deref, DerefMut};
 use panicking;

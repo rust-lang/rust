@@ -17,7 +17,6 @@
 //! * Executing a panic up to doing the actual implementation
 //! * Shims around "try"
 
-use prelude::v1::*;
 use io::prelude::*;
 
 use any::Any;

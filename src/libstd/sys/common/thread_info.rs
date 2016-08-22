@@ -11,7 +11,6 @@
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
 
 use cell::RefCell;
-use string::String;
 use thread::Thread;
 use thread::LocalKeyState;
 

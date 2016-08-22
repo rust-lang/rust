@@ -161,8 +161,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::v1::*;
-
 use any::Any;
 use cell::UnsafeCell;
 use ffi::{CStr, CString};
@@ -732,8 +730,6 @@ fn _assert_sync_and_send() {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use any::Any;
     use sync::mpsc::{channel, Sender};
     use result;
@@ -786,8 +782,6 @@ mod tests {
 
     #[test]
     fn test_spawn_sched() {
-        use clone::Clone;
-
         let (tx, rx) = channel();
 
         fn f(i: i32, tx: Sender<()>) {
