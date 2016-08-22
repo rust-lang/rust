@@ -14,6 +14,7 @@
 
 #![feature(plugin)]
 #![plugin(lint_plugin_test)]
+#![allow(dead_code)]
 
 fn lintme() { } //~ WARNING item is named 'lintme'
 

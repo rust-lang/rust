@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_variables)]
+#![allow(dead_code)]
+
 macro_rules! piece(
     ($piece:pat) => ($piece);
 );

@@ -22,6 +22,6 @@ const FUNC: &'static Fn(&mut Foo) -> () = &Foo::x;
 
 fn main() {
     let mut foo = Foo { a: 137 };
-    FUNC(&mut foo); //~ ERROR bad
+    FUNC(&mut foo);
     assert_eq!(foo.a, 5);
 }
