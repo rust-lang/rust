@@ -197,6 +197,11 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
+        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
+        if !expected_errors.is_empty() {
+            self.check_expected_errors(expected_errors, &proc_res);
+        }
+
         let proc_res = self.exec_compiled_test();
 
         if !proc_res.status.success() {
@@ -992,7 +997,8 @@ actual:\n\
     fn check_expected_errors(&self,
                              expected_errors: Vec<errors::Error>,
                              proc_res: &ProcRes) {
-        if proc_res.status.success() {
+        if proc_res.status.success() &&
+            expected_errors.iter().any(|x| x.kind == Some(ErrorKind::Error)) {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
@@ -1320,6 +1326,7 @@ actual:\n\
         match self.config.mode {
             CompileFail |
             ParseFail |
+            RunPass |
             Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
@@ -1350,7 +1357,6 @@ actual:\n\
                 args.push(dir_opt);
             }
             RunFail |
-            RunPass |
             RunPassValgrind |
             Pretty |
             DebugInfoGdb |

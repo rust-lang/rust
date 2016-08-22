@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_private)]
+#![allow(dead_code)]
 
 extern crate serialize;
 

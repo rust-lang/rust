@@ -10,7 +10,7 @@
 //
 // ignore-pretty
 
-#![deny(enum_size_variance)]
+#![warn(variant_size_differences)]
 #![allow(dead_code)]
 
 enum Enum1 { }
@@ -21,8 +21,8 @@ enum Enum3 { D(isize), E, F }
 
 enum Enum4 { H(isize), I(isize), J }
 
-enum Enum5 { //~ ERROR three times larger
-    L(isize, isize, isize, isize), //~ NOTE this variant is the largest
+enum Enum5 {
+    L(isize, isize, isize, isize), //~ WARNING three times larger
     M(isize),
     N
 }
@@ -33,7 +33,7 @@ enum Enum6<T, U> {
     Q(isize)
 }
 
-#[allow(enum_size_variance)]
+#[allow(variant_size_differences)]
 enum Enum7 {
     R(isize, isize, isize, isize),
     S(isize),
