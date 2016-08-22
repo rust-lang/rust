@@ -13,5 +13,7 @@ enum Homura {
 }
 
 fn main() {
-    let homura = Homura::Madoka; //~ ERROR uses it like a function
+    let homura = Homura::Madoka;
+    //~^ ERROR uses it like a function
+    //~| struct called like a function
 }
