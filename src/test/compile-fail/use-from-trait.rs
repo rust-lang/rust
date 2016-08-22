@@ -18,10 +18,12 @@ use Trait::C;
 //~^ ERROR `C` is not directly importable
 
 use Foo::new;
-//~^ ERROR unresolved import `Foo::new`. Not a module `Foo`
+//~^ ERROR unresolved import `Foo::new` [E0432]
+//~| Not a module `Foo`
 
 use Foo::C2;
-//~^ ERROR unresolved import `Foo::C2`. Not a module `Foo`
+//~^ ERROR unresolved import `Foo::C2` [E0432]
+//~| Not a module `Foo`
 
 pub trait Trait {
     fn foo();

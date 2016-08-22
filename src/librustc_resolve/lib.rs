@@ -418,10 +418,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
         }
         ResolutionError::UnresolvedImport(name) => {
             let msg = match name {
-                Some((n, p)) => format!("unresolved import `{}`{}", n, p),
+                Some((n, _)) => format!("unresolved import `{}`", n),
                 None => "unresolved import".to_owned(),
             };
-            struct_span_err!(resolver.session, span, E0432, "{}", msg)
+            let mut err = struct_span_err!(resolver.session, span, E0432, "{}", msg);
+            if let Some((_, p)) = name {
+                err.span_label(span, &p);
+            }
+            err
         }
         ResolutionError::FailedToResolve(msg) => {
             let mut err = struct_span_err!(resolver.session, span, E0433,
