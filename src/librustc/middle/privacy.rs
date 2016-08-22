@@ -23,9 +23,8 @@ use syntax::ast::NodeId;
 pub enum AccessLevel {
     // Exported items + items participating in various kinds of public interfaces,
     // but not directly nameable. For example, if function `fn f() -> T {...}` is
-    // public, then type `T` is exported. Its values can be obtained by other crates
-    // even if the type itseld is not nameable.
-    // FIXME: Mostly unimplemented. Only `type` aliases export items currently.
+    // public, then type `T` is reachable. Its values can be obtained by other crates
+    // even if the type itself is not nameable.
     Reachable,
     // Public items + items accessible to other crates with help of `pub use` reexports
     Exported,
