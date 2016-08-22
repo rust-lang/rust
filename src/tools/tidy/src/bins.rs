@@ -24,6 +24,7 @@ pub fn check(_path: &Path, _bad: &mut bool) {}
 #[cfg(unix)]
 pub fn check(path: &Path, bad: &mut bool) {
     use std::fs;
+    use std::process::{Command, Stdio};
     use std::os::unix::prelude::*;
 
     super::walk(path,
@@ -37,8 +38,22 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         let metadata = t!(fs::symlink_metadata(&file), &file);
         if metadata.mode() & 0o111 != 0 {
-            println!("binary checked into source: {}", file.display());
-            *bad = true;
+            let rel_path = file.strip_prefix(path).unwrap();
+            let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
+            let ret_code = Command::new("git")
+                                        .arg("ls-files")
+                                        .arg(&git_friendly_path)
+                                        .current_dir(path)
+                                        .stdout(Stdio::null())
+                                        .stderr(Stdio::null())
+                                        .status()
+                                        .unwrap_or_else(|e| {
+                                            panic!("could not run git ls-files: {}", e);
+                                        });
+            if ret_code.success() {
+                println!("binary checked into source: {}", file.display());
+                *bad = true;
+            }
         }
     })
 }
