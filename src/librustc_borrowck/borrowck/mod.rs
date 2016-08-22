@@ -914,9 +914,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
             mc::AliasableStatic |
             mc::AliasableStaticMut => {
-                struct_span_err!(
+                let mut err = struct_span_err!(
                     self.tcx.sess, span, E0388,
-                    "{} in a static location", prefix)
+                    "{} in a static location", prefix);
+                err.span_label(span, &format!("cannot write data in a static definition"));
+                err
             }
             mc::AliasableBorrowed => {
                 struct_span_err!(
