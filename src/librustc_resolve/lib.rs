@@ -392,11 +392,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::UndeclaredLabel(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0426,
-                             "use of undeclared label `{}`",
-                             name)
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0426,
+                                           "use of undeclared label `{}`",
+                                           name);
+            err.span_label(span, &format!("undeclared label `{}`",&name));
+            err
         }
         ResolutionError::SelfImportsOnlyAllowedWithin => {
             struct_span_err!(resolver.session,
