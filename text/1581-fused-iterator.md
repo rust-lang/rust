@@ -190,6 +190,12 @@ impl<I> Iterator for Fuse<I> where I: FusedIterator {
 3. Fuse isn't used very often anyways. However, I would argue that it should be
    used more often and people are just playing fast and loose. I'm hoping that
    making `Fuse` free when unneeded will encourage people to use it when they should.
+4. This trait locks implementors into following the `FusedIterator` spec;
+   removing the `FusedIterator` implementation would be a breaking change. This
+   precludes future optimizations that take advantage of the fact that the
+   behavior of an `Iterator` is undefined after it returns `None` the first
+   time.
+
 
 # Alternatives
 
@@ -268,9 +274,11 @@ change.
 [unresolved]: #unresolved-questions
 
 Should this trait be unsafe? I can't think of any way generic unsafe code could
-end up relying on the guarantees of `Fused`.
+end up relying on the guarantees of `FusedIterator`.
 
-Also, it's possible to implement the specialized `Fuse` struct without a useless
-`don` bool. Unfortunately, it's *very* messy. IMO, this is not worth it for now
+~~Also, it's possible to implement the specialized `Fuse` struct without a useless
+`done` bool. Unfortunately, it's *very* messy. IMO, this is not worth it for now
 and can always be fixed in the future as it doesn't change the `FusedIterator`
-trait.
+trait.~~ Resolved: It's not possible to remove the `done` bool without making
+`Fuse` invariant.
+
