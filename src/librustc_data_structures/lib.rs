@@ -30,8 +30,8 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
-#![feature(libc)]
 
+#![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
 
 extern crate core;
