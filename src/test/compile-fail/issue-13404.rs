@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use a::f;
-use b::f;
-//~^ ERROR: unresolved import `b::f`. There is no `f` in `b`
+use b::f; //~ ERROR: unresolved import `b::f` [E0432]
+          //~^ no `f` in `b`
 
 mod a { pub fn f() {} }
 mod b { }

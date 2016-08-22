@@ -336,12 +336,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0423,
                              "`{}` is the name of a struct or struct variant, but this expression \
                              uses it like a function name",
-                             path_name)
+                             path_name);
+            err.span_label(span, &format!("struct called like a function"));
+            err
         }
         ResolutionError::SelfNotAvailableInStaticMethod => {
             struct_span_err!(resolver.session,
@@ -418,10 +420,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
         }
         ResolutionError::UnresolvedImport(name) => {
             let msg = match name {
-                Some((n, p)) => format!("unresolved import `{}`{}", n, p),
+                Some((n, _)) => format!("unresolved import `{}`", n),
                 None => "unresolved import".to_owned(),
             };
-            struct_span_err!(resolver.session, span, E0432, "{}", msg)
+            let mut err = struct_span_err!(resolver.session, span, E0432, "{}", msg);
+            if let Some((_, p)) = name {
+                err.span_label(span, &p);
+            }
+            err
         }
         ResolutionError::FailedToResolve(msg) => {
             let mut err = struct_span_err!(resolver.session, span, E0433,

@@ -15,8 +15,8 @@ extern crate issue_12612_1 as foo;
 use foo::bar;
 
 mod test {
-    use bar::foo;
-    //~^ ERROR unresolved import `bar::foo`. Maybe a missing `extern crate bar`?
+    use bar::foo; //~ ERROR unresolved import `bar::foo` [E0432]
+                  //~^ Maybe a missing `extern crate bar`?
 }
 
 fn main() {}

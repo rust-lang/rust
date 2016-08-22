@@ -161,6 +161,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::CastToBool => {
                 struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`")
+                    .span_label(self.span, &format!("unsupported cast"))
                     .help("compare with zero instead")
                     .emit();
             }

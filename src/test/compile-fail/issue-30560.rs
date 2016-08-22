@@ -9,8 +9,12 @@
 // except according to those terms.
 
 type Alias = ();
-use Alias::*; //~ ERROR Not a module
-use std::io::Result::*; //~ ERROR Not a module
+use Alias::*;
+//~^ ERROR unresolved import `Alias::*` [E0432]
+//~| Not a module `Alias`
+use std::io::Result::*;
+//~^ ERROR unresolved import `std::io::Result::*` [E0432]
+//~| Not a module `Result`
 
 trait T {}
 use T::*; //~ ERROR items in traits are not importable
