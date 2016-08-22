@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
-
-impl Foo {
-    fn bar(self) {}
-
-    fn foo() {
-        self.bar();
-        //~^ ERROR `self` is not available in a static method [E0424]
-        //~| NOTE not available in static method
-        //~| NOTE maybe a `self` argument is missing?
-    }
+trait Foo {
+    fn dummy(&self) { }
 }
 
-fn main () {
-}
+pub trait Bar : Foo {} //~ ERROR E0445
+pub struct Bar2<T: Foo>(pub T); //~ ERROR E0445
+pub fn foo<T: Foo> (t: T) {} //~ ERROR E0445
+
+fn main() {}

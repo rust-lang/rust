@@ -8,18 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+#[link(name = "")] extern {} //~ ERROR E0454
 
-impl Foo {
-    fn bar(self) {}
-
-    fn foo() {
-        self.bar();
-        //~^ ERROR `self` is not available in a static method [E0424]
-        //~| NOTE not available in static method
-        //~| NOTE maybe a `self` argument is missing?
-    }
-}
-
-fn main () {
+fn main() {
 }

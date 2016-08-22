@@ -901,7 +901,13 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
-/// An iterator over the value in a `Ok` variant of a `Result`.
+/// An iterator over the value in a `Ok` variant of a `Result`. This struct is
+/// created by the [`into_iter`] method on [`Result`][`Result`] (provided by
+/// the [`IntoIterator`] trait).
+///
+/// [`Result`]: struct.Result.html
+/// [`into_iter`]: ../../std/iter/trait.IntoIterator.html#tymethod.into_iter
+/// [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> { inner: Option<T> }

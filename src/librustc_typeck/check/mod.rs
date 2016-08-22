@@ -708,7 +708,12 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
 
-    fcx.check_block_with_expected(body, ExpectHasType(fcx.ret_ty));
+    let expected = if fcx.ret_ty.is_never() {
+        NoExpectation
+    } else {
+        ExpectHasType(fcx.ret_ty)
+    };
+    fcx.check_block_with_expected(body, expected);
 
     fcx
 }

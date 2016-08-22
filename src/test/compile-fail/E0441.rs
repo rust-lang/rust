@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+#![feature(repr_simd)]
+#![feature(platform_intrinsics)]
 
-impl Foo {
-    fn bar(self) {}
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
 
-    fn foo() {
-        self.bar();
-        //~^ ERROR `self` is not available in a static method [E0424]
-        //~| NOTE not available in static method
-        //~| NOTE maybe a `self` argument is missing?
-    }
+extern "platform-intrinsic" {
+    fn x86_mm_adds_ep16(x: i16x8, y: i16x8) -> i16x8; //~ ERROR E0441
 }
 
-fn main () {
-}
+fn main() {}

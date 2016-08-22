@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+struct Bar;
 
-impl Foo {
-    fn bar(self) {}
-
-    fn foo() {
-        self.bar();
-        //~^ ERROR `self` is not available in a static method [E0424]
-        //~| NOTE not available in static method
-        //~| NOTE maybe a `self` argument is missing?
-    }
+trait Foo {
+    fn foo();
 }
 
-fn main () {
+pub impl Bar {} //~ ERROR E0449
+
+pub impl Foo for Bar { //~ ERROR E0449
+    pub fn foo() {} //~ ERROR E0449
+}
+
+fn main() {
 }

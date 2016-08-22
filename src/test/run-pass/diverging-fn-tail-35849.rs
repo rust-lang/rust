@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
-
-impl Foo {
-    fn bar(self) {}
-
-    fn foo() {
-        self.bar();
-        //~^ ERROR `self` is not available in a static method [E0424]
-        //~| NOTE not available in static method
-        //~| NOTE maybe a `self` argument is missing?
+fn _assert_sizeof() -> ! {
+    unsafe {
+        ::std::mem::transmute::<f64, [u8; 8]>(panic!())
     }
 }
 
-fn main () {
-}
+fn main() { }
+

@@ -344,11 +344,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              path_name)
         }
         ResolutionError::SelfNotAvailableInStaticMethod => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0424,
-                             "`self` is not available in a static method. Maybe a `self` \
-                             argument is missing?")
+                             "`self` is not available in a static method");
+            err.span_label(span, &format!("not available in static method"));
+            err.note(&format!("maybe a `self` argument is missing?"));
+            err
         }
         ResolutionError::UnresolvedName { path, message: msg, context, is_static_method,
                                           is_field, def } => {
@@ -390,11 +392,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::UndeclaredLabel(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0426,
-                             "use of undeclared label `{}`",
-                             name)
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0426,
+                                           "use of undeclared label `{}`",
+                                           name);
+            err.span_label(span, &format!("undeclared label `{}`",&name));
+            err
         }
         ResolutionError::SelfImportsOnlyAllowedWithin => {
             struct_span_err!(resolver.session,

@@ -8,18 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+#![feature(plugin)]
+#![plugin(cookie_monster)] //~ ERROR E0463
+extern crate cake_is_a_lie;
 
-impl Foo {
-    fn bar(self) {}
-
-    fn foo() {
-        self.bar();
-        //~^ ERROR `self` is not available in a static method [E0424]
-        //~| NOTE not available in static method
-        //~| NOTE maybe a `self` argument is missing?
-    }
-}
-
-fn main () {
+fn main() {
 }
