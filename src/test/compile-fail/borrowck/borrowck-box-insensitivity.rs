@@ -71,6 +71,7 @@ fn copy_after_mut_borrow() {
     let _x = &mut a.x;
     //~^ NOTE borrow of `a.x` occurs here
     let _y = a.y; //~ ERROR cannot use
+    //~^ NOTE use of borrowed `a.x`
 }
 
 fn move_after_mut_borrow() {
@@ -141,6 +142,7 @@ fn copy_after_mut_borrow_nested() {
     let _x = &mut a.x.x;
     //~^ NOTE borrow of `a.x.x` occurs here
     let _y = a.y; //~ ERROR cannot use
+    //~^ NOTE use of borrowed `a.x.x`
 }
 
 fn move_after_mut_borrow_nested() {
