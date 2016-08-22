@@ -647,10 +647,13 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 struct_span_err!(self.bccx, span, E0503,
                                  "cannot use `{}` because it was mutably borrowed",
                                  &self.bccx.loan_path_to_string(copy_path))
-                    .span_note(loan_span,
+                    .span_label(loan_span,
                                &format!("borrow of `{}` occurs here",
                                        &self.bccx.loan_path_to_string(&loan_path))
                                )
+                    .span_label(span,
+                               &format!("use of borrowed `{}`",
+                                        &self.bccx.loan_path_to_string(&loan_path)))
                     .emit();
             }
         }

@@ -12,6 +12,7 @@ macro_rules! width(
     ($this:expr) => {
         $this.width.unwrap()
         //~^ ERROR cannot use `self.width` because it was mutably borrowed
+        //~| NOTE use of borrowed `*self`
     }
 );
 

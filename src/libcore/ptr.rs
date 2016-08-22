@@ -128,7 +128,9 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// let x = 12;
 /// let y = &x as *const i32;
 ///
-/// unsafe { println!("{}", std::ptr::read(y)); }
+/// unsafe {
+///     assert_eq!(std::ptr::read(y), 12);
+/// }
 /// ```
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -178,7 +180,7 @@ pub unsafe fn read_and_drop<T>(dest: *mut T) -> T {
 ///
 /// unsafe {
 ///     std::ptr::write(y, z);
-///     println!("{}", std::ptr::read(y));
+///     assert_eq!(std::ptr::read(y), 12);
 /// }
 /// ```
 #[inline]
@@ -220,7 +222,9 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// let x = 12;
 /// let y = &x as *const i32;
 ///
-/// unsafe { println!("{}", std::ptr::read_volatile(y)); }
+/// unsafe {
+///     assert_eq!(std::ptr::read_volatile(y), 12);
+/// }
 /// ```
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
@@ -266,7 +270,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// unsafe {
 ///     std::ptr::write_volatile(y, z);
-///     println!("{}", std::ptr::read_volatile(y));
+///     assert_eq!(std::ptr::read_volatile(y), 12);
 /// }
 /// ```
 #[inline]

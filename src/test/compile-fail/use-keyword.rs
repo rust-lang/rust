@@ -14,9 +14,14 @@
 mod a {
     mod b {
         use self as A; //~ ERROR `self` imports are only allowed within a { } list
-        //~^ ERROR unresolved import `self`. There is no `self` in the crate root
-        use super as B; //~ ERROR unresolved import `super`. There is no `super` in the crate root
-        use super::{self as C}; //~ERROR unresolved import `super`. There is no `super` in the crate
+        //~^ ERROR unresolved import `self` [E0432]
+        //~| no `self` in the root
+        use super as B;
+        //~^ ERROR unresolved import `super` [E0432]
+        //~| no `super` in the root
+        use super::{self as C};
+        //~^ ERROR unresolved import `super` [E0432]
+        //~| no `super` in the root
     }
 }
 

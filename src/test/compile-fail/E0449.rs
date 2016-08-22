@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use a::f;
-use b::f; //~ ERROR: unresolved import `b::f` [E0432]
-          //~^ no `f` in `b`
+struct Bar;
 
-mod a { pub fn f() {} }
-mod b { }
+trait Foo {
+    fn foo();
+}
+
+pub impl Bar {} //~ ERROR E0449
+
+pub impl Foo for Bar { //~ ERROR E0449
+    pub fn foo() {} //~ ERROR E0449
+}
 
 fn main() {
-    f();
 }

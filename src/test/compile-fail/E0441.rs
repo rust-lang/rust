@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use a::f;
-use b::f; //~ ERROR: unresolved import `b::f` [E0432]
-          //~^ no `f` in `b`
+#![feature(repr_simd)]
+#![feature(platform_intrinsics)]
 
-mod a { pub fn f() {} }
-mod b { }
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
 
-fn main() {
-    f();
+extern "platform-intrinsic" {
+    fn x86_mm_adds_ep16(x: i16x8, y: i16x8) -> i16x8; //~ ERROR E0441
 }
+
+fn main() {}

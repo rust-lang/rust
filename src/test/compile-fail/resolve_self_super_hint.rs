@@ -11,16 +11,20 @@
 mod a {
     extern crate collections;
     use collections::HashMap;
-//~^ ERROR unresolved import `collections::HashMap`. Did you mean `self::collections`?
+    //~^ ERROR unresolved import `collections::HashMap` [E0432]
+    //~| Did you mean `self::collections`?
     mod b {
         use collections::HashMap;
-//~^ ERROR unresolved import `collections::HashMap`. Did you mean `a::collections`?
+        //~^ ERROR unresolved import `collections::HashMap` [E0432]
+        //~| Did you mean `a::collections`?
         mod c {
             use collections::HashMap;
-//~^ ERROR unresolved import `collections::HashMap`. Did you mean `a::collections`?
+            //~^ ERROR unresolved import `collections::HashMap` [E0432]
+            //~| Did you mean `a::collections`?
             mod d {
                 use collections::HashMap;
-//~^ ERROR unresolved import `collections::HashMap`. Did you mean `a::collections`?
+                //~^ ERROR unresolved import `collections::HashMap` [E0432]
+                //~| Did you mean `a::collections`?
             }
         }
     }
