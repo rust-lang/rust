@@ -263,6 +263,23 @@ impl<T> Rc<T> {
     }
 
     /// Checks if `Rc::try_unwrap` would return `Ok`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_would_unwrap)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(3);
+    /// assert!(Rc::would_unwrap(&x));
+    /// assert_eq!(Rc::try_unwrap(x), Ok(3));
+    ///
+    /// let x = Rc::new(4);
+    /// let _y = x.clone();
+    /// assert!(!Rc::would_unwrap(&x));
+    /// assert_eq!(Rc::try_unwrap(x), Err(Rc::new(4)));
+    /// ```
     #[unstable(feature = "rc_would_unwrap",
                reason = "just added for niche usecase",
                issue = "28356")]
