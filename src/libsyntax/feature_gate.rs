@@ -959,7 +959,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             ast::ItemKind::Union(..) => {
                 gate_feature_post!(&self, untagged_unions,
                                    i.span,
-                                   "unions are unstable and not fully implemented");
+                                   "unions are unstable and possibly buggy");
             }
 
             ast::ItemKind::DefaultImpl(..) => {
