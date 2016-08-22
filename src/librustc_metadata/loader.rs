@@ -221,6 +221,7 @@ use rustc::session::Session;
 use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use rustc::session::search_paths::PathKind;
 use rustc::util::common;
+use rustc::util::nodemap::FnvHashMap;
 
 use rustc_llvm as llvm;
 use rustc_llvm::{False, ObjectFile, mk_section_iter};
@@ -230,7 +231,6 @@ use syntax_pos::Span;
 use rustc_back::target::Target;
 
 use std::cmp;
-use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::io;
@@ -413,7 +413,7 @@ impl<'a> Context<'a> {
         let rlib_prefix = format!("lib{}", self.crate_name);
         let staticlib_prefix = format!("{}{}", staticpair.0, self.crate_name);
 
-        let mut candidates = HashMap::new();
+        let mut candidates = FnvHashMap();
         let mut staticlibs = vec!();
 
         // First, find all possible candidate rlibs and dylibs purely based on
@@ -456,7 +456,7 @@ impl<'a> Context<'a> {
 
             let hash_str = hash.to_string();
             let slot = candidates.entry(hash_str)
-                                 .or_insert_with(|| (HashMap::new(), HashMap::new()));
+                                 .or_insert_with(|| (FnvHashMap(), FnvHashMap()));
             let (ref mut rlibs, ref mut dylibs) = *slot;
             fs::canonicalize(path).map(|p| {
                 if rlib {
@@ -477,7 +477,7 @@ impl<'a> Context<'a> {
         // A Library candidate is created if the metadata for the set of
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
-        let mut libraries = HashMap::new();
+        let mut libraries = FnvHashMap();
         for (_hash, (rlibs, dylibs)) in candidates {
             let mut slot = None;
             let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
@@ -527,7 +527,7 @@ impl<'a> Context<'a> {
     // read the metadata from it if `*slot` is `None`. If the metadata couldn't
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
-    fn extract_one(&mut self, m: HashMap<PathBuf, PathKind>, flavor: CrateFlavor,
+    fn extract_one(&mut self, m: FnvHashMap<PathBuf, PathKind>, flavor: CrateFlavor,
                    slot: &mut Option<(Svh, MetadataBlob)>) -> Option<(PathBuf, PathKind)> {
         let mut ret: Option<(PathBuf, PathKind)> = None;
         let mut error = 0;
@@ -669,8 +669,8 @@ impl<'a> Context<'a> {
         // rlibs/dylibs.
         let sess = self.sess;
         let dylibname = self.dylibname();
-        let mut rlibs = HashMap::new();
-        let mut dylibs = HashMap::new();
+        let mut rlibs = FnvHashMap();
+        let mut dylibs = FnvHashMap();
         {
             let locs = locs.map(|l| PathBuf::from(l)).filter(|loc| {
                 if !loc.exists() {
