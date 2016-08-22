@@ -108,13 +108,6 @@ macro_rules! help {
 }
 
 #[macro_export]
-macro_rules! unimplemented_unions {
-    () => ({
-        panic!("unions are not fully implemented");
-    })
-}
-
-#[macro_export]
 macro_rules! register_diagnostics {
     ($($code:tt),*) => (
         $(register_diagnostic! { $code })*

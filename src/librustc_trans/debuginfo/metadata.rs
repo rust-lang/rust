@@ -786,7 +786,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     usage_site_span).finalize(cx)
         }
         ty::TyUnion(..) => {
-            unimplemented_unions!();
+            unimplemented!();
         }
         ty::TyTuple(ref elements) => {
             prepare_tuple_metadata(cx,
@@ -1302,9 +1302,6 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     ]
                 }
             }
-            adt::UntaggedUnion(..) => {
-                unimplemented_unions!();
-            }
             adt::RawNullablePointer { nndiscr: non_null_variant_index, nnty, .. } => {
                 // As far as debuginfo is concerned, the pointer this enum
                 // represents is still wrapped in a struct. This is to make the
@@ -1421,7 +1418,9 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 ]
             },
-            adt::CEnum(..) => span_bug!(self.span, "This should be unreachable.")
+            adt::CEnum(..) | adt::UntaggedUnion(..) => {
+                span_bug!(self.span, "This should be unreachable.")
+            }
         }
     }
 }

@@ -385,8 +385,9 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     fn check_field(&mut self, span: Span, def: ty::AdtDef<'tcx>, field: ty::FieldDef<'tcx>) {
         if def.adt_kind() != ty::AdtKind::Enum &&
            !field.vis.is_accessible_from(self.curitem, &self.tcx.map) {
-            struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of struct `{}` is private",
-                      field.name, self.tcx.item_path_str(def.did))
+            let kind_descr = if def.adt_kind() == ty::AdtKind::Union { "union" } else { "struct" };
+            struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
+                      field.name, kind_descr, self.tcx.item_path_str(def.did))
                 .span_label(span, &format!("field `{}` is private", field.name))
                 .emit();
         }

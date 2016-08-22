@@ -516,7 +516,7 @@ fn mk_union<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     Union {
         min_size: min_size,
-        align: align,
+        align: if packed { 1 } else { align },
         packed: packed,
         fields: tys.to_vec(),
     }
@@ -1176,8 +1176,10 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             contents.extend_from_slice(&[padding(ccx, max_sz - case.size)]);
             C_struct(ccx, &contents[..], false)
         }
-        UntaggedUnion(..) => {
-            unimplemented_unions!();
+        UntaggedUnion(ref un) => {
+            assert_eq!(discr, Disr(0));
+            let contents = build_const_union(ccx, un, vals[0]);
+            C_struct(ccx, &contents, un.packed)
         }
         Univariant(ref st) => {
             assert_eq!(discr, Disr(0));
@@ -1267,6 +1269,21 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     assert!(st.sized && offset <= st.size);
     if offset != st.size {
         cfields.push(padding(ccx, st.size - offset));
+    }
+
+    cfields
+}
+
+fn build_const_union<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               un: &Union<'tcx>,
+                               field_val: ValueRef)
+                               -> Vec<ValueRef> {
+    let mut cfields = vec![field_val];
+
+    let offset = machine::llsize_of_alloc(ccx, val_ty(field_val));
+    let size = roundup(un.min_size, un.align);
+    if offset != size {
+        cfields.push(padding(ccx, size - offset));
     }
 
     cfields
