@@ -559,3 +559,16 @@ pub struct Foo {
   crates twice, once as `rustc-macro` and once as an rlib. Does Cargo have
   enough information to do this? Are the extensions needed here
   backwards-compatible?
+
+* What sort of guarantees will be provided about the runtime environment for
+  plugins? Are they sandboxed? Are they run in the same process?
+
+* Should the name of this library be `rustc_macros`? The `rustc_` prefix
+  normally means "private". Other alternatives are `macro` (make it a contextual
+  keyword), `macros`, `proc_macro`.
+
+* Should a `Context` or similar style argument be threaded through the APIs?
+  Right now they sort of implicitly require one to be threaded through
+  thread-local-storage.
+
+* Should the APIs here be namespaced, perhaps with a `_1_1` suffix?
