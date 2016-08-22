@@ -523,26 +523,34 @@ div_impl_float! { f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Rem`. When `Foo % Foo` happens, it ends up
-/// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
+/// This example implements `Rem` on a `SplitSlice` object. After `Rem` is
+/// implemented, one can use the `%` operator to find out what the remaining
+/// elements of the slice would be after splitting it into equal slices of a
+/// given length.
 ///
 /// ```
 /// use std::ops::Rem;
 ///
-/// struct Foo;
+/// #[derive(PartialEq, Debug)]
+/// struct SplitSlice<'a, T: 'a> {
+///     slice: &'a [T],
+/// }
 ///
-/// impl Rem for Foo {
-///     type Output = Foo;
+/// impl<'a, T> Rem<usize> for SplitSlice<'a, T> {
+///     type Output = SplitSlice<'a, T>;
 ///
-///     fn rem(self, _rhs: Foo) -> Foo {
-///         println!("Remainder-ing!");
-///         self
+///     fn rem(self, modulus: usize) -> Self {
+///         let len = self.slice.len();
+///         let rem = len % modulus;
+///         let start = len - rem;
+///         SplitSlice {slice: &self.slice[start..]}
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo % Foo;
-/// }
+/// // If we were to divide &[0, 1, 2, 3, 4, 5, 6, 7] into slices of size 3,
+/// // the remainder would be &[6, 7]
+/// assert_eq!(SplitSlice { slice: &[0, 1, 2, 3, 4, 5, 6, 7] } % 3,
+///            SplitSlice { slice: &[6, 7] });
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
