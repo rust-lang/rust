@@ -653,7 +653,6 @@ impl From<[u8; 16]> for Ipv6Addr {
 // Tests for this module
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use net::*;
     use net::Ipv6MulticastScope::*;
     use net::test::{tsa, sa6, sa4};

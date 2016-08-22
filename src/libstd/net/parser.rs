@@ -13,8 +13,6 @@
 //! This module is "publicly exported" through the `FromStr` implementations
 //! below.
 
-use prelude::v1::*;
-
 use error::Error;
 use fmt;
 use net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};

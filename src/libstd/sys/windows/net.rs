@@ -10,8 +10,6 @@
 
 #![unstable(issue = "0", feature = "windows_net")]
 
-use prelude::v1::*;
-
 use cmp;
 use io::{self, Read};
 use libc::{c_int, c_void, c_ulong};

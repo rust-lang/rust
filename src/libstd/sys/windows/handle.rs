@@ -10,8 +10,6 @@
 
 #![unstable(issue = "0", feature = "windows_handle")]
 
-use prelude::v1::*;
-
 use cmp;
 use io::{ErrorKind, Read};
 use io;

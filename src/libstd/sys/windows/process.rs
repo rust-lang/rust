@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use ascii::*;
 use collections::HashMap;
 use collections;
@@ -491,7 +489,6 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use ffi::{OsStr, OsString};
     use super::make_command_line;
 

@@ -14,9 +14,6 @@
 use borrow::Cow;
 use fmt::{self, Debug};
 use sys_common::wtf8::{Wtf8, Wtf8Buf};
-use string::String;
-use result::Result;
-use option::Option;
 use mem;
 use sys_common::{AsInner, IntoInner};
 

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
 use io::prelude::*;
 
 use fmt;
@@ -438,8 +437,6 @@ impl fmt::Debug for TcpListener {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use io::ErrorKind;
     use io::prelude::*;
     use net::*;

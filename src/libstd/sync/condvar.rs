@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use sync::atomic::{AtomicUsize, Ordering};
 use sync::{mutex, MutexGuard, PoisonError};
 use sys_common::condvar as sys;
@@ -245,8 +243,6 @@ impl Drop for Condvar {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use sync::mpsc::channel;
     use sync::{Condvar, Mutex, Arc};
     use thread;

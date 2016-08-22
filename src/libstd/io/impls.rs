@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use boxed::Box;
 use cmp;
 use io::{self, SeekFrom, Read, Write, Seek, BufRead, Error, ErrorKind};
 use fmt;
 use mem;
-use string::String;
-use vec::Vec;
 
 // =============================================================================
 // Forwarding implementations
@@ -228,7 +225,6 @@ impl Write for Vec<u8> {
 #[cfg(test)]
 mod tests {
     use io::prelude::*;
-    use vec::Vec;
     use test;
 
     #[bench]

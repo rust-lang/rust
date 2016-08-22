@@ -21,8 +21,6 @@
 
 #![allow(dead_code)] // different code on OSX/linux/etc
 
-use vec::Vec;
-
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) { imp::init(argc, argv) }
 
@@ -42,8 +40,6 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
           target_os = "solaris",
           target_os = "emscripten"))]
 mod imp {
-    use prelude::v1::*;
-
     use libc::c_char;
     use mem;
     use ffi::CStr;
@@ -91,8 +87,6 @@ mod imp {
           target_os = "ios",
           target_os = "windows"))]
 mod imp {
-    use vec::Vec;
-
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
     }
 

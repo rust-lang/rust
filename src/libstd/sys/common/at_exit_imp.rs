@@ -13,10 +13,8 @@
 //! Documentation can be found on the `rt::at_exit` function.
 
 use alloc::boxed::FnBox;
-use boxed::Box;
 use ptr;
 use sys_common::mutex::Mutex;
-use vec::Vec;
 
 type Queue = Vec<Box<FnBox()>>;
 

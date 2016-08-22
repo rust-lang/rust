@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow::{Borrow, Cow, ToOwned};
+use borrow::{Borrow, Cow};
 use fmt::{self, Debug};
 use mem;
-use string::String;
 use ops;
 use cmp;
 use hash::{Hash, Hasher};
-use vec::Vec;
 
 use sys::os_str::{Buf, Slice};
 use sys_common::{AsInner, IntoInner, FromInner};

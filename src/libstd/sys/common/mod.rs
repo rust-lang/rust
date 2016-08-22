@@ -10,7 +10,6 @@
 
 #![allow(missing_docs)]
 
-use boxed::Box;
 use sync::Once;
 use sys;
 

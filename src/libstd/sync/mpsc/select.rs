@@ -369,8 +369,6 @@ impl<'rx, T:Send+'rx> fmt::Debug for Handle<'rx, T> {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
-    use prelude::v1::*;
-
     use thread;
     use sync::mpsc::*;
 
