@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 166 lints included in this crate:
+There are 167 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -42,6 +42,7 @@ name                                                                            
 [clone_double_ref](https://github.com/Manishearth/rust-clippy/wiki#clone_double_ref)                                 | warn    | using `clone` on `&&T`
 [clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#clone_on_copy)                                       | warn    | using `clone` on a `Copy` type
 [cmp_nan](https://github.com/Manishearth/rust-clippy/wiki#cmp_nan)                                                   | deny    | comparisons to NAN, which will always return false, probably not intended
+[cmp_null](https://github.com/Manishearth/rust-clippy/wiki#cmp_null)                                                 | warn    | comparing a pointer to a null pointer, suggesting to use `.is_null()` instead.
 [cmp_owned](https://github.com/Manishearth/rust-clippy/wiki#cmp_owned)                                               | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
 [collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                                     | warn    | `if`s that can be collapsed (e.g. `if x { if y { ... } }` and `else { if x { ... } }`)
 [crosspointer_transmute](https://github.com/Manishearth/rust-clippy/wiki#crosspointer_transmute)                     | warn    | transmutes that have to or from types that are a pointer to the other
@@ -131,7 +132,7 @@ name                                                                            
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                             | warn    | operations where precedence may be unclear
 [print_stdout](https://github.com/Manishearth/rust-clippy/wiki#print_stdout)                                         | allow   | printing on stdout
 [print_with_newline](https://github.com/Manishearth/rust-clippy/wiki#print_with_newline)                             | warn    | using `print!()` with a format string that ends in a newline
-[ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                                   | warn    | arguments of the type `&Vec<...>` (instead of `&[...]`) or `&String` (instead of `&str`)
+[ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                                   | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)                             | warn    | using `Range::step_by(0)`, which produces an infinite iterator
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                             | warn    | zipping iterator with a range when `enumerate()` would do
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                               | warn    | redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)

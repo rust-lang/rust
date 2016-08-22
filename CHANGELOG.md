@@ -180,6 +180,7 @@ All notable changes to this project will be documented in this file.
 [`clone_double_ref`]: https://github.com/Manishearth/rust-clippy/wiki#clone_double_ref
 [`clone_on_copy`]: https://github.com/Manishearth/rust-clippy/wiki#clone_on_copy
 [`cmp_nan`]: https://github.com/Manishearth/rust-clippy/wiki#cmp_nan
+[`cmp_null`]: https://github.com/Manishearth/rust-clippy/wiki#cmp_null
 [`cmp_owned`]: https://github.com/Manishearth/rust-clippy/wiki#cmp_owned
 [`collapsible_if`]: https://github.com/Manishearth/rust-clippy/wiki#collapsible_if
 [`crosspointer_transmute`]: https://github.com/Manishearth/rust-clippy/wiki#crosspointer_transmute

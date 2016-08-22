@@ -112,7 +112,7 @@ pub mod overflow_check_conditional;
 pub mod panic;
 pub mod precedence;
 pub mod print;
-pub mod ptr_arg;
+pub mod ptr;
 pub mod ranges;
 pub mod regex;
 pub mod returns;
@@ -182,7 +182,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
     reg.register_late_lint_pass(box enum_clike::UnportableVariant);
     reg.register_late_lint_pass(box bit_mask::BitMask);
-    reg.register_late_lint_pass(box ptr_arg::PtrArg);
+    reg.register_late_lint_pass(box ptr::PointerPass);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
     reg.register_late_lint_pass(box needless_bool::BoolComparison);
     reg.register_late_lint_pass(box approx_const::Pass);
@@ -405,7 +405,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         panic::PANIC_PARAMS,
         precedence::PRECEDENCE,
         print::PRINT_WITH_NEWLINE,
-        ptr_arg::PTR_ARG,
+        ptr::CMP_NULL,
+        ptr::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,
         regex::INVALID_REGEX,
