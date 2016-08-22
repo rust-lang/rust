@@ -74,9 +74,9 @@ impl FileDesc {
     pub fn write_offset(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::pwrite(self.fd,
-                        buf.as_ptr() as *const c_void,
-                        buf.len(),
-                        offset as off_t)
+                         buf.as_ptr() as *const c_void,
+                         buf.len(),
+                         offset as off_t)
         })?;
         Ok(ret as usize)
     }

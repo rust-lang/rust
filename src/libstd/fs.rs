@@ -1918,6 +1918,53 @@ mod tests {
     }
 
     #[test]
+    fn file_test_io_read_write_offset() {
+        let tmpdir = tmpdir();
+        let filename = tmpdir.join("file_rt_io_file_test_read_write_offset.txt");
+        let mut buf = [0; 256];
+        let write1 = "asdf";
+        let write2 = "qwer-";
+        let write3 = "-zxcv";
+        let content = "qwer-asdf-zxcv";
+        {
+            let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+            let mut rw = check!(oo.open(&filename));
+            assert_eq!(check!(rw.write_offset(write1.as_bytes(), 5)), write1.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 0);
+            assert_eq!(check!(rw.read_offset(&mut buf, 5)), write1.len());
+            assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 0);
+            assert_eq!(check!(rw.write(write2.as_bytes())), write2.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 5);
+            assert_eq!(check!(rw.read(&mut buf)), write1.len());
+            assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(rw.read_offset(&mut buf[..write2.len()], 0)), write2.len());
+            assert_eq!(str::from_utf8(&buf[..write2.len()]), Ok(write2));
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(rw.write_offset(write3.as_bytes(), 9)), write3.len());
+            assert_eq!(check!(rw.seek(SeekFrom::Current(0))), 9);
+        }
+        {
+            let mut read = check!(File::open(&filename));
+            assert_eq!(check!(read.read_offset(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 0);
+            assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
+            assert_eq!(check!(read.read_offset(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 9);
+            assert_eq!(check!(read.read(&mut buf)), write3.len());
+            assert_eq!(str::from_utf8(&buf[..write3.len()]), Ok(write3));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+            assert_eq!(check!(read.read_offset(&mut buf, 0)), content.len());
+            assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+            assert_eq!(check!(read.seek(SeekFrom::Current(0))), 14);
+        }
+        check!(fs::remove_file(&filename));
+    }
+
+    #[test]
     fn file_test_stat_is_correct_on_is_file() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_file.txt");
