@@ -14,6 +14,7 @@ trait Foo {}
 
 impl Foo for i32 {
     const BAR: bool = true; //~ ERROR E0438
+        //~| NOTE not a member of trait `Foo`
 }
 
 fn main () {
