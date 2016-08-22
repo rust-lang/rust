@@ -50,3 +50,16 @@ fn main() {
     g::foo(); //~ ERROR `foo` is ambiguous
               //~| NOTE Consider adding an explicit import of `foo` to disambiguate
 }
+
+mod ambiguous_module_errors {
+    pub mod m1 { pub use super::m1 as foo; }
+    pub mod m2 { pub use super::m2 as foo; }
+
+    use self::m1::*; //~ NOTE
+    use self::m2::*; //~ NOTE
+
+    fn f() {
+        foo::bar(); //~ ERROR `foo` is ambiguous
+                    //~| NOTE
+    }
+}

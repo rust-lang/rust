@@ -1065,6 +1065,7 @@ pub struct Resolver<'a> {
     pub maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
+    ambiguity_errors: Vec<(Span, Name, &'a NameBinding<'a>)>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1218,6 +1219,7 @@ impl<'a> Resolver<'a> {
             maybe_unused_trait_imports: NodeSet(),
 
             privacy_errors: Vec::new(),
+            ambiguity_errors: Vec::new(),
 
             arenas: arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
@@ -1245,7 +1247,7 @@ impl<'a> Resolver<'a> {
         visit::walk_crate(self, krate);
 
         check_unused::check_crate(self, krate);
-        self.report_privacy_errors();
+        self.report_errors();
     }
 
     fn new_module(&self, parent_link: ParentLink<'a>, def: Option<Def>, normal_ancestor_id: NodeId)
@@ -1276,14 +1278,8 @@ impl<'a> Resolver<'a> {
             self.add_to_glob_map(directive.id, name);
         }
 
-        if let Some((b1, b2)) = binding.ambiguity() {
-            let msg1 = format!("`{}` could resolve to the name imported here", name);
-            let msg2 = format!("`{}` could also resolve to the name imported here", name);
-            self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
-                .span_note(b1.span, &msg1)
-                .span_note(b2.span, &msg2)
-                .note(&format!("Consider adding an explicit import of `{}` to disambiguate", name))
-                .emit();
+        if binding.ambiguity().is_some() {
+            self.ambiguity_errors.push((span, name, binding));
             return true;
         }
 
@@ -3289,9 +3285,21 @@ impl<'a> Resolver<'a> {
         vis.is_accessible_from(module.normal_ancestor_id, self)
     }
 
-    fn report_privacy_errors(&self) {
-        if self.privacy_errors.len() == 0 { return }
+    fn report_errors(&self) {
         let mut reported_spans = FnvHashSet();
+
+        for &(span, name, binding) in &self.ambiguity_errors {
+            if !reported_spans.insert(span) { continue }
+            let (b1, b2) = binding.ambiguity().unwrap();
+            let msg1 = format!("`{}` could resolve to the name imported here", name);
+            let msg2 = format!("`{}` could also resolve to the name imported here", name);
+            self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
+                .span_note(b1.span, &msg1)
+                .span_note(b2.span, &msg2)
+                .note(&format!("Consider adding an explicit import of `{}` to disambiguate", name))
+                .emit();
+        }
+
         for &PrivacyError(span, name, binding) in &self.privacy_errors {
             if !reported_spans.insert(span) { continue }
             if binding.is_extern_crate() {
