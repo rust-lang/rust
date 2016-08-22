@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use bar::Foo; //~ ERROR There is no `Foo` in `bar` [E0432]
+use bar::Foo; //~ ERROR unresolved import `bar::Foo` [E0432]
+              //~^ no `Foo` in `bar`
 mod bar {
-    use Foo; //~ ERROR There is no `Foo` in the crate root [E0432]
+    use Foo; //~ ERROR unresolved import `Foo` [E0432]
+             //~^ no `Foo` in the root
 }
 
 fn main() {}

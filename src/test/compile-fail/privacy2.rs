@@ -25,12 +25,14 @@ pub fn foo() {}
 
 fn test1() {
     use bar::foo;
-    //~^ ERROR unresolved import `bar::foo`. There is no `foo` in `bar`
+    //~^ ERROR unresolved import `bar::foo` [E0432]
+    //~| no `foo` in `bar`
 }
 
 fn test2() {
     use bar::glob::foo;
-    //~^ ERROR unresolved import `bar::glob::foo`. There is no `foo` in `bar::glob`
+    //~^ ERROR unresolved import `bar::glob::foo` [E0432]
+    //~| no `foo` in `bar::glob`
 }
 
 #[start] fn main(_: isize, _: *const *const u8) -> isize { 3 }

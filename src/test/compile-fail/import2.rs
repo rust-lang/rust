@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use baz::zed::bar;
-//~^ ERROR unresolved import `baz::zed::bar`. Could not find `zed` in `baz`
+use baz::zed::bar; //~ ERROR unresolved import `baz::zed::bar` [E0432]
+                   //~^ Could not find `zed` in `baz`
 
 mod baz {}
 mod zed {
