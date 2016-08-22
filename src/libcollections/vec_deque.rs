@@ -2332,9 +2332,6 @@ impl<T> From<VecDeque<T>> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use core::iter::Iterator;
-    use core::option::Option::Some;
-
     use test;
 
     use super::VecDeque;
