@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {}
-
-impl Foo for i32 {
-    type Bar = bool; //~ ERROR E0437
-    //~| NOTE not a member of trait `Foo`
+mod Bar {
+    pub struct Foo {
+        pub a: isize,
+        b: isize,
+    }
 }
 
-fn main () {
+fn main() {
+    let f = Bar::Foo{ a: 0, b: 0 }; //~ ERROR E0451
 }

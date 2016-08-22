@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {}
+#![allow(foo = "")] //~ ERROR E0452
 
-impl Foo for i32 {
-    type Bar = bool; //~ ERROR E0437
-    //~| NOTE not a member of trait `Foo`
-}
-
-fn main () {
+fn main() {
 }

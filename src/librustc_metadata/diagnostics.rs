@@ -14,7 +14,7 @@ register_long_diagnostics! {
 E0454: r##"
 A link name was given with an empty name. Erroneous code example:
 
-```
+```compile_fail,E0454
 #[link(name = "")] extern {} // error: #[link(name = "")] given with empty name
 ```
 
@@ -32,7 +32,7 @@ as frameworks are specific to that operating system.
 
 Erroneous code example:
 
-```compile_fail"
+```compile_fail,E0455
 #[link(name = "FooCoreServices",  kind = "framework")] extern {}
 // OS used to compile is Linux for example
 ```
@@ -50,7 +50,7 @@ See more: https://doc.rust-lang.org/book/conditional-compilation.html
 E0458: r##"
 An unknown "kind" was specified for a link attribute. Erroneous code example:
 
-```
+```compile_fail,E0458
 #[link(kind = "wonderful_unicorn")] extern {}
 // error: unknown kind: `wonderful_unicorn`
 ```
@@ -64,7 +64,7 @@ Please specify a valid "kind" value, from one of the following:
 E0459: r##"
 A link was used without a name parameter. Erroneous code example:
 
-```
+```compile_fail,E0459
 #[link(kind = "dylib")] extern {}
 // error: #[link(...)] specified without `name = "foo"`
 ```
@@ -80,7 +80,7 @@ you want. Example:
 E0463: r##"
 A plugin/crate was declared but cannot be found. Erroneous code example:
 
-```
+```compile_fail,E0463
 #![feature(plugin)]
 #![plugin(cookie_monster)] // error: can't find crate for `cookie_monster`
 extern crate cake_is_a_lie; // error: can't find crate for `cake_is_a_lie`

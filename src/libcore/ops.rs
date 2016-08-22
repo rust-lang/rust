@@ -486,26 +486,34 @@ div_impl_float! { f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Rem`. When `Foo % Foo` happens, it ends up
-/// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
+/// This example implements `Rem` on a `SplitSlice` object. After `Rem` is
+/// implemented, one can use the `%` operator to find out what the remaining
+/// elements of the slice would be after splitting it into equal slices of a
+/// given length.
 ///
 /// ```
 /// use std::ops::Rem;
 ///
-/// struct Foo;
+/// #[derive(PartialEq, Debug)]
+/// struct SplitSlice<'a, T: 'a> {
+///     slice: &'a [T],
+/// }
 ///
-/// impl Rem for Foo {
-///     type Output = Foo;
+/// impl<'a, T> Rem<usize> for SplitSlice<'a, T> {
+///     type Output = SplitSlice<'a, T>;
 ///
-///     fn rem(self, _rhs: Foo) -> Foo {
-///         println!("Remainder-ing!");
-///         self
+///     fn rem(self, modulus: usize) -> Self {
+///         let len = self.slice.len();
+///         let rem = len % modulus;
+///         let start = len - rem;
+///         SplitSlice {slice: &self.slice[start..]}
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo % Foo;
-/// }
+/// // If we were to divide &[0, 1, 2, 3, 4, 5, 6, 7] into slices of size 3,
+/// // the remainder would be &[6, 7]
+/// assert_eq!(SplitSlice { slice: &[0, 1, 2, 3, 4, 5, 6, 7] } % 3,
+///            SplitSlice { slice: &[6, 7] });
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1490,28 +1498,44 @@ shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Index`. When `Foo[Bar]` happens, it ends up
-/// calling `index`, and therefore, `main` prints `Indexing!`.
+/// This example implements `Index` on a read-only `NucleotideCount` container,
+/// enabling individual counts to be retrieved with index syntax.
 ///
 /// ```
 /// use std::ops::Index;
 ///
-/// #[derive(Copy, Clone)]
-/// struct Foo;
-/// struct Bar;
+/// enum Nucleotide {
+///     A,
+///     C,
+///     G,
+///     T,
+/// }
 ///
-/// impl Index<Bar> for Foo {
-///     type Output = Foo;
+/// struct NucleotideCount {
+///     a: usize,
+///     c: usize,
+///     g: usize,
+///     t: usize,
+/// }
 ///
-///     fn index<'a>(&'a self, _index: Bar) -> &'a Foo {
-///         println!("Indexing!");
-///         self
+/// impl Index<Nucleotide> for NucleotideCount {
+///     type Output = usize;
+///
+///     fn index(&self, nucleotide: Nucleotide) -> &usize {
+///         match nucleotide {
+///             Nucleotide::A => &self.a,
+///             Nucleotide::C => &self.c,
+///             Nucleotide::G => &self.g,
+///             Nucleotide::T => &self.t,
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo[Bar];
-/// }
+/// let nucleotide_count = NucleotideCount {a: 14, c: 9, g: 10, t: 12};
+/// assert_eq!(nucleotide_count[Nucleotide::A], 14);
+/// assert_eq!(nucleotide_count[Nucleotide::C], 9);
+/// assert_eq!(nucleotide_count[Nucleotide::G], 10);
+/// assert_eq!(nucleotide_count[Nucleotide::T], 12);
 /// ```
 #[lang = "index"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]

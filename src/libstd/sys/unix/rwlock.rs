@@ -45,10 +45,10 @@ impl RWLock {
         // We roughly maintain the deadlocking behavior by panicking to ensure
         // that this lock acquisition does not succeed.
         //
-        // We also check whether there this lock is already write locked. This
+        // We also check whether this lock is already write locked. This
         // is only possible if it was write locked by the current thread and
         // the implementation allows recursive locking. The POSIX standard
-        // doesn't require recursivly locking a rwlock to deadlock, but we can't
+        // doesn't require recursively locking a rwlock to deadlock, but we can't
         // allow that because it could lead to aliasing issues.
         if r == libc::EAGAIN {
             panic!("rwlock maximum reader count exceeded");

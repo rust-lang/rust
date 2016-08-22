@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {}
+#![forbid(non_snake_case)]
 
-impl Foo for i32 {
-    type Bar = bool; //~ ERROR E0437
-    //~| NOTE not a member of trait `Foo`
-}
-
-fn main () {
+#[allow(non_snake_case)] //~ ERROR E0453
+fn main() {
 }
