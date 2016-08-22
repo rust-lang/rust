@@ -7,16 +7,16 @@
 [summary]: #summary
 
 A refinement of the Rust planning and reporting process, to establish a shared
-vision of the language we are building toward among contributors, to make clear
-the roadmap toward that vision, and to celebrate our achievements.
+vision of the project among contributors, to make clear the roadmap toward that
+vision, and to celebrate our achievements.
 
 Rust's roadmap will be established in year-long cycles, where we identify up
-front - together, as a project - the most critical problems facing the language,
-along with the story we want to be able to tell the world about Rust. Work
-toward solving those problems, our short-term goals, will be decided in
-quarter-long cycles by individual teams. Goals that result in stable features
-will be assigned to release milestones for the purposes of reporting the project
-roadmap.
+front - together, as a project - the most critical problems facing the language
+and its ecosystem, along with the story we want to be able to tell the world
+about Rust. Work toward solving those problems, our short-term goals, will be
+decided in quarter-long cycles by individual teams. Goals that result in stable
+features will be assigned to release milestones for the purposes of reporting
+the project roadmap.
 
 At the end of the year we will deliver a public facing retrospective, describing
 the goals we achieved and how to use the new features in detail. It will
@@ -34,52 +34,65 @@ consistent way to:
 # Motivation
 [motivation]: #motivation
 
-Rust is a massive system, developed by a massive team of mostly-independent
-contributors. What we've achieved together already is mind-blowing: we've
-created a uniquely powerful platform that solves problems that the computing
-world had nearly given up on, and jumpstarted a new era in systems
-programming. Now that Rust is out in the world, proving itself to be a stable
-foundation for building the next generation of computing systems, the
+Rust is a massive project and ecosystem, developed by a massive team of
+mostly-independent contributors. What we've achieved together already is
+mind-blowing: we've created a uniquely powerful platform that solves problems
+that the computing world had nearly given up on, and jumpstarted a new era in
+systems programming. Now that Rust is out in the world, proving itself to be a
+stable foundation for building the next generation of computing systems, the
 possibilities open to us are nearly endless.
 
 And that's a big problem.
 
-For many months approaching the release of Rust 1.0 we had a clear, singular
-goal: get Rust done and deliver it to the world. We knew precisely the discreet
-steps necessary to get there, and although it was a tense period where the
-entire future of the project was on the line, we were united in a single
-mission. As The Rust Project Developers we were pumped up, and our user base -
-along with the wider programming world - were excited to see what we would
-deliver.
+In the run-up to the release of Rust 1.0 we had a clear, singular goal: get Rust
+done and deliver it to the world. We established the discrete steps necessary
+to get there, and although it was a tense period where the entire future of the
+project was on the line, we were united in a single mission. As The Rust Project
+Developers we were pumped up, and our user base - along with the wider
+programming world - were excited to see what we would deliver.
 
-The same has not been true since. We've had a number of major goals - refactor
-the compiler, enable strong IDE support, make cross-compilation easier, increase
-community diversity - but it's not clear that we've been as focused on them as
-needed. Even where there are clear strategic priorities in the project, they are
-often under-emphasized in the way we talk about Rust, under-prioritized when we
-do our own work or in our efforts to rally contributions, under-staffed by both
-Mozilla and community contributors, and backburnered in favor of more present
-issues. We are overwhelmed by an avalanche of promising ideas, with major RFCs
-demanding attention (and languishing in the queue for months), TODO another
-clause to make this sentence shine.
+But 1.0 is a unique event, and since then our efforts have become more diffuse
+even as the scope of our ambitions widen. This shift is inevitable: **our success
+post-1.0 depends on making improvements in increasingly broad and complex ways**.
+The downside, of course, is that a less singular focus can make it much harder
+to rally our efforts, to communicate a clear story - and ultimately, to ship.
 
-Compounding this problem is that we have no clear end state for our efforts, no
-major deliverable to show for all our work, for the community to rally behind,
-and for the user base to anticipate. To a great degree this is a result of our
-own successes - we have a short, time-based release cycle where new features
-drip out as they become available, and a feature integration process that places
-incredible emphasis on maintaining stability. It works shockingly well! But Rust
-releases are boring 😢 (admitedly some of the reason for this is that language
-features have been delayed waiting on internal compiler refactoring). And -
-perhaps surprisingly - our rapid release process seems to cause work to proceed
-slowly: the lack of deadlines for features reduces the pressure to get them
-done, and today there are many approved RFCs languishing in a half-finished
-state, with no-one urgently championing their completion. The slow trickle of
-features reduces opportunities to make a big public 'splash' upon release,
-lessening the impact of our work.
+Since 1.0, we've attempted to lay out some major goals, both through the
+[discuss forum] and the [blog]. We've done pretty well in actually achieving
+these goals, and in some cases - particularly [MIR] - the community has really
+come together to produce amazing, focused results. But in general, there are
+several problems with the status quo:
 
-The result is that there is a lack of direction in Rust, both real and
-perceieved.
+[discuss forum]: https://internals.rust-lang.org/t/priorities-after-1-0/1901
+[blog]: https://blog.rust-lang.org/2015/08/14/Next-year.html
+[MIR]: https://blog.rust-lang.org/2016/04/19/MIR.html
+
+- We have not systematically tracked or communicated our progression through the
+  completion of these goals, making it difficult for even the most immersed
+  community members to know where things stand, and making it difficult for
+  *anyone* to know how or where to get involved. A symptom is that questions
+  like "When is MIR landing?" or "What are the blockers for `?` stabilizing"
+  become extremely frequently-asked. **We should provide an at-a-glance view
+  what Rust's current strategic priorities are and how they are progressing.**
+
+- We are overwhelmed by an avalanche of promising ideas, with major RFCs
+  demanding attention (and languishing in the queue for months) while subteams
+  focus on their strategic goals. This state of affairs produces needless
+  friction and loss of momentum. **We should agree on and disseminate our
+  priorities, so we can all be pulling in roughly the same direction**.
+
+- We do not have any single point of release, like 1.0, that gathers together a
+  large body of community work into a single, polished product. Instead, we have
+  a rapid release process, which is a huge boon for
+  [stability without stagnation] but can paradoxically reduce pressure to ship
+  in a timely fashion. **We should find a balance, retaining rapid release but
+  establishing some focal point around which to rally the community, polish a
+  product, and establish a clear public narrative**.
+
+[stability without stagnation]: http://blog.rust-lang.org/2014/10/30/Stability.html
+
+All told, there's a lot of room to do better in establishing, communicating, and
+driving the vision for Rust.
 
 This RFC proposes changes to the way The Rust Project plans its work,
 communicates and monitors its progress, directs contributors to focus on the
@@ -100,12 +113,12 @@ the way we work today.
 [design]: #detailed-design
 
 Rust's roadmap will be established in year-long cycles, where we identify up
-front, as a project, the most critical problems facing the language, formulated
-as _problem statements_. Work toward solving those problems, _goals_, will be
-planned in quarter-long cycles by individual teams. _goals_ that result in
-stable features will be assigned to _release milestones_ for the purposes of
-reporting the project roadmap. Along the way, teams will be expected to maintain
-_tracking issues_ that communicate progress toward the project's goals.
+front the most critical problems facing the project, formulated as _problem
+statements_. Work toward solving those problems, _goals_, will be planned in
+quarter-long cycles by individual teams. _Goals_ that result in stable features
+will be assigned to _release milestones_ for the purposes of reporting the
+project roadmap. Along the way, teams will be expected to maintain _tracking
+issues_ that communicate progress toward the project's goals.
 
 The end-of-year retrospective is a 'rallying point'. Its primary purposes are to
 create anticipation of a major event in the Rust world, to motivate (rally)
@@ -122,16 +135,19 @@ and look forward to the year to come.
   spanning multiple teams and disciplines. We decide these together every year
   so that everybody understands the direction the project is taking. These are
   used as the broad basis for decision making throughout the year.
+
 - _goal_ - These are set by individual teams quarterly, in service of solving
   the problems identified by the project. They have estimated deadlines, and
   those that result in stable features have estimated release numbers. Goals may
   be subdivided into further discrete tasks on the issue tracker.
+
 - _retrospective_ - At the end of the year we deliver a retrospective report. It
   presents the result of work toward each of our goals in a way that serves to
   reinforce the year's narrative. These are written for public consumption,
   showing off new features, surfacing interesting technical details, and
   celebrating those contributors who contribute to achieving the project's goals
   and resolving it's problems.
+
 - _quarterly milestone_ - All goals have estimates for completion, placed on
   quarterly milestones. Each quarter that a goal remains incomplete it must be
   re-triaged and re-estimated by the responsible team.
@@ -143,13 +159,18 @@ Rust that need the most improvement, and at the end of the cycle is a 'rallying
 point' where we deliver to the world the results of our efforts. We choose
 year-long cycles because a year is enough time to accomplish relatively large
 goals; and because having the rallying point occur at the same time every year
-makes it easy to know when to anticipate big news from the project.
+makes it easy to know when to anticipate big news from the project. (Being
+calendar-based avoids the temptation to slip or produce feature-based releases,
+instead providing a fixed point of accountability for shipping.)
 
-This planning effort is _problem-oriented_. In our collective experience we have
-consistently seen that spending up front effort focusing on motivation - even
-when we have strong ideas about the solutions - is a critical step in building
-consensus. It avoids surprises and hurt feelings, and establishes a strong causal
-record for explaining decisions in the future.
+This planning effort is _problem-oriented_. Focusing on "why" may seem like an
+obvious thing to do, but in practice it's very easy to become enamored of
+particular technical ideas and lose sight of the larger context. By codifying a
+top-level focus on motivation, we ensure we are focusing on the right problems
+and keeping an open mind on how to solve them. Consensus on the problem space
+then frames the debate on solutions, helping to avoid surprises and hurt
+feelings, and establishing a strong causal record for explaining decisions in
+the future.
 
 At the beginning of the cycle we spend no more than one month deciding on a
 small set of _problem statements_ for the project, for the year. The number
@@ -158,6 +179,37 @@ sufficiently motivating the primary work of all the teams for the year. 8-10 is
 a reasonable guideline. This planning takes place via the RFC process and is
 open to the entire community. The result of the process is the yearly 'north
 star RFC'.
+
+The problem statements established here determine the strategic direction of the
+project. They identify critical areas where the project is lacking and represent
+a public commitment to fixing them. They should be informed in part by inputs
+like [the survey] and [production user outreach], as well as an open discussion
+process. And while the end-product is problem-focused, the discussion is likely
+to touch on possible solutions as well. We shouldn't blindly commit to solving a
+problem without some sense for the plausibility of a solution in terms of both
+design and resources.
+
+[the survey]: https://blog.rust-lang.org/2016/06/30/State-of-Rust-Survey-2016.html
+[production user outreach]: https://internals.rust-lang.org/t/production-user-research-summary/2530
+
+Problem statements consist of a single sentence summarizing the problem, and one
+or more paragraphs describing it (and its importance!) in detail. Examples of
+good problem statements might be:
+
+- The Rust compiler is too slow for a tight edit-compile-test cycle
+- Rust lacks world-class IDE support
+- The Rust story for asynchronous I/O is very primitive
+- Rust compiler errors are dificult to understand
+- Rust plugins have no clear path to stabilization
+- Rust doesn't integrate well with garbage collectors
+- Rust's trait system doesn't fully support zero-cost abstractions
+- The Rust community is insufficiently diverse
+- Rust needs more training materials
+- Rust's CI infrastructure is unstable
+- It's too hard to obtain Rust for the platforms people want to target
+
+During the actual process each of these would be accompanied by a paragraph or
+more of justification.
 
 We strictly limit the planning phase to one month in order to keep the
 discussion focused and to avoid unrestrained bikeshedding. The activities
@@ -169,42 +221,12 @@ forum or directly on the RFC repository, and the core team is responsible for
 merging the final RFC, thus it will be their responsibility to ensure that the
 discussion drives to a reasonable conclusion in time for the deadline.
 
-The problem statements established here determine the strategic direction of the
-project. They identify critical areas where the project is lacking and represent
-a public commitment to fixing them.
-
-TODO: How do we talk about solutions during this process? We certainly will have
-lots of ideas about how these problems are going to get solved, and we can't
-pretend like they don't exist.
-
-Problem statements consist of a single sentence summarizing the problem, and one
-or more paragraph describing it in details. Examples of good problem statements
-might be:
-
-- The Rust compiler is slow
-- Rust lacks world-class IDE support
-- The Rust story for asynchronous I/O is incomplete
-- Rust compiler errors are dificult to understand
-- Plugins need to be on path to stabilization
-- Rust doesn't integrate well with garbage collectors
-- Inability to write truly zero-cost abstractions (due to lack of
-  specialization) (TODO this is awfully goal-oriented, also not a complete
-  sentence)
-- We would like the Rust community to be more diverse
-- It's too hard to obtain Rust for the platforms people want to target
-
-During the actual process each of these would be accompanied by a paragraph or
-more of justification.
-
 Once the year's problem statements are decided, a metabug is created for each on
 the rust-lang/rust issue tracker and tagged `R-problem-statement`. In the OP of
 each metabug the teams are responsible for maintaining a list of their goals,
 linking to tracking issues.
 
 ## The little planning cycle (goals and tracking progress)
-
-TODO: This is the most important part of the RFC mechanically and needs to be
-clear so teams can just read it and follow the instructions.
 
 The little cycle is where the solutions take shape and are carried out. They
 last one quarter - 3 months - and are the responsibility of individual teams.
@@ -229,14 +251,14 @@ estimates. These estimates are used to place goals onto quarterly milestones.
 Not all the work items done by teams in a quarter should be considered a goal
 nor should they be. Goals only need to be granular enough to demonstrate
 consistent progress toward solving the project's problems. Work that
-contributors toward quarterly goals should still be tracked as sub-tasks of
+contribute toward quarterly goals should still be tracked as sub-tasks of
 those goals, but only needs to be filed on the issue tracker and not reported
 directly as goals on the roadmap.
 
 For each goal the teams will create an issue on the issue tracker tagged with
-`R-goal`. Each goal must be described in a single sentence summary (TODO what
-makes a good summary?). Goals with sub-goals and sub-tasks must list them in the
-OP in a standard format.
+`R-goal`. Each goal must be described in a single sentence summary with a
+_deliverable_ that is as crisply stated as possible. Goals with sub-goals and
+sub-tasks must list them in the OP in a standard format.
 
 During each planning period all goals must be triaged and updated for the
 following information:
