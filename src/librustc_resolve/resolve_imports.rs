@@ -460,7 +460,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 errors = true;
                 let (span, help) = match err {
                     Some((span, msg)) => (span, msg),
-                    None => (import.span, String::new()),
+                    None => continue,
                 };
 
                 // If the error is a single failed import then create a "fake" import
