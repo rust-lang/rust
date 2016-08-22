@@ -56,7 +56,12 @@ mod ambiguous_module_errors {
     pub mod m2 { pub use super::m2 as foo; }
 
     use self::m1::*; //~ NOTE
+                     //~| NOTE
     use self::m2::*; //~ NOTE
+                     //~| NOTE
+
+    use self::foo::bar; //~ ERROR `foo` is ambiguous
+                        //~| NOTE
 
     fn f() {
         foo::bar(); //~ ERROR `foo` is ambiguous

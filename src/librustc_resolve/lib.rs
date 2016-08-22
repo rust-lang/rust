@@ -749,10 +749,6 @@ impl<'a> LexicalScopeBinding<'a> {
             _ => None,
         }
     }
-
-    fn module(self) -> Option<Module<'a>> {
-        self.item().and_then(NameBinding::module)
-    }
 }
 
 /// The link from a module up to its nearest parent node.
@@ -884,12 +880,13 @@ enum NameBindingKind<'a> {
 struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
 
 impl<'a> NameBinding<'a> {
-    fn module(&self) -> Option<Module<'a>> {
+    fn module(&self) -> Result<Module<'a>, bool /* true if an error has already been reported */> {
         match self.kind {
-            NameBindingKind::Module(module) => Some(module),
-            NameBindingKind::Def(_) => None,
+            NameBindingKind::Module(module) => Ok(module),
             NameBindingKind::Import { binding, .. } => binding.module(),
-            NameBindingKind::Ambiguity { ..  } => None,
+            NameBindingKind::Def(Def::Err) => Err(true),
+            NameBindingKind::Def(_) => Err(false),
+            NameBindingKind::Ambiguity { ..  } => Err(false),
         }
     }
 
@@ -915,7 +912,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_extern_crate(&self) -> bool {
-        self.module().and_then(|module| module.extern_crate_id).is_some()
+        self.module().ok().and_then(|module| module.extern_crate_id).is_some()
     }
 
     fn is_import(&self) -> bool {
@@ -1269,7 +1266,7 @@ impl<'a> Resolver<'a> {
     fn record_use(&mut self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
                   -> bool /* true if an error was reported */ {
         // track extern crates for unused_extern_crate lint
-        if let Some(DefId { krate, .. }) = binding.module().and_then(ModuleS::def_id) {
+        if let Some(DefId { krate, .. }) = binding.module().ok().and_then(ModuleS::def_id) {
             self.used_crates.insert(krate);
         }
 
@@ -1289,6 +1286,18 @@ impl<'a> Resolver<'a> {
     fn add_to_glob_map(&mut self, id: NodeId, name: Name) {
         if self.make_glob_map {
             self.glob_map.entry(id).or_insert_with(FnvHashSet).insert(name);
+        }
+    }
+
+    fn expect_module(&mut self, name: Name, binding: &'a NameBinding<'a>, span: Option<Span>)
+                     -> ResolveResult<Module<'a>> {
+        match binding.module() {
+            Ok(module) => Success(module),
+            Err(true) => Failed(None),
+            Err(false) => {
+                let msg = format!("Not a module `{}`", name);
+                Failed(span.map(|span| (span, msg)))
+            }
         }
     }
 
@@ -1357,11 +1366,9 @@ impl<'a> Resolver<'a> {
                 Success(binding) => {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
-                    if let Some(module_def) = binding.module() {
-                        search_module = module_def;
-                    } else {
-                        let msg = format!("Not a module `{}`", name);
-                        return Failed(span.map(|span| (span, msg)));
+                    match self.expect_module(name, binding, span) {
+                        Success(module) => search_module = module,
+                        result @ _ => return result,
                     }
                 }
             }
@@ -1414,17 +1421,20 @@ impl<'a> Resolver<'a> {
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
                         let ident = ast::Ident::with_empty_ctxt(module_path[0]);
-                        match self.resolve_ident_in_lexical_scope(ident, TypeNS, span)
-                                  .and_then(LexicalScopeBinding::module) {
-                            None => {
-                                let msg =
-                                    format!("Use of undeclared type or module `{}`", ident.name);
-                                return Failed(span.map(|span| (span, msg)));
+                        let lexical_binding =
+                            self.resolve_ident_in_lexical_scope(ident, TypeNS, span);
+                        if let Some(binding) = lexical_binding.and_then(LexicalScopeBinding::item) {
+                            match self.expect_module(ident.name, binding, span) {
+                                Success(containing_module) => {
+                                    search_module = containing_module;
+                                    start_index = 1;
+                                }
+                                result @ _ => return result,
                             }
-                            Some(containing_module) => {
-                                search_module = containing_module;
-                                start_index = 1;
-                            }
+                        } else {
+                            let msg =
+                                format!("Use of undeclared type or module `{}`", ident.name);
+                            return Failed(span.map(|span| (span, msg)));
                         }
                     }
                 }
@@ -3202,7 +3212,7 @@ impl<'a> Resolver<'a> {
                 }
 
                 // collect submodules to explore
-                if let Some(module) = name_binding.module() {
+                if let Ok(module) = name_binding.module() {
                     // form the path
                     let path_segments = match module.parent_link {
                         NoParentLink => path_segments.clone(),
@@ -3341,9 +3351,9 @@ impl<'a> Resolver<'a> {
         let msg = {
             let kind = match (ns, old_binding.module()) {
                 (ValueNS, _) => "a value",
-                (TypeNS, Some(module)) if module.extern_crate_id.is_some() => "an extern crate",
-                (TypeNS, Some(module)) if module.is_normal() => "a module",
-                (TypeNS, Some(module)) if module.is_trait() => "a trait",
+                (TypeNS, Ok(module)) if module.extern_crate_id.is_some() => "an extern crate",
+                (TypeNS, Ok(module)) if module.is_normal() => "a module",
+                (TypeNS, Ok(module)) if module.is_trait() => "a trait",
                 (TypeNS, _) => "a type",
             };
             format!("{} named `{}` has already been {} in this {}",
