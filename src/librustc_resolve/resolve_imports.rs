@@ -27,7 +27,7 @@ use rustc::hir::def::*;
 
 use syntax::ast::{NodeId, Name};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 use std::cell::{Cell, RefCell};
 
@@ -442,13 +442,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     // failed resolution
     fn import_dummy_binding(&mut self, directive: &'b ImportDirective<'b>) {
         if let SingleImport { target, .. } = directive.subclass {
-            let dummy_binding = self.arenas.alloc_name_binding(NameBinding {
-                kind: NameBindingKind::Def(Def::Err),
-                span: DUMMY_SP,
-                vis: ty::Visibility::Public,
-            });
+            let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, directive);
-
             let _ = self.try_define(directive.parent, target, ValueNS, dummy_binding.clone());
             let _ = self.try_define(directive.parent, target, TypeNS, dummy_binding);
         }

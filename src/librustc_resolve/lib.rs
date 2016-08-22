@@ -65,7 +65,7 @@ use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{PathSegment, PathParameters, QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 use errors::DiagnosticBuilder;
 
 use std::cell::{Cell, RefCell};
@@ -1052,6 +1052,7 @@ pub struct Resolver<'a> {
     privacy_errors: Vec<PrivacyError<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
+    dummy_binding: &'a NameBinding<'a>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1203,6 +1204,11 @@ impl<'a> Resolver<'a> {
             privacy_errors: Vec::new(),
 
             arenas: arenas,
+            dummy_binding: arenas.alloc_name_binding(NameBinding {
+                kind: NameBindingKind::Def(Def::Err),
+                span: DUMMY_SP,
+                vis: ty::Visibility::Public,
+            }),
         }
     }
 
