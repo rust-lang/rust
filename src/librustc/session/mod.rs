@@ -366,25 +366,31 @@ impl Session {
     pub fn mark_incr_comp_session_as_invalid(&self) {
         let mut incr_comp_session = self.incr_comp_session.borrow_mut();
 
-        if let IncrCompSession::Active { .. } = *incr_comp_session { } else {
-            bug!("Trying to invalidate IncrCompSession `{:?}`", *incr_comp_session)
-        }
+        let session_directory = match *incr_comp_session {
+            IncrCompSession::Active { ref session_directory, .. } => {
+                session_directory.clone()
+            }
+            _ => bug!("Trying to invalidate IncrCompSession `{:?}`",
+                      *incr_comp_session),
+        };
 
         // Note: This will also drop the lock file, thus unlocking the directory
-        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors;
+        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors {
+            session_directory: session_directory
+        };
     }
 
     pub fn incr_comp_session_dir(&self) -> cell::Ref<PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
         cell::Ref::map(incr_comp_session, |incr_comp_session| {
             match *incr_comp_session {
-                IncrCompSession::NotInitialized |
-                IncrCompSession::InvalidBecauseOfErrors => {
+                IncrCompSession::NotInitialized => {
                     bug!("Trying to get session directory from IncrCompSession `{:?}`",
                         *incr_comp_session)
                 }
                 IncrCompSession::Active { ref session_directory, .. } |
-                IncrCompSession::Finalized { ref session_directory } => {
+                IncrCompSession::Finalized { ref session_directory } |
+                IncrCompSession::InvalidBecauseOfErrors { ref session_directory } => {
                     session_directory
                 }
             }
@@ -541,7 +547,9 @@ pub enum IncrCompSession {
     // This is an error state that is reached when some compilation error has
     // occurred. It indicates that the contents of the session directory must
     // not be used, since they might be invalid.
-    InvalidBecauseOfErrors,
+    InvalidBecauseOfErrors {
+        session_directory: PathBuf,
+    }
 }
 
 fn init_llvm(sess: &Session) {

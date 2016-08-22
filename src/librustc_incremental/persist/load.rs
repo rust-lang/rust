@@ -59,7 +59,6 @@ pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Err(()) => {
             // Something went wrong while trying to allocate the session
             // directory. Don't try to use it any further.
-            let _ = garbage_collect_session_directories(tcx.sess);
             return
         }
     }
