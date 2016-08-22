@@ -230,7 +230,7 @@ To find documentation-related issues, sort by the [A-docs label][adocs].
 In many cases, you don't need a full `make doc`. You can use `rustdoc` directly
 to check small fixes. For example, `rustdoc src/doc/reference.md` will render
 reference to `doc/reference.html`. The CSS might be messed up, but you can
-verify that HTML is right.
+verify that the HTML is right.
 
 ## Issue Triage
 
