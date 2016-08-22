@@ -1550,28 +1550,44 @@ shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Index`. When `Foo[Bar]` happens, it ends up
-/// calling `index`, and therefore, `main` prints `Indexing!`.
+/// This example implements `Index` on a read-only `NucleotideCount` container,
+/// enabling individual counts to be retrieved with index syntax.
 ///
 /// ```
 /// use std::ops::Index;
 ///
-/// #[derive(Copy, Clone)]
-/// struct Foo;
-/// struct Bar;
+/// enum Nucleotide {
+///     A,
+///     C,
+///     G,
+///     T,
+/// }
 ///
-/// impl Index<Bar> for Foo {
-///     type Output = Foo;
+/// struct NucleotideCount {
+///     a: usize,
+///     c: usize,
+///     g: usize,
+///     t: usize,
+/// }
 ///
-///     fn index<'a>(&'a self, _index: Bar) -> &'a Foo {
-///         println!("Indexing!");
-///         self
+/// impl Index<Nucleotide> for NucleotideCount {
+///     type Output = usize;
+///
+///     fn index(&self, nucleotide: Nucleotide) -> &usize {
+///         match nucleotide {
+///             Nucleotide::A => &self.a,
+///             Nucleotide::C => &self.c,
+///             Nucleotide::G => &self.g,
+///             Nucleotide::T => &self.t,
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo[Bar];
-/// }
+/// let nucleotide_count = NucleotideCount {a: 14, c: 9, g: 10, t: 12};
+/// assert_eq!(nucleotide_count[Nucleotide::A], 14);
+/// assert_eq!(nucleotide_count[Nucleotide::C], 9);
+/// assert_eq!(nucleotide_count[Nucleotide::G], 10);
+/// assert_eq!(nucleotide_count[Nucleotide::T], 12);
 /// ```
 #[lang = "index"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
