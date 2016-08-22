@@ -499,6 +499,12 @@ pub struct Foo {
   reexport the macros, but unfortunately that would require a likely much larger
   step towards "macros 2.0" to solve and would greatly increase the size of this
   RFC.
+  
+* Converting to a string and back loses span information, which can
+  lead to degraded error messages. For example, currently we can make
+  an effort to use the span of a given field when deriving code that
+  is caused by that field, but that kind of precision will not be
+  possible until a richer interface is available.
 
 # Alternatives
 [alternatives]: #alternatives
@@ -572,3 +578,8 @@ pub struct Foo {
   thread-local-storage.
 
 * Should the APIs here be namespaced, perhaps with a `_1_1` suffix?
+
+* To what extent can we preserve span information through heuristics?
+  Should we adopt a slightly different API, for example one based on
+  concatenation, to allow preserving spans?
+
