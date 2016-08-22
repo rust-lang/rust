@@ -80,14 +80,13 @@ use type_of;
 use value::Value;
 use Disr;
 use util::sha2::Sha256;
-use util::nodemap::{NodeSet, FnvHashSet};
+use util::nodemap::{NodeSet, FnvHashMap, FnvHashSet};
 
 use arena::TypedArena;
 use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
 use std::ptr;
 use std::rc::Rc;
 use std::str;
@@ -1915,7 +1914,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     }
 
     if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
-        let mut item_to_cgus = HashMap::new();
+        let mut item_to_cgus = FnvHashMap();
 
         for cgu in &codegen_units {
             for (&trans_item, &linkage) in cgu.items() {

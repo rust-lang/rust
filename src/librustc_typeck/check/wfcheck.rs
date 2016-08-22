@@ -16,8 +16,8 @@ use middle::region::{CodeExtent};
 use rustc::infer::TypeOrigin;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::util::nodemap::FnvHashSet;
 
-use std::collections::HashSet;
 use syntax::ast;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
@@ -456,7 +456,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         assert_eq!(ty_predicates.parent, None);
         let variances = self.tcx().item_variances(item_def_id);
 
-        let mut constrained_parameters: HashSet<_> =
+        let mut constrained_parameters: FnvHashSet<_> =
             variances[ast_generics.lifetimes.len()..]
                      .iter().enumerate()
                      .filter(|&(_, &variance)| variance != ty::Bivariant)
@@ -519,7 +519,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
 fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, generics: &ty::Generics) {
     let parent = tcx.lookup_generics(generics.parent.unwrap());
-    let impl_params: HashSet<_> = parent.types.iter().map(|tp| tp.name).collect();
+    let impl_params: FnvHashSet<_> = parent.types.iter().map(|tp| tp.name).collect();
 
     for method_param in &generics.types {
         if impl_params.contains(&method_param.name) {

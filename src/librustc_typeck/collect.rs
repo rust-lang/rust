@@ -73,13 +73,12 @@ use rustc::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
 use util::common::{ErrorReported, MemoizationMap};
-use util::nodemap::{NodeMap, FnvHashMap};
+use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 use {CrateCtxt, write_ty_to_tcx};
 
 use rustc_const_math::ConstInt;
 
 use std::cell::RefCell;
-use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
 
@@ -1927,9 +1926,9 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 {
     let inline_bounds = from_bounds(ccx, param_bounds);
     let where_bounds = from_predicates(ccx, param_id, &where_clause.predicates);
-    let all_bounds: HashSet<_> = inline_bounds.into_iter()
-                                              .chain(where_bounds)
-                                              .collect();
+    let all_bounds: FnvHashSet<_> = inline_bounds.into_iter()
+                                                 .chain(where_bounds)
+                                                 .collect();
     return if all_bounds.len() > 1 {
         ty::ObjectLifetimeDefault::Ambiguous
     } else if all_bounds.len() == 0 {
@@ -2146,7 +2145,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // The trait reference is an input, so find all type parameters
     // reachable from there, to start (if this is an inherent impl,
     // then just examine the self type).
-    let mut input_parameters: HashSet<_> =
+    let mut input_parameters: FnvHashSet<_> =
         ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
         input_parameters.extend(ctp::parameters_for(trait_ref, false));
@@ -2175,7 +2174,7 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let impl_predicates = ccx.tcx.lookup_predicates(impl_def_id);
     let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
 
-    let mut input_parameters: HashSet<_> =
+    let mut input_parameters: FnvHashSet<_> =
         ctp::parameters_for(&impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
         input_parameters.extend(ctp::parameters_for(trait_ref, false));
@@ -2183,7 +2182,7 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ctp::identify_constrained_type_params(
         &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
-    let lifetimes_in_associated_types: HashSet<_> = impl_items.iter()
+    let lifetimes_in_associated_types: FnvHashSet<_> = impl_items.iter()
         .map(|item| ccx.tcx.impl_or_trait_item(ccx.tcx.map.local_def_id(item.id)))
         .filter_map(|item| match item {
             ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,
