@@ -299,26 +299,63 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Mul`. When `Foo * Foo` happens, it ends up
-/// calling `mul`, and therefore, `main` prints `Multiplying!`.
+/// Implementing a `Mul`tipliable rational number struct:
 ///
 /// ```
 /// use std::ops::Mul;
 ///
-/// struct Foo;
+/// // The uniqueness of rational numbers in lowest terms is a consequence of
+/// // the fundamental theorem of arithmetic.
+/// #[derive(Eq)]
+/// #[derive(PartialEq, Debug)]
+/// struct Rational {
+///     nominator: usize,
+///     denominator: usize,
+/// }
 ///
-/// impl Mul for Foo {
-///     type Output = Foo;
+/// impl Rational {
+///     fn new(nominator: usize, denominator: usize) -> Self {
+///         if denominator == 0 {
+///             panic!("Zero is an invalid denominator!");
+///         }
 ///
-///     fn mul(self, _rhs: Foo) -> Foo {
-///         println!("Multiplying!");
-///         self
+///         // Reduce to lowest terms by dividing by the greatest common
+///         // divisor.
+///         let gcd = gcd(nominator, denominator);
+///         Rational {
+///             nominator: nominator / gcd,
+///             denominator: denominator / gcd,
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo * Foo;
+/// impl Mul for Rational {
+///     // The multiplication of rational numbers is a closed operation.
+///     type Output = Self;
+///
+///     fn mul(self, rhs: Self) -> Self {
+///         let nominator = self.nominator * rhs.nominator;
+///         let denominator = self.denominator * rhs.denominator;
+///         Rational::new(nominator, denominator)
+///     }
 /// }
+///
+/// // Euclid's two-thousand-year-old algorithm for finding the greatest common
+/// // divisor.
+/// fn gcd(x: usize, y: usize) -> usize {
+///     let mut x = x;
+///     let mut y = y;
+///     while y != 0 {
+///         let t = y;
+///         y = x % y;
+///         x = t;
+///     }
+///     x
+/// }
+///
+/// assert_eq!(Rational::new(1, 2), Rational::new(2, 4));
+/// assert_eq!(Rational::new(2, 3) * Rational::new(3, 4),
+///            Rational::new(1, 2));
 /// ```
 ///
 /// Note that `RHS = Self` by default, but this is not mandatory. Here is an
@@ -486,26 +523,34 @@ div_impl_float! { f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Rem`. When `Foo % Foo` happens, it ends up
-/// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
+/// This example implements `Rem` on a `SplitSlice` object. After `Rem` is
+/// implemented, one can use the `%` operator to find out what the remaining
+/// elements of the slice would be after splitting it into equal slices of a
+/// given length.
 ///
 /// ```
 /// use std::ops::Rem;
 ///
-/// struct Foo;
+/// #[derive(PartialEq, Debug)]
+/// struct SplitSlice<'a, T: 'a> {
+///     slice: &'a [T],
+/// }
 ///
-/// impl Rem for Foo {
-///     type Output = Foo;
+/// impl<'a, T> Rem<usize> for SplitSlice<'a, T> {
+///     type Output = SplitSlice<'a, T>;
 ///
-///     fn rem(self, _rhs: Foo) -> Foo {
-///         println!("Remainder-ing!");
-///         self
+///     fn rem(self, modulus: usize) -> Self {
+///         let len = self.slice.len();
+///         let rem = len % modulus;
+///         let start = len - rem;
+///         SplitSlice {slice: &self.slice[start..]}
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo % Foo;
-/// }
+/// // If we were to divide &[0, 1, 2, 3, 4, 5, 6, 7] into slices of size 3,
+/// // the remainder would be &[6, 7]
+/// assert_eq!(SplitSlice { slice: &[0, 1, 2, 3, 4, 5, 6, 7] } % 3,
+///            SplitSlice { slice: &[6, 7] });
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -694,26 +739,41 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `BitAnd`. When `Foo & Foo` happens, it ends up
-/// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
+/// In this example, the `BitAnd` trait is implemented for a `BooleanVector`
+/// struct.
 ///
 /// ```
 /// use std::ops::BitAnd;
 ///
-/// struct Foo;
+/// #[derive(Debug)]
+/// struct BooleanVector {
+///     value: Vec<bool>,
+/// };
 ///
-/// impl BitAnd for Foo {
-///     type Output = Foo;
+/// impl BitAnd for BooleanVector {
+///     type Output = Self;
 ///
-///     fn bitand(self, _rhs: Foo) -> Foo {
-///         println!("Bitwise And-ing!");
-///         self
+///     fn bitand(self, rhs: Self) -> Self {
+///         BooleanVector {
+///             value: self.value
+///                 .iter()
+///                 .zip(rhs.value.iter())
+///                 .map(|(x, y)| *x && *y)
+///                 .collect(),
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo & Foo;
+/// impl PartialEq for BooleanVector {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.value == other.value
+///     }
 /// }
+///
+/// let bv1 = BooleanVector { value: vec![true, true, false, false] };
+/// let bv2 = BooleanVector { value: vec![true, false, true, false] };
+/// let expected = BooleanVector { value: vec![true, false, false, false] };
+/// assert_eq!(bv1 & bv2, expected);
 /// ```
 #[lang = "bitand"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1490,28 +1550,44 @@ shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Index`. When `Foo[Bar]` happens, it ends up
-/// calling `index`, and therefore, `main` prints `Indexing!`.
+/// This example implements `Index` on a read-only `NucleotideCount` container,
+/// enabling individual counts to be retrieved with index syntax.
 ///
 /// ```
 /// use std::ops::Index;
 ///
-/// #[derive(Copy, Clone)]
-/// struct Foo;
-/// struct Bar;
+/// enum Nucleotide {
+///     A,
+///     C,
+///     G,
+///     T,
+/// }
 ///
-/// impl Index<Bar> for Foo {
-///     type Output = Foo;
+/// struct NucleotideCount {
+///     a: usize,
+///     c: usize,
+///     g: usize,
+///     t: usize,
+/// }
 ///
-///     fn index<'a>(&'a self, _index: Bar) -> &'a Foo {
-///         println!("Indexing!");
-///         self
+/// impl Index<Nucleotide> for NucleotideCount {
+///     type Output = usize;
+///
+///     fn index(&self, nucleotide: Nucleotide) -> &usize {
+///         match nucleotide {
+///             Nucleotide::A => &self.a,
+///             Nucleotide::C => &self.c,
+///             Nucleotide::G => &self.g,
+///             Nucleotide::T => &self.t,
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo[Bar];
-/// }
+/// let nucleotide_count = NucleotideCount {a: 14, c: 9, g: 10, t: 12};
+/// assert_eq!(nucleotide_count[Nucleotide::A], 14);
+/// assert_eq!(nucleotide_count[Nucleotide::C], 9);
+/// assert_eq!(nucleotide_count[Nucleotide::G], 10);
+/// assert_eq!(nucleotide_count[Nucleotide::T], 12);
 /// ```
 #[lang = "index"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]

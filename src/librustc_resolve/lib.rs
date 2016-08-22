@@ -251,20 +251,24 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0437,
                              "type `{}` is not a member of trait `{}`",
                              type_,
-                             trait_)
+                             trait_);
+            err.span_label(span, &format!("not a member of trait `Foo`"));
+            err
         }
         ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0438,
                              "const `{}` is not a member of trait `{}`",
                              const_,
-                             trait_)
+                             trait_);
+            err.span_label(span, &format!("not a member of trait `Foo`"));
+            err
         }
         ResolutionError::VariableNotBoundInPattern(variable_name, from, to) => {
             struct_span_err!(resolver.session,
@@ -336,19 +340,23 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0423,
                              "`{}` is the name of a struct or struct variant, but this expression \
                              uses it like a function name",
-                             path_name)
+                             path_name);
+            err.span_label(span, &format!("struct called like a function"));
+            err
         }
         ResolutionError::SelfNotAvailableInStaticMethod => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0424,
-                             "`self` is not available in a static method. Maybe a `self` \
-                             argument is missing?")
+                             "`self` is not available in a static method");
+            err.span_label(span, &format!("not available in static method"));
+            err.note(&format!("maybe a `self` argument is missing?"));
+            err
         }
         ResolutionError::UnresolvedName { path, message: msg, context, is_static_method,
                                           is_field, def } => {
@@ -390,11 +398,13 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
             err
         }
         ResolutionError::UndeclaredLabel(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0426,
-                             "use of undeclared label `{}`",
-                             name)
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0426,
+                                           "use of undeclared label `{}`",
+                                           name);
+            err.span_label(span, &format!("undeclared label `{}`",&name));
+            err
         }
         ResolutionError::SelfImportsOnlyAllowedWithin => {
             struct_span_err!(resolver.session,
@@ -418,10 +428,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
         }
         ResolutionError::UnresolvedImport(name) => {
             let msg = match name {
-                Some((n, p)) => format!("unresolved import `{}`{}", n, p),
+                Some((n, _)) => format!("unresolved import `{}`", n),
                 None => "unresolved import".to_owned(),
             };
-            struct_span_err!(resolver.session, span, E0432, "{}", msg)
+            let mut err = struct_span_err!(resolver.session, span, E0432, "{}", msg);
+            if let Some((_, p)) = name {
+                err.span_label(span, &p);
+            }
+            err
         }
         ResolutionError::FailedToResolve(msg) => {
             let mut err = struct_span_err!(resolver.session, span, E0433,
@@ -438,10 +452,12 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                               closure form instead")
         }
         ResolutionError::AttemptToUseNonConstantValueInConstant => {
-            struct_span_err!(resolver.session,
+            let mut err = struct_span_err!(resolver.session,
                              span,
                              E0435,
-                             "attempt to use a non-constant value in a constant")
+                             "attempt to use a non-constant value in a constant");
+            err.span_label(span, &format!("non-constant used with constant"));
+            err
         }
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
             let shadows_what = PathResolution::new(binding.def().unwrap()).kind_name();

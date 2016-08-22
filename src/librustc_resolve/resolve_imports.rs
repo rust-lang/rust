@@ -423,7 +423,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             if let Failed(err) = self.finalize_import(import) {
                 errors = true;
                 let (span, help) = match err {
-                    Some((span, msg)) => (span, format!(". {}", msg)),
+                    Some((span, msg)) => (span, msg),
                     None => (import.span, String::new()),
                 };
 
@@ -596,9 +596,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 };
                 let module_str = module_to_string(module);
                 let msg = if &module_str == "???" {
-                    format!("There is no `{}` in the crate root{}", name, lev_suggestion)
+                    format!("no `{}` in the root{}", name, lev_suggestion)
                 } else {
-                    format!("There is no `{}` in `{}`{}", name, module_str, lev_suggestion)
+                    format!("no `{}` in `{}`{}", name, module_str, lev_suggestion)
                 };
                 Failed(Some((directive.span, msg)))
             } else {

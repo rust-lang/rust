@@ -14,7 +14,10 @@ impl Foo {
     fn bar(self) {}
 
     fn foo() {
-        self.bar(); //~ ERROR E0424
+        self.bar();
+        //~^ ERROR `self` is not available in a static method [E0424]
+        //~| NOTE not available in static method
+        //~| NOTE maybe a `self` argument is missing?
     }
 }
 

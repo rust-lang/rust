@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spam::{ham, eggs};
-//~^ ERROR unresolved import `spam::eggs`. There is no `eggs` in `spam`
+use spam::{ham, eggs}; //~ ERROR unresolved import `spam::eggs` [E0432]
+                       //~^ no `eggs` in `spam`
 
 mod spam {
     pub fn ham() { }

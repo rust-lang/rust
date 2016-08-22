@@ -59,10 +59,12 @@ fn main()
     //~^ ERROR casting
     //~^^ HELP through a usize first
     let _ = 3_i32 as bool;
-    //~^ ERROR cannot cast as `bool`
+    //~^ ERROR cannot cast as `bool` [E0054]
+    //~| unsupported cast
     //~| HELP compare with zero
     let _ = E::A as bool;
-    //~^ ERROR cannot cast as `bool`
+    //~^ ERROR cannot cast as `bool` [E0054]
+    //~| unsupported cast
     //~| HELP compare with zero
     let _ = 0x61u32 as char; //~ ERROR only `u8` can be cast
 

@@ -8,12 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {}
+#![feature(repr_simd)]
+#![feature(platform_intrinsics)]
 
-impl Foo for i32 {
-    type Bar = bool; //~ ERROR E0437
-    //~| NOTE not a member of trait `Foo`
+#[repr(simd)]
+struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8,
+             i8, i8, i8, i8, i8, i8, i8, i8);
+#[repr(simd)]
+struct i32x4(i32, i32, i32, i32);
+#[repr(simd)]
+struct i64x2(i64, i64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
+    //~^ ERROR E0442
+    //~| ERROR E0442
+    //~| ERROR E0442
 }
 
-fn main () {
-}
+fn main() {}
