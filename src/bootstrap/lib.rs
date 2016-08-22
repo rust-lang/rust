@@ -543,6 +543,10 @@ impl Build {
              .arg("-j").arg(self.jobs().to_string())
              .arg("--target").arg(target);
 
+        // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
+        // Force cargo to output binaries with disambiguating hashes in the name
+        cargo.env("__CARGO_DEFAULT_LIB_METADATA", "1");
+
         let stage;
         if compiler.stage == 0 && self.local_rebuild {
             // Assume the local-rebuild rustc already has stage1 features.
