@@ -299,6 +299,20 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 ///
 /// assert_eq!("💖", sparkle_heart);
 /// ```
+///
+/// Incorrect bytes:
+///
+/// ```
+/// use std::str;
+///
+/// // some invalid bytes, in a vector
+/// let sparkle_heart = vec![0, 159, 146, 150];
+///
+/// unsafe {
+///     // panics at runtime
+///     println!("{}", str::from_utf8_unchecked(&sparkle_heart));
+/// }
+/// ```
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
