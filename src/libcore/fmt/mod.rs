@@ -12,8 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::v1::*;
-
 use cell::{UnsafeCell, Cell, RefCell, Ref, RefMut, BorrowState};
 use marker::PhantomData;
 use mem;
@@ -905,8 +903,6 @@ impl<'a> Formatter<'a> {
                         prefix: &str,
                         buf: &str)
                         -> Result {
-        use char::CharExt;
-
         let mut width = buf.len();
 
         let mut sign = None;
@@ -1020,7 +1016,6 @@ impl<'a> Formatter<'a> {
                        f: F) -> Result
         where F: FnOnce(&mut Formatter) -> Result,
     {
-        use char::CharExt;
         let align = match self.align {
             rt::v1::Alignment::Unknown => default,
             _ => self.align

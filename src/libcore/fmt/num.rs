@@ -14,8 +14,6 @@
 
 // FIXME: #6220 Implement floating point formatting
 
-use prelude::v1::*;
-
 use fmt;
 use num::Zero;
 use ops::{Div, Rem, Sub};

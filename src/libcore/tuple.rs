@@ -10,12 +10,8 @@
 
 // See src/libstd/primitive_docs.rs for documentation.
 
-use clone::Clone;
 use cmp::*;
 use cmp::Ordering::*;
-use default::Default;
-use option::Option;
-use option::Option::Some;
 
 // FIXME(#19630) Remove this work-around
 macro_rules! e {

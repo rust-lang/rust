@@ -40,9 +40,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use marker::Sized;
-use result::Result;
-
 /// A cheap, reference-to-reference conversion.
 ///
 /// `AsRef` is very similar to, but different than, `Borrow`. See

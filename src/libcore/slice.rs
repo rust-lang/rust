@@ -33,24 +33,15 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
-use clone::Clone;
-use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord};
-use cmp::Ordering::{Less, Equal, Greater};
+use cmp::Ordering::{self, Less, Equal, Greater};
 use cmp;
-use convert::AsRef;
-use default::Default;
 use fmt;
 use intrinsics::assume;
 use iter::*;
-use ops::{FnMut, self};
-use ops::RangeFull;
-use option::Option;
-use option::Option::{None, Some};
-use result::Result;
-use result::Result::{Ok, Err};
+use ops::{self, RangeFull};
 use ptr;
 use mem;
-use marker::{Copy, Send, Sync, self};
+use marker;
 use iter_private::TrustedRandomAccess;
 
 #[repr(C)]

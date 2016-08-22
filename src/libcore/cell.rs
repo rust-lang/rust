@@ -144,17 +144,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use clone::Clone;
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use convert::From;
-use default::Default;
+use cmp::Ordering;
 use fmt::{self, Debug, Display};
-use marker::{Copy, PhantomData, Send, Sync, Sized, Unsize};
-use ops::{Deref, DerefMut, Drop, FnOnce, CoerceUnsized};
-use option::Option;
-use option::Option::{None, Some};
-use result::Result;
-use result::Result::{Ok, Err};
+use marker::{PhantomData, Unsize};
+use ops::{Deref, DerefMut, CoerceUnsized};
 
 /// A mutable memory location that admits only `Copy` data.
 ///

@@ -15,7 +15,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use marker::Sized;
 use intrinsics;
 use ptr;
 

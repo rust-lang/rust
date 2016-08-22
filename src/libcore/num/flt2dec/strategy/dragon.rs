@@ -15,8 +15,6 @@ Almost direct (but slightly optimized) Rust translation of Figure 3 of [1].
     quickly and accurately. SIGPLAN Not. 31, 5 (May. 1996), 108-116.
 */
 
-use prelude::v1::*;
-
 use cmp::Ordering;
 
 use num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
