@@ -220,19 +220,18 @@ mod imp {
     use std::path::Path;
     use std::fs::{File, OpenOptions};
     use std::os::raw::{c_ulong, c_ulonglong, c_int};
-    use std::os::windows::fs::OpenOptionsExt;
 
-    pub type DWORD = c_ulong;
-    pub type BOOL = c_int;
-    pub type ULONG_PTR = c_ulonglong;
+    type DWORD = c_ulong;
+    type BOOL = c_int;
+    type ULONG_PTR = c_ulonglong;
 
     type LPOVERLAPPED = *mut OVERLAPPED;
     const LOCKFILE_EXCLUSIVE_LOCK: DWORD = 0x00000002;
     const LOCKFILE_FAIL_IMMEDIATELY: DWORD = 0x00000001;
 
-    pub const FILE_SHARE_DELETE: DWORD = 0x4;
-    pub const FILE_SHARE_READ: DWORD = 0x1;
-    pub const FILE_SHARE_WRITE: DWORD = 0x2;
+    const FILE_SHARE_DELETE: DWORD = 0x4;
+    const FILE_SHARE_READ: DWORD = 0x1;
+    const FILE_SHARE_WRITE: DWORD = 0x2;
 
     #[repr(C)]
     struct OVERLAPPED {
@@ -263,19 +262,30 @@ mod imp {
                    create: bool,
                    exclusive: bool)
                    -> io::Result<Lock> {
+            assert!(p.parent().unwrap().exists(),
+                "Parent directory of lock-file must exist: {}",
+                p.display());
 
             let share_mode = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
 
-            let f = {
-                let mut open_options = OpenOptions::new().read(true)
-                                                         .share_mode(share_mode);
-                if create {
-                    open_options.create(true);
-                }
+            let mut open_options = OpenOptions::new();
+            open_options.read(true)
+                        .share_mode(share_mode);
 
-                match open_options.open(p) {
-                    Ok(file) => file,
-                    Err(err) => return Err(err),
+            if create {
+                open_options.create(true)
+                            .write(true);
+            }
+
+            debug!("Attempting to open lock file `{}`", p.display());
+            let file = match open_options.open(p) {
+                Ok(file) => {
+                    debug!("Lock file opened successfully");
+                    file
+                }
+                Err(err) => {
+                    debug!("Error opening lock file: {}", err);
+                    return Err(err)
                 }
             };
 
@@ -291,7 +301,9 @@ mod imp {
                     dwFlags |= LOCKFILE_EXCLUSIVE_LOCK;
                 }
 
-                LockFileEx(f.as_raw_handle(),
+                debug!("Attempting to acquire lock on lock file `{}`",
+                       p.display());
+                LockFileEx(file.as_raw_handle(),
                            dwFlags,
                            0,
                            0xFFFF_FFFF,
@@ -299,9 +311,12 @@ mod imp {
                            &mut overlapped)
             };
             if ret == 0 {
-                Err(io::Error::last_os_error())
+                let err = io::Error::last_os_error();
+                debug!("Failed acquiring file lock: {}", err);
+                Err(err)
             } else {
-                Ok(Lock { _file: f })
+                debug!("Successfully acquired lock.");
+                Ok(Lock { _file: file })
             }
         }
     }
