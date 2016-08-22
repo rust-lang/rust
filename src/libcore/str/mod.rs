@@ -310,7 +310,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 ///
 /// unsafe {
 ///     let invalid_str = str::from_utf8_unchecked(&sparkle_heart);
-///     // panics at runtime
+///     // prints garbage (" ���") to stdout
 ///     println!("{}", invalid_str);
 /// }
 /// ```
