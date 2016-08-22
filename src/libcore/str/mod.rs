@@ -302,7 +302,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 ///
 /// Incorrect bytes:
 ///
-/// ```
+/// ```no_run
 /// use std::str;
 ///
 /// // some invalid bytes, in a vector
