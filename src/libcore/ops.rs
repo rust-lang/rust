@@ -694,26 +694,41 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `BitAnd`. When `Foo & Foo` happens, it ends up
-/// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
+/// In this example, the `BitAnd` trait is implemented for a `BooleanVector`
+/// struct.
 ///
 /// ```
 /// use std::ops::BitAnd;
 ///
-/// struct Foo;
+/// #[derive(Debug)]
+/// struct BooleanVector {
+///     value: Vec<bool>,
+/// };
 ///
-/// impl BitAnd for Foo {
-///     type Output = Foo;
+/// impl BitAnd for BooleanVector {
+///     type Output = Self;
 ///
-///     fn bitand(self, _rhs: Foo) -> Foo {
-///         println!("Bitwise And-ing!");
-///         self
+///     fn bitand(self, rhs: Self) -> Self {
+///         BooleanVector {
+///             value: self.value
+///                 .iter()
+///                 .zip(rhs.value.iter())
+///                 .map(|(x, y)| *x && *y)
+///                 .collect(),
+///         }
 ///     }
 /// }
 ///
-/// fn main() {
-///     Foo & Foo;
+/// impl PartialEq for BooleanVector {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.value == other.value
+///     }
 /// }
+///
+/// let bv1 = BooleanVector { value: vec![true, true, false, false] };
+/// let bv2 = BooleanVector { value: vec![true, false, true, false] };
+/// let expected = BooleanVector { value: vec![true, false, false, false] };
+/// assert_eq!(bv1 & bv2, expected);
 /// ```
 #[lang = "bitand"]
 #[stable(feature = "rust1", since = "1.0.0")]
