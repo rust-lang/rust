@@ -52,6 +52,12 @@ implementing this trait passed as a parameter. `Self`, `&Self` or `&mut Self`
 may be used depending on the level of ownership required.
 
 ```rust
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
 trait HasArea {
     fn area(&self) -> f64;
 
