@@ -1,7 +1,7 @@
 - Feature Name: `rustc_macros`
 - Start Date: 2016-07-14
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1681
+- Rust Issue: https://github.com/rust-lang/rust/issues/35900
 
 # Summary
 [summary]: #summary
