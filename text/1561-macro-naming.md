@@ -1,7 +1,7 @@
 - Feature Name: N/A (part of other unstable features)
 - Start Date: 2016-02-11
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1561
+- Rust Issue: https://github.com/rust-lang/rust/issues/35896
 
 # Summary
 [summary]: #summary
