@@ -10,8 +10,6 @@
 
 //! Decodes a floating-point value into individual parts and error ranges.
 
-use prelude::v1::*;
-
 use {f32, f64};
 use num::FpCategory;
 use num::dec2flt::rawfp::RawFloat;

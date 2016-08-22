@@ -46,8 +46,6 @@
             issue = "0")]
 #![allow(missing_docs)]
 
-use marker::Sized;
-
 extern "rust-intrinsic" {
 
     // NB: These intrinsics take raw pointers because they mutate aliased

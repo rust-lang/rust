@@ -44,8 +44,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use marker::Sized;
-
 /// A common trait for the ability to explicitly duplicate an object.
 ///
 /// Differs from `Copy` in that `Copy` is implicit and extremely inexpensive, while

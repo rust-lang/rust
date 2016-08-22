@@ -299,13 +299,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use clone::Clone;
 use cmp;
-use default::Default;
 use fmt;
 use iter_private::TrustedRandomAccess;
-use ops::FnMut;
-use option::Option::{self, Some, None};
 use usize;
 
 #[stable(feature = "rust1", since = "1.0.0")]

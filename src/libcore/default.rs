@@ -12,8 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use marker::Sized;
-
 /// A trait for giving a type a useful default value.
 ///
 /// Sometimes, you want to fall back to some kind of default value, and

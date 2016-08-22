@@ -79,14 +79,8 @@
 
 use self::Ordering::*;
 
-use marker::{Send, Sync};
-
 use intrinsics;
 use cell::UnsafeCell;
-
-use result::Result::{self, Ok, Err};
-
-use default::Default;
 use fmt;
 
 /// A boolean type which can be safely shared between threads.

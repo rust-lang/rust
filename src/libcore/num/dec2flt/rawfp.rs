@@ -27,7 +27,6 @@
 //! Many functions in this module only handle normal numbers. The dec2flt routines conservatively
 //! take the universally-correct slow path (Algorithm M) for very small and very large numbers.
 //! That algorithm needs only next_float() which does handle subnormals and zeros.
-use prelude::v1::*;
 use u32;
 use cmp::Ordering::{Less, Equal, Greater};
 use ops::{Mul, Div, Neg};

@@ -16,17 +16,14 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use clone::Clone;
 use intrinsics;
 use ops::{CoerceUnsized, Deref};
 use fmt;
 use hash;
-use option::Option::{self, Some, None};
-use marker::{Copy, PhantomData, Send, Sized, Sync, Unsize};
+use marker::{PhantomData, Unsize};
 use mem;
 use nonzero::NonZero;
 
-use cmp::{PartialEq, Eq, Ord, PartialOrd};
 use cmp::Ordering::{self, Less, Equal, Greater};
 
 // FIXME #19649: intrinsic docs don't render, so these have no docs :(

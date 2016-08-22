@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::Option::{self, Some};
-use marker::Sized;
-
-use super::Iterator;
-
 /// Conversion from an `Iterator`.
 ///
 /// By implementing `FromIterator` for a type, you define how it will be

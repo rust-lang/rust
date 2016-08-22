@@ -15,8 +15,6 @@
 #![allow(non_snake_case)]
 #![stable(feature = "core_char", since = "1.2.0")]
 
-use prelude::v1::*;
-
 use char_private::is_printable;
 use iter::FusedIterator;
 use mem::transmute;

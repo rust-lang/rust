@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-use iter::ExactSizeIterator;
-
 /// An iterator whose items are random accessible efficiently
 ///
 /// # Safety

@@ -27,8 +27,6 @@
             issue = "0")]
 #![macro_use]
 
-use prelude::v1::*;
-
 use mem;
 use intrinsics;
 
@@ -494,6 +492,5 @@ define_bignum!(Big32x40: type=Digit32, n=40);
 // this one is used for testing only.
 #[doc(hidden)]
 pub mod tests {
-    use prelude::v1::*;
     define_bignum!(Big8x3: type=u8, n=3);
 }
