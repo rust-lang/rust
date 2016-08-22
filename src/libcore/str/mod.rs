@@ -309,8 +309,9 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 /// let sparkle_heart = vec![0, 159, 146, 150];
 ///
 /// unsafe {
+///     let invalid_str = str::from_utf8_unchecked(&sparkle_heart);
 ///     // panics at runtime
-///     println!("{}", str::from_utf8_unchecked(&sparkle_heart));
+///     println!("{}", invalid_str);
 /// }
 /// ```
 #[inline(always)]
