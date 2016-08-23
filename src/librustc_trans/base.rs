@@ -57,8 +57,8 @@ use callee::{Callee};
 use common::{Block, C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
 use common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
-use common::{CrateContext, Field, FunctionContext};
-use common::{Result, VariantInfo};
+use common::{CrateContext, FunctionContext};
+use common::{Result};
 use common::{fulfill_obligation};
 use common::{type_is_zero_size, val_ty};
 use common;
@@ -76,7 +76,6 @@ use partitioning::{self, PartitioningStrategy, CodegenUnit};
 use symbol_map::SymbolMap;
 use symbol_names_test;
 use trans_item::TransItem;
-use tvec;
 use type_::Type;
 use type_of;
 use value::Value;
@@ -386,155 +385,6 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     SExt(bcx, ICmp(bcx, cmp, lhs, rhs, debug_loc), ret_ty)
 }
 
-// Iterates through the elements of a structural type.
-pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
-                                         av: ValueRef,
-                                         t: Ty<'tcx>,
-                                         mut f: F)
-                                         -> Block<'blk, 'tcx>
-    where F: FnMut(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>
-{
-    let _icx = push_ctxt("iter_structural_ty");
-
-    fn iter_variant<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
-                                   repr: &adt::Repr<'tcx>,
-                                   av: adt::MaybeSizedValue,
-                                   variant: ty::VariantDef<'tcx>,
-                                   substs: &Substs<'tcx>,
-                                   f: &mut F)
-                                   -> Block<'blk, 'tcx>
-        where F: FnMut(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>
-    {
-        let _icx = push_ctxt("iter_variant");
-        let tcx = cx.tcx();
-        let mut cx = cx;
-
-        for (i, field) in variant.fields.iter().enumerate() {
-            let arg = monomorphize::field_ty(tcx, substs, field);
-            cx = f(cx,
-                   adt::trans_field_ptr(cx, repr, av, Disr::from(variant.disr_val), i),
-                   arg);
-        }
-        return cx;
-    }
-
-    let value = if common::type_is_sized(cx.tcx(), t) {
-        adt::MaybeSizedValue::sized(av)
-    } else {
-        let data = Load(cx, get_dataptr(cx, av));
-        let info = Load(cx, get_meta(cx, av));
-        adt::MaybeSizedValue::unsized_(data, info)
-    };
-
-    let mut cx = cx;
-    match t.sty {
-        ty::TyStruct(..) => {
-            let repr = adt::represent_type(cx.ccx(), t);
-            let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
-            for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr::from(discr), i);
-
-                let val = if common::type_is_sized(cx.tcx(), field_ty) {
-                    llfld_a
-                } else {
-                    let scratch = alloc_ty(cx, field_ty, "__fat_ptr_iter");
-                    Store(cx, llfld_a, get_dataptr(cx, scratch));
-                    Store(cx, value.meta, get_meta(cx, scratch));
-                    scratch
-                };
-                cx = f(cx, val, field_ty);
-            }
-        }
-        ty::TyClosure(_, ref substs) => {
-            let repr = adt::represent_type(cx.ccx(), t);
-            for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
-                let llupvar = adt::trans_field_ptr(cx, &repr, value, Disr(0), i);
-                cx = f(cx, llupvar, upvar_ty);
-            }
-        }
-        ty::TyArray(_, n) => {
-            let base = get_dataptr(cx, value.value);
-            let len = C_uint(cx.ccx(), n);
-            let unit_ty = t.sequence_element_type(cx.tcx());
-            cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
-        }
-        ty::TySlice(_) | ty::TyStr => {
-            let unit_ty = t.sequence_element_type(cx.tcx());
-            cx = tvec::iter_vec_raw(cx, value.value, unit_ty, value.meta, f);
-        }
-        ty::TyTuple(ref args) => {
-            let repr = adt::represent_type(cx.ccx(), t);
-            for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr(0), i);
-                cx = f(cx, llfld_a, *arg);
-            }
-        }
-        ty::TyEnum(en, substs) => {
-            let fcx = cx.fcx;
-            let ccx = fcx.ccx;
-
-            let repr = adt::represent_type(ccx, t);
-            let n_variants = en.variants.len();
-
-            // NB: we must hit the discriminant first so that structural
-            // comparison know not to proceed when the discriminants differ.
-
-            match adt::trans_switch(cx, &repr, av, false) {
-                (adt::BranchKind::Single, None) => {
-                    if n_variants != 0 {
-                        assert!(n_variants == 1);
-                        cx = iter_variant(cx, &repr, adt::MaybeSizedValue::sized(av),
-                                          &en.variants[0], substs, &mut f);
-                    }
-                }
-                (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
-                    cx = f(cx, lldiscrim_a, cx.tcx().types.isize);
-
-                    // Create a fall-through basic block for the "else" case of
-                    // the switch instruction we're about to generate. Note that
-                    // we do **not** use an Unreachable instruction here, even
-                    // though most of the time this basic block will never be hit.
-                    //
-                    // When an enum is dropped it's contents are currently
-                    // overwritten to DTOR_DONE, which means the discriminant
-                    // could have changed value to something not within the actual
-                    // range of the discriminant. Currently this function is only
-                    // used for drop glue so in this case we just return quickly
-                    // from the outer function, and any other use case will only
-                    // call this for an already-valid enum in which case the `ret
-                    // void` will never be hit.
-                    let ret_void_cx = fcx.new_block("enum-iter-ret-void");
-                    RetVoid(ret_void_cx, DebugLoc::None);
-                    let llswitch = Switch(cx, lldiscrim_a, ret_void_cx.llbb, n_variants);
-                    let next_cx = fcx.new_block("enum-iter-next");
-
-                    for variant in &en.variants {
-                        let variant_cx = fcx.new_block(&format!("enum-iter-variant-{}",
-                                                                     &variant.disr_val
-                                                                             .to_string()));
-                        let case_val = adt::trans_case(cx, &repr, Disr::from(variant.disr_val));
-                        AddCase(llswitch, case_val, variant_cx.llbb);
-                        let variant_cx = iter_variant(variant_cx,
-                                                      &repr,
-                                                      value,
-                                                      variant,
-                                                      substs,
-                                                      &mut f);
-                        Br(variant_cx, next_cx.llbb, DebugLoc::None);
-                    }
-                    cx = next_cx;
-                }
-                _ => ccx.sess().unimpl("value from adt::trans_switch in iter_structural_ty"),
-            }
-        }
-        _ => {
-            cx.sess().unimpl(&format!("type in iter_structural_ty: {}", t))
-        }
-    }
-    return cx;
-}
-
-
 /// Retrieve the information we are losing (making dynamic) in an unsizing
 /// adjustment.
 ///
@@ -626,12 +476,12 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let src_repr = adt::represent_type(bcx.ccx(), src_ty);
             let src_fields = match &*src_repr {
-                &adt::Repr::Univariant(ref s, _) => &s.fields,
+                &adt::Repr::Univariant(ref s) => &s.fields,
                 _ => bug!("struct has non-univariant repr"),
             };
             let dst_repr = adt::represent_type(bcx.ccx(), dst_ty);
             let dst_fields = match &*dst_repr {
-                &adt::Repr::Univariant(ref s, _) => &s.fields,
+                &adt::Repr::Univariant(ref s) => &s.fields,
                 _ => bug!("struct has non-univariant repr"),
             };
 

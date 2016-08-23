@@ -889,8 +889,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "adds unstable command line options to rustc interface"),
     force_overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
           "force overflow checks on or off"),
-    force_dropflag_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
-          "force drop flag checks on or off"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
           "for every macro invocation, print its name and arguments"),
     enable_nonzeroing_move_hints: bool = (false, parse_bool, [TRACKED],
@@ -2425,10 +2423,6 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.force_overflow_checks = Some(true);
-        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-        opts = reference.clone();
-        opts.debugging_opts.force_dropflag_checks = Some(true);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

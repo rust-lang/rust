@@ -88,7 +88,7 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unique)]
-#![feature(unsafe_no_drop_flag, filling_drop)]
+#![cfg_attr(stage0, feature(unsafe_no_drop_flag))]
 #![feature(unsize)]
 
 #![cfg_attr(not(test), feature(fused, raw, fn_traits, placement_new_protocol))]

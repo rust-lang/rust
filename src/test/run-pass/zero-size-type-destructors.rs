@@ -8,14 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_no_drop_flag)]
-
-// ignore-pretty : (#23623) problems when  ending with // comments
-
 static mut destructions : isize = 3;
 
 pub fn foo() {
-    #[unsafe_no_drop_flag]
     struct Foo;
 
     impl Drop for Foo {
