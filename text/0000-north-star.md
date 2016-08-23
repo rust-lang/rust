@@ -171,7 +171,7 @@ makes it easy to know when to anticipate big news from the project. Being
 calendar-based avoids the temptation to slip or produce feature-based releases,
 instead providing a fixed point of accountability for shipping.
 
-This planning effort is _problem-oriented_. Focusing on "why" may seem like an
+This planning effort is _problem-oriented_. Focusing on "how" may seem like an
 obvious thing to do, but in practice it's very easy to become enamored of
 particular technical ideas and lose sight of the larger context. By codifying a
 top-level focus on motivation, we ensure we are focusing on the right problems
