@@ -26,7 +26,7 @@ pub use self::Visibility::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::{AttributeMethods, AttrMetaMethods, AttrNestedMetaItemMethods};
+use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Spanned;
 use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
@@ -542,7 +542,7 @@ impl Clean<Attribute> for ast::Attribute {
 }
 
 // This is a rough approximation that gets us what we want.
-impl attr::AttrNestedMetaItemMethods for Attribute {
+impl Attribute {
     fn check_name(&self, name: &str) -> bool {
         self.name().map_or(false, |mi_name| &*mi_name == name)
     }

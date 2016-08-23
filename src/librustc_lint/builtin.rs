@@ -44,7 +44,7 @@ use lint::{LintPass, LateLintPass};
 use std::collections::HashSet;
 
 use syntax::{ast};
-use syntax::attr::{self, AttrMetaMethods, AttrNestedMetaItemMethods, AttributeMethods};
+use syntax::attr::{self, AttrMetaMethods, AttributeMethods};
 use syntax_pos::{Span};
 
 use rustc::hir::{self, PatKind};

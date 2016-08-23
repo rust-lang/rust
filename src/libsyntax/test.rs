@@ -19,7 +19,7 @@ use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use attr::{self, AttrMetaMethods, AttrNestedMetaItemMethods};
+use attr::{self, AttrMetaMethods};
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
 use std::rc::Rc;
 

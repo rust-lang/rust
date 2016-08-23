@@ -11,7 +11,7 @@
 use borrowck::BorrowckCtxt;
 
 use syntax::ast::{self, MetaItem};
-use syntax::attr::{AttrMetaMethods, AttrNestedMetaItemMethods};
+use syntax::attr::AttrMetaMethods;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 

@@ -29,7 +29,7 @@
 
 use rustc::ty::TyCtxt;
 use syntax::ast;
-use syntax::attr::{AttrMetaMethods, AttrNestedMetaItemMethods};
+use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
 
 use {ModuleSource, ModuleTranslation};
