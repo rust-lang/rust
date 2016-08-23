@@ -469,10 +469,11 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // are zero. Since I don't quite know how to phrase things at
         // the moment, give a kind of vague error message.
         if trait_params.len() != impl_params.len() {
-            span_err!(ccx.tcx.sess, span, E0195,
+            struct_span_err!(ccx.tcx.sess, span, E0195,
                 "lifetime parameters or bounds on method `{}` do \
-                         not match the trait declaration",
-                         impl_m.name);
+                 not match the trait declaration",impl_m.name)
+                .span_label(span, &format!("lifetimes do not match trait"))
+                .emit();
             return false;
         }
 

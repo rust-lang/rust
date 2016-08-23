@@ -388,8 +388,9 @@ pub fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<
 /// Reads the last code point out of a byte iterator (assuming a
 /// UTF-8-like encoding).
 #[inline]
-fn next_code_point_reverse<'a,
-                           I: DoubleEndedIterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
+fn next_code_point_reverse<'a, I>(bytes: &mut I) -> Option<u32>
+    where I: DoubleEndedIterator<Item = &'a u8>,
+{
     // Decode UTF-8
     let w = match bytes.next_back() {
         None => return None,

@@ -38,7 +38,6 @@ use marker::Sized;
 ///     bar: f32,
 /// }
 ///
-///
 /// fn main() {
 ///     let options: SomeOptions = Default::default();
 /// }
