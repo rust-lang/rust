@@ -13,8 +13,9 @@
 fn non_elidable<'a, 'b>(a: &'a u8, b: &'b u8) -> &'a u8 { a }
 
 // the boundaries of elision
-static NON_ELIDABLE_FN : &fn(&u8, &u8) -> &u8 = non_elidable;
+static NON_ELIDABLE_FN : &fn(&u8, &u8) -> &u8 = 
 //~^ERROR: missing lifetime specifier
+        &(non_elidable as fn(&u8, &u8) -> &u8);
 
 fn main() {
     // nothing to do here
