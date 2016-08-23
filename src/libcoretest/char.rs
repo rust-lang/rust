@@ -9,6 +9,24 @@
 // except according to those terms.
 
 use std::char;
+use std::convert::TryFrom;
+
+#[test]
+fn test_convert() {
+    assert_eq!(u32::from('a'), 0x61);
+    assert_eq!(char::from(b'\0'), '\0');
+    assert_eq!(char::from(b'a'), 'a');
+    assert_eq!(char::from(b'\xFF'), '\u{FF}');
+    assert_eq!(char::try_from(0_u32), Ok('\0'));
+    assert_eq!(char::try_from(0x61_u32), Ok('a'));
+    assert_eq!(char::try_from(0xD7FF_u32), Ok('\u{D7FF}'));
+    assert!(char::try_from(0xD800_u32).is_err());
+    assert!(char::try_from(0xDFFF_u32).is_err());
+    assert_eq!(char::try_from(0xE000_u32), Ok('\u{E000}'));
+    assert_eq!(char::try_from(0x10FFFF_u32), Ok('\u{10FFFF}'));
+    assert!(char::try_from(0x110000_u32).is_err());
+    assert!(char::try_from(0xFFFF_FFFF_u32).is_err());
+}
 
 #[test]
 fn test_is_lowercase() {
