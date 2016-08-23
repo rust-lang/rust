@@ -133,6 +133,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         debug!("assert_dirty({:?})", dep_node);
 
         match dep_node {
+            DepNode::Krate |
             DepNode::Hir(_) => {
                 // HIR nodes are inputs, so if we are asserting that the HIR node is
                 // dirty, we check the dirty input set.
@@ -161,6 +162,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         debug!("assert_clean({:?})", dep_node);
 
         match dep_node {
+            DepNode::Krate |
             DepNode::Hir(_) => {
                 // For HIR nodes, check the inputs.
                 if self.dirty_inputs.contains(&dep_node) {

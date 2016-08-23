@@ -222,7 +222,7 @@ fn dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for hash in serialized_hashes {
         if let Some(dep_node) = retraced.map(&hash.dep_node) {
-            let (_, current_hash) = hcx.hash(&dep_node).unwrap();
+            let current_hash = hcx.hash(&dep_node).unwrap();
             if current_hash == hash.hash {
                 continue;
             }
