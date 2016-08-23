@@ -421,25 +421,68 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Div`. When `Foo / Foo` happens, it ends up
-/// calling `div`, and therefore, `main` prints `Dividing!`.
+/// Implementing a `Div`idable rational number struct:
 ///
 /// ```
 /// use std::ops::Div;
 ///
-/// struct Foo;
+/// // The uniqueness of rational numbers in lowest terms is a consequence of
+/// // the fundamental theorem of arithmetic.
+/// #[derive(Eq)]
+/// #[derive(PartialEq, Debug)]
+/// struct Rational {
+///     nominator: usize,
+///     denominator: usize,
+/// }
 ///
-/// impl Div for Foo {
-///     type Output = Foo;
+/// impl Rational {
+///     fn new(nominator: usize, denominator: usize) -> Self {
+///         if denominator == 0 {
+///             panic!("Zero is an invalid denominator!");
+///         }
 ///
-///     fn div(self, _rhs: Foo) -> Foo {
-///         println!("Dividing!");
-///         self
+///         // Reduce to lowest terms by dividing by the greatest common
+///         // divisor.
+///         let gcd = gcd(nominator, denominator);
+///         Rational {
+///             nominator: nominator / gcd,
+///             denominator: denominator / gcd,
+///         }
 ///     }
 /// }
 ///
+/// impl Div for Rational {
+///     // The division of rational numbers is a closed operation.
+///     type Output = Self;
+///
+///     fn div(self, rhs: Self) -> Self {
+///         if rhs.nominator == 0 {
+///             panic!("Cannot divide by zero-valued `Rational`!");
+///         }
+///
+///         let nominator = self.nominator * rhs.denominator;
+///         let denominator = self.denominator * rhs.nominator;
+///         Rational::new(nominator, denominator)
+///     }
+/// }
+///
+/// // Euclid's two-thousand-year-old algorithm for finding the greatest common
+/// // divisor.
+/// fn gcd(x: usize, y: usize) -> usize {
+///     let mut x = x;
+///     let mut y = y;
+///     while y != 0 {
+///         let t = y;
+///         y = x % y;
+///         x = t;
+///     }
+///     x
+/// }
+///
 /// fn main() {
-///     Foo / Foo;
+///     assert_eq!(Rational::new(1, 2), Rational::new(2, 4));
+///     assert_eq!(Rational::new(1, 2) / Rational::new(3, 4),
+///                Rational::new(2, 3));
 /// }
 /// ```
 ///

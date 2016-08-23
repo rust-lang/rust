@@ -7,9 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
-// aux-build:mir_external_refs.rs
 
+// aux-build:mir_external_refs.rs
 
 extern crate mir_external_refs as ext;
 
@@ -78,128 +77,103 @@ fn parametric<T>(u: T) -> T {
     u
 }
 
-#[rustc_mir]
 fn t1() -> fn()->u8 {
     regular
 }
 
-#[rustc_mir]
 fn t2() -> fn(u8)->E {
     E::U
 }
 
-#[rustc_mir]
 fn t3() -> fn(u8)->S {
     S
 }
 
-#[rustc_mir]
 fn t4() -> fn()->u8 {
     S::hey
 }
 
-#[rustc_mir]
 fn t5() -> fn(&S)-> u8 {
     <S as X>::hoy
 }
 
 
-#[rustc_mir]
 fn t6() -> fn()->u8{
     ext::regular_fn
 }
 
-#[rustc_mir]
 fn t7() -> fn(u8)->ext::E {
     ext::E::U
 }
 
-#[rustc_mir]
 fn t8() -> fn(u8)->ext::S {
     ext::S
 }
 
-#[rustc_mir]
 fn t9() -> fn()->u8 {
     ext::S::hey
 }
 
-#[rustc_mir]
 fn t10() -> fn(&ext::S)->u8 {
     <ext::S as ext::X>::hoy
 }
 
-#[rustc_mir]
 fn t11() -> fn(u8)->u8 {
     parametric
 }
 
-#[rustc_mir]
 fn t12() -> u8 {
     C
 }
 
-#[rustc_mir]
 fn t13() -> [u8; 5] {
     C2
 }
 
-#[rustc_mir]
 fn t13_2() -> [u8; 3] {
     C3
 }
 
-#[rustc_mir]
 fn t14() -> fn()-> u8 {
     <S as X>::hoy2
 }
 
-#[rustc_mir]
 fn t15() -> fn(&S)-> u8 {
     S::hey2
 }
 
-#[rustc_mir]
 fn t16() -> fn(u32, u32)->u64 {
     F::f
 }
 
-#[rustc_mir]
 fn t17() -> fn(u32, u64)->u64 {
     F::f
 }
 
-#[rustc_mir]
 fn t18() -> fn(u64, u64)->u64 {
     F::f
 }
 
-#[rustc_mir]
 fn t19() -> fn(u64, u32)->u64 {
     F::f
 }
 
-#[rustc_mir]
 fn t20() -> fn(u64, u32)->(u64, u32) {
     <u32 as T<_, _>>::staticmeth
 }
 
-#[rustc_mir]
 fn t21() -> Unit {
     Unit
 }
 
-#[rustc_mir]
 fn t22() -> Option<u8> {
     None
 }
 
-#[rustc_mir]
 fn t23() -> (CEnum, CEnum) {
     (CEnum::A, CEnum::B)
 }
 
-#[rustc_mir]
 fn t24() -> fn(u8) -> S {
     C4
 }

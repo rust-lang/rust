@@ -10,112 +10,20 @@
 
 use arena::TypedArena;
 use back::symbol_names;
-use llvm::{self, ValueRef, get_param, get_params};
+use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
 use abi::{Abi, FnType};
-use adt;
 use attributes;
 use base::*;
-use build::*;
-use callee::{self, ArgVals, Callee};
-use cleanup::{CleanupMethods, CustomScope, ScopeId};
+use callee::{self, Callee};
 use common::*;
-use datum::{ByRef, Datum, lvalue_scratch_datum};
-use datum::{rvalue_scratch_datum, Rvalue};
-use debuginfo::{self, DebugLoc};
+use debuginfo::{DebugLoc};
 use declare;
-use expr;
 use monomorphize::{Instance};
 use value::Value;
-use Disr;
 use rustc::ty::{self, Ty, TyCtxt};
-use session::config::FullDebugInfo;
-
-use syntax::ast;
 
 use rustc::hir;
-
-use libc::c_uint;
-
-fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                        closure_def_id: DefId,
-                                        arg_scope_id: ScopeId,
-                                        id: ast::NodeId) {
-    let _icx = push_ctxt("closure::load_closure_environment");
-    let kind = kind_for_closure(bcx.ccx(), closure_def_id);
-
-    let env_arg = &bcx.fcx.fn_ty.args[0];
-    let mut env_idx = bcx.fcx.fn_ty.ret.is_indirect() as usize;
-
-    // Special case for small by-value selfs.
-    let llenv = if kind == ty::ClosureKind::FnOnce && !env_arg.is_indirect() {
-        let closure_ty = node_id_type(bcx, id);
-        let llenv = rvalue_scratch_datum(bcx, closure_ty, "closure_env").val;
-        env_arg.store_fn_arg(&bcx.build(), &mut env_idx, llenv);
-        llenv
-    } else {
-        get_param(bcx.fcx.llfn, env_idx as c_uint)
-    };
-
-    // Store the pointer to closure data in an alloca for debug info because that's what the
-    // llvm.dbg.declare intrinsic expects
-    let env_pointer_alloca = if bcx.sess().opts.debuginfo == FullDebugInfo {
-        let alloc = alloca(bcx, val_ty(llenv), "__debuginfo_env_ptr");
-        Store(bcx, llenv, alloc);
-        Some(alloc)
-    } else {
-        None
-    };
-
-    bcx.tcx().with_freevars(id, |fv| {
-        for (i, freevar) in fv.iter().enumerate() {
-            let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
-                                        closure_expr_id: id };
-            let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
-            let mut upvar_ptr = StructGEP(bcx, llenv, i);
-            let captured_by_ref = match upvar_capture {
-                ty::UpvarCapture::ByValue => false,
-                ty::UpvarCapture::ByRef(..) => {
-                    upvar_ptr = Load(bcx, upvar_ptr);
-                    true
-                }
-            };
-            let node_id = freevar.def.var_id();
-            bcx.fcx.llupvars.borrow_mut().insert(node_id, upvar_ptr);
-
-            if kind == ty::ClosureKind::FnOnce && !captured_by_ref {
-                let hint = bcx.fcx.lldropflag_hints.borrow().hint_datum(upvar_id.var_id);
-                bcx.fcx.schedule_drop_mem(arg_scope_id,
-                                        upvar_ptr,
-                                        node_id_type(bcx, node_id),
-                                        hint)
-            }
-
-            if let Some(env_pointer_alloca) = env_pointer_alloca {
-                debuginfo::create_captured_var_metadata(
-                    bcx,
-                    node_id,
-                    env_pointer_alloca,
-                    i,
-                    captured_by_ref,
-                    freevar.span);
-            }
-        }
-    })
-}
-
-pub enum ClosureEnv {
-    NotClosure,
-    Closure(DefId, ast::NodeId),
-}
-
-impl ClosureEnv {
-    pub fn load<'blk,'tcx>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId) {
-        if let ClosureEnv::Closure(def_id, id) = self {
-            load_closure_environment(bcx, def_id, arg_scope, id);
-        }
-    }
-}
 
 fn get_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            closure_id: DefId,
@@ -181,68 +89,15 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llfn
 }
 
-fn translating_closure_body_via_mir_will_fail(ccx: &CrateContext,
-                                              closure_def_id: DefId)
-                                              -> bool {
-    let default_to_mir = ccx.sess().opts.debugging_opts.orbit;
-    let invert = if default_to_mir { "rustc_no_mir" } else { "rustc_mir" };
-    let use_mir = default_to_mir ^ ccx.tcx().has_attr(closure_def_id, invert);
-
-    !use_mir
-}
-
 pub fn trans_closure_body_via_mir<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                             closure_def_id: DefId,
                                             closure_substs: ty::ClosureSubsts<'tcx>) {
-    use syntax::ast::DUMMY_NODE_ID;
-    use syntax_pos::DUMMY_SP;
-    use syntax::ptr::P;
-
-    trans_closure_expr(Dest::Ignore(ccx),
-                       &hir::FnDecl {
-                           inputs: P::new(),
-                           output: hir::Return(P(hir::Ty {
-                               id: DUMMY_NODE_ID,
-                               span: DUMMY_SP,
-                               node: hir::Ty_::TyNever,
-                           })),
-                           variadic: false
-                       },
-                       &hir::Block {
-                           stmts: P::new(),
-                           expr: None,
-                           id: DUMMY_NODE_ID,
-                           rules: hir::DefaultBlock,
-                           span: DUMMY_SP
-                       },
-                       DUMMY_NODE_ID,
-                       closure_def_id,
-                       closure_substs);
-}
-
-pub enum Dest<'a, 'tcx: 'a> {
-    SaveIn(Block<'a, 'tcx>, ValueRef),
-    Ignore(&'a CrateContext<'a, 'tcx>)
-}
-
-pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
-                                    decl: &hir::FnDecl,
-                                    body: &hir::Block,
-                                    id: ast::NodeId,
-                                    closure_def_id: DefId, // (*)
-                                    closure_substs: ty::ClosureSubsts<'tcx>)
-                                    -> Option<Block<'a, 'tcx>>
-{
     // (*) Note that in the case of inlined functions, the `closure_def_id` will be the
     // defid of the closure in its original crate, whereas `id` will be the id of the local
     // inlined copy.
-    debug!("trans_closure_expr(id={:?}, closure_def_id={:?}, closure_substs={:?})",
-           id, closure_def_id, closure_substs);
+    debug!("trans_closure_body_via_mir(closure_def_id={:?}, closure_substs={:?})",
+           closure_def_id, closure_substs);
 
-    let ccx = match dest {
-        Dest::SaveIn(bcx, _) => bcx.ccx(),
-        Dest::Ignore(ccx) => ccx
-    };
     let tcx = ccx.tcx();
     let _icx = push_ctxt("closure::trans_closure_expr");
 
@@ -285,52 +140,13 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
         };
 
         trans_closure(ccx,
-                      decl,
-                      body,
                       llfn,
                       Instance::new(closure_def_id, param_substs),
-                      id,
                       &sig,
-                      Abi::RustCall,
-                      ClosureEnv::Closure(closure_def_id, id));
+                      Abi::RustCall);
 
         ccx.instances().borrow_mut().insert(instance, llfn);
     }
-
-    // Don't hoist this to the top of the function. It's perfectly legitimate
-    // to have a zero-size closure (in which case dest will be `Ignore`) and
-    // we must still generate the closure body.
-    let (mut bcx, dest_addr) = match dest {
-        Dest::SaveIn(bcx, p) => (bcx, p),
-        Dest::Ignore(_) => {
-            debug!("trans_closure_expr() ignoring result");
-            return None;
-        }
-    };
-
-    let repr = adt::represent_type(ccx, node_id_type(bcx, id));
-
-    // Create the closure.
-    tcx.with_freevars(id, |fv| {
-        for (i, freevar) in fv.iter().enumerate() {
-            let datum = expr::trans_var(bcx, freevar.def);
-            let upvar_slot_dest = adt::trans_field_ptr(
-                bcx, &repr, adt::MaybeSizedValue::sized(dest_addr), Disr(0), i);
-            let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
-                                        closure_expr_id: id };
-            match tcx.upvar_capture(upvar_id).unwrap() {
-                ty::UpvarCapture::ByValue => {
-                    bcx = datum.store_to(bcx, upvar_slot_dest);
-                }
-                ty::UpvarCapture::ByRef(..) => {
-                    Store(bcx, datum.to_llref(), upvar_slot_dest);
-                }
-            }
-        }
-    });
-    adt::trans_set_discr(bcx, &repr, dest_addr, Disr(0));
-
-    Some(bcx)
 }
 
 pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
@@ -347,32 +163,7 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     if !ccx.sess().target.target.options.allows_weak_linkage &&
        !ccx.sess().opts.single_codegen_unit() {
 
-        if let Some(node_id) = ccx.tcx().map.as_local_node_id(closure_def_id) {
-            // If the closure is defined in the local crate, we can always just
-            // translate it.
-            let (decl, body) = match ccx.tcx().map.expect_expr(node_id).node {
-                hir::ExprClosure(_, ref decl, ref body, _) => (decl, body),
-                _ => { unreachable!() }
-            };
-
-            trans_closure_expr(Dest::Ignore(ccx),
-                               decl,
-                               body,
-                               node_id,
-                               closure_def_id,
-                               substs);
-        } else {
-            // If the closure is defined in an upstream crate, we can only
-            // translate it if MIR-trans is active.
-
-            if translating_closure_body_via_mir_will_fail(ccx, closure_def_id) {
-                ccx.sess().fatal("You have run into a known limitation of the \
-                                  MingW toolchain. Either compile with -Zorbit or \
-                                  with -Ccodegen-units=1 to work around it.");
-            }
-
-            trans_closure_body_via_mir(ccx, closure_def_id, substs);
-        }
+        trans_closure_body_via_mir(ccx, closure_def_id, substs);
     }
 
     // If the closure is a Fn closure, but a FnOnce is needed (etc),
@@ -472,28 +263,21 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, &block_arena);
-    let mut bcx = fcx.init(false, None);
+    let mut bcx = fcx.init(false);
 
 
     // the first argument (`self`) will be the (by value) closure env.
-    let self_scope = fcx.push_custom_cleanup_scope();
-    let self_scope_id = CustomScope(self_scope);
 
     let mut llargs = get_params(fcx.llfn);
     let mut self_idx = fcx.fn_ty.ret.is_indirect() as usize;
     let env_arg = &fcx.fn_ty.args[0];
     let llenv = if env_arg.is_indirect() {
-        Datum::new(llargs[self_idx], closure_ty, Rvalue::new(ByRef))
-            .add_clean(&fcx, self_scope_id)
+        llargs[self_idx]
     } else {
-        unpack_datum!(bcx, lvalue_scratch_datum(bcx, closure_ty, "self",
-                                                InitAlloca::Dropped,
-                                                self_scope_id, |bcx, llval| {
-            let mut llarg_idx = self_idx;
-            env_arg.store_fn_arg(&bcx.build(), &mut llarg_idx, llval);
-            bcx.fcx.schedule_lifetime_end(self_scope_id, llval);
-            bcx
-        })).val
+        let scratch = alloc_ty(bcx, closure_ty, "self");
+        let mut llarg_idx = self_idx;
+        env_arg.store_fn_arg(&bcx.build(), &mut llarg_idx, scratch);
+        scratch
     };
 
     debug!("trans_fn_once_adapter_shim: env={:?}", Value(llenv));
@@ -510,15 +294,19 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
         llargs[self_idx] = llenv;
     }
 
-    let dest =
-        fcx.llretslotptr.get().map(
-            |_| expr::SaveIn(fcx.get_ret_slot(bcx, "ret_slot")));
+    let dest = fcx.llretslotptr.get();
 
     let callee = Callee {
         data: callee::Fn(llreffn),
         ty: llref_fn_ty
     };
-    bcx = callee.call(bcx, DebugLoc::None, ArgVals(&llargs[self_idx..]), dest).bcx;
+
+    // Call the by-ref closure body with `self` in a cleanup scope,
+    // to drop `self` when the body returns, or in case it unwinds.
+    let self_scope = fcx.push_custom_cleanup_scope();
+    fcx.schedule_drop_mem(self_scope, llenv, closure_ty);
+
+    bcx = callee.call(bcx, DebugLoc::None, &llargs[self_idx..], dest).bcx;
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 

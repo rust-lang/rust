@@ -315,8 +315,7 @@ impl<'ast> Map<'ast> {
                     RootInlinedParent(parent) => match *parent {
                         InlinedItem::Item(def_id, _) |
                         InlinedItem::TraitItem(def_id, _) |
-                        InlinedItem::ImplItem(def_id, _) |
-                        InlinedItem::Foreign(def_id, _) =>
+                        InlinedItem::ImplItem(def_id, _) =>
                             return DepNode::MetaData(def_id)
                     },
 
@@ -940,8 +939,6 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             II::ImplItem(fld.fold_ops.new_def_id(d),
                          ii.map(|ii| fld.fold_impl_item(ii)))
         }
-        II::Foreign(d, i) => II::Foreign(fld.fold_ops.new_def_id(d),
-                                         i.map(|i| fld.fold_foreign_item(i)))
     };
 
     let ii = map.forest.inlined_items.alloc(ii);

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 use std::ops::{Deref, DerefMut};
 
 pub struct MyRef(u32);
@@ -24,12 +22,10 @@ impl DerefMut for MyRef {
 }
 
 
-#[rustc_mir]
 fn deref(x: &MyRef) -> &u32 {
     x
 }
 
-#[rustc_mir]
 fn deref_mut(x: &mut MyRef) -> &mut u32 {
     x
 }

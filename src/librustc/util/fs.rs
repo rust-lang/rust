@@ -56,14 +56,49 @@ pub fn fix_windows_verbatim_for_gcc(p: &Path) -> PathBuf {
     }
 }
 
+pub enum LinkOrCopy {
+    Link,
+    Copy
+}
+
 /// Copy `p` into `q`, preferring to use hard-linking if possible. If
 /// `q` already exists, it is removed first.
-pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<()> {
+/// The result indicates which of the two operations has been performed.
+pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<LinkOrCopy> {
     let p = p.as_ref();
     let q = q.as_ref();
     if q.exists() {
         try!(fs::remove_file(&q));
     }
-    fs::hard_link(p, q)
-        .or_else(|_| fs::copy(p, q).map(|_| ()))
+
+    match fs::hard_link(p, q) {
+        Ok(()) => Ok(LinkOrCopy::Link),
+        Err(_) => {
+            match fs::copy(p, q) {
+                Ok(_) => Ok(LinkOrCopy::Copy),
+                Err(e) => Err(e)
+            }
+        }
+    }
+}
+
+// Like std::fs::create_dir_all, except handles concurrent calls among multiple
+// threads or processes.
+pub fn create_dir_racy(path: &Path) -> io::Result<()> {
+    match fs::create_dir(path) {
+        Ok(()) => return Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e),
+    }
+    match path.parent() {
+        Some(p) => try!(create_dir_racy(p)),
+        None => return Err(io::Error::new(io::ErrorKind::Other,
+                                          "failed to create whole tree")),
+    }
+    match fs::create_dir(path) {
+        Ok(()) => Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
+        Err(e) => Err(e),
+    }
 }

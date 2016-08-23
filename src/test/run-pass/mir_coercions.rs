@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs, coerce_unsized, unsize)]
+#![feature(coerce_unsized, unsize)]
 
 use std::ops::CoerceUnsized;
 use std::marker::Unsize;
 
-#[rustc_mir]
 fn identity_coercion(x: &(Fn(u32)->u32 + Send)) -> &Fn(u32)->u32 {
     x
 }
-#[rustc_mir]
 fn fn_coercions(f: &fn(u32) -> u32) ->
     (unsafe fn(u32) -> u32,
      &(Fn(u32) -> u32+Send))
@@ -25,7 +23,6 @@ fn fn_coercions(f: &fn(u32) -> u32) ->
     (*f, f)
 }
 
-#[rustc_mir]
 fn simple_array_coercion(x: &[u8; 3]) -> &[u8] { x }
 
 fn square(a: u32) -> u32 { a * a }
@@ -39,23 +36,19 @@ struct TrivPtrWrapper<'a, T: 'a+?Sized>(&'a T);
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized>
     CoerceUnsized<TrivPtrWrapper<'a, U>> for TrivPtrWrapper<'a, T> {}
 
-#[rustc_mir]
 fn coerce_ptr_wrapper(p: PtrWrapper<[u8; 3]>) -> PtrWrapper<[u8]> {
     p
 }
 
-#[rustc_mir]
 fn coerce_triv_ptr_wrapper(p: TrivPtrWrapper<[u8; 3]>) -> TrivPtrWrapper<[u8]> {
     p
 }
 
-#[rustc_mir]
 fn coerce_fat_ptr_wrapper(p: PtrWrapper<Fn(u32) -> u32+Send>)
                           -> PtrWrapper<Fn(u32) -> u32> {
     p
 }
 
-#[rustc_mir]
 fn coerce_ptr_wrapper_poly<'a, T, Trait: ?Sized>(p: PtrWrapper<'a, T>)
                                                  -> PtrWrapper<'a, Trait>
     where PtrWrapper<'a, T>: CoerceUnsized<PtrWrapper<'a, Trait>>

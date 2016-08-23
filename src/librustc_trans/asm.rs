@@ -14,28 +14,29 @@ use llvm::{self, ValueRef};
 use base;
 use build::*;
 use common::*;
-use datum::{Datum, Lvalue};
 use type_of;
 use type_::Type;
 
-use rustc::hir as ast;
+use rustc::hir;
+use rustc::ty::Ty;
+
 use std::ffi::CString;
 use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
 pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    ia: &ast::InlineAsm,
-                                    outputs: Vec<Datum<'tcx, Lvalue>>,
+                                    ia: &hir::InlineAsm,
+                                    outputs: Vec<(ValueRef, Ty<'tcx>)>,
                                     mut inputs: Vec<ValueRef>) {
     let mut ext_constraints = vec![];
     let mut output_types = vec![];
 
     // Prepare the output operands
     let mut indirect_outputs = vec![];
-    for (i, (out, out_datum)) in ia.outputs.iter().zip(&outputs).enumerate() {
+    for (i, (out, &(val, ty))) in ia.outputs.iter().zip(&outputs).enumerate() {
         let val = if out.is_rw || out.is_indirect {
-            Some(base::load_ty(bcx, out_datum.val, out_datum.ty))
+            Some(base::load_ty(bcx, val, ty))
         } else {
             None
         };
@@ -46,7 +47,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         if out.is_indirect {
             indirect_outputs.push(val.unwrap());
         } else {
-            output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
+            output_types.push(type_of::type_of(bcx.ccx(), ty));
         }
     }
     if !indirect_outputs.is_empty() {
@@ -100,9 +101,9 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Again, based on how many outputs we have
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
-    for (i, (_, datum)) in outputs.enumerate() {
+    for (i, (_, &(val, _))) in outputs.enumerate() {
         let v = if num_outputs == 1 { r } else { ExtractValue(bcx, r, i) };
-        Store(bcx, v, datum.val);
+        Store(bcx, v, val);
     }
 
     // Store expn_id in a metadata node so we can map LLVM errors

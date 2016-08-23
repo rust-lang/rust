@@ -13,7 +13,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(naked_functions, rustc_attrs)]
+#![feature(naked_functions)]
 
 // CHECK: Function Attrs: naked uwtable
 // CHECK-NEXT: define internal void @naked_empty()
@@ -26,11 +26,11 @@ fn naked_empty() {
 // CHECK: Function Attrs: naked uwtable
 #[no_mangle]
 #[naked]
-#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 // CHECK-NEXT: define internal void @naked_with_args(i{{[0-9]+}})
 fn naked_with_args(a: isize) {
     // CHECK: %a = alloca i{{[0-9]+}}
     // CHECK: ret void
+    &a; // keep variable in an alloca
 }
 
 // CHECK: Function Attrs: naked uwtable
@@ -46,10 +46,10 @@ fn naked_with_return() -> isize {
 // CHECK-NEXT: define internal i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}})
 #[no_mangle]
 #[naked]
-#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 fn naked_with_args_and_return(a: isize) -> isize {
     // CHECK: %a = alloca i{{[0-9]+}}
     // CHECK: ret i{{[0-9]+}} %{{[0-9]+}}
+    &a; // keep variable in an alloca
     a
 }
 

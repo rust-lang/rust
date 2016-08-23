@@ -11,13 +11,11 @@
 
 
 #![feature(slice_patterns)]
-#![feature(rustc_attrs)]
 
 struct Foo {
     string: &'static str
 }
 
-#[rustc_mir]
 pub fn main() {
     let x = [
         Foo { string: "foo" },

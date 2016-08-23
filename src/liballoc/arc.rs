@@ -121,7 +121,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// }
 /// ```
 
-#[unsafe_no_drop_flag]
+#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
     ptr: Shared<ArcInner<T>>,
@@ -147,7 +147,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 /// nodes behind strong `Arc<T>` pointers, and then storing the parent pointers
 /// as `Weak<T>` pointers.
 
-#[unsafe_no_drop_flag]
+#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     ptr: Shared<ArcInner<T>>,
@@ -559,15 +559,6 @@ impl<T: ?Sized> Drop for Arc<T> {
     #[unsafe_destructor_blind_to_params]
     #[inline]
     fn drop(&mut self) {
-        // This structure has #[unsafe_no_drop_flag], so this drop glue may run
-        // more than once (but it is guaranteed to be zeroed after the first if
-        // it's run more than once)
-        let thin = *self.ptr as *const ();
-
-        if thin as usize == mem::POST_DROP_USIZE {
-            return;
-        }
-
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
@@ -755,12 +746,6 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         let ptr = *self.ptr;
-        let thin = ptr as *const ();
-
-        // see comments above for why this check is here
-        if thin as usize == mem::POST_DROP_USIZE {
-            return;
-        }
 
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about

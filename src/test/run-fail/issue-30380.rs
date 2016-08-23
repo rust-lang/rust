@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 // check that panics in destructors during assignment do not leave
 // destroyed values lying around for other destructors to observe.
 
@@ -35,7 +33,6 @@ impl<'a> Drop for Observer<'a> {
     }
 }
 
-#[rustc_mir]
 fn foo(b: &mut Observer) {
     *b.0 = FilledOnDrop(1);
 }

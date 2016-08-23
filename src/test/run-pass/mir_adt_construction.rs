@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 #[repr(C, u32)]
 enum CEnum {
     Hello = 30,
     World = 60
 }
 
-#[rustc_mir]
 fn test1(c: CEnum) -> i32 {
   let c2 = CEnum::Hello;
   match (c, c2) {
@@ -40,7 +37,6 @@ impl Drop for Pakd {
     fn drop(&mut self) {}
 }
 
-#[rustc_mir]
 fn test2() -> Pakd {
     Pakd { a: 42, b: 42, c: 42, d: 42, e: () }
 }
@@ -48,18 +44,15 @@ fn test2() -> Pakd {
 #[derive(PartialEq, Debug)]
 struct TupleLike(u64, u32);
 
-#[rustc_mir]
 fn test3() -> TupleLike {
     TupleLike(42, 42)
 }
 
-#[rustc_mir]
 fn test4(x: fn(u64, u32) -> TupleLike) -> (TupleLike, TupleLike) {
     let y = TupleLike;
     (x(42, 84), y(42, 84))
 }
 
-#[rustc_mir]
 fn test5(x: fn(u32) -> Option<u32>) -> (Option<u32>, Option<u32>) {
     let y = Some;
     (x(42), y(42))

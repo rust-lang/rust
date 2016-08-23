@@ -10,9 +10,6 @@
 
 // Tests the coercion casts are handled properly
 
-#![feature(rustc_attrs)]
-
-#[rustc_mir]
 fn main() {
     // This should produce only a reification of f,
     // not a fn -> fn cast as well

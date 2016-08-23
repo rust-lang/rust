@@ -26,7 +26,6 @@
 
 #![feature(associated_consts)]
 #![feature(const_fn)]
-#![feature(filling_drop)]
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(staged_api)]

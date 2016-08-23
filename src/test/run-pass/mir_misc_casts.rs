@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(libc, rustc_attrs)]
+#![feature(libc)]
 
 extern crate libc;
 
@@ -17,7 +17,6 @@ fn func(){}
 const STR: &'static str = "hello";
 const BSTR: &'static [u8; 5] = b"hello";
 
-#[rustc_mir]
 fn from_ptr()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, *const ()) {
     let f = 1_usize as *const libc::FILE;
@@ -35,7 +34,6 @@ fn from_ptr()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11)
 }
 
-#[rustc_mir]
 fn from_1()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1 as isize;
@@ -54,7 +52,6 @@ fn from_1()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1usize()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_usize as isize;
@@ -73,7 +70,6 @@ fn from_1usize()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1isize()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_isize as isize;
@@ -92,7 +88,6 @@ fn from_1isize()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1u8()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_u8 as isize;
@@ -111,7 +106,6 @@ fn from_1u8()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1i8()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_i8 as isize;
@@ -130,7 +124,6 @@ fn from_1i8()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1u16()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_u16 as isize;
@@ -149,7 +142,6 @@ fn from_1u16()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1i16()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_i16 as isize;
@@ -168,7 +160,6 @@ fn from_1i16()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1u32()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_u32 as isize;
@@ -187,7 +178,6 @@ fn from_1u32()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1i32()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_i32 as isize;
@@ -206,7 +196,6 @@ fn from_1i32()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1u64()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_u64 as isize;
@@ -225,7 +214,6 @@ fn from_1u64()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_1i64()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, *const libc::FILE) {
     let c1 = 1_i64 as isize;
@@ -244,7 +232,6 @@ fn from_1i64()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13)
 }
 
-#[rustc_mir]
 fn from_bool()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64) {
     let c1 = true as isize;
@@ -260,7 +247,6 @@ fn from_bool()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10)
 }
 
-#[rustc_mir]
 fn from_1f32()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64) {
     let c1 = 1.0_f32 as isize;
@@ -278,7 +264,6 @@ fn from_1f32()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12)
 }
 
-#[rustc_mir]
 fn from_1f64()
 -> (isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64) {
     let c1 = 1.0f64 as isize;
@@ -296,7 +281,6 @@ fn from_1f64()
     (c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12)
 }
 
-#[rustc_mir]
 fn other_casts()
 -> (*const u8, *const isize, *const u8, *const u8) {
     let c1 = func as *const u8;

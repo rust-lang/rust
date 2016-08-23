@@ -55,15 +55,6 @@ pub fn main() {
         // compiler is hidden.
         rusti::move_val_init(&mut y, x);
 
-        // In particular, it may be tracked via a drop-flag embedded
-        // in the value, or via a null pointer, or via
-        // mem::POST_DROP_USIZE, or (most preferably) via a
-        // stack-local drop flag.
-        //
-        // (This test used to build-in knowledge of how it was
-        // tracked, and check that the underlying stack slot had been
-        // set to `mem::POST_DROP_USIZE`.)
-
         // But what we *can* observe is how many times the destructor
         // for `D` is invoked, and what the last value we saw was
         // during such a destructor call. We do so after the end of

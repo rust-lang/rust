@@ -31,12 +31,15 @@
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 
+#![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
 
 extern crate core;
 #[macro_use]
 extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
+#[cfg(unix)]
+extern crate libc;
 
 pub mod bitvec;
 pub mod graph;
@@ -51,6 +54,7 @@ pub mod fnv;
 pub mod tuple_slice;
 pub mod veccell;
 pub mod control_flow_graph;
+pub mod flock;
 
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]

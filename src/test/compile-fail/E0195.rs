@@ -16,6 +16,7 @@ struct Foo;
 
 impl Trait for Foo {
     fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
+                                            //~^ lifetimes do not match trait
     }
 }
 

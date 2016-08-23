@@ -29,6 +29,7 @@ impl<'a> Test<'a> for Foo<'a> {
 impl<'a> NoLifetime for Foo<'a> {
     fn get<'p, T : Test<'a>>(&self) -> T {
 //~^ ERROR E0195
+//~| lifetimes do not match trait
         return *self as T;
     }
 }

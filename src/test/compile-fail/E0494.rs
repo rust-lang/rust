@@ -8,21 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z orbit
-// Tests that -Z orbit affects functions from other crates.
-
-#![feature(unsafe_no_drop_flag)]
-
-#[unsafe_no_drop_flag]
-struct Foo;
-
-impl Drop for Foo {
-    fn drop(&mut self) {
-        panic!("MIR trans is not enabled for mem::forget");
-    }
+struct Foo {
+    a: u32
 }
 
+static S : Foo = Foo { a : 0 };
+static A : &'static u32 = &S.a; //~ ERROR E0494
+
 fn main() {
-    let x = Foo;
-    std::mem::forget(x);
 }

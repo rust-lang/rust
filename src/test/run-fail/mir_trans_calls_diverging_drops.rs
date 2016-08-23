@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 // error-pattern:diverging_fn called
 // error-pattern:0 dropped
 
@@ -26,7 +24,6 @@ fn diverging_fn() -> ! {
     panic!("diverging_fn called")
 }
 
-#[rustc_mir]
 fn mir(d: Droppable) {
     diverging_fn();
 }

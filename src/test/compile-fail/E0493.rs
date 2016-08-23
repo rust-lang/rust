@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
-// compile-flags:-Zincremental=tmp/cfail-tests/enable-orbit-for-incr-comp -Zorbit=off
-// error-pattern:Automatically enabling `-Z orbit` because `-Z incremental` was specified
+struct Foo {
+    a: u32
+}
 
-#![deny(warnings)]
+impl Drop for Foo {
+    fn drop(&mut self) {}
+}
+
+const F : Foo = Foo { a : 0 }; //~ ERROR E0493
 
 fn main() {
-    FAIL! // We just need some compilation error. What we really care about is
-          // that the error pattern above is checked.
 }

@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
-#[rustc_mir]
 fn foo((x, y): (i8, i8)) {
 }
 

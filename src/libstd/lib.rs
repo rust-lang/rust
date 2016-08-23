@@ -275,7 +275,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
-#![feature(unsafe_no_drop_flag, filling_drop)]
+#![cfg_attr(stage0, feature(unsafe_no_drop_flag))]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
