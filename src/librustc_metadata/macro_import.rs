@@ -14,8 +14,8 @@ use creader::CrateReader;
 use cstore::CStore;
 
 use rustc::session::Session;
+use rustc::util::nodemap::{FnvHashSet, FnvHashMap};
 
-use std::collections::{HashSet, HashMap};
 use syntax::parse::token;
 use syntax::ast;
 use syntax::attr;
@@ -45,13 +45,13 @@ pub fn call_bad_macro_reexport(a: &Session, b: Span) {
     span_err!(a, b, E0467, "bad macro reexport");
 }
 
-pub type MacroSelection = HashMap<token::InternedString, Span>;
+pub type MacroSelection = FnvHashMap<token::InternedString, Span>;
 
 impl<'a> ext::base::MacroLoader for MacroLoader<'a> {
     fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<ast::MacroDef> {
         // Parse the attributes relating to macros.
-        let mut import = Some(HashMap::new());  // None => load all
-        let mut reexport = HashMap::new();
+        let mut import = Some(FnvHashMap());  // None => load all
+        let mut reexport = FnvHashMap();
 
         for attr in &extern_crate.attrs {
             let mut used = true;
@@ -120,7 +120,7 @@ impl<'a> MacroLoader<'a> {
         }
 
         let mut macros = Vec::new();
-        let mut seen = HashSet::new();
+        let mut seen = FnvHashSet();
 
         for mut def in self.reader.read_exported_macros(vi) {
             let name = def.ident.name.as_str();

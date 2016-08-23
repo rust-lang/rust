@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {
-    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
+fn inside_closure(x: &mut i32) {
 }
 
-struct Foo;
+fn outside_closure(x: &mut i32) {
+}
 
-impl Trait for Foo {
-    fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
-                                            //~^ lifetimes do not match trait
-    }
+fn foo(a: &mut i32) {
+    let bar = || {
+        inside_closure(a)
+    };
+    outside_closure(a); //~ ERROR E0501
 }
 
 fn main() {

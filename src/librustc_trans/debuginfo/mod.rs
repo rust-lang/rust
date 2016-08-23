@@ -54,7 +54,7 @@ pub mod metadata;
 mod create_scope_map;
 mod source_loc;
 
-pub use self::create_scope_map::create_mir_scopes;
+pub use self::create_scope_map::{create_mir_scopes, MirDebugScope};
 pub use self::source_loc::start_emitting_source_locations;
 pub use self::source_loc::get_cleanup_debug_loc_for_ast_node;
 pub use self::source_loc::with_source_location_override;
@@ -63,6 +63,7 @@ pub use self::metadata::create_argument_metadata;
 pub use self::metadata::create_captured_var_metadata;
 pub use self::metadata::create_global_var_metadata;
 pub use self::metadata::create_local_var_metadata;
+pub use self::metadata::extend_scope_to_file;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;

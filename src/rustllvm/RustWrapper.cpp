@@ -521,6 +521,15 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateLexicalBlock(
         ));
 }
 
+extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateLexicalBlockFile(
+    LLVMRustDIBuilderRef Builder,
+    LLVMRustMetadataRef Scope,
+    LLVMRustMetadataRef File) {
+    return wrap(Builder->createLexicalBlockFile(
+        unwrapDI<DIDescriptor>(Scope),
+        unwrapDI<DIFile>(File)));
+}
+
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMRustDIBuilderRef Builder,
     LLVMRustMetadataRef Context,

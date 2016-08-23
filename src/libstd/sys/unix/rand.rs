@@ -10,14 +10,31 @@
 
 pub use self::imp::OsRng;
 
-#[cfg(all(unix, not(target_os = "ios"), not(target_os = "openbsd")))]
+use mem;
+
+fn next_u32(mut fill_buf: &mut FnMut(&mut [u8])) -> u32 {
+    let mut buf: [u8; 4] = [0; 4];
+    fill_buf(&mut buf);
+    unsafe { mem::transmute::<[u8; 4], u32>(buf) }
+}
+
+fn next_u64(mut fill_buf: &mut FnMut(&mut [u8])) -> u64 {
+    let mut buf: [u8; 8] = [0; 8];
+    fill_buf(&mut buf);
+    unsafe { mem::transmute::<[u8; 8], u64>(buf) }
+}
+
+#[cfg(all(unix,
+          not(target_os = "ios"),
+          not(target_os = "openbsd"),
+          not(target_os = "freebsd")))]
 mod imp {
     use self::OsRngInner::*;
+    use super::{next_u32, next_u64};
 
     use fs::File;
     use io;
     use libc;
-    use mem;
     use rand::Rng;
     use rand::reader::ReaderRng;
     use sys::os::errno;
@@ -87,18 +104,6 @@ mod imp {
         }
     }
 
-    fn getrandom_next_u32() -> u32 {
-        let mut buf: [u8; 4] = [0; 4];
-        getrandom_fill_bytes(&mut buf);
-        unsafe { mem::transmute::<[u8; 4], u32>(buf) }
-    }
-
-    fn getrandom_next_u64() -> u64 {
-        let mut buf: [u8; 8] = [0; 8];
-        getrandom_fill_bytes(&mut buf);
-        unsafe { mem::transmute::<[u8; 8], u64>(buf) }
-    }
-
     #[cfg(all(target_os = "linux",
               any(target_arch = "x86_64",
                   target_arch = "x86",
@@ -163,13 +168,13 @@ mod imp {
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
             match self.inner {
-                OsGetrandomRng => getrandom_next_u32(),
+                OsGetrandomRng => next_u32(&mut getrandom_fill_bytes),
                 OsReaderRng(ref mut rng) => rng.next_u32(),
             }
         }
         fn next_u64(&mut self) -> u64 {
             match self.inner {
-                OsGetrandomRng => getrandom_next_u64(),
+                OsGetrandomRng => next_u64(&mut getrandom_fill_bytes),
                 OsReaderRng(ref mut rng) => rng.next_u64(),
             }
         }
@@ -184,9 +189,10 @@ mod imp {
 
 #[cfg(target_os = "openbsd")]
 mod imp {
+    use super::{next_u32, next_u64};
+
     use io;
     use libc;
-    use mem;
     use sys::os::errno;
     use rand::Rng;
 
@@ -205,14 +211,10 @@ mod imp {
 
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
-            let mut v = [0; 4];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
+            next_u32(&mut |v| self.fill_bytes(v))
         }
         fn next_u64(&mut self) -> u64 {
-            let mut v = [0; 8];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
+            next_u64(&mut |v| self.fill_bytes(v))
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             // getentropy(2) permits a maximum buffer size of 256 bytes
@@ -230,8 +232,9 @@ mod imp {
 
 #[cfg(target_os = "ios")]
 mod imp {
+    use super::{next_u32, next_u64};
+
     use io;
-    use mem;
     use ptr;
     use rand::Rng;
     use libc::{c_int, size_t};
@@ -265,14 +268,10 @@ mod imp {
 
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
-            let mut v = [0; 4];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
+            next_u32(&mut |v| self.fill_bytes(v))
         }
         fn next_u64(&mut self) -> u64 {
-            let mut v = [0; 8];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
+            next_u64(&mut |v| self.fill_bytes(v))
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             let ret = unsafe {
@@ -282,6 +281,54 @@ mod imp {
             if ret == -1 {
                 panic!("couldn't generate random bytes: {}",
                        io::Error::last_os_error());
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+mod imp {
+    use super::{next_u32, next_u64};
+
+    use io;
+    use libc;
+    use rand::Rng;
+    use ptr;
+
+    pub struct OsRng {
+        // dummy field to ensure that this struct cannot be constructed outside
+        // of this module
+        _dummy: (),
+    }
+
+    impl OsRng {
+        /// Create a new `OsRng`.
+        pub fn new() -> io::Result<OsRng> {
+            Ok(OsRng { _dummy: () })
+        }
+    }
+
+    impl Rng for OsRng {
+        fn next_u32(&mut self) -> u32 {
+            next_u32(&mut |v| self.fill_bytes(v))
+        }
+        fn next_u64(&mut self) -> u64 {
+            next_u64(&mut |v| self.fill_bytes(v))
+        }
+        fn fill_bytes(&mut self, v: &mut [u8]) {
+            let mib = [libc::CTL_KERN, libc::KERN_ARND];
+            // kern.arandom permits a maximum buffer size of 256 bytes
+            for s in v.chunks_mut(256) {
+                let mut s_len = s.len();
+                let ret = unsafe {
+                    libc::sysctl(mib.as_ptr(), mib.len() as libc::c_uint,
+                                 s.as_mut_ptr() as *mut _, &mut s_len,
+                                 ptr::null(), 0)
+                };
+                if ret == -1 || s_len != s.len() {
+                    panic!("kern.arandom sysctl failed! (returned {}, s.len() {}, oldlenp {})",
+                           ret, s.len(), s_len);
+                }
             }
         }
     }

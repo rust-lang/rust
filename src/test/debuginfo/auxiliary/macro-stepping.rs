@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {
-    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
-}
+// compile-flags:-g
 
-struct Foo;
+#![crate_type = "rlib"]
 
-impl Trait for Foo {
-    fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
-                                            //~^ lifetimes do not match trait
+#[macro_export]
+macro_rules! new_scope {
+    () => {
+        let x = 1;
     }
-}
-
-fn main() {
 }

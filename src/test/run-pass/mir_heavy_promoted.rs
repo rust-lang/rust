@@ -8,17 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {
-    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
-}
+const TEST_DATA: [u8; 32 * 1024 * 1024] = [42; 32 * 1024 * 1024];
 
-struct Foo;
-
-impl Trait for Foo {
-    fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
-                                            //~^ lifetimes do not match trait
-    }
-}
-
+// Check that the promoted copy of TEST_DATA doesn't
+// leave an alloca from an unused temp behind, which,
+// without optimizations, can still blow the stack.
 fn main() {
+    println!("{}", TEST_DATA.len());
 }

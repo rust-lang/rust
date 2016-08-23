@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {
-    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
+struct Foo<'a> {
+    a: &'a i32,
 }
 
-struct Foo;
-
-impl Trait for Foo {
-    fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
-                                            //~^ lifetimes do not match trait
+impl<'a> Foo<'a> {
+    fn f<'a>(x: &'a i32) { //~ ERROR E0496
     }
 }
 

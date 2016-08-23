@@ -8,17 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {
-    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
-}
-
-struct Foo;
-
-impl Trait for Foo {
-    fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
-                                            //~^ lifetimes do not match trait
+fn assert_sizeof() -> ! {
+    unsafe {
+        ::std::mem::transmute::<f64, [u8; 8]>(panic!())
     }
 }
 
-fn main() {
-}
+fn main() { }
+

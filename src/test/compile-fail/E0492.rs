@@ -8,17 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {
-    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
-}
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 
-struct Foo;
-
-impl Trait for Foo {
-    fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
-                                            //~^ lifetimes do not match trait
-    }
-}
+const A: AtomicUsize = ATOMIC_USIZE_INIT;
+static B: &'static AtomicUsize = &A; //~ ERROR E0492
 
 fn main() {
 }

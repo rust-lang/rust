@@ -104,10 +104,9 @@ use CrateCtxt;
 use TypeAndSubsts;
 use lint;
 use util::common::{block_query, ErrorReported, indenter, loop_query};
-use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
+use util::nodemap::{DefIdMap, FnvHashMap, FnvHashSet, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::{HashSet};
 use std::mem::replace;
 use std::ops::Deref;
 use syntax::abi::Abi;
@@ -708,7 +707,13 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
 
-    fcx.check_block_with_expected(body, ExpectHasType(fcx.ret_ty));
+    // FIXME(aburka) do we need this special case? and should it be is_uninhabited?
+    let expected = if fcx.ret_ty.is_never() {
+        NoExpectation
+    } else {
+        ExpectHasType(fcx.ret_ty)
+    };
+    fcx.check_block_with_expected(body, expected);
 
     fcx
 }
@@ -2039,7 +2044,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .filter_map(|t| self.default(t).map(|d| (t, d)))
                     .collect();
 
-            let mut unbound_tyvars = HashSet::new();
+            let mut unbound_tyvars = FnvHashSet();
 
             debug!("select_all_obligations_and_apply_defaults: defaults={:?}", default_map);
 
@@ -2186,7 +2191,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // table then apply defaults until we find a conflict. That default must be the one
     // that caused conflict earlier.
     fn find_conflicting_default(&self,
-                                unbound_vars: &HashSet<Ty<'tcx>>,
+                                unbound_vars: &FnvHashSet<Ty<'tcx>>,
                                 default_map: &FnvHashMap<&Ty<'tcx>, type_variable::Default<'tcx>>,
                                 conflict: Ty<'tcx>)
                                 -> Option<type_variable::Default<'tcx>> {

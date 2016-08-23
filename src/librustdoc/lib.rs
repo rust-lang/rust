@@ -35,6 +35,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;
+extern crate rustc_data_structures;
 extern crate rustc_trans;
 extern crate rustc_driver;
 extern crate rustc_resolve;
@@ -86,7 +87,6 @@ pub mod plugins;
 pub mod visit_ast;
 pub mod visit_lib;
 pub mod test;
-mod flock;
 
 use clean::Attributes;
 
