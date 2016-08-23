@@ -194,11 +194,13 @@ pub struct CommonTypes<'tcx> {
     pub i16: Ty<'tcx>,
     pub i32: Ty<'tcx>,
     pub i64: Ty<'tcx>,
+    pub i128: Ty<'tcx>,
     pub usize: Ty<'tcx>,
     pub u8: Ty<'tcx>,
     pub u16: Ty<'tcx>,
     pub u32: Ty<'tcx>,
     pub u64: Ty<'tcx>,
+    pub u128: Ty<'tcx>,
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
     pub never: Ty<'tcx>,
@@ -359,11 +361,13 @@ impl<'tcx> CommonTypes<'tcx> {
             i16: mk(TyInt(ast::IntTy::I16)),
             i32: mk(TyInt(ast::IntTy::I32)),
             i64: mk(TyInt(ast::IntTy::I64)),
+            i128: mk(TyInt(ast::IntTy::I128)),
             usize: mk(TyUint(ast::UintTy::Us)),
             u8: mk(TyUint(ast::UintTy::U8)),
             u16: mk(TyUint(ast::UintTy::U16)),
             u32: mk(TyUint(ast::UintTy::U32)),
             u64: mk(TyUint(ast::UintTy::U64)),
+            u128: mk(TyUint(ast::UintTy::U128)),
             f32: mk(TyFloat(ast::FloatTy::F32)),
             f64: mk(TyFloat(ast::FloatTy::F64)),
         }
@@ -1304,6 +1308,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ast::IntTy::I16  => self.types.i16,
             ast::IntTy::I32  => self.types.i32,
             ast::IntTy::I64  => self.types.i64,
+            ast::IntTy::I128  => self.types.i128,
         }
     }
 
@@ -1314,6 +1319,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ast::UintTy::U16  => self.types.u16,
             ast::UintTy::U32  => self.types.u32,
             ast::UintTy::U64  => self.types.u64,
+            ast::UintTy::U128  => self.types.u128,
         }
     }
 

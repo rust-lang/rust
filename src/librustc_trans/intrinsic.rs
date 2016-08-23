@@ -1167,6 +1167,8 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
 // Returns the width of an int TypeVariant, and if it's signed or not
 // Returns None if the type is not an integer
+// FIXME: there’s multiple of this functions, investigate using some of the already existing
+// stuffs.
 fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
         -> Option<(u64, bool)> {
     use rustc::ty::{TyInt, TyUint};
@@ -1184,6 +1186,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
             ast::IntTy::I16 => 16,
             ast::IntTy::I32 => 32,
             ast::IntTy::I64 => 64,
+            ast::IntTy::I128 => 128,
         }, true)),
         TyUint(t) => Some((match t {
             ast::UintTy::Us => {
@@ -1198,6 +1201,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
             ast::UintTy::U16 => 16,
             ast::UintTy::U32 => 32,
             ast::UintTy::U64 => 64,
+            ast::UintTy::U128 => 128,
         }, false)),
         _ => None,
     }

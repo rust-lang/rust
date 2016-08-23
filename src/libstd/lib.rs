@@ -301,6 +301,7 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
+#![feature(i128)]
 #![cfg_attr(test, feature(update_panic_count))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
@@ -395,6 +396,9 @@ pub use core::i16;
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
+#[unstable(feature = "i128", issue = "35118")]
+#[cfg(not(stage0))]
+pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -423,6 +427,9 @@ pub use core_collections::string;
 pub use core_collections::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::char;
+#[unstable(feature = "i128", issue = "35118")]
+#[cfg(not(stage0))]
+pub use core::u128;
 
 pub mod f32;
 pub mod f64;

@@ -44,6 +44,8 @@ use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::Span;
 
+use rustc_i128::u128;
+
 pub use context::{CrateContext, SharedCrateContext};
 
 pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
@@ -422,6 +424,16 @@ pub fn C_undef(t: Type) -> ValueRef {
 pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     unsafe {
         llvm::LLVMConstInt(t.to_ref(), u, sign_extend as Bool)
+    }
+}
+
+pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
+    if ::std::mem::size_of::<u128>() == 16 {
+        unsafe {
+            llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, &u as *const u128 as *const u64)
+        }
+    } else {
+        C_integral(t, u as u64, false)
     }
 }
 

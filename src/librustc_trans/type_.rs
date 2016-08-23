@@ -94,6 +94,10 @@ impl Type {
         ty!(llvm::LLVMInt64TypeInContext(ccx.llcx()))
     }
 
+    pub fn i128(ccx: &CrateContext) -> Type {
+        ty!(llvm::LLVMInt128TypeInContext(ccx.llcx()))
+    }
+
     // Creates an integer type with the given number of bits, e.g. i24
     pub fn ix(ccx: &CrateContext, num_bits: u64) -> Type {
         ty!(llvm::LLVMIntTypeInContext(ccx.llcx(), num_bits as c_uint))
@@ -134,7 +138,8 @@ impl Type {
             ast::IntTy::I8 => Type::i8(ccx),
             ast::IntTy::I16 => Type::i16(ccx),
             ast::IntTy::I32 => Type::i32(ccx),
-            ast::IntTy::I64 => Type::i64(ccx)
+            ast::IntTy::I64 => Type::i64(ccx),
+            ast::IntTy::I128 => Type::i128(ccx),
         }
     }
 
@@ -144,7 +149,8 @@ impl Type {
             ast::UintTy::U8 => Type::i8(ccx),
             ast::UintTy::U16 => Type::i16(ccx),
             ast::UintTy::U32 => Type::i32(ccx),
-            ast::UintTy::U64 => Type::i64(ccx)
+            ast::UintTy::U64 => Type::i64(ccx),
+            ast::UintTy::U128 => Type::i128(ccx),
         }
     }
 
