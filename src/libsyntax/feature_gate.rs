@@ -283,7 +283,10 @@ declare_features! (
     (active, relaxed_adts, "1.12.0", Some(35626)),
 
     // The `!` type
-    (active, never_type, "1.13.0", Some(35121))
+    (active, never_type, "1.13.0", Some(35121)),
+
+    // The `i128` type
+    (active, i128_type, "1.13.0", Some(35118))
 );
 
 declare_features! (
@@ -992,6 +995,18 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
+            }
+            ast::ExprKind::Lit(ref lit) => {
+                if let ast::LitKind::Int(_, ref ty) = lit.node {
+                    match *ty {
+                        ast::LitIntType::Signed(ast::IntTy::I128) |
+                        ast::LitIntType::Unsigned(ast::UintTy::U128) => {
+                            gate_feature_post!(&self, i128_type, e.span,
+                                               "128-bit integers are not stable");
+                        }
+                        _ => {}
+                    }
+                }
             }
             _ => {}
         }

@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+#![feature(i128_type)]
 
 #[cfg(stage0)]
 pub type i128 = i64;
