@@ -61,6 +61,7 @@ use core::borrow;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
+use core::iter::FusedIterator;
 use core::marker::{self, Unsize};
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DerefMut};
@@ -528,6 +529,9 @@ impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 
 
 /// `FnBox` is a version of the `FnOnce` intended for use with boxed

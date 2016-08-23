@@ -57,7 +57,7 @@
 
 use core::fmt;
 use core::hash;
-use core::iter::FromIterator;
+use core::iter::{FromIterator, FusedIterator};
 use core::mem;
 use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
@@ -1995,3 +1995,6 @@ impl<'a> DoubleEndedIterator for Drain<'a> {
         self.iter.next_back()
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for Drain<'a> {}
