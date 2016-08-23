@@ -941,7 +941,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // lint warnings and so on -- kindck used to do this abort, but
         // kindck is gone now). -nmatsakis
         if sess.err_count() > 0 {
-            return Ok(f(tcx, Some(mir_map), analysis, incremental_hashes_map, Err(sess.err_count())));
+            return Ok(f(tcx,
+                        Some(mir_map),
+                        analysis,
+                        incremental_hashes_map,
+                        Err(sess.err_count())));
         }
 
         analysis.reachable =
@@ -969,7 +973,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         // The above three passes generate errors w/o aborting
         if sess.err_count() > 0 {
-            return Ok(f(tcx, Some(mir_map), analysis, incremental_hashes_map, Err(sess.err_count())));
+            return Ok(f(tcx,
+                        Some(mir_map),
+                        analysis,
+                        incremental_hashes_map,
+                        Err(sess.err_count())));
         }
 
         Ok(f(tcx, Some(mir_map), analysis, incremental_hashes_map, Ok(())))
