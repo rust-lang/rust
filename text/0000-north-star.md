@@ -14,15 +14,16 @@ Rust's roadmap will be established in year-long cycles, where we identify up
 front - together, as a project - the most critical problems facing the language
 and its ecosystem, along with the story we want to be able to tell the world
 about Rust. Work toward solving those problems, our short-term goals, will be
-decided in quarter-long cycles by individual teams. Goals that result in stable
-features will be assigned to release milestones for the purposes of reporting
-the project roadmap.
+decided in quarter-long cycles by individual teams. For the purposes of
+reporting the project roadmap, goals will be assigned to quartely milestones,
+and where these goals result in stable features the Rust version in which they
+become stable will be estimated as well.
 
 At the end of the year we will deliver a public facing retrospective, describing
 the goals we achieved and how to use the new features in detail. It will
-celebrate the year's progress in The Rust Project toward our goals, as well as
-achievements in the wider community. It will celebrate our performance and
-anticipate its impact on the coming year.
+celebrate the year's progress toward our goals, as well as the achievements of
+the wider community. It will evaluate our performance and anticipate its impact
+on the coming year.
 
 The primary outcome for these changes to the process are that we will have a
 consistent way to:
@@ -58,12 +59,12 @@ The downside, of course, is that a less singular focus can make it much harder
 to rally our efforts, to communicate a clear story - and ultimately, to ship.
 
 Since 1.0, we've attempted to lay out some major goals, both through the
-[discuss forum] and the [blog]. We've done pretty well in actually achieving
+[internals forum] and the [blog]. We've done pretty well in actually achieving
 these goals, and in some cases - particularly [MIR] - the community has really
 come together to produce amazing, focused results. But in general, there are
 several problems with the status quo:
 
-[discuss forum]: https://internals.rust-lang.org/t/priorities-after-1-0/1901
+[internals forum]: https://internals.rust-lang.org/t/priorities-after-1-0/1901
 [blog]: https://blog.rust-lang.org/2015/08/14/Next-year.html
 [MIR]: https://blog.rust-lang.org/2016/04/19/MIR.html
 
@@ -83,13 +84,13 @@ several problems with the status quo:
 
 - We do not have any single point of release, like 1.0, that gathers together a
   large body of community work into a single, polished product. Instead, we have
-  a rapid release process, which is a huge boon for
-  [stability without stagnation] but can paradoxically reduce pressure to ship
-  in a timely fashion. **We should find a balance, retaining rapid release but
+  a rapid release process, which results in a [remarkably stable and reliable
+  product][s] but can paradoxically reduce pressure to ship new features in a
+  timely fashion. **We should find a balance, retaining rapid release but
   establishing some focal point around which to rally the community, polish a
   product, and establish a clear public narrative**.
 
-[stability without stagnation]: http://blog.rust-lang.org/2014/10/30/Stability.html
+[s]: http://blog.rust-lang.org/2014/10/30/Stability.html
 
 All told, there's a lot of room to do better in establishing, communicating, and
 driving the vision for Rust.
@@ -115,53 +116,60 @@ the way we work today.
 Rust's roadmap will be established in year-long cycles, where we identify up
 front the most critical problems facing the project, formulated as _problem
 statements_. Work toward solving those problems, _goals_, will be planned in
-quarter-long cycles by individual teams. _Goals_ that result in stable features
-will be assigned to _release milestones_ for the purposes of reporting the
-project roadmap. Along the way, teams will be expected to maintain _tracking
-issues_ that communicate progress toward the project's goals.
+quarter-long cycles by individual teams. For the purposes of reporting the
+project roadmap, goals will be assigned to _quartely milestones_, and where
+these goals result in stable features the Rust version in which they become
+stable will be estimated as well. Along the way, teams will be expected to
+maintain _tracking issues_ that communicate progress toward the project's goals.
 
-The end-of-year retrospective is a 'rallying point'. Its primary purposes are to
-create anticipation of a major event in the Rust world, to motivate (rally)
-contributors behind the goals we've established to get there, and generate a big
-PR-bomb where we can brag to the world about what we've done. It can be thought
-of as a 'state of the union'. This is where we tell Rust's story, describe the
-new best practices enabled by the new features we've delivered, celebrate those
-contributors who helped achieve our goals, honestly evaluate our performance,
-and look forward to the year to come.
+At the end of the year we will deliver a public facing retrospective, which is
+intended as a 'rallying point'. Its primary purposes are to create anticipation
+of a major event in the Rust world, to motivate (rally) contributors behind the
+goals we've established to get there, and generate a big PR-bomb where we can
+brag to the world about what we've done. It can be thought of as a 'state of the
+union'. This is where we tell Rust's story, describe the new best practices
+enabled by the new features we've delivered, celebrate those contributors who
+helped achieve our goals, honestly evaluate our performance, and look forward to
+the year to come.
 
 ## Summary of terminology
 
+Key terminology used in this RFC:
+
 - _problem statement_ - A description of a major issue facing Rust, possibly
-  spanning multiple teams and disciplines. We decide these together every year
+  spanning multiple teams and disciplines. We decide these together, every year,
   so that everybody understands the direction the project is taking. These are
-  used as the broad basis for decision making throughout the year.
+  used as the broad basis for decision making throughout the year, and are
+  captured in the yearly "north star RFC", and tagged `R-problem-statement`
+  on the issue tracker.
 
 - _goal_ - These are set by individual teams quarterly, in service of solving
   the problems identified by the project. They have estimated deadlines, and
   those that result in stable features have estimated release numbers. Goals may
-  be subdivided into further discrete tasks on the issue tracker.
+  be subdivided into further discrete tasks on the issue tracker. They are
+  tagged `R-goal`.
 
 - _retrospective_ - At the end of the year we deliver a retrospective report. It
   presents the result of work toward each of our goals in a way that serves to
   reinforce the year's narrative. These are written for public consumption,
   showing off new features, surfacing interesting technical details, and
-  celebrating those contributors who contribute to achieving the project's goals
-  and resolving it's problems.
+  celebrating those who contribute to achieving the project's goals and
+  resolving it's problems.
 
 - _quarterly milestone_ - All goals have estimates for completion, placed on
   quarterly milestones. Each quarter that a goal remains incomplete it must be
   re-triaged and re-estimated by the responsible team.
 
-## The big planning cycle (problem statements and the narrative arc)
+## The big planning cycle (problem statements and the north star RFC)
 
 The big cycle spans one year. At the beginning of the cycle we identify areas of
 Rust that need the most improvement, and at the end of the cycle is a 'rallying
 point' where we deliver to the world the results of our efforts. We choose
 year-long cycles because a year is enough time to accomplish relatively large
 goals; and because having the rallying point occur at the same time every year
-makes it easy to know when to anticipate big news from the project. (Being
+makes it easy to know when to anticipate big news from the project. Being
 calendar-based avoids the temptation to slip or produce feature-based releases,
-instead providing a fixed point of accountability for shipping.)
+instead providing a fixed point of accountability for shipping.
 
 This planning effort is _problem-oriented_. Focusing on "why" may seem like an
 obvious thing to do, but in practice it's very easy to become enamored of
@@ -251,34 +259,49 @@ estimates. These estimates are used to place goals onto quarterly milestones.
 Not all the work items done by teams in a quarter should be considered a goal
 nor should they be. Goals only need to be granular enough to demonstrate
 consistent progress toward solving the project's problems. Work that
-contribute toward quarterly goals should still be tracked as sub-tasks of
+contributes toward quarterly goals should still be tracked as sub-tasks of
 those goals, but only needs to be filed on the issue tracker and not reported
 directly as goals on the roadmap.
 
 For each goal the teams will create an issue on the issue tracker tagged with
-`R-goal`. Each goal must be described in a single sentence summary with a
-_deliverable_ that is as crisply stated as possible. Goals with sub-goals and
-sub-tasks must list them in the OP in a standard format.
+`R-goal`. Each goal must be described in a single sentence summary with an
+end-result or deliverable that is as crisply stated as possible. Goals with
+sub-goals and sub-tasks must list them in the OP in a standard format.
 
 During each planning period all goals must be triaged and updated for the
 following information:
 
 - The set of sub-goals and sub-tasks and their status
-- The estimated date of completion for goals
+- The estimated date of completion
 
 ## The retrospective (rallying point)
 
-- Written for broad public consumption
-- Detailed
-- Progress toward goals
-- Demonstration of new features
-- Technical details
-- Reinforce the project narrative
-- Celebrate contributors who accomplished our goals
-- Celebrate the evolution of the ecosystem
-- Evaluation of performance, missed goals
+The retrospective is an opportunity to showcase the best of Rust and its
+community to the world.
 
-TODO How is it constructed?
+It is a report covering all the Rust activity of the past year. It is written
+for a broad audience: contributors, users and non-users alike. It reviews each
+of the problems we tackled this year and the goals we achieved toward solving
+them, and it highlights important work in the broader community and
+ecosystem. For both these things the retrospective provides technical detail, as
+though it were primary documentation; this is where we show our best side to the
+world. It explains new features in depth, with clear prose and plentiful
+examples, and it connects them all thematically, as a demonstration of how to
+write cutting-edge Rust code.
+
+While we are always lavish with our praise of contributors, the retrospective is
+the best opportunity to celebrate specific individuals and their contributions
+toward the strategic interests of the project, as defined way back at the
+beginning of the year.
+
+Finally, the retrospective is an opportunity to evaluate our performance. Did we
+make progress toward solving the problems we set out to solve? Did we outright
+solve any of them? Where did we fail to meet our goals and how might we do
+better next year?
+
+Since the retrospective must be a high-quality document, and cover a lot of
+material, it is expected to require significant planning, editing and revision.
+The details of how this will work are to be determined.
 
 ## Release estimation
 
@@ -315,6 +338,8 @@ accessible form (for a prototype see [1]).
 
 [1]: https://brson.github.io/rust-z
 
+Again, the details are to be determined.
+
 ## Calendar
 
 The timing of the events specified by this RFC is precisely specified in order
@@ -331,33 +356,42 @@ traditional conference season and allows us opportunities to talk publicly about
 both our previous years progress as well as next years ambitions.
 
 Following from the September planning month, the quarterly planning cycles take
-place for exactly one week at the beginning of the calendar quarter; and the
-development of the yearly retrospective approximately for the month of August.
+place for exactly one week at the beginning of the calendar quarter; likewise,
+the planning for each subsequent quarter at the beginning of the calendar
+quarter; and the development of the yearly retrospective approximately for the
+month of August.
 
-## Summary of mechanics
+## References
 
-There are four primary new mechanism introduced by this RFC
-
-- North star RFC. Each year in September the entire project comes together
-  to produce this. It is what drives the evolution of the project roadmap
-  over the next year.
-- `R-problem-statement` tag. The north star RFC defines problem statements that
-  are filed and tagged on the issue tracker. The `R-problem-statement` issues in
-  turn link to the goals that support them.
-- `R-goal`. Reevaluated every quarter by the teams, with feedback from
-  the wider community, these are filed on the issue tracker, tagged `R-goal` and
-  linked to the `R-problem-statement` issue they support.
-- End-of-year retrospective blog post. In the final month we write a detailed
-  blog post that hypes up our amazing work.
-
-For simplicity, all `R-problem-statement` and `R-goal` issues live in
-rust-lang/rust, even when they primarily entail work on other code-bases.
+- [Refining RFCs part 1: Roadmap]
+  (https://internals.rust-lang.org/t/refining-rfcs-part-1-roadmap/3656),
+  the internals.rust-lang.org thread that spawned this RFC.
+- [Post-1.0 priorities thread on internals.rust-lang.org]
+  (https://internals.rust-lang.org/t/priorities-after-1-0/1901).
+- [Post-1.0 blog post on project direction]
+  (https://blog.rust-lang.org/2015/08/14/Next-year.html).
+- [Blog post on MIR]
+  (https://blog.rust-lang.org/2016/04/19/MIR.html),
+  a large success in strategic community collaboration.
+- ["Stability without stagnation"]
+  (http://blog.rust-lang.org/2014/10/30/Stability.html),
+  outlining Rust's philosophy on rapid iteration while maintaining strong
+  stability guarantees.
+- [The 2016 state of Rust survey]
+  (https://blog.rust-lang.org/2016/06/30/State-of-Rust-Survey-2016.html),
+  which indicates promising directions for future work.
+- [Production user outreach thread on internals.rust-lang.org]
+  (https://internals.rust-lang.org/t/production-user-research-summary/2530),
+  another strong indicator of Rust's needs.
+- [rust-z]
+  (https://brson.github.io/rust-z),
+  a prototype tool to organize the roadmap.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The yearly north star RFC could be an unpleast bikeshed. Maybe nobody actually
-agrees on the project's direction.
+The yearly north star RFC could be an unpleastant bikeshed. Maybe nobody
+actually agrees on the project's direction.
 
 This imposes more work on teams to organize their goals.
 
