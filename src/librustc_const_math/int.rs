@@ -31,7 +31,6 @@ pub enum ConstInt {
     U64(u64),
     U128(u128),
     Usize(ConstUsize),
-    // FIXME: i128
     Infer(u128),
     InferSigned(i128),
 }
@@ -56,7 +55,6 @@ macro_rules! bounds {
 mod ubounds {
     #![allow(dead_code)]
     use rustc_i128::{u128, i128};
-    // FIXME: min are problably all wrong for signed here.
     bounds!{u128: 0,
         i8 I8MIN I8MAX i16 I16MIN I16MAX i32 I32MIN I32MAX i64 I64MIN I64MAX i128 I128MIN I128MAX
         u8 U8MIN U8MAX u16 U16MIN U16MAX u32 U32MIN U32MAX u64 U64MIN U64MAX u128 U128MIN U128MAX
@@ -155,7 +153,6 @@ impl ConstInt {
             I16(i) if i < 0 => InferSigned(i as i128),
             I32(i) if i < 0 => InferSigned(i as i128),
             I64(i) if i < 0 => InferSigned(i as i128),
-            // FIXME: 1128, compare with i128
             I128(i) if i < 0 => InferSigned(i as i128),
             Isize(Is16(i)) if i < 0 => InferSigned(i as i128),
             Isize(Is32(i)) if i < 0 => InferSigned(i as i128),
@@ -165,7 +162,6 @@ impl ConstInt {
             I16(i) => Infer(i as u128),
             I32(i) => Infer(i as u128),
             I64(i) => Infer(i as u128),
-            // FIXME: i128
             I128(i) => Infer(i as u128),
             Isize(Is16(i)) => Infer(i as u128),
             Isize(Is32(i)) => Infer(i as u128),
@@ -174,7 +170,6 @@ impl ConstInt {
             U16(i) => Infer(i as u128),
             U32(i) => Infer(i as u128),
             U64(i) => Infer(i as u128),
-            // FIXME: i128
             U128(i) => Infer(i as u128),
             Usize(Us16(i)) => Infer(i as u128),
             Usize(Us32(i)) => Infer(i as u128),

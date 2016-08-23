@@ -1207,17 +1207,6 @@ impl IntTy {
         format!("{}{}", val as u128, self.ty_to_string())
     }
 
-    pub fn ty_max(&self) -> u64 {
-        match *self {
-            IntTy::I8 => 0x80,
-            IntTy::I16 => 0x8000,
-            IntTy::Is | IntTy::I32 => 0x80000000, // FIXME: actually ni about Is
-            IntTy::I64 => 0x8000000000000000,
-            // FIXME: i128
-            IntTy::I128 => !0u64,
-        }
-    }
-
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
             IntTy::Is => return None,
@@ -1254,17 +1243,6 @@ impl UintTy {
 
     pub fn val_to_string(&self, val: u128) -> String {
         format!("{}{}", val, self.ty_to_string())
-    }
-
-    pub fn ty_max(&self) -> u64 {
-        match *self {
-            UintTy::U8 => 0xff,
-            UintTy::U16 => 0xffff,
-            UintTy::Us | UintTy::U32 => 0xffffffff, // FIXME: actually ni about Us
-            UintTy::U64 => 0xffffffffffffffff,
-            // FIXME: i128
-            UintTy::U128 => 0xffffffffffffffff,
-        }
     }
 
     pub fn bit_width(&self) -> Option<usize> {
