@@ -147,6 +147,11 @@ impl<D: Clone + Debug> DepNode<D> {
             }
         }
 
+        if label == "Krate" {
+            // special case
+            return Ok(DepNode::Krate);
+        }
+
         check! {
             CollectItem,
             BorrowCheck,

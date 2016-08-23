@@ -25,25 +25,30 @@ use rustc::hir::def::{Def, PathResolution};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::hir::intravisit::{Visitor, FnKind};
-use rustc::hir::map::DefPath;
 use rustc::ty::TyCtxt;
 
 use std::hash::{Hash, SipHasher};
 
-pub struct StrictVersionHashVisitor<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+use super::def_path_hash::DefPathHashes;
+
+pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
+    pub tcx: TyCtxt<'hash, 'tcx, 'tcx>,
     pub st: &'a mut SipHasher,
+
+    // collect a deterministic hash of def-ids that we have seen
+    def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
 }
 
-impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
+impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     pub fn new(st: &'a mut SipHasher,
-               tcx: TyCtxt<'a, 'tcx, 'tcx>)
+               tcx: TyCtxt<'hash, 'tcx, 'tcx>,
+               def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>)
                -> Self {
-        StrictVersionHashVisitor { st: st, tcx: tcx }
+        StrictVersionHashVisitor { st: st, tcx: tcx, def_path_hashes: def_path_hashes }
     }
 
-    fn hash_def_path(&mut self, path: &DefPath) {
-        path.deterministic_hash_to(self.tcx, self.st);
+    fn compute_def_id_hash(&mut self, def_id: DefId) -> u64 {
+        self.def_path_hashes.hash(def_id)
     }
 }
 
@@ -187,20 +192,20 @@ pub enum SawStmtComponent {
     SawStmtSemi,
 }
 
-impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
+impl<'a, 'hash, 'tcx> Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     fn visit_nested_item(&mut self, _: ItemId) {
         // Each item is hashed independently; ignore nested items.
     }
 
-    fn visit_variant_data(&mut self, s: &'a VariantData, name: Name,
-                          g: &'a Generics, _: NodeId, _: Span) {
+    fn visit_variant_data(&mut self, s: &'tcx VariantData, name: Name,
+                          g: &'tcx Generics, _: NodeId, _: Span) {
         debug!("visit_variant_data: st={:?}", self.st);
         SawStructDef(name.as_str()).hash(self.st);
         visit::walk_generics(self, g);
         visit::walk_struct_def(self, s)
     }
 
-    fn visit_variant(&mut self, v: &'a Variant, g: &'a Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, v: &'tcx Variant, g: &'tcx Generics, item_id: NodeId) {
         debug!("visit_variant: st={:?}", self.st);
         SawVariant.hash(self.st);
         // walk_variant does not call walk_generics, so do it here.
@@ -227,12 +232,12 @@ impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
         SawIdent(name.as_str()).hash(self.st);
     }
 
-    fn visit_lifetime(&mut self, l: &'a Lifetime) {
+    fn visit_lifetime(&mut self, l: &'tcx Lifetime) {
         debug!("visit_lifetime: st={:?}", self.st);
         SawLifetime(l.name.as_str()).hash(self.st);
     }
 
-    fn visit_lifetime_def(&mut self, l: &'a LifetimeDef) {
+    fn visit_lifetime_def(&mut self, l: &'tcx LifetimeDef) {
         debug!("visit_lifetime_def: st={:?}", self.st);
         SawLifetimeDef(l.lifetime.name.as_str()).hash(self.st);
     }
@@ -242,12 +247,12 @@ impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
     // monomorphization and cross-crate inlining generally implies
     // that a change to a crate body will require downstream
     // crates to be recompiled.
-    fn visit_expr(&mut self, ex: &'a Expr) {
+    fn visit_expr(&mut self, ex: &'tcx Expr) {
         debug!("visit_expr: st={:?}", self.st);
         SawExpr(saw_expr(&ex.node)).hash(self.st); visit::walk_expr(self, ex)
     }
 
-    fn visit_stmt(&mut self, s: &'a Stmt) {
+    fn visit_stmt(&mut self, s: &'tcx Stmt) {
         debug!("visit_stmt: st={:?}", self.st);
 
         // We don't want to modify the hash for decls, because
@@ -265,7 +270,7 @@ impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
         visit::walk_stmt(self, s)
     }
 
-    fn visit_foreign_item(&mut self, i: &'a ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'tcx ForeignItem) {
         debug!("visit_foreign_item: st={:?}", self.st);
 
         // FIXME (#14132) ideally we would incorporate privacy (or
@@ -275,7 +280,7 @@ impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
         SawForeignItem.hash(self.st); visit::walk_foreign_item(self, i)
     }
 
-    fn visit_item(&mut self, i: &'a Item) {
+    fn visit_item(&mut self, i: &'tcx Item) {
         debug!("visit_item: {:?} st={:?}", i, self.st);
 
         // FIXME (#14132) ideally would incorporate reachability
@@ -285,63 +290,63 @@ impl<'a, 'tcx> Visitor<'a> for StrictVersionHashVisitor<'a, 'tcx> {
         SawItem.hash(self.st); visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'a Mod, _s: Span, n: NodeId) {
+    fn visit_mod(&mut self, m: &'tcx Mod, _s: Span, n: NodeId) {
         debug!("visit_mod: st={:?}", self.st);
         SawMod.hash(self.st); visit::walk_mod(self, m, n)
     }
 
-    fn visit_ty(&mut self, t: &'a Ty) {
+    fn visit_ty(&mut self, t: &'tcx Ty) {
         debug!("visit_ty: st={:?}", self.st);
         SawTy.hash(self.st); visit::walk_ty(self, t)
     }
 
-    fn visit_generics(&mut self, g: &'a Generics) {
+    fn visit_generics(&mut self, g: &'tcx Generics) {
         debug!("visit_generics: st={:?}", self.st);
         SawGenerics.hash(self.st); visit::walk_generics(self, g)
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'a>, fd: &'a FnDecl,
-                b: &'a Block, s: Span, n: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx FnDecl,
+                b: &'tcx Block, s: Span, n: NodeId) {
         debug!("visit_fn: st={:?}", self.st);
         SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s, n)
     }
 
-    fn visit_trait_item(&mut self, ti: &'a TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx TraitItem) {
         debug!("visit_trait_item: st={:?}", self.st);
         SawTraitItem.hash(self.st); visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'a ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx ImplItem) {
         debug!("visit_impl_item: st={:?}", self.st);
         SawImplItem.hash(self.st); visit::walk_impl_item(self, ii)
     }
 
-    fn visit_struct_field(&mut self, s: &'a StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx StructField) {
         debug!("visit_struct_field: st={:?}", self.st);
         SawStructField.hash(self.st); visit::walk_struct_field(self, s)
     }
 
-    fn visit_path(&mut self, path: &'a Path, _: ast::NodeId) {
+    fn visit_path(&mut self, path: &'tcx Path, _: ast::NodeId) {
         debug!("visit_path: st={:?}", self.st);
         SawPath.hash(self.st); visit::walk_path(self, path)
     }
 
-    fn visit_block(&mut self, b: &'a Block) {
+    fn visit_block(&mut self, b: &'tcx Block) {
         debug!("visit_block: st={:?}", self.st);
         SawBlock.hash(self.st); visit::walk_block(self, b)
     }
 
-    fn visit_pat(&mut self, p: &'a Pat) {
+    fn visit_pat(&mut self, p: &'tcx Pat) {
         debug!("visit_pat: st={:?}", self.st);
         SawPat.hash(self.st); visit::walk_pat(self, p)
     }
 
-    fn visit_local(&mut self, l: &'a Local) {
+    fn visit_local(&mut self, l: &'tcx Local) {
         debug!("visit_local: st={:?}", self.st);
         SawLocal.hash(self.st); visit::walk_local(self, l)
     }
 
-    fn visit_arm(&mut self, a: &'a Arm) {
+    fn visit_arm(&mut self, a: &'tcx Arm) {
         debug!("visit_arm: st={:?}", self.st);
         SawArm.hash(self.st); visit::walk_arm(self, a)
     }
@@ -361,7 +366,7 @@ pub enum DefHash {
     SawErr,
 }
 
-impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
+impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     fn hash_resolve(&mut self, id: ast::NodeId) {
         // Because whether or not a given id has an entry is dependent
         // solely on expr variant etc, we don't need to hash whether
@@ -369,20 +374,29 @@ impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
         // variant it is above when we visit the HIR).
 
         if let Some(def) = self.tcx.def_map.borrow().get(&id) {
+            debug!("hash_resolve: id={:?} def={:?} st={:?}", id, def, self.st);
             self.hash_partial_def(def);
         }
 
         if let Some(traits) = self.tcx.trait_map.get(&id) {
+            debug!("hash_resolve: id={:?} traits={:?} st={:?}", id, traits, self.st);
             traits.len().hash(self.st);
-            for candidate in traits {
-                self.hash_def_id(candidate.def_id);
-            }
+
+            // The ordering of the candidates is not fixed. So we hash
+            // the def-ids and then sort them and hash the collection.
+            let mut candidates: Vec<_> =
+                traits.iter()
+                      .map(|&TraitCandidate { def_id, import_id: _ }| {
+                          self.compute_def_id_hash(def_id)
+                      })
+                      .collect();
+            candidates.sort();
+            candidates.hash(self.st);
         }
     }
 
     fn hash_def_id(&mut self, def_id: DefId) {
-        let def_path = self.tcx.def_path(def_id);
-        self.hash_def_path(&def_path);
+        self.compute_def_id_hash(def_id).hash(self.st);
     }
 
     fn hash_partial_def(&mut self, def: &PathResolution) {

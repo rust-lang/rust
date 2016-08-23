@@ -26,10 +26,10 @@ use CrateTranslation;
 use util::common::time;
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc::dep_graph::DepNode;
-use rustc::ty::TyCtxt;
+use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
+use rustc_incremental::IncrementalHashesMap;
 
-use rustc_incremental::SvhCalculate;
 use std::ascii;
 use std::char;
 use std::env;
@@ -125,12 +125,12 @@ pub fn find_crate_name(sess: Option<&Session>,
 
 }
 
-pub fn build_link_meta<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 name: &str)
-                                 -> LinkMeta {
+pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
+                       name: &str)
+                       -> LinkMeta {
     let r = LinkMeta {
         crate_name: name.to_owned(),
-        crate_hash: tcx.calculate_krate_hash(),
+        crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate]),
     };
     info!("{:?}", r);
     return r;
