@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use attr::{AttrMetaMethods, AttrNestedMetaItemMethods, HasAttrs};
+use attr::{AttrMetaMethods, HasAttrs};
 use feature_gate::{emit_feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
 use fold::Folder;
 use {fold, attr};

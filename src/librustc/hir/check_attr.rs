@@ -11,7 +11,7 @@
 use session::Session;
 
 use syntax::ast;
-use syntax::attr::{AttrNestedMetaItemMethods, AttrMetaMethods};
+use syntax::attr::AttrMetaMethods;
 use syntax::visit;
 use syntax::visit::Visitor;
 

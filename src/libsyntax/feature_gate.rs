@@ -27,7 +27,7 @@ use self::AttributeGate::*;
 
 use abi::Abi;
 use ast::{self, NodeId, PatKind};
-use attr::{self, AttrMetaMethods, AttrNestedMetaItemMethods};
+use attr::{self, AttrMetaMethods};
 use codemap::CodeMap;
 use syntax_pos::Span;
 use errors::Handler;
