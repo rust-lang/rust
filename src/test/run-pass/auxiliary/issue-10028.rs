@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_no_drop_flag)]
-
-#[unsafe_no_drop_flag]
 pub struct ZeroLengthThingWithDestructor;
 impl Drop for ZeroLengthThingWithDestructor {
     fn drop(&mut self) {}

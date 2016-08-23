@@ -29,7 +29,6 @@ impl<A, B> Foo<A, B>
 where A: Iterator, B: Iterator<Item=A::Item>
 {
     // This is the function we care about
-    #[rustc_mir]
     fn next(&mut self) -> Option<A::Item> {
         match self.state {
             State::Both => match self.a.next() {

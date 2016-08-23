@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 // error-pattern:complex called
 // error-pattern:dropped
 // error-pattern:exit
@@ -30,7 +28,6 @@ fn complex() -> u64 {
 }
 
 
-#[rustc_mir]
 fn mir() -> u64 {
     let x = Droppable;
     return complex();

@@ -53,14 +53,9 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
-use _match;
 use abi::FAT_PTR_ADDR;
-use base::InitAlloca;
 use build::*;
-use cleanup;
-use cleanup::CleanupMethods;
 use common::*;
-use datum;
 use debuginfo::DebugLoc;
 use glue;
 use machine;
@@ -69,27 +64,13 @@ use type_::Type;
 use type_of;
 use value::Value;
 
+#[derive(Copy, Clone, PartialEq)]
+pub enum BranchKind {
+    Switch,
+    Single
+}
+
 type Hint = attr::ReprAttr;
-
-// Representation of the context surrounding an unsized type. I want
-// to be able to track the drop flags that are injected by trans.
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub struct TypeContext {
-    prefix: Type,
-    needs_drop_flag: bool,
-}
-
-impl TypeContext {
-    pub fn prefix(&self) -> Type { self.prefix }
-    pub fn needs_drop_flag(&self) -> bool { self.needs_drop_flag }
-
-    fn direct(t: Type) -> TypeContext {
-        TypeContext { prefix: t, needs_drop_flag: false }
-    }
-    fn may_need_drop_flag(t: Type, needs_drop_flag: bool) -> TypeContext {
-        TypeContext { prefix: t, needs_drop_flag: needs_drop_flag }
-    }
-}
 
 /// Representations.
 #[derive(Eq, PartialEq, Debug)]
@@ -97,22 +78,10 @@ pub enum Repr<'tcx> {
     /// C-like enums; basically an int.
     CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
     /// Single-case variants, and structs/tuples/records.
-    ///
-    /// Structs with destructors need a dynamic destroyedness flag to
-    /// avoid running the destructor too many times; this is included
-    /// in the `Struct` if present.
-    /// (The flag if nonzero, represents the initialization value to use;
-    ///  if zero, then use no flag at all.)
-    Univariant(Struct<'tcx>, u8),
+    Univariant(Struct<'tcx>),
     /// General-case enums: for each case there is a struct, and they
     /// all start with a field for the discriminant.
-    ///
-    /// Types with destructors need a dynamic destroyedness flag to
-    /// avoid running the destructor too many times; the last argument
-    /// indicates whether such a flag is present.
-    /// (The flag, if nonzero, represents the initialization value to use;
-    ///  if zero, then use no flag at all.)
-    General(IntType, Vec<Struct<'tcx>>, u8),
+    General(IntType, Vec<Struct<'tcx>>),
     /// Two cases distinguished by a nullable pointer: the case with discriminant
     /// `nndiscr` must have single field which is known to be nonnull due to its type.
     /// The other case is known to be zero sized. Hence we represent the enum
@@ -178,14 +147,6 @@ impl MaybeSizedValue {
     }
 }
 
-/// Convenience for `represent_type`.  There should probably be more or
-/// these, for places in trans where the `Ty` isn't directly
-/// available.
-pub fn represent_node<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  node: ast::NodeId) -> Rc<Repr<'tcx>> {
-    represent_type(bcx.ccx(), node_id_type(bcx, node))
-}
-
 /// Decides how to represent a given type.
 pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 t: Ty<'tcx>)
@@ -201,91 +162,36 @@ pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     repr
 }
 
-const fn repeat_u8_as_u32(val: u8) -> u32 {
-    (val as u32) << 24 | (val as u32) << 16 | (val as u32) << 8 | val as u32
-}
-
-const fn repeat_u8_as_u64(val: u8) -> u64 {
-    (repeat_u8_as_u32(val) as u64) << 32 | repeat_u8_as_u32(val) as u64
-}
-
-/// `DTOR_NEEDED_HINT` is a stack-local hint that just means
-/// "we do not know whether the destructor has run or not; check the
-/// drop-flag embedded in the value itself."
-pub const DTOR_NEEDED_HINT: u8 = 0x3d;
-
-/// `DTOR_MOVED_HINT` is a stack-local hint that means "this value has
-/// definitely been moved; you do not need to run its destructor."
-///
-/// (However, for now, such values may still end up being explicitly
-/// zeroed by the generated code; this is the distinction between
-/// `datum::DropFlagInfo::ZeroAndMaintain` versus
-/// `datum::DropFlagInfo::DontZeroJustUse`.)
-pub const DTOR_MOVED_HINT: u8 = 0x2d;
-
-pub const DTOR_NEEDED: u8 = 0xd4;
-#[allow(dead_code)]
-pub const DTOR_NEEDED_U64: u64 = repeat_u8_as_u64(DTOR_NEEDED);
-
-pub const DTOR_DONE: u8 = 0x1d;
-#[allow(dead_code)]
-pub const DTOR_DONE_U64: u64 = repeat_u8_as_u64(DTOR_DONE);
-
-fn dtor_to_init_u8(dtor: bool) -> u8 {
-    if dtor { DTOR_NEEDED } else { 0 }
-}
-
-pub trait GetDtorType<'tcx> { fn dtor_type(self) -> Ty<'tcx>; }
-impl<'a, 'tcx> GetDtorType<'tcx> for TyCtxt<'a, 'tcx, 'tcx> {
-    fn dtor_type(self) -> Ty<'tcx> { self.types.u8 }
-}
-
-fn dtor_active(flag: u8) -> bool {
-    flag != 0
-}
-
 fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      t: Ty<'tcx>) -> Repr<'tcx> {
     match t.sty {
         ty::TyTuple(ref elems) => {
-            Univariant(mk_struct(cx, &elems[..], false, t), 0)
+            Univariant(mk_struct(cx, &elems[..], false, t))
         }
         ty::TyStruct(def, substs) => {
-            let mut ftys = def.struct_variant().fields.iter().map(|field| {
+            let ftys = def.struct_variant().fields.iter().map(|field| {
                 monomorphize::field_ty(cx.tcx(), substs, field)
             }).collect::<Vec<_>>();
             let packed = cx.tcx().lookup_packed(def.did);
-            // FIXME(16758) don't add a drop flag to unsized structs, as it
-            // won't actually be in the location we say it is because it'll be after
-            // the unsized field. Several other pieces of code assume that the unsized
-            // field is definitely the last one.
-            let dtor = def.dtor_kind().has_drop_flag() && type_is_sized(cx.tcx(), t);
-            if dtor {
-                ftys.push(cx.tcx().dtor_type());
-            }
 
-            Univariant(mk_struct(cx, &ftys[..], packed, t), dtor_to_init_u8(dtor))
+            Univariant(mk_struct(cx, &ftys[..], packed, t))
         }
         ty::TyClosure(_, ref substs) => {
-            Univariant(mk_struct(cx, &substs.upvar_tys, false, t), 0)
+            Univariant(mk_struct(cx, &substs.upvar_tys, false, t))
         }
         ty::TyEnum(def, substs) => {
             let cases = get_cases(cx.tcx(), def, substs);
             let hint = *cx.tcx().lookup_repr_hints(def.did).get(0)
                 .unwrap_or(&attr::ReprAny);
 
-            let dtor = def.dtor_kind().has_drop_flag();
-
             if cases.is_empty() {
                 // Uninhabitable; represent as unit
                 // (Typechecking will reject discriminant-sizing attrs.)
                 assert_eq!(hint, attr::ReprAny);
-                let ftys = if dtor { vec!(cx.tcx().dtor_type()) } else { vec!() };
-                return Univariant(mk_struct(cx, &ftys[..], false, t),
-                                  dtor_to_init_u8(dtor));
+                return Univariant(mk_struct(cx, &[], false, t));
             }
 
-            if !dtor && cases.iter().all(|c| c.tys.is_empty()) {
+            if cases.iter().all(|c| c.tys.is_empty()) {
                 // All bodies empty -> intlike
                 let discrs: Vec<_> = cases.iter().map(|c| Disr::from(c.discr)).collect();
                 let bounds = IntBounds {
@@ -307,13 +213,10 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             if cases.len() == 1 && hint == attr::ReprAny {
                 // Equivalent to a struct/tuple/newtype.
-                let mut ftys = cases[0].tys.clone();
-                if dtor { ftys.push(cx.tcx().dtor_type()); }
-                return Univariant(mk_struct(cx, &ftys[..], false, t),
-                                  dtor_to_init_u8(dtor));
+                return Univariant(mk_struct(cx, &cases[0].tys, false, t));
             }
 
-            if !dtor && cases.len() == 2 && hint == attr::ReprAny {
+            if cases.len() == 2 && hint == attr::ReprAny {
                 // Nullable pointer optimization
                 let mut discr = 0;
                 while discr < 2 {
@@ -356,7 +259,6 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let fields : Vec<_> = cases.iter().map(|c| {
                 let mut ftys = vec!(ty_of_inttype(cx.tcx(), min_ity));
                 ftys.extend_from_slice(&c.tys);
-                if dtor { ftys.push(cx.tcx().dtor_type()); }
                 mk_struct(cx, &ftys, false, t)
             }).collect();
 
@@ -418,13 +320,12 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let fields : Vec<_> = cases.iter().map(|c| {
                 let mut ftys = vec!(ty_of_inttype(cx.tcx(), ity));
                 ftys.extend_from_slice(&c.tys);
-                if dtor { ftys.push(cx.tcx().dtor_type()); }
                 mk_struct(cx, &ftys[..], false, t)
             }).collect();
 
             ensure_enum_fits_in_address_space(cx, &fields[..], t);
 
-            General(ity, fields, dtor_to_init_u8(dtor))
+            General(ity, fields)
         }
         _ => bug!("adt::represent_type called on non-ADT type: {}", t)
     }
@@ -722,9 +623,7 @@ fn ensure_enum_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 /// and fill in the actual contents in a second pass to prevent
 /// unbounded recursion; see also the comments in `trans::type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>) -> Type {
-    let c = generic_type_of(cx, r, None, false, false, false);
-    assert!(!c.needs_drop_flag);
-    c.prefix
+    generic_type_of(cx, r, None, false, false)
 }
 
 
@@ -733,25 +632,19 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>) -> Type {
 // are going to get the wrong type (it will not include the unsized parts of it).
 pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 r: &Repr<'tcx>, dst: bool) -> Type {
-    let c = generic_type_of(cx, r, None, true, dst, false);
-    assert!(!c.needs_drop_flag);
-    c.prefix
+    generic_type_of(cx, r, None, true, dst)
 }
-pub fn sizing_type_context_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                        r: &Repr<'tcx>, dst: bool) -> TypeContext {
-    generic_type_of(cx, r, None, true, dst, true)
-}
+
 pub fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     r: &Repr<'tcx>, name: &str) -> Type {
-    let c = generic_type_of(cx, r, Some(name), false, false, false);
-    assert!(!c.needs_drop_flag);
-    c.prefix
+    generic_type_of(cx, r, Some(name), false, false)
 }
+
 pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 r: &Repr<'tcx>, llty: &mut Type) {
     match *r {
         CEnum(..) | General(..) | RawNullablePointer { .. } => { }
-        Univariant(ref st, _) | StructWrappedNullablePointer { nonnull: ref st, .. } =>
+        Univariant(ref st) | StructWrappedNullablePointer { nonnull: ref st, .. } =>
             llty.set_struct_body(&struct_llfields(cx, st, false, false),
                                  st.packed)
     }
@@ -761,50 +654,40 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              r: &Repr<'tcx>,
                              name: Option<&str>,
                              sizing: bool,
-                             dst: bool,
-                             delay_drop_flag: bool) -> TypeContext {
-    debug!("adt::generic_type_of r: {:?} name: {:?} sizing: {} dst: {} delay_drop_flag: {}",
-           r, name, sizing, dst, delay_drop_flag);
+                             dst: bool) -> Type {
+    debug!("adt::generic_type_of r: {:?} name: {:?} sizing: {} dst: {}",
+           r, name, sizing, dst);
     match *r {
-        CEnum(ity, _, _) => TypeContext::direct(ll_inttype(cx, ity)),
+        CEnum(ity, _, _) => ll_inttype(cx, ity),
         RawNullablePointer { nnty, .. } =>
-            TypeContext::direct(type_of::sizing_type_of(cx, nnty)),
+            type_of::sizing_type_of(cx, nnty),
         StructWrappedNullablePointer { nonnull: ref st, .. } => {
             match name {
                 None => {
-                    TypeContext::direct(
-                        Type::struct_(cx, &struct_llfields(cx, st, sizing, dst),
-                                      st.packed))
+                    Type::struct_(cx, &struct_llfields(cx, st, sizing, dst),
+                                  st.packed)
                 }
                 Some(name) => {
                     assert_eq!(sizing, false);
-                    TypeContext::direct(Type::named_struct(cx, name))
+                    Type::named_struct(cx, name)
                 }
             }
         }
-        Univariant(ref st, dtor_needed) => {
-            let dtor_needed = dtor_needed != 0;
+        Univariant(ref st) => {
             match name {
                 None => {
-                    let mut fields = struct_llfields(cx, st, sizing, dst);
-                    if delay_drop_flag && dtor_needed {
-                        fields.pop();
-                    }
-                    TypeContext::may_need_drop_flag(
-                        Type::struct_(cx, &fields,
-                                      st.packed),
-                        delay_drop_flag && dtor_needed)
+                    let fields = struct_llfields(cx, st, sizing, dst);
+                    Type::struct_(cx, &fields, st.packed)
                 }
                 Some(name) => {
                     // Hypothesis: named_struct's can never need a
                     // drop flag. (... needs validation.)
                     assert_eq!(sizing, false);
-                    TypeContext::direct(Type::named_struct(cx, name))
+                    Type::named_struct(cx, name)
                 }
             }
         }
-        General(ity, ref sts, dtor_needed) => {
-            let dtor_needed = dtor_needed != 0;
+        General(ity, ref sts) => {
             // We need a representation that has:
             // * The alignment of the most-aligned field
             // * The size of the largest variant (rounded up to that alignment)
@@ -836,25 +719,18 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             };
             assert_eq!(machine::llalign_of_min(cx, fill_ty), align);
             assert_eq!(padded_discr_size % discr_size, 0); // Ensure discr_ty can fill pad evenly
-            let mut fields: Vec<Type> =
+            let fields: Vec<Type> =
                 [discr_ty,
                  Type::array(&discr_ty, (padded_discr_size - discr_size)/discr_size),
                  fill_ty].iter().cloned().collect();
-            if delay_drop_flag && dtor_needed {
-                fields.pop();
-            }
             match name {
                 None => {
-                    TypeContext::may_need_drop_flag(
-                        Type::struct_(cx, &fields[..], false),
-                        delay_drop_flag && dtor_needed)
+                    Type::struct_(cx, &fields[..], false)
                 }
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
                     llty.set_struct_body(&fields[..], false);
-                    TypeContext::may_need_drop_flag(
-                        llty,
-                        delay_drop_flag && dtor_needed)
+                    llty
                 }
             }
         }
@@ -873,22 +749,19 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
 
 /// Obtain a representation of the discriminant sufficient to translate
 /// destructuring; this may or may not involve the actual discriminant.
-///
-/// This should ideally be less tightly tied to `_match`.
 pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 r: &Repr<'tcx>,
                                 scrutinee: ValueRef,
                                 range_assert: bool)
-                                -> (_match::BranchKind, Option<ValueRef>) {
+                                -> (BranchKind, Option<ValueRef>) {
     match *r {
         CEnum(..) | General(..) |
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None,
-                                                  range_assert)))
+            (BranchKind::Switch, Some(trans_get_discr(bcx, r, scrutinee, None, range_assert)))
         }
         Univariant(..) => {
             // N.B.: Univariant means <= 1 enum variants (*not* == 1 variants).
-            (_match::Single, None)
+            (BranchKind::Single, None)
         }
     }
 }
@@ -896,7 +769,7 @@ pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn is_discr_signed<'tcx>(r: &Repr<'tcx>) -> bool {
     match *r {
         CEnum(ity, _, _) => ity.is_signed(),
-        General(ity, _, _) => ity.is_signed(),
+        General(ity, _) => ity.is_signed(),
         Univariant(..) => false,
         RawNullablePointer { .. } => false,
         StructWrappedNullablePointer { .. } => false,
@@ -913,7 +786,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         CEnum(ity, min, max) => {
             load_discr(bcx, ity, scrutinee, min, max, range_assert)
         }
-        General(ity, ref cases, _) => {
+        General(ity, ref cases) => {
             let ptr = StructGEP(bcx, scrutinee, 0);
             load_discr(bcx, ity, ptr, Disr(0), Disr(cases.len() as u64 - 1),
                        range_assert)
@@ -977,7 +850,7 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
         CEnum(ity, _, _) => {
             C_integral(ll_inttype(bcx.ccx(), ity), discr.0, true)
         }
-        General(ity, _, _) => {
+        General(ity, _) => {
             C_integral(ll_inttype(bcx.ccx(), ity), discr.0, true)
         }
         Univariant(..) => {
@@ -1001,21 +874,12 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr.0, true),
                   val);
         }
-        General(ity, ref cases, dtor) => {
-            if dtor_active(dtor) {
-                let ptr = trans_field_ptr(bcx, r, MaybeSizedValue::sized(val), discr,
-                                          cases[discr.0 as usize].fields.len() - 2);
-                Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED), ptr);
-            }
+        General(ity, _) => {
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr.0, true),
                   StructGEP(bcx, val, 0));
         }
-        Univariant(ref st, dtor) => {
+        Univariant(_) => {
             assert_eq!(discr, Disr(0));
-            if dtor_active(dtor) {
-                Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED),
-                      StructGEP(bcx, val, st.fields.len() - 1));
-            }
         }
         RawNullablePointer { nndiscr, nnty, ..} => {
             if discr != nndiscr {
@@ -1046,28 +910,6 @@ fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
     }
 }
 
-/// The number of fields in a given case; for use when obtaining this
-/// information from the type or definition is less convenient.
-pub fn num_args(r: &Repr, discr: Disr) -> usize {
-    match *r {
-        CEnum(..) => 0,
-        Univariant(ref st, dtor) => {
-            assert_eq!(discr, Disr(0));
-            st.fields.len() - (if dtor_active(dtor) { 1 } else { 0 })
-        }
-        General(_, ref cases, dtor) => {
-            cases[discr.0 as usize].fields.len() - 1 - (if dtor_active(dtor) { 1 } else { 0 })
-        }
-        RawNullablePointer { nndiscr, ref nullfields, .. } => {
-            if discr == nndiscr { 1 } else { nullfields.len() }
-        }
-        StructWrappedNullablePointer { ref nonnull, nndiscr,
-                                       ref nullfields, .. } => {
-            if discr == nndiscr { nonnull.fields.len() } else { nullfields.len() }
-        }
-    }
-}
-
 /// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                                    val: MaybeSizedValue, discr: Disr, ix: usize) -> ValueRef {
@@ -1087,11 +929,11 @@ pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         CEnum(..) => {
             bug!("element access in C-like enum")
         }
-        Univariant(ref st, _dtor) => {
+        Univariant(ref st) => {
             assert_eq!(discr, Disr(0));
             struct_field_ptr(bcx, st, val, ix, false)
         }
-        General(_, ref cases, _) => {
+        General(_, ref cases) => {
             struct_field_ptr(bcx, &cases[discr.0 as usize], val, ix + 1, true)
         }
         RawNullablePointer { nndiscr, ref nullfields, .. } |
@@ -1218,108 +1060,6 @@ fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     bcx.pointercast(byte_ptr, ll_fty.ptr_to())
 }
 
-pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                    r: &Repr<'tcx>,
-                                    value: ValueRef,
-                                    mut f: F)
-                                    -> Block<'blk, 'tcx> where
-    F: FnMut(Block<'blk, 'tcx>, &Struct<'tcx>, ValueRef) -> Block<'blk, 'tcx>,
-{
-    let fcx = bcx.fcx;
-    match *r {
-        Univariant(ref st, _) => {
-            f(bcx, st, value)
-        }
-        General(ity, ref cases, _) => {
-            let ccx = bcx.ccx();
-
-            // See the comments in trans/base.rs for more information (inside
-            // iter_structural_ty), but the gist here is that if the enum's
-            // discriminant is *not* in the range that we're expecting (in which
-            // case we'll take the fall-through branch on the switch
-            // instruction) then we can't just optimize this to an Unreachable
-            // block.
-            //
-            // Currently we still have filling drop, so this means that the drop
-            // glue for enums may be called when the enum has been paved over
-            // with the "I've been dropped" value. In this case the default
-            // branch of the switch instruction will actually be taken at
-            // runtime, so the basic block isn't actually unreachable, so we
-            // need to make it do something with defined behavior. In this case
-            // we just return early from the function.
-            //
-            // Note that this is also why the `trans_get_discr` below has
-            // `false` to indicate that loading the discriminant should
-            // not have a range assert.
-            let ret_void_cx = fcx.new_temp_block("enum-variant-iter-ret-void");
-            RetVoid(ret_void_cx, DebugLoc::None);
-
-            let discr_val = trans_get_discr(bcx, r, value, None, false);
-            let llswitch = Switch(bcx, discr_val, ret_void_cx.llbb, cases.len());
-            let bcx_next = fcx.new_temp_block("enum-variant-iter-next");
-
-            for (discr, case) in cases.iter().enumerate() {
-                let mut variant_cx = fcx.new_temp_block(
-                    &format!("enum-variant-iter-{}", &discr.to_string())
-                );
-                let rhs_val = C_integral(ll_inttype(ccx, ity), discr as u64, true);
-                AddCase(llswitch, rhs_val, variant_cx.llbb);
-
-                let fields = case.fields.iter().map(|&ty|
-                    type_of::type_of(bcx.ccx(), ty)).collect::<Vec<_>>();
-                let real_ty = Type::struct_(ccx, &fields[..], case.packed);
-                let variant_value = PointerCast(variant_cx, value, real_ty.ptr_to());
-
-                variant_cx = f(variant_cx, case, variant_value);
-                Br(variant_cx, bcx_next.llbb, DebugLoc::None);
-            }
-
-            bcx_next
-        }
-        _ => bug!()
-    }
-}
-
-/// Access the struct drop flag, if present.
-pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                                       r: &Repr<'tcx>,
-                                       val: ValueRef)
-                                       -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
-{
-    let tcx = bcx.tcx();
-    let ptr_ty = bcx.tcx().mk_imm_ptr(tcx.dtor_type());
-    match *r {
-        Univariant(ref st, dtor) if dtor_active(dtor) => {
-            let flag_ptr = StructGEP(bcx, val, st.fields.len() - 1);
-            datum::immediate_rvalue_bcx(bcx, flag_ptr, ptr_ty).to_expr_datumblock()
-        }
-        General(_, _, dtor) if dtor_active(dtor) => {
-            let fcx = bcx.fcx;
-            let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
-            let scratch = unpack_datum!(bcx, datum::lvalue_scratch_datum(
-                bcx, tcx.dtor_type(), "drop_flag",
-                InitAlloca::Uninit("drop flag itself has no dtor"),
-                cleanup::CustomScope(custom_cleanup_scope), |bcx, _| {
-                    debug!("no-op populate call for trans_drop_flag_ptr on dtor_type={:?}",
-                           tcx.dtor_type());
-                    bcx
-                }
-            ));
-            bcx = fold_variants(bcx, r, val, |variant_cx, st, value| {
-                let ptr = struct_field_ptr(&variant_cx.build(), st,
-                                           MaybeSizedValue::sized(value),
-                                           (st.fields.len() - 1), false);
-                datum::Datum::new(ptr, ptr_ty, datum::Lvalue::new("adt::trans_drop_flag_ptr"))
-                    .store_to(variant_cx, scratch.val)
-            });
-            let expr_datum = scratch.to_expr_datum();
-            fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
-            datum::DatumBlock::new(bcx, expr_datum)
-        }
-        _ => bug!("tried to get drop flag of non-droppable type")
-    }
-}
-
 /// Construct a constant value, suitable for initializing a
 /// GlobalVariable, given a case and constant values for its fields.
 /// Note that this may have a different LLVM type (and different
@@ -1347,7 +1087,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             assert_discr_in_range(ity, min, max, discr);
             C_integral(ll_inttype(ccx, ity), discr.0, true)
         }
-        General(ity, ref cases, _) => {
+        General(ity, ref cases) => {
             let case = &cases[discr.0 as usize];
             let (max_sz, _) = union_size_and_align(&cases[..]);
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr.0 as u64, true);
@@ -1357,7 +1097,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             contents.extend_from_slice(&[padding(ccx, max_sz - case.size)]);
             C_struct(ccx, &contents[..], false)
         }
-        Univariant(ref st, _dro) => {
+        Univariant(ref st) => {
             assert_eq!(discr, Disr(0));
             let contents = build_const_struct(ccx, st, vals);
             C_struct(ccx, &contents[..], st.packed)
@@ -1457,28 +1197,6 @@ fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
 // FIXME this utility routine should be somewhere more general
 #[inline]
 fn roundup(x: u64, a: u32) -> u64 { let a = a as u64; ((x + (a - 1)) / a) * a }
-
-/// Get the discriminant of a constant value.
-pub fn const_get_discrim(r: &Repr, val: ValueRef) -> Disr {
-    match *r {
-        CEnum(ity, _, _) => {
-            match ity {
-                attr::SignedInt(..) => Disr(const_to_int(val) as u64),
-                attr::UnsignedInt(..) => Disr(const_to_uint(val)),
-            }
-        }
-        General(ity, _, _) => {
-            match ity {
-                attr::SignedInt(..) => Disr(const_to_int(const_get_elt(val, &[0])) as u64),
-                attr::UnsignedInt(..) => Disr(const_to_uint(const_get_elt(val, &[0])))
-            }
-        }
-        Univariant(..) => Disr(0),
-        RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            bug!("const discrim access of non c-like enum")
-        }
-    }
-}
 
 /// Extract a field of a constant value, as appropriate for its
 /// representation.

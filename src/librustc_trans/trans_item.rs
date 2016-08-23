@@ -22,17 +22,15 @@ use declare;
 use glue::DropGlueKind;
 use llvm;
 use monomorphize::{self, Instance};
-use inline;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
-use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
 use rustc_const_eval::fatal_const_eval_err;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{self, NodeId};
-use syntax::{attr,errors};
+use syntax::attr;
 use type_of;
 use glue;
 use abi::{Abi, FnType};
@@ -88,13 +86,13 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 let def_id = ccx.tcx().map.local_def_id(node_id);
                 let _task = ccx.tcx().dep_graph.in_task(DepNode::TransCrateItem(def_id)); // (*)
                 let item = ccx.tcx().map.expect_item(node_id);
-                if let hir::ItemStatic(_, m, ref expr) = item.node {
-                    match consts::trans_static(&ccx, m, expr, item.id, &item.attrs) {
+                if let hir::ItemStatic(_, m, _) = item.node {
+                    match consts::trans_static(&ccx, m, item.id, &item.attrs) {
                         Ok(_) => { /* Cool, everything's alright. */ },
                         Err(err) => {
                             // FIXME: shouldn't this be a `span_err`?
                             fatal_const_eval_err(
-                                ccx.tcx(), &err, expr.span, "static");
+                                ccx.tcx(), &err, item.span, "static");
                         }
                     };
                 } else {
@@ -157,20 +155,16 @@ impl<'a, 'tcx> TransItem<'tcx> {
         let ty = ccx.tcx().lookup_item_type(def_id).ty;
         let llty = type_of::type_of(ccx, ty);
 
-        match ccx.tcx().map.get(node_id) {
-            hir::map::NodeItem(&hir::Item {
-                span, node: hir::ItemStatic(..), ..
-            }) => {
-                let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
-                    ccx.sess().span_fatal(span,
-                        &format!("symbol `{}` is already defined", symbol_name))
-                });
+        let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
+            ccx.sess().span_fatal(ccx.tcx().map.span(node_id),
+                &format!("symbol `{}` is already defined", symbol_name))
+        });
 
-                unsafe { llvm::LLVMSetLinkage(g, linkage) };
-            }
+        unsafe { llvm::LLVMSetLinkage(g, linkage) };
 
-            item => bug!("predefine_static: expected static, found {:?}", item)
-        }
+        let instance = Instance::mono(ccx.shared(), def_id);
+        ccx.instances().borrow_mut().insert(instance, g);
+        ccx.statics().borrow_mut().insert(g, def_id);
     }
 
     fn predefine_fn(ccx: &CrateContext<'a, 'tcx>,
@@ -180,47 +174,22 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert!(!instance.substs.types.needs_infer() &&
                 !instance.substs.types.has_param_types());
 
-        let instance = inline::maybe_inline_instance(ccx, instance);
-
         let item_ty = ccx.tcx().lookup_item_type(instance.def).ty;
         let item_ty = ccx.tcx().erase_regions(&item_ty);
         let mono_ty = monomorphize::apply_param_substs(ccx.tcx(), instance.substs, &item_ty);
 
-        let fn_node_id = ccx.tcx().map.as_local_node_id(instance.def).unwrap();
-        let map_node = errors::expect(
-            ccx.sess().diagnostic(),
-            ccx.tcx().map.find(fn_node_id),
-            || {
-                format!("while instantiating `{}`, couldn't find it in \
-                     the item map (may have attempted to monomorphize \
-                     an item defined in a different crate?)",
-                    instance)
-            });
+        let attrs = ccx.tcx().get_attrs(instance.def);
+        let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
+        unsafe { llvm::LLVMSetLinkage(lldecl, linkage) };
+        base::set_link_section(ccx, lldecl, &attrs);
+        if linkage == llvm::LinkOnceODRLinkage ||
+            linkage == llvm::WeakODRLinkage {
+            llvm::SetUniqueComdat(ccx.llmod(), lldecl);
+        }
 
-        match map_node {
-            hir_map::NodeItem(&hir::Item {
-                ref attrs, node: hir::ItemFn(..), ..
-            }) |
-            hir_map::NodeTraitItem(&hir::TraitItem {
-                ref attrs, node: hir::MethodTraitItem(..), ..
-            }) |
-            hir_map::NodeImplItem(&hir::ImplItem {
-                ref attrs, node: hir::ImplItemKind::Method(..), ..
-            }) => {
-                let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
-                unsafe { llvm::LLVMSetLinkage(lldecl, linkage) };
-                base::set_link_section(ccx, lldecl, attrs);
-                if linkage == llvm::LinkOnceODRLinkage ||
-                   linkage == llvm::WeakODRLinkage {
-                    llvm::SetUniqueComdat(ccx.llmod(), lldecl);
-                }
+        attributes::from_fn_attrs(ccx, &attrs, lldecl);
 
-                attributes::from_fn_attrs(ccx, attrs, lldecl);
-                ccx.instances().borrow_mut().insert(instance, lldecl);
-            }
-            _ => bug!("Invalid item for TransItem::Fn: `{:?}`", map_node)
-        };
-
+        ccx.instances().borrow_mut().insert(instance, lldecl);
     }
 
     fn predefine_drop_glue(ccx: &CrateContext<'a, 'tcx>,

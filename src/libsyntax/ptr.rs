@@ -39,7 +39,7 @@
 use std::fmt::{self, Display, Debug};
 use std::iter::FromIterator;
 use std::ops::Deref;
-use std::{ptr, slice, vec};
+use std::{mem, ptr, slice, vec};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -74,12 +74,22 @@ impl<T: 'static> P<T> {
     pub fn map<F>(mut self, f: F) -> P<T> where
         F: FnOnce(T) -> T,
     {
+        let p: *mut T = &mut *self.ptr;
+
+        // Leak self in case of panic.
+        // FIXME(eddyb) Use some sort of "free guard" that
+        // only deallocates, without dropping the pointee,
+        // in case the call the `f` below ends in a panic.
+        mem::forget(self);
+
         unsafe {
-            let p = &mut *self.ptr;
-            // FIXME(#5016) this shouldn't need to drop-fill to be safe.
-            ptr::write(p, f(ptr::read_and_drop(p)));
+            ptr::write(p, f(ptr::read(p)));
+
+            // Recreate self from the raw pointer.
+            P {
+                ptr: Box::from_raw(p)
+            }
         }
-        self
     }
 }
 

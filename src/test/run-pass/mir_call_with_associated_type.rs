@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 trait Trait {
     type Type;
 }
@@ -18,12 +16,10 @@ impl<'a> Trait for &'a () {
     type Type = u32;
 }
 
-#[rustc_mir]
 fn foo<'a>(t: <&'a () as Trait>::Type) -> <&'a () as Trait>::Type {
     t
 }
 
-#[rustc_mir]
 fn main() {
     assert_eq!(foo(4), 4);
 }

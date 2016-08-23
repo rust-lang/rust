@@ -24,17 +24,14 @@ impl Foo for [u8; 2] {
 
 struct Bar<T: ?Sized>(T);
 
-#[rustc_mir]
 fn unsize_fat_ptr<'a>(x: &'a Bar<Foo + Send + 'a>) -> &'a Bar<Foo + 'a> {
     x
 }
 
-#[rustc_mir]
 fn unsize_nested_fat_ptr(x: Arc<Foo + Send>) -> Arc<Foo> {
     x
 }
 
-#[rustc_mir]
 fn main() {
     let x: Box<Bar<Foo + Send>> = Box::new(Bar([1,2]));
     assert_eq!(unsize_fat_ptr(&*x).0.get(), [1, 2]);

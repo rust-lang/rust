@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 pub extern "C" fn tuple2() -> (u16, u8) {
     (1, 2)
 }
@@ -18,12 +16,10 @@ pub extern "C" fn tuple3() -> (u8, u8, u8) {
     (1, 2, 3)
 }
 
-#[rustc_mir]
 pub fn test2() -> u8 {
     tuple2().1
 }
 
-#[rustc_mir]
 pub fn test3() -> u8 {
     tuple3().2
 }

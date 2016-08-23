@@ -244,19 +244,6 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
-    /// Creates a value initialized to so that its drop flag,
-    /// if any, says that it has been dropped.
-    ///
-    /// `init_dropped` is unsafe because it returns a datum with all
-    /// of its bytes set to the drop flag, which generally does not
-    /// correspond to a valid value.
-    ///
-    /// This intrinsic is likely to be deprecated in the future when
-    /// Rust moves to non-zeroing dynamic drop (and thus removes the
-    /// embedded drop flags that are being established by this
-    /// intrinsic).
-    pub fn init_dropped<T>() -> T;
-
     /// Creates a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,

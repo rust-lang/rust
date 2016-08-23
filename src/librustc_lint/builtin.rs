@@ -45,7 +45,7 @@ use std::collections::HashSet;
 
 use syntax::{ast};
 use syntax::attr::{self, AttrMetaMethods, AttributeMethods};
-use syntax_pos::{self, Span};
+use syntax_pos::Span;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
@@ -1152,58 +1152,5 @@ impl LateLintPass for UnstableFeatures {
                 }
             }
         }
-    }
-}
-
-/// Lints for attempts to impl Drop on types that have `#[repr(C)]`
-/// attribute (see issue #24585).
-#[derive(Copy, Clone)]
-pub struct DropWithReprExtern;
-
-declare_lint! {
-    DROP_WITH_REPR_EXTERN,
-    Warn,
-    "use of #[repr(C)] on a type that implements Drop"
-}
-
-impl LintPass for DropWithReprExtern {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DROP_WITH_REPR_EXTERN)
-    }
-}
-
-impl LateLintPass for DropWithReprExtern {
-    fn check_crate(&mut self, ctx: &LateContext, _: &hir::Crate) {
-        let drop_trait = match ctx.tcx.lang_items.drop_trait() {
-            Some(id) => ctx.tcx.lookup_trait_def(id), None => { return }
-        };
-        drop_trait.for_each_impl(ctx.tcx, |drop_impl_did| {
-            if !drop_impl_did.is_local() {
-                return;
-            }
-            let dtor_self_type = ctx.tcx.lookup_item_type(drop_impl_did).ty;
-
-            match dtor_self_type.sty {
-                ty::TyEnum(self_type_def, _) |
-                ty::TyStruct(self_type_def, _) => {
-                    let self_type_did = self_type_def.did;
-                    let hints = ctx.tcx.lookup_repr_hints(self_type_did);
-                    if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
-                        self_type_def.dtor_kind().has_drop_flag() {
-                        let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
-                                                                     syntax_pos::DUMMY_SP);
-                        let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,
-                                                                     syntax_pos::DUMMY_SP);
-                        ctx.span_lint_note(DROP_WITH_REPR_EXTERN,
-                                           drop_impl_span,
-                                           "implementing Drop adds hidden state to types, \
-                                            possibly conflicting with `#[repr(C)]`",
-                                            self_defn_span,
-                                            "the `#[repr(C)]` attribute is attached here");
-                    }
-                }
-                _ => {}
-            }
-        })
     }
 }
