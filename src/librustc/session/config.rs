@@ -25,7 +25,6 @@ use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
@@ -1774,7 +1773,6 @@ mod tests {
     use std::rc::Rc;
     use super::{OutputType, OutputTypes, Externs, PanicStrategy};
     use syntax::attr;
-    use syntax::attr::AttrMetaMethods;
 
     fn optgroups() -> Vec<OptGroup> {
         super::rustc_optgroups().into_iter()

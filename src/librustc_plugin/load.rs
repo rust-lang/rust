@@ -20,7 +20,6 @@ use std::env;
 use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax::attr::{AttrMetaMethods};
 use syntax_pos::{Span, COMMAND_LINE_SP};
 
 /// Pointer to a registrar function.

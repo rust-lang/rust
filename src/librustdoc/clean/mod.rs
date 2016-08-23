@@ -26,9 +26,8 @@ pub use self::Visibility::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Spanned;
-use syntax::parse::token::{self, InternedString, keywords};
+use syntax::parse::token::keywords;
 use syntax::ptr::P;
 use syntax::print::pprust as syntax_pprust;
 use syntax_pos::{self, DUMMY_SP, Pos};
@@ -539,62 +538,6 @@ impl Clean<Attribute> for ast::Attribute {
     fn clean(&self, cx: &DocContext) -> Attribute {
         self.with_desugared_doc(|a| a.meta().clean(cx))
     }
-}
-
-// This is a rough approximation that gets us what we want.
-impl Attribute {
-    fn check_name(&self, name: &str) -> bool {
-        self.name().map_or(false, |mi_name| &*mi_name == name)
-    }
-
-    fn literal(&self) -> Option<&ast::Lit> { None }
-
-    fn is_literal(&self) -> bool {
-      match *self {
-        Literal(..) => true,
-        _ => false,
-      }
-    }
-
-    fn meta_item(&self) -> Option<&P<ast::MetaItem>> { None }
-
-    fn name(&self) -> Option<InternedString> {
-        match *self {
-            Word(ref n) | List(ref n, _) | NameValue(ref n, _) => {
-                Some(token::intern_and_get_ident(n))
-            },
-            _ => None
-        }
-    }
-
-    fn value_str(&self) -> Option<InternedString> {
-        match *self {
-            NameValue(_, ref v) => {
-                Some(token::intern_and_get_ident(v))
-            }
-            _ => None,
-        }
-    }
-
-    fn word(&self) -> Option<&P<ast::MetaItem>> { None }
-
-    fn is_word(&self) -> bool {
-      match *self {
-        Word(_) => true,
-        _ => false,
-      }
-    }
-
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [ast::NestedMetaItem]> { None }
-
-    fn is_meta_item_list(&self) -> bool {
-      match *self {
-        List(..) => true,
-        _ => false,
-      }
-    }
-
-    fn span(&self) -> syntax_pos::Span { unimplemented!() }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]

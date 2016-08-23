@@ -38,7 +38,7 @@ use util::nodemap::FnvHashMap;
 use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax_pos::Span;
