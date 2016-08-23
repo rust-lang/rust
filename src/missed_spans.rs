@@ -34,6 +34,12 @@ impl<'a> FmtVisitor<'a> {
         })
     }
 
+    pub fn format_missing_no_indent(&mut self, end: BytePos) {
+        self.format_missing_inner(end, |this, last_snippet, _| {
+            this.buffer.push_str(last_snippet.trim_right());
+        })
+    }
+
     fn format_missing_inner<F: Fn(&mut FmtVisitor, &str, &str)>(&mut self,
                                                                 end: BytePos,
                                                                 process_last_snippet: F) {

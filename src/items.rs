@@ -85,20 +85,26 @@ impl<'a> FmtVisitor<'a> {
         let snippet = self.snippet(span);
         let brace_pos = snippet.find_uncommented("{").unwrap();
 
-        if fm.items.is_empty() && !contains_comment(&snippet[brace_pos..]) {
-            self.buffer.push_str("{");
-        } else {
+        self.buffer.push_str("{");
+        if !fm.items.is_empty() || contains_comment(&snippet[brace_pos..]) {
             // FIXME: this skips comments between the extern keyword and the opening
             // brace.
-            self.last_pos = span.lo + BytePos(brace_pos as u32);
+            self.last_pos = span.lo + BytePos(brace_pos as u32 + 1);
             self.block_indent = self.block_indent.block_indent(self.config);
 
-            for item in &fm.items {
-                self.format_foreign_item(&*item);
-            }
+            if fm.items.is_empty() {
+                self.format_missing_no_indent(span.hi - BytePos(1));
+                self.block_indent = self.block_indent.block_unindent(self.config);
 
-            self.block_indent = self.block_indent.block_unindent(self.config);
-            self.format_missing_with_indent(span.hi - BytePos(1));
+                self.buffer.push_str(&self.block_indent.to_string(self.config));
+            } else {
+                for item in &fm.items {
+                    self.format_foreign_item(&*item);
+                }
+
+                self.block_indent = self.block_indent.block_unindent(self.config);
+                self.format_missing_with_indent(span.hi - BytePos(1));
+            }
         }
 
         self.buffer.push_str("}");
@@ -299,7 +305,8 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.push_str(&format_header("enum ", ident, vis));
 
         let enum_snippet = self.snippet(span);
-        let body_start = span.lo + BytePos(enum_snippet.find_uncommented("{").unwrap() as u32 + 1);
+        let brace_pos = enum_snippet.find_uncommented("{").unwrap();
+        let body_start = span.lo + BytePos(brace_pos as u32 + 1);
         let generics_str = format_generics(&self.get_context(),
                                            generics,
                                            "{",
@@ -318,11 +325,17 @@ impl<'a> FmtVisitor<'a> {
         let variant_list = self.format_variant_list(enum_def, body_start, span.hi - BytePos(1));
         match variant_list {
             Some(ref body_str) => self.buffer.push_str(&body_str),
-            None => self.format_missing(span.hi - BytePos(1)),
+            None => {
+                if contains_comment(&enum_snippet[brace_pos..]) {
+                    self.format_missing_no_indent(span.hi - BytePos(1))
+                } else {
+                    self.format_missing(span.hi - BytePos(1))
+                }
+            }
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
 
-        if variant_list.is_some() {
+        if variant_list.is_some() || contains_comment(&enum_snippet[brace_pos..]) {
             self.buffer.push_str(&self.block_indent.to_string(self.config));
         }
         self.buffer.push_str("}");
