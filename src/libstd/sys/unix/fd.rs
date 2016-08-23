@@ -52,7 +52,7 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
-    pub fn read_offset(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::pread(self.fd,
                         buf.as_mut_ptr() as *mut c_void,
@@ -71,7 +71,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    pub fn write_offset(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::pwrite(self.fd,
                          buf.as_ptr() as *const c_void,

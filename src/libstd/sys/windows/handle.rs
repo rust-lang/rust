@@ -106,7 +106,7 @@ impl RawHandle {
         }
     }
 
-    pub fn read_offset(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         let mut read = 0;
         let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
         unsafe {
@@ -189,7 +189,7 @@ impl RawHandle {
         Ok(amt as usize)
     }
 
-    pub fn write_offset(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         let mut written = 0;
         let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
         unsafe {
