@@ -1619,6 +1619,17 @@ impl PrimitiveType {
     }
 }
 
+impl From<ast::IntTy> for PrimitiveType {
+    fn from(int_ty: ast::IntTy) -> PrimitiveType {
+        match int_ty {
+            ast::IntTy::Is => PrimitiveType::Isize,
+            ast::IntTy::I8 => PrimitiveType::I8,
+            ast::IntTy::I16 => PrimitiveType::I16,
+            ast::IntTy::I32 => PrimitiveType::I32,
+            ast::IntTy::I64 => PrimitiveType::I64,
+        }
+    }
+}
 
 // Poor man's type parameter substitution at HIR level.
 // Used to replace private type aliases in public signatures with their aliased types.
@@ -1772,11 +1783,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyNever => Never,
             ty::TyBool => Primitive(PrimitiveType::Bool),
             ty::TyChar => Primitive(PrimitiveType::Char),
-            ty::TyInt(ast::IntTy::Is) => Primitive(PrimitiveType::Isize),
-            ty::TyInt(ast::IntTy::I8) => Primitive(PrimitiveType::I8),
-            ty::TyInt(ast::IntTy::I16) => Primitive(PrimitiveType::I16),
-            ty::TyInt(ast::IntTy::I32) => Primitive(PrimitiveType::I32),
-            ty::TyInt(ast::IntTy::I64) => Primitive(PrimitiveType::I64),
+            ty::TyInt(int_ty) => Primitive(int_ty.into()),
             ty::TyUint(ast::UintTy::Us) => Primitive(PrimitiveType::Usize),
             ty::TyUint(ast::UintTy::U8) => Primitive(PrimitiveType::U8),
             ty::TyUint(ast::UintTy::U16) => Primitive(PrimitiveType::U16),
@@ -2741,11 +2748,7 @@ fn resolve_type(cx: &DocContext,
             hir::TyStr => return Primitive(PrimitiveType::Str),
             hir::TyBool => return Primitive(PrimitiveType::Bool),
             hir::TyChar => return Primitive(PrimitiveType::Char),
-            hir::TyInt(ast::IntTy::Is) => return Primitive(PrimitiveType::Isize),
-            hir::TyInt(ast::IntTy::I8) => return Primitive(PrimitiveType::I8),
-            hir::TyInt(ast::IntTy::I16) => return Primitive(PrimitiveType::I16),
-            hir::TyInt(ast::IntTy::I32) => return Primitive(PrimitiveType::I32),
-            hir::TyInt(ast::IntTy::I64) => return Primitive(PrimitiveType::I64),
+            hir::TyInt(int_ty) => return Primitive(int_ty.into()),
             hir::TyUint(ast::UintTy::Us) => return Primitive(PrimitiveType::Usize),
             hir::TyUint(ast::UintTy::U8) => return Primitive(PrimitiveType::U8),
             hir::TyUint(ast::UintTy::U16) => return Primitive(PrimitiveType::U16),
