@@ -1643,6 +1643,15 @@ impl From<ast::UintTy> for PrimitiveType {
     }
 }
 
+impl From<ast::FloatTy> for PrimitiveType {
+    fn from(float_ty: ast::FloatTy) -> PrimitiveType {
+        match float_ty {
+            ast::FloatTy::F32 => PrimitiveType::F32,
+            ast::FloatTy::F64 => PrimitiveType::F64,
+        }
+    }
+}
+
 // Poor man's type parameter substitution at HIR level.
 // Used to replace private type aliases in public signatures with their aliased types.
 struct SubstAlias<'a, 'tcx: 'a> {
@@ -1797,8 +1806,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyChar => Primitive(PrimitiveType::Char),
             ty::TyInt(int_ty) => Primitive(int_ty.into()),
             ty::TyUint(uint_ty) => Primitive(uint_ty.into()),
-            ty::TyFloat(ast::FloatTy::F32) => Primitive(PrimitiveType::F32),
-            ty::TyFloat(ast::FloatTy::F64) => Primitive(PrimitiveType::F64),
+            ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TyBox(t) => {
                 let box_did = cx.tcx_opt().and_then(|tcx| {
@@ -2758,8 +2766,7 @@ fn resolve_type(cx: &DocContext,
             hir::TyChar => return Primitive(PrimitiveType::Char),
             hir::TyInt(int_ty) => return Primitive(int_ty.into()),
             hir::TyUint(uint_ty) => return Primitive(uint_ty.into()),
-            hir::TyFloat(ast::FloatTy::F32) => return Primitive(PrimitiveType::F32),
-            hir::TyFloat(ast::FloatTy::F64) => return Primitive(PrimitiveType::F64),
+            hir::TyFloat(float_ty) => return Primitive(float_ty.into()),
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
