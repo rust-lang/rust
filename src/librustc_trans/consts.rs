@@ -24,6 +24,7 @@ use monomorphize::{Instance};
 use type_::Type;
 use type_of;
 use rustc::ty;
+use rustc_i128::{i128, u128};
 
 use rustc::hir;
 

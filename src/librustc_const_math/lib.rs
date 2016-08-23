@@ -26,9 +26,13 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(question_mark)]
+#![feature(const_fn)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
+
+// SNAP: remove use of this crate
+extern crate rustc_i128;
 
 extern crate serialize as rustc_serialize; // used by deriving
 

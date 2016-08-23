@@ -604,6 +604,8 @@ mod impls {
     partial_eq_impl! {
         bool char usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64
     }
+    #[cfg(not(stage0))]
+    partial_eq_impl! { u128 i128 }
 
     macro_rules! eq_impl {
         ($($t:ty)*) => ($(
@@ -613,6 +615,8 @@ mod impls {
     }
 
     eq_impl! { () bool char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+    #[cfg(not(stage0))]
+    eq_impl! { u128 i128 }
 
     macro_rules! partial_ord_impl {
         ($($t:ty)*) => ($(
@@ -702,6 +706,8 @@ mod impls {
     }
 
     ord_impl! { char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+    #[cfg(not(stage0))]
+    ord_impl! { u128 i128 }
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl PartialEq for ! {

@@ -10,7 +10,7 @@
 
 #![doc(hidden)]
 
-macro_rules! uint_module { ($T:ident, $bits:expr) => (
+macro_rules! uint_module { ($T:ident) => (
 
 /// The smallest value that can be represented by this integer type.
 #[stable(feature = "rust1", since = "1.0.0")]

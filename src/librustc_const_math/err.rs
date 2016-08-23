@@ -74,11 +74,13 @@ impl ConstMathErr {
             ULitOutOfRange(ast::UintTy::U16) => "literal out of range for u16",
             ULitOutOfRange(ast::UintTy::U32) => "literal out of range for u32",
             ULitOutOfRange(ast::UintTy::U64) => "literal out of range for u64",
+            ULitOutOfRange(ast::UintTy::U128) => "literal out of range for u128",
             ULitOutOfRange(ast::UintTy::Us) => "literal out of range for usize",
             LitOutOfRange(ast::IntTy::I8) => "literal out of range for i8",
             LitOutOfRange(ast::IntTy::I16) => "literal out of range for i16",
             LitOutOfRange(ast::IntTy::I32) => "literal out of range for i32",
             LitOutOfRange(ast::IntTy::I64) => "literal out of range for i64",
+            LitOutOfRange(ast::IntTy::I128) => "literal out of range for i128",
             LitOutOfRange(ast::IntTy::Is) => "literal out of range for isize",
         }
     }

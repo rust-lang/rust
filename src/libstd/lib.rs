@@ -282,6 +282,7 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
+#![feature(i128)]
 #![cfg_attr(test, feature(update_panic_count))]
 
 // Issue# 30592: Systematically use alloc_system during stage0 since jemalloc
@@ -415,6 +416,9 @@ pub use core::i16;
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
+#[unstable(feature = "i128", issue = "35118")]
+#[cfg(not(stage0))]
+pub use core::i128;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
@@ -426,6 +430,9 @@ pub use core::u16;
 pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u64;
+#[unstable(feature = "i128", issue = "35118")]
+#[cfg(not(stage0))]
+pub use core::u128;
 
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
