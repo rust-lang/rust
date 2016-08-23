@@ -1460,7 +1460,8 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 llvm::LLVMRustDIBuilderCreateEnumerator(
                     DIB(cx),
                     name.as_ptr(),
-                    v.disr_val.to_u64_unchecked())
+                    // FIXME: what if enumeration has i128 discriminant?
+                    v.disr_val.to_u128_unchecked() as u64)
             }
         })
         .collect();

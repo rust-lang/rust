@@ -41,6 +41,8 @@ extern crate syntax_pos;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
 
+extern crate rustc_i128;
+
 pub mod diagnostics;
 
 pub mod build;

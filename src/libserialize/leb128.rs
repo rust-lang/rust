@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_i128::{i128, u128};
+
 #[inline]
 fn write_to_vec(vec: &mut Vec<u8>, position: usize, byte: u8) {
     if position == vec.len() {
@@ -28,7 +30,6 @@ pub fn write_unsigned_leb128_to<W>(mut value: u64, mut write: W) -> usize
     where W: FnMut(usize, u8)
 {
     let mut position = 0;
-
     loop {
         let mut byte = (value & 0x7F) as u8;
         value >>= 7;
@@ -52,14 +53,14 @@ pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, value: u6
 }
 
 #[inline]
-pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u64, usize) {
+pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u128, usize) {
     let mut result = 0;
     let mut shift = 0;
     let mut position = start_position;
     loop {
         let byte = data[position];
         position += 1;
-        result |= ((byte & 0x7F) as u64) << shift;
+        result |= ((byte & 0x7F) as u128) << shift;
         if (byte & 0x80) == 0 {
             break;
         }
@@ -76,7 +77,7 @@ pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u64, usize) 
 /// The callback `write` is called once for each position
 /// that is to be written to with the byte to be encoded
 /// at that position.
-pub fn write_signed_leb128_to<W>(mut value: i64, mut write: W) -> usize
+pub fn write_signed_leb128_to<W>(mut value: i128, mut write: W) -> usize
     where W: FnMut(usize, u8)
 {
     let mut position = 0;
@@ -92,43 +93,43 @@ pub fn write_signed_leb128_to<W>(mut value: i64, mut write: W) -> usize
 
         write(position, byte);
         position += 1;
-
         if !more {
             break;
         }
     }
-
     position
 }
 
-pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, value: i64) -> usize {
+pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, value: i128) -> usize {
     write_signed_leb128_to(value, |i, v| write_to_vec(out, start_position+i, v))
 }
 
 #[inline]
-pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i64, usize) {
-    let mut result = 0;
-    let mut shift = 0;
-    let mut position = start_position;
-    let mut byte;
+pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i128, usize) {
+    let (l, r) = read_unsigned_leb128(data, start_position);
+    (l as i128, r)
+    // let mut result = 0;
+    // let mut shift = 0;
+    // let mut position = start_position;
+    // let mut byte;
 
-    loop {
-        byte = data[position];
-        position += 1;
-        result |= ((byte & 0x7F) as i64) << shift;
-        shift += 7;
+    // loop {
+    //     byte = data[position];
+    //     position += 1;
+    //     result |= ((byte & 0x7F) as i128) << shift;
+    //     shift += 7;
 
-        if (byte & 0x80) == 0 {
-            break;
-        }
-    }
+    //     if (byte & 0x80) == 0 {
+    //         break;
+    //     }
+    // }
 
-    if (shift < 64) && ((byte & 0x40) != 0) {
-        // sign extend
-        result |= -(1i64 << shift);
-    }
+    // if (shift < 64) && ((byte & 0x40) != 0) {
+    //     // sign extend
+    //     result |= -(1 << shift);
+    // }
 
-    (result, position - start_position)
+    // (result, position - start_position)
 }
 
 #[test]

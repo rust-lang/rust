@@ -43,6 +43,8 @@ use std::cmp::Ordering;
 use rustc_const_math::*;
 use rustc_errors::DiagnosticBuilder;
 
+use rustc_i128::{i128, u128};
+
 macro_rules! math {
     ($e:expr, $op:expr) => {
         match $op {
@@ -588,38 +590,43 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if let hir::ExprLit(ref lit) = inner.node {
             use syntax::ast::*;
             use syntax::ast::LitIntType::*;
-            const I8_OVERFLOW: u64 = ::std::i8::MAX as u64 + 1;
-            const I16_OVERFLOW: u64 = ::std::i16::MAX as u64 + 1;
-            const I32_OVERFLOW: u64 = ::std::i32::MAX as u64 + 1;
-            const I64_OVERFLOW: u64 = ::std::i64::MAX as u64 + 1;
+            const I8_OVERFLOW: u128 = i8::max_value() as u128 + 1;
+            const I16_OVERFLOW: u128 = i16::max_value() as u128 + 1;
+            const I32_OVERFLOW: u128 = i32::max_value() as u128 + 1;
+            const I64_OVERFLOW: u128 = i64::max_value() as u128 + 1;
+            const I128_OVERFLOW: u128 = i128::max_value() as u128 + 1;
             match (&lit.node, ety.map(|t| &t.sty)) {
                 (&LitKind::Int(I8_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I8))) |
                 (&LitKind::Int(I8_OVERFLOW, Signed(IntTy::I8)), _) => {
-                    return Ok(Integral(I8(::std::i8::MIN)))
+                    return Ok(Integral(I8(i8::min_value())))
                 },
                 (&LitKind::Int(I16_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I16))) |
                 (&LitKind::Int(I16_OVERFLOW, Signed(IntTy::I16)), _) => {
-                    return Ok(Integral(I16(::std::i16::MIN)))
+                    return Ok(Integral(I16(i16::min_value())))
                 },
                 (&LitKind::Int(I32_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I32))) |
                 (&LitKind::Int(I32_OVERFLOW, Signed(IntTy::I32)), _) => {
-                    return Ok(Integral(I32(::std::i32::MIN)))
+                    return Ok(Integral(I32(i32::min_value())))
                 },
                 (&LitKind::Int(I64_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I64))) |
                 (&LitKind::Int(I64_OVERFLOW, Signed(IntTy::I64)), _) => {
-                    return Ok(Integral(I64(::std::i64::MIN)))
+                    return Ok(Integral(I64(i64::min_value())))
+                },
+                (&LitKind::Int(I128_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I128))) |
+                (&LitKind::Int(I128_OVERFLOW, Signed(IntTy::I128)), _) => {
+                    return Ok(Integral(I128(i128::min_value())))
                 },
                 (&LitKind::Int(n, Unsuffixed), Some(&ty::TyInt(IntTy::Is))) |
                 (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
                     match tcx.sess.target.int_type {
                         IntTy::I16 => if n == I16_OVERFLOW {
-                            return Ok(Integral(Isize(Is16(::std::i16::MIN))));
+                            return Ok(Integral(Isize(Is16(i16::min_value()))));
                         },
                         IntTy::I32 => if n == I32_OVERFLOW {
-                            return Ok(Integral(Isize(Is32(::std::i32::MIN))));
+                            return Ok(Integral(Isize(Is32(i32::min_value()))));
                         },
                         IntTy::I64 => if n == I64_OVERFLOW {
-                            return Ok(Integral(Isize(Is64(::std::i64::MIN))));
+                            return Ok(Integral(Isize(Is64(i64::min_value()))));
                         },
                         _ => bug!(),
                     }
@@ -973,26 +980,30 @@ fn infer<'a, 'tcx>(i: ConstInt,
         (&ty::TyInt(IntTy::I16), result @ I16(_)) => Ok(result),
         (&ty::TyInt(IntTy::I32), result @ I32(_)) => Ok(result),
         (&ty::TyInt(IntTy::I64), result @ I64(_)) => Ok(result),
+        (&ty::TyInt(IntTy::I128), result @ I128(_)) => Ok(result),
         (&ty::TyInt(IntTy::Is), result @ Isize(_)) => Ok(result),
 
         (&ty::TyUint(UintTy::U8), result @ U8(_)) => Ok(result),
         (&ty::TyUint(UintTy::U16), result @ U16(_)) => Ok(result),
         (&ty::TyUint(UintTy::U32), result @ U32(_)) => Ok(result),
         (&ty::TyUint(UintTy::U64), result @ U64(_)) => Ok(result),
+        (&ty::TyUint(UintTy::U128), result @ U128(_)) => Ok(result),
         (&ty::TyUint(UintTy::Us), result @ Usize(_)) => Ok(result),
 
-        (&ty::TyInt(IntTy::I8), Infer(i)) => Ok(I8(i as i64 as i8)),
-        (&ty::TyInt(IntTy::I16), Infer(i)) => Ok(I16(i as i64 as i16)),
-        (&ty::TyInt(IntTy::I32), Infer(i)) => Ok(I32(i as i64 as i32)),
-        (&ty::TyInt(IntTy::I64), Infer(i)) => Ok(I64(i as i64)),
+        (&ty::TyInt(IntTy::I8), Infer(i)) => Ok(I8(i as i128 as i8)),
+        (&ty::TyInt(IntTy::I16), Infer(i)) => Ok(I16(i as i128 as i16)),
+        (&ty::TyInt(IntTy::I32), Infer(i)) => Ok(I32(i as i128 as i32)),
+        (&ty::TyInt(IntTy::I64), Infer(i)) => Ok(I64(i as i128 as i64)),
+        (&ty::TyInt(IntTy::I128), Infer(i)) => Ok(I128(i as i128)),
         (&ty::TyInt(IntTy::Is), Infer(i)) => {
-            Ok(Isize(ConstIsize::new_truncating(i as i64, tcx.sess.target.int_type)))
+            Ok(Isize(ConstIsize::new_truncating(i as i128, tcx.sess.target.int_type)))
         },
 
         (&ty::TyInt(IntTy::I8), InferSigned(i)) => Ok(I8(i as i8)),
         (&ty::TyInt(IntTy::I16), InferSigned(i)) => Ok(I16(i as i16)),
         (&ty::TyInt(IntTy::I32), InferSigned(i)) => Ok(I32(i as i32)),
-        (&ty::TyInt(IntTy::I64), InferSigned(i)) => Ok(I64(i)),
+        (&ty::TyInt(IntTy::I64), InferSigned(i)) => Ok(I64(i as i64)),
+        (&ty::TyInt(IntTy::I128), InferSigned(i)) => Ok(I128(i)),
         (&ty::TyInt(IntTy::Is), InferSigned(i)) => {
             Ok(Isize(ConstIsize::new_truncating(i, tcx.sess.target.int_type)))
         },
@@ -1000,7 +1011,8 @@ fn infer<'a, 'tcx>(i: ConstInt,
         (&ty::TyUint(UintTy::U8), Infer(i)) => Ok(U8(i as u8)),
         (&ty::TyUint(UintTy::U16), Infer(i)) => Ok(U16(i as u16)),
         (&ty::TyUint(UintTy::U32), Infer(i)) => Ok(U32(i as u32)),
-        (&ty::TyUint(UintTy::U64), Infer(i)) => Ok(U64(i)),
+        (&ty::TyUint(UintTy::U64), Infer(i)) => Ok(U64(i as u64)),
+        (&ty::TyUint(UintTy::U128), Infer(i)) => Ok(U128(i)),
         (&ty::TyUint(UintTy::Us), Infer(i)) => {
             Ok(Usize(ConstUsize::new_truncating(i, tcx.sess.target.uint_type)))
         },
@@ -1071,21 +1083,23 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(
 }
 
 fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstInt, ty: ty::Ty) -> CastResult {
-    let v = val.to_u64_unchecked();
+    let v = val.to_u128_unchecked();
     match ty.sty {
         ty::TyBool if v == 0 => Ok(Bool(false)),
         ty::TyBool if v == 1 => Ok(Bool(true)),
-        ty::TyInt(ast::IntTy::I8) => Ok(Integral(I8(v as i64 as i8))),
-        ty::TyInt(ast::IntTy::I16) => Ok(Integral(I16(v as i64 as i16))),
-        ty::TyInt(ast::IntTy::I32) => Ok(Integral(I32(v as i64 as i32))),
-        ty::TyInt(ast::IntTy::I64) => Ok(Integral(I64(v as i64))),
+        ty::TyInt(ast::IntTy::I8) => Ok(Integral(I8(v as i128 as i8))),
+        ty::TyInt(ast::IntTy::I16) => Ok(Integral(I16(v as i128 as i16))),
+        ty::TyInt(ast::IntTy::I32) => Ok(Integral(I32(v as i128 as i32))),
+        ty::TyInt(ast::IntTy::I64) => Ok(Integral(I64(v as i128 as i64))),
+        ty::TyInt(ast::IntTy::I128) => Ok(Integral(I128(v as i128))),
         ty::TyInt(ast::IntTy::Is) => {
-            Ok(Integral(Isize(ConstIsize::new_truncating(v as i64, tcx.sess.target.int_type))))
+            Ok(Integral(Isize(ConstIsize::new_truncating(v as i128, tcx.sess.target.int_type))))
         },
         ty::TyUint(ast::UintTy::U8) => Ok(Integral(U8(v as u8))),
         ty::TyUint(ast::UintTy::U16) => Ok(Integral(U16(v as u16))),
         ty::TyUint(ast::UintTy::U32) => Ok(Integral(U32(v as u32))),
-        ty::TyUint(ast::UintTy::U64) => Ok(Integral(U64(v))),
+        ty::TyUint(ast::UintTy::U64) => Ok(Integral(U64(v as u64))),
+        ty::TyUint(ast::UintTy::U128) => Ok(Integral(U128(v as u128))),
         ty::TyUint(ast::UintTy::Us) => {
             Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.uint_type))))
         },
@@ -1115,13 +1129,13 @@ fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match ty.sty {
         ty::TyInt(_) | ty::TyUint(_) => {
             let i = match val {
-                F32(f) if f >= 0.0 => Infer(f as u64),
+                F32(f) if f >= 0.0 => Infer(f as u128),
                 FInfer { f64: f, .. } |
-                F64(f) if f >= 0.0 => Infer(f as u64),
+                F64(f) if f >= 0.0 => Infer(f as u128),
 
-                F32(f) => InferSigned(f as i64),
+                F32(f) => InferSigned(f as i128),
                 FInfer { f64: f, .. } |
-                F64(f) => InferSigned(f as i64)
+                F64(f) => InferSigned(f as i128)
             };
 
             if let (InferSigned(_), &ty::TyUint(_)) = (i, &ty.sty) {
@@ -1145,9 +1159,9 @@ fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult {
     match val {
         Integral(i) => cast_const_int(tcx, i, ty),
-        Bool(b) => cast_const_int(tcx, Infer(b as u64), ty),
+        Bool(b) => cast_const_int(tcx, Infer(b as u128), ty),
         Float(f) => cast_const_float(tcx, f, ty),
-        Char(c) => cast_const_int(tcx, Infer(c as u64), ty),
+        Char(c) => cast_const_int(tcx, Infer(c as u128), ty),
         Function(_) => Err(UnimplementedConstVal("casting fn pointers")),
         ByteStr(b) => match ty.sty {
             ty::TyRawPtr(_) => {
@@ -1185,28 +1199,29 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
         LitKind::ByteStr(ref data) => Ok(ByteStr(data.clone())),
         LitKind::Byte(n) => Ok(Integral(U8(n))),
         LitKind::Int(n, Signed(ity)) => {
-            infer(InferSigned(n as i64), tcx, &ty::TyInt(ity)).map(Integral)
+            infer(InferSigned(n as i128), tcx, &ty::TyInt(ity)).map(Integral)
         },
 
+        // FIXME: this should become u128.
         LitKind::Int(n, Unsuffixed) => {
             match ty_hint.map(|t| &t.sty) {
                 Some(&ty::TyInt(ity)) => {
-                    infer(InferSigned(n as i64), tcx, &ty::TyInt(ity)).map(Integral)
+                    infer(InferSigned(n as i128), tcx, &ty::TyInt(ity)).map(Integral)
                 },
                 Some(&ty::TyUint(uty)) => {
-                    infer(Infer(n), tcx, &ty::TyUint(uty)).map(Integral)
+                    infer(Infer(n as u128), tcx, &ty::TyUint(uty)).map(Integral)
                 },
-                None => Ok(Integral(Infer(n))),
+                None => Ok(Integral(Infer(n as u128))),
                 Some(&ty::TyAdt(adt, _)) => {
                     let hints = tcx.lookup_repr_hints(adt.did);
                     let int_ty = tcx.enum_repr_type(hints.iter().next());
-                    infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty).map(Integral)
+                    infer(Infer(n as u128), tcx, &int_ty.to_ty(tcx).sty).map(Integral)
                 },
                 Some(ty_hint) => bug!("bad ty_hint: {:?}, {:?}", ty_hint, lit),
             }
         },
         LitKind::Int(n, Unsigned(ity)) => {
-            infer(Infer(n), tcx, &ty::TyUint(ity)).map(Integral)
+            infer(Infer(n as u128), tcx, &ty::TyUint(ity)).map(Integral)
         },
 
         LitKind::Float(n, fty) => {

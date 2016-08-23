@@ -25,7 +25,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
 use callee::Callee;
 use common::{self, BlockAndBuilder, CrateContext, const_get_elt, val_ty};
-use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral};
+use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral, C_big_integral};
 use common::{C_null, C_struct, C_str_slice, C_undef, C_uint};
 use common::{const_to_opt_int, const_to_opt_uint};
 use consts;
@@ -36,6 +36,7 @@ use value::Value;
 
 use syntax::ast;
 use syntax_pos::Span;
+use rustc_i128::u128;
 
 use std::fmt;
 use std::ptr;
@@ -75,6 +76,7 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Integral(I16(v)) => C_integral(Type::i16(ccx), v as u64, true),
             ConstVal::Integral(I32(v)) => C_integral(Type::i32(ccx), v as u64, true),
             ConstVal::Integral(I64(v)) => C_integral(Type::i64(ccx), v as u64, true),
+            ConstVal::Integral(I128(v)) => C_big_integral(Type::i128(ccx), v as u128),
             ConstVal::Integral(Isize(v)) => {
                 let i = v.as_i64(ccx.tcx().sess.target.int_type);
                 C_integral(Type::int(ccx), i as u64, true)
@@ -83,6 +85,7 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Integral(U16(v)) => C_integral(Type::i16(ccx), v as u64, false),
             ConstVal::Integral(U32(v)) => C_integral(Type::i32(ccx), v as u64, false),
             ConstVal::Integral(U64(v)) => C_integral(Type::i64(ccx), v, false),
+            ConstVal::Integral(U128(v)) => C_big_integral(Type::i128(ccx), v),
             ConstVal::Integral(Usize(v)) => {
                 let u = v.as_u64(ccx.tcx().sess.target.uint_type);
                 C_integral(Type::int(ccx), u, false)
