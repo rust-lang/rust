@@ -22,18 +22,24 @@ const SOME_EXPLICIT_CONST_STR : &'static str = "&'static str";
 fn id_u8_slice(arg: &[u8]) -> &[u8] { arg }
 
 // one with a function, argument elided
-static SOME_STATIC_SIMPLE_FN : &fn(&[u8]) -> &[u8] = id_u8_slice;
-const SOME_CONST_SIMPLE_FN : &fn(&[u8]) -> &[u8] = id_u8_slice;
+static SOME_STATIC_SIMPLE_FN : &fn(&[u8]) -> &[u8] =
+        &(id_u8_slice as fn(&[u8]) -> &[u8]);
+const SOME_CONST_SIMPLE_FN : &fn(&[u8]) -> &[u8] =
+        &(id_u8_slice as fn(&[u8]) -> &[u8]);
 
 // this should be the same as without elision
-static SOME_STATIC_NON_ELIDED_fN : &fn<'a>(&'a [u8]) -> &'a [u8] = id_u8_slice;
-const SOME_CONST_NON_ELIDED_fN : &fn<'a>(&'a [u8]) -> &'a [u8] = id_u8_slice;
+static SOME_STATIC_NON_ELIDED_fN : &for<'a> fn(&'a [u8]) -> &'a [u8] =
+        &(id_u8_slice as for<'a> fn(&'a [u8]) -> &'a [u8]);
+const SOME_CONST_NON_ELIDED_fN : &for<'a> fn(&'a [u8]) -> &'a [u8] =
+        &(id_u8_slice as for<'a> fn(&'a [u8]) -> &'a [u8]);
 
 // another function that elides, each to a different unbound lifetime
 fn multi_args(a: &u8, b: &u8, c: &u8) { }
 
-static SOME_STATIC_MULTI_FN : &fn(&u8, &u8, &u8) = multi_args;
-const SOME_CONST_MULTI_FN : &fn(&u8, &u8, &u8) = multi_args;
+static SOME_STATIC_MULTI_FN : &fn(&u8, &u8, &u8) =
+        &(multi_args as fn(&u8, &u8, &u8));
+const SOME_CONST_MULTI_FN : &fn(&u8, &u8, &u8) =
+        &(multi_args as fn(&u8, &u8, &u8));
 
 
 fn main() {
@@ -41,7 +47,7 @@ fn main() {
     let x = &[1u8, 2, 3];
     SOME_STATIC_SIMPLE_FN(x);
     SOME_CONST_SIMPLE_FN(x);
-    
+
     // make sure this works with different lifetimes
     let a = &1;
     {
