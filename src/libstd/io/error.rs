@@ -83,7 +83,7 @@ struct Custom {
 /// It is used with the [`io::Error`] type.
 ///
 /// [`io::Error`]: struct.Error.html
-#[derive(Copy, PartialEq, Eq, Clone, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
 pub enum ErrorKind {
@@ -152,10 +152,6 @@ pub enum ErrorKind {
     /// Interrupted operations can typically be retried.
     #[stable(feature = "rust1", since = "1.0.0")]
     Interrupted,
-    /// Any I/O error not part of this list.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Other,
-
     /// An error returned when an operation could not be completed because an
     /// "end of file" was reached prematurely.
     ///
@@ -164,8 +160,12 @@ pub enum ErrorKind {
     /// read.
     #[stable(feature = "read_exact", since = "1.6.0")]
     UnexpectedEof,
-
     /// Any I/O error not part of this list.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Other,
+
+    /// A marker variant that tells the compiler that users of this enum cannot
+    /// match it exhaustively.
     #[unstable(feature = "io_error_internals",
                reason = "better expressed through extensible enums that this \
                          enum cannot be exhaustively matched against",
