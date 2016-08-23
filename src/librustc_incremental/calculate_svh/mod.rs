@@ -35,11 +35,12 @@ use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fnv::FnvHashMap;
 
+use self::def_path_hash::DefPathHashes;
 use self::svh_visitor::StrictVersionHashVisitor;
 
+mod def_path_hash;
 mod svh_visitor;
 
 pub type IncrementalHashesMap = FnvHashMap<DepNode<DefId>, u64>;
@@ -50,7 +51,7 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     let krate = tcx.map.krate();
     let mut visitor = HashItemsVisitor { tcx: tcx,
                                          hashes: FnvHashMap(),
-                                         def_path_hashes: DefIdMap() };
+                                         def_path_hashes: DefPathHashes::new(tcx) };
     visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX), |v| visit::walk_crate(v, krate));
     krate.visit_all_items(&mut visitor);
     visitor.compute_crate_hash();
@@ -59,20 +60,20 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
 struct HashItemsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_path_hashes: DefIdMap<u64>,
+    def_path_hashes: DefPathHashes<'a, 'tcx>,
     hashes: IncrementalHashesMap,
 }
 
 impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
     fn calculate_node_id<W>(&mut self, id: ast::NodeId, walk_op: W)
-        where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'tcx>)
+        where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'a, 'tcx>)
     {
         let def_id = self.tcx.map.local_def_id(id);
         self.calculate_def_id(def_id, walk_op)
     }
 
     fn calculate_def_id<W>(&mut self, def_id: DefId, mut walk_op: W)
-        where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'tcx>)
+        where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'a, 'tcx>)
     {
         assert!(def_id.is_local());
         debug!("HashItemsVisitor::calculate(def_id={:?})", def_id);
@@ -99,15 +100,22 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
 
         // add each item (in some deterministic order) to the overall
         // crate hash.
-        //
-        // FIXME -- it'd be better to sort by the hash of the def-path,
-        // so that reordering items would not affect the crate hash.
         {
-            let mut keys: Vec<_> = self.hashes.keys().collect();
-            keys.sort();
-            for key in keys {
-                self.hashes[key].hash(&mut crate_state);
-            }
+            let def_path_hashes = &mut self.def_path_hashes;
+            let mut item_hashes: Vec<_> =
+                self.hashes.iter()
+                           .map(|(item_dep_node, &item_hash)| {
+                               // convert from a DepNode<DefId> tp a
+                               // DepNode<u64> where the u64 is the
+                               // hash of the def-id's def-path:
+                               let item_dep_node =
+                                   item_dep_node.map_def(|&did| Some(def_path_hashes.hash(did)))
+                                                .unwrap();
+                               (item_dep_node, item_hash)
+                           })
+                           .collect();
+            item_hashes.sort(); // avoid artificial dependencies on item ordering
+            item_hashes.hash(&mut crate_state);
         }
 
         for attr in &krate.attrs {
