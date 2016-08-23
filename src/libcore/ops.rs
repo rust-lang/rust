@@ -73,16 +73,17 @@
 //!
 //! ```rust
 //! #![feature(inclusive_range_syntax)]
+//! fn main() {
+//!     let arr = [0, 1, 2, 3, 4];
 //!
-//! let arr = [0, 1, 2, 3, 4];
+//!     assert_eq!(arr[ .. ], [0,1,2,3,4]); // RangeFull
+//!     assert_eq!(arr[ ..3], [0,1,2    ]); // RangeTo
+//!     assert_eq!(arr[1.. ], [  1,2,3,4]); // RangeFrom
+//!     assert_eq!(arr[1..3], [  1,2    ]); // Range
 //!
-//! assert_eq!(arr[ .. ], [0,1,2,3,4]); // RangeFull
-//! assert_eq!(arr[ ..3], [0,1,2    ]); // RangeTo
-//! assert_eq!(arr[1.. ], [  1,2,3,4]); // RangeFrom
-//! assert_eq!(arr[1..3], [  1,2    ]); // Range
-//!
-//! assert_eq!(arr[ ...3], [0,1,2,3 ]); // RangeToIncusive
-//! assert_eq!(arr[1...3], [  1,2,3 ]); // RangeInclusive
+//!     assert_eq!(arr[ ...3], [0,1,2,3 ]); // RangeToIncusive
+//!     assert_eq!(arr[1...3], [  1,2,3 ]); // RangeInclusive
+//! }
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
