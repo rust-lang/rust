@@ -355,6 +355,9 @@ impl<T: Copy> From<T> for Cell<T> {
     }
 }
 
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
+
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](index.html) for more.
@@ -793,6 +796,9 @@ impl<T> From<T> for RefCell<T> {
     }
 }
 
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+impl<T: CoerceUnsized<U>, U> CoerceUnsized<RefCell<U>> for RefCell<T> {}
+
 struct BorrowRef<'b> {
     borrow: &'b Cell<BorrowFlag>,
 }
@@ -1121,4 +1127,14 @@ impl<T> From<T> for UnsafeCell<T> {
     fn from(t: T) -> UnsafeCell<T> {
         UnsafeCell::new(t)
     }
+}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
+
+#[allow(unused)]
+fn assert_coerce_unsized(a: UnsafeCell<&i32>, b: Cell<&i32>, c: RefCell<&i32>) {
+    let _: UnsafeCell<&Send> = a;
+    let _: Cell<&Send> = b;
+    let _: RefCell<&Send> = c;
 }
