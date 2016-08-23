@@ -310,10 +310,11 @@ complete their work, but possibly the single most important piece of information
 desired by users is to know _in what release_ any given feature will become
 available.
 
-To reduce process burden on team members we will not require them to make
-that estimate themselves, instead a single person will have the responsibility
-each quarter to examine the roadmap, its goals and time estimates, and turn
-those into release estimates for individual features.
+To reduce process burden on team members we will not require them to make that
+estimate themselves; the teams will work purely in terms of quarterly
+milestones. Instead, we will have a separate process to map the goals and time
+estimates into release estimates for individual features - a process that is
+likely automatable.
 
 The precise mechanics are to be determined.
 
@@ -326,26 +327,28 @@ main ways, that evolve over the year:
   place
 - The R-problem-statement issues, which contain the individual problem
   statements, each linking to supporting goals
-- The R-goal issues, which contain the work items, tagged with metadata
-  indicating their statuses.
+- The R-goal issues, which contain a hierarchy of work items, tagged with
+  metadata indicating their statuses.
 
-Alone, this is perhaps sufficient for presenting the roadmap. A user could run a
+Alone, these provide the *raw data* for a roadmap. A user could run a
 GitHub query for all `R-problem-statement` issues, and by digging through them
 get a reasonably accurate picture of the roadmap.
 
-We may additionally develop tools to present this information in a more
-accessible form (for a prototype see [1]).
+However, for the process to be a success, we need to present the roadmap in a
+way that is prominent, succinct, and layered with progressive detail. There is a
+lot of opportunity for design here; an early prototype of one possible view is
+available [here].
 
-[1]: https://brson.github.io/rust-z
+[here]: https://brson.github.io/rust-z
 
 Again, the details are to be determined.
 
 ## Calendar
 
 The timing of the events specified by this RFC is precisely specified in order
-to limit bikeshedding. The activities specified here are not the focus of the
-project and we need to get through them efficiently and get on with the actual
-work.
+to set clear expectations and accountability, and to avoid process slippage. The
+activities specified here are not the focus of the project and we need to get
+through them efficiently and get on with the actual work.
 
 The north star RFC development happens during the month of September, starting
 September 1 and ending by October 1. This means that an RFC must be ready for
@@ -353,13 +356,17 @@ RFC by the last week of September. We choose september for two reasons: it is
 the final month of a calendar quarter, allowing the beginning of the years work
 to commence at the beginning of calendar Q4; we choose Q4 because it is the
 traditional conference season and allows us opportunities to talk publicly about
-both our previous years progress as well as next years ambitions.
+both our previous years progress as well as next years ambitions. By contrast,
+starting with Q1 of the calendar year is problematic due to the holiday season.
 
 Following from the September planning month, the quarterly planning cycles take
 place for exactly one week at the beginning of the calendar quarter; likewise,
 the planning for each subsequent quarter at the beginning of the calendar
 quarter; and the development of the yearly retrospective approximately for the
 month of August.
+
+The survey and other forms of outreach and data gathering should be timed to fit
+well into the overall calendar.
 
 ## References
 
@@ -390,15 +397,19 @@ month of August.
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The yearly north star RFC could be an unpleastant bikeshed. Maybe nobody
-actually agrees on the project's direction.
+The yearly north star RFC could be an unpleasant bikeshed, because it
+simultaneously raises the stakes of discussion while moving away from concrete
+proposals. That said, the *problem* orientation should help facilitate
+discussion, and in any case it's vital to be explicit about our values and
+prioritization.
 
-This imposes more work on teams to organize their goals.
-
-There is no mechanism here for presenting the roadmap.
+While part of the aim of this proposal is to increase the effectiveness of our
+team, it also imposes some amount of additional work on everyone. Hopefully the
+benefits will outweigh the costs.
 
 The end-of-year retrospective will require significant effort. It's not clear
-who will be motivated to do it, and at the level of quality it demands.
+who will be motivated to do it, and at the level of quality it demands. This is
+the piece of the proposal that will probably need the most follow-up work.
 
 # Alternatives
 [alternatives]: #alternatives
@@ -409,7 +420,7 @@ derive a roadmap soley from the data they are currently producing.
 To serve the purposes of a 'rallying point', a high-profile deliverable, we
 might release a software product instead of the retrospective. A larger-scope
 product than the existing rustc+cargo pair could accomplish this, i.e.
-The Rust Platform.
+[The Rust Platform](http://aturon.github.io/blog/2016/07/27/rust-platform/) idea.
 
 Another rallying point could be a long-term support release.
 
@@ -421,39 +432,34 @@ Are 1 year cycles long enough?
 Does the yearly report serve the purpose of building anticipation, motivation,
 and creating a compelling PR-bomb?
 
-Is a consistent time-frame for the big cycle really the right thing?  One of the
+Is a consistent time-frame for the big cycle really the right thing? One of the
 problems we have right now is that our release cycles are so predictable they
-are boring. It could be more exciting to not know exactly when the cycle is
-going to end, to experience the tension of struggling to cross the finish line.
+are almost boring. It could be more exciting to not know exactly when the cycle
+is going to end, to experience the tension of struggling to cross the finish
+line.
 
 How can we account for work that is not part of the planning process
 described here?
 
-How can we avoid adding new tags?
-
 How do we address problems that are outside the scope of the standard library
-and compiler itself? Would have used 'the rust platform' and related processes.
+and compiler itself? (See
+[The Rust Platform](http://aturon.github.io/blog/2016/07/27/rust-platform/) for
+an alternative aimed at this goal.)
 
-How do we motivate the improvement of rust-lang, other libraries?
+How do we motivate the improvement of rust-lang crates and other libraries? Are
+they part of the planning process? The retrospective?
 
 'Problem statement' is not inspiring terminology. We don't want to our roadmap
-to be front-loaded with 'problems'.
-
-Likewise, 'goal' and 'retrospective' could be more colorful.
-
-How can we work in an inspiring 'vision statement'?
+to be front-loaded with 'problems'. Likewise, 'goal' and 'retrospective' could
+be more colorful.
 
 Can we call the yearly RFC the 'north start RFC'? Too many concepts?
 
-Does the yearly planning really need to be an RFC?
-
-Likewise, _this RFC_ is currently titled 'north-star'.
-
-What about tracking work that is not part of R-problem-statement and R-goal.  I
+What about tracking work that is not part of R-problem-statement and R-goal? I
 originally wanted to track all features in a roadmap, but this does not account
 for anything that has not been explicitly identified as supporting the
-roadmap. As formulated this does not provide an easy way to find the status of
-arbitrary features in the RFC pipeline.
+roadmap. As formulated this proposal does not provide an easy way to find the
+status of arbitrary features in the RFC pipeline.
 
 How do we present the roadmap? Communicating what the project is working on and
 toward is one of the _primary goals_ of this RFC and the solution it proposes is
