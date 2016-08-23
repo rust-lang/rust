@@ -44,7 +44,7 @@ use lint::{LintPass, LateLintPass};
 use std::collections::HashSet;
 
 use syntax::{ast};
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax_pos::{Span};
 
 use rustc::hir::{self, PatKind};
@@ -1145,7 +1145,7 @@ impl LintPass for UnstableFeatures {
 
 impl LateLintPass for UnstableFeatures {
     fn check_attribute(&mut self, ctx: &LateContext, attr: &ast::Attribute) {
-        if attr::contains_name(&[attr.meta().clone()], "feature") {
+        if attr.meta().check_name("feature") {
             if let Some(items) = attr.meta().meta_item_list() {
                 for item in items {
                     ctx.span_lint(UNSTABLE_FEATURES, item.span(), "unstable feature");

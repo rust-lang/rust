@@ -27,7 +27,6 @@ use rustc::middle::mem_categorization as mc;
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]

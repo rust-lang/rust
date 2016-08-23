@@ -35,7 +35,7 @@ use syntax::ast;
 use syntax::abi::Abi;
 use syntax::codemap;
 use syntax::parse;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::parse::token::InternedString;
 use syntax::visit;
 use syntax_pos::{self, Span, mk_sp, Pos};

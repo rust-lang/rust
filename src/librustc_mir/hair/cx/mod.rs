@@ -32,7 +32,6 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax::parse::token;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
-use syntax::attr::AttrMetaMethods;
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {

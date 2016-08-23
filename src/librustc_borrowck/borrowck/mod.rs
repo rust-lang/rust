@@ -42,7 +42,6 @@ use std::fmt;
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 

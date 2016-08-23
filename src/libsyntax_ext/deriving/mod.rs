@@ -11,7 +11,6 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
 use syntax::ast::{self, MetaItem};
-use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxEnv};
 use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
 use syntax::ext::build::AstBuilder;

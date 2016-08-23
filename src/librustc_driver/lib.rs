@@ -95,7 +95,6 @@ use std::thread;
 use rustc::session::early_error;
 
 use syntax::{ast, json};
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};

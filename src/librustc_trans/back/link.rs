@@ -42,7 +42,6 @@ use std::process::Command;
 use std::str;
 use flate;
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax_pos::Span;
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
