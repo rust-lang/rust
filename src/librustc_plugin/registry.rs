@@ -156,7 +156,6 @@ impl<'a> Registry<'a> {
         self.llvm_passes.push(name.to_owned());
     }
 
-
     /// Register an attribute with an attribute type.
     ///
     /// Registered attributes will bypass the `custom_attribute` feature gate.

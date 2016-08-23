@@ -62,6 +62,7 @@ pub struct Session {
     pub entry_fn: RefCell<Option<(NodeId, Span)>>,
     pub entry_type: Cell<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
+    pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
     // The name of the root source file of the crate, in the local file system.
     // The path is always expected to be absolute. `None` means that there is no
@@ -314,6 +315,12 @@ impl Session {
         format!("__rustc_plugin_registrar__{}_{}", svh, index.as_usize())
     }
 
+    pub fn generate_derive_registrar_symbol(&self,
+                                            svh: &Svh,
+                                            index: DefIndex) -> String {
+        format!("__rustc_derive_registrar__{}_{}", svh, index.as_usize())
+    }
+
     pub fn sysroot<'a>(&'a self) -> &'a Path {
         match self.opts.maybe_sysroot {
             Some (ref sysroot) => sysroot,
@@ -501,6 +508,7 @@ pub fn build_session_(sopts: config::Options,
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
         plugin_registrar_fn: Cell::new(None),
+        derive_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
         local_crate_source_file: local_crate_source_file,
         working_dir: env::current_dir().unwrap(),

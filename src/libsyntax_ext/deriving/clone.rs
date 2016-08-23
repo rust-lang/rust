@@ -49,7 +49,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 ItemKind::Struct(_, Generics { ref ty_params, .. }) |
                 ItemKind::Enum(_, Generics { ref ty_params, .. })
                     if ty_params.is_empty() &&
-                       attr::contains_name(&annitem.attrs, "derive_Copy") => {
+                       attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") => {
 
                     bounds = vec![Literal(path_std!(cx, core::marker::Copy))];
                     unify_fieldless_variants = true;
@@ -110,12 +110,12 @@ fn cs_clone(name: &str,
         Mode::Shallow => cx.std_path(&["clone", "assert_receiver_is_clone"]),
         Mode::Deep => cx.std_path(&["clone", "Clone", "clone"]),
     };
-    let subcall = |field: &FieldInfo| {
+    let subcall = |cx: &mut ExtCtxt, field: &FieldInfo| {
         let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
 
         let span = if mode == Mode::Shallow {
             // set the expn ID so we can call the unstable method
-            Span { expn_id: cx.backtrace(), ..trait_span }
+            super::allow_unstable(cx, field.span, "derive(Clone)")
         } else {
             field.span
         };
@@ -147,8 +147,10 @@ fn cs_clone(name: &str,
 
     match mode {
         Mode::Shallow => {
-            let mut stmts: Vec<_> =
-                all_fields.iter().map(subcall).map(|e| cx.stmt_expr(e)).collect();
+            let mut stmts = all_fields.iter().map(|f| {
+                let call = subcall(cx, f);
+                cx.stmt_expr(call)
+            }).collect::<Vec<_>>();
             stmts.push(cx.stmt_expr(cx.expr_deref(trait_span, cx.expr_self(trait_span))));
             cx.expr_block(cx.block(trait_span, stmts))
         }
@@ -166,14 +168,15 @@ fn cs_clone(name: &str,
                                                          name))
                                 }
                             };
-                            cx.field_imm(field.span, ident, subcall(field))
+                            let call = subcall(cx, field);
+                            cx.field_imm(field.span, ident, call)
                         })
                         .collect::<Vec<_>>();
 
                     cx.expr_struct(trait_span, ctor_path, fields)
                 }
                 VariantData::Tuple(..) => {
-                    let subcalls = all_fields.iter().map(subcall).collect();
+                    let subcalls = all_fields.iter().map(|f| subcall(cx, f)).collect();
                     let path = cx.expr_path(ctor_path);
                     cx.expr_call(trait_span, path, subcalls)
                 }
