@@ -429,6 +429,9 @@ Another rallying point could be a long-term support release.
 
 Are 1 year cycles long enough?
 
+Are 1 year cycles too long? What happens if important problems come up
+mid-cycle?
+
 Does the yearly report serve the purpose of building anticipation, motivation,
 and creating a compelling PR-bomb?
 
