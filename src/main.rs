@@ -2,6 +2,8 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 
+#![allow(unknown_lints, missing_docs_in_private_items)]
+
 extern crate clippy_lints;
 extern crate getopts;
 extern crate rustc;

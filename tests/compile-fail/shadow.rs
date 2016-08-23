@@ -1,8 +1,8 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![allow(unused_parens, unused_variables)]
 #![deny(clippy, clippy_pedantic)]
+#![allow(unused_parens, unused_variables, missing_docs_in_private_items)]
 
 fn id<T>(x: T) -> T { x }
 
