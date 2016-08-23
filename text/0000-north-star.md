@@ -15,7 +15,7 @@ front - together, as a project - the most critical problems facing the language
 and its ecosystem, along with the story we want to be able to tell the world
 about Rust. Work toward solving those problems, our short-term goals, will be
 decided in quarter-long cycles by individual teams. For the purposes of
-reporting the project roadmap, goals will be assigned to quartely milestones,
+reporting the project roadmap, goals will be assigned to quarterly milestones,
 and where these goals result in stable features the Rust version in which they
 become stable will be estimated as well.
 
@@ -102,11 +102,11 @@ effort to the world.
 
 The changes proposed here are intended to work with the particular strengths of
 our project - community development, collaboration, distributed teams, loose
-management structure, constant change and uncertanty. It should introduce
+management structure, constant change and uncertainty. It should introduce
 minimal additional burden on Rust team members, who are already heavily
 overtasked. The proposal does not attempt to solve all problems of project
 management in Rust, nor to fit the Rust process into any particular project
-mamnagement structure. Let's make a few incremental improvements that will have
+management structure. Let's make a few incremental improvements that will have
 the greatest impact, and that we can accomplish without disruptive changes to
 the way we work today.
 
@@ -117,7 +117,7 @@ Rust's roadmap will be established in year-long cycles, where we identify up
 front the most critical problems facing the project, formulated as _problem
 statements_. Work toward solving those problems, _goals_, will be planned in
 quarter-long cycles by individual teams. For the purposes of reporting the
-project roadmap, goals will be assigned to _quartely milestones_, and where
+project roadmap, goals will be assigned to _quarterly milestones_, and where
 these goals result in stable features the Rust version in which they become
 stable will be estimated as well. Along the way, teams will be expected to
 maintain _tracking issues_ that communicate progress toward the project's goals.
@@ -207,7 +207,7 @@ good problem statements might be:
 - The Rust compiler is too slow for a tight edit-compile-test cycle
 - Rust lacks world-class IDE support
 - The Rust story for asynchronous I/O is very primitive
-- Rust compiler errors are dificult to understand
+- Rust compiler errors are difficult to understand
 - Rust plugins have no clear path to stabilization
 - Rust doesn't integrate well with garbage collectors
 - Rust's trait system doesn't fully support zero-cost abstractions
@@ -352,7 +352,7 @@ through them efficiently and get on with the actual work.
 
 The north star RFC development happens during the month of September, starting
 September 1 and ending by October 1. This means that an RFC must be ready for
-RFC by the last week of September. We choose september for two reasons: it is
+FCP by the last week of September. We choose September for two reasons: it is
 the final month of a calendar quarter, allowing the beginning of the years work
 to commence at the beginning of calendar Q4; we choose Q4 because it is the
 traditional conference season and allows us opportunities to talk publicly about
@@ -415,7 +415,7 @@ the piece of the proposal that will probably need the most follow-up work.
 [alternatives]: #alternatives
 
 Instead of imposing further process structure on teams we might attempt to
-derive a roadmap soley from the data they are currently producing.
+derive a roadmap solely from the data they are currently producing.
 
 To serve the purposes of a 'rallying point', a high-profile deliverable, we
 might release a software product instead of the retrospective. A larger-scope
@@ -453,7 +453,7 @@ they part of the planning process? The retrospective?
 to be front-loaded with 'problems'. Likewise, 'goal' and 'retrospective' could
 be more colorful.
 
-Can we call the yearly RFC the 'north start RFC'? Too many concepts?
+Can we call the yearly RFC the 'north star RFC'? Too many concepts?
 
 What about tracking work that is not part of R-problem-statement and R-goal? I
 originally wanted to track all features in a roadmap, but this does not account
