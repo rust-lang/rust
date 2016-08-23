@@ -14,4 +14,4 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-uint_module! { u64, 64 }
+uint_module! { u64 }

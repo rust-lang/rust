@@ -62,6 +62,9 @@ extern crate rustc_errors as errors;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
+// SNAP:
+extern crate rustc_i128;
+
 #[cfg(test)]
 extern crate test;
 

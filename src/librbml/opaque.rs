@@ -14,6 +14,8 @@ use leb128::{read_signed_leb128, read_unsigned_leb128, write_signed_leb128, writ
 use std::io::{self, Write};
 use serialize;
 
+use rustc_i128::{i128, u128};
+
 // -----------------------------------------------------------------------------
 // Encoder
 // -----------------------------------------------------------------------------
@@ -32,7 +34,7 @@ impl<'a> Encoder<'a> {
 macro_rules! write_uleb128 {
     ($enc:expr, $value:expr) => {{
         let pos = $enc.cursor.position() as usize;
-        let bytes_written = write_unsigned_leb128($enc.cursor.get_mut(), pos, $value as u64);
+        let bytes_written = write_unsigned_leb128($enc.cursor.get_mut(), pos, $value as u128);
         $enc.cursor.set_position((pos + bytes_written) as u64);
         Ok(())
     }}
@@ -41,7 +43,7 @@ macro_rules! write_uleb128 {
 macro_rules! write_sleb128 {
     ($enc:expr, $value:expr) => {{
         let pos = $enc.cursor.position() as usize;
-        let bytes_written = write_signed_leb128($enc.cursor.get_mut(), pos, $value as i64);
+        let bytes_written = write_signed_leb128($enc.cursor.get_mut(), pos, $value as i128);
         $enc.cursor.set_position((pos + bytes_written) as u64);
         Ok(())
     }}
@@ -55,6 +57,10 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_uint(&mut self, v: usize) -> EncodeResult {
+        write_uleb128!(self, v)
+    }
+
+    fn emit_u128(&mut self, v: u128) -> EncodeResult {
         write_uleb128!(self, v)
     }
 
@@ -76,6 +82,10 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_int(&mut self, v: isize) -> EncodeResult {
+        write_sleb128!(self, v)
+    }
+
+    fn emit_i128(&mut self, v: i128) -> EncodeResult {
         write_sleb128!(self, v)
     }
 
@@ -311,6 +321,10 @@ impl<'a> serialize::Decoder for Decoder<'a> {
         Ok(())
     }
 
+    fn read_u128(&mut self) -> Result<u128, Self::Error> {
+        read_uleb128!(self, u128)
+    }
+
     fn read_u64(&mut self) -> Result<u64, Self::Error> {
         read_uleb128!(self, u64)
     }
@@ -331,6 +345,10 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     fn read_uint(&mut self) -> Result<usize, Self::Error> {
         read_uleb128!(self, usize)
+    }
+
+    fn read_i128(&mut self) -> Result<i128, Self::Error> {
+        read_sleb128!(self, i128)
     }
 
     fn read_i64(&mut self) -> Result<i64, Self::Error> {

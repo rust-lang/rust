@@ -41,6 +41,8 @@ extern crate rustc_back;
 extern crate rustc_llvm;
 extern crate rustc_const_math;
 
+extern crate rustc_i128;
+
 pub use rustc::middle;
 
 #[macro_use]

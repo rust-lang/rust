@@ -139,6 +139,8 @@ extern crate log;
 #[cfg(test)]
 extern crate test;
 
+extern crate rustc_i128;
+
 pub mod opaque;
 pub mod leb128;
 
@@ -174,7 +176,11 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str(&self) -> &'doc str {
-        str::from_utf8(&self.data[self.start..self.end]).unwrap()
+        match str::from_utf8(&self.data[self.start..self.end]) {
+            Ok(s) => s,
+            Err(e) => panic!("rbml: tried to decode {:?} as str, but byte {} is not valid utf",
+                             &self.data[self.start..self.end], e.valid_up_to())
+        }
     }
 
     pub fn to_string(&self) -> String {
@@ -214,6 +220,8 @@ pub enum EbmlEncoderTag {
     EsMapKey = 0x15,
     EsMapVal = 0x16,
     EsOpaque = 0x17,
+    EsU128 = 0x18, // + 16 bytes
+    EsI128 = 0x19, // + 16 bytes
 }
 
 const NUM_TAGS: usize = 0x1000;
@@ -256,9 +264,10 @@ pub mod reader {
 
     use super::opaque;
     use super::{ApplicationError, EsVec, EsMap, EsEnum, EsSub8, EsSub32, EsVecElt, EsMapKey,
-                EsU64, EsU32, EsU16, EsU8, EsI64, EsI32, EsI16, EsI8, EsBool, EsF64, EsF32,
-                EsChar, EsStr, EsMapVal, EsOpaque, EbmlEncoderTag, Doc, TaggedDoc, Error,
+                EsU128, EsU64, EsU32, EsU16, EsU8, EsI64, EsI32, EsI16, EsI8, EsBool, EsF64, EsF32,
+                EsI128, EsChar, EsStr, EsMapVal, EsOpaque, EbmlEncoderTag, Doc, TaggedDoc, Error,
                 IntTooBig, InvalidTag, Expected, NUM_IMPLICIT_TAGS, TAG_IMPLICIT_LEN};
+    use rustc_i128::{u128, i128};
 
     pub type DecodeResult<T> = Result<T, Error>;
     // rbml reading
@@ -511,6 +520,31 @@ pub mod reader {
         d.data[d.start]
     }
 
+    pub fn doc_as_u128(d: Doc) -> u128 {
+        if d.end >= 16 {
+            // For performance, we read 16 big-endian bytes,
+            // and mask off the junk if there is any. This
+            // obviously won't work on the first 16 bytes
+            // of a file - we will fall of the start
+            // of the page and segfault.
+            let mut b = [0; 16];
+            b.copy_from_slice(&d.data[d.end - 16..d.end]);
+            let data = unsafe { (*(b.as_ptr() as *const u128)).to_be() };
+            let len = d.end - d.start;
+            if len < 16 {
+                data & ((1 << (len * 8)) - 1)
+            } else {
+                data
+            }
+        } else {
+            let mut result = 0;
+            for b in &d.data[d.start..d.end] {
+                result = (result << 8) + (*b as u128);
+            }
+            result
+        }
+    }
+
     pub fn doc_as_u64(d: Doc) -> u64 {
         if d.end >= 8 {
             // For performance, we read 8 big-endian bytes,
@@ -654,7 +688,7 @@ pub mod reader {
         fn _next_int(&mut self,
                      first_tag: EbmlEncoderTag,
                      last_tag: EbmlEncoderTag)
-                     -> DecodeResult<u64> {
+                     -> DecodeResult<u128> {
             if self.pos >= self.parent.end {
                 return Err(Expected(format!("no more documents in current node!")));
             }
@@ -662,10 +696,11 @@ pub mod reader {
             let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(self.parent.data, self.pos)?;
             let r = if first_tag as usize <= r_tag && r_tag <= last_tag as usize {
                 match r_tag - first_tag as usize {
-                    0 => doc_as_u8(r_doc) as u64,
-                    1 => doc_as_u16(r_doc) as u64,
-                    2 => doc_as_u32(r_doc) as u64,
-                    3 => doc_as_u64(r_doc),
+                    0 => doc_as_u8(r_doc) as u128,
+                    1 => doc_as_u16(r_doc) as u128,
+                    2 => doc_as_u32(r_doc) as u128,
+                    3 => doc_as_u64(r_doc) as u128,
+                    4 => doc_as_u128(r_doc) as u128,
                     _ => unreachable!(),
                 }
             } else {
@@ -714,8 +749,11 @@ pub mod reader {
             Ok(())
         }
 
+        fn read_u128(&mut self) -> DecodeResult<u128> {
+            self._next_int(EsU8, EsU128)
+        }
         fn read_u64(&mut self) -> DecodeResult<u64> {
-            self._next_int(EsU8, EsU64)
+            Ok(self._next_int(EsU8, EsU64)? as u64)
         }
         fn read_u32(&mut self) -> DecodeResult<u32> {
             Ok(self._next_int(EsU8, EsU32)? as u32)
@@ -728,13 +766,16 @@ pub mod reader {
         }
         fn read_uint(&mut self) -> DecodeResult<usize> {
             let v = self._next_int(EsU8, EsU64)?;
-            if v > (::std::usize::MAX as u64) {
+            if v > (::std::usize::MAX as u128) {
                 Err(IntTooBig(v as usize))
             } else {
                 Ok(v as usize)
             }
         }
 
+        fn read_i128(&mut self) -> DecodeResult<i128> {
+            Ok(self._next_int(EsI8, EsI128)? as i128)
+        }
         fn read_i64(&mut self) -> DecodeResult<i64> {
             Ok(self._next_int(EsI8, EsI64)? as i64)
         }
@@ -956,7 +997,9 @@ pub mod writer {
     use super::opaque;
     use super::{EsVec, EsMap, EsEnum, EsSub8, EsSub32, EsVecElt, EsMapKey, EsU64, EsU32, EsU16,
                 EsU8, EsI64, EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
-                EsOpaque, NUM_IMPLICIT_TAGS, NUM_TAGS};
+                EsU128, EsI128, EsOpaque, NUM_IMPLICIT_TAGS, NUM_TAGS};
+
+    use rustc_i128::{i128, u128};
 
     use serialize;
 
@@ -1128,6 +1171,15 @@ pub mod writer {
             self.writer.write_all(b)
         }
 
+        #[cfg(not(stage0))]
+        fn wr_tagged_raw_u128(&mut self, tag_id: usize, v: u128) -> EncodeResult {
+            let bytes: [u8; 16] = unsafe { mem::transmute(v.to_be()) };
+            self.wr_tagged_raw_bytes(tag_id, &bytes)
+        }
+        #[cfg(stage0)]
+        fn wr_tagged_raw_u128(&mut self, tag_id: usize, v: u128) -> EncodeResult {
+            self.wr_tagged_u64(tag_id, v)
+        }
         fn wr_tagged_raw_u64(&mut self, tag_id: usize, v: u64) -> EncodeResult {
             let bytes: [u8; 8] = unsafe { mem::transmute(v.to_be()) };
             self.wr_tagged_raw_bytes(tag_id, &bytes)
@@ -1147,6 +1199,9 @@ pub mod writer {
             self.wr_tagged_raw_bytes(tag_id, &[v])
         }
 
+        fn wr_tagged_raw_i128(&mut self, tag_id: usize, v: i128) -> EncodeResult {
+            self.wr_tagged_raw_u128(tag_id, v as u128)
+        }
         fn wr_tagged_raw_i64(&mut self, tag_id: usize, v: i64) -> EncodeResult {
             self.wr_tagged_raw_u64(tag_id, v as u64)
         }
@@ -1222,6 +1277,13 @@ pub mod writer {
         fn emit_uint(&mut self, v: usize) -> EncodeResult {
             self.emit_u64(v as u64)
         }
+        fn emit_u128(&mut self, v: u128) -> EncodeResult {
+            if v as u64 as u128 == v {
+                self.emit_u64(v as u64)
+            } else {
+                self.wr_tagged_raw_u128(EsU128 as usize, v)
+            }
+        }
         fn emit_u64(&mut self, v: u64) -> EncodeResult {
             if v as u32 as u64 == v {
                 self.emit_u32(v as u32)
@@ -1249,6 +1311,13 @@ pub mod writer {
 
         fn emit_int(&mut self, v: isize) -> EncodeResult {
             self.emit_i64(v as i64)
+        }
+        fn emit_i128(&mut self, v: i128) -> EncodeResult {
+            if v as i64 as i128 == v {
+                self.emit_i64(v as i64)
+            } else {
+                self.wr_tagged_raw_i128(EsI128 as usize, v)
+            }
         }
         fn emit_i64(&mut self, v: i64) -> EncodeResult {
             if v as i32 as i64 == v {

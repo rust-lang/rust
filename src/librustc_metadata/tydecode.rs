@@ -348,10 +348,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                     'w' => return tcx.types.u16,
                     'l' => return tcx.types.u32,
                     'd' => return tcx.types.u64,
+                    'q' => return tcx.types.u128,
                     'B' => return tcx.types.i8,
                     'W' => return tcx.types.i16,
                     'L' => return tcx.types.i32,
                     'D' => return tcx.types.i64,
+                    'Q' => return tcx.types.i128,
                     'f' => return tcx.types.f32,
                     'F' => return tcx.types.f64,
                     _ => bug!("parse_ty: bad numeric type")

@@ -171,8 +171,8 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
 
     fn encode_disr_val(&mut self,
                        disr_val: ty::Disr) {
-        // convert to u64 so just the number is printed, without any type info
-        self.rbml_w.wr_tagged_str(tag_disr_val, &disr_val.to_u64_unchecked().to_string());
+        // convert to u128 so just the number is printed, without any type info
+        self.rbml_w.wr_tagged_str(tag_disr_val, &disr_val.to_u128_unchecked().to_string());
     }
 
     fn encode_parent_item(&mut self, id: DefId) {

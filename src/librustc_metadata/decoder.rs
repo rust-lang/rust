@@ -59,6 +59,8 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax_pos::{self, Span, BytePos, NO_EXPANSION};
 
+use rustc_i128::u128;
+
 pub type Cmd<'a> = &'a CrateMetadata;
 
 impl CrateMetadata {
@@ -240,10 +242,14 @@ fn reexports<'a>(d: rbml::Doc<'a>) -> reader::TaggedDocsIterator<'a> {
     reader::tagged_docs(d, tag_items_data_item_reexport)
 }
 
-fn variant_disr_val(d: rbml::Doc) -> u64 {
+fn variant_disr_val(d: rbml::Doc) -> u128 {
     let val_doc = reader::get_doc(d, tag_disr_val);
     reader::with_doc_data(val_doc, |data| {
-        str::from_utf8(data).unwrap().parse().unwrap()
+        match str::from_utf8(data) {
+            Ok(v) => v,
+            Err(e) => bug!("metadata: parsing {:?} as utf8 failed at byte {}",
+                           data, e.valid_up_to())
+        }.parse().expect("discriminant value is not a valid number")
     })
 }
 
@@ -409,7 +415,8 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
                 did: did,
                 name: item_name(item),
                 fields: get_variant_fields(cdata, item),
-                disr_val: ConstInt::Infer(disr),
+                // FIXME: shouldn’t need the cast
+                disr_val: ConstInt::Infer(disr as u128),
                 kind: expect_variant_kind(item_family(item)),
             }
         }).collect()

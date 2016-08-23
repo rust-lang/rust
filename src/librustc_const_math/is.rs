@@ -10,6 +10,7 @@
 
 use syntax::ast;
 use super::err::*;
+use rustc_i128::i128;
 
 /// Depending on the target only one variant is ever used in a compilation.
 /// Anything else is an error. This invariant is checked at several locations
@@ -41,11 +42,11 @@ impl ConstIsize {
             _ => unreachable!(),
         }
     }
-    pub fn new_truncating(i: i64, target_int_ty: ast::IntTy) -> Self {
+    pub fn new_truncating(i: i128, target_int_ty: ast::IntTy) -> Self {
         match target_int_ty {
             ast::IntTy::I16 => Is16(i as i16),
             ast::IntTy::I32 => Is32(i as i32),
-            ast::IntTy::I64 => Is64(i),
+            ast::IntTy::I64 => Is64(i as i64),
             _ => unreachable!(),
         }
     }

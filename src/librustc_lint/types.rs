@@ -33,6 +33,8 @@ use syntax::codemap;
 
 use rustc::hir;
 
+use rustc_i128::{i128, u128};
+
 register_long_diagnostics! {
 E0519: r##"
 It is not allowed to negate an unsigned integer.
@@ -146,7 +148,7 @@ impl LateLintPass for TypeLimits {
 
                     if let Some(bits) = opt_ty_bits {
                         let exceeding = if let hir::ExprLit(ref lit) = r.node {
-                            if let ast::LitKind::Int(shift, _) = lit.node { shift >= bits }
+                            if let ast::LitKind::Int(shift, _) = lit.node { shift as u64 >= bits }
                             else { false }
                         } else {
                             match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked, None) {
@@ -177,12 +179,13 @@ impl LateLintPass for TypeLimits {
                                     t
                                 };
                                 let (_, max) = int_ty_range(int_type);
+                                let max = max as u128;
                                 let negative = self.negated_expr_id == e.id;
 
                                 // Detect literal value out of range [min, max] inclusive
                                 // avoiding use of -min to prevent overflow/panic
-                                if (negative && v > max as u64 + 1) ||
-                                   (!negative && v > max as u64) {
+                                if (negative && v > max + 1) ||
+                                   (!negative && v > max) {
                                     cx.span_lint(OVERFLOWING_LITERALS, e.span,
                                                  &format!("literal out of range for {:?}", t));
                                     return;
@@ -198,7 +201,7 @@ impl LateLintPass for TypeLimits {
                             t
                         };
                         let (min, max) = uint_ty_range(uint_type);
-                        let lit_val: u64 = match lit.node {
+                        let lit_val: u128 = match lit.node {
                             // _v is u8, within range by definition
                             ast::LitKind::Byte(_v) => return,
                             ast::LitKind::Int(v, _) => v,
@@ -256,23 +259,25 @@ impl LateLintPass for TypeLimits {
 
         // for isize & usize, be conservative with the warnings, so that the
         // warnings are consistent between 32- and 64-bit platforms
-        fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
+        fn int_ty_range(int_ty: ast::IntTy) -> (i128, i128) {
             match int_ty {
-                ast::IntTy::Is => (i64::MIN,        i64::MAX),
-                ast::IntTy::I8 =>    (i8::MIN  as i64, i8::MAX  as i64),
-                ast::IntTy::I16 =>   (i16::MIN as i64, i16::MAX as i64),
-                ast::IntTy::I32 =>   (i32::MIN as i64, i32::MAX as i64),
-                ast::IntTy::I64 =>   (i64::MIN,        i64::MAX)
+                ast::IntTy::I8 => (i8::min_value()  as i128, i8::max_value()  as i128),
+                ast::IntTy::I16 => (i16::min_value() as i128, i16::max_value() as i128),
+                ast::IntTy::I32 => (i32::min_value() as i128, i32::max_value() as i128),
+                ast::IntTy::I64 => (i64::min_value() as i128, i64::max_value() as i128),
+                ast::IntTy::I128 =>(i128::min_value() as i128, i128::max_value() as i128),
+                ast::IntTy::Is => (i64::min_value() as i128, i64::max_value() as i128),
             }
         }
 
-        fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
+        fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
             match uint_ty {
-                ast::UintTy::Us => (u64::MIN,         u64::MAX),
-                ast::UintTy::U8 =>    (u8::MIN   as u64, u8::MAX   as u64),
-                ast::UintTy::U16 =>   (u16::MIN  as u64, u16::MAX  as u64),
-                ast::UintTy::U32 =>   (u32::MIN  as u64, u32::MAX  as u64),
-                ast::UintTy::U64 =>   (u64::MIN,         u64::MAX)
+                ast::UintTy::U8 => (u8::min_value() as u128, u8::max_value() as u128),
+                ast::UintTy::U16 => (u16::min_value() as u128, u16::max_value() as u128),
+                ast::UintTy::U32 => (u32::min_value() as u128, u32::max_value() as u128),
+                ast::UintTy::U64 => (u64::min_value() as u128, u64::max_value() as u128),
+                ast::UintTy::U128 => (u128::min_value() as u128, u128::max_value() as u128),
+                ast::UintTy::Us => (u64::min_value() as u128, u64::max_value() as u128),
             }
         }
 
@@ -290,6 +295,7 @@ impl LateLintPass for TypeLimits {
                 ast::IntTy::I16 => 16 as u64,
                 ast::IntTy::I32 => 32,
                 ast::IntTy::I64 => 64,
+                ast::IntTy::I128 => 128,
             }
         }
 
@@ -300,6 +306,7 @@ impl LateLintPass for TypeLimits {
                 ast::UintTy::U16 => 16,
                 ast::UintTy::U32 => 32,
                 ast::UintTy::U64 => 64,
+                ast::UintTy::U128 => 128,
             }
         }
 
@@ -322,10 +329,10 @@ impl LateLintPass for TypeLimits {
             match tcx.node_id_to_type(expr.id).sty {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
-                    let lit_val: i64 = match lit.node {
+                    let lit_val: i128 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
-                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i64,
+                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i128,
                             _ => return true
                         },
                         _ => bug!()
@@ -333,8 +340,8 @@ impl LateLintPass for TypeLimits {
                     is_valid(norm_binop, lit_val, min, max)
                 }
                 ty::TyUint(uint_ty) => {
-                    let (min, max): (u64, u64) = uint_ty_range(uint_ty);
-                    let lit_val: u64 = match lit.node {
+                    let (min, max) = uint_ty_range(uint_ty);
+                    let lit_val: u128 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
                             ast::LitKind::Int(v, _) => v,
                             _ => return true
