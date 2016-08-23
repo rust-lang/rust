@@ -18,7 +18,7 @@ for the entire lifetime of a program. Creating a boxed value allocates memory on
 the heap at runtime, and therefore cannot be done at compile time. Erroneous
 code example:
 
-```compile_fail
+```compile_fail,E0010
 #![feature(box_syntax)]
 
 const CON : Box<i32> = box 0;
@@ -30,7 +30,7 @@ Static and const variables can refer to other const variables. But a const
 variable cannot refer to a static variable. For example, `Y` cannot refer to
 `X` here:
 
-```compile_fail
+```compile_fail,E0013
 static X: i32 = 42;
 const Y: i32 = X;
 ```
@@ -66,7 +66,7 @@ E0016: r##"
 Blocks in constants may only contain items (such as constant, function
 definition, etc...) and a tail expression. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0016
 const FOO: i32 = { let x = 0; x }; // 'x' isn't an item!
 ```
 
@@ -81,7 +81,7 @@ E0017: r##"
 References in statics and constants may only refer to immutable values.
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0017
 static X: i32 = 1;
 const C: i32 = 2;
 
@@ -107,7 +107,7 @@ vary.
 
 For example, if you write:
 
-```compile_fail
+```compile_fail,E0018
 static MY_STATIC: u32 = 42;
 static MY_STATIC_ADDR: usize = &MY_STATIC as *const _ as usize;
 static WHAT: usize = (MY_STATIC_ADDR^17) + MY_STATIC_ADDR;
@@ -152,7 +152,7 @@ impl Test {
 fn main() {
     const FOO: Test = Test::V1;
 
-    const A: i32 = FOO.test(); // You can't call Test::func() here !
+    const A: i32 = FOO.test(); // You can't call Test::func() here!
 }
 ```
 
@@ -214,14 +214,13 @@ static B: &'static u32 = &A; // ok!
 ```
 "##,
 
-
 E0395: r##"
 The value assigned to a constant scalar must be known at compile time,
 which is not the case when comparing raw pointers.
 
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0395
 static FOO: i32 = 42;
 static BAR: i32 = 42;
 
@@ -250,7 +249,7 @@ The value behind a raw pointer can't be determined at compile-time
 (or even link-time), which means it can't be used in a constant
 expression. Erroneous code example:
 
-```compile_fail
+```compile_fail,E0396
 const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
 
 const VALUE: u8 = unsafe { *REG_ADDR };
@@ -272,7 +271,7 @@ E0492: r##"
 A borrow of a constant containing interior mutability was attempted. Erroneous
 code example:
 
-```compile_fail
+```compile_fail,E0492
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 
 const A: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -299,7 +298,7 @@ static B: &'static AtomicUsize = &A; // ok!
 
 You can also have this error while using a cell type:
 
-```compile_fail
+```compile_fail,E0492
 #![feature(const_fn)]
 
 use std::cell::Cell;
@@ -351,7 +350,7 @@ E0493: r##"
 A type with a destructor was assigned to an invalid type of variable. Erroneous
 code example:
 
-```compile_fail
+```compile_fail,E0493
 struct Foo {
     a: u32
 }
@@ -374,7 +373,7 @@ E0494: r##"
 A reference of an interior static was assigned to another const/static.
 Erroneous code example:
 
-```compile_fail
+```compile_fail,E0494
 struct Foo {
     a: u32
 }
