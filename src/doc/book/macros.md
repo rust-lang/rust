@@ -662,7 +662,7 @@ Here are some common macros you’ll see in Rust code.
 This macro causes the current thread to panic. You can give it a message
 to panic with:
 
-```rust,no_run
+```rust,should_panic
 panic!("oh no!");
 ```
 
@@ -688,7 +688,7 @@ These two macros are used in tests. `assert!` takes a boolean. `assert_eq!`
 takes two values and checks them for equality. `true` passes, `false` `panic!`s.
 Like this:
 
-```rust,no_run
+```rust,should_panic
 // A-ok!
 
 assert!(true);
