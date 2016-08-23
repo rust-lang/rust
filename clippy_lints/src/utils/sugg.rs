@@ -201,7 +201,7 @@ impl<'a> std::ops::Not for Sugg<'a> {
 
 /// Helper type to display either `foo` or `(foo)`.
 struct ParenHelper<T> {
-    /// Wether parenthesis are needed.
+    /// Whether parenthesis are needed.
     paren: bool,
     /// The main thing to display.
     wrapped: T,
@@ -240,17 +240,17 @@ pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
 /// Precedence of shift operator relative to other arithmetic operation is often confusing so
 /// parenthesis will always be added for a mix of these.
 pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
-    /// Wether the operator is a shift operator `<<` or `>>`.
+    /// Whether the operator is a shift operator `<<` or `>>`.
     fn is_shift(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
 
-    /// Wether the operator is a arithmetic operator (`+`, `-`, `*`, `/`, `%`).
+    /// Whether the operator is a arithmetic operator (`+`, `-`, `*`, `/`, `%`).
     fn is_arith(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus)
     }
 
-    /// Wether the operator `op` needs parenthesis with the operator `other` in the direction
+    /// Whether the operator `op` needs parenthesis with the operator `other` in the direction
     /// `dir`.
     fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence() ||
