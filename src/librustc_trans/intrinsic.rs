@@ -206,9 +206,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "type_id") => {
             C_u64(ccx, ccx.tcx().type_id_hash(substs.types[0]))
         }
-        (_, "init_dropped") => {
-            span_bug!(span, "init_dropped intrinsic unsupported");
-        }
         (_, "init") => {
             let tp_ty = substs.types[0];
             if !type_is_zero_size(ccx, tp_ty) {

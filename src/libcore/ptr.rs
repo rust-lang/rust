@@ -140,21 +140,6 @@ pub unsafe fn read<T>(src: *const T) -> T {
     tmp
 }
 
-#[allow(missing_docs)]
-#[inline(always)]
-#[unstable(feature = "filling_drop",
-           reason = "may play a larger role in std::ptr future extensions",
-           issue = "5016")]
-pub unsafe fn read_and_drop<T>(dest: *mut T) -> T {
-    // Copy the data out from `dest`:
-    let tmp = read(&*dest);
-
-    // Now mark `dest` as dropped:
-    write_bytes(dest, mem::POST_DROP_U8, 1);
-
-    tmp
-}
-
 /// Overwrites a memory location with the given value without reading or
 /// dropping the old value.
 ///

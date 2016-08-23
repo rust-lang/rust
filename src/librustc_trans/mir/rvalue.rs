@@ -100,7 +100,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let size = C_uint(bcx.ccx(), size);
                 let base = get_dataptr(&bcx, dest.llval);
                 let bcx = bcx.map_block(|block| {
-                    tvec::iter_vec_raw(block, base, tr_elem.ty, size, |block, llslot, _| {
+                    tvec::slice_for_each(block, base, tr_elem.ty, size, |block, llslot| {
                         self.store_operand_direct(block, llslot, tr_elem);
                         block
                     })

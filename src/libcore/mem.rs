@@ -241,27 +241,6 @@ pub unsafe fn zeroed<T>() -> T {
     intrinsics::init()
 }
 
-/// Creates a value initialized to an unspecified series of bytes.
-///
-/// The byte sequence usually indicates that the value at the memory
-/// in question has been dropped. Thus, *if* T carries a drop flag,
-/// any associated destructor will not be run when the value falls out
-/// of scope.
-///
-/// Some code at one time used the `zeroed` function above to
-/// accomplish this goal.
-///
-/// This function is expected to be deprecated with the transition
-/// to non-zeroing drop.
-#[inline]
-#[unstable(feature = "filling_drop", issue = "5016")]
-pub unsafe fn dropped<T>() -> T {
-    #[inline(always)]
-    unsafe fn dropped_impl<T>() -> T { intrinsics::init_dropped() }
-
-    dropped_impl()
-}
-
 /// Bypasses Rust's normal memory-initialization checks by pretending to
 /// produce a value of type T, while doing nothing at all.
 ///
@@ -517,56 +496,6 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) { }
-
-macro_rules! repeat_u8_as_u16 {
-    ($name:expr) => { (($name as u16) <<  8 |
-                       ($name as u16)) }
-}
-macro_rules! repeat_u8_as_u32 {
-    ($name:expr) => { (($name as u32) << 24 |
-                       ($name as u32) << 16 |
-                       ($name as u32) <<  8 |
-                       ($name as u32)) }
-}
-macro_rules! repeat_u8_as_u64 {
-    ($name:expr) => { ((repeat_u8_as_u32!($name) as u64) << 32 |
-                       (repeat_u8_as_u32!($name) as u64)) }
-}
-
-// NOTE: Keep synchronized with values used in librustc_trans::trans::adt.
-//
-// In particular, the POST_DROP_U8 marker must never equal the
-// DTOR_NEEDED_U8 marker.
-//
-// For a while pnkfelix was using 0xc1 here.
-// But having the sign bit set is a pain, so 0x1d is probably better.
-//
-// And of course, 0x00 brings back the old world of zero'ing on drop.
-#[unstable(feature = "filling_drop", issue = "5016")]
-#[allow(missing_docs)]
-pub const POST_DROP_U8: u8 = 0x1d;
-#[unstable(feature = "filling_drop", issue = "5016")]
-#[allow(missing_docs)]
-pub const POST_DROP_U16: u16 = repeat_u8_as_u16!(POST_DROP_U8);
-#[unstable(feature = "filling_drop", issue = "5016")]
-#[allow(missing_docs)]
-pub const POST_DROP_U32: u32 = repeat_u8_as_u32!(POST_DROP_U8);
-#[unstable(feature = "filling_drop", issue = "5016")]
-#[allow(missing_docs)]
-pub const POST_DROP_U64: u64 = repeat_u8_as_u64!(POST_DROP_U8);
-
-#[cfg(target_pointer_width = "16")]
-#[unstable(feature = "filling_drop", issue = "5016")]
-#[allow(missing_docs)]
-pub const POST_DROP_USIZE: usize = POST_DROP_U16 as usize;
-#[cfg(target_pointer_width = "32")]
-#[unstable(feature = "filling_drop", issue = "5016")]
-#[allow(missing_docs)]
-pub const POST_DROP_USIZE: usize = POST_DROP_U32 as usize;
-#[cfg(target_pointer_width = "64")]
-#[unstable(feature = "filling_drop", issue = "5016")]
-#[allow(missing_docs)]
-pub const POST_DROP_USIZE: usize = POST_DROP_U64 as usize;
 
 /// Interprets `src` as `&U`, and then reads `src` without moving the contained
 /// value.
