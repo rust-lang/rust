@@ -16,7 +16,7 @@ use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use util::parser::AssocOp;
 use attr;
-use attr::{AttrMetaMethods, AttributeMethods};
+use attr::AttrMetaMethods;
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
 use errors;
