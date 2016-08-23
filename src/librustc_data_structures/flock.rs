@@ -15,6 +15,7 @@
 //! librustdoc, it is not production quality at all.
 
 #![allow(non_camel_case_types)]
+use std::path::Path;
 
 pub use self::imp::Lock;
 
@@ -41,6 +42,7 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
+        pub const F_RDLCK: libc::c_short = 0;
         pub const F_WRLCK: libc::c_short = 1;
         pub const F_UNLCK: libc::c_short = 2;
         pub const F_SETLK: libc::c_int = 6;
@@ -60,6 +62,7 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
+        pub const F_RDLCK: libc::c_short = 1;
         pub const F_UNLCK: libc::c_short = 2;
         pub const F_WRLCK: libc::c_short = 3;
         pub const F_SETLK: libc::c_int = 12;
@@ -84,6 +87,7 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
+        pub const F_RDLCK: libc::c_short = 1;
         pub const F_UNLCK: libc::c_short = 2;
         pub const F_WRLCK: libc::c_short = 3;
         pub const F_SETLK: libc::c_int = 8;
@@ -105,6 +109,7 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
+        pub const F_RDLCK: libc::c_short = 1;
         pub const F_UNLCK: libc::c_short = 2;
         pub const F_WRLCK: libc::c_short = 3;
         pub const F_SETLK: libc::c_int = 8;
@@ -124,43 +129,66 @@ mod imp {
             pub l_pid: libc::pid_t,
         }
 
+        pub const F_RDLCK: libc::c_short = 1;
         pub const F_WRLCK: libc::c_short = 2;
         pub const F_UNLCK: libc::c_short = 3;
         pub const F_SETLK: libc::c_int = 6;
         pub const F_SETLKW: libc::c_int = 7;
     }
 
+    #[derive(Debug)]
     pub struct Lock {
         fd: libc::c_int,
     }
 
     impl Lock {
-        pub fn new(p: &Path) -> Lock {
+        pub fn new(p: &Path,
+                   wait: bool,
+                   create: bool,
+                   exclusive: bool)
+                   -> io::Result<Lock> {
             let os: &OsStr = p.as_ref();
             let buf = CString::new(os.as_bytes()).unwrap();
+            let open_flags = if create {
+                libc::O_RDWR | libc::O_CREAT
+            } else {
+                libc::O_RDWR
+            };
+
             let fd = unsafe {
-                libc::open(buf.as_ptr(), libc::O_RDWR | libc::O_CREAT,
+                libc::open(buf.as_ptr(), open_flags,
                            libc::S_IRWXU as libc::c_int)
             };
-            assert!(fd > 0, "failed to open lockfile: {}",
-                    io::Error::last_os_error());
+
+            if fd < 0 {
+                return Err(io::Error::last_os_error());
+            }
+
+            let lock_type = if exclusive {
+                os::F_WRLCK
+            } else {
+                os::F_RDLCK
+            };
+
             let flock = os::flock {
                 l_start: 0,
                 l_len: 0,
                 l_pid: 0,
                 l_whence: libc::SEEK_SET as libc::c_short,
-                l_type: os::F_WRLCK,
+                l_type: lock_type,
                 l_sysid: 0,
             };
+            let cmd = if wait { os::F_SETLKW } else { os::F_SETLK };
             let ret = unsafe {
-                libc::fcntl(fd, os::F_SETLKW, &flock)
+                libc::fcntl(fd, cmd, &flock)
             };
             if ret == -1 {
                 let err = io::Error::last_os_error();
                 unsafe { libc::close(fd); }
-                panic!("could not lock `{}`: {}", p.display(), err);
+                Err(err)
+            } else {
+                Ok(Lock { fd: fd })
             }
-            Lock { fd: fd }
         }
     }
 
@@ -191,18 +219,27 @@ mod imp {
     use std::os::windows::raw::HANDLE;
     use std::path::Path;
     use std::fs::{File, OpenOptions};
+    use std::os::raw::{c_ulong, c_ulonglong, c_int};
 
-    type DWORD = u32;
+    type DWORD = c_ulong;
+    type BOOL = c_int;
+    type ULONG_PTR = c_ulonglong;
+
     type LPOVERLAPPED = *mut OVERLAPPED;
-    type BOOL = i32;
     const LOCKFILE_EXCLUSIVE_LOCK: DWORD = 0x00000002;
+    const LOCKFILE_FAIL_IMMEDIATELY: DWORD = 0x00000001;
+
+    const FILE_SHARE_DELETE: DWORD = 0x4;
+    const FILE_SHARE_READ: DWORD = 0x1;
+    const FILE_SHARE_WRITE: DWORD = 0x2;
 
     #[repr(C)]
     struct OVERLAPPED {
-        Internal: usize,
-        InternalHigh: usize,
-        Pointer: *mut u8,
-        hEvent: *mut u8,
+        Internal: ULONG_PTR,
+        InternalHigh: ULONG_PTR,
+        Offset: DWORD,
+        OffsetHigh: DWORD,
+        hEvent: HANDLE,
     }
 
     extern "system" {
@@ -214,24 +251,88 @@ mod imp {
                       lpOverlapped: LPOVERLAPPED) -> BOOL;
     }
 
+    #[derive(Debug)]
     pub struct Lock {
         _file: File,
     }
 
     impl Lock {
-        pub fn new(p: &Path) -> Lock {
-            let f = OpenOptions::new().read(true).write(true).create(true)
-                                      .open(p).unwrap();
+        pub fn new(p: &Path,
+                   wait: bool,
+                   create: bool,
+                   exclusive: bool)
+                   -> io::Result<Lock> {
+            assert!(p.parent().unwrap().exists(),
+                "Parent directory of lock-file must exist: {}",
+                p.display());
+
+            let share_mode = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
+
+            let mut open_options = OpenOptions::new();
+            open_options.read(true)
+                        .share_mode(share_mode);
+
+            if create {
+                open_options.create(true)
+                            .write(true);
+            }
+
+            debug!("Attempting to open lock file `{}`", p.display());
+            let file = match open_options.open(p) {
+                Ok(file) => {
+                    debug!("Lock file opened successfully");
+                    file
+                }
+                Err(err) => {
+                    debug!("Error opening lock file: {}", err);
+                    return Err(err)
+                }
+            };
+
             let ret = unsafe {
                 let mut overlapped: OVERLAPPED = mem::zeroed();
-                LockFileEx(f.as_raw_handle(), LOCKFILE_EXCLUSIVE_LOCK, 0, 100, 0,
+
+                let mut dwFlags = 0;
+                if !wait {
+                    dwFlags |= LOCKFILE_FAIL_IMMEDIATELY;
+                }
+
+                if exclusive {
+                    dwFlags |= LOCKFILE_EXCLUSIVE_LOCK;
+                }
+
+                debug!("Attempting to acquire lock on lock file `{}`",
+                       p.display());
+                LockFileEx(file.as_raw_handle(),
+                           dwFlags,
+                           0,
+                           0xFFFF_FFFF,
+                           0xFFFF_FFFF,
                            &mut overlapped)
             };
             if ret == 0 {
                 let err = io::Error::last_os_error();
-                panic!("could not lock `{}`: {}", p.display(), err);
+                debug!("Failed acquiring file lock: {}", err);
+                Err(err)
+            } else {
+                debug!("Successfully acquired lock.");
+                Ok(Lock { _file: file })
             }
-            Lock { _file: f }
         }
+    }
+
+    // Note that we don't need a Drop impl on the Windows: The file is unlocked
+    // automatically when it's closed.
+}
+
+impl imp::Lock {
+    pub fn panicking_new(p: &Path,
+                         wait: bool,
+                         create: bool,
+                         exclusive: bool)
+                         -> Lock {
+        Lock::new(p, wait, create, exclusive).unwrap_or_else(|err| {
+            panic!("could not lock `{}`: {}", p.display(), err);
+        })
     }
 }

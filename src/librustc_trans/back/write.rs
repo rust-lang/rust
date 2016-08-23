@@ -10,7 +10,7 @@
 
 use back::lto;
 use back::link::{get_linker, remove};
-use rustc_incremental::save_trans_partition;
+use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
 use session::config::{OutputFilenames, OutputTypes, Passes, SomePasses, AllPasses};
 use session::Session;
 use session::config::{self, OutputType};
@@ -328,8 +328,9 @@ struct CodegenContext<'a> {
     remark: Passes,
     // Worker thread number
     worker: usize,
-    // Directory where incremental data is stored (if any)
-    incremental: Option<PathBuf>,
+    // The incremental compilation session directory, or None if we are not
+    // compiling incrementally
+    incr_comp_session_dir: Option<PathBuf>
 }
 
 impl<'a> CodegenContext<'a> {
@@ -340,7 +341,7 @@ impl<'a> CodegenContext<'a> {
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
             worker: 0,
-            incremental: sess.opts.incremental.clone(),
+            incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone())
         }
     }
 }
@@ -962,17 +963,20 @@ fn execute_work_item(cgcx: &CodegenContext,
                                      work_item.output_names);
             }
             ModuleSource::Preexisting(wp) => {
-                let incremental = cgcx.incremental.as_ref().unwrap();
+                let incr_comp_session_dir = cgcx.incr_comp_session_dir
+                                                .as_ref()
+                                                .unwrap();
                 let name = &work_item.mtrans.name;
                 for (kind, saved_file) in wp.saved_files {
                     let obj_out = work_item.output_names.temp_path(kind, Some(name));
-                    let source_file = incremental.join(&saved_file);
+                    let source_file = in_incr_comp_dir(&incr_comp_session_dir,
+                                                       &saved_file);
                     debug!("copying pre-existing module `{}` from {:?} to {}",
                            work_item.mtrans.name,
                            source_file,
                            obj_out.display());
                     match link_or_copy(&source_file, &obj_out) {
-                        Ok(()) => { }
+                        Ok(_) => { }
                         Err(err) => {
                             cgcx.handler.err(&format!("unable to copy {} to {}: {}",
                                                       source_file.display(),
@@ -1018,7 +1022,7 @@ fn run_work_multithreaded(sess: &Session,
         let mut tx = Some(tx);
         futures.push(rx);
 
-        let incremental = sess.opts.incremental.clone();
+        let incr_comp_session_dir = sess.incr_comp_session_dir_opt().map(|r| r.clone());
 
         thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
             let diag_handler = Handler::with_emitter(true, false, box diag_emitter);
@@ -1031,7 +1035,7 @@ fn run_work_multithreaded(sess: &Session,
                 plugin_passes: plugin_passes,
                 remark: remark,
                 worker: i,
-                incremental: incremental,
+                incr_comp_session_dir: incr_comp_session_dir
             };
 
             loop {

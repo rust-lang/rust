@@ -17,6 +17,7 @@
 
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Svh {
@@ -49,5 +50,19 @@ impl Hash for Svh {
 impl fmt::Display for Svh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&self.to_string())
+    }
+}
+
+impl Encodable for Svh {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u64(self.as_u64().to_le())
+    }
+}
+
+impl Decodable for Svh {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Svh, D::Error> {
+        d.read_u64()
+         .map(u64::from_le)
+         .map(Svh::new)
     }
 }
