@@ -35,6 +35,7 @@ use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
+use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fnv::FnvHashMap;
 
 use self::svh_visitor::StrictVersionHashVisitor;
@@ -47,7 +48,9 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                                     -> IncrementalHashesMap {
     let _ignore = tcx.dep_graph.in_ignore();
     let krate = tcx.map.krate();
-    let mut visitor = HashItemsVisitor { tcx: tcx, hashes: FnvHashMap() };
+    let mut visitor = HashItemsVisitor { tcx: tcx,
+                                         hashes: FnvHashMap(),
+                                         def_path_hashes: DefIdMap() };
     visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX), |v| visit::walk_crate(v, krate));
     krate.visit_all_items(&mut visitor);
     visitor.compute_crate_hash();
@@ -56,6 +59,7 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
 struct HashItemsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_path_hashes: DefIdMap<u64>,
     hashes: IncrementalHashesMap,
 }
 
@@ -75,7 +79,9 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
         // FIXME: this should use SHA1, not SipHash. SipHash is not
         // built to avoid collisions.
         let mut state = SipHasher::new();
-        walk_op(&mut StrictVersionHashVisitor::new(&mut state, self.tcx));
+        walk_op(&mut StrictVersionHashVisitor::new(&mut state,
+                                                   self.tcx,
+                                                   &mut self.def_path_hashes));
         let item_hash = state.finish();
         self.hashes.insert(DepNode::Hir(def_id), item_hash);
         debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, item_hash);
