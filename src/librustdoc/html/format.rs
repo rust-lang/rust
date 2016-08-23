@@ -23,7 +23,7 @@ use rustc::hir::def_id::DefId;
 use syntax::abi::Abi;
 use rustc::hir;
 
-use clean;
+use clean::{self, PrimitiveType};
 use core::DocAccessLevels;
 use html::item_type::ItemType;
 use html::escape::Escape;
@@ -468,28 +468,28 @@ impl fmt::Display for clean::Type {
             }
             clean::Tuple(ref typs) => {
                 match &typs[..] {
-                    &[] => primitive_link(f, clean::PrimitiveTuple, "()"),
+                    &[] => primitive_link(f, PrimitiveType::PrimitiveTuple, "()"),
                     &[ref one] => {
-                        primitive_link(f, clean::PrimitiveTuple, "(")?;
+                        primitive_link(f, PrimitiveType::PrimitiveTuple, "(")?;
                         write!(f, "{},", one)?;
-                        primitive_link(f, clean::PrimitiveTuple, ")")
+                        primitive_link(f, PrimitiveType::PrimitiveTuple, ")")
                     }
                     many => {
-                        primitive_link(f, clean::PrimitiveTuple, "(")?;
+                        primitive_link(f, PrimitiveType::PrimitiveTuple, "(")?;
                         write!(f, "{}", CommaSep(&many))?;
-                        primitive_link(f, clean::PrimitiveTuple, ")")
+                        primitive_link(f, PrimitiveType::PrimitiveTuple, ")")
                     }
                 }
             }
             clean::Vector(ref t) => {
-                primitive_link(f, clean::Slice, &format!("["))?;
+                primitive_link(f, PrimitiveType::Slice, &format!("["))?;
                 write!(f, "{}", t)?;
-                primitive_link(f, clean::Slice, &format!("]"))
+                primitive_link(f, PrimitiveType::Slice, &format!("]"))
             }
             clean::FixedVector(ref t, ref s) => {
-                primitive_link(f, clean::PrimitiveType::Array, "[")?;
+                primitive_link(f, PrimitiveType::Array, "[")?;
                 write!(f, "{}", t)?;
-                primitive_link(f, clean::PrimitiveType::Array,
+                primitive_link(f, PrimitiveType::Array,
                                &format!("; {}]", Escape(s)))
             }
             clean::Never => f.write_str("!"),
@@ -516,12 +516,13 @@ impl fmt::Display for clean::Type {
                     clean::Vector(ref bt) => { // BorrowedRef{ ... Vector(T) } is &[T]
                         match **bt {
                             clean::Generic(_) =>
-                                primitive_link(f, clean::Slice,
+                                primitive_link(f, PrimitiveType::Slice,
                                     &format!("&amp;{}{}[{}]", lt, m, **bt)),
                             _ => {
-                                primitive_link(f, clean::Slice, &format!("&amp;{}{}[", lt, m))?;
+                                primitive_link(f, PrimitiveType::Slice,
+                                               &format!("&amp;{}{}[", lt, m))?;
                                 write!(f, "{}", **bt)?;
-                                primitive_link(f, clean::Slice, "]")
+                                primitive_link(f, PrimitiveType::Slice, "]")
                             }
                         }
                     }
