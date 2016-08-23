@@ -468,16 +468,16 @@ impl fmt::Display for clean::Type {
             }
             clean::Tuple(ref typs) => {
                 match &typs[..] {
-                    &[] => primitive_link(f, PrimitiveType::PrimitiveTuple, "()"),
+                    &[] => primitive_link(f, PrimitiveType::Tuple, "()"),
                     &[ref one] => {
-                        primitive_link(f, PrimitiveType::PrimitiveTuple, "(")?;
+                        primitive_link(f, PrimitiveType::Tuple, "(")?;
                         write!(f, "{},", one)?;
-                        primitive_link(f, PrimitiveType::PrimitiveTuple, ")")
+                        primitive_link(f, PrimitiveType::Tuple, ")")
                     }
                     many => {
-                        primitive_link(f, PrimitiveType::PrimitiveTuple, "(")?;
+                        primitive_link(f, PrimitiveType::Tuple, "(")?;
                         write!(f, "{}", CommaSep(&many))?;
-                        primitive_link(f, PrimitiveType::PrimitiveTuple, ")")
+                        primitive_link(f, PrimitiveType::Tuple, ")")
                     }
                 }
             }
@@ -496,11 +496,11 @@ impl fmt::Display for clean::Type {
             clean::RawPointer(m, ref t) => {
                 match **t {
                     clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {
-                        primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
+                        primitive_link(f, clean::PrimitiveType::RawPointer,
                                        &format!("*{}{}", RawMutableSpace(m), t))
                     }
                     _ => {
-                        primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
+                        primitive_link(f, clean::PrimitiveType::RawPointer,
                                        &format!("*{}", RawMutableSpace(m)))?;
                         write!(f, "{}", t)
                     }
