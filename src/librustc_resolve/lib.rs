@@ -61,6 +61,7 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::DiagnosticBuilder;
@@ -2309,8 +2310,20 @@ impl<'a> Resolver<'a> {
             PathResult::Module(..) | PathResult::Failed(..)
                     if (ns == TypeNS || path.len() > 1) &&
                        self.primitive_type_table.primitive_types.contains_key(&path[0].name) => {
+                let prim = self.primitive_type_table.primitive_types[&path[0].name];
+                match prim {
+                    TyUint(UintTy::U128) | TyInt(IntTy::I128) => {
+                        if !this.session.features.borrow().i128_type {
+                            emit_feature_err(&this.session.parse_sess.span_diagnostic,
+                                                "i128_type", span, GateIssue::Language,
+                                                "128-bit type is unstable");
+
+                        }
+                    }
+                    _ => {}
+                }
                 PathResolution {
-                    base_def: Def::PrimTy(self.primitive_type_table.primitive_types[&path[0].name]),
+                    base_def: Def::PrimTy(prim),
                     depth: path.len() - 1,
                 }
             }

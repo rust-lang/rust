@@ -90,6 +90,7 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(never_type)]
+#![cfg_attr(not(stage0), feature(i128_type))]
 #![feature(prelude_import)]
 
 #[prelude_import]
