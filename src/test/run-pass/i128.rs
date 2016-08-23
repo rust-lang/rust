@@ -1,3 +1,5 @@
+#![feature(i128_type)]
+
 fn main() {
     let x: i128 = -1;
     assert_eq!(0, !x);

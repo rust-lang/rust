@@ -59,6 +59,7 @@ use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::attr;
@@ -2492,11 +2493,20 @@ impl<'a> Resolver<'a> {
         let resolve_identifier_with_fallback = |this: &mut Self, record_used| {
             let def = this.resolve_identifier(last_ident, namespace, record_used);
             match def {
-                None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS =>
-                    this.primitive_type_table
-                        .primitive_types
-                        .get(&last_ident.name)
-                        .map_or(def, |prim_ty| Some(LocalDef::from_def(Def::PrimTy(*prim_ty)))),
+                None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS => {
+                    let prim = this.primitive_type_table.primitive_types.get(&last_ident.name);
+                    match prim {
+                        Some(&TyUint(UintTy::U128)) | Some(&TyInt(IntTy::I128)) => {
+                            if !this.session.features.borrow().i128_type {
+                                emit_feature_err(&this.session.parse_sess.span_diagnostic,
+                                                 "i128_type", span, GateIssue::Language,
+                                                 "128-bit type is unstable");
+                            }
+                        }
+                        _ => {}
+                    }
+                    prim.map_or(def, |prim_ty| Some(LocalDef::from_def(Def::PrimTy(*prim_ty))))
+                }
                 _ => def
             }
         };
