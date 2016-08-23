@@ -1485,8 +1485,8 @@ pub enum PrimitiveType {
     Str,
     Slice,
     Array,
-    PrimitiveTuple,
-    PrimitiveRawPointer,
+    Tuple,
+    RawPointer,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1520,8 +1520,8 @@ impl Type {
             FixedVector(..) | BorrowedRef { type_: box FixedVector(..), .. } => {
                 Some(PrimitiveType::Array)
             }
-            Tuple(..) => Some(PrimitiveType::PrimitiveTuple),
-            RawPointer(..) => Some(PrimitiveType::PrimitiveRawPointer),
+            Tuple(..) => Some(PrimitiveType::Tuple),
+            RawPointer(..) => Some(PrimitiveType::RawPointer),
             _ => None,
         }
     }
@@ -1563,8 +1563,8 @@ impl PrimitiveType {
             "f64" => Some(PrimitiveType::F64),
             "array" => Some(PrimitiveType::Array),
             "slice" => Some(PrimitiveType::Slice),
-            "tuple" => Some(PrimitiveType::PrimitiveTuple),
-            "pointer" => Some(PrimitiveType::PrimitiveRawPointer),
+            "tuple" => Some(PrimitiveType::Tuple),
+            "pointer" => Some(PrimitiveType::RawPointer),
             _ => None,
         }
     }
@@ -1601,8 +1601,8 @@ impl PrimitiveType {
             PrimitiveType::Char => "char",
             PrimitiveType::Array => "array",
             PrimitiveType::Slice => "slice",
-            PrimitiveType::PrimitiveTuple => "tuple",
-            PrimitiveType::PrimitiveRawPointer => "pointer",
+            PrimitiveType::Tuple => "tuple",
+            PrimitiveType::RawPointer => "pointer",
         }
     }
 
@@ -2454,8 +2454,8 @@ fn build_deref_target_impls(cx: &DocContext,
             PrimitiveType::Str => tcx.lang_items.str_impl(),
             PrimitiveType::Slice => tcx.lang_items.slice_impl(),
             PrimitiveType::Array => tcx.lang_items.slice_impl(),
-            PrimitiveType::PrimitiveTuple => None,
-            PrimitiveType::PrimitiveRawPointer => tcx.lang_items.const_ptr_impl(),
+            PrimitiveType::Tuple => None,
+            PrimitiveType::RawPointer => tcx.lang_items.const_ptr_impl(),
         };
         if let Some(did) = did {
             if !did.is_local() {
