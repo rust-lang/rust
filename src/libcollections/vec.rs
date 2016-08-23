@@ -268,7 +268,7 @@ use super::range::RangeArgument;
 /// Vec does not currently guarantee the order in which elements are dropped
 /// (the order has changed in the past, and may change again).
 ///
-#[unsafe_no_drop_flag]
+#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
     buf: RawVec<T>,
@@ -1600,11 +1600,9 @@ impl<T: Ord> Ord for Vec<T> {
 impl<T> Drop for Vec<T> {
     #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
-        if self.buf.unsafe_no_drop_flag_needs_drop() {
-            unsafe {
-                // use drop for [T]
-                ptr::drop_in_place(&mut self[..]);
-            }
+        unsafe {
+            // use drop for [T]
+            ptr::drop_in_place(&mut self[..]);
         }
         // RawVec handles deallocation
     }

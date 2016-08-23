@@ -164,10 +164,6 @@ declare_features! (
     // Allows using `box` in patterns; RFC 469
     (active, box_patterns, "1.0.0", Some(29641)),
 
-    // Allows using the unsafe_no_drop_flag attribute (unlikely to
-    // switch to Accepted; see RFC 320)
-    (active, unsafe_no_drop_flag, "1.0.0", None),
-
     // Allows using the unsafe_destructor_blind_to_params attribute;
     // RFC 1238
     (active, dropck_parametricity, "1.3.0", Some(28498)),
@@ -300,7 +296,8 @@ declare_features! (
     (removed, quad_precision_float, "1.0.0", None),
     (removed, struct_inherit, "1.0.0", None),
     (removed, test_removed_feature, "1.0.0", None),
-    (removed, visible_private_types, "1.0.0", None)
+    (removed, visible_private_types, "1.0.0", None),
+    (removed, unsafe_no_drop_flag, "1.0.0", None)
 );
 
 declare_features! (
@@ -565,10 +562,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                                         attribute is just used for the Rust test \
                                                         suite",
                                                        cfg_fn!(omit_gdb_pretty_printer_section))),
-    ("unsafe_no_drop_flag", Whitelisted, Gated("unsafe_no_drop_flag",
-                                               "unsafe_no_drop_flag has unstable semantics \
-                                                and may be removed in the future",
-                                               cfg_fn!(unsafe_no_drop_flag))),
     ("unsafe_destructor_blind_to_params",
      Normal,
      Gated("dropck_parametricity",

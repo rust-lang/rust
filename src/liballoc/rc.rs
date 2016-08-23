@@ -182,7 +182,7 @@ struct RcBox<T: ?Sized> {
 /// A reference-counted pointer type over an immutable value.
 ///
 /// See the [module level documentation](./index.html) for more details.
-#[unsafe_no_drop_flag]
+#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
     ptr: Shared<RcBox<T>>,
@@ -466,21 +466,18 @@ impl<T: ?Sized> Drop for Rc<T> {
     fn drop(&mut self) {
         unsafe {
             let ptr = *self.ptr;
-            let thin = ptr as *const ();
 
-            if thin as usize != mem::POST_DROP_USIZE {
-                self.dec_strong();
-                if self.strong() == 0 {
-                    // destroy the contained object
-                    ptr::drop_in_place(&mut (*ptr).value);
+            self.dec_strong();
+            if self.strong() == 0 {
+                // destroy the contained object
+                ptr::drop_in_place(&mut (*ptr).value);
 
-                    // remove the implicit "strong weak" pointer now that we've
-                    // destroyed the contents.
-                    self.dec_weak();
+                // remove the implicit "strong weak" pointer now that we've
+                // destroyed the contents.
+                self.dec_weak();
 
-                    if self.weak() == 0 {
-                        deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
-                    }
+                if self.weak() == 0 {
+                    deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
                 }
             }
         }
@@ -724,7 +721,7 @@ impl<T> From<T> for Rc<T> {
 /// dropped.
 ///
 /// See the [module level documentation](./index.html) for more.
-#[unsafe_no_drop_flag]
+#[cfg_attr(stage0, unsafe_no_drop_flag)]
 #[stable(feature = "rc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     ptr: Shared<RcBox<T>>,
@@ -825,15 +822,12 @@ impl<T: ?Sized> Drop for Weak<T> {
     fn drop(&mut self) {
         unsafe {
             let ptr = *self.ptr;
-            let thin = ptr as *const ();
 
-            if thin as usize != mem::POST_DROP_USIZE {
-                self.dec_weak();
-                // the weak count starts at 1, and will only go to zero if all
-                // the strong pointers have disappeared.
-                if self.weak() == 0 {
-                    deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
-                }
+            self.dec_weak();
+            // the weak count starts at 1, and will only go to zero if all
+            // the strong pointers have disappeared.
+            if self.weak() == 0 {
+                deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
             }
         }
     }
