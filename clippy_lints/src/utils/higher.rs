@@ -1,5 +1,7 @@
 //! This module contains functions for retrieve the original AST from lowered `hir`.
 
+#![deny(missing_docs_in_private_items)]
+
 use rustc::hir;
 use rustc::lint::LateContext;
 use syntax::ast;
@@ -33,14 +35,17 @@ pub fn binop(op: hir::BinOp_) -> ast::BinOpKind {
 /// Represent a range akin to `ast::ExprKind::Range`.
 #[derive(Debug, Copy, Clone)]
 pub struct Range<'a> {
+    /// The lower bound of the range, or `None` for ranges such as `..X`.
     pub start: Option<&'a hir::Expr>,
+    /// The upper bound of the range, or `None` for ranges such as `X..`.
     pub end: Option<&'a hir::Expr>,
+    /// Whether the interval is open or closed.
     pub limits: ast::RangeLimits,
 }
 
 /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
 pub fn range(expr: &hir::Expr) -> Option<Range> {
-    // To be removed when ranges get stable.
+    /// Skip unstable blocks. To be removed when ranges get stable.
     fn unwrap_unstable(expr: &hir::Expr) -> &hir::Expr {
         if let hir::ExprBlock(ref block) = expr.node {
             if block.rules == hir::BlockCheckMode::PushUnstableBlock || block.rules == hir::BlockCheckMode::PopUnstableBlock {
@@ -53,6 +58,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
         expr
     }
 
+    /// Find the field named `name` in the field. Always return `Some` for convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
         let expr = &fields.iter()
                           .find(|field| field.name.node.as_str() == name)

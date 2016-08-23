@@ -1,3 +1,6 @@
+//! Contains utility functions to generate suggestions.
+#![deny(missing_docs_in_private_items)]
+
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
 use rustc_errors;
@@ -35,6 +38,7 @@ impl<'a> Display for Sugg<'a> {
 
 #[allow(wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
+    /// Prepare a suggestion from an expression.
     pub fn hir_opt(cx: &LateContext, expr: &hir::Expr) -> Option<Sugg<'a>> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
@@ -72,10 +76,12 @@ impl<'a> Sugg<'a> {
         })
     }
 
+    /// Convenience function around `hir_opt` for suggestions with a default text.
     pub fn hir(cx: &LateContext, expr: &hir::Expr, default: &'a str) -> Sugg<'a> {
         Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
     }
 
+    /// Prepare a suggestion from an expression.
     pub fn ast(cx: &EarlyContext, expr: &ast::Expr, default: &'a str) -> Sugg<'a> {
         use syntax::ast::RangeLimits;
 
@@ -193,12 +199,16 @@ impl<'a> std::ops::Not for Sugg<'a> {
     }
 }
 
+/// Helper type to display either `foo` or `(foo)`.
 struct ParenHelper<T> {
+    /// Wether parenthesis are needed.
     paren: bool,
+    /// The main thing to display.
     wrapped: T,
 }
 
 impl<T> ParenHelper<T> {
+    /// Build a `ParenHelper`.
     fn new(paren: bool, wrapped: T) -> Self {
         ParenHelper {
             paren: paren,
@@ -230,14 +240,18 @@ pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
 /// Precedence of shift operator relative to other arithmetic operation is often confusing so
 /// parenthesis will always be added for a mix of these.
 pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
+    /// Wether the operator is a shift operator `<<` or `>>`.
     fn is_shift(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
 
+    /// Wether the operator is a arithmetic operator (`+`, `-`, `*`, `/`, `%`).
     fn is_arith(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus)
     }
 
+    /// Wether the operator `op` needs parenthesis with the operator `other` in the direction
+    /// `dir`.
     fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence() ||
             (other.precedence() == op.precedence() &&
@@ -298,10 +312,15 @@ pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
 }
 
 #[derive(PartialEq, Eq)]
+/// Operator associativity.
 enum Associativity {
+    /// The operator is both left-associative and right-associative.
     Both,
+    /// The operator is left-associative.
     Left,
+    /// The operator is not associative.
     None,
+    /// The operator is right-associative.
     Right,
 }
 
@@ -383,6 +402,7 @@ fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
     }
 }
 
+/// Convenience extension trait for `DiagnosticBuilder`.
 pub trait DiagnosticBuilderExt<T: LintContext> {
     /// Suggests to add an attribute to an item.
     ///
