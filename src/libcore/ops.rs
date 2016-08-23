@@ -157,6 +157,9 @@
 //!     assert_eq!(arr[1...3], [  1,2,3 ]); // RangeInclusive
 //! }
 //! ```
+//!
+//! Note: whitespace alignment is not idiomatic Rust. An exception is made in
+//! this case to facilitate comparison.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
