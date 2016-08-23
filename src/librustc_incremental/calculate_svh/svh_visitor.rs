@@ -35,23 +35,24 @@ pub struct StrictVersionHashVisitor<'a, 'tcx: 'a> {
     pub st: &'a mut SipHasher,
 
     // collect a deterministic hash of def-ids that we have seen
-    def_id_hashes: DefIdMap<u64>,
+    def_path_hashes: &'a mut DefIdMap<u64>,
 }
 
 impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
     pub fn new(st: &'a mut SipHasher,
-               tcx: TyCtxt<'a, 'tcx, 'tcx>)
+               tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               def_path_hashes: &'a mut DefIdMap<u64>)
                -> Self {
-        StrictVersionHashVisitor { st: st, tcx: tcx, def_id_hashes: DefIdMap() }
+        StrictVersionHashVisitor { st: st, tcx: tcx, def_path_hashes: def_path_hashes }
     }
 
     fn compute_def_id_hash(&mut self, def_id: DefId) -> u64 {
         let tcx = self.tcx;
-        *self.def_id_hashes.entry(def_id)
-                           .or_insert_with(|| {
-                               let def_path = tcx.def_path(def_id);
-                               def_path.deterministic_hash(tcx)
-                           })
+        *self.def_path_hashes.entry(def_id)
+                             .or_insert_with(|| {
+                                 let def_path = tcx.def_path(def_id);
+                                 def_path.deterministic_hash(tcx)
+                             })
     }
 }
 
