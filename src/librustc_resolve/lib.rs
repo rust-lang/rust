@@ -68,7 +68,6 @@ use syntax::ast::{PathSegment, PathParameters, QSelf, TraitItemKind, TraitRef, T
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
-use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::mem::replace;
@@ -498,7 +497,7 @@ struct BindingInfo {
 }
 
 // Map from the name in a pattern to its binding mode.
-type BindingMap = HashMap<ast::Ident, BindingInfo>;
+type BindingMap = FnvHashMap<ast::Ident, BindingInfo>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum PatternSource {
@@ -703,14 +702,14 @@ enum ModulePrefixResult<'a> {
 /// One local scope.
 #[derive(Debug)]
 struct Rib<'a> {
-    bindings: HashMap<ast::Ident, Def>,
+    bindings: FnvHashMap<ast::Ident, Def>,
     kind: RibKind<'a>,
 }
 
 impl<'a> Rib<'a> {
     fn new(kind: RibKind<'a>) -> Rib<'a> {
         Rib {
-            bindings: HashMap::new(),
+            bindings: FnvHashMap(),
             kind: kind,
         }
     }
@@ -773,7 +772,7 @@ pub struct ModuleS<'a> {
     // is the NodeId of the local `extern crate` item (otherwise, `extern_crate_id` is None).
     extern_crate_id: Option<NodeId>,
 
-    resolutions: RefCell<HashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
+    resolutions: RefCell<FnvHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
 
     no_implicit_prelude: Cell<bool>,
 
@@ -797,7 +796,7 @@ impl<'a> ModuleS<'a> {
             parent_link: parent_link,
             def: def,
             extern_crate_id: None,
-            resolutions: RefCell::new(HashMap::new()),
+            resolutions: RefCell::new(FnvHashMap()),
             no_implicit_prelude: Cell::new(false),
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
@@ -930,12 +929,12 @@ impl<'a> NameBinding<'a> {
 
 /// Interns the names of the primitive types.
 struct PrimitiveTypeTable {
-    primitive_types: HashMap<Name, PrimTy>,
+    primitive_types: FnvHashMap<Name, PrimTy>,
 }
 
 impl PrimitiveTypeTable {
     fn new() -> PrimitiveTypeTable {
-        let mut table = PrimitiveTypeTable { primitive_types: HashMap::new() };
+        let mut table = PrimitiveTypeTable { primitive_types: FnvHashMap() };
 
         table.intern("bool", TyBool);
         table.intern("char", TyChar);
@@ -969,7 +968,7 @@ pub struct Resolver<'a> {
 
     // Maps the node id of a statement to the expansions of the `macro_rules!`s
     // immediately above the statement (if appropriate).
-    macros_at_scope: HashMap<NodeId, Vec<Mark>>,
+    macros_at_scope: FnvHashMap<NodeId, Vec<Mark>>,
 
     graph_root: Module<'a>,
 
@@ -1043,8 +1042,8 @@ pub struct Resolver<'a> {
     // all imports, but only glob imports are actually interesting).
     pub glob_map: GlobMap,
 
-    used_imports: HashSet<(NodeId, Namespace)>,
-    used_crates: HashSet<CrateNum>,
+    used_imports: FnvHashSet<(NodeId, Namespace)>,
+    used_crates: FnvHashSet<CrateNum>,
     pub maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -1164,7 +1163,7 @@ impl<'a> Resolver<'a> {
             session: session,
 
             definitions: Definitions::new(),
-            macros_at_scope: HashMap::new(),
+            macros_at_scope: FnvHashMap(),
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1199,8 +1198,8 @@ impl<'a> Resolver<'a> {
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: NodeMap(),
 
-            used_imports: HashSet::new(),
-            used_crates: HashSet::new(),
+            used_imports: FnvHashSet(),
+            used_crates: FnvHashSet(),
             maybe_unused_trait_imports: NodeSet(),
 
             privacy_errors: Vec::new(),
@@ -1729,7 +1728,7 @@ impl<'a> Resolver<'a> {
         match type_parameters {
             HasTypeParameters(generics, rib_kind) => {
                 let mut function_type_rib = Rib::new(rib_kind);
-                let mut seen_bindings = HashMap::new();
+                let mut seen_bindings = FnvHashMap();
                 for type_parameter in &generics.ty_params {
                     let name = type_parameter.ident.name;
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
@@ -1793,7 +1792,7 @@ impl<'a> Resolver<'a> {
         self.label_ribs.push(Rib::new(rib_kind));
 
         // Add each argument to the rib.
-        let mut bindings_list = HashMap::new();
+        let mut bindings_list = FnvHashMap();
         for argument in &declaration.inputs {
             self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
 
@@ -1994,7 +1993,7 @@ impl<'a> Resolver<'a> {
         walk_list!(self, visit_expr, &local.init);
 
         // Resolve the pattern.
-        self.resolve_pattern(&local.pat, PatternSource::Let, &mut HashMap::new());
+        self.resolve_pattern(&local.pat, PatternSource::Let, &mut FnvHashMap());
     }
 
     // build a map from pattern identifiers to binding-info's.
@@ -2002,7 +2001,7 @@ impl<'a> Resolver<'a> {
     // that expands into an or-pattern where one 'x' was from the
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
-        let mut binding_map = HashMap::new();
+        let mut binding_map = FnvHashMap();
 
         pat.walk(&mut |pat| {
             if let PatKind::Ident(binding_mode, ident, ref sub_pat) = pat.node {
@@ -2062,7 +2061,7 @@ impl<'a> Resolver<'a> {
     fn resolve_arm(&mut self, arm: &Arm) {
         self.value_ribs.push(Rib::new(NormalRibKind));
 
-        let mut bindings_list = HashMap::new();
+        let mut bindings_list = FnvHashMap();
         for pattern in &arm.pats {
             self.resolve_pattern(&pattern, PatternSource::Match, &mut bindings_list);
         }
@@ -2202,7 +2201,7 @@ impl<'a> Resolver<'a> {
                      pat_id: NodeId,
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
-                     bindings: &mut HashMap<ast::Ident, NodeId>)
+                     bindings: &mut FnvHashMap<ast::Ident, NodeId>)
                      -> PathResolution {
         // Add the binding to the local ribs, if it
         // doesn't already exist in the bindings map. (We
@@ -2303,7 +2302,7 @@ impl<'a> Resolver<'a> {
                        pat_src: PatternSource,
                        // Maps idents to the node ID for the
                        // outermost pattern that binds them.
-                       bindings: &mut HashMap<ast::Ident, NodeId>) {
+                       bindings: &mut FnvHashMap<ast::Ident, NodeId>) {
         // Visit all direct subpatterns of this pattern.
         let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
@@ -3016,7 +3015,7 @@ impl<'a> Resolver<'a> {
                 self.visit_expr(subexpression);
 
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::IfLet, &mut HashMap::new());
+                self.resolve_pattern(pattern, PatternSource::IfLet, &mut FnvHashMap());
                 self.visit_block(if_block);
                 self.value_ribs.pop();
 
@@ -3026,7 +3025,7 @@ impl<'a> Resolver<'a> {
             ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::WhileLet, &mut HashMap::new());
+                self.resolve_pattern(pattern, PatternSource::WhileLet, &mut FnvHashMap());
 
                 self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
 
@@ -3036,7 +3035,7 @@ impl<'a> Resolver<'a> {
             ExprKind::ForLoop(ref pattern, ref subexpression, ref block, label) => {
                 self.visit_expr(subexpression);
                 self.value_ribs.push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::For, &mut HashMap::new());
+                self.resolve_pattern(pattern, PatternSource::For, &mut FnvHashMap());
 
                 self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
 
@@ -3297,7 +3296,7 @@ impl<'a> Resolver<'a> {
 
     fn report_privacy_errors(&self) {
         if self.privacy_errors.len() == 0 { return }
-        let mut reported_spans = HashSet::new();
+        let mut reported_spans = FnvHashSet();
         for &PrivacyError(span, name, binding) in &self.privacy_errors {
             if !reported_spans.insert(span) { continue }
             if binding.is_extern_crate() {

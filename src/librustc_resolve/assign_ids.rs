@@ -10,6 +10,7 @@
 
 use Resolver;
 use rustc::session::Session;
+use rustc::util::nodemap::FnvHashMap;
 use syntax::ast;
 use syntax::ext::hygiene::Mark;
 use syntax::fold::{self, Folder};
@@ -17,7 +18,6 @@ use syntax::ptr::P;
 use syntax::util::move_map::MoveMap;
 use syntax::util::small_vector::SmallVector;
 
-use std::collections::HashMap;
 use std::mem;
 
 impl<'a> Resolver<'a> {
@@ -31,7 +31,7 @@ impl<'a> Resolver<'a> {
 
 struct NodeIdAssigner<'a> {
     sess: &'a Session,
-    macros_at_scope: &'a mut HashMap<ast::NodeId, Vec<Mark>>,
+    macros_at_scope: &'a mut FnvHashMap<ast::NodeId, Vec<Mark>>,
 }
 
 impl<'a> Folder for NodeIdAssigner<'a> {
