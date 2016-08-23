@@ -33,6 +33,12 @@ pub enum Enum {
 
 pub struct TupleStruct(pub i8, pub i16, pub i32, pub i64);
 
-pub trait Trait<T1, T2> {
+pub trait Marker {}
+impl Marker for char {}
+impl<T, U> Marker for (T, U) {}
+
+pub trait Trait<T1: Marker + Marker + Marker, T2> where T1: 'static {
+    type Assoc: Marker;
+
     fn foo(&self);
 }

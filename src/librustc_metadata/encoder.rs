@@ -862,8 +862,13 @@ fn encode_xrefs<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           xrefs: FnvHashMap<XRef<'tcx>, u32>)
 {
     let mut xref_positions = vec![0; xrefs.len()];
+
+    // Encode XRefs sorted by their ID
+    let mut sorted_xrefs: Vec<_> = xrefs.into_iter().collect();
+    sorted_xrefs.sort_by_key(|&(_, id)| id);
+
     rbml_w.start_tag(tag_xref_data);
-    for (xref, id) in xrefs.into_iter() {
+    for (xref, id) in sorted_xrefs.into_iter() {
         xref_positions[id as usize] = rbml_w.mark_stable_position() as u32;
         match xref {
             XRef::Predicate(p) => {
