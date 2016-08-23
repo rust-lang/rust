@@ -111,7 +111,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
                 _ => return None,
             }
 
-            let _ = parser.bump();
+            parser.bump();
 
             if parser.token == Token::Eof {
                 return None;

@@ -43,7 +43,7 @@ pub fn rewrite_path(context: &RewriteContext,
 
     let mut span_lo = path.span.lo;
 
-    if let Some(ref qself) = qself {
+    if let Some(qself) = qself {
         result.push('<');
         let fmt_ty = try_opt!(qself.ty.rewrite(context, width, offset));
         result.push_str(&fmt_ty);
@@ -131,9 +131,9 @@ enum SegmentParam<'a> {
 impl<'a> SegmentParam<'a> {
     fn get_span(&self) -> Span {
         match *self {
-            SegmentParam::LifeTime(ref lt) => lt.span,
-            SegmentParam::Type(ref ty) => ty.span,
-            SegmentParam::Binding(ref binding) => binding.span,
+            SegmentParam::LifeTime(lt) => lt.span,
+            SegmentParam::Type(ty) => ty.span,
+            SegmentParam::Binding(binding) => binding.span,
         }
     }
 }
@@ -141,9 +141,9 @@ impl<'a> SegmentParam<'a> {
 impl<'a> Rewrite for SegmentParam<'a> {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match *self {
-            SegmentParam::LifeTime(ref lt) => lt.rewrite(context, width, offset),
-            SegmentParam::Type(ref ty) => ty.rewrite(context, width, offset),
-            SegmentParam::Binding(ref binding) => {
+            SegmentParam::LifeTime(lt) => lt.rewrite(context, width, offset),
+            SegmentParam::Type(ty) => ty.rewrite(context, width, offset),
+            SegmentParam::Binding(binding) => {
                 let mut result = format!("{} = ", binding.ident);
                 let budget = try_opt!(width.checked_sub(result.len()));
                 let rewrite = try_opt!(binding.ty.rewrite(context, budget, offset + result.len()));
@@ -306,7 +306,7 @@ fn format_function_type<'a, I>(inputs: I,
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    let infix = if output.len() > 0 && output.len() + list_str.len() > width {
+    let infix = if !output.is_empty() && output.len() + list_str.len() > width {
         format!("\n{}", (offset - 1).to_string(context.config))
     } else {
         String::new()
@@ -622,7 +622,7 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
         result.push_str("> ");
     }
 
-    result.push_str(&::utils::format_unsafety(bare_fn.unsafety));
+    result.push_str(::utils::format_unsafety(bare_fn.unsafety));
 
     if bare_fn.abi != abi::Abi::Rust {
         result.push_str(&::utils::format_abi(bare_fn.abi, context.config.force_explicit_abi));

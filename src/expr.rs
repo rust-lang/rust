@@ -298,7 +298,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                              |item| item.span.lo,
                              |item| item.span.hi,
                              // 1 = [
-                             |item| item.rewrite(&inner_context, max_item_width, offset),
+                             |item| item.rewrite(inner_context, max_item_width, offset),
                              span.lo,
                              span.hi)
         .collect::<Vec<_>>();
@@ -493,7 +493,7 @@ fn and_one_line(x: Option<String>) -> Option<String> {
 
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
     block_str.map(|block_str| {
-        if block_str.starts_with("{") && budget >= 2 &&
+        if block_str.starts_with('{') && budget >= 2 &&
            (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2) {
             "{}".to_owned()
         } else {
@@ -772,7 +772,7 @@ fn rewrite_if_else(context: &RewriteContext,
                                 pat.map_or(cond.span.lo,
                                            |_| context.codemap.span_before(span, "let")));
 
-    let between_if_cond_comment = extract_comment(between_if_cond, &context, offset, width);
+    let between_if_cond_comment = extract_comment(between_if_cond, context, offset, width);
 
     let after_cond_comment = extract_comment(mk_sp(cond.span.hi, if_block.span.lo),
                                              context,
@@ -831,13 +831,13 @@ fn rewrite_if_else(context: &RewriteContext,
             mk_sp(if_block.span.hi,
                   context.codemap.span_before(mk_sp(if_block.span.hi, else_block.span.lo), "else"));
         let between_if_else_block_comment =
-            extract_comment(between_if_else_block, &context, offset, width);
+            extract_comment(between_if_else_block, context, offset, width);
 
         let after_else = mk_sp(context.codemap
                                    .span_after(mk_sp(if_block.span.hi, else_block.span.lo),
                                                "else"),
                                else_block.span.lo);
-        let after_else_comment = extract_comment(after_else, &context, offset, width);
+        let after_else_comment = extract_comment(after_else, context, offset, width);
 
         let between_sep = match context.config.else_if_brace_style {
             ElseIfBraceStyle::AlwaysNextLine |
@@ -854,7 +854,7 @@ fn rewrite_if_else(context: &RewriteContext,
                             .map_or(between_sep, |str| &**str),
                         after_else_comment.as_ref().map_or(after_sep, |str| &**str))
             .ok());
-        result.push_str(&&try_opt!(rewrite));
+        result.push_str(&try_opt!(rewrite));
     }
 
     Some(result)
@@ -1021,7 +1021,7 @@ fn rewrite_match(context: &RewriteContext,
             // We couldn't format the arm, just reproduce the source.
             let snippet = context.snippet(mk_sp(arm_start_pos(arm), arm_end_pos(arm)));
             result.push_str(&snippet);
-            result.push_str(arm_comma(&context.config, &arm, &arm.body));
+            result.push_str(arm_comma(context.config, arm, &arm.body));
         }
     }
     // BytePos(1) = closing match brace.
@@ -1102,7 +1102,7 @@ impl Rewrite for ast::Arm {
             .map(|p| p.rewrite(context, pat_budget, offset))
             .collect::<Option<Vec<_>>>());
 
-        let all_simple = pat_strs.iter().all(|p| pat_is_simple(&p));
+        let all_simple = pat_strs.iter().all(|p| pat_is_simple(p));
         let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
         let fmt = ListFormatting {
             tactic: if all_simple {
@@ -1145,7 +1145,7 @@ impl Rewrite for ast::Arm {
             ref x => x,
         };
 
-        let comma = arm_comma(&context.config, self, body);
+        let comma = arm_comma(context.config, self, body);
         let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
 
         // Let's try and get the arm body on the same line as the condition.
@@ -1305,7 +1305,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
         expr.rewrite(context,
                      try_opt!(context.config.max_width.checked_sub(pat_offset.width())),
                      pat_offset);
-    result.push_str(&&try_opt!(expr_rewrite));
+    result.push_str(&try_opt!(expr_rewrite));
 
     Some(result)
 }
@@ -1433,7 +1433,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
-                             |item| item.rewrite(&inner_context, remaining_width, offset),
+                             |item| item.rewrite(inner_context, remaining_width, offset),
                              span.lo,
                              span.hi);
     let mut item_vec: Vec<_> = items.collect();
@@ -1454,7 +1454,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     // first arguments.
     if overflow_last {
         let inner_context = &RewriteContext { block_indent: context.block_indent, ..*context };
-        let rewrite = args.last().unwrap().rewrite(&inner_context, remaining_width, offset);
+        let rewrite = args.last().unwrap().rewrite(inner_context, remaining_width, offset);
 
         if let Some(rewrite) = rewrite {
             let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
@@ -1557,8 +1557,8 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              "}",
                              |item| {
         match *item {
-            StructLitField::Regular(ref field) => field.span.lo,
-            StructLitField::Base(ref expr) => {
+            StructLitField::Regular(field) => field.span.lo,
+            StructLitField::Base(expr) => {
                 let last_field_hi = fields.last().map_or(span.lo, |field| field.span.hi);
                 let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo));
                 let pos = snippet.find_uncommented("..").unwrap();
@@ -1568,19 +1568,19 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     },
                              |item| {
                                  match *item {
-                                     StructLitField::Regular(ref field) => field.span.hi,
-                                     StructLitField::Base(ref expr) => expr.span.hi,
+                                     StructLitField::Regular(field) => field.span.hi,
+                                     StructLitField::Base(expr) => expr.span.hi,
                                  }
                              },
                              |item| {
         match *item {
-            StructLitField::Regular(ref field) => {
+            StructLitField::Regular(field) => {
                 rewrite_field(inner_context,
-                              &field,
+                              field,
                               v_budget.checked_sub(1).unwrap_or(0),
                               indent)
             }
-            StructLitField::Base(ref expr) => {
+            StructLitField::Base(expr) => {
                 // 2 = ..
                 expr.rewrite(inner_context, try_opt!(v_budget.checked_sub(2)), indent + 2)
                     .map(|s| format!("..{}", s))
@@ -1678,7 +1678,7 @@ fn rewrite_field(context: &RewriteContext,
     match expr {
         Some(e) => Some(format!("{}{}{}", name, separator, e)),
         None => {
-            let expr_offset = offset.block_indent(&context.config);
+            let expr_offset = offset.block_indent(context.config);
             let expr = field.expr.rewrite(context,
                                           try_opt!(context.config
                                               .max_width
@@ -1843,7 +1843,7 @@ fn rewrite_assignment(context: &RewriteContext,
                           try_opt!(lhs.rewrite(context, max_width, offset)),
                           operator_str);
 
-    rewrite_assign_rhs(&context, lhs_str, rhs, width, offset)
+    rewrite_assign_rhs(context, lhs_str, rhs, width, offset)
 }
 
 // The left hand side must contain everything up to, and including, the
@@ -1863,7 +1863,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
     };
     // 1 = space between operator and rhs.
     let max_width = try_opt!(width.checked_sub(last_line_width + 1));
-    let rhs = ex.rewrite(&context, max_width, offset + last_line_width + 1);
+    let rhs = ex.rewrite(context, max_width, offset + last_line_width + 1);
 
     fn count_line_breaks(src: &str) -> usize {
         src.chars().filter(|&x| x == '\n').count()

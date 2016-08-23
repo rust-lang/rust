@@ -21,10 +21,10 @@ use std::cmp::{self, Ordering};
 use syntax::{ast, ptr};
 
 fn path_of(a: &ast::ViewPath_) -> &ast::Path {
-    match a {
-        &ast::ViewPath_::ViewPathSimple(_, ref p) => p,
-        &ast::ViewPath_::ViewPathGlob(ref p) => p,
-        &ast::ViewPath_::ViewPathList(ref p, _) => p,
+    match *a {
+        ast::ViewPath_::ViewPathSimple(_, ref p) => p,
+        ast::ViewPath_::ViewPathGlob(ref p) => p,
+        ast::ViewPath_::ViewPathList(ref p, _) => p,
     }
 }
 
@@ -203,7 +203,7 @@ impl<'a> FmtVisitor<'a> {
             // Fake out the formatter by setting `self.last_pos` to the appropriate location before
             // each item before visiting it.
             self.last_pos = ordered.1;
-            self.visit_item(&ordered.0);
+            self.visit_item(ordered.0);
         }
         self.last_pos = pos_after_last_use_item;
     }

@@ -254,7 +254,7 @@ impl FormatReport {
     }
 
     pub fn warning_count(&self) -> usize {
-        self.file_error_map.iter().map(|(_, ref errors)| errors.len()).fold(0, |acc, x| acc + x)
+        self.file_error_map.iter().map(|(_, errors)| errors.len()).fold(0, |acc, x| acc + x)
     }
 
     pub fn has_warnings(&self) -> bool {
@@ -392,9 +392,9 @@ fn parse_input(input: Input,
                parse_session: &ParseSess)
                -> Result<ast::Crate, Option<DiagnosticBuilder>> {
     let result = match input {
-        Input::File(file) => parse::parse_crate_from_file(&file, Vec::new(), &parse_session),
+        Input::File(file) => parse::parse_crate_from_file(&file, Vec::new(), parse_session),
         Input::Text(text) => {
-            parse::parse_crate_from_source_str("stdin".to_owned(), text, Vec::new(), &parse_session)
+            parse::parse_crate_from_source_str("stdin".to_owned(), text, Vec::new(), parse_session)
         }
     };
 

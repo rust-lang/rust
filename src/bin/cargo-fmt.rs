@@ -123,15 +123,15 @@ enum TargetKind {
 
 impl TargetKind {
     fn is_lib(&self) -> bool {
-        match self {
-            &TargetKind::Lib => true,
+        match *self {
+            TargetKind::Lib => true,
             _ => false,
         }
     }
 
     fn is_bin(&self) -> bool {
-        match self {
-            &TargetKind::Bin => true,
+        match *self {
+            TargetKind::Bin => true,
             _ => false,
         }
     }
@@ -180,8 +180,8 @@ fn target_from_json(jtarget: &Json) -> Target {
     }
 }
 
-fn format_files(files: &Vec<PathBuf>,
-                fmt_args: &Vec<String>,
+fn format_files(files: &[PathBuf],
+                fmt_args: &[String],
                 verbosity: Verbosity)
                 -> Result<ExitStatus, std::io::Error> {
     let stdout = if verbosity == Verbosity::Quiet {

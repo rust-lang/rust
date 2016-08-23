@@ -22,11 +22,7 @@ const FIX_ME_CHARS: &'static [char] = &['F', 'I', 'X', 'M', 'E'];
 // irrelevant outside the issues module
 impl ReportTactic {
     fn is_enabled(&self) -> bool {
-        match *self {
-            ReportTactic::Always => true,
-            ReportTactic::Unnumbered => true,
-            ReportTactic::Never => false,
-        }
+        *self != ReportTactic::Never
     }
 }
 

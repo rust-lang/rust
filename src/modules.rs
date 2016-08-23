@@ -64,11 +64,11 @@ fn module_file(id: ast::Ident,
                dir_path: &Path,
                codemap: &codemap::CodeMap)
                -> PathBuf {
-    if let Some(path) = parser::Parser::submod_path_from_attr(attrs, &dir_path) {
+    if let Some(path) = parser::Parser::submod_path_from_attr(attrs, dir_path) {
         return path;
     }
 
-    match parser::Parser::default_submod_path(id, &dir_path, codemap).result {
+    match parser::Parser::default_submod_path(id, dir_path, codemap).result {
         Ok(parser::ModulePathSuccess { path, .. }) => path,
         Err(_) => panic!("Couldn't find module {}", id),
     }

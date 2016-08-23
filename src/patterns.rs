@@ -153,7 +153,7 @@ impl Rewrite for Pat {
                         field_string.push_str(&offset.to_string(context.config));
                         field_string.push_str("..");
                     } else {
-                        if field_string.len() > 0 {
+                        if !field_string.is_empty() {
                             field_string.push_str(", ");
                         }
                         field_string.push_str("..");

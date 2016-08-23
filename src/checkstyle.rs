@@ -45,18 +45,14 @@ pub fn output_checkstyle_file<T>(mut writer: T,
     try!(write!(writer, "<file name=\"{}\">", filename));
     for mismatch in diff {
         for line in mismatch.lines {
-            match line {
-                DiffLine::Expected(ref str) => {
-                    let message = xml_escape_str(&str);
-                    try!(write!(writer,
-                                "<error line=\"{}\" severity=\"warning\" message=\"Should be \
-                                 `{}`\" />",
-                                mismatch.line_number,
-                                message));
-                }
-                _ => {
-                    // Do nothing with context and expected.
-                }
+            // Do nothing with `DiffLine::Context` and `DiffLine::Resulting`.
+            if let DiffLine::Expected(ref str) = line {
+                let message = xml_escape_str(str);
+                try!(write!(writer,
+                            "<error line=\"{}\" severity=\"warning\" message=\"Should be `{}`\" \
+                             />",
+                            mismatch.line_number,
+                            message));
             }
         }
     }

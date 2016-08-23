@@ -251,7 +251,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: Ind
             }
 
             // The other lines must fit within the maximum width.
-            if lines.find(|line| line.len() > max_width).is_some() {
+            if lines.any(|line| line.len() > max_width) {
                 return None;
             }
 
