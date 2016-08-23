@@ -375,7 +375,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I16 => ConstInt::I16(i16::min_value()),
                     ast::IntTy::I32 => ConstInt::I32(i32::min_value()),
                     ast::IntTy::I64 => ConstInt::I64(i64::min_value()),
-                    // FIXME: i128
                     ast::IntTy::I128 => ConstInt::I128(i128::min_value()),
                     ast::IntTy::Is => {
                         let int_ty = self.hir.tcx().sess.target.int_type;
