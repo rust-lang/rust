@@ -1631,6 +1631,18 @@ impl From<ast::IntTy> for PrimitiveType {
     }
 }
 
+impl From<ast::UintTy> for PrimitiveType {
+    fn from(uint_ty: ast::UintTy) -> PrimitiveType {
+        match uint_ty {
+            ast::UintTy::Us => PrimitiveType::Usize,
+            ast::UintTy::U8 => PrimitiveType::U8,
+            ast::UintTy::U16 => PrimitiveType::U16,
+            ast::UintTy::U32 => PrimitiveType::U32,
+            ast::UintTy::U64 => PrimitiveType::U64,
+        }
+    }
+}
+
 // Poor man's type parameter substitution at HIR level.
 // Used to replace private type aliases in public signatures with their aliased types.
 struct SubstAlias<'a, 'tcx: 'a> {
@@ -1784,11 +1796,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyBool => Primitive(PrimitiveType::Bool),
             ty::TyChar => Primitive(PrimitiveType::Char),
             ty::TyInt(int_ty) => Primitive(int_ty.into()),
-            ty::TyUint(ast::UintTy::Us) => Primitive(PrimitiveType::Usize),
-            ty::TyUint(ast::UintTy::U8) => Primitive(PrimitiveType::U8),
-            ty::TyUint(ast::UintTy::U16) => Primitive(PrimitiveType::U16),
-            ty::TyUint(ast::UintTy::U32) => Primitive(PrimitiveType::U32),
-            ty::TyUint(ast::UintTy::U64) => Primitive(PrimitiveType::U64),
+            ty::TyUint(uint_ty) => Primitive(uint_ty.into()),
             ty::TyFloat(ast::FloatTy::F32) => Primitive(PrimitiveType::F32),
             ty::TyFloat(ast::FloatTy::F64) => Primitive(PrimitiveType::F64),
             ty::TyStr => Primitive(PrimitiveType::Str),
@@ -2749,11 +2757,7 @@ fn resolve_type(cx: &DocContext,
             hir::TyBool => return Primitive(PrimitiveType::Bool),
             hir::TyChar => return Primitive(PrimitiveType::Char),
             hir::TyInt(int_ty) => return Primitive(int_ty.into()),
-            hir::TyUint(ast::UintTy::Us) => return Primitive(PrimitiveType::Usize),
-            hir::TyUint(ast::UintTy::U8) => return Primitive(PrimitiveType::U8),
-            hir::TyUint(ast::UintTy::U16) => return Primitive(PrimitiveType::U16),
-            hir::TyUint(ast::UintTy::U32) => return Primitive(PrimitiveType::U32),
-            hir::TyUint(ast::UintTy::U64) => return Primitive(PrimitiveType::U64),
+            hir::TyUint(uint_ty) => return Primitive(uint_ty.into()),
             hir::TyFloat(ast::FloatTy::F32) => return Primitive(PrimitiveType::F32),
             hir::TyFloat(ast::FloatTy::F64) => return Primitive(PrimitiveType::F64),
         },
