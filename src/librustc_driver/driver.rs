@@ -55,6 +55,8 @@ use syntax::util::node_count::NodeCounter;
 use syntax;
 use syntax_ext;
 
+use derive_registrar;
+
 #[derive(Clone)]
 pub struct Resolutions {
     pub def_map: DefMap,
@@ -696,6 +698,18 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                          sess.diagnostic())
     });
 
+    krate = time(time_passes, "maybe creating a macro crate", || {
+        let crate_types = sess.crate_types.borrow();
+        let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
+        let num_crate_types = crate_types.len();
+        syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
+                                                  krate,
+                                                  is_rustc_macro_crate,
+                                                  num_crate_types,
+                                                  sess.diagnostic(),
+                                                  &sess.features.borrow())
+    });
+
     let resolver_arenas = Resolver::arenas();
     let mut resolver = Resolver::new(sess, make_glob_map, &resolver_arenas);
 
@@ -838,6 +852,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     sess.plugin_registrar_fn.set(time(time_passes, "looking for plugin registrar", || {
         plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)
     }));
+    sess.derive_registrar_fn.set(derive_registrar::find(&hir_map));
 
     let region_map = time(time_passes,
                           "region resolution",
@@ -1170,6 +1185,9 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                          }
                          Some(ref n) if *n == "staticlib" => {
                              Some(config::CrateTypeStaticlib)
+                         }
+                         Some(ref n) if *n == "rustc-macro" => {
+                             Some(config::CrateTypeRustcMacro)
                          }
                          Some(ref n) if *n == "bin" => Some(config::CrateTypeExecutable),
                          Some(_) => {

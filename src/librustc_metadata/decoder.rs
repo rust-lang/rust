@@ -1398,6 +1398,11 @@ pub fn each_exported_macro<F>(data: &[u8], mut f: F) where
     }
 }
 
+pub fn get_derive_registrar_fn(data: &[u8]) -> Option<DefIndex> {
+    reader::maybe_get_doc(rbml::Doc::new(data), tag_macro_derive_registrar)
+        .map(|doc| DefIndex::from_u32(reader::doc_as_u32(doc)))
+}
+
 pub fn get_macro_span(doc: rbml::Doc) -> Span {
     let lo_doc = reader::get_doc(doc, tag_macro_def_span_lo);
     let lo = BytePos(reader::doc_as_u32(lo_doc));

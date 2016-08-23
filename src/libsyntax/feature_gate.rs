@@ -47,7 +47,7 @@ macro_rules! setter {
 }
 
 macro_rules! declare_features {
-    ($((active, $feature: ident, $ver: expr, $issue: expr)),+) => {
+    ($((active, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
         const ACTIVE_FEATURES: &'static [(&'static str, &'static str,
@@ -75,14 +75,14 @@ macro_rules! declare_features {
         }
     };
 
-    ($((removed, $feature: ident, $ver: expr, $issue: expr)),+) => {
+    ($((removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Represents features which has since been removed (it was once Active)
         const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     };
 
-    ($((accepted, $feature: ident, $ver: expr, $issue: expr)),+) => {
+    ($((accepted, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Those language feature has since been Accepted (it was once Active)
         const ACCEPTED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
@@ -288,7 +288,10 @@ declare_features! (
     (active, abi_sysv64, "1.13.0", Some(36167)),
 
     // Use the import semantics from RFC 1560.
-    (active, item_like_imports, "1.13.0", Some(35120))
+    (active, item_like_imports, "1.13.0", Some(35120)),
+
+    // Macros 1.1
+    (active, rustc_macro, "1.13.0", Some(35900)),
 );
 
 declare_features! (
@@ -302,7 +305,6 @@ declare_features! (
     (removed, struct_inherit, "1.0.0", None),
     (removed, test_removed_feature, "1.0.0", None),
     (removed, visible_private_types, "1.0.0", None),
-    (removed, unsafe_no_drop_flag, "1.0.0", None)
 );
 
 declare_features! (
@@ -330,7 +332,7 @@ declare_features! (
     (accepted, type_macros, "1.13.0", Some(27245)),
     (accepted, while_let, "1.0.0", None),
     // Allows `#[deprecated]` attribute
-    (accepted, deprecated, "1.9.0", Some(29935))
+    (accepted, deprecated, "1.9.0", Some(29935)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -543,6 +545,15 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                    is an experimental feature",
                                   cfg_fn!(linked_from))),
 
+    ("rustc_macro_derive", Normal, Gated("rustc_macro",
+                                         "the `#[rustc_macro_derive]` attribute \
+                                          is an experimental feature",
+                                         cfg_fn!(rustc_macro))),
+
+    ("rustc_copy_clone_marker", Whitelisted, Gated("rustc_attrs",
+                                                   "internal implementation detail",
+                                                   cfg_fn!(rustc_attrs))),
+
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted, Ungated),
 
@@ -616,6 +627,7 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
+    ("rustc_macro", "rustc_macro", cfg_fn!(rustc_macro)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]

@@ -27,10 +27,10 @@ use ptr::P;
 use util::small_vector::SmallVector;
 use util::lev_distance::find_best_match_for_name;
 use fold::Folder;
+use feature_gate;
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use std::default::Default;
 use tokenstream;
 
 
@@ -568,12 +568,18 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
 }
 
 pub trait MacroLoader {
-    fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<ast::MacroDef>;
+    fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool)
+                  -> Vec<LoadedMacro>;
+}
+
+pub enum LoadedMacro {
+    Def(ast::MacroDef),
+    CustomDerive(String, Box<MultiItemModifier>),
 }
 
 pub struct DummyMacroLoader;
 impl MacroLoader for DummyMacroLoader {
-    fn load_crate(&mut self, _: &ast::Item, _: bool) -> Vec<ast::MacroDef> {
+    fn load_crate(&mut self, _: &ast::Item, _: bool) -> Vec<LoadedMacro> {
         Vec::new()
     }
 }
@@ -593,6 +599,7 @@ pub struct ExtCtxt<'a> {
     pub exported_macros: Vec<ast::MacroDef>,
 
     pub syntax_env: SyntaxEnv,
+    pub derive_modes: HashMap<InternedString, Box<MultiItemModifier>>,
     pub recursion_count: usize,
 
     pub filename: Option<String>,
@@ -616,6 +623,7 @@ impl<'a> ExtCtxt<'a> {
             exported_macros: Vec::new(),
             loader: loader,
             syntax_env: env,
+            derive_modes: HashMap::new(),
             recursion_count: 0,
 
             filename: None,
@@ -711,6 +719,25 @@ impl<'a> ExtCtxt<'a> {
         if def.use_locally {
             let ext = macro_rules::compile(self, &def);
             self.syntax_env.insert(def.ident.name, ext);
+        }
+    }
+
+    pub fn insert_custom_derive(&mut self,
+                                name: &str,
+                                ext: Box<MultiItemModifier>,
+                                sp: Span) {
+        if !self.ecfg.enable_rustc_macro() {
+            feature_gate::emit_feature_err(&self.parse_sess.span_diagnostic,
+                                           "rustc_macro",
+                                           sp,
+                                           feature_gate::GateIssue::Language,
+                                           "loading custom derive macro crates \
+                                            is experimentally supported");
+        }
+        let name = token::intern_and_get_ident(name);
+        if self.derive_modes.insert(name.clone(), ext).is_some() {
+            self.span_err(sp, &format!("cannot shadow existing derive mode `{}`",
+                                       name));
         }
     }
 

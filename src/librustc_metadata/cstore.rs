@@ -28,13 +28,13 @@ use rustc::hir::svh::Svh;
 use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
+use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap, FnvHashSet};
 
 use std::cell::{RefCell, Ref, Cell};
 use std::rc::Rc;
 use std::path::PathBuf;
 use flate::Bytes;
-use syntax::ast;
+use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::codemap;
 use syntax_pos;
@@ -115,6 +115,7 @@ pub struct CStore {
     pub inlined_item_cache: RefCell<DefIdMap<Option<CachedInlinedItem>>>,
     pub defid_for_inlined_node: RefCell<NodeMap<DefId>>,
     pub visible_parent_map: RefCell<DefIdMap<DefId>>,
+    pub used_for_derive_macro: RefCell<FnvHashSet<Ident>>,
 }
 
 impl CStore {
@@ -130,6 +131,7 @@ impl CStore {
             visible_parent_map: RefCell::new(FnvHashMap()),
             inlined_item_cache: RefCell::new(FnvHashMap()),
             defid_for_inlined_node: RefCell::new(FnvHashMap()),
+            used_for_derive_macro: RefCell::new(FnvHashSet()),
         }
     }
 
@@ -285,6 +287,14 @@ impl CStore {
     pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>
     {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
+    }
+
+    pub fn was_used_for_derive_macros(&self, i: &ast::Item) -> bool {
+        self.used_for_derive_macro.borrow().contains(&i.ident)
+    }
+
+    pub fn add_used_for_derive_macros(&self, i: &ast::Item) {
+        self.used_for_derive_macro.borrow_mut().insert(i.ident);
     }
 }
 

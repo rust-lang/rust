@@ -440,8 +440,7 @@ fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> SmallVe
                 callee: NameAndSpan {
                     format: MacroAttribute(intern(&attr.name())),
                     span: Some(attr.span),
-                    // attributes can do whatever they like, for now
-                    allow_internal_unstable: true,
+                    allow_internal_unstable: false,
                 }
             });
 
@@ -538,7 +537,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     // We need to error on `#[macro_use] extern crate` when it isn't at the
                     // crate root, because `$crate` won't work properly.
                     for def in self.cx.loader.load_crate(item, self.at_crate_root) {
-                        self.cx.insert_macro(def);
+                        match def {
+                            LoadedMacro::Def(def) => self.cx.insert_macro(def),
+                            LoadedMacro::CustomDerive(name, ext) => {
+                                self.cx.insert_custom_derive(&name, ext, item.span);
+                            }
+                        }
                     }
                 } else {
                     let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
@@ -688,6 +692,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
         fn enable_pushpop_unsafe = pushpop_unsafe,
+        fn enable_rustc_macro = rustc_macro,
     }
 }
 
