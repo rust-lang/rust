@@ -21,20 +21,22 @@ use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
 use std::path::PathBuf;
 
+use IncrementalHashesMap;
 use super::data::*;
 use super::directory::*;
 use super::hash::*;
 use super::preds::*;
 use super::util::*;
 
-pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                incremental_hashes_map: &IncrementalHashesMap) {
     debug!("save_dep_graph()");
     let _ignore = tcx.dep_graph.in_ignore();
     let sess = tcx.sess;
     if sess.opts.incremental.is_none() {
         return;
     }
-    let mut hcx = HashContext::new(tcx);
+    let mut hcx = HashContext::new(tcx, incremental_hashes_map);
     let mut builder = DefIdDirectoryBuilder::new(tcx);
     let query = tcx.dep_graph.query();
     let preds = Predecessors::new(&query, &mut hcx);

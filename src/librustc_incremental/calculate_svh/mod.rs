@@ -8,106 +8,137 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Calculation of a Strict Version Hash for crates.  For a length
-//! comment explaining the general idea, see `librustc/middle/svh.rs`.
+//! Calculation of the (misnamed) "strict version hash" for crates and
+//! items. This hash is used to tell when the HIR changed in such a
+//! way that results from previous compilations may no longer be
+//! applicable and hence must be recomputed. It should probably be
+//! renamed to the ICH (incremental compilation hash).
+//!
+//! The hashes for all items are computed once at the beginning of
+//! compilation and stored into a map. In addition, a hash is computed
+//! of the **entire crate**.
+//!
+//! Storing the hashes in a map avoids the need to compute them twice
+//! (once when loading prior incremental results and once when
+//! saving), but it is also important for correctness: at least as of
+//! the time of this writing, the typeck passes rewrites entries in
+//! the dep-map in-place to accommodate UFCS resolutions. Since name
+//! resolution is part of the hash, the result is that hashes computed
+//! at the end of compilation would be different from those computed
+//! at the beginning.
 
+use syntax::ast;
 use syntax::attr::AttributeMethods;
 use std::hash::{Hash, SipHasher, Hasher};
+use rustc::dep_graph::DepNode;
+use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
-use rustc::hir::map::{NodeItem, NodeForeignItem};
-use rustc::hir::svh::Svh;
+use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
-use rustc::hir::intravisit::{self, Visitor};
+use rustc_data_structures::fnv::FnvHashMap;
 
+use self::def_path_hash::DefPathHashes;
 use self::svh_visitor::StrictVersionHashVisitor;
 
+mod def_path_hash;
 mod svh_visitor;
 
-pub trait SvhCalculate {
-    /// Calculate the SVH for an entire krate.
-    fn calculate_krate_hash(self) -> Svh;
+pub type IncrementalHashesMap = FnvHashMap<DepNode<DefId>, u64>;
 
-    /// Calculate the SVH for a particular item.
-    fn calculate_item_hash(self, def_id: DefId) -> u64;
+pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                                    -> IncrementalHashesMap {
+    let _ignore = tcx.dep_graph.in_ignore();
+    let krate = tcx.map.krate();
+    let mut visitor = HashItemsVisitor { tcx: tcx,
+                                         hashes: FnvHashMap(),
+                                         def_path_hashes: DefPathHashes::new(tcx) };
+    visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX), |v| visit::walk_crate(v, krate));
+    krate.visit_all_items(&mut visitor);
+    visitor.compute_crate_hash();
+    visitor.hashes
 }
 
-impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
-    fn calculate_krate_hash(self) -> Svh {
-        // FIXME (#14132): This is better than it used to be, but it still not
-        // ideal. We now attempt to hash only the relevant portions of the
-        // Crate AST as well as the top-level crate attributes. (However,
-        // the hashing of the crate attributes should be double-checked
-        // to ensure it is not incorporating implementation artifacts into
-        // the hash that are not otherwise visible.)
+struct HashItemsVisitor<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_path_hashes: DefPathHashes<'a, 'tcx>,
+    hashes: IncrementalHashesMap,
+}
 
-        let crate_disambiguator = self.sess.local_crate_disambiguator();
-        let krate = self.map.krate();
+impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
+    fn calculate_node_id<W>(&mut self, id: ast::NodeId, walk_op: W)
+        where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'a, 'tcx>)
+    {
+        let def_id = self.tcx.map.local_def_id(id);
+        self.calculate_def_id(def_id, walk_op)
+    }
 
-        // FIXME: this should use SHA1, not SipHash. SipHash is not built to
-        //        avoid collisions.
+    fn calculate_def_id<W>(&mut self, def_id: DefId, mut walk_op: W)
+        where W: for<'v> FnMut(&mut StrictVersionHashVisitor<'v, 'a, 'tcx>)
+    {
+        assert!(def_id.is_local());
+        debug!("HashItemsVisitor::calculate(def_id={:?})", def_id);
+        // FIXME: this should use SHA1, not SipHash. SipHash is not
+        // built to avoid collisions.
         let mut state = SipHasher::new();
-        debug!("state: {:?}", state);
+        walk_op(&mut StrictVersionHashVisitor::new(&mut state,
+                                                   self.tcx,
+                                                   &mut self.def_path_hashes));
+        let item_hash = state.finish();
+        self.hashes.insert(DepNode::Hir(def_id), item_hash);
+        debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, item_hash);
+    }
 
-        // FIXME(#32753) -- at (*) we `to_le` for endianness, but is
-        // this enough, and does it matter anyway?
-        "crate_disambiguator".hash(&mut state);
-        crate_disambiguator.len().to_le().hash(&mut state); // (*)
-        crate_disambiguator.hash(&mut state);
+    fn compute_crate_hash(&mut self) {
+        let krate = self.tcx.map.krate();
 
-        debug!("crate_disambiguator: {:?}", crate_disambiguator);
-        debug!("state: {:?}", state);
+        let mut crate_state = SipHasher::new();
 
+        let crate_disambiguator = self.tcx.sess.local_crate_disambiguator();
+        "crate_disambiguator".hash(&mut crate_state);
+        crate_disambiguator.len().hash(&mut crate_state);
+        crate_disambiguator.hash(&mut crate_state);
+
+        // add each item (in some deterministic order) to the overall
+        // crate hash.
         {
-            let mut visit = StrictVersionHashVisitor::new(&mut state, self);
-            krate.visit_all_items(&mut visit);
+            let def_path_hashes = &mut self.def_path_hashes;
+            let mut item_hashes: Vec<_> =
+                self.hashes.iter()
+                           .map(|(item_dep_node, &item_hash)| {
+                               // convert from a DepNode<DefId> tp a
+                               // DepNode<u64> where the u64 is the
+                               // hash of the def-id's def-path:
+                               let item_dep_node =
+                                   item_dep_node.map_def(|&did| Some(def_path_hashes.hash(did)))
+                                                .unwrap();
+                               (item_dep_node, item_hash)
+                           })
+                           .collect();
+            item_hashes.sort(); // avoid artificial dependencies on item ordering
+            item_hashes.hash(&mut crate_state);
         }
 
-        // FIXME (#14132): This hash is still sensitive to e.g. the
-        // spans of the crate Attributes and their underlying
-        // MetaItems; we should make ContentHashable impl for those
-        // types and then use hash_content.  But, since all crate
-        // attributes should appear near beginning of the file, it is
-        // not such a big deal to be sensitive to their spans for now.
-        //
-        // We hash only the MetaItems instead of the entire Attribute
-        // to avoid hashing the AttrId
         for attr in &krate.attrs {
             debug!("krate attr {:?}", attr);
-            attr.meta().hash(&mut state);
+            attr.meta().hash(&mut crate_state);
         }
 
-        Svh::new(state.finish())
-    }
-
-    fn calculate_item_hash(self, def_id: DefId) -> u64 {
-        assert!(def_id.is_local());
-
-        debug!("calculate_item_hash(def_id={:?})", def_id);
-
-        let mut state = SipHasher::new();
-
-        {
-            let mut visit = StrictVersionHashVisitor::new(&mut state, self);
-            if def_id.index == CRATE_DEF_INDEX {
-                // the crate root itself is not registered in the map
-                // as an item, so we have to fetch it this way
-                let krate = self.map.krate();
-                intravisit::walk_crate(&mut visit, krate);
-            } else {
-                let node_id = self.map.as_local_node_id(def_id).unwrap();
-                match self.map.find(node_id) {
-                    Some(NodeItem(item)) => visit.visit_item(item),
-                    Some(NodeForeignItem(item)) => visit.visit_foreign_item(item),
-                    r => bug!("calculate_item_hash: expected an item for node {} not {:?}",
-                              node_id, r),
-                }
-            }
-        }
-
-        let hash = state.finish();
-
-        debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, hash);
-
-        hash
+        let crate_hash = crate_state.finish();
+        self.hashes.insert(DepNode::Krate, crate_hash);
+        debug!("calculate_crate_hash: crate_hash={:?}", crate_hash);
     }
 }
+
+
+impl<'a, 'tcx> visit::Visitor<'tcx> for HashItemsVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
+        self.calculate_node_id(item.id, |v| v.visit_item(item));
+        visit::walk_item(self, item);
+    }
+
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
+        self.calculate_node_id(item.id, |v| v.visit_foreign_item(item));
+        visit::walk_foreign_item(self, item);
+    }
+}
+

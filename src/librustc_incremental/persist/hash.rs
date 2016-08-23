@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use calculate_svh::SvhCalculate;
 use rbml::Error;
 use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
@@ -21,19 +20,24 @@ use std::io::{ErrorKind, Read};
 use std::fs::File;
 use syntax::ast;
 
+use IncrementalHashesMap;
 use super::data::*;
 use super::util::*;
 
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    incremental_hashes_map: &'a IncrementalHashesMap,
     item_metadata_hashes: FnvHashMap<DefId, u64>,
     crate_hashes: FnvHashMap<ast::CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               incremental_hashes_map: &'a IncrementalHashesMap)
+               -> Self {
         HashContext {
             tcx: tcx,
+            incremental_hashes_map: incremental_hashes_map,
             item_metadata_hashes: FnvHashMap(),
             crate_hashes: FnvHashMap(),
         }
@@ -41,17 +45,32 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
     pub fn is_hashable(dep_node: &DepNode<DefId>) -> bool {
         match *dep_node {
+            DepNode::Krate |
             DepNode::Hir(_) => true,
             DepNode::MetaData(def_id) => !def_id.is_local(),
             _ => false,
         }
     }
 
-    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<(DefId, u64)> {
+    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<u64> {
         match *dep_node {
+            DepNode::Krate => {
+                Some(self.incremental_hashes_map[dep_node])
+            }
+
             // HIR nodes (which always come from our crate) are an input:
             DepNode::Hir(def_id) => {
-                Some((def_id, self.hir_hash(def_id)))
+                assert!(def_id.is_local(),
+                        "cannot hash HIR for non-local def-id {:?} => {:?}",
+                        def_id,
+                        self.tcx.item_path_str(def_id));
+
+                assert!(!self.tcx.map.is_inlined_def_id(def_id),
+                        "cannot hash HIR for inlined def-id {:?} => {:?}",
+                        def_id,
+                        self.tcx.item_path_str(def_id));
+
+                Some(self.incremental_hashes_map[dep_node])
             }
 
             // MetaData from other crates is an *input* to us.
@@ -59,7 +78,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // don't hash them, but we do compute a hash for them and
             // save it for others to use.
             DepNode::MetaData(def_id) if !def_id.is_local() => {
-                Some((def_id, self.metadata_hash(def_id)))
+                Some(self.metadata_hash(def_id))
             }
 
             _ => {
@@ -70,21 +89,6 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                 None
             }
         }
-    }
-
-    fn hir_hash(&mut self, def_id: DefId) -> u64 {
-        assert!(def_id.is_local(),
-                "cannot hash HIR for non-local def-id {:?} => {:?}",
-                def_id,
-                self.tcx.item_path_str(def_id));
-
-        assert!(!self.tcx.map.is_inlined_def_id(def_id),
-                "cannot hash HIR for inlined def-id {:?} => {:?}",
-                def_id,
-                self.tcx.item_path_str(def_id));
-
-        // FIXME(#32753) -- should we use a distinct hash here
-        self.tcx.calculate_item_hash(def_id)
     }
 
     fn metadata_hash(&mut self, def_id: DefId) -> u64 {

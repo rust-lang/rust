@@ -22,6 +22,7 @@ use std::io::Read;
 use std::fs::{self, File};
 use std::path::{Path};
 
+use IncrementalHashesMap;
 use super::data::*;
 use super::directory::*;
 use super::dirty_clean;
@@ -38,16 +39,18 @@ type CleanEdges = Vec<(DepNode<DefId>, DepNode<DefId>)>;
 /// early in compilation, before we've really done any work, but
 /// actually it doesn't matter all that much.) See `README.md` for
 /// more general overview.
-pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                incremental_hashes_map: &IncrementalHashesMap) {
     if tcx.sess.opts.incremental.is_none() {
         return;
     }
 
     let _ignore = tcx.dep_graph.in_ignore();
-    load_dep_graph_if_exists(tcx);
+    load_dep_graph_if_exists(tcx, incremental_hashes_map);
 }
 
-fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      incremental_hashes_map: &IncrementalHashesMap) {
     let dep_graph_path = dep_graph_path(tcx).unwrap();
     let dep_graph_data = match load_data(tcx.sess, &dep_graph_path) {
         Some(p) => p,
@@ -60,7 +63,7 @@ fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         None => return // no file
     };
 
-    match decode_dep_graph(tcx, &dep_graph_data, &work_products_data) {
+    match decode_dep_graph(tcx, incremental_hashes_map, &dep_graph_data, &work_products_data) {
         Ok(dirty_nodes) => dirty_nodes,
         Err(err) => {
             tcx.sess.warn(
@@ -97,6 +100,7 @@ fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
 /// Decode the dep graph and load the edges/nodes that are still clean
 /// into `tcx.dep_graph`.
 pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  incremental_hashes_map: &IncrementalHashesMap,
                                   dep_graph_data: &[u8],
                                   work_products_data: &[u8])
                                   -> Result<(), Error>
@@ -133,7 +137,10 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // reason for this is that this way we can include nodes that have
     // been removed (which no longer have a `DefId` in the current
     // compilation).
-    let dirty_raw_source_nodes = dirty_nodes(tcx, &serialized_dep_graph.hashes, &retraced);
+    let dirty_raw_source_nodes = dirty_nodes(tcx,
+                                             incremental_hashes_map,
+                                             &serialized_dep_graph.hashes,
+                                             &retraced);
 
     // Create a list of (raw-source-node ->
     // retracted-target-node) edges. In the process of retracing the
@@ -206,15 +213,16 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Computes which of the original set of def-ids are dirty. Stored in
 /// a bit vector where the index is the DefPathIndex.
 fn dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         hashes: &[SerializedHash],
+                         incremental_hashes_map: &IncrementalHashesMap,
+                         serialized_hashes: &[SerializedHash],
                          retraced: &RetracedDefIdDirectory)
                          -> DirtyNodes {
-    let mut hcx = HashContext::new(tcx);
+    let mut hcx = HashContext::new(tcx, incremental_hashes_map);
     let mut dirty_nodes = FnvHashSet();
 
-    for hash in hashes {
+    for hash in serialized_hashes {
         if let Some(dep_node) = retraced.map(&hash.dep_node) {
-            let (_, current_hash) = hcx.hash(&dep_node).unwrap();
+            let current_hash = hcx.hash(&dep_node).unwrap();
             if current_hash == hash.hash {
                 continue;
             }

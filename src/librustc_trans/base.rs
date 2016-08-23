@@ -48,6 +48,7 @@ use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use rustc::mir::mir_map::MirMap;
 use rustc_data_structures::graph::OUTGOING;
+use rustc_incremental::IncrementalHashesMap;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use _match;
@@ -2481,7 +2482,8 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              mir_map: &MirMap<'tcx>,
-                             analysis: ty::CrateAnalysis)
+                             analysis: ty::CrateAnalysis,
+                             incremental_hashes_map: &IncrementalHashesMap)
                              -> CrateTranslation {
     let _task = tcx.dep_graph.in_task(DepNode::TransCrate);
 
@@ -2506,7 +2508,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.sess.opts.debug_assertions
     };
 
-    let link_meta = link::build_link_meta(tcx, name);
+    let link_meta = link::build_link_meta(incremental_hashes_map, name);
 
     let shared_ccx = SharedCrateContext::new(tcx,
                                              &mir_map,

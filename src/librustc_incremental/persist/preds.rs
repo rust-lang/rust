@@ -62,7 +62,7 @@ impl<'q> Predecessors<'q> {
         let mut hashes = FnvHashMap();
         for input in inputs.values().flat_map(|v| v.iter().cloned()) {
             hashes.entry(input)
-                  .or_insert_with(|| hcx.hash(input).unwrap().1);
+                  .or_insert_with(|| hcx.hash(input).unwrap());
         }
 
         Predecessors {
