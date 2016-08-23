@@ -508,6 +508,7 @@ extern "C" {
     pub fn LLVMInt16TypeInContext(C: ContextRef) -> TypeRef;
     pub fn LLVMInt32TypeInContext(C: ContextRef) -> TypeRef;
     pub fn LLVMInt64TypeInContext(C: ContextRef) -> TypeRef;
+    pub fn LLVMInt128TypeInContext(C: ContextRef) -> TypeRef;
     pub fn LLVMIntTypeInContext(C: ContextRef, NumBits: c_uint) -> TypeRef;
 
     pub fn LLVMGetIntTypeWidth(IntegerTy: TypeRef) -> c_uint;
@@ -578,6 +579,7 @@ extern "C" {
 
     // Operations on scalar constants
     pub fn LLVMConstInt(IntTy: TypeRef, N: c_ulonglong, SignExtend: Bool) -> ValueRef;
+    pub fn LLVMConstIntOfArbitraryPrecision(IntTy: TypeRef, Wn: c_uint, Ws: *const u64) -> ValueRef;
     pub fn LLVMConstReal(RealTy: TypeRef, N: f64) -> ValueRef;
     pub fn LLVMConstIntGetZExtValue(ConstantVal: ValueRef) -> c_ulonglong;
     pub fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;

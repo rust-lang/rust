@@ -432,7 +432,9 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
             (true,  32, &ty::TyInt(ast::IntTy::I32)) |
             (false, 32, &ty::TyUint(ast::UintTy::U32)) |
             (true,  64, &ty::TyInt(ast::IntTy::I64)) |
-            (false, 64, &ty::TyUint(ast::UintTy::U64)) => {},
+            (false, 64, &ty::TyUint(ast::UintTy::U64)) |
+            (true,  128, &ty::TyInt(ast::IntTy::I128)) |
+            (false, 128, &ty::TyUint(ast::UintTy::U128)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`{}{n}`",
                                        if signed {"i"} else {"u"},

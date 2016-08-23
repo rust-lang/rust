@@ -1512,8 +1512,8 @@ pub enum Type {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Copy, Debug)]
 pub enum PrimitiveType {
-    Isize, I8, I16, I32, I64,
-    Usize, U8, U16, U32, U64,
+    Isize, I8, I16, I32, I64, I128,
+    Usize, U8, U16, U32, U64, U128,
     F32, F64,
     Char,
     Bool,
@@ -1606,26 +1606,29 @@ impl PrimitiveType {
     }
 
     pub fn as_str(&self) -> &'static str {
+        use PrimitiveType::*;
         match *self {
-            PrimitiveType::Isize => "isize",
-            PrimitiveType::I8 => "i8",
-            PrimitiveType::I16 => "i16",
-            PrimitiveType::I32 => "i32",
-            PrimitiveType::I64 => "i64",
-            PrimitiveType::Usize => "usize",
-            PrimitiveType::U8 => "u8",
-            PrimitiveType::U16 => "u16",
-            PrimitiveType::U32 => "u32",
-            PrimitiveType::U64 => "u64",
-            PrimitiveType::F32 => "f32",
-            PrimitiveType::F64 => "f64",
-            PrimitiveType::Str => "str",
-            PrimitiveType::Bool => "bool",
-            PrimitiveType::Char => "char",
-            PrimitiveType::Array => "array",
-            PrimitiveType::Slice => "slice",
-            PrimitiveType::Tuple => "tuple",
-            PrimitiveType::RawPointer => "pointer",
+            Isize => "isize",
+            I8 => "i8",
+            I16 => "i16",
+            I32 => "i32",
+            I64 => "i64",
+            I128 => "i128",
+            Usize => "usize",
+            U8 => "u8",
+            U16 => "u16",
+            U32 => "u32",
+            U64 => "u64",
+            U128 => "u128",
+            F32 => "f32",
+            F64 => "f64",
+            Str => "str",
+            Bool => "bool",
+            Char => "char",
+            Array => "array",
+            Slice => "slice",
+            Tuple => "tuple",
+            RawPointer => "pointer",
         }
     }
 
@@ -2484,6 +2487,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
 fn build_deref_target_impls(cx: &DocContext,
                             items: &[Item],
                             ret: &mut Vec<Item>) {
+    use PrimitiveType::*;
     let tcx = cx.tcx;
 
     for item in items {
@@ -2503,25 +2507,27 @@ fn build_deref_target_impls(cx: &DocContext,
             }
         };
         let did = match primitive {
-            PrimitiveType::Isize => tcx.lang_items.isize_impl(),
-            PrimitiveType::I8 => tcx.lang_items.i8_impl(),
-            PrimitiveType::I16 => tcx.lang_items.i16_impl(),
-            PrimitiveType::I32 => tcx.lang_items.i32_impl(),
-            PrimitiveType::I64 => tcx.lang_items.i64_impl(),
-            PrimitiveType::Usize => tcx.lang_items.usize_impl(),
-            PrimitiveType::U8 => tcx.lang_items.u8_impl(),
-            PrimitiveType::U16 => tcx.lang_items.u16_impl(),
-            PrimitiveType::U32 => tcx.lang_items.u32_impl(),
-            PrimitiveType::U64 => tcx.lang_items.u64_impl(),
-            PrimitiveType::F32 => tcx.lang_items.f32_impl(),
-            PrimitiveType::F64 => tcx.lang_items.f64_impl(),
-            PrimitiveType::Char => tcx.lang_items.char_impl(),
-            PrimitiveType::Bool => None,
-            PrimitiveType::Str => tcx.lang_items.str_impl(),
-            PrimitiveType::Slice => tcx.lang_items.slice_impl(),
-            PrimitiveType::Array => tcx.lang_items.slice_impl(),
-            PrimitiveType::Tuple => None,
-            PrimitiveType::RawPointer => tcx.lang_items.const_ptr_impl(),
+            Isize => tcx.lang_items.isize_impl(),
+            I8 => tcx.lang_items.i8_impl(),
+            I16 => tcx.lang_items.i16_impl(),
+            I32 => tcx.lang_items.i32_impl(),
+            I64 => tcx.lang_items.i64_impl(),
+            I128 => tcx.lang_items.i128_impl(),
+            Usize => tcx.lang_items.usize_impl(),
+            U8 => tcx.lang_items.u8_impl(),
+            U16 => tcx.lang_items.u16_impl(),
+            U32 => tcx.lang_items.u32_impl(),
+            U64 => tcx.lang_items.u64_impl(),
+            U128 => tcx.lang_items.u128_impl(),
+            F32 => tcx.lang_items.f32_impl(),
+            F64 => tcx.lang_items.f64_impl(),
+            Char => tcx.lang_items.char_impl(),
+            Bool => None,
+            Str => tcx.lang_items.str_impl(),
+            Slice => tcx.lang_items.slice_impl(),
+            Array => tcx.lang_items.slice_impl(),
+            Tuple => None,
+            RawPointer => tcx.lang_items.const_ptr_impl(),
         };
         if let Some(did) = did {
             if !did.is_local() {
