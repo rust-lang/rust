@@ -41,9 +41,10 @@ use self::svh_visitor::StrictVersionHashVisitor;
 
 mod svh_visitor;
 
-pub type HashesMap = FnvHashMap<DepNode<DefId>, u64>;
+pub type IncrementalHashesMap = FnvHashMap<DepNode<DefId>, u64>;
 
-pub fn compute_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> HashesMap {
+pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                                    -> IncrementalHashesMap {
     let _ignore = tcx.dep_graph.in_ignore();
     let krate = tcx.map.krate();
     let mut visitor = HashItemsVisitor { tcx: tcx, hashes: FnvHashMap() };
@@ -55,7 +56,7 @@ pub fn compute_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> HashesMa
 
 struct HashItemsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    hashes: HashesMap,
+    hashes: IncrementalHashesMap,
 }
 
 impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
