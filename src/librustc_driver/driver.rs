@@ -26,7 +26,7 @@ use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
 use rustc_back::sha2::{Sha256, Digest};
 use rustc_borrowck as borrowck;
-use rustc_incremental::{self, HashesMap};
+use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::macro_import;
 use rustc_metadata::creader::read_local_crates;
@@ -172,7 +172,7 @@ pub fn compile_input(sess: &Session,
                                     resolutions,
                                     &arenas,
                                     &crate_name,
-                                    |tcx, mir_map, analysis, hashes_map, result| {
+                                    |tcx, mir_map, analysis, incremental_hashes_map, result| {
             {
                 // Eventually, we will want to track plugins.
                 let _ignore = tcx.dep_graph.in_ignore();
@@ -203,7 +203,7 @@ pub fn compile_input(sess: &Session,
             let trans = phase_4_translate_to_llvm(tcx,
                                                   mir_map.unwrap(),
                                                   analysis,
-                                                  &hashes_map);
+                                                  &incremental_hashes_map);
 
             if log_enabled!(::log::INFO) {
                 println!("Post-trans");
@@ -798,7 +798,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
                             Option<MirMap<'tcx>>,
                             ty::CrateAnalysis,
-                            HashesMap,
+                            IncrementalHashesMap,
                             CompileResult) -> R
 {
     macro_rules! try_with_f {
@@ -862,16 +862,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              index,
                              name,
                              |tcx| {
-        let hashes_map =
+        let incremental_hashes_map =
             time(time_passes,
-                 "compute_hashes_map",
-                 || rustc_incremental::compute_hashes_map(tcx));
+                 "compute_incremental_hashes_map",
+                 || rustc_incremental::compute_incremental_hashes_map(tcx));
         time(time_passes,
              "load_dep_graph",
-             || rustc_incremental::load_dep_graph(tcx, &hashes_map));
+             || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));
 
         // passes are timed inside typeck
-        try_with_f!(typeck::check_crate(tcx), (tcx, None, analysis, hashes_map));
+        try_with_f!(typeck::check_crate(tcx), (tcx, None, analysis, incremental_hashes_map));
 
         time(time_passes,
              "const checking",
@@ -941,7 +941,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // lint warnings and so on -- kindck used to do this abort, but
         // kindck is gone now). -nmatsakis
         if sess.err_count() > 0 {
-            return Ok(f(tcx, Some(mir_map), analysis, hashes_map, Err(sess.err_count())));
+            return Ok(f(tcx, Some(mir_map), analysis, incremental_hashes_map, Err(sess.err_count())));
         }
 
         analysis.reachable =
@@ -969,10 +969,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         // The above three passes generate errors w/o aborting
         if sess.err_count() > 0 {
-            return Ok(f(tcx, Some(mir_map), analysis, hashes_map, Err(sess.err_count())));
+            return Ok(f(tcx, Some(mir_map), analysis, incremental_hashes_map, Err(sess.err_count())));
         }
 
-        Ok(f(tcx, Some(mir_map), analysis, hashes_map, Ok(())))
+        Ok(f(tcx, Some(mir_map), analysis, incremental_hashes_map, Ok(())))
     })
 }
 
@@ -980,7 +980,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            mut mir_map: MirMap<'tcx>,
                                            analysis: ty::CrateAnalysis,
-                                           hashes_map: &HashesMap)
+                                           incremental_hashes_map: &IncrementalHashesMap)
                                            -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
@@ -1014,7 +1014,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let translation =
         time(time_passes,
              "translation",
-             move || trans::trans_crate(tcx, &mir_map, analysis, &hashes_map));
+             move || trans::trans_crate(tcx, &mir_map, analysis, &incremental_hashes_map));
 
     time(time_passes,
          "assert dep graph",
@@ -1022,7 +1022,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     time(time_passes,
          "serialize dep graph",
-         move || rustc_incremental::save_dep_graph(tcx, &hashes_map));
+         move || rustc_incremental::save_dep_graph(tcx, &incremental_hashes_map));
 
     translation
 }

@@ -20,22 +20,24 @@ use std::io::{ErrorKind, Read};
 use std::fs::File;
 use syntax::ast;
 
-use HashesMap;
+use IncrementalHashesMap;
 use super::data::*;
 use super::util::*;
 
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    hashes_map: &'a HashesMap,
+    incremental_hashes_map: &'a IncrementalHashesMap,
     item_metadata_hashes: FnvHashMap<DefId, u64>,
     crate_hashes: FnvHashMap<ast::CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, hashes_map: &'a HashesMap) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               incremental_hashes_map: &'a IncrementalHashesMap)
+               -> Self {
         HashContext {
             tcx: tcx,
-            hashes_map: hashes_map,
+            incremental_hashes_map: incremental_hashes_map,
             item_metadata_hashes: FnvHashMap(),
             crate_hashes: FnvHashMap(),
         }
@@ -63,7 +65,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                         def_id,
                         self.tcx.item_path_str(def_id));
 
-                Some((def_id, self.hashes_map[dep_node]))
+                Some((def_id, self.incremental_hashes_map[dep_node]))
             }
 
             // MetaData from other crates is an *input* to us.
