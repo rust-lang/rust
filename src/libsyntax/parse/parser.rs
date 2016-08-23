@@ -4087,9 +4087,30 @@ impl<'a> Parser<'a> {
         if !self.eat(&token::OpenDelim(token::Brace)) {
             let sp = self.span;
             let tok = self.this_token_to_string();
-            return Err(self.span_fatal_help(sp,
-                                 &format!("expected `{{`, found `{}`", tok),
-                                 "place this code inside a block"));
+            let mut e = self.span_fatal(sp, &format!("expected `{{`, found `{}`", tok));
+
+            // Check to see if the user has written something like
+            //
+            //    if (cond)
+            //      bar;
+            //
+            // Which is valid in other languages, but not Rust.
+            match self.parse_stmt_without_recovery(false) {
+                Ok(Some(stmt)) => {
+                    let mut stmt_span = stmt.span;
+                    // expand the span to include the semicolon, if it exists
+                    if self.eat(&token::Semi) {
+                        stmt_span.hi = self.last_span.hi;
+                    }
+                    e.span_help(stmt_span, "try placing this code inside a block");
+                }
+                Err(mut e) => {
+                    self.recover_stmt_(SemiColonMode::Break);
+                    e.cancel();
+                }
+                _ => ()
+            }
+            return Err(e);
         }
 
         self.parse_block_tail(lo, BlockCheckMode::Default)
