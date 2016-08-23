@@ -232,6 +232,7 @@
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
+#![feature(fused)]
 #![feature(hashmap_hasher)]
 #![feature(heap_api)]
 #![feature(inclusive_range)]

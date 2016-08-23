@@ -152,7 +152,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::ops::{Drop, Deref, DerefMut};
-use core::iter::FromIterator;
+use core::iter::{FromIterator, FusedIterator};
 use core::mem::swap;
 use core::mem::size_of;
 use core::ptr;
@@ -980,6 +980,9 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for Iter<'a, T> {}
+
 /// An iterator that moves out of a `BinaryHeap`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
@@ -1013,6 +1016,9 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<T> FusedIterator for IntoIter<T> {}
+
 /// An iterator that drains a `BinaryHeap`.
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
@@ -1044,6 +1050,9 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T: 'a> FusedIterator for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {

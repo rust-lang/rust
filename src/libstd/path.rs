@@ -107,7 +107,7 @@ use fmt;
 use fs;
 use hash::{Hash, Hasher};
 use io;
-use iter;
+use iter::{self, FusedIterator};
 use mem;
 use ops::{self, Deref};
 use string::String;
@@ -858,6 +858,9 @@ impl<'a> DoubleEndedIterator for Iter<'a> {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for Iter<'a> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Components<'a> {
     type Item = Component<'a>;
@@ -957,6 +960,9 @@ impl<'a> DoubleEndedIterator for Components<'a> {
         None
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for Components<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialEq for Components<'a> {

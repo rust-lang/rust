@@ -16,7 +16,7 @@ use option::Option::{self, Some, None};
 use marker::Sized;
 use usize;
 
-use super::{DoubleEndedIterator, ExactSizeIterator, Iterator};
+use super::{DoubleEndedIterator, ExactSizeIterator, Iterator, FusedIterator};
 
 /// Objects that can be stepped over in both directions.
 ///
@@ -364,6 +364,10 @@ impl<A> Iterator for StepBy<A, ops::RangeFrom<A>> where
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<A> FusedIterator for StepBy<A, ops::RangeFrom<A>>
+    where A: Clone, for<'a> &'a A: Add<&'a A, Output = A> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step + Clone> Iterator for StepBy<A, ops::Range<A>> {
     type Item = A;
@@ -400,6 +404,9 @@ impl<A: Step + Clone> Iterator for StepBy<A, ops::Range<A>> {
         }
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<A: Step + Clone> FusedIterator for StepBy<A, ops::Range<A>> {}
 
 #[unstable(feature = "inclusive_range",
            reason = "recently added, follows RFC",
@@ -468,6 +475,9 @@ impl<A: Step + Clone> Iterator for StepBy<A, ops::RangeInclusive<A>> {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<A: Step + Clone> FusedIterator for StepBy<A, ops::RangeInclusive<A>> {}
+
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -526,6 +536,10 @@ impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> where
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<A> FusedIterator for ops::Range<A>
+    where A: Step, for<'a> &'a A: Add<&'a A, Output = A> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step> Iterator for ops::RangeFrom<A> where
     for<'a> &'a A: Add<&'a A, Output = A>
@@ -539,6 +553,10 @@ impl<A: Step> Iterator for ops::RangeFrom<A> where
         Some(n)
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<A> FusedIterator for ops::RangeFrom<A>
+    where A: Step, for<'a> &'a A: Add<&'a A, Output = A> {}
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<A: Step> Iterator for ops::RangeInclusive<A> where
@@ -638,3 +656,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> where
         n
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<A> FusedIterator for ops::RangeInclusive<A>
+    where A: Step, for<'a> &'a A: Add<&'a A, Output = A> {}

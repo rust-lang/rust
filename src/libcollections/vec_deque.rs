@@ -20,7 +20,7 @@
 
 use core::cmp::Ordering;
 use core::fmt;
-use core::iter::{repeat, FromIterator};
+use core::iter::{repeat, FromIterator, FusedIterator};
 use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ptr;
@@ -1891,6 +1891,10 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for Iter<'a, T> {}
+
+
 /// `VecDeque` mutable iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
@@ -1943,6 +1947,9 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T> FusedIterator for IterMut<'a, T> {}
+
 /// A by-value VecDeque iterator
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1976,6 +1983,9 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<T> FusedIterator for IntoIter<T> {}
 
 /// A draining VecDeque iterator
 #[stable(feature = "drain", since = "1.6.0")]
@@ -2065,6 +2075,9 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a, T: 'a> FusedIterator for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialEq> PartialEq for VecDeque<A> {

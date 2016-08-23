@@ -18,6 +18,7 @@
 use prelude::v1::*;
 
 use char_private::is_printable;
+use iter::FusedIterator;
 use mem::transmute;
 
 // UTF-8 ranges and tags for encoding characters
@@ -516,6 +517,9 @@ impl ExactSizeIterator for EscapeUnicode {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl FusedIterator for EscapeUnicode {}
+
 /// An iterator that yields the literal escape code of a `char`.
 ///
 /// This `struct` is created by the [`escape_default()`] method on [`char`]. See
@@ -616,6 +620,9 @@ impl ExactSizeIterator for EscapeDefault {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl FusedIterator for EscapeDefault {}
+
 /// An iterator that yields the literal escape code of a `char`.
 ///
 /// This `struct` is created by the [`escape_debug()`] method on [`char`]. See its
@@ -636,6 +643,9 @@ impl Iterator for EscapeDebug {
 
 #[unstable(feature = "char_escape_debug", issue = "35068")]
 impl ExactSizeIterator for EscapeDebug { }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl FusedIterator for EscapeDebug {}
 
 /// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
 /// value.
@@ -674,6 +684,9 @@ impl Iterator for EncodeUtf8 {
         self.as_slice().iter().size_hint()
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl FusedIterator for EncodeUtf8 {}
 
 /// An iterator over `u16` entries represending the UTF-16 encoding of a `char`
 /// value.
@@ -714,6 +727,8 @@ impl Iterator for EncodeUtf16 {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl FusedIterator for EncodeUtf16 {}
 
 /// An iterator over an iterator of bytes of the characters the bytes represent
 /// as UTF-8
@@ -760,3 +775,6 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
         })
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<I: FusedIterator<Item = u8>> FusedIterator for DecodeUtf8<I> {}

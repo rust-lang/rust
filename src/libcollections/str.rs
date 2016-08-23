@@ -23,6 +23,7 @@ use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
+use core::iter::FusedIterator;
 use rustc_unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
@@ -135,6 +136,9 @@ impl<'a> Iterator for EncodeUtf16<'a> {
         self.encoder.size_hint()
     }
 }
+
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for EncodeUtf16<'a> {}
 
 // Return the initial codepoint accumulator for the first byte.
 // The first byte is special, only want bottom 5 bits for width 2, 4 bits
