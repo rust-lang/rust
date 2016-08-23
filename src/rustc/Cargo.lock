@@ -410,3 +410,5 @@ dependencies = [
  "serialize 0.0.0",
 ]
 
+[metadata]
+"checksum gcc 0.3.28 (registry+https://github.com/rust-lang/crates.io-index)" = "3da3a2cbaeb01363c8e3704fd9fd0eb2ceb17c6f27abd4c1ef040fb57d20dc79"
