@@ -16,12 +16,14 @@
  *
  * [`missing_doc`]: https://github.com/rust-lang/rust/blob/d6d05904697d89099b55da3331155392f1db9c00/src/librustc_lint/builtin.rs#L246
  */
+
 use rustc::hir;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
+use utils::in_macro;
 
 /// **What it does:** Warns if there is missing doc for any documentable item (public or private).
 ///
@@ -71,6 +73,10 @@ impl MissingDoc {
 
         // `#[doc(hidden)]` disables missing_docs check.
         if self.doc_hidden() {
+            return;
+        }
+
+        if in_macro(cx, sp) {
             return;
         }
 
