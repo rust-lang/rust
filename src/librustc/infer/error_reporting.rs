@@ -149,7 +149,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Some(ast_map::NodeStmt(_)) => "statement",
                     Some(ast_map::NodeItem(it)) => item_scope_tag(&it),
                     Some(_) | None => {
-                        err.span_note(span, &unknown_scope());
+                        err.span_label(span, &unknown_scope());
                         return;
                     }
                 };
@@ -225,7 +225,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let message = format!("{}{}{}", prefix, description, suffix);
         if let Some(span) = span {
-            err.span_note(span, &message);
+            err.span_label(span, &message);
         } else {
             err.note(&message);
         }
@@ -1621,10 +1621,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        struct_span_err!(self.tcx.sess, var_origin.span(), E0495,
-                  "cannot infer an appropriate lifetime{} \
-                   due to conflicting requirements",
-                  var_description)
+        let s = var_origin.span();
+        let mut err = struct_span_err!(self.tcx.sess, s, E0495,
+                            "cannot infer an appropriate lifetime{} \
+                            due to conflicting requirements",
+                            var_description);
+        err.span_label(s, &"cannot infer an appropriate lifetime");
+        err
     }
 
     fn note_region_origin(&self, err: &mut DiagnosticBuilder, origin: &SubregionOrigin<'tcx>) {
@@ -1632,7 +1635,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infer::Subtype(ref trace) => {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
                     // FIXME: do we want a "the" here?
-                    err.span_note(
+                    err.span_label(
                         trace.origin.span(),
                         &format!("...so that {} (expected {}, found {})",
                                  trace.origin.as_requirement_str(), expected, found));
@@ -1641,20 +1644,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // handling of region checking when type errors are present is
                     // *terrible*.
 
-                    err.span_note(
+                    err.span_label(
                         trace.origin.span(),
                         &format!("...so that {}",
                                  trace.origin.as_requirement_str()));
                 }
             }
             infer::Reborrow(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that reference does not outlive \
+                    &"...so that reference does not outlive \
                     borrowed content");
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                err.span_note(
+                err.span_label(
                     span,
                     &format!(
                         "...so that closure can access `{}`",
@@ -1662,109 +1665,109 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             .to_string()));
             }
             infer::InfStackClosure(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that closure does not outlive its stack frame");
+                    &"...so that closure does not outlive its stack frame");
             }
             infer::InvokeClosure(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that closure is not invoked outside its lifetime");
+                    &"...so that closure is not invoked outside its lifetime");
             }
             infer::DerefPointer(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that pointer is not dereferenced \
+                    &"...so that pointer is not dereferenced \
                     outside its lifetime");
             }
             infer::FreeVariable(span, id) => {
-                err.span_note(
+                err.span_label(
                     span,
                     &format!("...so that captured variable `{}` \
                             does not outlive the enclosing closure",
                             self.tcx.local_var_name_str(id)));
             }
             infer::IndexSlice(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that slice is not indexed outside the lifetime");
+                    &"...so that slice is not indexed outside the lifetime");
             }
             infer::RelateObjectBound(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that it can be closed over into an object");
+                    &"...so that it can be closed over into an object");
             }
             infer::CallRcvr(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that method receiver is valid for the method call");
+                    &"...so that method receiver is valid for the method call");
             }
             infer::CallArg(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that argument is valid for the call");
+                    &"...so that argument is valid for the call");
             }
             infer::CallReturn(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that return value is valid for the call");
+                    &"...so that return value is valid for the call");
             }
             infer::Operand(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that operand is valid for operation");
+                    &"...so that operand is valid for operation");
             }
             infer::AddrOf(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that reference is valid \
+                    &"...so that reference is valid \
                      at the time of borrow");
             }
             infer::AutoBorrow(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that auto-reference is valid \
+                    &"...so that auto-reference is valid \
                      at the time of borrow");
             }
             infer::ExprTypeIsNotInScope(t, span) => {
-                err.span_note(
+                err.span_label(
                     span,
                     &format!("...so type `{}` of expression is valid during the \
                              expression",
                             self.ty_to_string(t)));
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that variable is valid at time of its declaration");
+                    &"...so that variable is valid at time of its declaration");
             }
             infer::ParameterInScope(_, span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that a type/lifetime parameter is in scope here");
+                    &"...so that a type/lifetime parameter is in scope here");
             }
             infer::DataBorrowed(ty, span) => {
-                err.span_note(
+                err.span_label(
                     span,
                     &format!("...so that the type `{}` is not borrowed for too long",
                              self.ty_to_string(ty)));
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
-                err.span_note(
+                err.span_label(
                     span,
                     &format!("...so that the reference type `{}` \
                              does not outlive the data it points at",
                             self.ty_to_string(ty)));
             }
             infer::RelateParamBound(span, t) => {
-                err.span_note(
+                err.span_label(
                     span,
                     &format!("...so that the type `{}` \
                              will meet its required lifetime bounds",
                             self.ty_to_string(t)));
             }
             infer::RelateDefaultParamBound(span, t) => {
-                err.span_note(
+                err.span_label(
                     span,
                     &format!("...so that type parameter \
                              instantiated with `{}`, \
@@ -1772,15 +1775,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             self.ty_to_string(t)));
             }
             infer::RelateRegionParamBound(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that the declared lifetime parameter bounds \
+                    &"...so that the declared lifetime parameter bounds \
                                 are satisfied");
             }
             infer::SafeDestructor(span) => {
-                err.span_note(
+                err.span_label(
                     span,
-                    "...so that references are valid when the destructor \
+                    &"...so that references are valid when the destructor \
                      runs");
             }
         }
