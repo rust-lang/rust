@@ -67,7 +67,9 @@ impl Trait<i32, u64> for u64 {
     fn foo(&self) {}
 }
 
-impl reproducible_build_aux::Trait<char, String> for TupleStruct {
+impl<T: reproducible_build_aux::Marker + 'static> reproducible_build_aux::Trait<T, String> for TupleStruct {
+    type Assoc = (u8, i16);
+
     fn foo(&self) {}
 }
 
@@ -117,12 +119,10 @@ fn main() {
     let _ = reproducible_build_aux::Enum::Variant3 { x: 0 };
     let _ = reproducible_build_aux::TupleStruct(1, 2, 3, 4);
 
-    let object_shim: &reproducible_build_aux::Trait<char, String> = &TupleStruct(0, 1, 2, 3);
+    let object_shim: &reproducible_build_aux::Trait<char, String, Assoc=(u8, i16)> = &TupleStruct(0, 1, 2, 3);
     object_shim.foo();
 
     let pointer_shim: &Fn(i32) = &regular_fn;
 
     TupleStruct(1, 2, 3, 4).bar();
 }
-
-
