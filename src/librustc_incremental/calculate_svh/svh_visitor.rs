@@ -26,33 +26,29 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::hir::intravisit::{Visitor, FnKind};
 use rustc::ty::TyCtxt;
-use rustc::util::nodemap::DefIdMap;
 
 use std::hash::{Hash, SipHasher};
 
-pub struct StrictVersionHashVisitor<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+use super::def_path_hash::DefPathHashes;
+
+pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
+    pub tcx: TyCtxt<'hash, 'tcx, 'tcx>,
     pub st: &'a mut SipHasher,
 
     // collect a deterministic hash of def-ids that we have seen
-    def_path_hashes: &'a mut DefIdMap<u64>,
+    def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
 }
 
-impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
+impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     pub fn new(st: &'a mut SipHasher,
-               tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               def_path_hashes: &'a mut DefIdMap<u64>)
+               tcx: TyCtxt<'hash, 'tcx, 'tcx>,
+               def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>)
                -> Self {
         StrictVersionHashVisitor { st: st, tcx: tcx, def_path_hashes: def_path_hashes }
     }
 
     fn compute_def_id_hash(&mut self, def_id: DefId) -> u64 {
-        let tcx = self.tcx;
-        *self.def_path_hashes.entry(def_id)
-                             .or_insert_with(|| {
-                                 let def_path = tcx.def_path(def_id);
-                                 def_path.deterministic_hash(tcx)
-                             })
+        self.def_path_hashes.hash(def_id)
     }
 }
 
@@ -196,7 +192,7 @@ pub enum SawStmtComponent {
     SawStmtSemi,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for StrictVersionHashVisitor<'a, 'tcx> {
+impl<'a, 'hash, 'tcx> Visitor<'tcx> for StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     fn visit_nested_item(&mut self, _: ItemId) {
         // Each item is hashed independently; ignore nested items.
     }
@@ -370,7 +366,7 @@ pub enum DefHash {
     SawErr,
 }
 
-impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
+impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     fn hash_resolve(&mut self, id: ast::NodeId) {
         // Because whether or not a given id has an entry is dependent
         // solely on expr variant etc, we don't need to hash whether
