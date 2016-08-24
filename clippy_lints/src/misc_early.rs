@@ -105,7 +105,7 @@ declare_lint! {
     "literals whose suffix is not separated by an underscore"
 }
 
-/// **What it does:** Warns if a integral constant literal starts with `0`.
+/// **What it does:** Warns if an integral constant literal starts with `0`.
 ///
 /// **Why is this bad?** In some languages (including the infamous C language and most of its
 /// familly), this marks an octal constant. In Rust however, this is a decimal constant. This could
@@ -134,7 +134,7 @@ declare_lint! {
 /// }
 /// ```
 ///
-/// prints `83` (as `89 == 0o123` while `123 == 0o173`).
+/// prints `83` (as `83 == 0o123` while `123 == 0o173`).
 declare_lint! {
     pub ZERO_PREFIXED_LITERAL,
     Warn,
