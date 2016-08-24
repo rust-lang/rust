@@ -23,8 +23,8 @@ fn main() {
     0o; //~ ERROR: no valid digits
     1e+; //~ ERROR: expected at least one digit in exponent
     0x539.0; //~ ERROR: hexadecimal float literal is not supported
-    99999999999999999999999999999999; //~ ERROR: int literal is too large
-    99999999999999999999999999999999; //~ ERROR: int literal is too large
+    9900000000000000000000000000999999999999999999999999999999; //~ ERROR: int literal is too large
+    9900000000000000000000000000999999999999999999999999999999; //~ ERROR: int literal is too large
     0x; //~ ERROR: no valid digits
     0xu32; //~ ERROR: no valid digits
     0ou32; //~ ERROR: no valid digits
