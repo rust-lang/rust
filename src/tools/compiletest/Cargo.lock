@@ -69,10 +69,15 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "rustc_i128"
+version = "0.0.0"
+
+[[package]]
 name = "serialize"
 version = "0.0.0"
 dependencies = [
  "log 0.0.0",
+ "rustc_i128 0.0.0",
 ]
 
 [[package]]
