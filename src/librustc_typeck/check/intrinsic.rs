@@ -51,12 +51,17 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }));
     let i_n_tps = i_ty.generics.types.len();
     if i_n_tps != n_tps {
-        struct_span_err!(tcx.sess, it.span, E0094,
-            "intrinsic has wrong number of type \
-             parameters: found {}, expected {}",
-             i_n_tps, n_tps)
-             .span_label(it.span, &format!("expected {} type parameter", n_tps))
-             .emit();
+        let span = match it.node {
+            hir::ForeignItemFn(_, ref generics) => generics.span().unwrap_or(it.span),
+            hir::ForeignItemStatic(_, _) => it.span
+        };
+
+        struct_span_err!(tcx.sess, span, E0094,
+                        "intrinsic has wrong number of type \
+                        parameters: found {}, expected {}",
+                        i_n_tps, n_tps)
+            .span_label(span, &format!("expected {} type parameter", n_tps))
+            .emit();
     } else {
         require_same_types(ccx,
                            TypeOrigin::IntrinsicType(it.span),
