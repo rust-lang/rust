@@ -1449,8 +1449,9 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
     debug!("found dylib deps: {}", formats.as_str());
     for spec in formats.as_str().split(',') {
         if spec.is_empty() { continue }
-        let cnum = spec.split(':').nth(0).unwrap();
-        let link = spec.split(':').nth(1).unwrap();
+        let mut split = spec.split(':');
+        let cnum = split.next().unwrap();
+        let link = split.next().unwrap();
         let cnum: ast::CrateNum = cnum.parse().unwrap();
         let cnum = cdata.cnum_map.borrow()[cnum];
         result.push((cnum, if link == "d" {
