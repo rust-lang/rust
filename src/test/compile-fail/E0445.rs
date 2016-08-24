@@ -12,8 +12,14 @@ trait Foo {
     fn dummy(&self) { }
 }
 
-pub trait Bar : Foo {} //~ ERROR E0445
-pub struct Bar2<T: Foo>(pub T); //~ ERROR E0445
-pub fn foo<T: Foo> (t: T) {} //~ ERROR E0445
+pub trait Bar : Foo {}
+//~^ ERROR private trait in public interface [E0445]
+//~| NOTE private trait can't be public
+pub struct Bar2<T: Foo>(pub T);
+//~^ ERROR private trait in public interface [E0445]
+//~| NOTE private trait can't be public
+pub fn foo<T: Foo> (t: T) {}
+//~^ ERROR private trait in public interface [E0445]
+//~| NOTE private trait can't be public
 
 fn main() {}

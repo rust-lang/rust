@@ -101,8 +101,10 @@ fn register_native_lib(sess: &Session,
     if name.is_empty() {
         match span {
             Some(span) => {
-                span_err!(sess, span, E0454,
-                          "#[link(name = \"\")] given with empty name");
+                struct_span_err!(sess, span, E0454,
+                                 "#[link(name = \"\")] given with empty name")
+                    .span_label(span, &format!("empty name given"))
+                    .emit();
             }
             None => {
                 sess.err("empty library name given via `-l`");
