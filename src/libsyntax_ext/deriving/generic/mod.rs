@@ -410,9 +410,18 @@ impl<'a> TraitDef<'a> {
                     ast::ItemKind::Enum(ref enum_def, ref generics) => {
                         self.expand_enum_def(cx, enum_def, &item.attrs, item.ident, generics)
                     }
+                    ast::ItemKind::Union(ref struct_def, ref generics) => {
+                        if self.supports_unions {
+                            self.expand_struct_def(cx, &struct_def, item.ident, generics)
+                        } else {
+                            cx.span_err(mitem.span,
+                                        "this trait cannot be derived for unions");
+                            return;
+                        }
+                    }
                     _ => {
                         cx.span_err(mitem.span,
-                                    "`derive` may only be applied to structs and enums");
+                                    "`derive` may only be applied to structs, enums and unions");
                         return;
                     }
                 };
