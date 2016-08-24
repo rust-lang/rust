@@ -95,7 +95,7 @@ impl Type {
     }
 
     pub fn i128(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt128TypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMIntTypeInContext(ccx.llcx(), 128))
     }
 
     // Creates an integer type with the given number of bits, e.g. i24
