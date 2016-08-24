@@ -263,7 +263,7 @@ impl LintId {
     }
 
     /// Get the name of the lint.
-    pub fn as_str(&self) -> String {
+    pub fn to_string(&self) -> String {
         self.lint.name_lower()
     }
 }
