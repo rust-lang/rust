@@ -559,7 +559,7 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = filemap.start_pos;
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);
-        self.format_missing(filemap.end_pos);
+        self.format_missing_with_indent(filemap.end_pos);
     }
 
     pub fn get_context(&self) -> RewriteContext {

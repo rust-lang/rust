@@ -14,6 +14,10 @@ use syntax::codemap::{self, BytePos, Span, Pos};
 use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
 
 impl<'a> FmtVisitor<'a> {
+    fn output_at_start(&self) -> bool {
+        self.buffer.len == 0
+    }
+
     // TODO these format_missing methods are ugly. Refactor and add unit tests
     // for the central whitespace stripping loop.
     pub fn format_missing(&mut self, end: BytePos) {
@@ -25,7 +29,7 @@ impl<'a> FmtVisitor<'a> {
         let config = self.config;
         self.format_missing_inner(end, |this, last_snippet, snippet| {
             this.buffer.push_str(last_snippet.trim_right());
-            if last_snippet == snippet {
+            if last_snippet == snippet && !this.output_at_start() {
                 // No new lines in the snippet.
                 this.buffer.push_str("\n");
             }
@@ -41,7 +45,7 @@ impl<'a> FmtVisitor<'a> {
 
         if start == end {
             // Do nothing if this is the beginning of the file.
-            if start != self.codemap.lookup_char_pos(start).file.start_pos {
+            if !self.output_at_start() {
                 process_last_snippet(self, "", "");
             }
             return;

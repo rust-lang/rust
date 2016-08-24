@@ -178,19 +178,26 @@ impl<'a> FmtVisitor<'a> {
         // Order the imports by view-path & other import path properties
         ordered_use_items.sort_by(|a, b| compare_use_items(a.0, b.0).unwrap());
         // First, output the span before the first import
+        let prev_span_str = self.snippet(codemap::mk_sp(self.last_pos, pos_before_first_use_item));
+        // Look for purely trailing space at the start of the prefix snippet before a linefeed, or
+        // a prefix that's entirely horizontal whitespace.
+        let prefix_span_start = match prev_span_str.find('\n') {
+            Some(offset) if prev_span_str[..offset].trim().is_empty() => {
+                self.last_pos + BytePos(offset as u32)
+            }
+            None if prev_span_str.trim().is_empty() => pos_before_first_use_item,
+            _ => self.last_pos,
+        };
         // Look for indent (the line part preceding the use is all whitespace) and excise that
         // from the prefix
-        let prev_span_str = self.snippet(codemap::mk_sp(self.last_pos, pos_before_first_use_item));
         let span_end = match prev_span_str.rfind('\n') {
-            Some(offset) => {
-                if prev_span_str[offset..].trim().is_empty() {
-                    self.last_pos + BytePos(offset as u32)
-                } else {
-                    pos_before_first_use_item
-                }
+            Some(offset) if prev_span_str[offset..].trim().is_empty() => {
+                self.last_pos + BytePos(offset as u32)
             }
-            None => pos_before_first_use_item,
+            _ => pos_before_first_use_item,
         };
+
+        self.last_pos = prefix_span_start;
         self.format_missing(span_end);
         for ordered in ordered_use_items {
             // Fake out the formatter by setting `self.last_pos` to the appropriate location before
