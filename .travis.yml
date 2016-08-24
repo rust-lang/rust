@@ -17,7 +17,8 @@ script:
     sh -c "
       ./configure --llvm-root=/usr/lib/llvm-3.7 &&
       make tidy &&
-      make check-notidy -j4
+      make check-notidy -j4 &&
+      (cd src/tools/linkchecker && cargo run ../../lib*)
     "
 
 # Real testing happens on http://buildbot.rust-lang.org/
