@@ -87,12 +87,14 @@ pub fn write_signed_leb128_to<W>(mut value: i128, mut write: W) -> usize
         value >>= 7;
         let more = !((((value == 0) && ((byte & 0x40) == 0)) ||
                       ((value == -1) && ((byte & 0x40) != 0))));
+
         if more {
             byte |= 0x80; // Mark this byte to show that more bytes will follow.
         }
 
         write(position, byte);
         position += 1;
+
         if !more {
             break;
         }
@@ -106,30 +108,28 @@ pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, value: i128
 
 #[inline]
 pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i128, usize) {
-    let (l, r) = read_unsigned_leb128(data, start_position);
-    (l as i128, r)
-    // let mut result = 0;
-    // let mut shift = 0;
-    // let mut position = start_position;
-    // let mut byte;
+    let mut result = 0;
+    let mut shift = 0;
+    let mut position = start_position;
+    let mut byte;
 
-    // loop {
-    //     byte = data[position];
-    //     position += 1;
-    //     result |= ((byte & 0x7F) as i128) << shift;
-    //     shift += 7;
+    loop {
+        byte = data[position];
+        position += 1;
+        result |= ((byte & 0x7F) as i128) << shift;
+        shift += 7;
 
-    //     if (byte & 0x80) == 0 {
-    //         break;
-    //     }
-    // }
+        if (byte & 0x80) == 0 {
+            break;
+        }
+    }
 
-    // if (shift < 64) && ((byte & 0x40) != 0) {
-    //     // sign extend
-    //     result |= -(1 << shift);
-    // }
+    if (shift < 64) && ((byte & 0x40) != 0) {
+        // sign extend
+        result |= -(1 << shift);
+    }
 
-    // (result, position - start_position)
+    (result, position - start_position)
 }
 
 #[test]
