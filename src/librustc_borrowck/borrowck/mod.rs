@@ -41,6 +41,7 @@ use rustc::ty::{self, TyCtxt};
 use std::fmt;
 use std::mem;
 use std::rc::Rc;
+use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax_pos::{MultiSpan, Span};
@@ -345,7 +346,7 @@ impl<'tcx> Loan<'tcx> {
     }
 }
 
-#[derive(Eq, Hash)]
+#[derive(Eq)]
 pub struct LoanPath<'tcx> {
     kind: LoanPathKind<'tcx>,
     ty: ty::Ty<'tcx>,
@@ -353,10 +354,13 @@ pub struct LoanPath<'tcx> {
 
 impl<'tcx> PartialEq for LoanPath<'tcx> {
     fn eq(&self, that: &LoanPath<'tcx>) -> bool {
-        let r = self.kind == that.kind;
-        debug_assert!(self.ty == that.ty || !r,
-                      "Somehow loan paths are equal though their tys are not.");
-        r
+        self.kind == that.kind
+    }
+}
+
+impl<'tcx> Hash for LoanPath<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
     }
 }
 
