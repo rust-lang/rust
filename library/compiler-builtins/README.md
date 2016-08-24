@@ -12,6 +12,27 @@ See [rust-lang/rust#35437][0].
 
 [0]: https://github.com/rust-lang/rust/issues/35437
 
+## When and how to use this crate?
+
+If you are working with a target that doesn't have binary releases of std available via rustup (this
+probably means you are building the core crate yourself) and need compiler-rt intrinsics (i.e. you
+are probably getting linker errors when building an executable: "undefined reference to
+__aeabi_memcpy"), you can use this crate to get those intrinsics and solve the linker errors. To do
+that, simply add this crate as a Cargo dependency (it doesn't matter where in the dependency graph
+this crate ends up, as long as it's there):
+
+``` toml
+[dependencies]
+rustc-builtins = { git = "https://github.com/japaric/rustc-builtins" }
+```
+
+If you still get an "undefined reference to $INTRINSIC" error after that change, that means that we
+haven't ported `$INTRINSIC` to Rust yet! Please open [an issue] with the name of the intrinsic and
+the LLVM triple (e.g. thumbv7m-none-eabi) of the target you are using. That way we can prioritize
+porting that particular intrinsic.
+
+[an issue]: https://github.com/japaric/rustc-builtins/issues
+
 ## Contributing
 
 1. Pick one or more intrinsics from the [pending list][#progress].
