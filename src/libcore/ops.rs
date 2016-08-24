@@ -245,25 +245,38 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Sub`. When `Foo - Foo` happens, it ends up
-/// calling `sub`, and therefore, `main` prints `Subtracting!`.
+/// This example creates a `Point` struct that implements the `Sub` trait, and
+/// then demonstrates subtracting two `Point`s.
 ///
 /// ```
 /// use std::ops::Sub;
 ///
-/// struct Foo;
+/// #[derive(Debug)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
 ///
-/// impl Sub for Foo {
-///     type Output = Foo;
+/// impl Sub for Point {
+///     type Output = Point;
 ///
-///     fn sub(self, _rhs: Foo) -> Foo {
-///         println!("Subtracting!");
-///         self
+///     fn sub(self, other: Point) -> Point {
+///         Point {
+///             x: self.x - other.x,
+///             y: self.y - other.y,
+///         }
+///     }
+/// }
+///
+/// impl PartialEq for Point {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.x == other.x && self.y == other.y
 ///     }
 /// }
 ///
 /// fn main() {
-///     Foo - Foo;
+///     assert_eq!(Point { x: 3, y: 3 } - Point { x: 2, y: 3 },
+///                Point { x: 1, y: 0 });
 /// }
 /// ```
 #[lang = "sub"]
@@ -1156,25 +1169,36 @@ add_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `SubAssign`. When `Foo -= Foo` happens, it ends up
-/// calling `sub_assign`, and therefore, `main` prints `Subtracting!`.
+/// This example creates a `Point` struct that implements the `SubAssign`
+/// trait, and then demonstrates sub-assigning to a mutable `Point`.
 ///
 /// ```
 /// use std::ops::SubAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
 ///
-/// impl SubAssign for Foo {
-///     fn sub_assign(&mut self, _rhs: Foo) {
-///         println!("Subtracting!");
+/// impl SubAssign for Point {
+///     fn sub_assign(&mut self, other: Point) {
+///         *self = Point {
+///             x: self.x - other.x,
+///             y: self.y - other.y,
+///         };
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo -= Foo;
+/// impl PartialEq for Point {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.x == other.x && self.y == other.y
+///     }
 /// }
+///
+/// let mut point = Point { x: 3, y: 3 };
+/// point -= Point { x: 2, y: 3 };
+/// assert_eq!(point, Point {x: 1, y: 0});
 /// ```
 #[lang = "sub_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
