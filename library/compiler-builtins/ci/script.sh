@@ -42,7 +42,7 @@ run_tests() {
 
 main() {
     if [[ $TRAVIS_OS_NAME == "linux" && ${IN_DOCKER_CONTAINER:-n} == "n" ]]; then
-        local tag=2016-08-13
+        local tag=2016-08-24
 
         docker run \
                --privileged \
