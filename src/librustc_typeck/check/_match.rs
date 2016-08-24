@@ -11,7 +11,7 @@
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::infer::{self, InferOk};
+use rustc::infer;
 use rustc::traits::ObligationCauseCode;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation, Diverges};
@@ -462,9 +462,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let result = if is_if_let_fallback {
                 self.eq_types(true, &cause, arm_ty, result_ty)
-                    .map(|InferOk { obligations, .. }| {
-                        // FIXME(#32730) propagate obligations
-                        assert!(obligations.is_empty());
+                    .map(|infer_ok| {
+                        self.register_infer_ok_obligations(infer_ok);
                         arm_ty
                     })
             } else if i == 0 {

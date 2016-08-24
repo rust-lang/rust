@@ -810,10 +810,11 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
             infcx.sub_types(false, &cause, impl_ty, trait_ty)
-                .map(|InferOk { obligations, .. }| {
-                    // FIXME(#32730) propagate obligations
-                    assert!(obligations.is_empty())
-                })
+                 .map(|InferOk { obligations, value: () }| {
+                     for obligation in obligations {
+                         fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+                     }
+                 })
         });
 
         if let Err(terr) = err {

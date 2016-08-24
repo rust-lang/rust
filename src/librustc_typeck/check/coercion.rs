@@ -118,16 +118,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             let trace = TypeTrace::types(&self.cause, false, a, b);
             if self.use_lub {
                 self.lub(false, trace, &a, &b)
-                    .map(|InferOk { value, obligations }| {
-                        // FIXME(#32730) propagate obligations
-                        assert!(obligations.is_empty());
-                        value
-                    })
+                    .map(|ok| self.register_infer_ok_obligations(ok))
             } else {
                 self.sub(false, trace, &a, &b)
                     .map(|InferOk { value, obligations }| {
-                        // FIXME(#32730) propagate obligations
-                        assert!(obligations.is_empty());
+                        self.fcx.register_predicates(obligations);
                         value
                     })
             }
@@ -678,21 +673,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (&ty::TyFnDef(a_def_id, a_substs, a_fty), &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
                 // The signature must always match.
                 let fty = self.lub(true, trace.clone(), &a_fty, &b_fty)
-                    .map(|InferOk { value, obligations }| {
-                        // FIXME(#32730) propagate obligations
-                        assert!(obligations.is_empty());
-                        value
-                    })?;
+                              .map(|ok| self.register_infer_ok_obligations(ok))?;
 
                 if a_def_id == b_def_id {
                     // Same function, maybe the parameters match.
                     let substs = self.commit_if_ok(|_| {
                         self.lub(true, trace.clone(), &a_substs, &b_substs)
-                            .map(|InferOk { value, obligations }| {
-                                // FIXME(#32730) propagate obligations
-                                assert!(obligations.is_empty());
-                                value
-                            })
+                            .map(|ok| self.register_infer_ok_obligations(ok))
                     });
 
                     if let Ok(substs) = substs {
@@ -761,11 +748,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if !noop {
                 return self.commit_if_ok(|_| {
                     self.lub(true, trace.clone(), &prev_ty, &new_ty)
-                        .map(|InferOk { value, obligations }| {
-                            // FIXME(#32730) propagate obligations
-                            assert!(obligations.is_empty());
-                            value
-                        })
+                        .map(|ok| self.register_infer_ok_obligations(ok))
                 });
             }
         }
@@ -778,11 +761,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     self.commit_if_ok(|_| {
                         self.lub(true, trace, &prev_ty, &new_ty)
-                            .map(|InferOk { value, obligations }| {
-                                // FIXME(#32730) propagate obligations
-                                assert!(obligations.is_empty());
-                                value
-                            })
+                            .map(|ok| self.register_infer_ok_obligations(ok))
                     })
                 }
             }

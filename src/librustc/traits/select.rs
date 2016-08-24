@@ -418,9 +418,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             None => Ok(None),
             Some(candidate) => {
                 let mut candidate = self.confirm_candidate(obligation, candidate)?;
-                // FIXME(#32730) remove this assertion once inferred obligations are propagated
-                // from inference
-                assert!(self.inferred_obligations.len() == 0);
                 let inferred_obligations = (*self.inferred_obligations).into_iter().cloned();
                 candidate.nested_obligations_mut().extend(inferred_obligations);
                 Ok(Some(candidate))

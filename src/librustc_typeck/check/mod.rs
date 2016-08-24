@@ -1797,6 +1797,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .register_predicate_obligation(self, obligation);
     }
 
+    pub fn register_predicates(&self,
+                               obligations: Vec<traits::PredicateObligation<'tcx>>)
+    {
+        for obligation in obligations {
+            self.register_predicate(obligation);
+        }
+    }
+
+    pub fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
+        self.register_predicates(infer_ok.obligations);
+        infer_ok.value
+    }
+
     pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
         let t = AstConv::ast_ty_to_ty(self, self, ast_t);
         self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
@@ -2110,13 +2123,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                         &self.misc(default.origin_span),
                                                         ty,
                                                         default.ty) {
-                                        Ok(InferOk { obligations, .. }) => {
-                                            // FIXME(#32730) propagate obligations
-                                            assert!(obligations.is_empty())
-                                        },
-                                        Err(_) => {
-                                            conflicts.push((*ty, default));
-                                        }
+                                        Ok(ok) => self.register_infer_ok_obligations(ok),
+                                        Err(_) => conflicts.push((*ty, default)),
                                     }
                                 }
                             }
@@ -2210,8 +2218,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                 &self.misc(default.origin_span),
                                                 ty,
                                                 default.ty) {
-                                // FIXME(#32730) propagate obligations
-                                Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
+                                Ok(ok) => self.register_infer_ok_obligations(ok),
                                 Err(_) => {
                                     result = Some(default);
                                 }
@@ -2784,8 +2791,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // FIXME(#15760) can't use try! here, FromError doesn't default
                 // to identity so the resulting type is not constrained.
                 match ures {
-                    // FIXME(#32730) propagate obligations
-                    Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
+                    Ok(ok) => self.register_infer_ok_obligations(ok),
                     Err(e) => return Err(e),
                 }
 
@@ -2894,11 +2900,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.commit_if_ok(|_| {
                     let trace = TypeTrace::types(&cause, true, then_ty, else_ty);
                     self.lub(true, trace, &then_ty, &else_ty)
-                        .map(|InferOk { value, obligations }| {
-                            // FIXME(#32730) propagate obligations
-                            assert!(obligations.is_empty());
-                            value
-                        })
+                        .map(|ok| self.register_infer_ok_obligations(ok))
                 })
             };
 
@@ -2912,9 +2914,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             expected_ty = unit;
             found_ty = then_ty;
             result = self.eq_types(true, &cause, unit, then_ty)
-                         .map(|InferOk { obligations, .. }| {
-                             // FIXME(#32730) propagate obligations
-                             assert!(obligations.is_empty());
+                         .map(|ok| {
+                             self.register_infer_ok_obligations(ok);
                              unit
                          });
         }
@@ -3579,17 +3580,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if let Some(ref e) = *expr_opt {
                 self.check_expr_coercable_to_type(&e, self.ret_ty);
             } else {
-                let eq_result = self.eq_types(false,
-                                              &self.misc(expr.span),
-                                              self.ret_ty,
-                                              tcx.mk_nil())
-                    // FIXME(#32730) propagate obligations
-                    .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()));
-                if eq_result.is_err() {
-                    struct_span_err!(tcx.sess, expr.span, E0069,
-                             "`return;` in a function whose return type is not `()`")
-                        .span_label(expr.span, &format!("return type is not ()"))
-                        .emit();
+                match self.eq_types(false,
+                                    &self.misc(expr.span),
+                                    self.ret_ty,
+                                    tcx.mk_nil())
+                {
+                    Ok(ok) => self.register_infer_ok_obligations(ok),
+                    Err(_) => {
+                        struct_span_err!(tcx.sess, expr.span, E0069,
+                                         "`return;` in a function whose return type is not `()`")
+                            .span_label(expr.span, &format!("return type is not ()"))
+                            .emit();
+                    }
                 }
             }
             tcx.types.never
@@ -4383,10 +4385,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
             match self.sub_types(false, &self.misc(span), self_ty, impl_ty) {
-                Ok(InferOk { obligations, .. }) => {
-                    // FIXME(#32730) propagate obligations
-                    assert!(obligations.is_empty());
-                }
+                Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
                     span_bug!(span,
                         "instantiate_value_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
