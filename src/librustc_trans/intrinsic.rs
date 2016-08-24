@@ -224,7 +224,28 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         expr::SaveIn(d) => expr::SaveIn(PointerCast(bcx, d, llintype.ptr_to())),
                         expr::Ignore => expr::Ignore
                     };
-                    bcx = expr::trans_into(bcx, &arg_exprs[0], dest);
+                    let in_align = type_of::align_of(ccx, in_type);
+                    let out_align = type_of::align_of(ccx, out_type);
+                    if out_align >= in_align {
+                        bcx = expr::trans_into(bcx, &arg_exprs[0], dest);
+                    } else {
+                        let datum = unpack_datum!(bcx, expr::trans(bcx, &arg_exprs[0]));
+                        let datum = unpack_datum!(bcx, datum.to_rvalue_datum(bcx, "transmute"));
+                        match dest {
+                            expr::SaveIn(d) => {
+                                if datum.kind.is_by_ref() {
+                                    let llsz = machine::llsize_of(bcx.ccx(), llouttype);
+                                    call_memcpy(&B(bcx), d, datum.val, llsz, out_align as u32);
+                                } else {
+                                    let store = Store(bcx, datum.val, d);
+                                    unsafe {
+                                        llvm::LLVMSetAlignment(store, out_align);
+                                    }
+                                }
+                            }
+                            expr::Ignore => {}
+                        }
+                    }
                     dest
                 };
 
