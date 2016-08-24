@@ -80,6 +80,17 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
     pub fn keys(&self) -> Vec<M::Key> {
         self.map.keys().cloned().collect()
     }
+
+    /// Append `elem` to the vector stored for `k`, creating a new vector if needed.
+    /// This is considered a write to `k`.
+    pub fn push<E: Clone>(&mut self, k: M::Key, elem: E)
+        where M: DepTrackingMapConfig<Value=Vec<E>>
+    {
+        self.write(&k);
+        self.map.entry(k)
+                .or_insert(Vec::new())
+                .push(elem);
+    }
 }
 
 impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
