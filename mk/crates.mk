@@ -59,7 +59,7 @@ RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_platform_intrinsics rustc_errors \
                 rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
-                rustc_const_eval rustc_const_math rustc_incremental proc_macro
+                rustc_const_eval rustc_const_math rustc_incremental proc_macro rustc_i128
 HOST_CRATES := syntax syntax_ext proc_macro_tokens proc_macro_plugin syntax_pos $(RUSTC_CRATES) \
 		rustdoc fmt_macros flate arena graphviz log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
@@ -92,23 +92,26 @@ DEPS_getopts := std
 DEPS_graphviz := std
 DEPS_log := std
 DEPS_num := std
-DEPS_serialize := std log
+DEPS_serialize := std log rustc_i128
 DEPS_term := std
 DEPS_test := std getopts term native:rust_test_helpers
+DEPS_rustc_i128 = std
 
-DEPS_syntax := std term serialize log arena libc rustc_bitflags std_unicode rustc_errors syntax_pos rustc_data_structures
+DEPS_syntax := std term serialize log arena libc rustc_bitflags std_unicode rustc_errors \
+			syntax_pos rustc_data_structures rustc_i128
 DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros proc_macro
+DEPS_proc_macro := syntax syntax_pos rustc_plugin log
 DEPS_syntax_pos := serialize
 DEPS_proc_macro_tokens := syntax syntax_pos log
 DEPS_proc_macro_plugin := syntax syntax_pos rustc_plugin log proc_macro_tokens
 
-DEPS_rustc_const_math := std syntax log serialize
+DEPS_rustc_const_math := std syntax log serialize rustc_i128
 DEPS_rustc_const_eval := rustc_const_math rustc syntax log serialize \
-			     rustc_back graphviz syntax_pos
+			     rustc_back graphviz syntax_pos rustc_i128
 
 DEPS_rustc := syntax fmt_macros flate arena serialize getopts \
               log graphviz rustc_llvm rustc_back rustc_data_structures\
-	      rustc_const_math syntax_pos rustc_errors
+	      rustc_const_math syntax_pos rustc_errors rustc_i128
 DEPS_rustc_back := std syntax flate log libc
 DEPS_rustc_borrowck := rustc log graphviz syntax syntax_pos rustc_errors rustc_mir
 DEPS_rustc_data_structures := std log serialize libc
@@ -119,19 +122,20 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
                      rustc_passes rustc_save_analysis rustc_const_eval \
                      rustc_incremental syntax_pos rustc_errors proc_macro rustc_data_structures
 DEPS_rustc_errors := log libc serialize syntax_pos
-DEPS_rustc_lint := rustc log syntax syntax_pos rustc_const_eval
+DEPS_rustc_lint := rustc log syntax syntax_pos rustc_const_eval rustc_i128
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
 DEPS_proc_macro := std syntax
 DEPS_rustc_metadata := rustc syntax syntax_pos rustc_errors rustc_const_math \
-			proc_macro syntax_ext
+			proc_macro syntax_ext rustc_i128
 DEPS_rustc_passes := syntax syntax_pos rustc core rustc_const_eval rustc_errors
-DEPS_rustc_mir := rustc syntax syntax_pos rustc_const_math rustc_const_eval rustc_bitflags
+DEPS_rustc_mir := rustc syntax syntax_pos rustc_const_math rustc_const_eval rustc_bitflags \
+					rustc_i128
 DEPS_rustc_resolve := arena rustc log syntax syntax_pos rustc_errors
 DEPS_rustc_platform_intrinsics := std
 DEPS_rustc_plugin := rustc rustc_metadata syntax syntax_pos rustc_errors
 DEPS_rustc_privacy := rustc log syntax syntax_pos
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
-                    log syntax serialize rustc_llvm rustc_platform_intrinsics \
+                    log syntax serialize rustc_llvm rustc_platform_intrinsics rustc_i128 \
                     rustc_const_math rustc_const_eval rustc_incremental rustc_errors syntax_pos
 DEPS_rustc_incremental := rustc syntax_pos serialize rustc_data_structures
 DEPS_rustc_save_analysis := rustc log syntax syntax_pos serialize
@@ -159,6 +163,7 @@ ONLY_RLIB_alloc := 1
 ONLY_RLIB_rand := 1
 ONLY_RLIB_collections := 1
 ONLY_RLIB_std_unicode := 1
+ONLY_RLIB_rustc_i128 := 1
 ONLY_RLIB_rustc_bitflags := 1
 ONLY_RLIB_alloc_system := 1
 ONLY_RLIB_alloc_jemalloc := 1
