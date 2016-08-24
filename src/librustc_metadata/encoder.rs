@@ -1693,30 +1693,6 @@ fn encode_impls<'a>(ecx: &'a EncodeContext,
     rbml_w.end_tag();
 }
 
-fn encode_misc_info(ecx: &EncodeContext,
-                    krate: &hir::Crate,
-                    rbml_w: &mut Encoder) {
-    rbml_w.start_tag(tag_misc_info);
-    rbml_w.start_tag(tag_misc_info_crate_items);
-    for item_id in &krate.module.item_ids {
-        rbml_w.wr_tagged_u64(tag_mod_child,
-                             def_to_u64(ecx.tcx.map.local_def_id(item_id.id)));
-
-        let item = ecx.tcx.map.expect_item(item_id.id);
-        each_auxiliary_node_id(item, |auxiliary_node_id| {
-            rbml_w.wr_tagged_u64(tag_mod_child,
-                                 def_to_u64(ecx.tcx.map.local_def_id(auxiliary_node_id)));
-            true
-        });
-    }
-
-    // Encode reexports for the root module.
-    encode_reexports(ecx, rbml_w, 0);
-
-    rbml_w.end_tag();
-    rbml_w.end_tag();
-}
-
 // Encodes all reachable symbols in this crate into the metadata.
 //
 // This pass is seeded off the reachability list calculated in the
@@ -1861,7 +1837,7 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
         codemap_bytes: u64,
         macro_defs_bytes: u64,
         impl_bytes: u64,
-        misc_bytes: u64,
+        reachable_bytes: u64,
         item_bytes: u64,
         index_bytes: u64,
         xref_bytes: u64,
@@ -1877,7 +1853,7 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
         codemap_bytes: 0,
         macro_defs_bytes: 0,
         impl_bytes: 0,
-        misc_bytes: 0,
+        reachable_bytes: 0,
         item_bytes: 0,
         index_bytes: 0,
         xref_bytes: 0,
@@ -1931,11 +1907,10 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
     encode_impls(&ecx, krate, rbml_w);
     stats.impl_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
-    // Encode miscellaneous info.
+    // Encode reachability info.
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
-    encode_misc_info(&ecx, krate, rbml_w);
     encode_reachable(&ecx, rbml_w);
-    stats.misc_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    stats.reachable_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode and index the items.
     rbml_w.start_tag(tag_items);
@@ -1972,7 +1947,7 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
         println!("         codemap bytes: {}", stats.codemap_bytes);
         println!("       macro def bytes: {}", stats.macro_defs_bytes);
         println!("            impl bytes: {}", stats.impl_bytes);
-        println!("            misc bytes: {}", stats.misc_bytes);
+        println!("       reachable bytes: {}", stats.reachable_bytes);
         println!("            item bytes: {}", stats.item_bytes);
         println!("           index bytes: {}", stats.index_bytes);
         println!("            xref bytes: {}", stats.xref_bytes);

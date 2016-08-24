@@ -23,6 +23,7 @@ use index;
 use tls_context;
 use tydecode::TyDecoder;
 
+use rustc::hir::def_id::CRATE_DEF_INDEX;
 use rustc::hir::svh::Svh;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::DefKey;
@@ -732,15 +733,7 @@ pub fn each_top_level_item_of_crate<F, G>(cdata: Cmd, get_crate_data: G, callbac
     where F: FnMut(DefLike, ast::Name, ty::Visibility),
           G: FnMut(ast::CrateNum) -> Rc<CrateMetadata>,
 {
-    let root_doc = rbml::Doc::new(cdata.data());
-    let misc_info_doc = reader::get_doc(root_doc, tag_misc_info);
-    let crate_items_doc = reader::get_doc(misc_info_doc,
-                                          tag_misc_info_crate_items);
-
-    each_child_of_item_or_crate(cdata,
-                                crate_items_doc,
-                                get_crate_data,
-                                callback)
+    each_child_of_item(cdata, CRATE_DEF_INDEX, get_crate_data, callback)
 }
 
 pub fn get_item_name(cdata: Cmd, id: DefIndex) -> ast::Name {
