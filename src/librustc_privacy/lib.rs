@@ -964,8 +964,11 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
             if !vis.is_at_least(self.required_visibility, &self.tcx.map) {
                 if self.tcx.sess.features.borrow().pub_restricted ||
                    self.old_error_set.contains(&trait_ref.ref_id) {
-                    span_err!(self.tcx.sess, trait_ref.path.span, E0445,
-                              "private trait in public interface");
+                    struct_span_err!(self.tcx.sess, trait_ref.path.span, E0445,
+                                     "private trait in public interface")
+                        .span_label(trait_ref.path.span, &format!(
+                                    "private trait can't be public"))
+                        .emit();
                 } else {
                     self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
                                            node_id,
