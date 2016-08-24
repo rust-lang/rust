@@ -152,6 +152,10 @@ pub enum ErrorKind {
     /// Interrupted operations can typically be retried.
     #[stable(feature = "rust1", since = "1.0.0")]
     Interrupted,
+    /// Any I/O error not part of this list.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Other,
+
     /// An error returned when an operation could not be completed because an
     /// "end of file" was reached prematurely.
     ///
@@ -160,9 +164,6 @@ pub enum ErrorKind {
     /// read.
     #[stable(feature = "read_exact", since = "1.6.0")]
     UnexpectedEof,
-    /// Any I/O error not part of this list.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Other,
 
     /// A marker variant that tells the compiler that users of this enum cannot
     /// match it exhaustively.
