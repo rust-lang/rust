@@ -348,26 +348,10 @@ impl CodeMap {
         let files = self.files.borrow();
         let f = (*files)[idx].clone();
 
-        let len = f.lines.borrow().len();
-        if len == 0 {
-            return Err(f);
+        match f.lookup_line(pos) {
+            Some(line) => Ok(FileMapAndLine { fm: f, line: line }),
+            None => Err(f)
         }
-
-        let mut a = 0;
-        {
-            let lines = f.lines.borrow();
-            let mut b = lines.len();
-            while b - a > 1 {
-                let m = (a + b) / 2;
-                if (*lines)[m] > pos {
-                    b = m;
-                } else {
-                    a = m;
-                }
-            }
-            assert!(a <= lines.len());
-        }
-        Ok(FileMapAndLine { fm: f, line: a })
     }
 
     pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
@@ -691,7 +675,7 @@ impl CodeMap {
     }
 
     // Return the index of the filemap (in self.files) which contains pos.
-    fn lookup_filemap_idx(&self, pos: BytePos) -> usize {
+    pub fn lookup_filemap_idx(&self, pos: BytePos) -> usize {
         let files = self.files.borrow();
         let files = &*files;
         let count = files.len();
