@@ -1201,8 +1201,8 @@ impl IntTy {
     }
 
     pub fn val_to_string(&self, val: i128) -> String {
-        // cast to a u64 so we can correctly print INT64_MIN. All integral types
-        // are parsed as u64, so we wouldn't want to print an extra negative
+        // cast to a u128 so we can correctly print INT128_MIN. All integral types
+        // are parsed as u128, so we wouldn't want to print an extra negative
         // sign.
         format!("{}{}", val as u128, self.ty_to_string())
     }
