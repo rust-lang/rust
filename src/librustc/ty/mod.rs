@@ -2665,7 +2665,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.impl_items.borrow_mut().insert(impl_def_id, impl_items);
         }
 
-        self.inherent_impls.borrow_mut().insert(type_id, Rc::new(inherent_impls));
+        self.inherent_impls.borrow_mut().insert(type_id, inherent_impls);
         self.populated_external_types.borrow_mut().insert(type_id);
     }
 
