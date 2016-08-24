@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(concat_idents, type_macros)]
+#![feature(concat_idents)]
 
 pub fn main() {
     struct Foo;

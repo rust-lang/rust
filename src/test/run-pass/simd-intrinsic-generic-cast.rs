@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repr_simd, platform_intrinsics, concat_idents,
-           type_macros, test)]
+#![feature(repr_simd, platform_intrinsics, concat_idents, test)]
 #![allow(non_camel_case_types)]
 
 extern crate test;

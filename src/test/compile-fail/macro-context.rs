@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(type_macros)]
-
 // (typeof used because it's surprisingly hard to find an unparsed token after a stmt)
 macro_rules! m {
     () => ( i ; typeof );   //~ ERROR expected expression, found reserved keyword `typeof`

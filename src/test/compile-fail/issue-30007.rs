@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(type_macros)]
-
 macro_rules! t {
     () => ( String ; );     //~ ERROR macro expansion ignores token `;`
 }
