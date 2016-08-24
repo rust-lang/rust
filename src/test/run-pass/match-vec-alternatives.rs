@@ -11,9 +11,7 @@
 
 #![feature(advanced_slice_patterns)]
 #![feature(slice_patterns)]
-#![feature(rustc_attrs)]
 
-#[rustc_mir]
 fn match_vecs<'a, T>(l1: &'a [T], l2: &'a [T]) -> &'static str {
     match (l1, l2) {
         (&[], &[]) => "both empty",
@@ -22,7 +20,6 @@ fn match_vecs<'a, T>(l1: &'a [T], l2: &'a [T]) -> &'static str {
     }
 }
 
-#[rustc_mir]
 fn match_vecs_cons<'a, T>(l1: &'a [T], l2: &'a [T]) -> &'static str {
     match (l1, l2) {
         (&[], &[]) => "both empty",
@@ -31,7 +28,6 @@ fn match_vecs_cons<'a, T>(l1: &'a [T], l2: &'a [T]) -> &'static str {
     }
 }
 
-#[rustc_mir]
 fn match_vecs_snoc<'a, T>(l1: &'a [T], l2: &'a [T]) -> &'static str {
     match (l1, l2) {
         (&[], &[]) => "both empty",
@@ -40,7 +36,6 @@ fn match_vecs_snoc<'a, T>(l1: &'a [T], l2: &'a [T]) -> &'static str {
     }
 }
 
-#[rustc_mir]
 fn match_nested_vecs_cons<'a, T>(l1: Option<&'a [T]>, l2: Result<&'a [T], ()>) -> &'static str {
     match (l1, l2) {
         (Some(&[]), Ok(&[])) => "Some(empty), Ok(empty)",
@@ -51,7 +46,6 @@ fn match_nested_vecs_cons<'a, T>(l1: Option<&'a [T]>, l2: Result<&'a [T], ()>) -
     }
 }
 
-#[rustc_mir]
 fn match_nested_vecs_snoc<'a, T>(l1: Option<&'a [T]>, l2: Result<&'a [T], ()>) -> &'static str {
     match (l1, l2) {
         (Some(&[]), Ok(&[])) => "Some(empty), Ok(empty)",

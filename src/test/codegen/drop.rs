@@ -11,7 +11,6 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
 
 struct SomeUniqueName;
 
@@ -25,19 +24,20 @@ pub fn possibly_unwinding() {
 
 // CHECK-LABEL: @droppy
 #[no_mangle]
-#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn droppy() {
 // Check that there are exactly 6 drop calls. The cleanups for the unwinding should be reused, so
 // that's one new drop call per call to possibly_unwinding(), and finally 3 drop calls for the
 // regular function exit. We used to have problems with quadratic growths of drop calls in such
 // functions.
-// CHECK: call{{.*}}drop{{.*}}SomeUniqueName
-// CHECK: call{{.*}}drop{{.*}}SomeUniqueName
-// CHECK: call{{.*}}drop{{.*}}SomeUniqueName
+// CHECK-NOT: invoke{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK-NOT: call{{.*}}drop{{.*}}SomeUniqueName
+// CHECK: invoke{{.*}}drop{{.*}}SomeUniqueName
+// CHECK: invoke{{.*}}drop{{.*}}SomeUniqueName
+// CHECK: invoke{{.*}}drop{{.*}}SomeUniqueName
+// CHECK-NOT: {{(call|invoke).*}}drop{{.*}}SomeUniqueName
 // The next line checks for the } that ends the function definition
 // CHECK-LABEL: {{^[}]}}
     let _s = SomeUniqueName;

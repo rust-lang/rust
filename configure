@@ -733,8 +733,6 @@ if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTION
 if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
 if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
 
-if [ -n "$CFG_DISABLE_ORBIT" ]; then putvar CFG_DISABLE_ORBIT; fi
-
 step_msg "looking for build programs"
 
 probe_need CFG_CURL curl

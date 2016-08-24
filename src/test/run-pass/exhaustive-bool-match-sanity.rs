@@ -15,9 +15,6 @@
 // sanity in that we generate an if-else chain giving the correct
 // results.
 
-#![feature(rustc_attrs)]
-
-#[rustc_mir]
 fn foo(x: bool, y: bool) -> u32 {
     match (x, y) {
         (false, _) => 0,

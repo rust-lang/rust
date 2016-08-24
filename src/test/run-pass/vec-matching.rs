@@ -11,9 +11,7 @@
 
 #![feature(advanced_slice_patterns)]
 #![feature(slice_patterns)]
-#![feature(rustc_attrs)]
 
-#[rustc_mir]
 fn a() {
     let x = [1];
     match x {
@@ -23,7 +21,6 @@ fn a() {
     }
 }
 
-#[rustc_mir]
 fn b() {
     let x = [1, 2, 3];
     match x {
@@ -60,7 +57,6 @@ fn b() {
 }
 
 
-#[rustc_mir]
 fn b_slice() {
     let x : &[_] = &[1, 2, 3];
     match x {
@@ -100,7 +96,6 @@ fn b_slice() {
     }
 }
 
-#[rustc_mir]
 fn c() {
     let x = [1];
     match x {
@@ -109,7 +104,6 @@ fn c() {
     }
 }
 
-#[rustc_mir]
 fn d() {
     let x = [1, 2, 3];
     let branch = match x {
@@ -121,7 +115,6 @@ fn d() {
     assert_eq!(branch, 1);
 }
 
-#[rustc_mir]
 fn e() {
     let x: &[isize] = &[1, 2, 3];
     let a = match *x {

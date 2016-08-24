@@ -11,7 +11,6 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
 
 // Hack to get the correct size for the length part in slices
 // CHECK: @helper([[USIZE:i[0-9]+]])
@@ -21,13 +20,12 @@ fn helper(_: usize) {
 
 // CHECK-LABEL: @no_op_slice_adjustment
 #[no_mangle]
-#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn no_op_slice_adjustment(x: &[u8]) -> &[u8] {
     // We used to generate an extra alloca and memcpy for the block's trailing expression value, so
     // check that we copy directly to the return value slot
-// CHECK: [[SRC:%[0-9]+]] = bitcast { i8*, [[USIZE]] }* %x to
-// CHECK: [[DST:%[0-9]+]] = bitcast { i8*, [[USIZE]] }* %sret_slot to i8*
-// CHECK: call void @llvm.memcpy.{{.*}}(i8* [[DST]], i8* [[SRC]],
+// CHECK: %2 = insertvalue { i8*, [[USIZE]] } undef, i8* %0, 0
+// CHECK: %3 = insertvalue { i8*, [[USIZE]] } %2, [[USIZE]] %1, 1
+// CHECK: ret { i8*, [[USIZE]] } %3
     { x }
 }
 

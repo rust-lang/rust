@@ -122,21 +122,14 @@ pub struct CrateAnalysis<'a> {
 #[derive(Copy, Clone)]
 pub enum DtorKind {
     NoDtor,
-    TraitDtor(bool)
+    TraitDtor
 }
 
 impl DtorKind {
     pub fn is_present(&self) -> bool {
         match *self {
-            TraitDtor(..) => true,
+            TraitDtor => true,
             _ => false
-        }
-    }
-
-    pub fn has_drop_flag(&self) -> bool {
-        match self {
-            &NoDtor => false,
-            &TraitDtor(flag) => flag
         }
     }
 }
@@ -1440,7 +1433,6 @@ bitflags! {
         const IS_PHANTOM_DATA     = 1 << 3,
         const IS_SIMD             = 1 << 4,
         const IS_FUNDAMENTAL      = 1 << 5,
-        const IS_NO_DROP_FLAG     = 1 << 6,
     }
 }
 
@@ -1558,9 +1550,6 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
         if attr::contains_name(&attrs, "fundamental") {
             flags = flags | AdtFlags::IS_FUNDAMENTAL;
         }
-        if attr::contains_name(&attrs, "unsafe_no_drop_flag") {
-            flags = flags | AdtFlags::IS_NO_DROP_FLAG;
-        }
         if tcx.lookup_simd(did) {
             flags = flags | AdtFlags::IS_SIMD;
         }
@@ -1627,10 +1616,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
 
     /// Returns whether this type has a destructor.
     pub fn has_dtor(&self) -> bool {
-        match self.dtor_kind() {
-            NoDtor => false,
-            TraitDtor(..) => true
-        }
+        self.dtor_kind().is_present()
     }
 
     /// Asserts this is a struct and returns the struct's unique
@@ -1710,9 +1696,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
 
     pub fn dtor_kind(&self) -> DtorKind {
         match self.destructor.get() {
-            Some(_) => {
-                TraitDtor(!self.flags.get().intersects(AdtFlags::IS_NO_DROP_FLAG))
-            }
+            Some(_) => TraitDtor,
             None => NoDtor,
         }
     }

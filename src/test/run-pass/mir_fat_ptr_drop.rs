@@ -27,7 +27,6 @@ impl Drop for DropMe {
     }
 }
 
-#[rustc_mir]
 fn fat_ptr_move_then_drop(a: Box<[DropMe]>) {
     let b = a;
 }

@@ -79,7 +79,6 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            ii: InlinedItemRef) {
     let id = match ii {
         InlinedItemRef::Item(_, i) => i.id,
-        InlinedItemRef::Foreign(_, i) => i.id,
         InlinedItemRef::TraitItem(_, ti) => ti.id,
         InlinedItemRef::ImplItem(_, ii) => ii.id,
     };
@@ -147,7 +146,6 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::CrateMetadata,
                                        dcx);
     let name = match *ii {
         InlinedItem::Item(_, ref i) => i.name,
-        InlinedItem::Foreign(_, ref i) => i.name,
         InlinedItem::TraitItem(_, ref ti) => ti.name,
         InlinedItem::ImplItem(_, ref ii) => ii.name
     };
@@ -356,9 +354,6 @@ fn simplify_ast(ii: InlinedItemRef) -> (InlinedItem, IdRange) {
         }
         InlinedItemRef::ImplItem(d, ii) => {
             InlinedItem::ImplItem(d, P(fold::noop_fold_impl_item(ii.clone(), &mut fld)))
-        }
-        InlinedItemRef::Foreign(d, i) => {
-            InlinedItem::Foreign(d, P(fold::noop_fold_foreign_item(i.clone(), &mut fld)))
         }
     };
 
@@ -1208,8 +1203,7 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
     let item_node_id = match ii {
         &InlinedItem::Item(_, ref i) => i.id,
         &InlinedItem::TraitItem(_, ref ti) => ti.id,
-        &InlinedItem::ImplItem(_, ref ii) => ii.id,
-        &InlinedItem::Foreign(_, ref fi) => fi.id
+        &InlinedItem::ImplItem(_, ref ii) => ii.id
     };
     copy_item_type(dcx, item_node_id, orig_did);
 

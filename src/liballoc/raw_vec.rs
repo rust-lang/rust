@@ -44,7 +44,7 @@ use core::cmp;
 /// `shrink_to_fit`, and `from_box` will actually set RawVec's private capacity
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
-#[unsafe_no_drop_flag]
+#[cfg_attr(stage0, unsafe_no_drop_flag)]
 pub struct RawVec<T> {
     ptr: Unique<T>,
     cap: usize,
@@ -546,13 +546,6 @@ impl<T> RawVec<T> {
         mem::forget(self);
         output
     }
-
-    /// This is a stupid name in the hopes that someone will find this in the
-    /// not too distant future and remove it with the rest of
-    /// #[unsafe_no_drop_flag]
-    pub fn unsafe_no_drop_flag_needs_drop(&self) -> bool {
-        self.cap != mem::POST_DROP_USIZE
-    }
 }
 
 impl<T> Drop for RawVec<T> {
@@ -560,7 +553,7 @@ impl<T> Drop for RawVec<T> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
-        if elem_size != 0 && self.cap != 0 && self.unsafe_no_drop_flag_needs_drop() {
+        if elem_size != 0 && self.cap != 0 {
             let align = mem::align_of::<T>();
 
             let num_bytes = elem_size * self.cap;

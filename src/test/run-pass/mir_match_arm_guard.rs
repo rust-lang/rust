@@ -10,9 +10,6 @@
 
 // #30527 - We were not generating arms with guards in certain cases.
 
-#![feature(rustc_attrs)]
-
-#[rustc_mir]
 fn match_with_guard(x: Option<i8>) -> i8 {
     match x {
         Some(xyz) if xyz > 100 => 0,

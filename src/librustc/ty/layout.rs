@@ -891,17 +891,6 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let mut st = Struct::new(dl, packed);
                 st.extend(dl, fields, ty)?;
 
-                // FIXME(16758) don't add a drop flag to unsized structs, as it
-                // won't actually be in the location we say it is because it'll be after
-                // the unsized field. Several other pieces of code assume that the unsized
-                // field is definitely the last one.
-                if def.dtor_kind().has_drop_flag() &&
-                   ty.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
-                    st.extend(dl, Some(Ok(&Scalar {
-                        value: Int(I8),
-                        non_zero: false
-                    })).into_iter(), ty)?;
-                }
                 Univariant {
                     variant: st,
                     non_zero: Some(def.did) == tcx.lang_items.non_zero()
@@ -911,24 +900,18 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let hint = *tcx.lookup_repr_hints(def.did).get(0)
                     .unwrap_or(&attr::ReprAny);
 
-                let dtor = def.dtor_kind().has_drop_flag();
-                let drop_flag = if dtor {
-                    Some(Scalar { value: Int(I8), non_zero: false })
-                } else {
-                    None
-                };
-
                 if def.variants.is_empty() {
                     // Uninhabitable; represent as unit
                     // (Typechecking will reject discriminant-sizing attrs.)
                     assert_eq!(hint, attr::ReprAny);
 
-                    let mut st = Struct::new(dl, false);
-                    st.extend(dl, drop_flag.iter().map(Ok), ty)?;
-                    return success(Univariant { variant: st, non_zero: false });
+                    return success(Univariant {
+                        variant: Struct::new(dl, false),
+                        non_zero: false
+                    });
                 }
 
-                if !dtor && def.variants.iter().all(|v| v.fields.is_empty()) {
+                if def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
                     let (mut min, mut max) = (i64::MAX, i64::MIN);
                     for v in &def.variants {
@@ -964,7 +947,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         field.ty(tcx, substs).layout(infcx)
                     });
                     let mut st = Struct::new(dl, false);
-                    st.extend(dl, fields.chain(drop_flag.iter().map(Ok)), ty)?;
+                    st.extend(dl, fields, ty)?;
                     return success(Univariant { variant: st, non_zero: false });
                 }
 
@@ -973,7 +956,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     v.fields.iter().map(|field| field.ty(tcx, substs)).collect::<Vec<_>>()
                 }).collect::<Vec<_>>();
 
-                if !dtor && variants.len() == 2 && hint == attr::ReprAny {
+                if variants.len() == 2 && hint == attr::ReprAny {
                     // Nullable pointer optimization
                     for discr in 0..2 {
                         let other_fields = variants[1 - discr].iter().map(|ty| {
@@ -1045,8 +1028,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         Ok(field)
                     });
                     let mut st = Struct::new(dl, false);
-                    st.extend(dl, discr.iter().map(Ok).chain(fields)
-                                              .chain(drop_flag.iter().map(Ok)), ty)?;
+                    st.extend(dl, discr.iter().map(Ok).chain(fields), ty)?;
                     size = cmp::max(size, st.min_size());
                     align = align.max(st.align);
                     Ok(st)
@@ -1274,11 +1256,6 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
                 if def.variants.is_empty() || def.variants.len() > 2 {
-                    return Err(err);
-                }
-
-                // If there's a drop flag, it can't be just a pointer.
-                if def.dtor_kind().has_drop_flag() {
                     return Err(err);
                 }
 

@@ -14,21 +14,14 @@ use arena::TypedArena;
 use intrinsics::{self, Intrinsic};
 use libc;
 use llvm;
-use llvm::{ValueRef, TypeKind};
-use rustc::ty::subst::Substs;
+use llvm::{ValueRef};
 use abi::{Abi, FnType};
 use adt;
 use base::*;
 use build::*;
-use callee::{self, Callee};
-use cleanup;
-use cleanup::CleanupMethods;
 use common::*;
-use consts;
-use datum::*;
 use debuginfo::DebugLoc;
 use declare;
-use expr;
 use glue;
 use type_of;
 use machine;
@@ -37,11 +30,9 @@ use rustc::ty::{self, Ty};
 use Disr;
 use rustc::hir;
 use syntax::ast;
-use syntax::ptr::P;
 use syntax::parse::token;
 
 use rustc::session::Session;
-use rustc_const_eval::fatal_const_eval_err;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
@@ -98,8 +89,8 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
 pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                             callee_ty: Ty<'tcx>,
                                             fn_ty: &FnType,
-                                            args: callee::CallArgs<'a, 'tcx>,
-                                            dest: expr::Dest,
+                                            llargs: &[ValueRef],
+                                            llresult: ValueRef,
                                             call_debug_location: DebugLoc)
                                             -> Result<'blk, 'tcx> {
     let fcx = bcx.fcx;
@@ -120,216 +111,25 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let name = tcx.item_name(def_id).as_str();
 
     let span = match call_debug_location {
-        DebugLoc::At(_, span) | DebugLoc::ScopeAt(_, span) => span,
+        DebugLoc::ScopeAt(_, span) => span,
         DebugLoc::None => {
             span_bug!(fcx.span.unwrap_or(DUMMY_SP),
                       "intrinsic `{}` called with missing span", name);
         }
     };
 
-    let cleanup_scope = fcx.push_custom_cleanup_scope();
-
-    // For `transmute` we can just trans the input expr directly into dest
-    if name == "transmute" {
-        let llret_ty = type_of::type_of(ccx, ret_ty);
-        match args {
-            callee::ArgExprs(arg_exprs) => {
-                assert_eq!(arg_exprs.len(), 1);
-
-                let (in_type, out_type) = (substs.types[0],
-                                           substs.types[1]);
-                let llintype = type_of::type_of(ccx, in_type);
-                let llouttype = type_of::type_of(ccx, out_type);
-
-                let in_type_size = machine::llbitsize_of_real(ccx, llintype);
-                let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
-
-                if let ty::TyFnDef(def_id, substs, _) = in_type.sty {
-                    if out_type_size != 0 {
-                        // FIXME #19925 Remove this hack after a release cycle.
-                        let _ = unpack_datum!(bcx, expr::trans(bcx, &arg_exprs[0]));
-                        let llfn = Callee::def(ccx, def_id, substs).reify(ccx).val;
-                        let llfnty = val_ty(llfn);
-                        let llresult = match dest {
-                            expr::SaveIn(d) => d,
-                            expr::Ignore => alloc_ty(bcx, out_type, "ret")
-                        };
-                        Store(bcx, llfn, PointerCast(bcx, llresult, llfnty.ptr_to()));
-                        if dest == expr::Ignore {
-                            bcx = glue::drop_ty(bcx, llresult, out_type,
-                                                call_debug_location);
-                        }
-                        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
-                        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
-                        return Result::new(bcx, llresult);
-                    }
-                }
-
-                // This should be caught by the intrinsicck pass
-                assert_eq!(in_type_size, out_type_size);
-
-                let nonpointer_nonaggregate = |llkind: TypeKind| -> bool {
-                    use llvm::TypeKind::*;
-                    match llkind {
-                        Half | Float | Double | X86_FP80 | FP128 |
-                            PPC_FP128 | Integer | Vector | X86_MMX => true,
-                        _ => false
-                    }
-                };
-
-                // An approximation to which types can be directly cast via
-                // LLVM's bitcast.  This doesn't cover pointer -> pointer casts,
-                // but does, importantly, cover SIMD types.
-                let in_kind = llintype.kind();
-                let ret_kind = llret_ty.kind();
-                let bitcast_compatible =
-                    (nonpointer_nonaggregate(in_kind) && nonpointer_nonaggregate(ret_kind)) || {
-                        in_kind == TypeKind::Pointer && ret_kind == TypeKind::Pointer
-                    };
-
-                let dest = if bitcast_compatible {
-                    // if we're here, the type is scalar-like (a primitive, a
-                    // SIMD type or a pointer), and so can be handled as a
-                    // by-value ValueRef and can also be directly bitcast to the
-                    // target type.  Doing this special case makes conversions
-                    // like `u32x4` -> `u64x2` much nicer for LLVM and so more
-                    // efficient (these are done efficiently implicitly in C
-                    // with the `__m128i` type and so this means Rust doesn't
-                    // lose out there).
-                    let expr = &arg_exprs[0];
-                    let datum = unpack_datum!(bcx, expr::trans(bcx, expr));
-                    let datum = unpack_datum!(bcx, datum.to_rvalue_datum(bcx, "transmute_temp"));
-                    let val = if datum.kind.is_by_ref() {
-                        load_ty(bcx, datum.val, datum.ty)
-                    } else {
-                        from_immediate(bcx, datum.val)
-                    };
-
-                    let cast_val = BitCast(bcx, val, llret_ty);
-
-                    match dest {
-                        expr::SaveIn(d) => {
-                            // this often occurs in a sequence like `Store(val,
-                            // d); val2 = Load(d)`, so disappears easily.
-                            Store(bcx, cast_val, d);
-                        }
-                        expr::Ignore => {}
-                    }
-                    dest
-                } else {
-                    // The types are too complicated to do with a by-value
-                    // bitcast, so pointer cast instead. We need to cast the
-                    // dest so the types work out.
-                    let dest = match dest {
-                        expr::SaveIn(d) => expr::SaveIn(PointerCast(bcx, d, llintype.ptr_to())),
-                        expr::Ignore => expr::Ignore
-                    };
-                    bcx = expr::trans_into(bcx, &arg_exprs[0], dest);
-                    dest
-                };
-
-                fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
-                fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
-
-                return match dest {
-                    expr::SaveIn(d) => Result::new(bcx, d),
-                    expr::Ignore => Result::new(bcx, C_undef(llret_ty.ptr_to()))
-                };
-
-            }
-
-            _ => {
-                bug!("expected expr as argument for transmute");
-            }
-        }
-    }
-
-    // For `move_val_init` we can evaluate the destination address
-    // (the first argument) and then trans the source value (the
-    // second argument) directly into the resulting destination
-    // address.
-    if name == "move_val_init" {
-        if let callee::ArgExprs(ref exprs) = args {
-            let (dest_expr, source_expr) = if exprs.len() != 2 {
-                bug!("expected two exprs as arguments for `move_val_init` intrinsic");
-            } else {
-                (&exprs[0], &exprs[1])
-            };
-
-            // evaluate destination address
-            let dest_datum = unpack_datum!(bcx, expr::trans(bcx, dest_expr));
-            let dest_datum = unpack_datum!(
-                bcx, dest_datum.to_rvalue_datum(bcx, "arg"));
-            let dest_datum = unpack_datum!(
-                bcx, dest_datum.to_appropriate_datum(bcx));
-
-            // `expr::trans_into(bcx, expr, dest)` is equiv to
-            //
-            //    `trans(bcx, expr).store_to_dest(dest)`,
-            //
-            // which for `dest == expr::SaveIn(addr)`, is equivalent to:
-            //
-            //    `trans(bcx, expr).store_to(bcx, addr)`.
-            let lldest = expr::Dest::SaveIn(dest_datum.val);
-            bcx = expr::trans_into(bcx, source_expr, lldest);
-
-            let llresult = C_nil(ccx);
-            fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
-
-            return Result::new(bcx, llresult);
-        } else {
-            bug!("expected two exprs as arguments for `move_val_init` intrinsic");
-        }
-    }
-
-    // save the actual AST arguments for later (some places need to do
-    // const-evaluation on them)
-    let expr_arguments = match args {
-        callee::ArgExprs(args) => Some(args),
-        _ => None,
-    };
-
-    // Push the arguments.
-    let mut llargs = Vec::new();
-    bcx = callee::trans_args(bcx,
-                             Abi::RustIntrinsic,
-                             fn_ty,
-                             &mut callee::Intrinsic,
-                             args,
-                             &mut llargs,
-                             cleanup::CustomScope(cleanup_scope));
-
-    fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
-
     // These are the only intrinsic functions that diverge.
     if name == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
         Call(bcx, llfn, &[], call_debug_location);
-        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
     } else if &name[..] == "unreachable" {
-        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         Unreachable(bcx);
         return Result::new(bcx, C_nil(ccx));
     }
 
     let llret_ty = type_of::type_of(ccx, ret_ty);
-
-    // Get location to store the result. If the user does
-    // not care about the result, just make a stack slot
-    let llresult = match dest {
-        expr::SaveIn(d) => d,
-        expr::Ignore => {
-            if !type_is_zero_size(ccx, ret_ty) {
-                let llresult = alloc_ty(bcx, ret_ty, "intrinsic_result");
-                call_lifetime_start(bcx, llresult);
-                llresult
-            } else {
-                C_undef(llret_ty.ptr_to())
-            }
-        }
-    };
 
     let simple = get_simple_intrinsic(ccx, &name);
     let llval = match (simple, &name[..]) {
@@ -382,16 +182,20 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "drop_in_place") => {
             let tp_ty = substs.types[0];
-            let ptr = if type_is_sized(tcx, tp_ty) {
+            let is_sized = type_is_sized(tcx, tp_ty);
+            let ptr = if is_sized {
                 llargs[0]
             } else {
-                let scratch = rvalue_scratch_datum(bcx, tp_ty, "tmp");
-                Store(bcx, llargs[0], expr::get_dataptr(bcx, scratch.val));
-                Store(bcx, llargs[1], expr::get_meta(bcx, scratch.val));
-                fcx.schedule_lifetime_end(cleanup::CustomScope(cleanup_scope), scratch.val);
-                scratch.val
+                let scratch = alloc_ty(bcx, tp_ty, "drop");
+                call_lifetime_start(bcx, scratch);
+                Store(bcx, llargs[0], get_dataptr(bcx, scratch));
+                Store(bcx, llargs[1], get_meta(bcx, scratch));
+                scratch
             };
             glue::drop_ty(bcx, ptr, tp_ty, call_debug_location);
+            if !is_sized {
+                call_lifetime_end(bcx, ptr);
+            }
             C_nil(ccx)
         }
         (_, "type_name") => {
@@ -401,13 +205,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "type_id") => {
             C_u64(ccx, ccx.tcx().type_id_hash(substs.types[0]))
-        }
-        (_, "init_dropped") => {
-            let tp_ty = substs.types[0];
-            if !type_is_zero_size(ccx, tp_ty) {
-                drop_done_fill_mem(bcx, llresult, tp_ty);
-            }
-            C_nil(ccx)
         }
         (_, "init") => {
             let tp_ty = substs.types[0];
@@ -511,8 +308,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "volatile_store") => {
             let tp_ty = substs.types[0];
             if type_is_fat_ptr(bcx.tcx(), tp_ty) {
-                VolatileStore(bcx, llargs[1], expr::get_dataptr(bcx, llargs[0]));
-                VolatileStore(bcx, llargs[2], expr::get_meta(bcx, llargs[0]));
+                VolatileStore(bcx, llargs[1], get_dataptr(bcx, llargs[0]));
+                VolatileStore(bcx, llargs[2], get_meta(bcx, llargs[0]));
             } else {
                 let val = if fn_ty.args[1].is_indirect() {
                     Load(bcx, llargs[1])
@@ -621,9 +418,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, name) if name.starts_with("simd_") => {
             generic_simd_intrinsic(bcx, name,
-                                   substs,
                                    callee_ty,
-                                   expr_arguments,
                                    &llargs,
                                    ret_ty, llret_ty,
                                    call_debug_location,
@@ -868,13 +663,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
             let llargs = if !any_changes_needed {
                 // no aggregates to flatten, so no change needed
-                llargs
+                llargs.to_vec()
             } else {
                 // there are some aggregates that need to be flattened
                 // in the LLVM call, so we need to run over the types
                 // again to find them and extract the arguments
                 intr.inputs.iter()
-                           .zip(&llargs)
+                           .zip(llargs)
                            .zip(&arg_tys)
                            .flat_map(|((t, llarg), ty)| modify_as_needed(bcx, t, ty, *llarg))
                            .collect()
@@ -918,17 +713,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             store_ty(bcx, llval, llresult, ret_ty);
         }
     }
-
-    // If we made a temporary stack slot, let's clean it up
-    match dest {
-        expr::Ignore => {
-            bcx = glue::drop_ty(bcx, llresult, ret_ty, call_debug_location);
-            call_lifetime_end(bcx, llresult);
-        }
-        expr::SaveIn(_) => {}
-    }
-
-    fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
 
     Result::new(bcx, llresult)
 }
@@ -1064,10 +848,10 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         SetPersonalityFn(bcx, bcx.fcx.eh_personality());
 
-        let normal = bcx.fcx.new_temp_block("normal");
-        let catchswitch = bcx.fcx.new_temp_block("catchswitch");
-        let catchpad = bcx.fcx.new_temp_block("catchpad");
-        let caught = bcx.fcx.new_temp_block("caught");
+        let normal = bcx.fcx.new_block("normal");
+        let catchswitch = bcx.fcx.new_block("catchswitch");
+        let catchpad = bcx.fcx.new_block("catchpad");
+        let caught = bcx.fcx.new_block("caught");
 
         let func = llvm::get_param(bcx.fcx.llfn, 0);
         let data = llvm::get_param(bcx.fcx.llfn, 1);
@@ -1123,7 +907,7 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         let tcx = ccx.tcx();
         let tydesc = match tcx.lang_items.msvc_try_filter() {
-            Some(did) => ::consts::get_static(ccx, did).to_llref(),
+            Some(did) => ::consts::get_static(ccx, did),
             None => bug!("msvc_try_filter not defined"),
         };
         let tok = CatchPad(catchpad, cs, &[tydesc, C_i32(ccx, 0), slot]);
@@ -1184,8 +968,8 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
 
-        let then = bcx.fcx.new_temp_block("then");
-        let catch = bcx.fcx.new_temp_block("catch");
+        let then = bcx.fcx.new_block("then");
+        let catch = bcx.fcx.new_block("catch");
 
         let func = llvm::get_param(bcx.fcx.llfn, 0);
         let data = llvm::get_param(bcx.fcx.llfn, 1);
@@ -1240,8 +1024,7 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let (fcx, block_arena);
     block_arena = TypedArena::new();
     fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &block_arena);
-    let bcx = fcx.init(true, None);
-    trans(bcx);
+    trans(fcx.init(true));
     fcx.cleanup();
     llfn
 }
@@ -1283,9 +1066,7 @@ fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
 fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     (bcx: Block<'blk, 'tcx>,
      name: &str,
-     substs: &'tcx Substs<'tcx>,
      callee_ty: Ty<'tcx>,
-     args: Option<&[P<hir::Expr>]>,
      llargs: &[ValueRef],
      ret_ty: Ty<'tcx>,
      llret_ty: Type,
@@ -1386,20 +1167,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
         let total_len = in_len as u64 * 2;
 
-        let vector = match args {
-            Some(args) => {
-                match consts::const_expr(bcx.ccx(), &args[2], substs, None,
-                                         // this should probably help simd error reporting
-                                         consts::TrueConst::Yes) {
-                    Ok((vector, _)) => vector,
-                    Err(err) => {
-                        fatal_const_eval_err(bcx.tcx(), err.as_inner(), span,
-                                             "shuffle indices");
-                    }
-                }
-            }
-            None => llargs[2]
-        };
+        let vector = llargs[2];
 
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {
