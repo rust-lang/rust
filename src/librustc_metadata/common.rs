@@ -149,9 +149,9 @@ pub const tag_items_data_item_visibility: usize = 0x78;
 pub const tag_items_data_item_inherent_impl: usize = 0x79;
 // GAP 0x7a
 pub const tag_mod_child: usize = 0x7b;
-pub const tag_misc_info: usize = 0x108; // top-level only
-pub const tag_misc_info_crate_items: usize = 0x7c;
+// GAP 0x7c
 
+// GAP 0x108
 pub const tag_impls: usize = 0x109; // top-level only
 pub const tag_impls_trait: usize = 0x7d;
 pub const tag_impls_trait_impl: usize = 0x7e;
