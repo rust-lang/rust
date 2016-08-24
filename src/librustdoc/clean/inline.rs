@@ -10,7 +10,6 @@
 
 //! Support for inlining external documentation into the current AST.
 
-use std::collections::HashSet;
 use std::iter::once;
 
 use syntax::ast;
@@ -21,6 +20,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt};
+use rustc::util::nodemap::FnvHashSet;
 
 use rustc_const_eval::lookup_const_by_id;
 
@@ -425,7 +425,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
                 .into_iter()
                 .map(|meth| meth.name.to_string())
                 .collect()
-    }).unwrap_or(HashSet::new());
+    }).unwrap_or(FnvHashSet());
 
     ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
@@ -461,7 +461,7 @@ fn build_module<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // If we're reexporting a reexport it may actually reexport something in
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
-        let mut visited = HashSet::new();
+        let mut visited = FnvHashSet();
         for item in tcx.sess.cstore.item_children(did) {
             match item.def {
                 cstore::DlDef(Def::ForeignMod(did)) => {
