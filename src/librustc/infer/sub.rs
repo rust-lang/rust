@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::combine::CombineFields;
 use super::SubregionOrigin;
+use super::combine::CombineFields;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use ty::{self, Ty, TyCtxt};
@@ -117,6 +117,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         // error messages.
         let origin = SubregionOrigin::Subtype(self.fields.trace.clone());
         self.fields.infcx.region_vars.make_subregion(origin, a, b);
+
         Ok(a)
     }
 

@@ -16,10 +16,10 @@ use super::suggest;
 use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
+use rustc::infer::InferOk;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::infer::InferOk;
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast;
 use syntax_pos::Span;
@@ -1035,7 +1035,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                  &ObligationCause::dummy(),
                                  self_ty,
                                  probe.xform_self_ty) {
-                Ok(InferOk { obligations, .. }) => {
+                Ok(InferOk { obligations, value: () }) => {
                     // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty())
                 }

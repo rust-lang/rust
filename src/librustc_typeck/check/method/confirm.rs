@@ -331,9 +331,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
     fn unify_receivers(&mut self, self_ty: Ty<'tcx>, method_self_ty: Ty<'tcx>) {
         match self.sub_types(false, &self.misc(self.span), self_ty, method_self_ty) {
-            Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+            Ok(InferOk { obligations, value: () }) => {
+                self.register_predicates(obligations);
             }
             Err(_) => {
                 span_bug!(self.span,

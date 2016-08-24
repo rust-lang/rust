@@ -23,9 +23,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         let cause = self.misc(sp);
         match self.sub_types(false, &cause, actual, expected) {
-            Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+            Ok(InferOk { obligations, value: () }) => {
+                self.register_predicates(obligations);
             },
             Err(e) => {
                 self.report_mismatched_types(&cause, expected, actual, e);
@@ -43,9 +42,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                      actual: Ty<'tcx>)
     {
         match self.eq_types(false, cause, actual, expected) {
-            Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+            Ok(InferOk { obligations, value: () }) => {
+                self.register_predicates(obligations);
             },
             Err(e) => {
                 self.report_mismatched_types(cause, expected, actual, e);

@@ -210,9 +210,7 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
 
     let infcx = selcx.infcx();
     match infcx.eq_types(true, &obligation.cause, normalized_ty, obligation.predicate.ty) {
-        Ok(InferOk { obligations: inferred_obligations, .. }) => {
-            // FIXME(#32730) once obligations are generated in inference, drop this assertion
-            assert!(inferred_obligations.is_empty());
+        Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             Ok(Some(obligations))
         },
@@ -847,9 +845,10 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                                               obligation.cause.clone(),
                                               data_poly_trait_ref,
                                               obligation_poly_trait_ref)
-                        // FIXME(#32730) once obligations are propagated from unification in
-                        // inference, drop this assertion
-                        .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
+                        .map(|InferOk { obligations: _, value: () }| {
+                            // FIXME(#32730) -- do we need to take obligations
+                            // into account in any way? At the moment, no.
+                        })
                         .is_ok()
                 });
 
@@ -1184,12 +1183,10 @@ fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
     fn_pointer_vtable: VtableFnPointerData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
 {
-    // FIXME(#32730) drop this assertion once obligations are propagated from inference (fn pointer
-    // vtable nested obligations ONLY come from unification in inference)
-    assert!(fn_pointer_vtable.nested.is_empty());
     let fn_type = selcx.infcx().shallow_resolve(fn_pointer_vtable.fn_ty);
     let sig = fn_type.fn_sig();
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
+        .with_addl_obligations(fn_pointer_vtable.nested)
 }
 
 fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
@@ -1266,8 +1263,6 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     let trait_ref = obligation.predicate.trait_ref;
     match infcx.match_poly_projection_predicate(cause, poly_projection, trait_ref) {
         Ok(InferOk { value: ty_match, obligations }) => {
-            // FIXME(#32730) once obligations are generated in inference, drop this assertion
-            assert!(obligations.is_empty());
             Progress {
                 ty: ty_match.value,
                 obligations: obligations,
