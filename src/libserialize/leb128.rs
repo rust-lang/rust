@@ -154,22 +154,13 @@ fn test_unsigned_leb128() {
 
 #[test]
 fn test_signed_leb128() {
-    let mut values = Vec::new();
-
-    let mut i = -500;
-    while i < 500 {
-        values.push(i * 123457i64);
-        i += 1;
-    }
-
+    let values: Vec<_> = (-500..500).map(|i| i * 0x12345789ABCDEF).collect();
     let mut stream = Vec::new();
-
     for &x in &values {
         let pos = stream.len();
         let bytes_written = write_signed_leb128(&mut stream, pos, x);
         assert_eq!(stream.len(), pos + bytes_written);
     }
-
     let mut pos = 0;
     for &x in &values {
         let (value, bytes_read) = read_signed_leb128(&mut stream, pos);
