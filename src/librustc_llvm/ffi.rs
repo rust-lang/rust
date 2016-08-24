@@ -533,7 +533,6 @@ extern {
     pub fn LLVMInt16TypeInContext(C: ContextRef) -> TypeRef;
     pub fn LLVMInt32TypeInContext(C: ContextRef) -> TypeRef;
     pub fn LLVMInt64TypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMInt128TypeInContext(C: ContextRef) -> TypeRef;
     pub fn LLVMIntTypeInContext(C: ContextRef, NumBits: c_uint)
                                 -> TypeRef;
 
