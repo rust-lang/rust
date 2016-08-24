@@ -19,7 +19,6 @@ extern crate syntax_pos;
 
 use syntax::ast::{self, Item, MetaItem, ItemKind};
 use syntax::codemap::DUMMY_SP;
-use syntax::attr::{AttrMetaMethods, AttrNestedMetaItemMethods};
 use syntax::ext::base::*;
 use syntax::ext::quote::rt::ToTokens;
 use syntax::parse::{self, token};
