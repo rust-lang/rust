@@ -14,7 +14,7 @@ fn non_elidable<'a, 'b>(a: &'a u8, b: &'b u8) -> &'a u8 { a }
 
 // the boundaries of elision
 static NON_ELIDABLE_FN : &fn(&u8, &u8) -> &u8 =
-//^ERROR: missing lifetime specifier
+//~^ ERROR: missing lifetime specifier
         &(non_elidable as fn(&u8, &u8) -> &u8);
 
 type Baz<'a> = fn(&'a [u8]) -> Option<u8>;
@@ -25,7 +25,8 @@ static STATIC_BAZ : &Baz<'static> = &(baz as Baz);
 const CONST_BAZ : &Baz<'static> = &(baz as Baz);
 
 fn main() {
-    let y = [1u8, 2, 3];
+    let x = &[1u8, 2, 3];
+    let y = x;
 
     //surprisingly this appears to work, so lifetime < `'static` is valid
     assert_eq!(Some(1), STATIC_BAZ(y));
