@@ -1,5 +1,5 @@
 dist: trusty
-language: ruby
+language: generic
 services: docker
 sudo: required
 
@@ -16,6 +16,7 @@ matrix:
     - env: TARGET=i586-unknown-linux-gnu
       os: linux
     - env: TARGET=i686-apple-darwin
+      language: ruby
       os: osx
     - env: TARGET=i686-unknown-linux-gnu
       os: linux
@@ -36,6 +37,7 @@ matrix:
     - env: TARGET=thumbv7m-none-eabi
       os: linux
     - env: TARGET=x86_64-apple-darwin
+      language: ruby
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
       os: linux
