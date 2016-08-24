@@ -12,7 +12,7 @@ See [rust-lang/rust#35437][0].
 
 ## Contributing
 
-1. Pick one or more intrinsics from the [pending list][/#progress].
+1. Pick one or more intrinsics from the [pending list][#progress].
 2. Fork this repository
 3. Port the intrinsic(s) and their corresponding [unit tests][1] from their [C implementation][2] to
    Rust.
