@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
 
 // error-pattern:panic 1
 // error-pattern:drop 2
@@ -24,7 +23,6 @@ impl Drop for Droppable {
     }
 }
 
-#[rustc_mir]
 fn mir() {
     let x = Droppable(2);
     let y = Droppable(1);

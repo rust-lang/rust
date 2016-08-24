@@ -11,11 +11,9 @@
 
 #![feature(advanced_slice_patterns)]
 #![feature(slice_patterns)]
-#![feature(rustc_attrs)]
 
 use std::fmt::Debug;
 
-#[rustc_mir(graphviz="mir.gv")]
 fn foldl<T, U, F>(values: &[T],
                   initial: U,
                   mut function: F)
@@ -32,7 +30,6 @@ fn foldl<T, U, F>(values: &[T],
     }
 }
 
-#[rustc_mir]
 fn foldr<T, U, F>(values: &[T],
                   initial: U,
                   mut function: F)

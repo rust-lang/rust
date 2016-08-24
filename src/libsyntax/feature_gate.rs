@@ -517,11 +517,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                       is just used for rustc unit tests \
                                       and will never be stable",
                                      cfg_fn!(rustc_attrs))),
-    ("rustc_no_mir", Whitelisted, Gated("rustc_attrs",
-                                        "the `#[rustc_no_mir]` attribute \
-                                         is just used to make tests pass \
-                                         and will never be stable",
-                                        cfg_fn!(rustc_attrs))),
     ("rustc_inherit_overflow_checks", Whitelisted, Gated("rustc_attrs",
                                                          "the `#[rustc_inherit_overflow_checks]` \
                                                           attribute is just used to control \

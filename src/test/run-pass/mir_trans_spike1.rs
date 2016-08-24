@@ -10,9 +10,6 @@
 
 // A simple spike test for MIR version of trans.
 
-#![feature(rustc_attrs)]
-
-#[rustc_mir]
 fn sum(x: i32, y: i32) -> i32 {
     x + y
 }

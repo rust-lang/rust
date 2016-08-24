@@ -605,8 +605,6 @@ macro_rules! options {
         pub const parse_bool: Option<&'static str> = None;
         pub const parse_opt_bool: Option<&'static str> =
             Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
-        pub const parse_all_bool: Option<&'static str> =
-            Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
         pub const parse_string: Option<&'static str> = Some("a string");
         pub const parse_opt_string: Option<&'static str> = Some("a string");
         pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
@@ -653,25 +651,6 @@ macro_rules! options {
                     true
                 },
                 None => { *slot = Some(true); true }
-            }
-        }
-
-        fn parse_all_bool(slot: &mut bool, v: Option<&str>) -> bool {
-            match v {
-                Some(s) => {
-                    match s {
-                        "n" | "no" | "off" => {
-                            *slot = false;
-                        }
-                        "y" | "yes" | "on" => {
-                            *slot = true;
-                        }
-                        _ => { return false; }
-                    }
-
-                    true
-                },
-                None => { *slot = true; true }
             }
         }
 
@@ -930,8 +909,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "dump MIR state at various points in translation"),
     dump_mir_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "the directory the MIR is dumped into"),
-    orbit: bool = (true, parse_all_bool, [UNTRACKED],
-          "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1324,15 +1301,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         })
     });
 
-    let mut debugging_opts = build_debugging_options(matches, error_format);
-
-    // Incremental compilation only works reliably when translation is done via
-    // MIR, so let's enable -Z orbit if necessary (see #34973).
-    if debugging_opts.incremental.is_some() && !debugging_opts.orbit {
-        early_warn(error_format, "Automatically enabling `-Z orbit` because \
-                                  `-Z incremental` was specified");
-        debugging_opts.orbit = true;
-    }
+    let debugging_opts = build_debugging_options(matches, error_format);
 
     let mir_opt_level = debugging_opts.mir_opt_level.unwrap_or(1);
 
@@ -2423,8 +2392,6 @@ mod tests {
         opts.debugging_opts.dump_mir = Some(String::from("abc"));
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.dump_mir_dir = Some(String::from("abc"));
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.orbit = false;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         // Make sure changing a [TRACKED] option changes the hash

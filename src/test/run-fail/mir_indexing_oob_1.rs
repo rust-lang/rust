@@ -9,11 +9,9 @@
 // except according to those terms.
 
 // error-pattern:index out of bounds: the len is 5 but the index is 10
-#![feature(rustc_attrs)]
 
 const C: [u32; 5] = [0; 5];
 
-#[rustc_mir]
 fn test() -> u32 {
     C[10]
 }

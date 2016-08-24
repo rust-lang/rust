@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
 
 #[derive(PartialEq, Debug)]
 struct Point {
@@ -23,7 +22,6 @@ const TUPLE1: (i32, i32) = (42, 42);
 const TUPLE2: (&'static str, &'static str) = ("hello","world");
 const PAIR_NEWTYPE: (Newtype<i32>, Newtype<i32>) = (Newtype(42), Newtype(42));
 
-#[rustc_mir]
 fn mir() -> (Point, (i32, i32), (&'static str, &'static str), (Newtype<i32>, Newtype<i32>)) {
     let struct1 = STRUCT;
     let tuple1 = TUPLE1;
@@ -34,7 +32,6 @@ fn mir() -> (Point, (i32, i32), (&'static str, &'static str), (Newtype<i32>, New
 
 const NEWTYPE: Newtype<&'static str> = Newtype("foobar");
 
-#[rustc_mir]
 fn test_promoted_newtype_str_ref() {
     let x = &NEWTYPE;
     assert_eq!(x, &Newtype("foobar"));

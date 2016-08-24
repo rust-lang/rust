@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
-#[rustc_mir]
 fn test1(x: i8) -> i32 {
   match x {
     1...10 => 0,
@@ -21,7 +18,6 @@ fn test1(x: i8) -> i32 {
 const U: Option<i8> = Some(10);
 const S: &'static str = "hello";
 
-#[rustc_mir]
 fn test2(x: i8) -> i32 {
   match Some(x) {
     U => 0,
@@ -29,7 +25,6 @@ fn test2(x: i8) -> i32 {
   }
 }
 
-#[rustc_mir]
 fn test3(x: &'static str) -> i32 {
   match x {
     S => 0,
@@ -42,7 +37,6 @@ enum Opt<T> {
     None
 }
 
-#[rustc_mir]
 fn test4(x: u64) -> i32 {
   let opt = Opt::Some{ v: x };
   match opt {
