@@ -1,5 +1,5 @@
 dist: trusty
-language: generic
+language: ruby
 services: docker
 sudo: required
 

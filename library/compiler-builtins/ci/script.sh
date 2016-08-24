@@ -3,7 +3,7 @@ set -ex
 . $(dirname $0)/env.sh
 
 gist_it() {
-    gist -ap -f "'$1' from commit '$TRAVIS_COMMIT' on branch '$TRAVIS_BRANCH'"
+    gist -d "'$TARGET/rustc-builtins.rlib' from commit '$TRAVIS_COMMIT' on branch '$TRAVIS_BRANCH'"
     echo "Disassembly available at the above URL."
 }
 
@@ -16,14 +16,7 @@ inspect() {
     $PREFIX$NM -g --defined-only target/**/debug/*.rlib
 
     set +e
-    case $TRAVIS_OS_NAME in
-        linux)
-            $PREFIX$OBJDUMP -Cd target/**/release/*.rlib | gist_it "$TARGET/rustc-builtins.rlib"
-            ;;
-        osx)
-            $PREFIX$OBJDUMP -Cd target/**/release/*.rlib
-            ;;
-    esac
+    $PREFIX$OBJDUMP -Cd target/**/release/*.rlib | gist_it
     set -e
 
     # Check presence of weak symbols
@@ -49,7 +42,7 @@ run_tests() {
 
 main() {
     if [[ $TRAVIS_OS_NAME == "linux" && ${IN_DOCKER_CONTAINER:-n} == "n" ]]; then
-        local tag=2016-08-22
+        local tag=2016-08-13
 
         docker run \
                --privileged \
