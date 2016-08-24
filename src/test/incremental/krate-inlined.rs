@@ -8,22 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: rpass1 rpass2
+// Regr. test that using HIR inlined from another krate does *not* add
+// a dependency from the local Krate node.
+
+// revisions: cfail1
 // compile-flags: -Z query-dep-graph
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
-#![rustc_partition_reused(module="krate_inlined-x", cfg="rpass2")]
+
+#![rustc_if_this_changed(Krate)]
 
 fn main() { }
 
 mod x {
+    #[rustc_then_this_would_need(TransCrateItem)] //[cfail1]~ ERROR no path
     fn method() {
         // use some methods that require inlining HIR from another crate:
         let mut v = vec![];
         v.push(1);
     }
 }
-
-#[cfg(rpass1)]
-fn bar() { } // remove this unrelated fn in rpass2, which should not affect `x::method`
