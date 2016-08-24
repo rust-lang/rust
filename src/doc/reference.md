@@ -2283,7 +2283,7 @@ the `PartialEq` or `Clone` constraints for the appropriate `impl`:
 #[derive(PartialEq, Clone)]
 struct Foo<T> {
     a: i32,
-    b: T
+    b: T,
 }
 ```
 
@@ -3896,7 +3896,7 @@ Coercion is allowed between the following types:
   use std::ops::Deref;
 
   struct CharContainer {
-      value: char
+      value: char,
   }
 
   impl Deref for CharContainer {
