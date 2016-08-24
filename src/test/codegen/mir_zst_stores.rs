@@ -10,7 +10,6 @@
 
 // compile-flags: -C no-prepopulate-passes
 
-#![feature(rustc_attrs)]
 #![crate_type = "lib"]
 use std::marker::PhantomData;
 
@@ -19,7 +18,6 @@ struct Zst { phantom: PhantomData<Zst> }
 
 // CHECK-LABEL: @mir
 #[no_mangle]
-#[rustc_mir]
 fn mir(){
     // CHECK-NOT: getelementptr
     // CHECK-NOT: store{{.*}}undef

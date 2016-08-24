@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs, box_syntax)]
+#![feature(box_syntax)]
 
-#[rustc_mir]
 fn test() -> Box<i32> {
     box 42
 }

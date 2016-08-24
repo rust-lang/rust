@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 // ignore-pretty : (#23623) problems when  ending with // comments
 
 // check raw fat pointer ops in mir
@@ -54,7 +52,6 @@ const GT: ComparisonResults = ComparisonResults {
     ne: true
 };
 
-#[rustc_mir]
 fn compare_su8(a: *const S<[u8]>, b: *const S<[u8]>) -> ComparisonResults {
     ComparisonResults {
         lt: a < b,
@@ -66,7 +63,6 @@ fn compare_su8(a: *const S<[u8]>, b: *const S<[u8]>) -> ComparisonResults {
     }
 }
 
-#[rustc_mir]
 fn compare_au8(a: *const [u8], b: *const [u8]) -> ComparisonResults {
     ComparisonResults {
         lt: a < b,
@@ -78,7 +74,6 @@ fn compare_au8(a: *const [u8], b: *const [u8]) -> ComparisonResults {
     }
 }
 
-#[rustc_mir]
 fn compare_foo<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> ComparisonResults {
     ComparisonResults {
         lt: a < b,
@@ -90,7 +85,6 @@ fn compare_foo<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> ComparisonResults 
     }
 }
 
-#[rustc_mir]
 fn simple_eq<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> bool {
     let result = a == b;
     result

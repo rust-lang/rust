@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 // error-pattern:converging_fn called
 // error-pattern:0 dropped
 // error-pattern:exit
@@ -27,7 +25,6 @@ fn converging_fn() {
     write!(io::stderr(), "converging_fn called\n");
 }
 
-#[rustc_mir]
 fn mir(d: Droppable) {
     converging_fn();
 }

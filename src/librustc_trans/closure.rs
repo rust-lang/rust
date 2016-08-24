@@ -181,16 +181,6 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llfn
 }
 
-fn translating_closure_body_via_mir_will_fail(ccx: &CrateContext,
-                                              closure_def_id: DefId)
-                                              -> bool {
-    let default_to_mir = ccx.sess().opts.debugging_opts.orbit;
-    let invert = if default_to_mir { "rustc_no_mir" } else { "rustc_mir" };
-    let use_mir = default_to_mir ^ ccx.tcx().has_attr(closure_def_id, invert);
-
-    !use_mir
-}
-
 pub fn trans_closure_body_via_mir<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                             closure_def_id: DefId,
                                             closure_substs: ty::ClosureSubsts<'tcx>) {
@@ -362,15 +352,6 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                closure_def_id,
                                substs);
         } else {
-            // If the closure is defined in an upstream crate, we can only
-            // translate it if MIR-trans is active.
-
-            if translating_closure_body_via_mir_will_fail(ccx, closure_def_id) {
-                ccx.sess().fatal("You have run into a known limitation of the \
-                                  MingW toolchain. Either compile with -Zorbit or \
-                                  with -Ccodegen-units=1 to work around it.");
-            }
-
             trans_closure_body_via_mir(ccx, closure_def_id, substs);
         }
     }

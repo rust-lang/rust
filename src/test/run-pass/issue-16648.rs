@@ -9,9 +9,8 @@
 // except according to those terms.
 
 
-#![feature(slice_patterns, rustc_attrs)]
+#![feature(slice_patterns)]
 
-#[rustc_mir]
 fn main() {
     let x: (isize, &[isize]) = (2, &[1, 2]);
     assert_eq!(match x {

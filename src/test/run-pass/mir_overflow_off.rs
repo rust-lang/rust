@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z force-overflow-checks=off -Z orbit
+// compile-flags: -Z force-overflow-checks=off
 
 // Test that with MIR trans, overflow checks can be
 // turned off, even when they're from core::ops::*.

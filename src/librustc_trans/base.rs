@@ -1424,26 +1424,17 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             false
         };
 
-        let check_attrs = |attrs: &[ast::Attribute]| {
-            let default_to_mir = ccx.sess().opts.debugging_opts.orbit;
-            let invert = if default_to_mir { "rustc_no_mir" } else { "rustc_mir" };
-            (default_to_mir ^ attrs.iter().any(|item| item.check_name(invert)),
-             attrs.iter().any(|item| item.check_name("no_debug")))
-        };
-
-        let (use_mir, no_debug) = if let Some(id) = local_id {
-            check_attrs(ccx.tcx().map.attrs(id))
+        let no_debug = if let Some(id) = local_id {
+            ccx.tcx().map.attrs(id)
+               .iter().any(|item| item.check_name("no_debug"))
         } else if let Some(def_id) = def_id {
-            check_attrs(&ccx.sess().cstore.item_attrs(def_id))
+            ccx.sess().cstore.item_attrs(def_id)
+               .iter().any(|item| item.check_name("no_debug"))
         } else {
-            check_attrs(&[])
+            false
         };
 
-        let mir = if use_mir {
-            def_id.and_then(|id| ccx.get_mir(id))
-        } else {
-            None
-        };
+        let mir = def_id.and_then(|id| ccx.get_mir(id));
 
         let debug_context = if let (false, Some(definition)) = (no_debug, definition) {
             let (instance, sig, abi, _) = definition;
@@ -1846,6 +1837,8 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     if fcx.mir.is_some() {
         return mir::trans_mir(&fcx);
+    } else {
+        span_bug!(body.span, "attempted translation of `{}` w/o MIR", instance);
     }
 
     debuginfo::fill_scope_map_for_function(&fcx, decl, body, inlined_id);
