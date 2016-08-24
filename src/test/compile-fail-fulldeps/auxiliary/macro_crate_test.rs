@@ -18,7 +18,6 @@ extern crate rustc;
 extern crate rustc_plugin;
 
 use syntax::ast::{self, Item, MetaItem, ItemKind};
-use syntax::attr::{AttrMetaMethods, AttrNestedMetaItemMethods};
 use syntax::ext::base::*;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
