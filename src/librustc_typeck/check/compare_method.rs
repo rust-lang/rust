@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty;
 use rustc::traits::{self, Reveal};
@@ -21,6 +20,7 @@ use syntax_pos::Span;
 
 use CrateCtxt;
 use super::assoc;
+use super::{Inherited, FnCtxt};
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
@@ -313,9 +313,6 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return;
     }
 
-    tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|mut infcx| {
-        let mut fulfillment_cx = traits::FulfillmentContext::new();
-
         // Create obligations for each predicate declared by the impl
         // definition in the context of the trait's parameter
         // environment. We can't just use `impl_env.caller_bounds`,
@@ -341,10 +338,14 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // the new hybrid bounds we computed.
         let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
         let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.predicates);
-        let trait_param_env =
-            traits::normalize_param_env_or_error(tcx, trait_param_env, normalize_cause.clone());
-        // FIXME(@jroesch) this seems ugly, but is a temporary change
-        infcx.parameter_environment = trait_param_env;
+        let trait_param_env = traits::normalize_param_env_or_error(tcx,
+                                                                   trait_param_env,
+                                                                   normalize_cause.clone());
+
+    tcx.infer_ctxt(None, Some(trait_param_env), Reveal::NotSpecializable).enter(|infcx| {
+        let inh = Inherited::new(ccx, infcx);
+        let infcx = &inh.infcx;
+        let fulfillment_cx = &inh.fulfillment_cx;
 
         debug!("compare_impl_method: caller_bounds={:?}",
                infcx.parameter_environment.caller_bounds);
@@ -365,7 +366,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 code: traits::ObligationCauseCode::CompareImplMethodObligation,
             };
 
-            fulfillment_cx.register_predicate_obligation(
+            fulfillment_cx.borrow_mut().register_predicate_obligation(
                 &infcx,
                 traits::Obligation::new(cause, predicate));
         }
@@ -387,15 +388,18 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let tcx = infcx.tcx;
         let origin = TypeOrigin::MethodCompatCheck(impl_m_span);
 
-        let (impl_sig, _) = infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
-                                                       infer::HigherRankedType,
-                                                       &impl_m.fty.sig);
-        let impl_sig = impl_sig.subst(tcx, impl_to_skol_substs);
-        let impl_sig = assoc::normalize_associated_types_in(&infcx,
-                                                            &mut fulfillment_cx,
-                                                            impl_m_span,
-                                                            impl_m_body_id,
-                                                            &impl_sig);
+        let (impl_sig, _) =
+            infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
+                                                            infer::HigherRankedType,
+                                                            &impl_m.fty.sig);
+        let impl_sig =
+            impl_sig.subst(tcx, impl_to_skol_substs);
+        let impl_sig =
+            assoc::normalize_associated_types_in(&infcx,
+                                                 &mut fulfillment_cx.borrow_mut(),
+                                                 impl_m_span,
+                                                 impl_m_body_id,
+                                                 &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: impl_m.fty.unsafety,
             abi: impl_m.fty.abi,
@@ -403,14 +407,17 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-        let trait_sig = tcx.liberate_late_bound_regions(infcx.parameter_environment.free_id_outlive,
-                                         &trait_m.fty.sig);
-        let trait_sig = trait_sig.subst(tcx, trait_to_skol_substs);
-        let trait_sig = assoc::normalize_associated_types_in(&infcx,
-                                                             &mut fulfillment_cx,
-                                                             impl_m_span,
-                                                             impl_m_body_id,
-                                                             &trait_sig);
+        let trait_sig = tcx.liberate_late_bound_regions(
+            infcx.parameter_environment.free_id_outlive,
+            &trait_m.fty.sig);
+        let trait_sig =
+            trait_sig.subst(tcx, trait_to_skol_substs);
+        let trait_sig =
+            assoc::normalize_associated_types_in(&infcx,
+                                                 &mut fulfillment_cx.borrow_mut(),
+                                                 impl_m_span,
+                                                 impl_m_body_id,
+                                                 &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: trait_m.fty.unsafety,
             abi: trait_m.fty.abi,
@@ -454,25 +461,15 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
+        if let Err(ref errors) = fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors);
             return;
         }
 
         // Finally, resolve all regions. This catches wily misuses of
-        // lifetime parameters. We have to build up a plausible lifetime
-        // environment based on what we find in the trait. We could also
-        // include the obligations derived from the method argument types,
-        // but I don't think it's necessary -- after all, those are still
-        // in effect when type-checking the body, and all the
-        // where-clauses in the header etc should be implied by the trait
-        // anyway, so it shouldn't be needed there either. Anyway, we can
-        // always add more relations later (it's backwards compat).
-        let mut free_regions = FreeRegionMap::new();
-        free_regions.relate_free_regions_from_predicates(
-            &infcx.parameter_environment.caller_bounds);
-
-        infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
+        // lifetime parameters.
+        let fcx = FnCtxt::new(&inh, tcx.types.err, impl_m_body_id);
+        fcx.regionck_item(impl_m_body_id, impl_m_span, &[]);
     });
 
     fn check_region_bounds_on_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
