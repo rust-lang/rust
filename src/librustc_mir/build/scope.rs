@@ -198,8 +198,11 @@ impl<'tcx> Scope<'tcx> {
     ///
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a
     /// larger extent of code.
-    fn invalidate_cache(&mut self) {
-        self.cached_exits = FnvHashMap();
+    ///
+    /// `unwind` controls whether caches for the unwind branch are also invalidated.
+    fn invalidate_cache(&mut self, unwind: bool) {
+        self.cached_exits.clear();
+        if !unwind { return; }
         for dropdata in &mut self.drops {
             if let DropKind::Value { ref mut cached_block } = dropdata.kind {
                 *cached_block = None;
@@ -455,25 +458,65 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in self.scopes.iter_mut().rev() {
-            if scope.extent == extent {
+            let this_scope = scope.extent == extent;
+            // When building drops, we try to cache chains of drops in such a way so these drops
+            // could be reused by the drops which would branch into the cached (already built)
+            // blocks.  This, however, means that whenever we add a drop into a scope which already
+            // had some blocks built (and thus, cached) for it, we must invalidate all caches which
+            // might branch into the scope which had a drop just added to it. This is necessary,
+            // because otherwise some other code might use the cache to branch into already built
+            // chain of drops, essentially ignoring the newly added drop.
+            //
+            // For example consider there’s two scopes with a drop in each. These are built and
+            // thus the caches are filled:
+            //
+            // +--------------------------------------------------------+
+            // | +---------------------------------+                    |
+            // | | +--------+     +-------------+  |  +---------------+ |
+            // | | | return | <-+ | drop(outer) | <-+ |  drop(middle) | |
+            // | | +--------+     +-------------+  |  +---------------+ |
+            // | +------------|outer_scope cache|--+                    |
+            // +------------------------------|middle_scope cache|------+
+            //
+            // Now, a new, inner-most scope is added along with a new drop into both inner-most and
+            // outer-most scopes:
+            //
+            // +------------------------------------------------------------+
+            // | +----------------------------------+                       |
+            // | | +--------+      +-------------+  |   +---------------+   | +-------------+
+            // | | | return | <+   | drop(new)   | <-+  |  drop(middle) | <--+| drop(inner) |
+            // | | +--------+  |   | drop(outer) |  |   +---------------+   | +-------------+
+            // | |             +-+ +-------------+  |                       |
+            // | +---|invalid outer_scope cache|----+                       |
+            // +----=----------------|invalid middle_scope cache|-----------+
+            //
+            // If, when adding `drop(new)` we do not invalidate the cached blocks for both
+            // outer_scope and middle_scope, then, when building drops for the inner (right-most)
+            // scope, the old, cached blocks, without `drop(new)` will get used, producing the
+            // wrong results.
+            //
+            // The cache and its invalidation for unwind branch is somewhat special. The cache is
+            // per-drop, rather than per scope, which has a several different implications. Adding
+            // a new drop into a scope will not invalidate cached blocks of the prior drops in the
+            // scope. That is true, because none of the already existing drops will have an edge
+            // into a block with the newly added drop.
+            //
+            // Note that this code iterates scopes from the inner-most to the outer-most,
+            // invalidating caches of each scope visited. This way bare minimum of the
+            // caches gets invalidated. i.e. if a new drop is added into the middle scope, the
+            // cache of outer scpoe stays intact.
+            let invalidate_unwind = needs_drop && !this_scope;
+            scope.invalidate_cache(invalidate_unwind);
+            if this_scope {
                 if let DropKind::Value { .. } = drop_kind {
                     scope.needs_cleanup = true;
                 }
-
-                // No need to invalidate any caches here. The just-scheduled drop will branch into
-                // the drop that comes before it in the vector.
                 scope.drops.push(DropData {
                     span: span,
                     location: lvalue.clone(),
                     kind: drop_kind
                 });
                 return;
-            } else {
-                // We must invalidate all the cached_blocks leading up to the scope we’re
-                // looking for, because all of the blocks in the chain will become incorrect.
-                if let DropKind::Value { .. } = drop_kind {
-                    scope.invalidate_cache()
-                }
             }
         }
         span_bug!(span, "extent {:?} not in scope to drop {:?}", extent, lvalue);
@@ -490,11 +533,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                              value: &Lvalue<'tcx>,
                              item_ty: Ty<'tcx>) {
         for scope in self.scopes.iter_mut().rev() {
+            // See the comment in schedule_drop above. The primary difference is that we invalidate
+            // the unwind blocks unconditionally. That’s because the box free may be considered
+            // outer-most cleanup within the scope.
+            scope.invalidate_cache(true);
             if scope.extent == extent {
                 assert!(scope.free.is_none(), "scope already has a scheduled free!");
-                // We also must invalidate the caches in the scope for which the free is scheduled
-                // because the drops must branch into the free we schedule here.
-                scope.invalidate_cache();
                 scope.needs_cleanup = true;
                 scope.free = Some(FreeData {
                     span: span,
@@ -503,11 +547,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     cached_block: None
                 });
                 return;
-            } else {
-                // We must invalidate all the cached_blocks leading up to the scope we’re looking
-                // for, because otherwise some/most of the blocks in the chain will become
-                // incorrect.
-                scope.invalidate_cache();
             }
         }
         span_bug!(span, "extent {:?} not in scope to free {:?}", extent, value);

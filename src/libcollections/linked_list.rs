@@ -379,8 +379,6 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(linked_list_contains)]
-    ///
     /// use std::collections::LinkedList;
     ///
     /// let mut list: LinkedList<u32> = LinkedList::new();
@@ -392,8 +390,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.contains(&0), true);
     /// assert_eq!(list.contains(&10), false);
     /// ```
-    #[unstable(feature = "linked_list_contains", reason = "recently added",
-               issue = "32630")]
+    #[stable(feature = "linked_list_contains", since = "1.12.0")]
     pub fn contains(&self, x: &T) -> bool
         where T: PartialEq<T>
     {
