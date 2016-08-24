@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(type_macros, concat_idents)]
+#![feature(concat_idents)]
 
 #[derive(Debug)] //~ NOTE in this expansion
 struct Baz<T>(
