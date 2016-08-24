@@ -136,7 +136,7 @@ impl<
         for item in self {
             bits |= item.to_usize();
         }
-        s.emit_uint(bits)
+        s.emit_usize(bits)
     }
 }
 
@@ -144,7 +144,7 @@ impl<
     T: Decodable + CLike
 > Decodable for EnumSet<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<EnumSet<T>, D::Error> {
-        let bits = d.read_uint()?;
+        let bits = d.read_usize()?;
         let mut set = EnumSet::new();
         for bit in 0..(mem::size_of::<usize>()*8) {
             if bits & (1 << bit) != 0 {
