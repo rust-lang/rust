@@ -27,15 +27,14 @@ use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArr
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::ty::subst::Substs;
-use rustc::hir;
 
 use abi::Abi;
-use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block, BlockAndBuilder};
-use inline;
+use common::{CrateContext, FunctionContext, Block, BlockAndBuilder};
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
+use rustc::mir::repr as mir;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
-use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{DefIdMap, FnvHashMap, FnvHashSet};
 
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
@@ -56,13 +55,7 @@ mod source_loc;
 
 pub use self::create_scope_map::create_mir_scopes;
 pub use self::source_loc::start_emitting_source_locations;
-pub use self::source_loc::get_cleanup_debug_loc_for_ast_node;
-pub use self::source_loc::with_source_location_override;
-pub use self::metadata::create_match_binding_metadata;
-pub use self::metadata::create_argument_metadata;
-pub use self::metadata::create_captured_var_metadata;
 pub use self::metadata::create_global_var_metadata;
-pub use self::metadata::create_local_var_metadata;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
@@ -140,9 +133,7 @@ impl FunctionDebugContext {
 }
 
 pub struct FunctionDebugContextData {
-    scope_map: RefCell<NodeMap<DIScope>>,
     fn_metadata: DISubprogram,
-    argument_counter: Cell<usize>,
     source_locations_enabled: Cell<bool>,
     source_location_override: Cell<bool>,
 }
@@ -229,7 +220,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                instance: Instance<'tcx>,
                                                sig: &ty::FnSig<'tcx>,
                                                abi: Abi,
-                                               llfn: ValueRef) -> FunctionDebugContext {
+                                               llfn: ValueRef,
+                                               mir: &mir::Mir) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext::DebugInfoDisabled;
     }
@@ -238,8 +230,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // Do this here already, in case we do an early exit from this function.
     source_loc::set_debug_location(cx, None, UnknownLocation);
 
-    let instance = inline::maybe_inline_instance(cx, instance);
-    let (containing_scope, span) = get_containing_scope_and_span(cx, instance);
+    let containing_scope = get_containing_scope(cx, instance);
+    let span = mir.span;
 
     // This can be the case for functions inlined from another crate
     if span == syntax_pos::DUMMY_SP {
@@ -305,9 +297,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Initialize fn debug context (including scope map and namespace map)
     let fn_debug_context = box FunctionDebugContextData {
-        scope_map: RefCell::new(NodeMap()),
         fn_metadata: fn_metadata,
-        argument_counter: Cell::new(1),
         source_locations_enabled: Cell::new(false),
         source_location_override: Cell::new(false),
     };
@@ -414,9 +404,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         names
     }
 
-    fn get_containing_scope_and_span<'ccx, 'tcx>(cx: &CrateContext<'ccx, 'tcx>,
-                                                 instance: Instance<'tcx>)
-                                                 -> (DIScope, Span) {
+    fn get_containing_scope<'ccx, 'tcx>(cx: &CrateContext<'ccx, 'tcx>,
+                                        instance: Instance<'tcx>)
+                                        -> DIScope {
         // First, let's see if this is a method within an inherent impl. Because
         // if yes, we want to make the result subroutine DIE a child of the
         // subroutine's self-type.
@@ -436,41 +426,15 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         });
 
-        let containing_scope = self_type.unwrap_or_else(|| {
+        self_type.unwrap_or_else(|| {
             namespace::item_namespace(cx, DefId {
                 krate: instance.def.krate,
                 index: cx.tcx()
                          .def_key(instance.def)
                          .parent
-                         .expect("get_containing_scope_and_span: missing parent?")
+                         .expect("get_containing_scope: missing parent?")
             })
-        });
-
-        // Try to get some span information, if we have an inlined item.
-        let definition_span = cx.tcx()
-                                .map
-                                .def_id_span(instance.def, syntax_pos::DUMMY_SP);
-
-        (containing_scope, definition_span)
-    }
-}
-
-/// Computes the scope map for a function given its declaration and body.
-pub fn fill_scope_map_for_function<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
-                                             fn_decl: &hir::FnDecl,
-                                             top_level_block: &hir::Block,
-                                             fn_ast_id: ast::NodeId) {
-    match fcx.debug_context {
-        FunctionDebugContext::RegularContext(box ref data) => {
-            let scope_map = create_scope_map::create_scope_map(fcx.ccx,
-                                                               &fn_decl.inputs,
-                                                               top_level_block,
-                                                               data.fn_metadata,
-                                                               fn_ast_id);
-            *data.scope_map.borrow_mut() = scope_map;
-        }
-        FunctionDebugContext::DebugInfoDisabled |
-        FunctionDebugContext::FunctionWithoutDebugInfo => {}
+        })
     }
 }
 
@@ -548,7 +512,6 @@ pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DebugLoc {
-    At(ast::NodeId, Span),
     ScopeAt(DIScope, Span),
     None
 }
@@ -560,30 +523,5 @@ impl DebugLoc {
 
     pub fn apply_to_bcx(self, bcx: &BlockAndBuilder) {
         source_loc::set_source_location(bcx.fcx(), Some(bcx), self);
-    }
-}
-
-pub trait ToDebugLoc {
-    fn debug_loc(&self) -> DebugLoc;
-}
-
-impl ToDebugLoc for hir::Expr {
-    fn debug_loc(&self) -> DebugLoc {
-        DebugLoc::At(self.id, self.span)
-    }
-}
-
-impl ToDebugLoc for NodeIdAndSpan {
-    fn debug_loc(&self) -> DebugLoc {
-        DebugLoc::At(self.id, self.span)
-    }
-}
-
-impl ToDebugLoc for Option<NodeIdAndSpan> {
-    fn debug_loc(&self) -> DebugLoc {
-        match *self {
-            Some(NodeIdAndSpan { id, span }) => DebugLoc::At(id, span),
-            None => DebugLoc::None
-        }
     }
 }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 enum Abc {
     A(u8),
     B(i8),
@@ -17,7 +15,6 @@ enum Abc {
     D,
 }
 
-#[rustc_mir]
 fn foo(x: Abc) -> i32 {
     match x {
         Abc::C => 3,
@@ -27,7 +24,6 @@ fn foo(x: Abc) -> i32 {
     }
 }
 
-#[rustc_mir]
 fn foo2(x: Abc) -> bool {
     match x {
         Abc::D => true,

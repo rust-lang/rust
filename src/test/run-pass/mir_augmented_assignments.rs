@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 use std::mem;
 use std::ops::{
     AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, DivAssign, MulAssign, RemAssign,
@@ -33,7 +31,6 @@ fn main() {
     main_mir();
 }
 
-#[rustc_mir]
 fn main_mir() {
     let mut x = Int(1);
 
@@ -92,91 +89,78 @@ fn main_mir() {
 }
 
 impl AddAssign for Int {
-    #[rustc_mir]
     fn add_assign(&mut self, rhs: Int) {
         self.0 += rhs.0;
     }
 }
 
 impl BitAndAssign for Int {
-    #[rustc_mir]
     fn bitand_assign(&mut self, rhs: Int) {
         self.0 &= rhs.0;
     }
 }
 
 impl BitOrAssign for Int {
-    #[rustc_mir]
     fn bitor_assign(&mut self, rhs: Int) {
         self.0 |= rhs.0;
     }
 }
 
 impl BitXorAssign for Int {
-    #[rustc_mir]
     fn bitxor_assign(&mut self, rhs: Int) {
         self.0 ^= rhs.0;
     }
 }
 
 impl DivAssign for Int {
-    #[rustc_mir]
     fn div_assign(&mut self, rhs: Int) {
         self.0 /= rhs.0;
     }
 }
 
 impl MulAssign for Int {
-    #[rustc_mir]
     fn mul_assign(&mut self, rhs: Int) {
         self.0 *= rhs.0;
     }
 }
 
 impl RemAssign for Int {
-    #[rustc_mir]
     fn rem_assign(&mut self, rhs: Int) {
         self.0 %= rhs.0;
     }
 }
 
 impl ShlAssign<u8> for Int {
-    #[rustc_mir]
     fn shl_assign(&mut self, rhs: u8) {
         self.0 <<= rhs;
     }
 }
 
 impl ShlAssign<u16> for Int {
-    #[rustc_mir]
     fn shl_assign(&mut self, rhs: u16) {
         self.0 <<= rhs;
     }
 }
 
 impl ShrAssign<u8> for Int {
-    #[rustc_mir]
     fn shr_assign(&mut self, rhs: u8) {
         self.0 >>= rhs;
     }
 }
 
 impl ShrAssign<u16> for Int {
-    #[rustc_mir]
     fn shr_assign(&mut self, rhs: u16) {
         self.0 >>= rhs;
     }
 }
 
 impl SubAssign for Int {
-    #[rustc_mir]
     fn sub_assign(&mut self, rhs: Int) {
         self.0 -= rhs.0;
     }
 }
 
 impl AddAssign<i32> for Slice {
-    #[rustc_mir]
     fn add_assign(&mut self, rhs: i32) {
         for lhs in &mut self.0 {
             *lhs += rhs;

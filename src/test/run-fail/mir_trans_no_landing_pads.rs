@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
+
 // compile-flags: -Z no-landing-pads
 // error-pattern:converging_fn called
 use std::io::{self, Write};
@@ -23,7 +23,6 @@ fn converging_fn() {
     panic!("converging_fn called")
 }
 
-#[rustc_mir]
 fn mir(d: Droppable) {
     let x = Droppable;
     converging_fn();

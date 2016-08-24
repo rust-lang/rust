@@ -53,9 +53,7 @@ pub struct Stats {
     pub n_glues_created: Cell<usize>,
     pub n_null_glues: Cell<usize>,
     pub n_real_glues: Cell<usize>,
-    pub n_fallback_instantiations: Cell<usize>,
     pub n_fns: Cell<usize>,
-    pub n_monos: Cell<usize>,
     pub n_inlines: Cell<usize>,
     pub n_closures: Cell<usize>,
     pub n_llvm_insns: Cell<usize>,
@@ -79,7 +77,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     stats: Stats,
     check_overflow: bool,
-    check_drop_flag_for_sanity: bool,
     mir_map: &'a MirMap<'tcx>,
     mir_cache: RefCell<DepTrackingMap<MirCache<'tcx>>>,
 
@@ -104,7 +101,6 @@ pub struct LocalCrateContext<'tcx> {
     drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FnvHashMap<Instance<'tcx>, ValueRef>>,
-    monomorphizing: RefCell<DefIdMap<usize>>,
     /// Cache generated vtables
     vtables: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, ValueRef>>,
     /// Cache of constant strings,
@@ -424,8 +420,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet,
-               check_overflow: bool,
-               check_drop_flag_for_sanity: bool)
+               check_overflow: bool)
                -> SharedCrateContext<'b, 'tcx> {
         let (metadata_llcx, metadata_llmod) = unsafe {
             create_context_and_module(&tcx.sess, "metadata")
@@ -490,9 +485,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                 n_glues_created: Cell::new(0),
                 n_null_glues: Cell::new(0),
                 n_real_glues: Cell::new(0),
-                n_fallback_instantiations: Cell::new(0),
                 n_fns: Cell::new(0),
-                n_monos: Cell::new(0),
                 n_inlines: Cell::new(0),
                 n_closures: Cell::new(0),
                 n_llvm_insns: Cell::new(0),
@@ -500,7 +493,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                 fn_stats: RefCell::new(Vec::new()),
             },
             check_overflow: check_overflow,
-            check_drop_flag_for_sanity: check_drop_flag_for_sanity,
             use_dll_storage_attrs: use_dll_storage_attrs,
             translation_items: RefCell::new(FnvHashSet()),
             trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
@@ -629,7 +621,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 fn_pointer_shims: RefCell::new(FnvHashMap()),
                 drop_glues: RefCell::new(FnvHashMap()),
                 instances: RefCell::new(FnvHashMap()),
-                monomorphizing: RefCell::new(DefIdMap()),
                 vtables: RefCell::new(FnvHashMap()),
                 const_cstr_cache: RefCell::new(FnvHashMap()),
                 const_unsized: RefCell::new(FnvHashMap()),
@@ -833,10 +824,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().instances
     }
 
-    pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<usize>> {
-        &self.local().monomorphizing
-    }
-
     pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, ValueRef>> {
         &self.local().vtables
     }
@@ -962,13 +949,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn check_overflow(&self) -> bool {
         self.shared.check_overflow
-    }
-
-    pub fn check_drop_flag_for_sanity(&self) -> bool {
-        // This controls whether we emit a conditional llvm.debugtrap
-        // guarded on whether the dropflag is one of its (two) valid
-        // values.
-        self.shared.check_drop_flag_for_sanity
     }
 
     pub fn use_dll_storage_attrs(&self) -> bool {

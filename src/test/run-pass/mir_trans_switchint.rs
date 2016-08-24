@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
-#[rustc_mir]
 pub fn foo(x: i8) -> i32 {
   match x {
     1 => 0,

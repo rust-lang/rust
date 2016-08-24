@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 use std::marker::PhantomData;
 
 pub trait DataBind {
@@ -26,7 +24,6 @@ pub struct Data {
     pub offsets: <Global<[u32; 2]> as DataBind>::Data,
 }
 
-#[rustc_mir]
 fn create_data() -> Data {
     let mut d = Data { offsets: [1, 2] };
     d.offsets[0] = 3;

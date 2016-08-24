@@ -127,7 +127,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  UnconditionalRecursion,
                  InvalidNoMangleItems,
                  PluginAsLibrary,
-                 DropWithReprExtern,
                  MutableTransmutes,
                  );
 
@@ -218,4 +217,5 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     // This was renamed to raw_pointer_derive, which was then removed,
     // so it is also considered removed
     store.register_removed("raw_pointer_deriving", "using derive with raw pointers is ok");
+    store.register_removed("drop_with_repr_extern", "drop flags have been removed");
 }

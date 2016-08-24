@@ -11,79 +11,17 @@
 use self::InternalDebugLocation::*;
 
 use super::utils::{debug_context, span_start};
-use super::metadata::{scope_metadata,UNKNOWN_COLUMN_NUMBER};
+use super::metadata::{UNKNOWN_COLUMN_NUMBER};
 use super::{FunctionDebugContext, DebugLoc};
 
 use llvm;
 use llvm::debuginfo::DIScope;
 use builder::Builder;
-use common::{NodeIdAndSpan, CrateContext, FunctionContext};
+use common::{CrateContext, FunctionContext};
 
 use libc::c_uint;
 use std::ptr;
-use syntax_pos::{self, Span, Pos};
-use syntax::ast;
-
-pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                                    node_id: ast::NodeId,
-                                                    node_span: Span,
-                                                    is_block: bool)
-                                                 -> NodeIdAndSpan {
-    // A debug location needs two things:
-    // (1) A span (of which only the beginning will actually be used)
-    // (2) An AST node-id which will be used to look up the lexical scope
-    //     for the location in the functions scope-map
-    //
-    // This function will calculate the debug location for compiler-generated
-    // cleanup calls that are executed when control-flow leaves the
-    // scope identified by `node_id`.
-    //
-    // For everything but block-like things we can simply take id and span of
-    // the given expression, meaning that from a debugger's view cleanup code is
-    // executed at the same source location as the statement/expr itself.
-    //
-    // Blocks are a special case. Here we want the cleanup to be linked to the
-    // closing curly brace of the block. The *scope* the cleanup is executed in
-    // is up to debate: It could either still be *within* the block being
-    // cleaned up, meaning that locals from the block are still visible in the
-    // debugger.
-    // Or it could be in the scope that the block is contained in, so any locals
-    // from within the block are already considered out-of-scope and thus not
-    // accessible in the debugger anymore.
-    //
-    // The current implementation opts for the second option: cleanup of a block
-    // already happens in the parent scope of the block. The main reason for
-    // this decision is that scoping becomes controlflow dependent when variable
-    // shadowing is involved and it's impossible to decide statically which
-    // scope is actually left when the cleanup code is executed.
-    // In practice it shouldn't make much of a difference.
-
-    let mut cleanup_span = node_span;
-
-    if is_block {
-        // Not all blocks actually have curly braces (e.g. simple closure
-        // bodies), in which case we also just want to return the span of the
-        // whole expression.
-        let code_snippet = cx.sess().codemap().span_to_snippet(node_span);
-        if let Ok(code_snippet) = code_snippet {
-            let bytes = code_snippet.as_bytes();
-
-            if !bytes.is_empty() && &bytes[bytes.len()-1..] == b"}" {
-                cleanup_span = Span {
-                    lo: node_span.hi - syntax_pos::BytePos(1),
-                    hi: node_span.hi,
-                    expn_id: node_span.expn_id
-                };
-            }
-        }
-    }
-
-    NodeIdAndSpan {
-        id: node_id,
-        span: cleanup_span
-    }
-}
-
+use syntax_pos::Pos;
 
 /// Sets the current debug location at the beginning of the span.
 ///
@@ -109,9 +47,6 @@ pub fn set_source_location(fcx: &FunctionContext,
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
         let (scope, span) = match debug_loc {
-            DebugLoc::At(node_id, span) => {
-                (scope_metadata(fcx, node_id, span), span)
-            }
             DebugLoc::ScopeAt(scope, span) => (scope, span),
             DebugLoc::None => {
                 set_debug_location(fcx.ccx, builder, UnknownLocation);
@@ -127,35 +62,6 @@ pub fn set_source_location(fcx: &FunctionContext,
         UnknownLocation
     };
     set_debug_location(fcx.ccx, builder, dbg_loc);
-}
-
-/// This function makes sure that all debug locations emitted while executing
-/// `wrapped_function` are set to the given `debug_loc`.
-pub fn with_source_location_override<F, R>(fcx: &FunctionContext,
-                                           debug_loc: DebugLoc,
-                                           wrapped_function: F) -> R
-    where F: FnOnce() -> R
-{
-    match fcx.debug_context {
-        FunctionDebugContext::DebugInfoDisabled => {
-            wrapped_function()
-        }
-        FunctionDebugContext::FunctionWithoutDebugInfo => {
-            set_debug_location(fcx.ccx, None, UnknownLocation);
-            wrapped_function()
-        }
-        FunctionDebugContext::RegularContext(box ref function_debug_context) => {
-            if function_debug_context.source_location_override.get() {
-                wrapped_function()
-            } else {
-                debug_loc.apply(fcx);
-                function_debug_context.source_location_override.set(true);
-                let result = wrapped_function();
-                function_debug_context.source_location_override.set(false);
-                result
-            }
-        }
-    }
 }
 
 /// Enables emitting source locations for the given functions.

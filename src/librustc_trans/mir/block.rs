@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
-use rustc_const_eval::ErrKind;
+use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
 use rustc::ty;
 use rustc::mir::repr as mir;
@@ -78,7 +78,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                         debug!("llblock: creating cleanup trampoline for {:?}", target);
                         let name = &format!("{:?}_cleanup_trampoline_{:?}", bb, target);
-                        let trampoline = this.fcx.new_block(name, None).build();
+                        let trampoline = this.fcx.new_block(name).build();
                         trampoline.set_personality_fn(this.fcx.eh_personality());
                         trampoline.cleanup_ret(cp, Some(lltarget));
                         trampoline.llbb()
@@ -291,7 +291,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // Create the failure block and the conditional branch to it.
                 let lltarget = llblock(self, target);
-                let panic_block = self.fcx.new_block("panic", None);
+                let panic_block = self.fcx.new_block("panic");
                 if expected {
                     bcx.cond_br(cond, lltarget, panic_block.llbb);
                 } else {
@@ -354,9 +354,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // is also constant, then we can produce a warning.
                 if const_cond == Some(!expected) {
                     if let Some(err) = const_err {
-                        let _ = consts::const_err(bcx.ccx(), span,
-                                                  Err::<(), _>(err),
-                                                  consts::TrueConst::No);
+                        let err = ConstEvalErr{ span: span, kind: err };
+                        let mut diag = bcx.tcx().sess.struct_span_warn(
+                            span, "this expression will panic at run-time");
+                        note_const_eval_err(bcx.tcx(), &err, span, "expression", &mut diag);
+                        diag.emit();
                     }
                 }
 
@@ -364,7 +366,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let def_id = common::langcall(bcx.tcx(), Some(span), "", lang_item);
                 let callee = Callee::def(bcx.ccx(), def_id,
                     bcx.ccx().empty_substs_for_def_id(def_id));
-                let llfn = callee.reify(bcx.ccx()).val;
+                let llfn = callee.reify(bcx.ccx());
 
                 // Translate the actual panic invoke/call.
                 if let Some(unwind) = cleanup {
@@ -497,28 +499,27 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let fn_ptr = match callee.data {
                     NamedTupleConstructor(_) => {
                         // FIXME translate this like mir::Rvalue::Aggregate.
-                        callee.reify(bcx.ccx()).val
+                        callee.reify(bcx.ccx())
                     }
                     Intrinsic => {
-                        use callee::ArgVals;
-                        use expr::{Ignore, SaveIn};
                         use intrinsic::trans_intrinsic_call;
 
                         let (dest, llargs) = match ret_dest {
                             _ if fn_ty.ret.is_indirect() => {
-                                (SaveIn(llargs[0]), &llargs[1..])
+                                (llargs[0], &llargs[1..])
                             }
-                            ReturnDest::Nothing => (Ignore, &llargs[..]),
+                            ReturnDest::Nothing => {
+                                (C_undef(fn_ty.ret.original_ty.ptr_to()), &llargs[..])
+                            }
                             ReturnDest::IndirectOperand(dst, _) |
-                            ReturnDest::Store(dst) => (SaveIn(dst), &llargs[..]),
+                            ReturnDest::Store(dst) => (dst, &llargs[..]),
                             ReturnDest::DirectOperand(_) =>
                                 bug!("Cannot use direct operand with an intrinsic call")
                         };
 
                         bcx.with_block(|bcx| {
                             trans_intrinsic_call(bcx, callee.ty, &fn_ty,
-                                                           ArgVals(llargs), dest,
-                                                           debug_loc);
+                                                 &llargs, dest, debug_loc);
                         });
 
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
@@ -766,7 +767,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         let target = self.bcx(target_bb);
 
-        let block = self.fcx.new_block("cleanup", None);
+        let block = self.fcx.new_block("cleanup");
         self.landing_pads[target_bb] = Some(block);
 
         let bcx = block.build();
@@ -809,7 +810,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     fn unreachable_block(&mut self) -> Block<'bcx, 'tcx> {
         self.unreachable_block.unwrap_or_else(|| {
-            let bl = self.fcx.new_block("unreachable", None);
+            let bl = self.fcx.new_block("unreachable");
             bl.build().unreachable();
             self.unreachable_block = Some(bl);
             bl
@@ -878,10 +879,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             if out_type_size != 0 {
                 // FIXME #19925 Remove this hack after a release cycle.
                 let f = Callee::def(bcx.ccx(), def_id, substs);
-                let datum = f.reify(bcx.ccx());
+                let ty = match f.ty.sty {
+                    ty::TyFnDef(_, _, f) => bcx.tcx().mk_fn_ptr(f),
+                    _ => f.ty
+                };
                 val = OperandRef {
-                    val: Immediate(datum.val),
-                    ty: datum.ty
+                    val: Immediate(f.reify(bcx.ccx())),
+                    ty: ty
                 };
             }
         }

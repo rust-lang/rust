@@ -145,7 +145,7 @@ impl<'tcx> LocalRef<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
-    let bcx = fcx.init(false, None).build();
+    let bcx = fcx.init(true).build();
     let mir = bcx.mir();
 
     // Analyze the temps to determine which must be lvalues
@@ -207,9 +207,9 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let block_bcxs: IndexVec<mir::BasicBlock, Block<'blk,'tcx>> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK {
-                fcx.new_block("start", None)
+                fcx.new_block("start")
             } else {
-                fcx.new_block(&format!("{:?}", bb), None)
+                fcx.new_block(&format!("{:?}", bb))
             }
         }).collect();
 

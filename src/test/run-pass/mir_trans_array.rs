@@ -7,9 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
 
-#[rustc_mir]
 fn into_inner() -> [u64; 1024] {
     let mut x = 10 + 20;
     [x; 1024]

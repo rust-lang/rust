@@ -10,7 +10,7 @@
 
 // Utility Functions.
 
-use super::{FunctionDebugContext, CrateDebugContext};
+use super::{CrateDebugContext};
 use super::namespace::item_namespace;
 
 use rustc::hir::def_id::DefId;
@@ -18,7 +18,7 @@ use rustc::hir::def_id::DefId;
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor, DIArray};
 use machine;
-use common::{CrateContext, FunctionContext};
+use common::{CrateContext};
 use type_::Type;
 
 use syntax_pos::{self, Span};
@@ -68,13 +68,6 @@ pub fn debug_context<'a, 'tcx>(cx: &'a CrateContext<'a, 'tcx>)
 #[allow(non_snake_case)]
 pub fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx().as_ref().unwrap().builder
-}
-
-pub fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
-    match fcx.debug_context {
-        FunctionDebugContext::RegularContext(_) => false,
-        _ => true
-    }
 }
 
 pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
