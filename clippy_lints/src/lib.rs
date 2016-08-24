@@ -10,7 +10,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(type_macros)]
 
-#![allow(indexing_slicing, shadow_reuse, unknown_lints)]
+#![allow(indexing_slicing, shadow_reuse, unknown_lints, missing_docs_in_private_items)]
 
 #[macro_use]
 extern crate syntax;
@@ -96,6 +96,7 @@ pub mod methods;
 pub mod minmax;
 pub mod misc;
 pub mod misc_early;
+pub mod missing_doc;
 pub mod module_inception;
 pub mod mut_mut;
 pub mod mut_reference;
@@ -260,6 +261,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box assign_ops::AssignOps);
     reg.register_late_lint_pass(box let_if_seq::LetIfSeq);
     reg.register_late_lint_pass(box eval_order_dependence::EvalOrderDependence);
+    reg.register_late_lint_pass(box missing_doc::MissingDoc::new());
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -282,6 +284,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::WRONG_PUB_SELF_CONVENTION,
         misc::USED_UNDERSCORE_BINDING,
         misc_early::UNSEPARATED_LITERAL_SUFFIX,
+        missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
         mut_mut::MUT_MUT,
         mutex_atomic::MUTEX_INTEGER,
         non_expressive_names::SIMILAR_NAMES,
@@ -387,6 +390,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc_early::MIXED_CASE_HEX_LITERALS,
         misc_early::REDUNDANT_CLOSURE_CALL,
         misc_early::UNNEEDED_FIELD_PATTERN,
+        misc_early::ZERO_PREFIXED_LITERAL,
         module_inception::MODULE_INCEPTION,
         mut_reference::UNNECESSARY_MUT_PASSED,
         mutex_atomic::MUTEX_ATOMIC,

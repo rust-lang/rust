@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 167 lints included in this crate:
+There are 169 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -100,6 +100,7 @@ name                                                                            
 [mem_forget](https://github.com/Manishearth/rust-clippy/wiki#mem_forget)                                             | allow   | `mem::forget` usage on `Drop` types, likely to cause memory leaks
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                                   | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [misrefactored_assign_op](https://github.com/Manishearth/rust-clippy/wiki#misrefactored_assign_op)                   | warn    | having a variable on both sides of an assign op
+[missing_docs_in_private_items](https://github.com/Manishearth/rust-clippy/wiki#missing_docs_in_private_items)       | allow   | detects missing documentation for public and private members
 [mixed_case_hex_literals](https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals)                   | warn    | hex literals whose letter digits are not consistently upper- or lowercased
 [module_inception](https://github.com/Manishearth/rust-clippy/wiki#module_inception)                                 | warn    | modules that have the same name as their parent module
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                                             | warn    | taking a number modulo 1, which always returns 0
@@ -187,6 +188,7 @@ name                                                                            
 [wrong_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_self_convention)                       | warn    | defining a method named with an established prefix (like "into_") that takes `self` with the wrong convention
 [wrong_transmute](https://github.com/Manishearth/rust-clippy/wiki#wrong_transmute)                                   | warn    | transmutes that are confusing at best, undefined behaviour at worst and always useless
 [zero_divided_by_zero](https://github.com/Manishearth/rust-clippy/wiki#zero_divided_by_zero)                         | warn    | usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN
+[zero_prefixed_literal](https://github.com/Manishearth/rust-clippy/wiki#zero_prefixed_literal)                       | warn    | integer literals starting with `0`
 [zero_width_space](https://github.com/Manishearth/rust-clippy/wiki#zero_width_space)                                 | deny    | using a zero-width space in a string literal, which is confusing
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!

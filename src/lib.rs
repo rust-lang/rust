@@ -2,6 +2,7 @@
 #![feature(plugin_registrar)]
 #![feature(rustc_private)]
 #![allow(unknown_lints)]
+#![allow(missing_docs_in_private_items)]
 
 extern crate rustc_plugin;
 use rustc_plugin::Registry;

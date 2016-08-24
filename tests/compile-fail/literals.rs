@@ -2,6 +2,7 @@
 #![plugin(clippy)]
 #![deny(mixed_case_hex_literals)]
 #![deny(unseparated_literal_suffix)]
+#![deny(zero_prefixed_literal)]
 #![allow(dead_code)]
 
 fn main() {
@@ -22,4 +23,13 @@ fn main() {
     let fail5 = 1234isize;    //~ERROR integer type suffix should be separated
     let fail6 = 1234usize;    //~ERROR integer type suffix should be separated
     let fail7 = 1.5f32;       //~ERROR float type suffix should be separated
+
+    let ok9 = 0;
+    let ok10 = 0_i64;
+    let fail8 = 0123;
+    //~^ERROR decimal constant
+    //~|HELP remove the `0`
+    //~|SUGGESTION = 123;
+    //~|HELP use `0o`
+    //~|SUGGESTION = 0o123;
 }
