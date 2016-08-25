@@ -22,7 +22,7 @@ use context::SharedCrateContext;
 use session::Session;
 
 use llvm::{self, ValueRef};
-use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
+use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType, DILexicalBlock};
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
@@ -1837,5 +1837,19 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                                     is_local_to_unit,
                                                     global,
                                                     ptr::null_mut());
+    }
+}
+
+// Creates an "extension" of an existing DIScope into another file.
+pub fn extend_scope_to_file(ccx: &CrateContext,
+                            scope_metadata: DIScope,
+                            file: &syntax_pos::FileMap)
+                            -> DILexicalBlock {
+    let file_metadata = file_metadata(ccx, &file.name, &file.abs_path);
+    unsafe {
+        llvm::LLVMRustDIBuilderCreateLexicalBlockFile(
+            DIB(ccx),
+            scope_metadata,
+            file_metadata)
     }
 }

@@ -25,11 +25,33 @@ use syntax_pos::Pos;
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
+use syntax_pos::BytePos;
+
+#[derive(Clone, Copy, Debug)]
+pub struct MirDebugScope {
+    pub scope_metadata: DIScope,
+    // Start and end offsets of the file to which this DIScope belongs.
+    // These are used to quickly determine whether some span refers to the same file.
+    pub file_start_pos: BytePos,
+    pub file_end_pos: BytePos,
+}
+
+impl MirDebugScope {
+    pub fn is_valid(&self) -> bool {
+        !self.scope_metadata.is_null()
+    }
+}
+
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
-pub fn create_mir_scopes(fcx: &FunctionContext) -> IndexVec<VisibilityScope, DIScope> {
+pub fn create_mir_scopes(fcx: &FunctionContext) -> IndexVec<VisibilityScope, MirDebugScope> {
     let mir = fcx.mir.clone().expect("create_mir_scopes: missing MIR for fn");
-    let mut scopes = IndexVec::from_elem(ptr::null_mut(), &mir.visibility_scopes);
+    let null_scope = MirDebugScope {
+        scope_metadata: ptr::null_mut(),
+        file_start_pos: BytePos(0),
+        file_end_pos: BytePos(0)
+    };
+    let mut scopes = IndexVec::from_elem(null_scope, &mir.visibility_scopes);
 
     let fn_metadata = match fcx.debug_context {
         FunctionDebugContext::RegularContext(box ref data) => data.fn_metadata,
@@ -59,8 +81,8 @@ fn make_mir_scope(ccx: &CrateContext,
                   has_variables: &BitVector,
                   fn_metadata: DISubprogram,
                   scope: VisibilityScope,
-                  scopes: &mut IndexVec<VisibilityScope, DIScope>) {
-    if !scopes[scope].is_null() {
+                  scopes: &mut IndexVec<VisibilityScope, MirDebugScope>) {
+    if scopes[scope].is_valid() {
         return;
     }
 
@@ -70,7 +92,12 @@ fn make_mir_scope(ccx: &CrateContext,
         scopes[parent]
     } else {
         // The root is the function itself.
-        scopes[scope] = fn_metadata;
+        let loc = span_start(ccx, mir.span);
+        scopes[scope] = MirDebugScope {
+            scope_metadata: fn_metadata,
+            file_start_pos: loc.file.start_pos,
+            file_end_pos: loc.file.end_pos,
+        };
         return;
     };
 
@@ -81,20 +108,25 @@ fn make_mir_scope(ccx: &CrateContext,
         // However, we don't skip creating a nested scope if
         // our parent is the root, because we might want to
         // put arguments in the root and not have shadowing.
-        if parent_scope != fn_metadata {
+        if parent_scope.scope_metadata != fn_metadata {
             scopes[scope] = parent_scope;
             return;
         }
     }
 
     let loc = span_start(ccx, scope_data.span);
-    scopes[scope] = unsafe {
     let file_metadata = file_metadata(ccx, &loc.file.name, &loc.file.abs_path);
+    let scope_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateLexicalBlock(
             DIB(ccx),
-            parent_scope,
+            parent_scope.scope_metadata,
             file_metadata,
             loc.line as c_uint,
             loc.col.to_usize() as c_uint)
+    };
+    scopes[scope] = MirDebugScope {
+        scope_metadata: scope_metadata,
+        file_start_pos: loc.file.start_pos,
+        file_end_pos: loc.file.end_pos,
     };
 }
