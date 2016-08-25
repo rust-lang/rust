@@ -1247,7 +1247,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         obligation: &TraitObligation<'tcx>,
                         trait_bound: ty::PolyTraitRef<'tcx>,
                         skol_trait_ref: ty::TraitRef<'tcx>,
-                        skol_map: &infer::SkolemizationMap,
+                        skol_map: &infer::SkolemizationMap<'tcx>,
                         snapshot: &infer::CombinedSnapshot)
                         -> bool
     {
@@ -2264,7 +2264,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                    mut substs: Normalized<'tcx, &'tcx Substs<'tcx>>,
                    cause: ObligationCause<'tcx>,
                    recursion_depth: usize,
-                   skol_map: infer::SkolemizationMap,
+                   skol_map: infer::SkolemizationMap<'tcx>,
                    snapshot: &infer::CombinedSnapshot)
                    -> VtableImplData<'tcx, PredicateObligation<'tcx>>
     {
@@ -2662,7 +2662,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     impl_def_id: DefId,
                     obligation: &TraitObligation<'tcx>,
                     snapshot: &infer::CombinedSnapshot)
-                    -> (Normalized<'tcx, &'tcx Substs<'tcx>>, infer::SkolemizationMap)
+                    -> (Normalized<'tcx, &'tcx Substs<'tcx>>,
+                        infer::SkolemizationMap<'tcx>)
     {
         match self.match_impl(impl_def_id, obligation, snapshot) {
             Ok((substs, skol_map)) => (substs, skol_map),
@@ -2679,7 +2680,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                   obligation: &TraitObligation<'tcx>,
                   snapshot: &infer::CombinedSnapshot)
                   -> Result<(Normalized<'tcx, &'tcx Substs<'tcx>>,
-                             infer::SkolemizationMap), ()>
+                             infer::SkolemizationMap<'tcx>), ()>
     {
         let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
 
@@ -2872,7 +2873,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                  recursion_depth: usize,
                                  def_id: DefId, // of impl or trait
                                  substs: &Substs<'tcx>, // for impl or trait
-                                 skol_map: infer::SkolemizationMap,
+                                 skol_map: infer::SkolemizationMap<'tcx>,
                                  snapshot: &infer::CombinedSnapshot)
                                  -> Vec<PredicateObligation<'tcx>>
     {

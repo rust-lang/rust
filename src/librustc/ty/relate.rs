@@ -71,8 +71,8 @@ pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>)
            -> RelateResult<'tcx, Ty<'tcx>>;
 
-    fn regions(&mut self, a: ty::Region, b: ty::Region)
-               -> RelateResult<'tcx, ty::Region>;
+    fn regions(&mut self, a: &'tcx ty::Region, b: &'tcx ty::Region)
+               -> RelateResult<'tcx, &'tcx ty::Region>;
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
@@ -471,9 +471,9 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
 
         (&ty::TyRef(a_r, ref a_mt), &ty::TyRef(b_r, ref b_mt)) =>
         {
-            let r = relation.relate_with_variance(ty::Contravariant, a_r, b_r)?;
+            let r = relation.relate_with_variance(ty::Contravariant, &a_r, &b_r)?;
             let mt = relation.relate(a_mt, b_mt)?;
-            Ok(tcx.mk_ref(tcx.mk_region(r), mt))
+            Ok(tcx.mk_ref(r, mt))
         }
 
         (&ty::TyArray(a_t, sz_a), &ty::TyArray(b_t, sz_b)) =>
@@ -569,11 +569,11 @@ impl<'tcx> Relate<'tcx> for &'tcx Substs<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::Region {
+impl<'tcx> Relate<'tcx> for &'tcx ty::Region {
     fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &ty::Region,
-                           b: &ty::Region)
-                           -> RelateResult<'tcx, ty::Region>
+                           a: &&'tcx ty::Region,
+                           b: &&'tcx ty::Region)
+                           -> RelateResult<'tcx, &'tcx ty::Region>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
         relation.regions(*a, *b)

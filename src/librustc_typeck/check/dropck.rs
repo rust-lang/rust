@@ -412,7 +412,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
                ty);
 
         cx.rcx.type_must_outlive(infer::SubregionOrigin::SafeDestructor(cx.span),
-                                 ty, ty::ReScope(cx.parent_scope));
+                                 ty, tcx.mk_region(ty::ReScope(cx.parent_scope)));
 
         return Ok(());
     }

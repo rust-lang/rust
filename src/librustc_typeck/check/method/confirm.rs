@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     {
         let (autoref, unsize) = if let Some(mutbl) = pick.autoref {
             let region = self.next_region_var(infer::Autoref(self.span));
-            let autoref = AutoPtr(self.tcx.mk_region(region), mutbl);
+            let autoref = AutoPtr(region, mutbl);
             (Some(autoref), pick.unsize.map(|target| {
                 target.adjust_for_autoref(self.tcx, Some(autoref))
             }))

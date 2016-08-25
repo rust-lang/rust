@@ -336,7 +336,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 if r_borrow_var.is_none() { // create var lazilly, at most once
                     let coercion = Coercion(span);
                     let r = self.next_region_var(coercion);
-                    r_borrow_var = Some(self.tcx.mk_region(r)); // [4] above
+                    r_borrow_var = Some(r); // [4] above
                 }
                 r_borrow_var.unwrap()
             };
@@ -436,8 +436,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
                 let coercion = Coercion(self.origin.span());
                 let r_borrow = self.next_region_var(coercion);
-                let region = self.tcx.mk_region(r_borrow);
-                (mt_a.ty, Some(AutoPtr(region, mt_b.mutbl)))
+                (mt_a.ty, Some(AutoPtr(r_borrow, mt_b.mutbl)))
             }
             (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) => {
                 coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;

@@ -278,7 +278,7 @@ struct Binding<'tcx> {
     var_id: NodeId,
     var_ty: Ty<'tcx>,
     mutability: Mutability,
-    binding_mode: BindingMode,
+    binding_mode: BindingMode<'tcx>,
 }
 
 #[derive(Clone, Debug)]

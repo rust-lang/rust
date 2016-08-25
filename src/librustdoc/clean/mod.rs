@@ -821,7 +821,7 @@ impl Clean<Lifetime> for hir::LifetimeDef {
     }
 }
 
-impl Clean<Lifetime> for ty::RegionParameterDef {
+impl<'tcx> Clean<Lifetime> for ty::RegionParameterDef<'tcx> {
     fn clean(&self, _: &DocContext) -> Lifetime {
         Lifetime(self.name.to_string())
     }
@@ -913,7 +913,7 @@ impl<'tcx> Clean<WherePredicate> for ty::EquatePredicate<'tcx> {
     }
 }
 
-impl Clean<WherePredicate> for ty::OutlivesPredicate<ty::Region, ty::Region> {
+impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<&'tcx ty::Region, &'tcx ty::Region> {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
         let ty::OutlivesPredicate(ref a, ref b) = *self;
         WherePredicate::RegionPredicate {
@@ -923,7 +923,7 @@ impl Clean<WherePredicate> for ty::OutlivesPredicate<ty::Region, ty::Region> {
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Ty<'tcx>, ty::Region> {
+impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Ty<'tcx>, &'tcx ty::Region> {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 

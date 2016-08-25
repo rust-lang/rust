@@ -207,8 +207,8 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    pub fn parse_region(&mut self) -> ty::Region {
-        match self.next() {
+    pub fn parse_region(&mut self) -> &'tcx ty::Region {
+        self.tcx.mk_region(match self.next() {
             'b' => {
                 assert_eq!(self.next(), '[');
                 let id = ty::DebruijnIndex::new(self.parse_u32());
@@ -245,7 +245,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             'e' => ty::ReEmpty,
             'E' => ty::ReErased,
             _ => bug!("parse_region: bad input")
-        }
+        })
     }
 
     fn parse_scope(&mut self) -> region::CodeExtent {
@@ -403,9 +403,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             '~' => return tcx.mk_box(self.parse_ty()),
             '*' => return tcx.mk_ptr(self.parse_mt()),
             '&' => {
-                let r = self.parse_region();
-                let mt = self.parse_mt();
-                return tcx.mk_ref(tcx.mk_region(r), mt);
+                return tcx.mk_ref(self.parse_region(), self.parse_mt());
             }
             'V' => {
                 let t = self.parse_ty();
@@ -657,7 +655,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    fn parse_region_param_def(&mut self) -> ty::RegionParameterDef {
+    fn parse_region_param_def(&mut self) -> ty::RegionParameterDef<'tcx> {
         let name = self.parse_name(':');
         let def_id = self.parse_def();
         let index = self.parse_u32();
@@ -681,7 +679,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
 
-    fn parse_object_lifetime_default(&mut self) -> ty::ObjectLifetimeDefault {
+    fn parse_object_lifetime_default(&mut self) -> ty::ObjectLifetimeDefault<'tcx> {
         match self.next() {
             'a' => ty::ObjectLifetimeDefault::Ambiguous,
             'b' => ty::ObjectLifetimeDefault::BaseDefault,

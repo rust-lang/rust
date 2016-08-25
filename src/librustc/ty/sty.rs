@@ -294,7 +294,7 @@ impl<'tcx> Decodable for ClosureSubsts<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TraitObject<'tcx> {
     pub principal: PolyExistentialTraitRef<'tcx>,
-    pub region_bound: ty::Region,
+    pub region_bound: &'tcx ty::Region,
     pub builtin_bounds: BuiltinBounds,
     pub projection_bounds: Vec<PolyExistentialProjection<'tcx>>,
 }
@@ -674,6 +674,15 @@ pub enum Region {
 
     /// Erased region, used by trait selection, in MIR and during trans.
     ReErased,
+}
+
+impl<'tcx> Decodable for &'tcx Region {
+    fn decode<D: Decoder>(d: &mut D) -> Result<&'tcx Region, D::Error> {
+        let r = Decodable::decode(d)?;
+        cstore::tls::with_decoding_context(d, |dcx, _| {
+            Ok(dcx.tcx().mk_region(r))
+        })
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -1207,10 +1216,10 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Returns the regions directly referenced from this type (but
     /// not types reachable from this type via `walk_tys`). This
     /// ignores late-bound regions binders.
-    pub fn regions(&self) -> Vec<ty::Region> {
+    pub fn regions(&self) -> Vec<&'tcx ty::Region> {
         match self.sty {
             TyRef(region, _) => {
-                vec![*region]
+                vec![region]
             }
             TyTrait(ref obj) => {
                 let mut v = vec![obj.region_bound];

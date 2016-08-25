@@ -483,9 +483,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// context with ambient variance `variance`
     fn add_constraints_from_region(&mut self,
                                    generics: &ty::Generics<'tcx>,
-                                   region: ty::Region,
+                                   region: &'tcx ty::Region,
                                    variance: VarianceTermPtr<'a>) {
-        match region {
+        match *region {
             ty::ReEarlyBound(ref data) => {
                 assert_eq!(generics.parent, None);
                 assert!((data.index as usize) < generics.regions.len());

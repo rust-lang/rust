@@ -133,7 +133,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         ty::TyRawPtr(mt) => { write!(w, "*"); enc_mt(w, cx, mt); }
         ty::TyRef(r, mt) => {
             write!(w, "&");
-            enc_region(w, cx, *r);
+            enc_region(w, cx, r);
             enc_mt(w, cx, mt);
         }
         ty::TyArray(t, sz) => {
@@ -286,8 +286,8 @@ pub fn enc_generics<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     }
 }
 
-pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: ty::Region) {
-    match r {
+pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: &ty::Region) {
+    match *r {
         ty::ReLateBound(id, br) => {
             write!(w, "b[{}|", id.depth);
             enc_bound_region(w, cx, br);

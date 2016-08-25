@@ -106,7 +106,8 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         }
     }
 
-    fn regions(&mut self, a: ty::Region, _: ty::Region) -> RelateResult<'tcx, ty::Region> {
+    fn regions(&mut self, a: &'tcx ty::Region, _: &'tcx ty::Region)
+               -> RelateResult<'tcx, &'tcx ty::Region> {
         Ok(a)
     }
 
