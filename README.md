@@ -65,6 +65,7 @@ diff, replace, overwrite, display, coverage, and checkstyle.
 * `overwrite` Overwrites the original files _without_ creating backups.
 * `display` Will print the formatted files to stdout.
 * `diff` Will print a diff between the original files and formatted files to stdout.
+         Will also exit with an error code if there are any differences.
 * `checkstyle` Will output the lines that need to be corrected as a checkstyle XML file,
   that can be used by tools like Jenkins.
 
@@ -110,6 +111,28 @@ You can run `rustfmt --help` for more information.
 * [Sublime Text 3](https://packagecontrol.io/packages/BeautifyRust)
 * [Atom](atom.md)
 * Visual Studio Code using [RustyCode](https://github.com/saviorisdead/RustyCode) or [vsc-rustfmt](https://github.com/Connorcpu/vsc-rustfmt)
+
+## Checking style on a CI server
+
+To keep your code base consistently formatted, it can be helpful to fail the CI build
+when a pull request contains unformatted code. Using `--write-mode=diff` instructs
+rustfmt to exit with an error code if the input is not formatted correctly.
+It will also print any found differences.
+
+A minimal Travis setup could look like this:
+
+```yaml
+language: rust
+cache: cargo
+before_script: (cargo install rustfmt || true)
+script:
+- |
+  cargo fmt -- --write-mode=diff &&
+  cargo build &&
+  cargo test
+```
+
+Note that using `cache: cargo` is optional but highly recommended to speed up the installation.
 
 ## How to build and test
 
