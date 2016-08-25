@@ -601,7 +601,7 @@ pub trait LintContext: Sized {
             for (lint_id, level, span) in v {
                 let (now, now_source) = self.lints().get_level_source(lint_id);
                 if now == Forbid && level != Forbid {
-                    let lint_name = lint_id.as_str();
+                    let lint_name = lint_id.to_string();
                     let mut diag_builder = struct_span_err!(self.sess(), span, E0453,
                                                             "{}({}) overruled by outer forbid({})",
                                                             level.as_str(), lint_name,
@@ -1216,7 +1216,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         for &(lint, span, ref msg) in v {
             span_bug!(span,
                       "unprocessed lint {} at {}: {}",
-                      lint.as_str(), tcx.map.node_to_string(*id), *msg)
+                      lint.to_string(), tcx.map.node_to_string(*id), *msg)
         }
     }
 
@@ -1252,7 +1252,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // in the iteration code.
     for (_, v) in sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v {
-            span_bug!(span, "unprocessed lint {}: {}", lint.as_str(), *msg)
+            span_bug!(span, "unprocessed lint {}: {}", lint.to_string(), *msg)
         }
     }
 }
