@@ -213,9 +213,9 @@ impl Utf8Error {
 /// use std::str;
 ///
 /// // some invalid bytes, in a vector
-/// let sparkle_heart = vec![0, 159, 146, 150];
+/// let invalid_bytes = vec![0, 159, 146, 150];
 ///
-/// assert!(str::from_utf8(&sparkle_heart).is_err());
+/// assert!(str::from_utf8(&invalid_bytes).is_err());
 /// ```
 ///
 /// See the docs for [`Utf8Error`][error] for more details on the kinds of
@@ -306,11 +306,11 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 /// use std::str;
 ///
 /// // some invalid bytes, in a vector
-/// let sparkle_heart = vec![0, 159, 146, 150];
+/// let invalid_bytes = vec![0, 159, 146, 150];
 ///
 /// unsafe {
-///     let invalid_str = str::from_utf8_unchecked(&sparkle_heart);
-///     // prints undefined garbage to stdout
+///     let invalid_str = str::from_utf8_unchecked(&invalid_bytes);
+///     // prints unknown garbage to stdout
 ///     println!("{}", invalid_str);
 /// }
 /// ```
