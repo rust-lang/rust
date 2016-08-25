@@ -550,7 +550,7 @@ impl Sub for BytePos {
 
     fn sub(self, rhs: BytePos) -> BytePos {
         let new_pos = self.to_usize().saturating_sub(rhs.to_usize());
-        BytePos(new_post as u32)
+        BytePos(new_pos as u32)
     }
 }
 
