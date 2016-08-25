@@ -752,25 +752,81 @@ pub struct InvalidSequence(());
 impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
     type Item = Result<char, InvalidSequence>;
     #[inline]
+
     fn next(&mut self) -> Option<Result<char, InvalidSequence>> {
-        self.0.next().map(|b| {
-            if b & 0x80 == 0 { Ok(b as char) } else {
-                let l = (!b).leading_zeros() as usize; // number of bytes in UTF-8 representation
-                if l < 2 || l > 6 { return Err(InvalidSequence(())) };
-                let mut x = (b as u32) & (0x7F >> l);
-                for _ in 0..l-1 {
+        self.0.next().map(|first_byte| {
+            // Emit InvalidSequence according to
+            // Unicode §5.22 Best Practice for U+FFFD Substitution
+            // http://www.unicode.org/versions/Unicode9.0.0/ch05.pdf#G40630
+
+            // Roughly: consume at least one byte,
+            // then validate one byte at a time and stop before the first unexpected byte
+            // (which might be the valid start of the next byte sequence).
+
+            let mut code_point;
+            macro_rules! first_byte {
+                ($mask: expr) => {
+                    code_point = u32::from(first_byte & $mask)
+                }
+            }
+            macro_rules! continuation_byte {
+                () => { continuation_byte!(0x80...0xBF) };
+                ($range: pat) => {
                     match self.0.peek() {
-                        Some(&b) if b & 0xC0 == 0x80 => {
+                        Some(&byte @ $range) => {
+                            code_point = (code_point << 6) | u32::from(byte & 0b0011_1111);
                             self.0.next();
-                            x = (x << 6) | (b as u32) & 0x3F;
-                        },
-                        _ => return Err(InvalidSequence(())),
+                        }
+                        _ => return Err(InvalidSequence(()))
                     }
                 }
-                match from_u32(x) {
-                    Some(x) if l == x.len_utf8() => Ok(x),
-                    _ => Err(InvalidSequence(())),
+            }
+
+            match first_byte {
+                0x00...0x7F => {
+                    first_byte!(0b1111_1111);
                 }
+                0xC2...0xDF => {
+                    first_byte!(0b0001_1111);
+                    continuation_byte!();
+                }
+                0xE0 => {
+                    first_byte!(0b0000_1111);
+                    continuation_byte!(0xA0...0xBF);  // 0x80...0x9F here are overlong
+                    continuation_byte!();
+                }
+                0xE1...0xEC | 0xEE...0xEF => {
+                    first_byte!(0b0000_1111);
+                    continuation_byte!();
+                    continuation_byte!();
+                }
+                0xED => {
+                    first_byte!(0b0000_1111);
+                    continuation_byte!(0x80...0x9F);  // 0xA0..0xBF here are surrogates
+                    continuation_byte!();
+                }
+                0xF0 => {
+                    first_byte!(0b0000_0111);
+                    continuation_byte!(0x90...0xBF);  // 0x80..0x8F here are overlong
+                    continuation_byte!();
+                    continuation_byte!();
+                }
+                0xF1...0xF3 => {
+                    first_byte!(0b0000_0111);
+                    continuation_byte!();
+                    continuation_byte!();
+                    continuation_byte!();
+                }
+                0xF4 => {
+                    first_byte!(0b0000_0111);
+                    continuation_byte!(0x80...0x8F);  // 0x90..0xBF here are beyond char::MAX
+                    continuation_byte!();
+                    continuation_byte!();
+                }
+                _ => return Err(InvalidSequence(()))  // Illegal first byte, overlong, or beyond MAX
+            }
+            unsafe {
+                Ok(from_u32_unchecked(code_point))
             }
         })
     }
