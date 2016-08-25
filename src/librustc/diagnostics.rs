@@ -1527,6 +1527,37 @@ fn main() {
 ```
 "##,
 
+E0478: r##"
+A lifetime bound was not satisfied.
+
+Erroneous code example:
+
+```compile_fail,E0478
+// Check that the explicit lifetime bound (`'SnowWhite`, in this example) must
+// outlive all the superbounds from the trait (`'kiss`, in this example).
+
+trait Wedding<'t>: 't { }
+
+struct Prince<'kiss, 'SnowWhite> {
+    child: Box<Wedding<'kiss> + 'SnowWhite>,
+    // error: lifetime bound not satisfied
+}
+```
+
+In this example, the `'SnowWhite` lifetime is supposed to outlive the `'kiss`
+lifetime but the declaration of the `Prince` struct doesn't enforce it. To fix
+this issue, you need to specify it:
+
+```
+trait Wedding<'t>: 't { }
+
+struct Prince<'kiss, 'SnowWhite: 'kiss> { // You say here that 'kiss must live
+                                          // longer than 'SnowWhite.
+    child: Box<Wedding<'kiss> + 'SnowWhite>, // And now it's all good!
+}
+```
+"##,
+
 E0496: r##"
 A lifetime name is shadowing another lifetime name. Erroneous code example:
 
@@ -1715,7 +1746,6 @@ register_diagnostics! {
     E0475, // index of slice outside its lifetime
     E0476, // lifetime of the source pointer does not outlive lifetime bound...
     E0477, // the type `..` does not fulfill the required lifetime...
-    E0478, // lifetime bound not satisfied
     E0479, // the type `..` (provided as the value of a type parameter) is...
     E0480, // lifetime of method receiver does not outlive the method call
     E0481, // lifetime of function argument does not outlive the function call

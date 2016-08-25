@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "")] extern {}
-//~^ ERROR E0454
-//~| NOTE empty name given
+struct Foo {
+    a: u32
+}
+
+impl Drop for Foo {
+    fn drop(&mut self) {}
+}
+
+const F : Foo = Foo { a : 0 }; //~ ERROR E0493
 
 fn main() {
 }

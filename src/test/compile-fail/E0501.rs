@@ -8,9 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "")] extern {}
-//~^ ERROR E0454
-//~| NOTE empty name given
+fn inside_closure(x: &mut i32) {
+}
+
+fn outside_closure(x: &mut i32) {
+}
+
+fn foo(a: &mut i32) {
+    let bar = || {
+        inside_closure(a)
+    };
+    outside_closure(a); //~ ERROR E0501
+}
 
 fn main() {
 }
