@@ -1454,6 +1454,22 @@ extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
 
 extern "C" void LLVMRustSetLinkage(LLVMValueRef V, LLVMRustLinkage RustLinkage) {
     LLVMSetLinkage(V, from_rust(RustLinkage));
+
+// Returns true if both high and low were successfully set. Fails in case constant wasn’t any of
+// the common sizes (1, 8, 16, 32, 64, 128 bits)
+extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *high, uint64_t *low)
+{
+    auto C = unwrap<llvm::ConstantInt>(CV);
+    if (C->getBitWidth() > 128) { return false; }
+    APInt AP;
+    if (sext) {
+        AP = C->getValue().sextOrSelf(128);
+    } else {
+        AP = C->getValue().zextOrSelf(128);
+    }
+    *low = AP.getLoBits(64).getZExtValue();
+    *high = AP.getHiBits(64).getZExtValue();
+    return true;
 }
 
 extern "C" LLVMContextRef LLVMRustGetValueContext(LLVMValueRef V) {
