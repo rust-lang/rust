@@ -269,7 +269,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
                 let cond = self.trans_operand(&bcx, cond).immediate();
-                let mut const_cond = common::const_to_opt_uint(cond).map(|c| c == 1);
+                let mut const_cond = common::const_to_opt_u128(cond, false).map(|c| c == 1);
 
                 // This case can currently arise only from functions marked
                 // with #[rustc_inherit_overflow_checks] and inlined from
@@ -322,14 +322,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let len = self.trans_operand(&mut bcx, len).immediate();
                         let index = self.trans_operand(&mut bcx, index).immediate();
 
-                        let const_err = common::const_to_opt_uint(len).and_then(|len| {
-                            common::const_to_opt_uint(index).map(|index| {
-                                ErrKind::IndexOutOfBounds {
-                                    len: len,
-                                    index: index
-                                }
-                            })
-                        });
+                        let const_err = common::const_to_opt_u128(len, false)
+                            .and_then(|len| common::const_to_opt_u128(index, false)
+                                .map(|index| ErrKind::IndexOutOfBounds {
+                                    len: len as u64,
+                                    index: index as u64
+                                }));
 
                         let file_line = C_struct(bcx.ccx, &[filename, line], false);
                         let align = llalign_of_min(bcx.ccx, common::val_ty(file_line));
