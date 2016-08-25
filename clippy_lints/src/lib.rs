@@ -176,8 +176,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box booleans::NonminimalBool);
     reg.register_early_lint_pass(box module_inception::Pass);
-    reg.register_late_lint_pass(box misc::TopLevelRefPass);
-    reg.register_late_lint_pass(box misc::CmpNan);
     reg.register_late_lint_pass(box eq_op::EqOp);
     reg.register_early_lint_pass(box enum_variants::EnumVariantNames::new(conf.enum_variant_name_threshold));
     reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
@@ -187,7 +185,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
     reg.register_late_lint_pass(box needless_bool::BoolComparison);
     reg.register_late_lint_pass(box approx_const::Pass);
-    reg.register_late_lint_pass(box misc::FloatCmp);
+    reg.register_late_lint_pass(box misc::Pass);
     reg.register_early_lint_pass(box precedence::Precedence);
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
     reg.register_late_lint_pass(box identity_op::IdentityOp);
@@ -195,11 +193,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box mut_mut::MutMut);
     reg.register_late_lint_pass(box mut_reference::UnnecessaryMutPassed);
     reg.register_late_lint_pass(box len_zero::LenZero);
-    reg.register_late_lint_pass(box misc::CmpOwned);
     reg.register_late_lint_pass(box attrs::AttrPass);
     reg.register_early_lint_pass(box collapsible_if::CollapsibleIf);
     reg.register_late_lint_pass(box block_in_if_condition::BlockInIfCondition);
-    reg.register_late_lint_pass(box misc::ModuloOne);
     reg.register_late_lint_pass(box unicode::Unicode);
     reg.register_late_lint_pass(box strings::StringAdd);
     reg.register_early_lint_pass(box returns::ReturnPass);
@@ -214,7 +210,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box types::CastPass);
     reg.register_late_lint_pass(box types::TypeComplexityPass::new(conf.type_complexity_threshold));
     reg.register_late_lint_pass(box matches::MatchPass);
-    reg.register_late_lint_pass(box misc::PatternPass);
     reg.register_late_lint_pass(box minmax::MinMaxPass);
     reg.register_late_lint_pass(box open_options::NonSensical);
     reg.register_late_lint_pass(box zero_div_zero::Pass);
@@ -228,7 +223,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold));
     reg.register_late_lint_pass(box escape::Pass{too_large_for_stack: conf.too_large_for_stack});
     reg.register_early_lint_pass(box misc_early::MiscEarly);
-    reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
     reg.register_late_lint_pass(box panic::Pass);
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
