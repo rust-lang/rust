@@ -10,7 +10,7 @@
 
 // min-lldb-version: 310
 
-// compile-flags:-g
+// compile-flags:-g -Zdebug-macros
 
 // === GDB TESTS ===================================================================================
 

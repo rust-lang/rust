@@ -1796,6 +1796,11 @@ extern {
                                                Col: c_uint)
                                                -> DILexicalBlock;
 
+    pub fn LLVMRustDIBuilderCreateLexicalBlockFile(Builder: DIBuilderRef,
+                                                   Scope: DIScope,
+                                                   File: DIFile)
+                                                   -> DILexicalBlock;
+
     pub fn LLVMRustDIBuilderCreateStaticVariable(Builder: DIBuilderRef,
                                                  Context: DIScope,
                                                  Name: *const c_char,
