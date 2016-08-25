@@ -1583,7 +1583,7 @@ impl PrimitiveType {
     }
 
     pub fn to_string(&self) -> &'static str {
-        use PrimitiveType::*;
+        use self::PrimitiveType::*;
         match *self {
             Isize => "isize",
             I8 => "i8",
@@ -1630,6 +1630,7 @@ impl From<ast::IntTy> for PrimitiveType {
             ast::IntTy::I16 => PrimitiveType::I16,
             ast::IntTy::I32 => PrimitiveType::I32,
             ast::IntTy::I64 => PrimitiveType::I64,
+            ast::IntTy::I128 => PrimitiveType::I128,
         }
     }
 }
@@ -1642,6 +1643,7 @@ impl From<ast::UintTy> for PrimitiveType {
             ast::UintTy::U16 => PrimitiveType::U16,
             ast::UintTy::U32 => PrimitiveType::U32,
             ast::UintTy::U64 => PrimitiveType::U64,
+            ast::UintTy::U128 => PrimitiveType::U128,
         }
     }
 }
@@ -2441,7 +2443,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
 fn build_deref_target_impls(cx: &DocContext,
                             items: &[Item],
                             ret: &mut Vec<Item>) {
-    use PrimitiveType::*;
+    use self::PrimitiveType::*;
     let tcx = match cx.tcx_opt() {
         Some(t) => t,
         None => return,
