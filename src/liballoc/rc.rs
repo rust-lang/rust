@@ -376,6 +376,33 @@ impl<T: ?Sized> Rc<T> {
             None
         }
     }
+
+    #[inline]
+    #[unstable(feature = "ptr_eq",
+               reason = "newly added",
+               issue = "36497")]
+    /// Return whether two `Rc` references point to the same value
+    /// (not just values that compare equal).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_eq)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    /// let same_five = five.clone();
+    /// let other_five = Rc::new(5);
+    ///
+    /// assert!(Rc::ptr_eq(&five, &same_five));
+    /// assert!(!Rc::ptr_eq(&five, &other_five));
+    /// ```
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
+        let this_ptr: *const RcBox<T> = *this.ptr;
+        let other_ptr: *const RcBox<T> = *other.ptr;
+        this_ptr == other_ptr
+    }
 }
 
 impl<T: Clone> Rc<T> {
@@ -1173,6 +1200,16 @@ mod tests {
     fn test_new_weak() {
         let foo: Weak<usize> = Weak::new();
         assert!(foo.upgrade().is_none());
+    }
+
+    #[test]
+    fn test_ptr_eq() {
+        let five = Rc::new(5);
+        let same_five = five.clone();
+        let other_five = Rc::new(5);
+
+        assert!(Rc::ptr_eq(&five, &same_five));
+        assert!(!Rc::ptr_eq(&five, &other_five));
     }
 }
 
