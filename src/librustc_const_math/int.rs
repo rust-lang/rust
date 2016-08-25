@@ -58,7 +58,8 @@ mod ubounds {
     bounds!{u128: 0,
         i8 I8MIN I8MAX i16 I16MIN I16MAX i32 I32MIN I32MAX i64 I64MIN I64MAX i128 I128MIN I128MAX
         u8 U8MIN U8MAX u16 U16MIN U16MAX u32 U32MIN U32MAX u64 U64MIN U64MAX u128 U128MIN U128MAX
-        isize IMIN IMAX usize UMIN UMAX
+        // do not add constants for isize/usize, because these are guaranteed to be wrong for
+        // arbitrary host/target combinations
     }
 }
 
@@ -78,11 +79,42 @@ mod ibounds {
     bounds!{i128,
         i8 I8MIN I8MAX i16 I16MIN I16MAX i32 I32MIN I32MAX i64 I64MIN I64MAX i128 I128MIN I128MAX
         u8 U8MIN U8MAX u16 U16MIN U16MAX u32 U32MIN U32MAX
-        isize IMIN IMAX usize UMIN UMAX
+        // do not add constants for isize/usize, because these are guaranteed to be wrong for
+        // arbitrary host/target combinations
     }
 }
 
 impl ConstInt {
+    /// Creates a new unsigned ConstInt with matching type while also checking that overflow does
+    /// not happen.
+    pub fn new_unsigned(val: u128, ty: UintTy, usize_ty: UintTy) -> Option<ConstInt> {
+        match ty {
+            UintTy::U8 if val <= ubounds::U8MAX => Some(U8(val as u8)),
+            UintTy::U16 if val <= ubounds::U16MAX => Some(U16(val as u16)),
+            UintTy::U32 if val <= ubounds::U32MAX => Some(U32(val as u32)),
+            UintTy::U64 if val <= ubounds::U64MAX => Some(U64(val as u64)),
+            UintTy::Us if val <= ubounds::U64MAX => ConstUsize::new(val as u64, usize_ty).ok()
+                .map(Usize),
+            UintTy::U128 => Some(U128(val)),
+            _ => None
+        }
+    }
+
+    /// Creates a new unsigned ConstInt with matching type while also checking that overflow does
+    /// not happen.
+    pub fn new_signed(val: i128, ty: IntTy, isize_ty: IntTy) -> Option<ConstInt> {
+        match ty {
+            IntTy::I8 if val <= ibounds::I8MAX => Some(I8(val as i8)),
+            IntTy::I16 if val <= ibounds::I16MAX => Some(I16(val as i16)),
+            IntTy::I32 if val <= ibounds::I32MAX => Some(I32(val as i32)),
+            IntTy::I64 if val <= ibounds::I64MAX => Some(I64(val as i64)),
+            IntTy::Is if val <= ibounds::I64MAX => ConstIsize::new(val as i64, isize_ty).ok()
+                .map(Isize),
+            IntTy::I128 => Some(I128(val)),
+            _ => None
+        }
+    }
+
     /// If either value is `Infer` or `InferSigned`, try to turn the value into the type of
     /// the other value. If both values have no type, don't do anything
     pub fn infer(self, other: Self) -> Result<(Self, Self), ConstMathErr> {
