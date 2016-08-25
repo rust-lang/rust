@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "")] extern {}
-//~^ ERROR E0454
-//~| NOTE empty name given
+struct Foo<'a> {
+    a: &'a i32,
+}
+
+impl<'a> Foo<'a> {
+    fn f<'a>(x: &'a i32) { //~ ERROR E0496
+    }
+}
 
 fn main() {
 }

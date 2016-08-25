@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "")] extern {}
-//~^ ERROR E0454
-//~| NOTE empty name given
-
 fn main() {
+    let mut i = 0;
+    let mut x = &mut i;
+    let mut a = &mut i; //~ ERROR E0499
 }

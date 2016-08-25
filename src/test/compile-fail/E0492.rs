@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "")] extern {}
-//~^ ERROR E0454
-//~| NOTE empty name given
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+
+const A: AtomicUsize = ATOMIC_USIZE_INIT;
+static B: &'static AtomicUsize = &A; //~ ERROR E0492
 
 fn main() {
 }

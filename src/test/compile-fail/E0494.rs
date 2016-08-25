@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "")] extern {}
-//~^ ERROR E0454
-//~| NOTE empty name given
+struct Foo {
+    a: u32
+}
+
+static S : Foo = Foo { a : 0 };
+static A : &'static u32 = &S.a; //~ ERROR E0494
 
 fn main() {
 }

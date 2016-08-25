@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "")] extern {}
-//~^ ERROR E0454
-//~| NOTE empty name given
+trait Wedding<'t>: 't { }
+
+struct Prince<'kiss, 'SnowWhite> {
+    child: Box<Wedding<'kiss> + 'SnowWhite>, //~ ERROR E0478
+}
 
 fn main() {
 }
