@@ -12,7 +12,6 @@
 //! that clean them.
 
 pub use self::Type::*;
-pub use self::PrimitiveType::*;
 pub use self::TypeKind::*;
 pub use self::VariantKind::*;
 pub use self::Mutability::*;
@@ -287,34 +286,34 @@ impl Item {
         }
     }
     pub fn is_mod(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Module
+        ItemType::from(self) == ItemType::Module
     }
     pub fn is_trait(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Trait
+        ItemType::from(self) == ItemType::Trait
     }
     pub fn is_struct(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Struct
+        ItemType::from(self) == ItemType::Struct
     }
     pub fn is_enum(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Module
+        ItemType::from(self) == ItemType::Module
     }
     pub fn is_fn(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Function
+        ItemType::from(self) == ItemType::Function
     }
     pub fn is_associated_type(&self) -> bool {
-        ItemType::from_item(self) == ItemType::AssociatedType
+        ItemType::from(self) == ItemType::AssociatedType
     }
     pub fn is_associated_const(&self) -> bool {
-        ItemType::from_item(self) == ItemType::AssociatedConst
+        ItemType::from(self) == ItemType::AssociatedConst
     }
     pub fn is_method(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Method
+        ItemType::from(self) == ItemType::Method
     }
     pub fn is_ty_method(&self) -> bool {
-        ItemType::from_item(self) == ItemType::TyMethod
+        ItemType::from(self) == ItemType::TyMethod
     }
     pub fn is_primitive(&self) -> bool {
-        ItemType::from_item(self) == ItemType::Primitive
+        ItemType::from(self) == ItemType::Primitive
     }
     pub fn is_stripped(&self) -> bool {
         match self.inner { StrippedItem(..) => true, _ => false }
@@ -378,6 +377,23 @@ pub enum ItemEnum {
     DefaultImplItem(DefaultImpl),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemEnum>),
+}
+
+impl ItemEnum {
+    pub fn generics(&self) -> Option<&Generics> {
+        Some(match *self {
+            ItemEnum::StructItem(ref s) => &s.generics,
+            ItemEnum::EnumItem(ref e) => &e.generics,
+            ItemEnum::FunctionItem(ref f) => &f.generics,
+            ItemEnum::TypedefItem(ref t, _) => &t.generics,
+            ItemEnum::TraitItem(ref t) => &t.generics,
+            ItemEnum::ImplItem(ref i) => &i.generics,
+            ItemEnum::TyMethodItem(ref i) => &i.generics,
+            ItemEnum::MethodItem(ref i) => &i.generics,
+            ItemEnum::ForeignFunctionItem(ref f) => &f.generics,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1469,8 +1485,8 @@ pub enum PrimitiveType {
     Str,
     Slice,
     Array,
-    PrimitiveTuple,
-    PrimitiveRawPointer,
+    Tuple,
+    RawPointer,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1500,12 +1516,12 @@ impl Type {
     pub fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
             Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
-            Vector(..) | BorrowedRef{ type_: box Vector(..), ..  } => Some(Slice),
+            Vector(..) | BorrowedRef{ type_: box Vector(..), ..  } => Some(PrimitiveType::Slice),
             FixedVector(..) | BorrowedRef { type_: box FixedVector(..), .. } => {
-                Some(Array)
+                Some(PrimitiveType::Array)
             }
-            Tuple(..) => Some(PrimitiveTuple),
-            RawPointer(..) => Some(PrimitiveRawPointer),
+            Tuple(..) => Some(PrimitiveType::Tuple),
+            RawPointer(..) => Some(PrimitiveType::RawPointer),
             _ => None,
         }
     }
@@ -1530,25 +1546,25 @@ impl GetDefId for Type {
 impl PrimitiveType {
     fn from_str(s: &str) -> Option<PrimitiveType> {
         match s {
-            "isize" => Some(Isize),
-            "i8" => Some(I8),
-            "i16" => Some(I16),
-            "i32" => Some(I32),
-            "i64" => Some(I64),
-            "usize" => Some(Usize),
-            "u8" => Some(U8),
-            "u16" => Some(U16),
-            "u32" => Some(U32),
-            "u64" => Some(U64),
-            "bool" => Some(Bool),
-            "char" => Some(Char),
-            "str" => Some(Str),
-            "f32" => Some(F32),
-            "f64" => Some(F64),
-            "array" => Some(Array),
-            "slice" => Some(Slice),
-            "tuple" => Some(PrimitiveTuple),
-            "pointer" => Some(PrimitiveRawPointer),
+            "isize" => Some(PrimitiveType::Isize),
+            "i8" => Some(PrimitiveType::I8),
+            "i16" => Some(PrimitiveType::I16),
+            "i32" => Some(PrimitiveType::I32),
+            "i64" => Some(PrimitiveType::I64),
+            "usize" => Some(PrimitiveType::Usize),
+            "u8" => Some(PrimitiveType::U8),
+            "u16" => Some(PrimitiveType::U16),
+            "u32" => Some(PrimitiveType::U32),
+            "u64" => Some(PrimitiveType::U64),
+            "bool" => Some(PrimitiveType::Bool),
+            "char" => Some(PrimitiveType::Char),
+            "str" => Some(PrimitiveType::Str),
+            "f32" => Some(PrimitiveType::F32),
+            "f64" => Some(PrimitiveType::F64),
+            "array" => Some(PrimitiveType::Array),
+            "slice" => Some(PrimitiveType::Slice),
+            "tuple" => Some(PrimitiveType::Tuple),
+            "pointer" => Some(PrimitiveType::RawPointer),
             _ => None,
         }
     }
@@ -1568,25 +1584,25 @@ impl PrimitiveType {
 
     pub fn to_string(&self) -> &'static str {
         match *self {
-            Isize => "isize",
-            I8 => "i8",
-            I16 => "i16",
-            I32 => "i32",
-            I64 => "i64",
-            Usize => "usize",
-            U8 => "u8",
-            U16 => "u16",
-            U32 => "u32",
-            U64 => "u64",
-            F32 => "f32",
-            F64 => "f64",
-            Str => "str",
-            Bool => "bool",
-            Char => "char",
-            Array => "array",
-            Slice => "slice",
-            PrimitiveTuple => "tuple",
-            PrimitiveRawPointer => "pointer",
+            PrimitiveType::Isize => "isize",
+            PrimitiveType::I8 => "i8",
+            PrimitiveType::I16 => "i16",
+            PrimitiveType::I32 => "i32",
+            PrimitiveType::I64 => "i64",
+            PrimitiveType::Usize => "usize",
+            PrimitiveType::U8 => "u8",
+            PrimitiveType::U16 => "u16",
+            PrimitiveType::U32 => "u32",
+            PrimitiveType::U64 => "u64",
+            PrimitiveType::F32 => "f32",
+            PrimitiveType::F64 => "f64",
+            PrimitiveType::Str => "str",
+            PrimitiveType::Bool => "bool",
+            PrimitiveType::Char => "char",
+            PrimitiveType::Array => "array",
+            PrimitiveType::Slice => "slice",
+            PrimitiveType::Tuple => "tuple",
+            PrimitiveType::RawPointer => "pointer",
         }
     }
 
@@ -1603,6 +1619,38 @@ impl PrimitiveType {
     }
 }
 
+impl From<ast::IntTy> for PrimitiveType {
+    fn from(int_ty: ast::IntTy) -> PrimitiveType {
+        match int_ty {
+            ast::IntTy::Is => PrimitiveType::Isize,
+            ast::IntTy::I8 => PrimitiveType::I8,
+            ast::IntTy::I16 => PrimitiveType::I16,
+            ast::IntTy::I32 => PrimitiveType::I32,
+            ast::IntTy::I64 => PrimitiveType::I64,
+        }
+    }
+}
+
+impl From<ast::UintTy> for PrimitiveType {
+    fn from(uint_ty: ast::UintTy) -> PrimitiveType {
+        match uint_ty {
+            ast::UintTy::Us => PrimitiveType::Usize,
+            ast::UintTy::U8 => PrimitiveType::U8,
+            ast::UintTy::U16 => PrimitiveType::U16,
+            ast::UintTy::U32 => PrimitiveType::U32,
+            ast::UintTy::U64 => PrimitiveType::U64,
+        }
+    }
+}
+
+impl From<ast::FloatTy> for PrimitiveType {
+    fn from(float_ty: ast::FloatTy) -> PrimitiveType {
+        match float_ty {
+            ast::FloatTy::F32 => PrimitiveType::F32,
+            ast::FloatTy::F64 => PrimitiveType::F64,
+        }
+    }
+}
 
 // Poor man's type parameter substitution at HIR level.
 // Used to replace private type aliases in public signatures with their aliased types.
@@ -1754,21 +1802,12 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
             ty::TyNever => Never,
-            ty::TyBool => Primitive(Bool),
-            ty::TyChar => Primitive(Char),
-            ty::TyInt(ast::IntTy::Is) => Primitive(Isize),
-            ty::TyInt(ast::IntTy::I8) => Primitive(I8),
-            ty::TyInt(ast::IntTy::I16) => Primitive(I16),
-            ty::TyInt(ast::IntTy::I32) => Primitive(I32),
-            ty::TyInt(ast::IntTy::I64) => Primitive(I64),
-            ty::TyUint(ast::UintTy::Us) => Primitive(Usize),
-            ty::TyUint(ast::UintTy::U8) => Primitive(U8),
-            ty::TyUint(ast::UintTy::U16) => Primitive(U16),
-            ty::TyUint(ast::UintTy::U32) => Primitive(U32),
-            ty::TyUint(ast::UintTy::U64) => Primitive(U64),
-            ty::TyFloat(ast::FloatTy::F32) => Primitive(F32),
-            ty::TyFloat(ast::FloatTy::F64) => Primitive(F64),
-            ty::TyStr => Primitive(Str),
+            ty::TyBool => Primitive(PrimitiveType::Bool),
+            ty::TyChar => Primitive(PrimitiveType::Char),
+            ty::TyInt(int_ty) => Primitive(int_ty.into()),
+            ty::TyUint(uint_ty) => Primitive(uint_ty.into()),
+            ty::TyFloat(float_ty) => Primitive(float_ty.into()),
+            ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TyBox(t) => {
                 let box_did = cx.tcx_opt().and_then(|tcx| {
                     tcx.lang_items.owned_box()
@@ -2421,25 +2460,25 @@ fn build_deref_target_impls(cx: &DocContext,
             }
         };
         let did = match primitive {
-            Isize => tcx.lang_items.isize_impl(),
-            I8 => tcx.lang_items.i8_impl(),
-            I16 => tcx.lang_items.i16_impl(),
-            I32 => tcx.lang_items.i32_impl(),
-            I64 => tcx.lang_items.i64_impl(),
-            Usize => tcx.lang_items.usize_impl(),
-            U8 => tcx.lang_items.u8_impl(),
-            U16 => tcx.lang_items.u16_impl(),
-            U32 => tcx.lang_items.u32_impl(),
-            U64 => tcx.lang_items.u64_impl(),
-            F32 => tcx.lang_items.f32_impl(),
-            F64 => tcx.lang_items.f64_impl(),
-            Char => tcx.lang_items.char_impl(),
-            Bool => None,
-            Str => tcx.lang_items.str_impl(),
-            Slice => tcx.lang_items.slice_impl(),
-            Array => tcx.lang_items.slice_impl(),
-            PrimitiveTuple => None,
-            PrimitiveRawPointer => tcx.lang_items.const_ptr_impl(),
+            PrimitiveType::Isize => tcx.lang_items.isize_impl(),
+            PrimitiveType::I8 => tcx.lang_items.i8_impl(),
+            PrimitiveType::I16 => tcx.lang_items.i16_impl(),
+            PrimitiveType::I32 => tcx.lang_items.i32_impl(),
+            PrimitiveType::I64 => tcx.lang_items.i64_impl(),
+            PrimitiveType::Usize => tcx.lang_items.usize_impl(),
+            PrimitiveType::U8 => tcx.lang_items.u8_impl(),
+            PrimitiveType::U16 => tcx.lang_items.u16_impl(),
+            PrimitiveType::U32 => tcx.lang_items.u32_impl(),
+            PrimitiveType::U64 => tcx.lang_items.u64_impl(),
+            PrimitiveType::F32 => tcx.lang_items.f32_impl(),
+            PrimitiveType::F64 => tcx.lang_items.f64_impl(),
+            PrimitiveType::Char => tcx.lang_items.char_impl(),
+            PrimitiveType::Bool => None,
+            PrimitiveType::Str => tcx.lang_items.str_impl(),
+            PrimitiveType::Slice => tcx.lang_items.slice_impl(),
+            PrimitiveType::Array => tcx.lang_items.slice_impl(),
+            PrimitiveType::Tuple => None,
+            PrimitiveType::RawPointer => tcx.lang_items.const_ptr_impl(),
         };
         if let Some(did) = did {
             if !did.is_local() {
@@ -2722,21 +2761,12 @@ fn resolve_type(cx: &DocContext,
 
     let is_generic = match def {
         Def::PrimTy(p) => match p {
-            hir::TyStr => return Primitive(Str),
-            hir::TyBool => return Primitive(Bool),
-            hir::TyChar => return Primitive(Char),
-            hir::TyInt(ast::IntTy::Is) => return Primitive(Isize),
-            hir::TyInt(ast::IntTy::I8) => return Primitive(I8),
-            hir::TyInt(ast::IntTy::I16) => return Primitive(I16),
-            hir::TyInt(ast::IntTy::I32) => return Primitive(I32),
-            hir::TyInt(ast::IntTy::I64) => return Primitive(I64),
-            hir::TyUint(ast::UintTy::Us) => return Primitive(Usize),
-            hir::TyUint(ast::UintTy::U8) => return Primitive(U8),
-            hir::TyUint(ast::UintTy::U16) => return Primitive(U16),
-            hir::TyUint(ast::UintTy::U32) => return Primitive(U32),
-            hir::TyUint(ast::UintTy::U64) => return Primitive(U64),
-            hir::TyFloat(ast::FloatTy::F32) => return Primitive(F32),
-            hir::TyFloat(ast::FloatTy::F64) => return Primitive(F64),
+            hir::TyStr => return Primitive(PrimitiveType::Str),
+            hir::TyBool => return Primitive(PrimitiveType::Bool),
+            hir::TyChar => return Primitive(PrimitiveType::Char),
+            hir::TyInt(int_ty) => return Primitive(int_ty.into()),
+            hir::TyUint(uint_ty) => return Primitive(uint_ty.into()),
+            hir::TyFloat(float_ty) => return Primitive(float_ty.into()),
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
