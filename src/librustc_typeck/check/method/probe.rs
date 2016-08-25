@@ -1242,7 +1242,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 } else {
                     // In general, during probe we erase regions. See
                     // `impl_self_ty()` for an explanation.
-                    ty::ReErased
+                    self.tcx.mk_region(ty::ReErased)
                 }
             }, |def, cur_substs| {
                 let i = def.index as usize;
@@ -1264,7 +1264,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let impl_ty = self.tcx.lookup_item_type(impl_def_id).ty;
 
         let substs = Substs::for_item(self.tcx, impl_def_id,
-                                      |_, _| ty::ReErased,
+                                      |_, _| self.tcx.mk_region(ty::ReErased),
                                       |_, _| self.next_ty_var());
 
         (impl_ty, substs)

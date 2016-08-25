@@ -416,7 +416,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             ty::ExplicitSelfCategory::Static => return,
             ty::ExplicitSelfCategory::ByValue => self_ty,
             ty::ExplicitSelfCategory::ByReference(region, mutability) => {
-                fcx.tcx.mk_ref(fcx.tcx.mk_region(region), ty::TypeAndMut {
+                fcx.tcx.mk_ref(region, ty::TypeAndMut {
                     ty: self_ty,
                     mutbl: mutability
                 })

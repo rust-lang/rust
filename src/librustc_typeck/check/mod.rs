@@ -1422,13 +1422,13 @@ impl<'a, 'gcx, 'tcx> RegionScope for FnCtxt<'a, 'gcx, 'tcx> {
         // (and anyway, within a fn body the right region may not even
         // be something the user can write explicitly, since it might
         // be some expression).
-        self.next_region_var(infer::MiscVariable(span))
+        *self.next_region_var(infer::MiscVariable(span))
     }
 
     fn anon_regions(&self, span: Span, count: usize)
                     -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
         Ok((0..count).map(|_| {
-            self.next_region_var(infer::MiscVariable(span))
+            *self.next_region_var(infer::MiscVariable(span))
         }).collect())
     }
 }
@@ -1862,7 +1862,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// outlive the region `r`.
     pub fn register_region_obligation(&self,
                                       ty: Ty<'tcx>,
-                                      region: ty::Region,
+                                      region: &'tcx ty::Region,
                                       cause: traits::ObligationCause<'tcx>)
     {
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
@@ -1893,7 +1893,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // FIXME(#27579) all uses of this should be migrated to register_wf_obligation eventually
         let cause = traits::ObligationCause::new(span, self.body_id, code);
-        self.register_region_obligation(ty, ty::ReEmpty, cause);
+        self.register_region_obligation(ty, self.tcx.mk_region(ty::ReEmpty), cause);
     }
 
     /// Registers obligations that all types appearing in `substs` are well-formed.
@@ -3454,7 +3454,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // value whose address was taken can actually be made to live
                 // as long as it needs to live.
                 let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                tcx.mk_ref(tcx.mk_region(region), tm)
+                tcx.mk_ref(region, tm)
             };
             self.write_ty(id, oprnd_t);
           }

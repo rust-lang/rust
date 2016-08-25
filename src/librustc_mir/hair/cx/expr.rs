@@ -108,7 +108,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                 region, ty::TypeAndMut { ty: expr.ty, mutbl: mutbl }),
                             span: expr.span,
                             kind: ExprKind::Borrow {
-                                region: *region,
+                                region: region,
                                 borrow_kind: to_borrow_kind(mutbl),
                                 arg: expr.to_ref()
                             }
@@ -137,7 +137,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                 ty: adjusted_ty,
                                 span: self.span,
                                 kind: ExprKind::Borrow {
-                                    region: *r,
+                                    region: r,
                                     borrow_kind: to_borrow_kind(m),
                                     arg: expr.to_ref(),
                                 },
@@ -154,7 +154,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                 ty: cx.tcx.mk_ref(region, ty::TypeAndMut { ty: expr.ty, mutbl: m }),
                                 span: self.span,
                                 kind: ExprKind::Borrow {
-                                    region: *region,
+                                    region: region,
                                     borrow_kind: to_borrow_kind(m),
                                     arg: expr.to_ref(),
                                 },
@@ -310,7 +310,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 _ => span_bug!(expr.span, "type of & not region"),
             };
             ExprKind::Borrow {
-                region: *region,
+                region: region,
                 borrow_kind: to_borrow_kind(mutbl),
                 arg: expr.to_ref(),
             }
@@ -842,8 +842,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     ExprKind::Deref {
                         arg: Expr {
                             temp_lifetime: temp_lifetime,
-                            ty: cx.tcx.mk_ref(
-                                cx.tcx.mk_region(borrow.region),
+                            ty: cx.tcx.mk_ref(borrow.region,
                                 ty::TypeAndMut {
                                     ty: var_ty,
                                     mutbl: borrow.kind.to_mutbl_lossy()
@@ -907,8 +906,7 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         PassArgs::ByRef => {
-            let scope = cx.tcx.region_maps.node_extent(expr.id);
-            let region = cx.tcx.mk_region(ty::ReScope(scope));
+            let region = cx.tcx.node_scope_region(expr.id);
             let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
             argrefs.extend(
                 args.iter()
@@ -922,7 +920,7 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             temp_lifetime: temp_lifetime,
                             ty: adjusted_ty,
                             span: expr.span,
-                            kind: ExprKind::Borrow { region: *region,
+                            kind: ExprKind::Borrow { region: region,
                                                      borrow_kind: BorrowKind::Shared,
                                                      arg: arg.to_ref() }
                         }.to_ref()

@@ -291,13 +291,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_foreign_item(&cdata, did.index)
     }
 
-    fn is_static_method(&self, def: DefId) -> bool
-    {
-        self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::is_static_method(&cdata, def.index)
-    }
-
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool
     {
         self.do_is_statically_included_foreign_item(id)

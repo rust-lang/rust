@@ -1919,7 +1919,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                             param_id: ast::NodeId,
                                             param_bounds: &[hir::TyParamBound],
                                             where_clause: &hir::WhereClause)
-                                            -> ty::ObjectLifetimeDefault
+                                            -> ty::ObjectLifetimeDefault<'tcx>
 {
     let inline_bounds = from_bounds(ccx, param_bounds);
     let where_bounds = from_predicates(ccx, param_id, &where_clause.predicates);
@@ -1937,7 +1937,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
     fn from_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                             bounds: &[hir::TyParamBound])
-                            -> Vec<ty::Region>
+                            -> Vec<&'tcx ty::Region>
     {
         bounds.iter()
               .filter_map(|bound| {
@@ -1954,7 +1954,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     fn from_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                 param_id: ast::NodeId,
                                 predicates: &[hir::WherePredicate])
-                                -> Vec<ty::Region>
+                                -> Vec<&'tcx ty::Region>
     {
         predicates.iter()
                   .flat_map(|predicate| {
@@ -2126,7 +2126,7 @@ pub fn mk_item_substs<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     }
 
     Substs::for_item(tcx, def_id,
-                     |def, _| def.to_early_bound_region(),
+                     |def, _| tcx.mk_region(def.to_early_bound_region()),
                      |def, _| tcx.mk_param_from_def(def))
 }
 

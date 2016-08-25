@@ -343,7 +343,7 @@ pub struct Method<'tcx> {
     pub generics: &'tcx Generics<'tcx>,
     pub predicates: GenericPredicates<'tcx>,
     pub fty: &'tcx BareFnTy<'tcx>,
-    pub explicit_self: ExplicitSelfCategory,
+    pub explicit_self: ExplicitSelfCategory<'tcx>,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
     pub def_id: DefId,
@@ -355,7 +355,7 @@ impl<'tcx> Method<'tcx> {
                generics: &'tcx ty::Generics<'tcx>,
                predicates: GenericPredicates<'tcx>,
                fty: &'tcx BareFnTy<'tcx>,
-               explicit_self: ExplicitSelfCategory,
+               explicit_self: ExplicitSelfCategory<'tcx>,
                vis: Visibility,
                defaultness: hir::Defaultness,
                def_id: DefId,
@@ -658,28 +658,28 @@ pub enum BorrowKind {
 /// Information describing the capture of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`.
 #[derive(PartialEq, Clone, Debug, Copy)]
-pub enum UpvarCapture {
+pub enum UpvarCapture<'tcx> {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
     /// depending on inference.
     ByValue,
 
     /// Upvar is captured by reference.
-    ByRef(UpvarBorrow),
+    ByRef(UpvarBorrow<'tcx>),
 }
 
 #[derive(PartialEq, Clone, Copy)]
-pub struct UpvarBorrow {
+pub struct UpvarBorrow<'tcx> {
     /// The kind of borrow: by-ref upvars have access to shared
     /// immutable borrows, which are not part of the normal language
     /// syntax.
     pub kind: BorrowKind,
 
     /// Region of the resulting reference.
-    pub region: ty::Region,
+    pub region: &'tcx ty::Region,
 }
 
-pub type UpvarCaptureMap = FnvHashMap<UpvarId, UpvarCapture>;
+pub type UpvarCaptureMap<'tcx> = FnvHashMap<UpvarId, UpvarCapture<'tcx>>;
 
 #[derive(Copy, Clone)]
 pub struct ClosureUpvar<'tcx> {
@@ -700,7 +700,7 @@ pub enum IntVarValue {
 /// this is `None`, then the default is inherited from the
 /// surrounding context. See RFC #599 for details.
 #[derive(Copy, Clone)]
-pub enum ObjectLifetimeDefault {
+pub enum ObjectLifetimeDefault<'tcx> {
     /// Require an explicit annotation. Occurs when multiple
     /// `T:'a` constraints are found.
     Ambiguous,
@@ -709,7 +709,7 @@ pub enum ObjectLifetimeDefault {
     BaseDefault,
 
     /// Use the given region as the default.
-    Specific(Region),
+    Specific(&'tcx Region),
 }
 
 #[derive(Clone)]
@@ -719,18 +719,18 @@ pub struct TypeParameterDef<'tcx> {
     pub index: u32,
     pub default_def_id: DefId, // for use in error reporing about defaults
     pub default: Option<Ty<'tcx>>,
-    pub object_lifetime_default: ObjectLifetimeDefault,
+    pub object_lifetime_default: ObjectLifetimeDefault<'tcx>,
 }
 
 #[derive(Clone)]
-pub struct RegionParameterDef {
+pub struct RegionParameterDef<'tcx> {
     pub name: Name,
     pub def_id: DefId,
     pub index: u32,
-    pub bounds: Vec<ty::Region>,
+    pub bounds: Vec<&'tcx ty::Region>,
 }
 
-impl RegionParameterDef {
+impl<'tcx> RegionParameterDef<'tcx> {
     pub fn to_early_bound_region(&self) -> ty::Region {
         ty::ReEarlyBound(ty::EarlyBoundRegion {
             index: self.index,
@@ -750,7 +750,7 @@ pub struct Generics<'tcx> {
     pub parent: Option<DefId>,
     pub parent_regions: u32,
     pub parent_types: u32,
-    pub regions: Vec<RegionParameterDef>,
+    pub regions: Vec<RegionParameterDef<'tcx>>,
     pub types: Vec<TypeParameterDef<'tcx>>,
     pub has_self: bool,
 }
@@ -812,7 +812,7 @@ pub enum Predicate<'tcx> {
     Equate(PolyEquatePredicate<'tcx>),
 
     /// where 'a : 'b
-    RegionOutlives(PolyRegionOutlivesPredicate),
+    RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
 
     /// where T : 'a
     TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
@@ -991,8 +991,9 @@ pub type PolyEquatePredicate<'tcx> = ty::Binder<EquatePredicate<'tcx>>;
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
-pub type PolyRegionOutlivesPredicate = PolyOutlivesPredicate<ty::Region, ty::Region>;
-pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::Region>;
+pub type PolyRegionOutlivesPredicate<'tcx> = PolyOutlivesPredicate<&'tcx ty::Region,
+                                                                   &'tcx ty::Region>;
+pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, &'tcx ty::Region>;
 
 /// This kind of predicate has no *direct* correspondent in the
 /// syntax, but it roughly corresponds to the syntactic forms:
@@ -1081,7 +1082,7 @@ impl<'tcx> ToPredicate<'tcx> for PolyEquatePredicate<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate {
+impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx> {
         Predicate::RegionOutlives(self.clone())
     }
@@ -1237,7 +1238,7 @@ pub struct ParameterEnvironment<'tcx> {
     /// indicates it must outlive at least the function body (the user
     /// may specify stronger requirements). This field indicates the
     /// region of the callee.
-    pub implicit_region_bound: ty::Region,
+    pub implicit_region_bound: &'tcx ty::Region,
 
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
@@ -2825,7 +2826,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ty::ParameterEnvironment {
             free_substs: Substs::empty(self),
             caller_bounds: Vec::new(),
-            implicit_region_bound: ty::ReEmpty,
+            implicit_region_bound: self.mk_region(ty::ReEmpty),
             free_id_outlive: free_id_outlive
         }
     }
@@ -2841,8 +2842,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let substs = Substs::for_item(self.global_tcx(), def_id, |def, _| {
             // map bound 'a => free 'a
-            ReFree(FreeRegion { scope: free_id_outlive,
-                                bound_region: def.to_bound_region() })
+            self.global_tcx().mk_region(ReFree(FreeRegion {
+                scope: free_id_outlive,
+                bound_region: def.to_bound_region()
+            }))
         }, |def, _| {
             // map T => T
             self.global_tcx().mk_param_from_def(def)
@@ -2892,13 +2895,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let unnormalized_env = ty::ParameterEnvironment {
             free_substs: free_substs,
-            implicit_region_bound: ty::ReScope(free_id_outlive),
+            implicit_region_bound: tcx.mk_region(ty::ReScope(free_id_outlive)),
             caller_bounds: predicates,
             free_id_outlive: free_id_outlive,
         };
 
         let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));
         traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
+    }
+
+    pub fn node_scope_region(self, id: NodeId) -> &'tcx Region {
+        self.mk_region(ty::ReScope(self.region_maps.node_extent(id)))
     }
 
     pub fn is_method_call(self, expr_id: NodeId) -> bool {
@@ -2910,7 +2917,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                                             autoderefs))
     }
 
-    pub fn upvar_capture(self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+    pub fn upvar_capture(self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 
@@ -2936,10 +2943,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
 /// The category of explicit self.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
-pub enum ExplicitSelfCategory {
+pub enum ExplicitSelfCategory<'tcx> {
     Static,
     ByValue,
-    ByReference(Region, hir::Mutability),
+    ByReference(&'tcx Region, hir::Mutability),
     ByBox,
 }
 

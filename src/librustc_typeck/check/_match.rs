@@ -122,7 +122,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // and T is the expected type.
                         let region_var = self.next_region_var(infer::PatternRegion(pat.span));
                         let mt = ty::TypeAndMut { ty: expected, mutbl: mutbl };
-                        let region_ty = tcx.mk_ref(tcx.mk_region(region_var), mt);
+                        let region_ty = tcx.mk_ref(region_var, mt);
 
                         // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)` is
                         // required. However, we use equality, which is stronger. See (*) for
@@ -220,7 +220,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             let inner_ty = self.next_ty_var();
                             let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
                             let region = self.next_region_var(infer::PatternRegion(pat.span));
-                            let rptr_ty = tcx.mk_ref(tcx.mk_region(region), mt);
+                            let rptr_ty = tcx.mk_ref(region, mt);
                             self.demand_eqtype(pat.span, expected, rptr_ty);
                             (rptr_ty, inner_ty)
                         }

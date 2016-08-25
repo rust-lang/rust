@@ -1235,7 +1235,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     // The substitutions we have are on the impl, so we grab
                     // the method type from the impl to substitute into.
                     let impl_substs = Substs::for_item(tcx, impl_def_id,
-                                                       |_, _| ty::ReErased,
+                                                       |_, _| tcx.mk_region(ty::ReErased),
                                                        |_, _| tcx.types.err);
                     let mth = meth::get_impl_method(tcx,
                                                     callee_substs,

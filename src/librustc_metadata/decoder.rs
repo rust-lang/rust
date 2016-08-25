@@ -859,7 +859,8 @@ pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
     }
 }
 
-fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
+fn get_explicit_self<'a, 'tcx>(item: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                               -> ty::ExplicitSelfCategory<'tcx> {
     fn get_mutability(ch: u8) -> hir::Mutability {
         match ch as char {
             'i' => hir::MutImmutable,
@@ -879,7 +880,7 @@ fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
         // FIXME(#4846) expl. region
         '&' => {
             ty::ExplicitSelfCategory::ByReference(
-                ty::ReEmpty,
+                tcx.mk_region(ty::ReEmpty),
                 get_mutability(string.as_bytes()[1]))
         }
         _ => bug!("unknown self type code: `{}`", explicit_self_kind as char)
@@ -903,16 +904,6 @@ pub fn get_impl_items(cdata: Cmd, impl_id: DefIndex)
 pub fn get_trait_name(cdata: Cmd, id: DefIndex) -> ast::Name {
     let doc = cdata.lookup_item(id);
     item_name(doc)
-}
-
-pub fn is_static_method(cdata: Cmd, id: DefIndex) -> bool {
-    let doc = cdata.lookup_item(id);
-    match item_sort(doc) {
-        Some('r') | Some('p') => {
-            get_explicit_self(doc) == ty::ExplicitSelfCategory::Static
-        }
-        _ => false
-    }
 }
 
 pub fn get_impl_or_trait_item<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -959,7 +950,7 @@ pub fn get_impl_or_trait_item<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a
                     "the type {:?} of the method {:?} is not a function?",
                     ity, name)
             };
-            let explicit_self = get_explicit_self(item_doc);
+            let explicit_self = get_explicit_self(item_doc, tcx);
 
             ty::MethodTraitItem(Rc::new(ty::Method::new(name,
                                                         generics,

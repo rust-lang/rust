@@ -413,7 +413,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                     (&ty::TyBox(a), &ty::TyBox(b)) => (a, b, unsize_trait, None),
 
                     (&ty::TyRef(r_a, mt_a), &ty::TyRef(r_b, mt_b)) => {
-                        infcx.sub_regions(infer::RelateObjectBound(span), *r_b, *r_a);
+                        infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
                         check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
                     }
 

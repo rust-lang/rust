@@ -517,7 +517,7 @@ pub fn encode_cast_kind(ebml_w: &mut Encoder, kind: cast::CastKind) {
 // Encoding and decoding the side tables
 
 trait rbml_writer_helpers<'tcx> {
-    fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region);
+    fn emit_region(&mut self, ecx: &e::EncodeContext, r: &'tcx ty::Region);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
     fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                        substs: &Substs<'tcx>);
@@ -531,7 +531,7 @@ trait rbml_writer_helpers<'tcx> {
 }
 
 impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
-    fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region) {
+    fn emit_region(&mut self, ecx: &e::EncodeContext, r: &'tcx ty::Region) {
         self.emit_opaque(|this| Ok(tyencode::enc_region(&mut this.cursor,
                                                         &ecx.ty_str_ctxt(),
                                                         r)));
@@ -617,7 +617,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                 &adjustment::AutoPtr(r, m) => {
                     this.emit_enum_variant("AutoPtr", 0, 2, |this| {
                         this.emit_enum_variant_arg(0,
-                            |this| Ok(this.emit_region(ecx, *r)));
+                            |this| Ok(this.emit_region(ecx, r)));
                         this.emit_enum_variant_arg(1, |this| m.encode(this))
                     })
                 }
@@ -824,7 +824,7 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                                      f: F) -> R
         where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x, 'tcx>) -> R;
 
-    fn read_region(&mut self, dcx: &DecodeContext) -> ty::Region;
+    fn read_region<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> &'tcx ty::Region;
     fn read_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Ty<'tcx>;
     fn read_tys<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Vec<Ty<'tcx>>;
     fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -835,8 +835,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                               -> ty::Predicate<'tcx>;
     fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                            -> &'tcx Substs<'tcx>;
-    fn read_upvar_capture(&mut self, dcx: &DecodeContext)
-                          -> ty::UpvarCapture;
+    fn read_upvar_capture<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                                  -> ty::UpvarCapture<'tcx>;
     fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                     -> adjustment::AutoAdjustment<'tcx>;
     fn read_cast_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -908,7 +908,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
             str
         }
     }
-    fn read_region(&mut self, dcx: &DecodeContext) -> ty::Region {
+    fn read_region<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> &'tcx ty::Region {
         // Note: regions types embed local node ids.  In principle, we
         // should translate these node ids into the new decode
         // context.  However, we do not bother, because region types
@@ -948,7 +948,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                .parse_substs())
         }).unwrap()
     }
-    fn read_upvar_capture(&mut self, dcx: &DecodeContext) -> ty::UpvarCapture {
+    fn read_upvar_capture<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+                                  -> ty::UpvarCapture<'tcx> {
         self.read_enum("UpvarCapture", |this| {
             let variants = ["ByValue", "ByRef"];
             this.read_enum_variant(&variants, |this, i| {
@@ -1032,7 +1033,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     0 => {
-                        let r: ty::Region =
+                        let r: &'tcx ty::Region =
                             this.read_enum_variant_arg(0, |this| {
                                 Ok(this.read_region(dcx))
                             }).unwrap();
@@ -1041,7 +1042,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                 Decodable::decode(this)
                             }).unwrap();
 
-                        adjustment::AutoPtr(dcx.tcx.mk_region(r), m)
+                        adjustment::AutoPtr(r, m)
                     }
                     1 => {
                         let m: hir::Mutability =

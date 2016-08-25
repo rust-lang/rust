@@ -93,7 +93,7 @@ pub struct FulfillmentContext<'tcx> {
 
 #[derive(Clone)]
 pub struct RegionObligation<'tcx> {
-    pub sub_region: ty::Region,
+    pub sub_region: &'tcx ty::Region,
     pub sup_type: Ty<'tcx>,
     pub cause: ObligationCause<'tcx>,
 }
@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
     pub fn register_region_obligation(&mut self,
                                       t_a: Ty<'tcx>,
-                                      r_b: ty::Region,
+                                      r_b: &'tcx ty::Region,
                                       cause: ObligationCause<'tcx>)
     {
         register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
@@ -580,7 +580,8 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                         // Otherwise, we have something of the form
                         // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
                         Some(t_a) => {
-                            register_region_obligation(t_a, ty::ReStatic,
+                            let r_static = selcx.tcx().mk_region(ty::ReStatic);
+                            register_region_obligation(t_a, r_static,
                                                        obligation.cause.clone(),
                                                        region_obligations);
                             Ok(Some(vec![]))
@@ -690,7 +691,7 @@ fn coinductive_obligation<'a,'gcx,'tcx>(selcx: &SelectionContext<'a,'gcx,'tcx>,
 }
 
 fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
-                                    r_b: ty::Region,
+                                    r_b: &'tcx ty::Region,
                                     cause: ObligationCause<'tcx>,
                                     region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
 {

@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                             mut mk_region: FR,
                             mut mk_type: FT)
                             -> &'tcx Substs<'tcx>
-    where FR: FnMut(&ty::RegionParameterDef, &Substs<'tcx>) -> ty::Region,
+    where FR: FnMut(&ty::RegionParameterDef, &Substs<'tcx>) -> &'tcx ty::Region,
           FT: FnMut(&ty::TypeParameterDef<'tcx>, &Substs<'tcx>) -> Ty<'tcx> {
         let defs = tcx.lookup_generics(def_id);
         let num_regions = defs.parent_regions as usize + defs.regions.len();
@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                          defs: &ty::Generics<'tcx>,
                          mk_region: &mut FR,
                          mk_type: &mut FT)
-    where FR: FnMut(&ty::RegionParameterDef, &Substs<'tcx>) -> ty::Region,
+    where FR: FnMut(&ty::RegionParameterDef, &Substs<'tcx>) -> &'tcx ty::Region,
           FT: FnMut(&ty::TypeParameterDef<'tcx>, &Substs<'tcx>) -> Ty<'tcx> {
         if let Some(def_id) = defs.parent {
             let parent_defs = tcx.lookup_generics(def_id);
@@ -122,7 +122,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     #[inline]
-    pub fn region_at(&self, i: usize) -> ty::Region {
+    pub fn region_at(&self, i: usize) -> &'tcx ty::Region {
         self.regions[i]
     }
 
@@ -132,7 +132,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     #[inline]
-    pub fn region_for_def(&self, def: &ty::RegionParameterDef) -> ty::Region {
+    pub fn region_for_def(&self, def: &ty::RegionParameterDef) -> &'tcx ty::Region {
         self.region_at(def.index as usize)
     }
 
@@ -255,13 +255,13 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
         t
     }
 
-    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region substitution of the bound
         // regions that appear in a function signature is done using
         // the specialized routine `ty::replace_late_regions()`.
-        match r {
+        match *r {
             ty::ReEarlyBound(data) => {
                 match self.substs.regions.get(data.index as usize) {
                     Some(&r) => {
@@ -394,8 +394,8 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
         result
     }
 
-    fn shift_region_through_binders(&self, region: ty::Region) -> ty::Region {
-        ty::fold::shift_region(region, self.region_binders_passed)
+    fn shift_region_through_binders(&self, region: &'tcx ty::Region) -> &'tcx ty::Region {
+        self.tcx().mk_region(ty::fold::shift_region(*region, self.region_binders_passed))
     }
 }
 

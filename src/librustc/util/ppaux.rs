@@ -247,7 +247,7 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
 
     let new_value = tcx.replace_late_bound_regions(&value, |br| {
         let _ = start_or_continue(f, "for<", ", ");
-        ty::ReLateBound(ty::DebruijnIndex::new(1), match br {
+        let br = match br {
             ty::BrNamed(_, name, _) => {
                 let _ = write!(f, "{}", name);
                 br
@@ -261,7 +261,8 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
                             name,
                             ty::Issue32330::WontChange)
             }
-        })
+        };
+        tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), br))
     }).0;
 
     start_or_continue(f, "", "> ")?;
@@ -351,7 +352,7 @@ impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
     }
 }
 
-impl fmt::Debug for ty::RegionParameterDef {
+impl<'tcx> fmt::Debug for ty::RegionParameterDef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "RegionParameterDef({}, {:?}, {}, {:?})",
                self.name,
@@ -598,7 +599,7 @@ impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ObjectLifetimeDefault {
+impl<'tcx> fmt::Debug for ty::ObjectLifetimeDefault<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::ObjectLifetimeDefault::Ambiguous => write!(f, "Ambiguous"),
@@ -793,13 +794,14 @@ impl<'tcx> fmt::Display for ty::Binder<ty::ProjectionPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region>> {
+impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, &'tcx ty::Region>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
 }
 
-impl fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region, ty::Region>> {
+impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<&'tcx ty::Region,
+                                                             &'tcx ty::Region>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
@@ -973,7 +975,7 @@ impl fmt::Debug for ty::UpvarId {
     }
 }
 
-impl fmt::Debug for ty::UpvarBorrow {
+impl<'tcx> fmt::Debug for ty::UpvarBorrow<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "UpvarBorrow({:?}, {:?})",
                self.kind, self.region)
@@ -997,7 +999,7 @@ impl fmt::Display for ty::InferTy {
     }
 }
 
-impl fmt::Display for ty::ExplicitSelfCategory {
+impl<'tcx> fmt::Display for ty::ExplicitSelfCategory<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match *self {
             ty::ExplicitSelfCategory::Static => "static",
