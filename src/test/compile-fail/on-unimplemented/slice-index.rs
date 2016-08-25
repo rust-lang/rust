@@ -18,7 +18,9 @@ use std::ops::Index;
 fn main() {
     let x = &[1, 2, 3] as &[i32];
     x[1i32]; //~ ERROR E0277
+             //~| NOTE trait `[i32]: std::ops::Index<i32>` not satisfied
              //~| NOTE slice indices are of type `usize`
     x[..1i32]; //~ ERROR E0277
+               //~| NOTE trait `[i32]: std::ops::Index<std::ops::RangeTo<i32>>` not satisfied
                //~| NOTE slice indices are of type `usize`
 }
