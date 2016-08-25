@@ -861,7 +861,7 @@ Available lint options:
         for (name, to) in lints {
             let name = name.to_lowercase().replace("_", "-");
             let desc = to.into_iter()
-                         .map(|x| x.as_str().replace("_", "-"))
+                         .map(|x| x.to_string().replace("_", "-"))
                          .collect::<Vec<String>>()
                          .join(", ");
             println!("    {}  {}", padded(&name[..]), desc);
