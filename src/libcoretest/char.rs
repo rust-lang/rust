@@ -358,29 +358,50 @@ fn eu_iterator_specializations() {
 
 #[test]
 fn test_decode_utf8() {
-    use core::char::*;
-    use core::iter::FromIterator;
-
-    for &(str, bs) in [("", &[] as &[u8]),
-                       ("A", &[0x41u8] as &[u8]),
-                       ("�", &[0xC1u8, 0x81u8] as &[u8]),
-                       ("♥", &[0xE2u8, 0x99u8, 0xA5u8]),
-                       ("♥A", &[0xE2u8, 0x99u8, 0xA5u8, 0x41u8] as &[u8]),
-                       ("�", &[0xE2u8, 0x99u8] as &[u8]),
-                       ("�A", &[0xE2u8, 0x99u8, 0x41u8] as &[u8]),
-                       ("�", &[0xC0u8] as &[u8]),
-                       ("�A", &[0xC0u8, 0x41u8] as &[u8]),
-                       ("�", &[0x80u8] as &[u8]),
-                       ("�A", &[0x80u8, 0x41u8] as &[u8]),
-                       ("�", &[0xFEu8] as &[u8]),
-                       ("�A", &[0xFEu8, 0x41u8] as &[u8]),
-                       ("�", &[0xFFu8] as &[u8]),
-                       ("�A", &[0xFFu8, 0x41u8] as &[u8])].into_iter() {
-        assert!(Iterator::eq(str.chars(),
-                             decode_utf8(bs.into_iter().map(|&b|b))
-                                 .map(|r_b| r_b.unwrap_or('\u{FFFD}'))),
-                "chars = {}, bytes = {:?}, decoded = {:?}", str, bs,
-                Vec::from_iter(decode_utf8(bs.into_iter().map(|&b|b))
-                                   .map(|r_b| r_b.unwrap_or('\u{FFFD}'))));
+    macro_rules! assert_decode_utf8 {
+        ($input_bytes: expr, $expected_str: expr) => {
+            let input_bytes: &[u8] = &$input_bytes;
+            let s = char::decode_utf8(input_bytes.iter().cloned())
+                .map(|r_b| r_b.unwrap_or('\u{FFFD}'))
+                .collect::<String>();
+            assert_eq!(s, $expected_str,
+                       "input bytes: {:?}, expected str: {:?}, result: {:?}",
+                       input_bytes, $expected_str, s);
+            assert_eq!(String::from_utf8_lossy(&$input_bytes), $expected_str);
+        }
     }
+
+    assert_decode_utf8!([], "");
+    assert_decode_utf8!([0x41], "A");
+    assert_decode_utf8!([0xC1, 0x81], "��");
+    assert_decode_utf8!([0xE2, 0x99, 0xA5], "♥");
+    assert_decode_utf8!([0xE2, 0x99, 0xA5, 0x41], "♥A");
+    assert_decode_utf8!([0xE2, 0x99], "�");
+    assert_decode_utf8!([0xE2, 0x99, 0x41], "�A");
+    assert_decode_utf8!([0xC0], "�");
+    assert_decode_utf8!([0xC0, 0x41], "�A");
+    assert_decode_utf8!([0x80], "�");
+    assert_decode_utf8!([0x80, 0x41], "�A");
+    assert_decode_utf8!([0xFE], "�");
+    assert_decode_utf8!([0xFE, 0x41], "�A");
+    assert_decode_utf8!([0xFF], "�");
+    assert_decode_utf8!([0xFF, 0x41], "�A");
+    assert_decode_utf8!([0xC0, 0x80], "��");
+
+    // Surrogates
+    assert_decode_utf8!([0xED, 0x9F, 0xBF], "\u{D7FF}");
+    assert_decode_utf8!([0xED, 0xA0, 0x80], "���");
+    assert_decode_utf8!([0xED, 0xBF, 0x80], "���");
+    assert_decode_utf8!([0xEE, 0x80, 0x80], "\u{E000}");
+
+    // char::MAX
+    assert_decode_utf8!([0xF4, 0x8F, 0xBF, 0xBF], "\u{10FFFF}");
+    assert_decode_utf8!([0xF4, 0x8F, 0xBF, 0x41], "�A");
+    assert_decode_utf8!([0xF4, 0x90, 0x80, 0x80], "����");
+
+    // 5 and 6 bytes sequence
+    // Part of the original design of UTF-8,
+    // but invalid now that UTF-8 is artificially restricted to match the range of UTF-16.
+    assert_decode_utf8!([0xF8, 0x80, 0x80, 0x80, 0x80], "�����");
+    assert_decode_utf8!([0xFC, 0x80, 0x80, 0x80, 0x80, 0x80], "������");
 }
