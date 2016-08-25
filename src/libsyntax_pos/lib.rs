@@ -549,7 +549,7 @@ impl Sub for BytePos {
     type Output = BytePos;
 
     fn sub(self, rhs: BytePos) -> BytePos {
-        let new_pos = self.to_usize().checked_sub(rhs.to_usize()).unwrap_or(0);
+        let new_pos = self.to_usize().saturating_sub(rhs.to_usize());
         BytePos(new_post as u32)
     }
 }
