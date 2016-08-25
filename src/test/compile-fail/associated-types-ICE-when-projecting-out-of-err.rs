@@ -31,5 +31,6 @@ trait Add<RHS=Self> {
 fn ice<A>(a: A) {
     let r = loop {};
     r = r + a;
-    //~^ ERROR E0277
+    //~^ ERROR the trait bound `(): Add<A>` is not satisfied
+    //~| NOTE trait `(): Add<A>` not satisfied
 }
