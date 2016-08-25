@@ -238,7 +238,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                         (targets.clone(),
                          TerminatorKind::SwitchInt {
-                             discr: lvalue.clone(),
+                             discr: Operand::Consume(lvalue.clone()),
                              switch_ty: switch_ty,
                              values: options.clone(),
                              targets: targets

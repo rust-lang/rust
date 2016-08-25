@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod dataflow;
+
 pub mod simplify_branches;
-pub mod simplify_cfg;
+pub mod simplify;
 pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod type_check;
@@ -18,3 +20,5 @@ pub mod promote_consts;
 pub mod qualify_consts;
 pub mod dump_mir;
 pub mod deaggregator;
+pub mod deadcode;
+pub mod const_propagate;

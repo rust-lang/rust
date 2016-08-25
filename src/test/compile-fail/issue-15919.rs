@@ -13,9 +13,11 @@
 #[cfg(target_pointer_width = "32")]
 fn main() {
     let x = [0usize; 0xffff_ffff];
+    drop(x);
 }
 
 #[cfg(target_pointer_width = "64")]
 fn main() {
     let x = [0usize; 0xffff_ffff_ffff_ffff];
+    drop(x);
 }

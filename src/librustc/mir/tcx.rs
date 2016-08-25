@@ -247,26 +247,3 @@ impl BorrowKind {
         }
     }
 }
-
-impl BinOp {
-    pub fn to_hir_binop(self) -> hir::BinOp_ {
-        match self {
-            BinOp::Add => hir::BinOp_::BiAdd,
-            BinOp::Sub => hir::BinOp_::BiSub,
-            BinOp::Mul => hir::BinOp_::BiMul,
-            BinOp::Div => hir::BinOp_::BiDiv,
-            BinOp::Rem => hir::BinOp_::BiRem,
-            BinOp::BitXor => hir::BinOp_::BiBitXor,
-            BinOp::BitAnd => hir::BinOp_::BiBitAnd,
-            BinOp::BitOr => hir::BinOp_::BiBitOr,
-            BinOp::Shl => hir::BinOp_::BiShl,
-            BinOp::Shr => hir::BinOp_::BiShr,
-            BinOp::Eq => hir::BinOp_::BiEq,
-            BinOp::Ne => hir::BinOp_::BiNe,
-            BinOp::Lt => hir::BinOp_::BiLt,
-            BinOp::Gt => hir::BinOp_::BiGt,
-            BinOp::Le => hir::BinOp_::BiLe,
-            BinOp::Ge => hir::BinOp_::BiGe
-        }
-    }
-}

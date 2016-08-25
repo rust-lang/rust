@@ -159,14 +159,14 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
 
         if let Some(index) = self.mir.local_index(lvalue) {
             match context {
-                LvalueContext::Call => {
+                LvalueContext::CallStore => {
                     self.mark_assigned(index);
                 }
 
                 LvalueContext::StorageLive |
                 LvalueContext::StorageDead |
                 LvalueContext::Consume => {}
-
+                LvalueContext::AsmOutput |
                 LvalueContext::Store |
                 LvalueContext::Inspect |
                 LvalueContext::Borrow { .. } |

@@ -916,16 +916,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                  "MIR dump",
                  || mir::mir_map::build_mir_for_crate(tcx));
 
-        time(time_passes, "MIR passes", || {
+        time(time_passes, "MIR validation", || {
             let mut passes = sess.mir_passes.borrow_mut();
             // Push all the built-in passes.
             passes.push_hook(box mir::transform::dump_mir::DumpMir);
-            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("initial"));
+            passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
             passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(box mir::transform::type_check::TypeckMir);
             passes.push_pass(
                 box mir::transform::simplify_branches::SimplifyBranches::new("initial"));
-            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("qualify-consts"));
+            passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
             // And run everything.
             passes.run_passes(tcx, &mut mir_map);
         });
@@ -998,21 +998,25 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Run the passes that transform the MIR into a more suitable for translation
     // to LLVM code.
-    time(time_passes, "Prepare MIR codegen passes", || {
+    time(time_passes, "MIR optimisations", || {
         let mut passes = ::rustc::mir::transform::Passes::new();
         passes.push_hook(box mir::transform::dump_mir::DumpMir);
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
-        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("no-landing-pads"));
+        passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("no-landing-pads"));
 
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
 
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box borrowck::ElaborateDrops);
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
-        passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops"));
+        passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
 
         passes.push_pass(box mir::transform::deaggregator::Deaggregator);
+        passes.push_pass(box mir::transform::const_propagate::ConstPropagate);
+        passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("const-propagate"));
+        passes.push_pass(box mir::transform::deadcode::DeadCode);
 
+        passes.push_pass(box mir::transform::simplify::SimplifyLocals);
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box mir::transform::dump_mir::Marker("PreTrans"));
 

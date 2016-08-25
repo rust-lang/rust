@@ -48,10 +48,10 @@ use rustc_const_math::*;
 use rustc_errors::DiagnosticBuilder;
 
 macro_rules! math {
-    ($e:expr, $op:expr) => {
+    ($span:expr, $op:expr) => {
         match $op {
             Ok(val) => val,
-            Err(e) => signal!($e, Math(e)),
+            Err(e) => signal!($span, Math(e)),
         }
     }
 }
@@ -582,9 +582,82 @@ impl<'tcx> EvalHint<'tcx> {
 }
 
 macro_rules! signal {
-    ($e:expr, $exn:expr) => {
-        return Err(ConstEvalErr { span: $e.span, kind: $exn })
+    ($span:expr, $exn:expr) => {
+        return Err(ConstEvalErr { span: $span, kind: $exn })
     }
+}
+
+pub fn eval_const_binop(op: hir::BinOp_, l: &ConstVal, r: &ConstVal, span: Span) -> EvalResult {
+    Ok(match (l, r) {
+        (&Float(a), &Float(b)) => {
+            use std::cmp::Ordering::*;
+            match op {
+                hir::BiAdd => Float(math!(span, a + b)),
+                hir::BiSub => Float(math!(span, a - b)),
+                hir::BiMul => Float(math!(span, a * b)),
+                hir::BiDiv => Float(math!(span, a / b)),
+                hir::BiRem => Float(math!(span, a % b)),
+                hir::BiEq => Bool(math!(span, a.try_cmp(b)) == Equal),
+                hir::BiLt => Bool(math!(span, a.try_cmp(b)) == Less),
+                hir::BiLe => Bool(math!(span, a.try_cmp(b)) != Greater),
+                hir::BiNe => Bool(math!(span, a.try_cmp(b)) != Equal),
+                hir::BiGe => Bool(math!(span, a.try_cmp(b)) != Less),
+                hir::BiGt => Bool(math!(span, a.try_cmp(b)) == Greater),
+                _ => signal!(span, InvalidOpForFloats(op)),
+            }
+        }
+        (&Integral(a), &Integral(b)) => {
+            use std::cmp::Ordering::*;
+            match op {
+                hir::BiAdd => Integral(math!(span, a + b)),
+                hir::BiSub => Integral(math!(span, a - b)),
+                hir::BiMul => Integral(math!(span, a * b)),
+                hir::BiDiv => Integral(math!(span, a / b)),
+                hir::BiRem => Integral(math!(span, a % b)),
+                hir::BiBitAnd => Integral(math!(span, a & b)),
+                hir::BiBitOr => Integral(math!(span, a | b)),
+                hir::BiBitXor => Integral(math!(span, a ^ b)),
+                hir::BiShl => Integral(math!(span, a << b)),
+                hir::BiShr => Integral(math!(span, a >> b)),
+                hir::BiEq => Bool(math!(span, a.try_cmp(b)) == Equal),
+                hir::BiLt => Bool(math!(span, a.try_cmp(b)) == Less),
+                hir::BiLe => Bool(math!(span, a.try_cmp(b)) != Greater),
+                hir::BiNe => Bool(math!(span, a.try_cmp(b)) != Equal),
+                hir::BiGe => Bool(math!(span, a.try_cmp(b)) != Less),
+                hir::BiGt => Bool(math!(span, a.try_cmp(b)) == Greater),
+                _ => signal!(span, InvalidOpForInts(op)),
+            }
+        }
+        (&Bool(a), &Bool(b)) => {
+            Bool(match op {
+                hir::BiAnd => a && b,
+                hir::BiOr => a || b,
+                hir::BiBitXor => a ^ b,
+                hir::BiBitAnd => a & b,
+                hir::BiBitOr => a | b,
+                hir::BiEq => a == b,
+                hir::BiNe => a != b,
+                _ => signal!(span, InvalidOpForBools(op)),
+            })
+        }
+        _ => signal!(span, MiscBinaryOp),
+    })
+}
+
+pub fn eval_const_unop(op: hir::UnOp, const1: &ConstVal, span: Span) -> EvalResult {
+    Ok(match op {
+        hir::UnNeg => match *const1 {
+            Float(f) => Float(-f),
+            Integral(i) => Integral(math!(span, -i)),
+            ref const_val => signal!(span, NegateOn(const_val.clone())),
+        },
+        hir::UnNot => match *const1 {
+            Integral(i) => Integral(math!(span, !i)),
+            Bool(b) => Bool(!b),
+            ref const_val => signal!(span, NotOn(const_val.clone())),
+        },
+        hir::UnDeref => signal!(span, UnimplementedConstVal("deref operation")),
+    })
 }
 
 /// Evaluate a constant expression in a context where the expression isn't
@@ -659,20 +732,16 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => {},
             }
         }
-        match eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)? {
-          Float(f) => Float(-f),
-          Integral(i) => Integral(math!(e, -i)),
-          const_val => signal!(e, NegateOn(const_val)),
-        }
+        eval_const_unop(hir::UnNeg,
+                        &eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)?,
+                        e.span)?
       }
       hir::ExprUnary(hir::UnNot, ref inner) => {
-        match eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)? {
-          Integral(i) => Integral(math!(e, !i)),
-          Bool(b) => Bool(!b),
-          const_val => signal!(e, NotOn(const_val)),
-        }
+        eval_const_unop(hir::UnNot,
+                        &eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)?,
+                        e.span)?
       }
-      hir::ExprUnary(hir::UnDeref, _) => signal!(e, UnimplementedConstVal("deref operation")),
+      hir::ExprUnary(hir::UnDeref, _) => signal!(e.span, UnimplementedConstVal("deref operation")),
       hir::ExprBinary(op, ref a, ref b) => {
         let b_ty = match op.node {
             hir::BiShl | hir::BiShr => ty_hint.erase_hint(),
@@ -682,62 +751,10 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // gives us a type through a type-suffix, cast or const def type
         // we need to re-eval the other value of the BinOp if it was
         // not inferred
-        match (eval_const_expr_partial(tcx, &a, ty_hint, fn_args)?,
-               eval_const_expr_partial(tcx, &b, b_ty, fn_args)?) {
-          (Float(a), Float(b)) => {
-            use std::cmp::Ordering::*;
-            match op.node {
-              hir::BiAdd => Float(math!(e, a + b)),
-              hir::BiSub => Float(math!(e, a - b)),
-              hir::BiMul => Float(math!(e, a * b)),
-              hir::BiDiv => Float(math!(e, a / b)),
-              hir::BiRem => Float(math!(e, a % b)),
-              hir::BiEq => Bool(math!(e, a.try_cmp(b)) == Equal),
-              hir::BiLt => Bool(math!(e, a.try_cmp(b)) == Less),
-              hir::BiLe => Bool(math!(e, a.try_cmp(b)) != Greater),
-              hir::BiNe => Bool(math!(e, a.try_cmp(b)) != Equal),
-              hir::BiGe => Bool(math!(e, a.try_cmp(b)) != Less),
-              hir::BiGt => Bool(math!(e, a.try_cmp(b)) == Greater),
-              _ => signal!(e, InvalidOpForFloats(op.node)),
-            }
-          }
-          (Integral(a), Integral(b)) => {
-            use std::cmp::Ordering::*;
-            match op.node {
-              hir::BiAdd => Integral(math!(e, a + b)),
-              hir::BiSub => Integral(math!(e, a - b)),
-              hir::BiMul => Integral(math!(e, a * b)),
-              hir::BiDiv => Integral(math!(e, a / b)),
-              hir::BiRem => Integral(math!(e, a % b)),
-              hir::BiBitAnd => Integral(math!(e, a & b)),
-              hir::BiBitOr => Integral(math!(e, a | b)),
-              hir::BiBitXor => Integral(math!(e, a ^ b)),
-              hir::BiShl => Integral(math!(e, a << b)),
-              hir::BiShr => Integral(math!(e, a >> b)),
-              hir::BiEq => Bool(math!(e, a.try_cmp(b)) == Equal),
-              hir::BiLt => Bool(math!(e, a.try_cmp(b)) == Less),
-              hir::BiLe => Bool(math!(e, a.try_cmp(b)) != Greater),
-              hir::BiNe => Bool(math!(e, a.try_cmp(b)) != Equal),
-              hir::BiGe => Bool(math!(e, a.try_cmp(b)) != Less),
-              hir::BiGt => Bool(math!(e, a.try_cmp(b)) == Greater),
-              _ => signal!(e, InvalidOpForInts(op.node)),
-            }
-          }
-          (Bool(a), Bool(b)) => {
-            Bool(match op.node {
-              hir::BiAnd => a && b,
-              hir::BiOr => a || b,
-              hir::BiBitXor => a ^ b,
-              hir::BiBitAnd => a & b,
-              hir::BiBitOr => a | b,
-              hir::BiEq => a == b,
-              hir::BiNe => a != b,
-              _ => signal!(e, InvalidOpForBools(op.node)),
-             })
-          }
-
-          _ => signal!(e, MiscBinaryOp),
-        }
+        eval_const_binop(op.node,
+                         &eval_const_expr_partial(tcx, &a, ty_hint, fn_args)?,
+                         &eval_const_expr_partial(tcx, &b, b_ty, fn_args)?,
+                         e.span)?
       }
       hir::ExprCast(ref base, ref target_ty) => {
         let ety = tcx.ast_ty_to_prim_ty(&target_ty).or(ety)
@@ -782,7 +799,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           // FIXME: There's probably a better way to make sure we don't panic here.
           let resolution = tcx.expect_resolution(e.id);
           if resolution.depth != 0 {
-              signal!(e, UnresolvedPath);
+              signal!(e.span, UnresolvedPath);
           }
           match resolution.base_def {
               Def::Const(def_id) |
@@ -801,11 +818,11 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           Ok(val) => val,
                           Err(err) => {
                               debug!("bad reference: {:?}, {:?}", err.description(), err.span);
-                              signal!(e, ErroneousReferencedConstant(box err))
+                              signal!(e.span, ErroneousReferencedConstant(box err))
                           },
                       }
                   } else {
-                      signal!(e, NonConstPath);
+                      signal!(e.span, NonConstPath);
                   }
               },
               Def::Variant(enum_def, variant_def) => {
@@ -814,11 +831,11 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           Ok(val) => val,
                           Err(err) => {
                               debug!("bad reference: {:?}, {:?}", err.description(), err.span);
-                              signal!(e, ErroneousReferencedConstant(box err))
+                              signal!(e.span, ErroneousReferencedConstant(box err))
                           },
                       }
                   } else {
-                      signal!(e, UnimplementedConstVal("enum variants"));
+                      signal!(e.span, UnimplementedConstVal("enum variants"));
                   }
               }
               Def::Struct(..) => {
@@ -829,11 +846,11 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
                       val.clone()
                   } else {
-                      signal!(e, NonConstPath);
+                      signal!(e.span, NonConstPath);
                   }
               },
               Def::Method(id) | Def::Fn(id) => Function(id),
-              _ => signal!(e, NonConstPath),
+              _ => signal!(e.span, NonConstPath),
           }
       }
       hir::ExprCall(ref callee, ref args) => {
@@ -841,13 +858,13 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           let callee_val = eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)?;
           let did = match callee_val {
               Function(did) => did,
-              Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
-              callee => signal!(e, CallOn(callee)),
+              Struct(_) => signal!(e.span, UnimplementedConstVal("tuple struct constructors")),
+              callee => signal!(e.span, CallOn(callee)),
           };
           let (decl, result) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
               (fn_like.decl(), &fn_like.body().expr)
           } else {
-              signal!(e, NonConstPath)
+              signal!(e.span, NonConstPath)
           };
           let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
@@ -870,12 +887,12 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
       },
       hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety, lit.span) {
           Ok(val) => val,
-          Err(err) => signal!(e, err),
+          Err(err) => signal!(e.span, err),
       },
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)?,
-            None => signal!(e, UnimplementedConstVal("empty block")),
+            None => signal!(e.span, UnimplementedConstVal("empty block")),
         }
       }
       hir::ExprType(ref e, _) => eval_const_expr_partial(tcx, &e, ty_hint, fn_args)?,
@@ -883,7 +900,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
       hir::ExprStruct(..) => Struct(e.id),
       hir::ExprIndex(ref arr, ref idx) => {
         if !tcx.sess.features.borrow().const_indexing {
-            signal!(e, IndexOpFeatureGated);
+            signal!(e.span, IndexOpFeatureGated);
         }
         let arr_hint = ty_hint.erase_hint();
         let arr = eval_const_expr_partial(tcx, arr, arr_hint, fn_args)?;
@@ -891,12 +908,12 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let idx = match eval_const_expr_partial(tcx, idx, idx_hint, fn_args)? {
             Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
             Integral(_) => bug!(),
-            _ => signal!(idx, IndexNotInt),
+            _ => signal!(idx.span, IndexNotInt),
         };
         assert_eq!(idx as usize as u64, idx);
         match arr {
             Array(_, n) if idx >= n => {
-                signal!(e, IndexOutOfBounds { len: n, index: idx })
+                signal!(e.span, IndexOutOfBounds { len: n, index: idx })
             }
             Array(v, n) => if let hir::ExprVec(ref v) = tcx.map.expect_expr(v).node {
                 assert_eq!(n as usize as u64, n);
@@ -906,7 +923,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             },
 
             Repeat(_, n) if idx >= n => {
-                signal!(e, IndexOutOfBounds { len: n, index: idx })
+                signal!(e.span, IndexOutOfBounds { len: n, index: idx })
             }
             Repeat(elem, _) => eval_const_expr_partial(
                 tcx,
@@ -916,13 +933,13 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             )?,
 
             ByteStr(ref data) if idx >= data.len() as u64 => {
-                signal!(e, IndexOutOfBounds { len: data.len() as u64, index: idx })
+                signal!(e.span, IndexOutOfBounds { len: data.len() as u64, index: idx })
             }
             ByteStr(data) => {
                 Integral(U8(data[idx as usize]))
             },
 
-            _ => signal!(e, IndexedNonVec),
+            _ => signal!(e.span, IndexedNonVec),
         }
       }
       hir::ExprVec(ref v) => Array(e.id, v.len() as u64),
@@ -932,8 +949,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               e.id,
               match eval_const_expr_partial(tcx, &n, len_hint, fn_args)? {
                   Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
-                  Integral(_) => signal!(e, RepeatCountNotNatural),
-                  _ => signal!(e, RepeatCountNotInt),
+                  Integral(_) => signal!(e.span, RepeatCountNotNatural),
+                  _ => signal!(e.span, RepeatCountNotInt),
               },
           )
       },
@@ -945,13 +962,13 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 if index.node < fields.len() {
                     eval_const_expr_partial(tcx, &fields[index.node], ty_hint, fn_args)?
                 } else {
-                    signal!(e, TupleIndexOutOfBounds);
+                    signal!(e.span, TupleIndexOutOfBounds);
                 }
             } else {
                 bug!()
             }
         } else {
-            signal!(base, ExpectedConstTuple);
+            signal!(base.span, ExpectedConstTuple);
         }
       }
       hir::ExprField(ref base, field_name) => {
@@ -966,23 +983,23 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                      == field_name.node) {
                     eval_const_expr_partial(tcx, &f.expr, ty_hint, fn_args)?
                 } else {
-                    signal!(e, MissingStructField);
+                    signal!(e.span, MissingStructField);
                 }
             } else {
                 bug!()
             }
         } else {
-            signal!(base, ExpectedConstStruct);
+            signal!(base.span, ExpectedConstStruct);
         }
       }
-      hir::ExprAddrOf(..) => signal!(e, UnimplementedConstVal("address operator")),
-      _ => signal!(e, MiscCatchAll)
+      hir::ExprAddrOf(..) => signal!(e.span, UnimplementedConstVal("address operator")),
+      _ => signal!(e.span, MiscCatchAll)
     };
 
     match (ety.map(|t| &t.sty), result) {
         (Some(ref ty_hint), Integral(i)) => match infer(i, tcx, ty_hint) {
             Ok(inferred) => Ok(Integral(inferred)),
-            Err(err) => signal!(e, err),
+            Err(err) => signal!(e.span, err),
         },
         (_, result) => Ok(result),
     }
@@ -1170,7 +1187,7 @@ fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult {
+pub fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult {
     match val {
         Integral(i) => cast_const_int(tcx, i, ty),
         Bool(b) => cast_const_int(tcx, Infer(b as u64), ty),

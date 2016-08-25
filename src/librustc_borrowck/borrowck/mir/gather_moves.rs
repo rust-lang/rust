@@ -616,10 +616,8 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                 }
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) => {}
-                StatementKind::SetDiscriminant{ .. } => {
-                    span_bug!(stmt.source_info.span,
-                              "SetDiscriminant should not exist during borrowck");
-                }
+                StatementKind::SetDiscriminant{ .. } =>
+                    bug!("SetDiscriminant and drop elaboration are incompatible")
             }
         }
 
@@ -658,13 +656,12 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                 }
             }
 
-            TerminatorKind::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |
-            TerminatorKind::Switch { adt_def: _, targets: _, ref discr } => {
+            TerminatorKind::SwitchInt { switch_ty: _, values: _, targets: _, discr: _ } |
+            TerminatorKind::Switch { adt_def: _, targets: _, discr: _ } => {
                 // The `discr` is not consumed; that is instead
                 // encoded on specific match arms (and for
                 // SwitchInt`, it is always a copyable integer
                 // type anyway).
-                let _ = discr;
             }
 
             TerminatorKind::Drop { ref location, target: _, unwind: _ } => {
