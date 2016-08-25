@@ -86,7 +86,7 @@ pub fn load_index(data: &[u8]) -> index::Index {
 
 pub fn crate_rustc_version(data: &[u8]) -> Option<String> {
     let doc = rbml::Doc::new(data);
-    reader::maybe_get_doc(doc, tag_rustc_version).map(|s| s.as_str())
+    reader::maybe_get_doc(doc, tag_rustc_version).map(|s| s.to_string())
 }
 
 pub fn load_xrefs(data: &[u8]) -> index::DenseIndex {
@@ -207,7 +207,7 @@ fn item_defaultness(item: rbml::Doc) -> hir::Defaultness {
 
 fn item_sort(item: rbml::Doc) -> Option<char> {
     reader::tagged_docs(item, tag_item_trait_item_sort).nth(0).map(|doc| {
-        doc.as_str_slice().as_bytes()[0] as char
+        doc.as_str().as_bytes()[0] as char
     })
 }
 
@@ -282,7 +282,7 @@ fn item_name(item: rbml::Doc) -> ast::Name {
 
 fn maybe_item_name(item: rbml::Doc) -> Option<ast::Name> {
     reader::maybe_get_doc(item, tag_paths_data_name).map(|name| {
-        let string = name.as_str_slice();
+        let string = name.as_str();
         token::intern(string)
     })
 }
@@ -368,7 +368,7 @@ fn parse_polarity(item_doc: rbml::Doc) -> hir::ImplPolarity {
 fn parse_associated_type_names(item_doc: rbml::Doc) -> Vec<ast::Name> {
     let names_doc = reader::get_doc(item_doc, tag_associated_type_names);
     reader::tagged_docs(names_doc, tag_associated_type_name)
-        .map(|name_doc| token::intern(name_doc.as_str_slice()))
+        .map(|name_doc| token::intern(name_doc.as_str()))
         .collect()
 }
 
@@ -682,7 +682,7 @@ fn each_child_of_item_or_crate<F, G>(cdata: Cmd,
 
         let name_doc = reader::get_doc(reexport_doc,
                                        tag_items_data_item_reexport_name);
-        let name = name_doc.as_str_slice();
+        let name = name_doc.as_str();
 
         // This reexport may be in yet another crate.
         let crate_data = if child_def_id.krate == cdata.cnum {
@@ -869,7 +869,7 @@ fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
     }
 
     let explicit_self_doc = reader::get_doc(item, tag_item_trait_method_explicit_self);
-    let string = explicit_self_doc.as_str_slice();
+    let string = explicit_self_doc.as_str();
 
     let explicit_self_kind = string.as_bytes()[0];
     match explicit_self_kind as char {
@@ -1124,19 +1124,19 @@ pub fn get_struct_field_names(cdata: Cmd, id: DefIndex) -> Vec<ast::Name> {
 fn get_meta_items(md: rbml::Doc) -> Vec<P<ast::MetaItem>> {
     reader::tagged_docs(md, tag_meta_item_word).map(|meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = token::intern_and_get_ident(nd.as_str_slice());
+        let n = token::intern_and_get_ident(nd.as_str());
         attr::mk_word_item(n)
     }).chain(reader::tagged_docs(md, tag_meta_item_name_value).map(|meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = token::intern_and_get_ident(nd.as_str_slice());
-        let v = token::intern_and_get_ident(vd.as_str_slice());
+        let n = token::intern_and_get_ident(nd.as_str());
+        let v = token::intern_and_get_ident(vd.as_str());
         // FIXME (#623): Should be able to decode MetaItemKind::NameValue variants,
         // but currently the encoder just drops them
         attr::mk_name_value_item_str(n, v)
     })).chain(reader::tagged_docs(md, tag_meta_item_list).map(|meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = token::intern_and_get_ident(nd.as_str_slice());
+        let n = token::intern_and_get_ident(nd.as_str());
         let subitems = get_meta_items(meta_item_doc);
         attr::mk_list_item(n, subitems)
     })).collect()
@@ -1191,7 +1191,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
 
     fn docstr(doc: rbml::Doc, tag_: usize) -> String {
         let d = reader::get_doc(doc, tag_);
-        d.as_str_slice().to_string()
+        d.as_str().to_string()
     }
 
     reader::tagged_docs(depsdoc, tag_crate_dep).enumerate().map(|(crate_num, depdoc)| {
@@ -1233,14 +1233,14 @@ pub fn get_crate_hash(data: &[u8]) -> Svh {
 pub fn maybe_get_crate_name(data: &[u8]) -> Option<&str> {
     let cratedoc = rbml::Doc::new(data);
     reader::maybe_get_doc(cratedoc, tag_crate_crate_name).map(|doc| {
-        doc.as_str_slice()
+        doc.as_str()
     })
 }
 
 pub fn get_crate_disambiguator<'a>(data: &'a [u8]) -> &'a str {
     let crate_doc = rbml::Doc::new(data);
     let disambiguator_doc = reader::get_doc(crate_doc, tag_crate_disambiguator);
-    let slice: &'a str = disambiguator_doc.as_str_slice();
+    let slice: &'a str = disambiguator_doc.as_str();
     slice
 }
 
@@ -1446,11 +1446,12 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
                                   tag_dylib_dependency_formats);
     let mut result = Vec::new();
 
-    debug!("found dylib deps: {}", formats.as_str_slice());
-    for spec in formats.as_str_slice().split(',') {
+    debug!("found dylib deps: {}", formats.as_str());
+    for spec in formats.as_str().split(',') {
         if spec.is_empty() { continue }
-        let cnum = spec.split(':').nth(0).unwrap();
-        let link = spec.split(':').nth(1).unwrap();
+        let mut split = spec.split(':');
+        let cnum = split.next().unwrap();
+        let link = split.next().unwrap();
         let cnum: ast::CrateNum = cnum.parse().unwrap();
         let cnum = cdata.cnum_map.borrow()[cnum];
         result.push((cnum, if link == "d" {
@@ -1476,7 +1477,7 @@ pub fn get_method_arg_names(cdata: Cmd, id: DefIndex) -> Vec<String> {
     match reader::maybe_get_doc(method_doc, tag_method_argument_names) {
         Some(args_doc) => {
             reader::tagged_docs(args_doc, tag_method_argument_name).map(|name_doc| {
-                name_doc.as_str_slice().to_string()
+                name_doc.as_str().to_string()
             }).collect()
         },
         None => vec![],
@@ -1641,7 +1642,7 @@ fn item_def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
             let mut decoder = reader::Decoder::new(def_key_doc);
             let simple_key = def_key::DefKey::decode(&mut decoder).unwrap();
             let name = reader::maybe_get_doc(item_doc, tag_paths_data_name).map(|name| {
-                token::intern(name.as_str_slice()).as_str()
+                token::intern(name.as_str()).as_str()
             });
             def_key::recover_def_key(simple_key, name)
         }

@@ -48,6 +48,12 @@ pub fn lvalue_locals<'bcx, 'tcx>(bcx: Block<'bcx,'tcx>,
                     common::type_is_fat_ptr(bcx.tcx(), ty));
         } else if common::type_is_imm_pair(bcx.ccx(), ty) {
             // We allow pairs and uses of any of their 2 fields.
+        } else if !analyzer.seen_assigned.contains(index) {
+            // No assignment has been seen, which means that
+            // either the local has been marked as lvalue
+            // already, or there is no possible initialization
+            // for the local, making any reads invalid.
+            // This is useful in weeding out dead temps.
         } else {
             // These sorts of types require an alloca. Note that
             // type_is_immediate() may *still* be true, particularly

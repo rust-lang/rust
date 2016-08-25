@@ -173,12 +173,12 @@ impl<'doc> Doc<'doc> {
         self.start == self.end
     }
 
-    pub fn as_str_slice(&self) -> &'doc str {
+    pub fn as_str(&self) -> &'doc str {
         str::from_utf8(&self.data[self.start..self.end]).unwrap()
     }
 
-    pub fn as_str(&self) -> String {
-        self.as_str_slice().to_string()
+    pub fn to_string(&self) -> String {
+        self.as_str().to_string()
     }
 }
 
@@ -773,7 +773,7 @@ pub mod reader {
             Ok(char::from_u32(doc_as_u32(self.next_doc(EsChar)?)).unwrap())
         }
         fn read_str(&mut self) -> DecodeResult<String> {
-            Ok(self.next_doc(EsStr)?.as_str())
+            Ok(self.next_doc(EsStr)?.to_string())
         }
 
         // Compound types:

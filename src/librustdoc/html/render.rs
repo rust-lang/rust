@@ -509,7 +509,7 @@ pub fn run(mut krate: clean::Crate,
     } = renderinfo;
 
     let external_paths = external_paths.into_iter()
-        .map(|(k, (v, t))| (k, (v, ItemType::from_type_kind(t))))
+        .map(|(k, (v, t))| (k, (v, ItemType::from(t))))
         .collect();
 
     let mut cache = Cache {
@@ -833,7 +833,7 @@ fn mkdir(path: &Path) -> io::Result<()> {
 
 /// Returns a documentation-level item type from the item.
 fn item_type(item: &clean::Item) -> ItemType {
-    ItemType::from_item(item)
+    ItemType::from(item)
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
@@ -997,17 +997,8 @@ impl DocFolder for Cache {
 
         // Register any generics to their corresponding string. This is used
         // when pretty-printing types
-        match item.inner {
-            clean::StructItem(ref s)          => self.generics(&s.generics),
-            clean::EnumItem(ref e)            => self.generics(&e.generics),
-            clean::FunctionItem(ref f)        => self.generics(&f.generics),
-            clean::TypedefItem(ref t, _)      => self.generics(&t.generics),
-            clean::TraitItem(ref t)           => self.generics(&t.generics),
-            clean::ImplItem(ref i)            => self.generics(&i.generics),
-            clean::TyMethodItem(ref i)        => self.generics(&i.generics),
-            clean::MethodItem(ref i)          => self.generics(&i.generics),
-            clean::ForeignFunctionItem(ref f) => self.generics(&f.generics),
-            _ => {}
+        if let Some(generics) = item.inner.generics() {
+            self.generics(generics);
         }
 
         if !self.seen_mod {
@@ -1362,7 +1353,7 @@ impl Context {
         // these modules are recursed into, but not rendered normally
         // (a flag on the context).
         if !self.render_redirect_pages {
-            self.render_redirect_pages = self.maybe_ignore_item(&item);
+            self.render_redirect_pages = maybe_ignore_item(&item);
         }
 
         if item.is_mod() {
@@ -1445,7 +1436,7 @@ impl Context {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map = BTreeMap::new();
         for item in &m.items {
-            if self.maybe_ignore_item(item) { continue }
+            if maybe_ignore_item(item) { continue }
 
             let short = item_type(item).css_class();
             let myname = match item.name {
@@ -1461,17 +1452,6 @@ impl Context {
             items.sort();
         }
         return map;
-    }
-
-    fn maybe_ignore_item(&self, it: &clean::Item) -> bool {
-        match it.inner {
-            clean::StrippedItem(..) => true,
-            clean::ModuleItem(ref m) => {
-                it.doc_value().is_none() && m.items.is_empty()
-                                         && it.visibility != Some(clean::Public)
-            },
-            _ => false,
-        }
     }
 }
 
@@ -1715,7 +1695,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         if let clean::DefaultImplItem(..) = items[*i].inner {
             return false;
         }
-        !cx.maybe_ignore_item(&items[*i])
+        !maybe_ignore_item(&items[*i])
     }).collect::<Vec<usize>>();
 
     // the order of item types in the listing
@@ -1861,6 +1841,17 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         write!(w, "</table>")?;
     }
     Ok(())
+}
+
+fn maybe_ignore_item(it: &clean::Item) -> bool {
+    match it.inner {
+        clean::StrippedItem(..) => true,
+        clean::ModuleItem(ref m) => {
+            it.doc_value().is_none() && m.items.is_empty()
+                                     && it.visibility != Some(clean::Public)
+        },
+        _ => false,
+    }
 }
 
 fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {

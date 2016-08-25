@@ -237,7 +237,7 @@ impl CodeExtent {
                         // (This is the special case aluded to in the
                         // doc-comment for this method)
                         let stmt_span = blk.stmts[r.first_statement_index as usize].span;
-                        Some(Span { lo: stmt_span.hi, ..blk.span })
+                        Some(Span { lo: stmt_span.hi, hi: blk.span.hi, expn_id: stmt_span.expn_id })
                     }
                 }
             }

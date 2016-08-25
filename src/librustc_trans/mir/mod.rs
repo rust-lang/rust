@@ -10,18 +10,17 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
-use llvm::debuginfo::DIScope;
 use rustc::ty;
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;
 use common::{self, Block, BlockAndBuilder, CrateContext, FunctionContext, C_null};
-use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind};
+use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind, FunctionDebugContext};
 use machine;
 use type_of;
 
-use syntax_pos::DUMMY_SP;
+use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
 use syntax::parse::token::keywords;
 
 use std::ops::Deref;
@@ -103,12 +102,67 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     locals: IndexVec<mir::Local, LocalRef<'tcx>>,
 
     /// Debug information for MIR scopes.
-    scopes: IndexVec<mir::VisibilityScope, DIScope>
+    scopes: IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
 }
 
 impl<'blk, 'tcx> MirContext<'blk, 'tcx> {
-    pub fn debug_loc(&self, source_info: mir::SourceInfo) -> DebugLoc {
-        DebugLoc::ScopeAt(self.scopes[source_info.scope], source_info.span)
+    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> DebugLoc {
+        // Bail out if debug info emission is not enabled.
+        match self.fcx.debug_context {
+            FunctionDebugContext::DebugInfoDisabled |
+            FunctionDebugContext::FunctionWithoutDebugInfo => {
+                // Can't return DebugLoc::None here because intrinsic::trans_intrinsic_call()
+                // relies on debug location to obtain span of the call site.
+                return DebugLoc::ScopeAt(self.scopes[source_info.scope].scope_metadata,
+                                         source_info.span);
+            }
+            FunctionDebugContext::RegularContext(_) =>{}
+        }
+
+        // In order to have a good line stepping behavior in debugger, we overwrite debug
+        // locations of macro expansions with that of the outermost expansion site
+        // (unless the crate is being compiled with `-Z debug-macros`).
+        if source_info.span.expn_id == NO_EXPANSION ||
+            source_info.span.expn_id == COMMAND_LINE_EXPN ||
+            self.fcx.ccx.sess().opts.debugging_opts.debug_macros {
+
+            let scope_metadata = self.scope_metadata_for_loc(source_info.scope,
+                                                             source_info.span.lo);
+            DebugLoc::ScopeAt(scope_metadata, source_info.span)
+        } else {
+            let cm = self.fcx.ccx.sess().codemap();
+            // Walk up the macro expansion chain until we reach a non-expanded span.
+            let mut span = source_info.span;
+            while span.expn_id != NO_EXPANSION && span.expn_id != COMMAND_LINE_EXPN {
+                if let Some(callsite_span) = cm.with_expn_info(span.expn_id,
+                                                    |ei| ei.map(|ei| ei.call_site.clone())) {
+                    span = callsite_span;
+                } else {
+                    break;
+                }
+            }
+            let scope_metadata = self.scope_metadata_for_loc(source_info.scope, span.lo);
+            // Use span of the outermost call site, while keeping the original lexical scope
+            DebugLoc::ScopeAt(scope_metadata, span)
+        }
+    }
+
+    // DILocations inherit source file name from the parent DIScope.  Due to macro expansions
+    // it may so happen that the current span belongs to a different file than the DIScope
+    // corresponding to span's containing visibility scope.  If so, we need to create a DIScope
+    // "extension" into that file.
+    fn scope_metadata_for_loc(&self, scope_id: mir::VisibilityScope, pos: BytePos)
+                               -> llvm::debuginfo::DIScope {
+        let scope_metadata = self.scopes[scope_id].scope_metadata;
+        if pos < self.scopes[scope_id].file_start_pos ||
+           pos >= self.scopes[scope_id].file_end_pos {
+            let cm = self.fcx.ccx.sess().codemap();
+            debuginfo::extend_scope_to_file(self.fcx.ccx,
+                                            scope_metadata,
+                                            &cm.lookup_char_pos(pos).file)
+        } else {
+            scope_metadata
+        }
     }
 }
 
@@ -155,16 +209,38 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
          analyze::cleanup_kinds(bcx, &mir))
     });
 
+    // Allocate a `Block` for every basic block
+    let block_bcxs: IndexVec<mir::BasicBlock, Block<'blk,'tcx>> =
+        mir.basic_blocks().indices().map(|bb| {
+            if bb == mir::START_BLOCK {
+                fcx.new_block("start")
+            } else {
+                fcx.new_block(&format!("{:?}", bb))
+            }
+        }).collect();
+
     // Compute debuginfo scopes from MIR scopes.
     let scopes = debuginfo::create_mir_scopes(fcx);
 
+    let mut mircx = MirContext {
+        mir: mir.clone(),
+        fcx: fcx,
+        llpersonalityslot: None,
+        blocks: block_bcxs,
+        unreachable_block: None,
+        cleanup_kinds: cleanup_kinds,
+        landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
+        scopes: scopes,
+        locals: IndexVec::new(),
+    };
+
     // Allocate variable and temp allocas
-    let locals = {
-        let args = arg_local_refs(&bcx, &mir, &scopes, &lvalue_locals);
+    mircx.locals = {
+        let args = arg_local_refs(&bcx, &mir, &mircx.scopes, &lvalue_locals);
         let vars = mir.var_decls.iter().enumerate().map(|(i, decl)| {
             let ty = bcx.monomorphize(&decl.ty);
-            let scope = scopes[decl.source_info.scope];
-            let dbg = !scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo;
+            let debug_scope = mircx.scopes[decl.source_info.scope];
+            let dbg = debug_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo;
 
             let local = mir.local_index(&mir::Lvalue::Var(mir::Var::new(i))).unwrap();
             if !lvalue_locals.contains(local.index()) && !dbg {
@@ -173,11 +249,16 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 
             let lvalue = LvalueRef::alloca(&bcx, ty, &decl.name.as_str());
             if dbg {
-                bcx.with_block(|bcx| {
-                    declare_local(bcx, decl.name, ty, scope,
-                                VariableAccess::DirectVariable { alloca: lvalue.llval },
-                                VariableKind::LocalVariable, decl.source_info.span);
-                });
+                let dbg_loc = mircx.debug_loc(decl.source_info);
+                if let DebugLoc::ScopeAt(scope, span) = dbg_loc {
+                    bcx.with_block(|bcx| {
+                        declare_local(bcx, decl.name, ty, scope,
+                                    VariableAccess::DirectVariable { alloca: lvalue.llval },
+                                    VariableKind::LocalVariable, span);
+                    });
+                } else {
+                    panic!("Unexpected");
+                }
             }
             LocalRef::Lvalue(lvalue)
         });
@@ -203,36 +284,14 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         })).collect()
     };
 
-    // Allocate a `Block` for every basic block
-    let block_bcxs: IndexVec<mir::BasicBlock, Block<'blk,'tcx>> =
-        mir.basic_blocks().indices().map(|bb| {
-            if bb == mir::START_BLOCK {
-                fcx.new_block("start")
-            } else {
-                fcx.new_block(&format!("{:?}", bb))
-            }
-        }).collect();
-
     // Branch to the START block
-    let start_bcx = block_bcxs[mir::START_BLOCK];
+    let start_bcx = mircx.blocks[mir::START_BLOCK];
     bcx.br(start_bcx.llbb);
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(fcx);
-
-    let mut mircx = MirContext {
-        mir: mir.clone(),
-        fcx: fcx,
-        llpersonalityslot: None,
-        blocks: block_bcxs,
-        unreachable_block: None,
-        cleanup_kinds: cleanup_kinds,
-        landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
-        locals: locals,
-        scopes: scopes
-    };
 
     let mut visited = BitVector::new(mir.basic_blocks().len());
 
@@ -271,7 +330,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 /// indirect.
 fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               mir: &mir::Mir<'tcx>,
-                              scopes: &IndexVec<mir::VisibilityScope, DIScope>,
+                              scopes: &IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
                               lvalue_locals: &BitVector)
                               -> Vec<LocalRef<'tcx>> {
     let fcx = bcx.fcx();
@@ -281,8 +340,8 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
 
     // Get the argument scope, if it exists and if we need it.
     let arg_scope = scopes[mir::ARGUMENT_VISIBILITY_SCOPE];
-    let arg_scope = if !arg_scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo {
-        Some(arg_scope)
+    let arg_scope = if arg_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo {
+        Some(arg_scope.scope_metadata)
     } else {
         None
     };
