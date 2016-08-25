@@ -32,6 +32,8 @@ use syntax::symbol::Symbol;
 use rustc::session::Session;
 use syntax_pos::Span;
 
+use rustc_i128::u128;
+
 use std::cmp::Ordering;
 use std::iter;
 
@@ -1019,7 +1021,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                  in_elem, in_ty,
                  ret_ty, ret_ty.simd_type(tcx));
 
-        let total_len = in_len as u64 * 2;
+        let total_len = in_len as u128 * 2;
 
         let vector = llargs[2];
 
@@ -1027,7 +1029,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
             .map(|i| {
                 let arg_idx = i;
                 let val = const_get_elt(vector, &[i as libc::c_uint]);
-                match const_to_opt_uint(val) {
+                match const_to_opt_u128(val, true) {
                     None => {
                         emit_error!("shuffle index #{} is not a constant", arg_idx);
                         None
