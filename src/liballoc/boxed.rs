@@ -67,7 +67,6 @@ use core::mem;
 use core::ops::{CoerceUnsized, Deref, DerefMut};
 use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
 use core::ptr::{self, Unique};
-use core::raw::TraitObject;
 use core::convert::From;
 
 /// A value that represents the heap. This is the default place that the `box`
@@ -428,12 +427,8 @@ impl Box<Any> {
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
-                // Get the raw representation of the trait object
-                let raw = Box::into_raw(self);
-                let to: TraitObject = mem::transmute::<*mut Any, TraitObject>(raw);
-
-                // Extract the data pointer
-                Ok(Box::from_raw(to.data as *mut T))
+                let raw: *mut Any = Box::into_raw(self);
+                Ok(Box::from_raw(raw as *mut T))
             }
         } else {
             Err(self)
