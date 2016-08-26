@@ -56,7 +56,6 @@ let Wrapping(x) = x;
 let y: usize = 1.wrapping_neg();
 assert_eq!(x, y);
 ```
-
 "##
 }
 
