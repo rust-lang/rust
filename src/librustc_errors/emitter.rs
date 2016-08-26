@@ -724,7 +724,10 @@ impl EmitterWriter {
         }
         match write!(&mut self.dst, "\n") {
             Err(e) => panic!("failed to emit error: {}", e),
-            _ => ()
+            _ => match self.dst.flush() {
+                Err(e) => panic!("failed to emit error: {}", e),
+                _ => ()
+            }
         }
     }
 }
@@ -749,6 +752,21 @@ fn overlaps(a1: &Annotation, a2: &Annotation) -> bool {
 fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
         lvl: &Level,
         dst: &mut Destination) -> io::Result<()> {
+    use lock;
+
+    // In order to prevent error message interleaving, where multiple error lines get intermixed
+    // when multiple compiler processes error simultaneously, we emit errors with additional
+    // steps.
+    //
+    // On Unix systems, we write into a buffered terminal rather than directly to a terminal. When
+    // the .flush() is called we take the buffer created from the buffered writes and write it at
+    // one shot.  Because the Unix systems use ANSI for the colors, which is a text-based styling
+    // scheme, this buffered approach works and maintains the styling.
+    //
+    // On Windows, styling happens through calls to a terminal API. This prevents us from using the
+    // same buffering approach.  Instead, we use a global Windows mutex, which we acquire long
+    // enough to output the full error message, then we release.
+    let _buffer_lock = lock::acquire_global_lock("rustc_errors");
     for line in rendered_buffer {
         for part in line {
             dst.apply_style(lvl.clone(), part.style)?;
@@ -757,6 +775,7 @@ fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
         }
         write!(dst, "\n")?;
     }
+    dst.flush()?;
     Ok(())
 }
 
@@ -783,14 +802,74 @@ fn stderr_isatty() -> bool {
     }
 }
 
+pub type BufferedStderr = term::Terminal<Output = BufferedWriter> + Send;
+
 pub enum Destination {
     Terminal(Box<term::StderrTerminal>),
+    BufferedTerminal(Box<BufferedStderr>),
     Raw(Box<Write + Send>),
 }
 
+/// Buffered writer gives us a way on Unix to buffer up an entire error message before we output
+/// it.  This helps to prevent interleaving of multiple error messages when multiple compiler
+/// processes error simultaneously
+pub struct BufferedWriter {
+    buffer: Vec<u8>,
+}
+
+impl BufferedWriter {
+    // note: we use _new because the conditional compilation at its use site may make this
+    // this function unused on some platforms
+    fn _new() -> BufferedWriter {
+        BufferedWriter {
+            buffer: vec![]
+        }
+    }
+}
+
+impl Write for BufferedWriter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        for b in buf {
+            self.buffer.push(*b);
+        }
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        let mut stderr = io::stderr();
+        let result = (|| {
+            stderr.write_all(&self.buffer)?;
+            stderr.flush()
+        })();
+        self.buffer.clear();
+        result
+    }
+}
+
 impl Destination {
+    #[cfg(not(windows))]
+    /// When not on Windows, prefer the buffered terminal so that we can buffer an entire error
+    /// to be emitted at one time.
     fn from_stderr() -> Destination {
-        match term::stderr() {
+        let stderr: Option<Box<BufferedStderr>>  =
+            term::TerminfoTerminal::new(BufferedWriter::_new())
+                .map(|t| Box::new(t) as Box<BufferedStderr>);
+
+        match stderr {
+            Some(t) => BufferedTerminal(t),
+            None    => Raw(Box::new(io::stderr())),
+        }
+    }
+
+    #[cfg(windows)]
+    /// Return a normal, unbuffered terminal when on Windows.
+    fn from_stderr() -> Destination {
+        let stderr: Option<Box<term::StderrTerminal>> =
+            term::TerminfoTerminal::new(io::stderr())
+                .map(|t| Box::new(t) as Box<term::StderrTerminal>)
+                .or_else(|| term::WinConsole::new(io::stderr()).ok()
+                    .map(|t| Box::new(t) as Box<term::StderrTerminal>));
+
+        match stderr {
             Some(t) => Terminal(t),
             None    => Raw(Box::new(io::stderr())),
         }
@@ -839,6 +918,7 @@ impl Destination {
     fn start_attr(&mut self, attr: term::Attr) -> io::Result<()> {
         match *self {
             Terminal(ref mut t) => { t.attr(attr)?; }
+            BufferedTerminal(ref mut t) => { t.attr(attr)?; }
             Raw(_) => { }
         }
         Ok(())
@@ -847,6 +927,7 @@ impl Destination {
     fn reset_attrs(&mut self) -> io::Result<()> {
         match *self {
             Terminal(ref mut t) => { t.reset()?; }
+            BufferedTerminal(ref mut t) => { t.reset()?; }
             Raw(_) => { }
         }
         Ok(())
@@ -857,12 +938,14 @@ impl Write for Destination {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         match *self {
             Terminal(ref mut t) => t.write(bytes),
+            BufferedTerminal(ref mut t) => t.write(bytes),
             Raw(ref mut w) => w.write(bytes),
         }
     }
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             Terminal(ref mut t) => t.flush(),
+            BufferedTerminal(ref mut t) => t.flush(),
             Raw(ref mut w) => w.flush(),
         }
     }
