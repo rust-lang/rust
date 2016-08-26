@@ -27,6 +27,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
+#![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(enumset)]

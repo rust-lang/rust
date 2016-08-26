@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 // Register an obligation for `A: Trait<B>`.
                 let cause = traits::ObligationCause::misc(span, impl_node_id);
                 let predicate = tcx.predicate_for_trait_def(cause, trait_def_id, 0,
-                                                            source, vec![target]);
+                                                            source, &[target]);
                 fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
                 // Check that all transitive obligations are satisfied.

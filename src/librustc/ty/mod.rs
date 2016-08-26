@@ -417,21 +417,6 @@ pub struct AssociatedType<'tcx> {
     pub container: ImplOrTraitItemContainer,
 }
 
-#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
-pub struct ItemVariances {
-    pub types: Vec<Variance>,
-    pub regions: Vec<Variance>,
-}
-
-impl ItemVariances {
-    pub fn empty() -> ItemVariances {
-        ItemVariances {
-            types: vec![],
-            regions: vec![],
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Copy)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
@@ -755,6 +740,20 @@ pub struct Generics<'tcx> {
     pub has_self: bool,
 }
 
+impl<'tcx> Generics<'tcx> {
+    pub fn parent_count(&self) -> usize {
+        self.parent_regions as usize + self.parent_types as usize
+    }
+
+    pub fn own_count(&self) -> usize {
+        self.regions.len() + self.types.len()
+    }
+
+    pub fn count(&self) -> usize {
+        self.parent_count() + self.own_count()
+    }
+}
+
 /// Bounds on generics.
 #[derive(Clone)]
 pub struct GenericPredicates<'tcx> {
@@ -963,7 +962,7 @@ impl<'tcx> TraitPredicate<'tcx> {
         DepNode::TraitSelect(self.def_id(), def_ids)
     }
 
-    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>> {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         self.trait_ref.input_types()
     }
 
@@ -1107,7 +1106,7 @@ impl<'tcx> Predicate<'tcx> {
     pub fn walk_tys(&self) -> IntoIter<Ty<'tcx>> {
         let vec: Vec<_> = match *self {
             ty::Predicate::Trait(ref data) => {
-                data.skip_binder().input_types().cloned().collect()
+                data.skip_binder().input_types().collect()
             }
             ty::Predicate::Rfc1592(ref data) => {
                 return data.walk_tys()
@@ -1123,9 +1122,7 @@ impl<'tcx> Predicate<'tcx> {
             }
             ty::Predicate::Projection(ref data) => {
                 let trait_inputs = data.0.projection_ty.trait_ref.input_types();
-                trait_inputs.cloned()
-                            .chain(Some(data.0.ty))
-                            .collect()
+                trait_inputs.chain(Some(data.0.ty)).collect()
             }
             ty::Predicate::WellFormed(data) => {
                 vec![data]
@@ -1208,7 +1205,7 @@ impl<'tcx> TraitRef<'tcx> {
         self.substs.type_at(0)
     }
 
-    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>> {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
@@ -1865,7 +1862,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                 };
                 let sized_predicate = Binder(TraitRef {
                     def_id: sized_trait,
-                    substs: Substs::new_trait(tcx, vec![], vec![], ty)
+                    substs: Substs::new_trait(tcx, ty, &[])
                 }).to_predicate();
                 let predicates = tcx.lookup_predicates(self.did).predicates;
                 if predicates.into_iter().any(|p| p == sized_predicate) {
@@ -2592,7 +2589,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             || self.lookup_repr_hints(did).contains(&attr::ReprSimd)
     }
 
-    pub fn item_variances(self, item_id: DefId) -> Rc<ItemVariances> {
+    pub fn item_variances(self, item_id: DefId) -> Rc<Vec<ty::Variance>> {
         lookup_locally_or_in_crate_store(
             "item_variance_map", item_id, &self.item_variance_map,
             || Rc::new(self.sess.cstore.item_variances(item_id)))

@@ -14,7 +14,7 @@
 //! type equality, etc.
 
 use hir::def_id::DefId;
-use ty::subst::Substs;
+use ty::subst::{Kind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;
@@ -139,7 +139,7 @@ fn relate_item_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 }
 
 pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
-                                        variances: Option<&ty::ItemVariances>,
+                                        variances: Option<&Vec<ty::Variance>>,
                                         a_subst: &'tcx Substs<'tcx>,
                                         b_subst: &'tcx Substs<'tcx>)
                                         -> RelateResult<'tcx, &'tcx Substs<'tcx>>
@@ -147,17 +147,18 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 {
     let tcx = relation.tcx();
 
-    let types = a_subst.types().zip(b_subst.types()).enumerate().map(|(i, (a_ty, b_ty))| {
-        let variance = variances.map_or(ty::Invariant, |v| v.types[i]);
-        relation.relate_with_variance(variance, a_ty, b_ty)
-    }).collect::<Result<_, _>>()?;
+    let params = a_subst.params().iter().zip(b_subst.params()).enumerate().map(|(i, (a, b))| {
+        let variance = variances.map_or(ty::Invariant, |v| v[i]);
+        if let (Some(a_ty), Some(b_ty)) = (a.as_type(), b.as_type()) {
+            Ok(Kind::from(relation.relate_with_variance(variance, &a_ty, &b_ty)?))
+        } else if let (Some(a_r), Some(b_r)) = (a.as_region(), b.as_region()) {
+            Ok(Kind::from(relation.relate_with_variance(variance, &a_r, &b_r)?))
+        } else {
+            bug!()
+        }
+    });
 
-    let regions = a_subst.regions().zip(b_subst.regions()).enumerate().map(|(i, (a_r, b_r))| {
-        let variance = variances.map_or(ty::Invariant, |v| v.regions[i]);
-        relation.relate_with_variance(variance, a_r, b_r)
-    }).collect::<Result<_, _>>()?;
-
-    Ok(Substs::new(tcx, types, regions))
+    Substs::maybe_new(tcx, params)
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::BareFnTy<'tcx> {

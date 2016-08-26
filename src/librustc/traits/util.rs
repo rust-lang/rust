@@ -386,7 +386,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Ok(def_id) => {
                 Ok(ty::TraitRef {
                     def_id: def_id,
-                    substs: Substs::new_trait(self, vec![], vec![], param_ty)
+                    substs: Substs::new_trait(self, param_ty, &[])
                 })
             }
             Err(e) => {
@@ -401,12 +401,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         trait_def_id: DefId,
         recursion_depth: usize,
         param_ty: Ty<'tcx>,
-        ty_params: Vec<Ty<'tcx>>)
+        ty_params: &[Ty<'tcx>])
         -> PredicateObligation<'tcx>
     {
         let trait_ref = ty::TraitRef {
             def_id: trait_def_id,
-            substs: Substs::new_trait(self, ty_params, vec![], param_ty)
+            substs: Substs::new_trait(self, param_ty, ty_params)
         };
         predicate_for_trait_ref(cause, trait_ref, recursion_depth)
     }
@@ -496,7 +496,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,
-            substs: Substs::new_trait(self, vec![arguments_tuple], vec![], self_ty),
+            substs: Substs::new_trait(self, self_ty, &[arguments_tuple]),
         };
         ty::Binder((trait_ref, sig.0.output))
     }

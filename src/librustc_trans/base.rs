@@ -514,7 +514,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
                                              -> CustomCoerceUnsized {
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
-        substs: Substs::new_trait(scx.tcx(), vec![target_ty], vec![], source_ty)
+        substs: Substs::new_trait(scx.tcx(), source_ty, &[target_ty])
     });
 
     match fulfill_obligation(scx, DUMMY_SP, trait_ref) {

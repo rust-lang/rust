@@ -1447,11 +1447,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let origin = infer::ParameterInScope(origin, expr_span);
 
-        for &region in substs.regions() {
+        for region in substs.regions() {
             self.sub_regions(origin.clone(), expr_region, region);
         }
 
-        for &ty in substs.types() {
+        for ty in substs.types() {
             let ty = self.resolve_type(ty);
             self.type_must_outlive(origin.clone(), ty, expr_region);
         }
@@ -1577,11 +1577,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         if env_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
-            for &component_ty in projection_ty.trait_ref.substs.types() {
+            for component_ty in projection_ty.trait_ref.substs.types() {
                 self.type_must_outlive(origin.clone(), component_ty, region);
             }
 
-            for &r in projection_ty.trait_ref.substs.regions() {
+            for r in projection_ty.trait_ref.substs.regions() {
                 self.sub_regions(origin.clone(), region, r);
             }
 

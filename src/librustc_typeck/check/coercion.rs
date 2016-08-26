@@ -458,7 +458,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                                          coerce_unsized_did,
                                                          0,
                                                          source,
-                                                         vec![target]));
+                                                         &[target]));
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where

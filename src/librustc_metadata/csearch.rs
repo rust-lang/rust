@@ -73,7 +73,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::closure_ty(&cdata, def_id.index, tcx)
     }
 
-    fn item_variances(&self, def: DefId) -> ty::ItemVariances {
+    fn item_variances(&self, def: DefId) -> Vec<ty::Variance> {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
         decoder::get_item_variances(&cdata, def.index)

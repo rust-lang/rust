@@ -21,7 +21,6 @@ use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
 use std::mem;
 use std::ops;
-use std::slice;
 use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::parse::token::keywords;
@@ -336,7 +335,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
         self.0.substs
     }
 
-    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>> {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
     }
@@ -361,7 +360,7 @@ pub struct ExistentialTraitRef<'tcx> {
 }
 
 impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>>{
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
@@ -377,7 +376,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
         self.0.def_id
     }
 
-    pub fn input_types(&self) -> slice::Iter<Ty<'tcx>> {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
     }
@@ -1229,13 +1228,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyEnum(_, substs) |
             TyStruct(_, substs) |
             TyAnon(_, substs) => {
-                substs.regions().cloned().collect()
+                substs.regions().collect()
             }
             TyClosure(_, ref substs) => {
-                substs.func_substs.regions().cloned().collect()
+                substs.func_substs.regions().collect()
             }
             TyProjection(ref data) => {
-                data.trait_ref.substs.regions().cloned().collect()
+                data.trait_ref.substs.regions().collect()
             }
             TyFnDef(..) |
             TyFnPtr(_) |

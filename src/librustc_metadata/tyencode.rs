@@ -251,12 +251,16 @@ fn enc_opt<T, F>(w: &mut Cursor<Vec<u8>>, t: Option<T>, enc_f: F) where
 pub fn enc_substs<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                             substs: &Substs<'tcx>) {
     write!(w, "[");
-    for &r in substs.regions() {
-        enc_region(w, cx, r);
-    }
-    write!(w, "|");
-    for &ty in substs.types() {
-        enc_ty(w, cx, ty);
+    for &k in substs.params() {
+        if let Some(ty) = k.as_type() {
+            write!(w, "t");
+            enc_ty(w, cx, ty);
+        } else if let Some(r) = k.as_region() {
+            write!(w, "r");
+            enc_region(w, cx, r);
+        } else {
+            bug!()
+        }
     }
     write!(w, "]");
 }

@@ -693,7 +693,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         return false;
                     }
 
-                    substs_a.types().zip(substs_b.types()).all(|(&a, &b)| same_type(a, b))
+                    substs_a.types().zip(substs_b.types()).all(|(a, b)| same_type(a, b))
                 }
                 _ => {
                     a == b

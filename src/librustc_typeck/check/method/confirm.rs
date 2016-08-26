@@ -327,21 +327,22 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // parameters from the type and those from the method.
         //
         // FIXME -- permit users to manually specify lifetimes
+        let supplied_start = substs.params().len() + method.generics.regions.len();
         Substs::for_item(self.tcx, method.def_id, |def, _| {
             let i = def.index as usize;
-            if i < substs.regions().count() {
+            if i < substs.params().len() {
                 substs.region_at(i)
             } else {
                 self.region_var_for_def(self.span, def)
             }
         }, |def, cur_substs| {
             let i = def.index as usize;
-            if i < substs.types().count() {
+            if i < substs.params().len() {
                 substs.type_at(i)
             } else if supplied_method_types.is_empty() {
                 self.type_var_for_def(self.span, def, cur_substs)
             } else {
-                supplied_method_types[i - substs.types().count()]
+                supplied_method_types[i - supplied_start]
             }
         })
     }

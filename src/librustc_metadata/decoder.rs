@@ -991,7 +991,7 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: DefIndex)
     }).collect()
 }
 
-pub fn get_item_variances(cdata: Cmd, id: DefIndex) -> ty::ItemVariances {
+pub fn get_item_variances(cdata: Cmd, id: DefIndex) -> Vec<ty::Variance> {
     let item_doc = cdata.lookup_item(id);
     let variance_doc = reader::get_doc(item_doc, tag_item_variances);
     let mut decoder = reader::Decoder::new(variance_doc);
