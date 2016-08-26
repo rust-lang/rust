@@ -419,7 +419,15 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let impl_self_ty = monomorphize::apply_param_substs(cx.tcx(),
                                                                     instance.substs,
                                                                     &impl_self_ty);
-                Some(type_metadata(cx, impl_self_ty, syntax_pos::DUMMY_SP))
+
+                // Only "class" methods are generally understood by LLVM,
+                // so avoid methods on other types (e.g. `<*mut T>::null`).
+                match impl_self_ty.sty {
+                    ty::TyStruct(..) | ty::TyEnum(..) => {
+                        Some(type_metadata(cx, impl_self_ty, syntax_pos::DUMMY_SP))
+                    }
+                    _ => None
+                }
             } else {
                 // For trait method impls we still use the "parallel namespace"
                 // strategy
