@@ -252,27 +252,6 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
     }
 }
 
-/// Iterates through "auxiliary node IDs", which are node IDs that describe
-/// top-level items that are sub-items of the given item. Specifically:
-///
-/// * For newtype structs, iterates through the node ID of the constructor.
-fn each_auxiliary_node_id<F>(item: &hir::Item, callback: F) -> bool where
-    F: FnOnce(NodeId) -> bool,
-{
-    let mut continue_ = true;
-    match item.node {
-        hir::ItemStruct(ref struct_def, _) => {
-            // If this is a newtype struct, return the constructor.
-            if struct_def.is_tuple() {
-                continue_ = callback(struct_def.id());
-            }
-        }
-        _ => {}
-    }
-
-    continue_
-}
-
 fn encode_reexports(ecx: &EncodeContext,
                     rbml_w: &mut Encoder,
                     id: NodeId) {
@@ -313,13 +292,6 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
         for item_id in &md.item_ids {
             self.rbml_w.wr_tagged_u64(tag_mod_child,
                                  def_to_u64(ecx.tcx.map.local_def_id(item_id.id)));
-
-            let item = ecx.tcx.map.expect_item(item_id.id);
-            each_auxiliary_node_id(item, |auxiliary_node_id| {
-                self.rbml_w.wr_tagged_u64(tag_mod_child,
-                                     def_to_u64(ecx.tcx.map.local_def_id(auxiliary_node_id)));
-                true
-            });
         }
 
         self.encode_visibility(vis);

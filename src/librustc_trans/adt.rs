@@ -231,7 +231,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
 
                 if cases.len() == 1 && hint == attr::ReprAny {
-                    // Equivalent to a struct/tuple/newtype.
+                    // Equivalent to a struct or tuple.
                     return Univariant(mk_struct(cx, &cases[0].tys, false, t));
                 }
 
