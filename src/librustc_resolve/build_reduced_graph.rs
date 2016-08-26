@@ -232,7 +232,7 @@ impl<'b> Resolver<'b> {
                 let def = Def::Const(self.definitions.local_def_id(item.id));
                 self.define(parent, name, ValueNS, (def, sp, vis));
             }
-            ItemKind::Fn(_, _, _, _, _, _) => {
+            ItemKind::Fn(..) => {
                 let def = Def::Fn(self.definitions.local_def_id(item.id));
                 self.define(parent, name, ValueNS, (def, sp, vis));
             }
@@ -294,7 +294,7 @@ impl<'b> Resolver<'b> {
 
             ItemKind::DefaultImpl(_, _) | ItemKind::Impl(..) => {}
 
-            ItemKind::Trait(_, _, _, ref items) => {
+            ItemKind::Trait(.., ref items) => {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.

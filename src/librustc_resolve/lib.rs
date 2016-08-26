@@ -19,6 +19,7 @@
 
 #![feature(associated_consts)]
 #![feature(borrow_state)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -599,7 +600,7 @@ impl<'a> Visitor for Resolver<'a> {
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {
-            FnKind::ItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, ..) => {
                 self.visit_generics(generics);
                 ItemRibKind
             }
@@ -1634,7 +1635,7 @@ impl<'a> Resolver<'a> {
             ItemKind::Ty(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) |
-            ItemKind::Fn(_, _, _, _, ref generics, _) => {
+            ItemKind::Fn(.., ref generics, _) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind),
                                              |this| visit::walk_item(this, item));
             }

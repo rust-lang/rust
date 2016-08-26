@@ -228,7 +228,7 @@ pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     };
 
     match fn_like.kind() {
-        FnKind::ItemFn(_, _, _, hir::Constness::Const, _, _, _) => {
+        FnKind::ItemFn(_, _, _, hir::Constness::Const, ..) => {
             Some(fn_like)
         }
         FnKind::Method(_, m, _, _) => {

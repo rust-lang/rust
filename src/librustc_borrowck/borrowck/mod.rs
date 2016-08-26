@@ -711,7 +711,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
             move_data::Captured =>
                 (match self.tcx.map.expect_expr(the_move.id).node {
-                    hir::ExprClosure(_, _, _, fn_decl_span) => fn_decl_span,
+                    hir::ExprClosure(.., fn_decl_span) => fn_decl_span,
                     ref r => bug!("Captured({}) maps to non-closure: {:?}",
                                   the_move.id, r),
                 }, " (into closure)"),

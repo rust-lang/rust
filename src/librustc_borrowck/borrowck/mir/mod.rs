@@ -67,8 +67,8 @@ pub fn borrowck_mir<'a, 'tcx: 'a>(
     id: ast::NodeId,
     attributes: &[ast::Attribute]) {
     match fk {
-        FnKind::ItemFn(name, _, _, _, _, _, _) |
-        FnKind::Method(name, _, _, _) => {
+        FnKind::ItemFn(name, ..) |
+        FnKind::Method(name, ..) => {
             debug!("borrowck_mir({}) UNIMPLEMENTED", name);
         }
         FnKind::Closure(_) => {

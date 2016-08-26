@@ -203,10 +203,10 @@ impl LateLintPass for UnsafeCode {
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemTrait(hir::Unsafety::Unsafe, _, _, _) =>
+            hir::ItemTrait(hir::Unsafety::Unsafe, ..) =>
                 cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` trait"),
 
-            hir::ItemImpl(hir::Unsafety::Unsafe, _, _, _, _, _) =>
+            hir::ItemImpl(hir::Unsafety::Unsafe, ..) =>
                 cx.span_lint(UNSAFE_CODE, it.span, "implementation of an `unsafe` trait"),
 
             _ => return,
@@ -216,7 +216,7 @@ impl LateLintPass for UnsafeCode {
     fn check_fn(&mut self, cx: &LateContext, fk: FnKind, _: &hir::FnDecl,
                 _: &hir::Block, span: Span, _: ast::NodeId) {
         match fk {
-            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, _, _, _, _) =>
+            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, ..) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
             FnKind::Method(_, sig, _, _) => {
@@ -351,7 +351,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemEnum(..) => "an enum",
             hir::ItemStruct(..) => "a struct",
             hir::ItemUnion(..) => "a union",
-            hir::ItemTrait(_, _, _, ref items) => {
+            hir::ItemTrait(.., ref items) => {
                 // Issue #11592, traits are always considered exported, even when private.
                 if it.vis == hir::Visibility::Inherited {
                     self.private_traits.insert(it.id);
@@ -363,7 +363,7 @@ impl LateLintPass for MissingDoc {
                 "a trait"
             },
             hir::ItemTy(..) => "a type alias",
-            hir::ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) => {
+            hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_items) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = cx.tcx.expect_def(trait_ref.ref_id).def_id();
@@ -1037,7 +1037,7 @@ impl LintPass for InvalidNoMangleItems {
 impl LateLintPass for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemFn(_, _, _, _, ref generics, _) => {
+            hir::ItemFn(.., ref generics, _) => {
                 if attr::contains_name(&it.attrs, "no_mangle") {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = format!("function {} is marked #[no_mangle], but not exported",

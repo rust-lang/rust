@@ -248,7 +248,7 @@ impl TypeOrigin {
             &TypeOrigin::RelateOutputImplTypes(_) => {
                 "trait type parameters matches those specified on the impl"
             }
-            &TypeOrigin::MatchExpressionArm(_, _, _) => "match arms have compatible types",
+            &TypeOrigin::MatchExpressionArm(..) => "match arms have compatible types",
             &TypeOrigin::IfExpression(_) => "if and else have compatible types",
             &TypeOrigin::IfExpressionWithNoElse(_) => "if missing an else returns ()",
             &TypeOrigin::RangeExpression(_) => "start and end of range have compatible types",

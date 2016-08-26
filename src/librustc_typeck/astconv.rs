@@ -1358,7 +1358,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             // `ty::trait_items` used below requires information generated
             // by type collection, which may be in progress at this point.
             match tcx.map.expect_item(trait_id).node {
-                hir::ItemTrait(_, _, _, ref trait_items) => {
+                hir::ItemTrait(.., ref trait_items) => {
                     let item = trait_items.iter()
                                           .find(|i| i.name == assoc_name)
                                           .expect("missing associated type");

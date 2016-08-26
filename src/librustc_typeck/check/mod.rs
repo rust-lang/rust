@@ -741,7 +741,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                             it.id);
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
-      hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
+      hir::ItemImpl(.., ref impl_items) => {
           debug!("ItemImpl {} with id {}", it.name, it.id);
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           match ccx.tcx.impl_trait_ref(impl_def_id) {
@@ -808,10 +808,10 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
            ccx.tcx.item_path_str(ccx.tcx.map.local_def_id(it.id)));
     let _indenter = indenter();
     match it.node {
-      hir::ItemFn(ref decl, _, _, _, _, ref body) => {
+      hir::ItemFn(ref decl, .., ref body) => {
         check_bare_fn(ccx, &decl, &body, it.id);
       }
-      hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
+      hir::ItemImpl(.., ref impl_items) => {
         debug!("ItemImpl {} with id {}", it.name, it.id);
 
         for impl_item in impl_items {
@@ -828,7 +828,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
             }
         }
       }
-      hir::ItemTrait(_, _, _, ref trait_items) => {
+      hir::ItemTrait(.., ref trait_items) => {
         for trait_item in trait_items {
             match trait_item.node {
                 hir::ConstTraitItem(_, Some(ref expr)) => {

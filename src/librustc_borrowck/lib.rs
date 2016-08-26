@@ -19,6 +19,7 @@
 
 #![allow(non_camel_case_types)]
 
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]

@@ -31,6 +31,7 @@
 #![cfg_attr(test, feature(test))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]

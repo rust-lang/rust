@@ -1137,7 +1137,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                     }.lower(self.tcx));
                 }
             }
-            Fn(ref decl, _, _, _, ref ty_params, ref body) =>
+            Fn(ref decl, .., ref ty_params, ref body) =>
                 self.process_fn(item, &decl, ty_params, &body),
             Static(ref typ, _, ref expr) =>
                 self.process_static_or_const_item(item, typ, expr),
