@@ -8,29 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Some traits can be derived for unions.
-
 #![feature(untagged_unions)]
 
-#[derive(
-    Copy,
-    Clone,
-)]
-union U {
+#[derive(Clone)] //~ ERROR the trait bound `U1: std::marker::Copy` is not satisfied
+union U1 {
     a: u8,
-    b: u16,
+}
+
+#[derive(Clone)]
+union U2 {
+    a: u8, // OK
+}
+
+impl Copy for U2 {}
+
+#[derive(Clone, Copy)]
+union U3 {
+    a: u8, // OK
 }
 
 #[derive(Clone, Copy)]
-union W<T> {
-    a: T,
+union U4<T> {
+    a: T, // OK
 }
 
-fn main() {
-    let u = U { b: 0 };
-    let u1 = u;
-    let u2 = u.clone();
+#[derive(Clone)]
+struct CloneNoCopy;
 
-    let w = W { a: 0 };
-    let w1 = w.clone();
+fn main() {
+    let u = U4 { a: CloneNoCopy };
+    let w = u.clone(); //~ ERROR no method named `clone` found for type `U4<CloneNoCopy>`
 }
