@@ -8,21 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Most traits cannot be derived for unions.
-
 #![feature(untagged_unions)]
 
-#[derive(
-    PartialEq, //~ ERROR this trait cannot be derived for unions
-    PartialOrd, //~ ERROR this trait cannot be derived for unions
-    Ord, //~ ERROR this trait cannot be derived for unions
-    Hash, //~ ERROR this trait cannot be derived for unions
-    Default, //~ ERROR this trait cannot be derived for unions
-    Debug, //~ ERROR this trait cannot be derived for unions
-)]
-union U {
+#[derive(Eq)] // OK
+union U1 {
     a: u8,
-    b: u16,
 }
+
+impl PartialEq for U1 { fn eq(&self, rhs: &Self) -> bool { true } }
+
+#[derive(PartialEq)]
+struct PartialEqNotEq;
+
+#[derive(Eq)]
+union U2 {
+    a: PartialEqNotEq, //~ ERROR the trait bound `PartialEqNotEq: std::cmp::Eq` is not satisfied
+}
+
+impl PartialEq for U2 { fn eq(&self, rhs: &Self) -> bool { true } }
 
 fn main() {}

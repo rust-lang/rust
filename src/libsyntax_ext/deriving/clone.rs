@@ -115,20 +115,7 @@ fn cs_clone_shallow(name: &str,
         let assert_path = cx.path_all(span, true,
                                         cx.std_path(&["clone", helper_name]),
                                         vec![], vec![ty], vec![]);
-        let local = P(ast::Local {
-            pat: cx.pat_wild(span),
-            ty: Some(cx.ty_path(assert_path)),
-            init: None,
-            id: ast::DUMMY_NODE_ID,
-            span: span,
-            attrs: ast::ThinVec::new(),
-        });
-        let stmt = ast::Stmt {
-            id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Local(local),
-            span: span,
-        };
-        stmts.push(stmt);
+        stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
     fn process_variant(cx: &mut ExtCtxt, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
         for field in variant.fields() {
