@@ -1270,8 +1270,6 @@ impl error::Error for TryRecvError {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use env;
     use super::*;
     use thread;
@@ -1946,8 +1944,6 @@ mod tests {
 
 #[cfg(test)]
 mod sync_tests {
-    use prelude::v1::*;
-
     use env;
     use thread;
     use super::*;

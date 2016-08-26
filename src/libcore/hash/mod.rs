@@ -71,8 +71,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::v1::*;
-
 use fmt;
 use marker;
 use mem;
@@ -288,8 +286,6 @@ impl<H> Default for BuildHasherDefault<H> {
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {
-    use prelude::v1::*;
-
     use mem;
     use slice;
     use super::*;

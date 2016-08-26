@@ -2059,8 +2059,6 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_map {
-    use prelude::v1::*;
-
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
     use cell::RefCell;

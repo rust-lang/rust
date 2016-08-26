@@ -12,14 +12,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::clone::Clone;
-use core::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
-use core::convert::AsRef;
-use core::default::Default;
+use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::marker::Sized;
 use core::ops::Deref;
-use core::option::Option;
 
 use fmt;
 

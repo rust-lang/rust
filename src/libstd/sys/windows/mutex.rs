@@ -29,8 +29,6 @@
 //! CriticalSection is used and we keep track of who's holding the mutex to
 //! detect recursive locks.
 
-use prelude::v1::*;
-
 use cell::UnsafeCell;
 use mem;
 use sync::atomic::{AtomicUsize, Ordering};

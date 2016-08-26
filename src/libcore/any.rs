@@ -72,12 +72,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use fmt;
-use marker::Send;
 use mem::transmute;
-use option::Option::{self, Some, None};
 use raw::TraitObject;
 use intrinsics;
-use marker::{Reflect, Sized};
+use marker::Reflect;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use cell::UnsafeCell;
 use fmt;
 use marker;
@@ -385,8 +383,6 @@ impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
 mod tests {
     #![allow(deprecated)] // rand
 
-    use prelude::v1::*;
-
     use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread;
@@ -552,8 +548,6 @@ mod tests {
 
     #[test]
     fn test_rwlock_try_write() {
-        use mem::drop;
-
         let lock = RwLock::new(0isize);
         let read_guard = lock.read().unwrap();
 

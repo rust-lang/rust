@@ -151,7 +151,7 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::ops::{Drop, Deref, DerefMut};
+use core::ops::{Deref, DerefMut};
 use core::iter::{FromIterator, FusedIterator};
 use core::mem::swap;
 use core::mem::size_of;

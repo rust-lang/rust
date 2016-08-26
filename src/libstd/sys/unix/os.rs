@@ -12,7 +12,6 @@
 
 #![allow(unused_imports)] // lots of cfg code here
 
-use prelude::v1::*;
 use os::unix::prelude::*;
 
 use error::Error as StdError;

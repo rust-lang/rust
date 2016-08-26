@@ -10,8 +10,6 @@
 
 #![allow(missing_docs, bad_style)]
 
-use prelude::v1::*;
-
 use ffi::{OsStr, OsString};
 use io::{self, ErrorKind};
 use os::windows::ffi::{OsStrExt, OsStringExt};

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use ffi::CStr;
 use io;
 use libc::{self, c_int, size_t, sockaddr, socklen_t};

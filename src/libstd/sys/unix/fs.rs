@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
 use os::unix::prelude::*;
 
 use ffi::{CString, CStr, OsString, OsStr};
@@ -534,7 +533,6 @@ impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         #[cfg(target_os = "linux")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
-            use string::ToString;
             let mut p = PathBuf::from("/proc/self/fd");
             p.push(&fd.to_string());
             readlink(&p).ok()

@@ -369,7 +369,6 @@ pub mod elf {
     // Due to rust-lang/rust#18804, make sure this is not generic!
     #[cfg(target_os = "linux")]
     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
-        use prelude::v1::*;
         use mem;
         use libc;
         use sys_common::thread_local as os;
@@ -460,8 +459,6 @@ pub mod elf {
 
 #[doc(hidden)]
 pub mod os {
-    use prelude::v1::*;
-
     use cell::{Cell, UnsafeCell};
     use marker;
     use ptr;
@@ -529,8 +526,6 @@ pub mod os {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use sync::mpsc::{channel, Sender};
     use cell::{Cell, UnsafeCell};
     use super::LocalKeyState;
@@ -693,8 +688,6 @@ mod tests {
 
 #[cfg(test)]
 mod dynamic_tests {
-    use prelude::v1::*;
-
     use cell::RefCell;
     use collections::HashMap;
 

@@ -16,10 +16,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use clone::Clone;
 use cmp;
-use default::Default;
-use option::Option;
 use hash::Hash;
 use hash::Hasher;
 
@@ -414,8 +411,6 @@ pub struct PhantomData<T:?Sized>;
 impls! { PhantomData }
 
 mod impls {
-    use super::{Send, Sync, Sized};
-
     #[stable(feature = "rust1", since = "1.0.0")]
     unsafe impl<'a, T: Sync + ?Sized> Send for &'a T {}
     #[stable(feature = "rust1", since = "1.0.0")]

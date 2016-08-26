@@ -71,10 +71,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cmp::PartialOrd;
 use fmt;
-use marker::{Sized, Unsize};
-use result::Result::{self, Ok, Err};
+use marker::Unsize;
 
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
@@ -2208,9 +2206,6 @@ pub trait FnOnce<Args> {
 }
 
 mod impls {
-    use marker::Sized;
-    use super::{Fn, FnMut, FnOnce};
-
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a,A,F:?Sized> Fn<A> for &'a F
         where F : Fn<A>

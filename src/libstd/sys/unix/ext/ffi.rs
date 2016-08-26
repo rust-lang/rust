@@ -14,7 +14,6 @@
 
 use ffi::{OsStr, OsString};
 use mem;
-use prelude::v1::*;
 use sys::os_str::Buf;
 use sys_common::{FromInner, IntoInner, AsInner};
 

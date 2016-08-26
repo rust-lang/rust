@@ -18,18 +18,10 @@ use self::pattern::Pattern;
 use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
 use char;
-use clone::Clone;
-use convert::AsRef;
-use default::Default;
 use fmt;
-use iter::ExactSizeIterator;
-use iter::{Map, Cloned, Iterator, DoubleEndedIterator, FusedIterator};
-use marker::Sized;
+use iter::{Map, Cloned, FusedIterator};
 use mem;
-use ops::{Fn, FnMut, FnOnce};
-use option::Option::{self, None, Some};
-use result::Result::{self, Ok, Err};
-use slice::{self, SliceExt};
+use slice;
 
 pub mod pattern;
 
@@ -1338,11 +1330,9 @@ Section: Trait implementations
 */
 
 mod traits {
-    use cmp::{Ord, Ordering, PartialEq, PartialOrd, Eq};
-    use option::Option;
-    use option::Option::Some;
+    use cmp::Ordering;
     use ops;
-    use str::{StrExt, eq_slice};
+    use str::eq_slice;
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Ord for str {

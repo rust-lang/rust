@@ -1159,9 +1159,6 @@ unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
 
 #[cfg(test)]
 mod tests {
-    use std::clone::Clone;
-    use std::iter::{Iterator, IntoIterator, Extend};
-    use std::option::Option::{self, Some, None};
     use std::__rand::{thread_rng, Rng};
     use std::thread;
     use std::vec::Vec;
@@ -1319,7 +1316,6 @@ mod tests {
 
     #[test]
     fn test_26021() {
-        use std::iter::ExactSizeIterator;
         // There was a bug in split_off that failed to null out the RHS's head's prev ptr.
         // This caused the RHS's dtor to walk up into the LHS at drop and delete all of
         // its nodes.

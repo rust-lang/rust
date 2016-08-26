@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use cmp;
 use ffi::CString;
 use fmt;
@@ -608,8 +606,6 @@ impl fmt::Debug for UdpSocket {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use super::*;
     use collections::HashMap;
 

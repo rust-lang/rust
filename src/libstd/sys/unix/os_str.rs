@@ -13,9 +13,7 @@
 
 use borrow::Cow;
 use fmt::{self, Debug};
-use vec::Vec;
 use str;
-use string::String;
 use mem;
 use sys_common::{AsInner, IntoInner};
 

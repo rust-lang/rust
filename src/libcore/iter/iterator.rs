@@ -8,19 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use clone::Clone;
-use cmp::{Ord, PartialOrd, PartialEq, Ordering};
-use default::Default;
-use ops::FnMut;
-use option::Option::{self, Some, None};
-use marker::Sized;
+use cmp::Ordering;
 
 use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
-use super::ChainState;
-use super::{DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator};
-use super::{IntoIterator, ZipImpl};
+use super::{ChainState, FromIterator, ZipImpl};
 
 fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 

@@ -12,8 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::v1::*;
-
 use io::{self, Error, ErrorKind};
 use sys_common::net as net_imp;
 
