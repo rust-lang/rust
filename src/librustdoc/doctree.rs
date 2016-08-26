@@ -82,14 +82,12 @@ impl Module {
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable, Copy)]
 pub enum StructType {
-    /// A normal struct
+    /// A braced struct
     Plain,
     /// A tuple struct
     Tuple,
-    /// A newtype struct (tuple struct with one element)
-    Newtype,
     /// A unit struct
-    Unit
+    Unit,
 }
 
 pub enum TypeBound {
@@ -262,15 +260,10 @@ pub struct Import {
     pub whence: Span,
 }
 
-pub fn struct_type_from_def(sd: &hir::VariantData) -> StructType {
-    if !sd.is_struct() {
-        // We are in a tuple-struct
-        match sd.fields().len() {
-            0 => Unit,
-            1 => Newtype,
-            _ => Tuple
-        }
-    } else {
-        Plain
+pub fn struct_type_from_def(vdata: &hir::VariantData) -> StructType {
+    match *vdata {
+        hir::VariantData::Struct(..) => Plain,
+        hir::VariantData::Tuple(..) => Tuple,
+        hir::VariantData::Unit(..) => Unit,
     }
 }

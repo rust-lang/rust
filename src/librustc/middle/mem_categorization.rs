@@ -223,10 +223,6 @@ fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
             Ok(deref_ptr(UnsafePtr(mt.mutbl)))
         }
 
-        ty::TyAdt(..) => { // newtype
-            Ok(deref_interior(InteriorField(PositionalField(0))))
-        }
-
         ty::TyArray(..) | ty::TySlice(_) => {
             // no deref of indexed content without supplying InteriorOffsetKind
             if let Some(context) = context {
