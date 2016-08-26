@@ -536,7 +536,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            fn_id: ast::NodeId) {
     let raw_fty = ccx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(fn_id)).ty;
     let fn_ty = match raw_fty.sty {
-        ty::TyFnDef(_, _, f) => f,
+        ty::TyFnDef(.., f) => f,
         _ => span_bug!(body.span, "check_bare_fn: function type expected")
     };
 
@@ -732,7 +732,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
     let _indenter = indenter();
     match it.node {
       // Consts can play a role in type-checking, so they are included here.
-      hir::ItemStatic(_, _, ref e) |
+      hir::ItemStatic(.., ref e) |
       hir::ItemConst(_, ref e) => check_const(ccx, &e, it.id),
       hir::ItemEnum(ref enum_definition, _) => {
         check_enum_variants(ccx,
@@ -2410,7 +2410,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.types.err
         } else {
             match method_fn_ty.sty {
-                ty::TyFnDef(_, _, ref fty) => {
+                ty::TyFnDef(.., ref fty) => {
                     // HACK(eddyb) ignore self in the definition (see above).
                     let expected_arg_tys = self.expected_types_for_fn_args(sp, expected,
                                                                            fty.sig.0.output,
@@ -2647,7 +2647,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            t)
                         }, arg_ty);
                     }
-                    ty::TyFnDef(_, _, f) => {
+                    ty::TyFnDef(.., f) => {
                         let ptr_ty = self.tcx.mk_fn_ptr(f);
                         let ptr_ty = self.resolve_type_vars_if_possible(&ptr_ty);
                         self.type_error_message(arg.span,
@@ -3983,7 +3983,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => false,
                     }
                 }
-                hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
+                hir::StmtExpr(..) | hir::StmtSemi(..) => true,
             } {
                 self.tcx
                     .sess
@@ -4209,7 +4209,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tcx.prohibit_type_params(&segments[..segments.len() - poly_segments]);
 
         match def {
-            Def::Local(_, nid) | Def::Upvar(_, nid, _, _) => {
+            Def::Local(_, nid) | Def::Upvar(_, nid, ..) => {
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(node_id, ty);

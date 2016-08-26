@@ -98,7 +98,7 @@ impl<'a> Visitor for AstValidator<'a> {
 
     fn visit_expr(&mut self, expr: &Expr) {
         match expr.node {
-            ExprKind::While(_, _, Some(ident)) |
+            ExprKind::While(.., Some(ident)) |
             ExprKind::Loop(_, Some(ident)) |
             ExprKind::WhileLet(.., Some(ident)) |
             ExprKind::ForLoop(.., Some(ident)) |

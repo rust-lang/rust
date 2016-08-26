@@ -740,7 +740,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             tcx.impl_trait_refs.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
                                                     Some(trait_ref));
         }
-        hir::ItemImpl(_, _,
+        hir::ItemImpl(..,
                       ref generics,
                       ref opt_trait_ref,
                       ref selfty,
@@ -1456,7 +1456,7 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         generics
                     }
 
-                    ItemTrait(_, ref generics, _, _) => {
+                    ItemTrait(_, ref generics, ..) => {
                         // Add in the self type parameter.
                         //
                         // Something of a hack: use the node id for the trait, also as
@@ -1566,7 +1566,7 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let ty = match ccx.tcx.map.get(node_id) {
             NodeItem(item) => {
                 match item.node {
-                    ItemStatic(ref t, _, _) | ItemConst(ref t, _) => {
+                    ItemStatic(ref t, ..) | ItemConst(ref t, _) => {
                         ccx.icx(&()).to_ty(&ElidableRscope::new(ty::ReStatic), &t)
                     }
                     ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {

@@ -334,7 +334,7 @@ impl UnusedParens {
                     contains_exterior_struct_lit(&x)
                 }
 
-                ast::ExprKind::MethodCall(_, _, ref exprs) => {
+                ast::ExprKind::MethodCall(.., ref exprs) => {
                     // X { y: 1 }.bar(...)
                     contains_exterior_struct_lit(&exprs[0])
                 }
@@ -355,15 +355,15 @@ impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
         let (value, msg, struct_lit_needs_parens) = match e.node {
-            If(ref cond, _, _) => (cond, "`if` condition", true),
-            While(ref cond, _, _) => (cond, "`while` condition", true),
-            IfLet(_, ref cond, _, _) => (cond, "`if let` head expression", true),
-            WhileLet(_, ref cond, _, _) => (cond, "`while let` head expression", true),
-            ForLoop(_, ref cond, _, _) => (cond, "`for` head expression", true),
+            If(ref cond, ..) => (cond, "`if` condition", true),
+            While(ref cond, ..) => (cond, "`while` condition", true),
+            IfLet(_, ref cond, ..) => (cond, "`if let` head expression", true),
+            WhileLet(_, ref cond, ..) => (cond, "`while let` head expression", true),
+            ForLoop(_, ref cond, ..) => (cond, "`for` head expression", true),
             Match(ref head, _) => (head, "`match` head expression", true),
             Ret(Some(ref value)) => (value, "`return` value", false),
             Assign(_, ref value) => (value, "assigned value", false),
-            AssignOp(_, _, ref value) => (value, "assigned value", false),
+            AssignOp(.., ref value) => (value, "assigned value", false),
             InPlace(_, ref value) => (value, "emplacement value", false),
             _ => return
         };

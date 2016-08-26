@@ -1269,7 +1269,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
         match tcx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
-                    hir::ImplItemKind::Type(_) | hir::ImplItemKind::Const(_, _) => {
+                    hir::ImplItemKind::Type(_) | hir::ImplItemKind::Const(..) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the impl
                         let impl_id = tcx.map.get_parent(id);
@@ -2290,7 +2290,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             match self.map.expect_item(id).node {
                 ItemTrait(.., ref tis) => {
                     tis.iter().filter_map(|ti| {
-                        if let hir::ConstTraitItem(_, _) = ti.node {
+                        if let hir::ConstTraitItem(..) = ti.node {
                             match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {
@@ -2306,7 +2306,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
                 ItemImpl(.., ref iis) => {
                     iis.iter().filter_map(|ii| {
-                        if let hir::ImplItemKind::Const(_, _) = ii.node {
+                        if let hir::ImplItemKind::Const(..) = ii.node {
                             match self.impl_or_trait_item(self.map.local_def_id(ii.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {

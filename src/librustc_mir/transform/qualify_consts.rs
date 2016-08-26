@@ -122,7 +122,7 @@ fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
             Some(FnKind::ItemFn(_, _, _, c, ..)) => {
                 c == hir::Constness::Const
             }
-            Some(FnKind::Method(_, m, _, _)) => {
+            Some(FnKind::Method(_, m, ..)) => {
                 m.constness == hir::Constness::Const
             }
             _ => false
@@ -576,9 +576,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Repeat(..) |
             Rvalue::UnaryOp(..) |
             Rvalue::CheckedBinaryOp(..) |
-            Rvalue::Cast(CastKind::ReifyFnPointer, _, _) |
-            Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
-            Rvalue::Cast(CastKind::Unsize, _, _) => {}
+            Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
+            Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
+            Rvalue::Cast(CastKind::Unsize, ..) => {}
 
             Rvalue::Len(_) => {
                 // Static lvalues in consts would have errored already,
@@ -705,7 +705,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::Aggregate(ref kind, _) => {
-                if let AggregateKind::Adt(def, _, _, _) = *kind {
+                if let AggregateKind::Adt(def, ..) = *kind {
                     if def.has_dtor() {
                         self.add(Qualif::NEEDS_DROP);
                         self.deny_drop();

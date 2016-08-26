@@ -72,7 +72,7 @@ impl LintPass for WhileTrue {
 
 impl LateLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprWhile(ref cond, _, _) = e.node {
+        if let hir::ExprWhile(ref cond, ..) = e.node {
             if let hir::ExprLit(ref lit) = cond.node {
                 if let ast::LitKind::Bool(true) = lit.node {
                     cx.span_lint(WHILE_TRUE, e.span,
@@ -219,7 +219,7 @@ impl LateLintPass for UnsafeCode {
             FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, ..) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            FnKind::Method(_, sig, _, _) => {
+            FnKind::Method(_, sig, ..) => {
                 if sig.unsafety == hir::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
@@ -1116,7 +1116,7 @@ impl LateLintPass for MutableTransmutes {
                 }
                 let typ = cx.tcx.node_id_to_type(expr.id);
                 match typ.sty {
-                    ty::TyFnDef(_, _, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
+                    ty::TyFnDef(.., ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         let from = bare_fn.sig.0.inputs[0];
                         let to = bare_fn.sig.0.output;
                         return Some((&from.sty, &to.sty));
@@ -1129,7 +1129,7 @@ impl LateLintPass for MutableTransmutes {
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
             match cx.tcx.lookup_item_type(def_id).ty.sty {
-                ty::TyFnDef(_, _, ref bfty) if bfty.abi == RustIntrinsic => (),
+                ty::TyFnDef(.., ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false
             }
             cx.tcx.item_name(def_id).as_str() == "transmute"

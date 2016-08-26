@@ -186,7 +186,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let error_fn_sig;
 
         let fn_sig = match callee_ty.sty {
-            ty::TyFnDef(_, _, &ty::BareFnTy {ref sig, ..}) |
+            ty::TyFnDef(.., &ty::BareFnTy {ref sig, ..}) |
             ty::TyFnPtr(&ty::BareFnTy {ref sig, ..}) => {
                 sig
             }

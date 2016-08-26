@@ -142,7 +142,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &hir::Item) {
     // loan step is intended for things that have a data
     // flow dependent conditions.
     match item.node {
-        hir::ItemStatic(_, _, ref ex) |
+        hir::ItemStatic(.., ref ex) |
         hir::ItemConst(_, ref ex) => {
             gather_loans::gather_loans_in_static_initializer(this, item.id, &ex);
         }
@@ -422,7 +422,7 @@ pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: TyCtxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
-            hir::ExprClosure(_, _, ref block, _) => {
+            hir::ExprClosure(.., ref block, _) => {
                 block.id
             }
             _ => {
@@ -442,7 +442,7 @@ impl<'a, 'tcx> LoanPath<'tcx> {
                 tcx.region_maps.node_extent(block_id)
             }
             LpDowncast(ref base, _) |
-            LpExtend(ref base, _, _) => base.kill_scope(tcx),
+            LpExtend(ref base, ..) => base.kill_scope(tcx),
         }
     }
 
@@ -464,7 +464,7 @@ impl<'a, 'tcx> LoanPath<'tcx> {
     fn depth(&self) -> usize {
         match self.kind {
             LpExtend(ref base, _, LpDeref(_)) => base.depth(),
-            LpExtend(ref base, _, LpInterior(_, _)) => base.depth() + 1,
+            LpExtend(ref base, _, LpInterior(..)) => base.depth() + 1,
             _ => 0,
         }
     }
@@ -1177,7 +1177,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push(')');
             }
 
-            LpVar(..) | LpUpvar(..) | LpExtend(_, _, LpInterior(..)) => {
+            LpVar(..) | LpUpvar(..) | LpExtend(.., LpInterior(..)) => {
                 self.append_loan_path_to_string(loan_path, out)
             }
         }

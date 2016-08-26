@@ -283,8 +283,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         debug!("adjust_upvar_borrow_kind_for_consume: guarantor={:?}",
                guarantor);
         match guarantor.cat {
-            Categorization::Deref(_, _, mc::BorrowedPtr(..)) |
-            Categorization::Deref(_, _, mc::Implicit(..)) => {
+            Categorization::Deref(.., mc::BorrowedPtr(..)) |
+            Categorization::Deref(.., mc::Implicit(..)) => {
                 match cmt.note {
                     mc::NoteUpvarRef(upvar_id) => {
                         debug!("adjust_upvar_borrow_kind_for_consume: \
@@ -344,7 +344,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 }
             }
 
-            Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+            Categorization::Deref(.., mc::UnsafePtr(..)) |
             Categorization::StaticItem |
             Categorization::Rvalue(_) |
             Categorization::Local(_) |
@@ -376,7 +376,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 }
             }
 
-            Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+            Categorization::Deref(.., mc::UnsafePtr(..)) |
             Categorization::StaticItem |
             Categorization::Rvalue(_) |
             Categorization::Local(_) |

@@ -915,7 +915,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_deprecation(self.rbml_w, depr);
                 encode_attributes(self.rbml_w, &item.attrs);
             }
-            hir::ItemConst(_, _) => {
+            hir::ItemConst(..) => {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'C');
                 self.encode_bounds_and_type_for_item(item.id);

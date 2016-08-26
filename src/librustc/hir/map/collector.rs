@@ -109,7 +109,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                         this.insert(struct_def.id(), NodeStructCtor(struct_def));
                     }
                 }
-                ItemTrait(_, _, ref bounds, _) => {
+                ItemTrait(.., ref bounds, _) => {
                     for b in bounds.iter() {
                         if let TraitTyParamBound(ref t, TraitBoundModifier::None) = *b {
                             this.insert(t.trait_ref.ref_id, NodeItem(i));

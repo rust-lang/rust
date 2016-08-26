@@ -104,7 +104,7 @@ impl Def {
     pub fn var_id(&self) -> ast::NodeId {
         match *self {
             Def::Local(_, id) |
-            Def::Upvar(_, id, _, _) => {
+            Def::Upvar(_, id, ..) => {
                 id
             }
 

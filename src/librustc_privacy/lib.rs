@@ -249,7 +249,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // The interface is empty
             hir::ItemDefaultImpl(..) => {}
             // Visit everything except for private impl items
-            hir::ItemImpl(_, _, ref generics, None, _, ref impl_items) => {
+            hir::ItemImpl(.., ref generics, None, _, ref impl_items) => {
                 if item_level.is_some() {
                     self.reach().visit_generics(generics);
                     for impl_item in impl_items {
@@ -454,7 +454,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 if let Def::Struct(..) = self.tcx.expect_def(expr.id) {
                     let expr_ty = self.tcx.expr_ty(expr);
                     let def = match expr_ty.sty {
-                        ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+                        ty::TyFnDef(.., &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
                             output: ty, ..
                         }), ..}) => ty,
                         _ => expr_ty
@@ -644,7 +644,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
             // namespace (the contents have their own privacies).
             hir::ItemForeignMod(_) => {}
 
-            hir::ItemTrait(_, _, ref bounds, _) => {
+            hir::ItemTrait(.., ref bounds, _) => {
                 if !self.trait_is_public(item.id) {
                     return
                 }
@@ -659,7 +659,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
             // (i.e. we could just return here to not check them at
             // all, or some worse estimation of whether an impl is
             // publicly visible).
-            hir::ItemImpl(_, _, ref g, ref trait_ref, ref self_, ref impl_items) => {
+            hir::ItemImpl(.., ref g, ref trait_ref, ref self_, ref impl_items) => {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;
                 // impl [... for] Public<...>, but not `impl [... for]
@@ -1091,7 +1091,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
             hir::ItemDefaultImpl(..) => {}
             // An inherent impl is public when its type is public
             // Subitems of inherent impls have their own publicity
-            hir::ItemImpl(_, _, ref generics, None, ref ty, ref impl_items) => {
+            hir::ItemImpl(.., ref generics, None, ref ty, ref impl_items) => {
                 let ty_vis = self.ty_visibility(ty);
                 check.required_visibility = ty_vis;
                 check.visit_generics(generics);
@@ -1105,7 +1105,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
             }
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity
-            hir::ItemImpl(_, _, ref generics, Some(ref trait_ref), ref ty, ref impl_items) => {
+            hir::ItemImpl(.., ref generics, Some(ref trait_ref), ref ty, ref impl_items) => {
                 let vis = min(self.ty_visibility(ty), self.trait_ref_visibility(trait_ref));
                 check.required_visibility = vis;
                 check.visit_generics(generics);
