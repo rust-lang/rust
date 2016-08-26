@@ -45,7 +45,7 @@
 //!    that are consistent with the state of the source code it was compiled
 //!    from, with no need to change them ever again. At this point, the compiler
 //!    finalizes and "publishes" its private session directory by renaming it
-//!    from "sess-{timestamp}-{random}-working" to "sess-{timestamp}-{SVH}".
+//!    from "s-{timestamp}-{random}-working" to "s-{timestamp}-{SVH}".
 //! 6. At this point the "old" session directory that we copied our data from
 //!    at the beginning of the session has become obsolete because we have just
 //!    published a more current version. Thus the compiler will delete it.
@@ -201,7 +201,7 @@ pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
     loop {
         // Generate a session directory of the form:
         //
-        // {incr-comp-dir}/{crate-name-and-disambiguator}/sess-{timestamp}-{random}-working
+        // {incr-comp-dir}/{crate-name-and-disambiguator}/s-{timestamp}-{random}-working
         let session_dir = generate_session_dir_path(&crate_dir);
         debug!("session-dir: {}", session_dir.display());
 
@@ -265,7 +265,7 @@ pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
 
 
 /// This function finalizes and thus 'publishes' the session directory by
-/// renaming it to `sess-{timestamp}-{svh}` and releasing the file lock.
+/// renaming it to `s-{timestamp}-{svh}` and releasing the file lock.
 /// If there have been compilation errors, however, this function will just
 /// delete the presumably invalid session directory.
 pub fn finalize_session_directory(sess: &Session, svh: Svh) {
@@ -302,7 +302,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
                                                 .to_string_lossy();
     assert_no_characters_lost(&old_sub_dir_name);
 
-    // Keep the 'sess-{timestamp}-{random-number}' prefix, but replace the
+    // Keep the 's-{timestamp}-{random-number}' prefix, but replace the
     // '-working' part with the SVH of the crate
     let dash_indices: Vec<_> = old_sub_dir_name.match_indices("-")
                                                .map(|(idx, _)| idx)
@@ -313,11 +313,11 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
              incr_comp_session_dir.display())
     }
 
-    // State: "sess-{timestamp}-{random-number}-"
+    // State: "s-{timestamp}-{random-number}-"
     let mut new_sub_dir_name = String::from(&old_sub_dir_name[.. dash_indices[2] + 1]);
 
     // Append the svh
-    new_sub_dir_name.push_str(&svh.to_string());
+    new_sub_dir_name.push_str(&encode_base_36(svh.as_u64()));
 
     // Create the full path
     let new_path = incr_comp_session_dir.parent().unwrap().join(new_sub_dir_name);
@@ -405,14 +405,16 @@ fn copy_files(target_dir: &Path,
 }
 
 /// Generate unique directory path of the form:
-/// {crate_dir}/sess-{timestamp}-{random-number}-working
+/// {crate_dir}/s-{timestamp}-{random-number}-working
 fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     let timestamp = timestamp_to_string(SystemTime::now());
     debug!("generate_session_dir_path: timestamp = {}", timestamp);
     let random_number = thread_rng().next_u32();
     debug!("generate_session_dir_path: random_number = {}", random_number);
 
-    let directory_name = format!("sess-{}-{:x}-working", timestamp, random_number);
+    let directory_name = format!("s-{}-{}-working", 
+                                  timestamp,
+                                  encode_base_36(random_number as u64));
     debug!("generate_session_dir_path: directory_name = {}", directory_name);
     let directory_path = crate_dir.join(directory_name);
     debug!("generate_session_dir_path: directory_path = {}", directory_path.display());
@@ -517,12 +519,12 @@ fn is_finalized(directory_name: &str) -> bool {
 }
 
 fn is_session_directory(directory_name: &str) -> bool {
-    directory_name.starts_with("sess-") &&
+    directory_name.starts_with("s-") &&
     !directory_name.ends_with(LOCK_FILE_EXT)
 }
 
 fn is_session_directory_lock_file(file_name: &str) -> bool {
-    file_name.starts_with("sess-") && file_name.ends_with(LOCK_FILE_EXT)
+    file_name.starts_with("s-") && file_name.ends_with(LOCK_FILE_EXT)
 }
 
 fn extract_timestamp_from_session_dir(directory_name: &str)
@@ -541,15 +543,31 @@ fn extract_timestamp_from_session_dir(directory_name: &str)
     string_to_timestamp(&directory_name[dash_indices[0]+1 .. dash_indices[1]])
 }
 
+const BASE_36: &'static [u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+
+fn encode_base_36(mut n: u64) -> String {
+    let mut s = Vec::with_capacity(13);
+    loop {
+        s.push(BASE_36[(n % 36) as usize]);
+        n /= 36;
+
+        if n == 0 {
+            break;
+        }
+    }
+    s.reverse();
+    String::from_utf8(s).unwrap()
+}
+
 fn timestamp_to_string(timestamp: SystemTime) -> String {
     let duration = timestamp.duration_since(UNIX_EPOCH).unwrap();
     let micros = duration.as_secs() * 1_000_000 +
                 (duration.subsec_nanos() as u64) / 1000;
-    format!("{:x}", micros)
+    encode_base_36(micros)
 }
 
 fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
-    let micros_since_unix_epoch = u64::from_str_radix(s, 16);
+    let micros_since_unix_epoch = u64::from_str_radix(s, 36);
 
     if micros_since_unix_epoch.is_err() {
         return Err(())
@@ -591,7 +609,8 @@ pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: ast::CrateNum) -> Option<Path
         }
     };
 
-    let target_svh = tcx.sess.cstore.crate_hash(cnum).to_string();
+    let target_svh = tcx.sess.cstore.crate_hash(cnum);
+    let target_svh = encode_base_36(target_svh.as_u64());
 
     let sub_dir = find_metadata_hashes_iter(&target_svh, dir_entries.filter_map(|e| {
         e.ok().map(|e| e.file_name().to_string_lossy().into_owned())
@@ -638,7 +657,7 @@ fn crate_path(sess: &Session,
     let mut hasher = SipHasher::new();
     crate_disambiguator.hash(&mut hasher);
 
-    let crate_name = format!("{}-{:x}", crate_name, hasher.finish());
+    let crate_name = format!("{}-{}", crate_name, encode_base_36(hasher.finish()));
     incr_dir.join(crate_name)
 }
 
@@ -914,17 +933,17 @@ fn test_find_source_directory_in_iter() {
 
     // Find newest
     assert_eq!(find_source_directory_in_iter(
-        vec![PathBuf::from("crate-dir/sess-3234-0000-svh"),
-             PathBuf::from("crate-dir/sess-2234-0000-svh"),
-             PathBuf::from("crate-dir/sess-1234-0000-svh")].into_iter(), &already_visited),
-        Some(PathBuf::from("crate-dir/sess-3234-0000-svh")));
+        vec![PathBuf::from("crate-dir/s-3234-0000-svh"),
+             PathBuf::from("crate-dir/s-2234-0000-svh"),
+             PathBuf::from("crate-dir/s-1234-0000-svh")].into_iter(), &already_visited),
+        Some(PathBuf::from("crate-dir/s-3234-0000-svh")));
 
     // Filter out "-working"
     assert_eq!(find_source_directory_in_iter(
-        vec![PathBuf::from("crate-dir/sess-3234-0000-working"),
-             PathBuf::from("crate-dir/sess-2234-0000-svh"),
-             PathBuf::from("crate-dir/sess-1234-0000-svh")].into_iter(), &already_visited),
-        Some(PathBuf::from("crate-dir/sess-2234-0000-svh")));
+        vec![PathBuf::from("crate-dir/s-3234-0000-working"),
+             PathBuf::from("crate-dir/s-2234-0000-svh"),
+             PathBuf::from("crate-dir/s-1234-0000-svh")].into_iter(), &already_visited),
+        Some(PathBuf::from("crate-dir/s-2234-0000-svh")));
 
     // Handle empty
     assert_eq!(find_source_directory_in_iter(vec![].into_iter(), &already_visited),
@@ -932,9 +951,9 @@ fn test_find_source_directory_in_iter() {
 
     // Handle only working
     assert_eq!(find_source_directory_in_iter(
-        vec![PathBuf::from("crate-dir/sess-3234-0000-working"),
-             PathBuf::from("crate-dir/sess-2234-0000-working"),
-             PathBuf::from("crate-dir/sess-1234-0000-working")].into_iter(), &already_visited),
+        vec![PathBuf::from("crate-dir/s-3234-0000-working"),
+             PathBuf::from("crate-dir/s-2234-0000-working"),
+             PathBuf::from("crate-dir/s-1234-0000-working")].into_iter(), &already_visited),
         None);
 }
 
@@ -943,36 +962,36 @@ fn test_find_metadata_hashes_iter()
 {
     assert_eq!(find_metadata_hashes_iter("testsvh2",
         vec![
-            String::from("sess-timestamp1-testsvh1"),
-            String::from("sess-timestamp2-testsvh2"),
-            String::from("sess-timestamp3-testsvh3"),
+            String::from("s-timestamp1-testsvh1"),
+            String::from("s-timestamp2-testsvh2"),
+            String::from("s-timestamp3-testsvh3"),
         ].into_iter()),
-        Some(OsString::from("sess-timestamp2-testsvh2"))
+        Some(OsString::from("s-timestamp2-testsvh2"))
     );
 
     assert_eq!(find_metadata_hashes_iter("testsvh2",
         vec![
-            String::from("sess-timestamp1-testsvh1"),
-            String::from("sess-timestamp2-testsvh2"),
+            String::from("s-timestamp1-testsvh1"),
+            String::from("s-timestamp2-testsvh2"),
             String::from("invalid-name"),
         ].into_iter()),
-        Some(OsString::from("sess-timestamp2-testsvh2"))
+        Some(OsString::from("s-timestamp2-testsvh2"))
     );
 
     assert_eq!(find_metadata_hashes_iter("testsvh2",
         vec![
-            String::from("sess-timestamp1-testsvh1"),
-            String::from("sess-timestamp2-testsvh2-working"),
-            String::from("sess-timestamp3-testsvh3"),
+            String::from("s-timestamp1-testsvh1"),
+            String::from("s-timestamp2-testsvh2-working"),
+            String::from("s-timestamp3-testsvh3"),
         ].into_iter()),
         None
     );
 
     assert_eq!(find_metadata_hashes_iter("testsvh1",
         vec![
-            String::from("sess-timestamp1-random1-working"),
-            String::from("sess-timestamp2-random2-working"),
-            String::from("sess-timestamp3-random3-working"),
+            String::from("s-timestamp1-random1-working"),
+            String::from("s-timestamp2-random2-working"),
+            String::from("s-timestamp3-random3-working"),
         ].into_iter()),
         None
     );
@@ -985,4 +1004,22 @@ fn test_find_metadata_hashes_iter()
         ].into_iter()),
         None
     );
+}
+ 
+#[test]
+fn test_encode_base_36() {
+    fn test(n: u64) {
+        assert_eq!(Ok(n), u64::from_str_radix(&encode_base_36(n)[..], 36));
+    }
+
+    test(0);
+    test(1);
+    test(35);
+    test(36);
+    test(37);
+    test(u64::max_value());
+
+    for i in 0 .. 1_000 {
+        test(i * 983);
+    }
 }
