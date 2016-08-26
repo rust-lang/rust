@@ -718,12 +718,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Report an error if incorrect number of the fields were specified.
         if kind_name == "union" {
-            if fields.len() > 1 {
-                tcx.sess.span_err(span, "union patterns can have at most one field");
+            if fields.len() != 1 {
+                tcx.sess.span_err(span, "union patterns should have exactly one field");
             }
-            if fields.is_empty() && !etc {
-                tcx.sess.span_err(span, "union patterns without `..` \
-                                         should have at least one field");
+            if etc {
+                tcx.sess.span_err(span, "`..` cannot be used in union patterns");
             }
         } else if !etc {
             for field in variant.fields

@@ -8,14 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(pub_restricted)]
 #![feature(untagged_unions)]
 
 mod m {
     pub union U {
-        a: u8
+        pub a: u8,
+        pub(super) b: u8,
+        c: u8,
     }
 }
 
 fn main() {
-    let u = m::U { a: 0 }; //~ ERROR field `a` of union `m::U` is private
+    let u = m::U { a: 10 };
+
+    let a = u.a; // OK
+    let b = u.b; // OK
+    let c = u.c; //~ ERROR field `c` of struct `m::U` is private
 }

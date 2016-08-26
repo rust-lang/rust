@@ -71,4 +71,34 @@ fn main() {
     assert_eq!(align_of::<Up>(), 1);
     assert_eq!(align_of_val(&up), 1);
     assert_eq!(align_of_val(&CUP), 1);
+
+    hybrid::check_hybrid();
+}
+
+mod hybrid {
+    use std::mem::size_of;
+
+    #[repr(packed)]
+    struct S1 {
+        a: u16,
+        b: u8,
+    }
+
+    #[repr(packed)]
+    union U {
+        s: S1,
+        c: u16,
+    }
+
+    #[repr(packed)]
+    struct S2 {
+        d: u8,
+        u: U,
+    }
+
+    pub fn check_hybrid() {
+        assert_eq!(size_of::<S1>(), 3);
+        assert_eq!(size_of::<U>(), 3);
+        assert_eq!(size_of::<S2>(), 4);
+    }
 }

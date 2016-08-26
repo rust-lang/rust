@@ -1423,7 +1423,7 @@ bitflags! {
         const IS_PHANTOM_DATA     = 1 << 3,
         const IS_SIMD             = 1 << 4,
         const IS_FUNDAMENTAL      = 1 << 5,
-        const IS_UNION            = 1 << 7,
+        const IS_UNION            = 1 << 6,
     }
 }
 

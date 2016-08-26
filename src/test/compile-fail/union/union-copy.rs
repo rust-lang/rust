@@ -10,14 +10,17 @@
 
 #![feature(untagged_unions)]
 
-fn main() {
-    let union = 10;
-
-    union;
-
-    union as u8;
-
-    union U {
-        a: u8,
-    }
+union U {
+    a: u8
 }
+
+union W {
+    a: String
+}
+
+impl Clone for U { fn clone(&self) { panic!(); } }
+impl Clone for W { fn clone(&self) { panic!(); } }
+impl Copy for U {} // OK
+impl Copy for W {} //~ ERROR the trait `Copy` may not be implemented for this type
+
+fn main() {}

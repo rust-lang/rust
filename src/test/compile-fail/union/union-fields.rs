@@ -24,11 +24,12 @@ fn main() {
     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
                        //~^ ERROR functional record update syntax requires a struct
 
-    let U {} = u; //~ ERROR union patterns without `..` should have at least one field
+    let U {} = u; //~ ERROR union patterns should have exactly one field
     let U { a } = u; // OK
-    let U { a, b } = u; //~ ERROR union patterns can have at most one field
-    let U { a, b, c } = u; //~ ERROR union patterns can have at most one field
+    let U { a, b } = u; //~ ERROR union patterns should have exactly one field
+    let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
                            //~^ ERROR union `U` does not have a field named `c`
-    let U { .. } = u; // OK
-    let U { a, .. } = u; // OK
+    let U { .. } = u; //~ ERROR union patterns should have exactly one field
+                      //~^ ERROR `..` cannot be used in union patterns
+    let U { a, .. } = u; //~ ERROR `..` cannot be used in union patterns
 }

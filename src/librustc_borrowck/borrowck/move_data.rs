@@ -442,12 +442,12 @@ impl<'a, 'tcx> MoveData<'tcx> {
         self.add_assignment_helper(tcx, lp.clone(), assign_id, span, assignee_id, mode);
     }
 
-    pub fn add_assignment_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 lp: Rc<LoanPath<'tcx>>,
-                                 assign_id: ast::NodeId,
-                                 span: Span,
-                                 assignee_id: ast::NodeId,
-                                 mode: euv::MutateMode) {
+    fn add_assignment_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             lp: Rc<LoanPath<'tcx>>,
+                             assign_id: ast::NodeId,
+                             span: Span,
+                             assignee_id: ast::NodeId,
+                             mode: euv::MutateMode) {
         debug!("add_assignment(lp={:?}, assign_id={}, assignee_id={}",
                lp, assign_id, assignee_id);
 
