@@ -21,6 +21,11 @@
 //! custom operators are required, you should look toward macros or compiler
 //! plugins to extend Rust's syntax.
 //!
+//! Note that the `&&` and `||` operators short-circuit, i.e. they only
+//! evaluate their second operand if it contributes to the result. Since this
+//! behavior is not enforceable by traits, `&&` and `||` are not supported as
+//! overloadable operators.
+//!
 //! Many of the operators take their operands by value. In non-generic
 //! contexts involving built-in types, this is usually not a problem.
 //! However, using these operators in generic code, requires some
@@ -813,41 +818,56 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// # Examples
 ///
+/// In this example, the `&` operator is lifted to a trivial `Scalar` type.
+///
+/// ```
+/// use std::ops::BitAnd;
+///
+/// #[derive(Debug, PartialEq)]
+/// struct Scalar(bool);
+///
+/// impl BitAnd for Scalar {
+///     type Output = Self;
+///
+///     // rhs is the "right-hand side" of the expression `a & b`
+///     fn bitand(self, rhs: Self) -> Self {
+///         Scalar(self.0 & rhs.0)
+///     }
+/// }
+///
+/// fn main() {
+///     assert_eq!(Scalar(true) & Scalar(true), Scalar(true));
+///     assert_eq!(Scalar(true) & Scalar(false), Scalar(false));
+///     assert_eq!(Scalar(false) & Scalar(true), Scalar(false));
+///     assert_eq!(Scalar(false) & Scalar(false), Scalar(false));
+/// }
+/// ```
+///
 /// In this example, the `BitAnd` trait is implemented for a `BooleanVector`
 /// struct.
 ///
 /// ```
 /// use std::ops::BitAnd;
 ///
-/// #[derive(Debug)]
-/// struct BooleanVector {
-///     value: Vec<bool>,
-/// };
+/// #[derive(Debug, PartialEq)]
+/// struct BooleanVector(Vec<bool>);
 ///
 /// impl BitAnd for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitand(self, rhs: Self) -> Self {
-///         BooleanVector {
-///             value: self.value
-///                 .iter()
-///                 .zip(rhs.value.iter())
-///                 .map(|(x, y)| *x && *y)
-///                 .collect(),
-///         }
+///     fn bitand(self, BooleanVector(rhs): Self) -> Self {
+///         let BooleanVector(lhs) = self;
+///         assert_eq!(lhs.len(), rhs.len());
+///         BooleanVector(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x && *y).collect())
 ///     }
 /// }
 ///
-/// impl PartialEq for BooleanVector {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.value == other.value
-///     }
+/// fn main() {
+///     let bv1 = BooleanVector(vec![true, true, false, false]);
+///     let bv2 = BooleanVector(vec![true, false, true, false]);
+///     let expected = BooleanVector(vec![true, false, false, false]);
+///     assert_eq!(bv1 & bv2, expected);
 /// }
-///
-/// let bv1 = BooleanVector { value: vec![true, true, false, false] };
-/// let bv2 = BooleanVector { value: vec![true, false, true, false] };
-/// let expected = BooleanVector { value: vec![true, false, false, false] };
-/// assert_eq!(bv1 & bv2, expected);
 /// ```
 #[lang = "bitand"]
 #[stable(feature = "rust1", since = "1.0.0")]
