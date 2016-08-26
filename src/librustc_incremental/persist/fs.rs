@@ -902,9 +902,9 @@ fn test_all_except_most_recent() {
 #[test]
 fn test_timestamp_serialization() {
     for i in 0 .. 1_000u64 {
-        let time = UNIX_EPOCH + Duration::new(i * 3_434_578, (i as u32) * 239_000);
+        let time = UNIX_EPOCH + Duration::new(i * 1_434_578, (i as u32) * 239_000);
         let s = timestamp_to_string(time);
-        assert_eq!(time, string_to_timestamp(&s).unwrap());
+        assert_eq!(Ok(time), string_to_timestamp(&s));
     }
 }
 
