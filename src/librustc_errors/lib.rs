@@ -50,6 +50,7 @@ pub mod emitter;
 pub mod snippet;
 pub mod registry;
 pub mod styled_buffer;
+mod lock;
 
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION };
 use syntax_pos::{MacroBacktrace};
