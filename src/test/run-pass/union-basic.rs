@@ -52,8 +52,8 @@ fn main() {
     unsafe {
         assert_eq!(w.a, 0);
         assert_eq!(w.b, 0);
-        // w.a = 1;
-        assert_eq!(w.a, 0);
-        assert_eq!(w.b, 0);
+        w.a = 1;
+        assert_eq!(w.a, 1);
+        assert_eq!(w.b, 1);
     }
 }
