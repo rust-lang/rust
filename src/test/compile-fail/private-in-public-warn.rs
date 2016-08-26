@@ -13,8 +13,8 @@
 
 #![feature(associated_consts)]
 #![feature(associated_type_defaults)]
-#![allow(dead_code)]
-#![allow(unused_variables)]
+#![deny(private_in_public)]
+#![allow(unused)]
 #![allow(improper_ctypes)]
 
 mod types {
