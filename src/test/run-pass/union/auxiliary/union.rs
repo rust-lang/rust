@@ -12,5 +12,5 @@
 
 pub union U {
     pub a: u8,
-    b: u16,
+    pub b: u16,
 }
