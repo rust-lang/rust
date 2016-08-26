@@ -429,19 +429,24 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 let method = self.tcx.tables.borrow().method_map[&method_call];
                 self.check_method(expr.span, method.def_id);
             }
-            hir::ExprStruct(_, ref fields, _) => {
+            hir::ExprStruct(_, ref expr_fields, _) => {
                 let adt = self.tcx.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(self.tcx.expect_def(expr.id));
                 // RFC 736: ensure all unmentioned fields are visible.
                 // Rather than computing the set of unmentioned fields
-                // (i.e. `all_fields - fields`), just check them all.
-                for field in variant.fields.iter() {
-                    let span = if let Some(f) = fields.iter().find(|f| f.name.node == field.name) {
-                        f.span
-                    } else {
-                        expr.span
-                    };
-                    self.check_field(span, adt, field);
+                // (i.e. `all_fields - fields`), just check them all,
+                // unless the ADT is a union, then unmentioned fields
+                // are not checked.
+                if adt.adt_kind() == ty::AdtKind::Union {
+                    for expr_field in expr_fields {
+                        self.check_field(expr.span, adt, variant.field_named(expr_field.name.node));
+                    }
+                } else {
+                    for field in &variant.fields {
+                        let expr_field = expr_fields.iter().find(|f| f.name.node == field.name);
+                        let span = if let Some(f) = expr_field { f.span } else { expr.span };
+                        self.check_field(span, adt, field);
+                    }
                 }
             }
             hir::ExprPath(..) => {

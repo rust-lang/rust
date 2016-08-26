@@ -265,13 +265,13 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     fcx.finish(bcx, DebugLoc::None);
 }
 
-fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn trans_custom_dtor<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  t: Ty<'tcx>,
                                  v0: ValueRef,
                                  shallow_drop: bool)
                                  -> Block<'blk, 'tcx>
 {
-    debug!("trans_struct_drop t: {}", t);
+    debug!("trans_custom_dtor t: {}", t);
     let tcx = bcx.tcx();
     let mut bcx = bcx;
 
@@ -489,11 +489,11 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
         }
         ty::TyStruct(def, _) | ty::TyEnum(def, _)
                 if def.dtor_kind().is_present() && !skip_dtor => {
-            trans_struct_drop(bcx, t, v0, false)
+            trans_custom_dtor(bcx, t, v0, false)
         }
         ty::TyUnion(def, _) => {
             if def.dtor_kind().is_present() && !skip_dtor {
-                trans_struct_drop(bcx, t, v0, true)
+                trans_custom_dtor(bcx, t, v0, true)
             } else {
                 bcx
             }

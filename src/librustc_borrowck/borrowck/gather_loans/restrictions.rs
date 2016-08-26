@@ -102,6 +102,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 let interior = interior.cleaned();
                 let base_ty = cmt_base.ty;
                 let result = self.restrict(cmt_base);
+                // Borrowing one union field automatically borrows all its fields.
                 if let ty::TyUnion(ref adt_def, _) = base_ty.sty {
                     match result {
                         RestrictionResult::Safe => RestrictionResult::Safe,
