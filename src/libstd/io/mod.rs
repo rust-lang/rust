@@ -1501,6 +1501,33 @@ impl<T> Take<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn limit(&self) -> u64 { self.limit }
+
+    /// Consumes the `Take`, returning the wrapped reader.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_take_into_inner)]
+    ///
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = try!(File::open("foo.txt"));
+    ///
+    /// let mut buffer = [0; 5];
+    /// let mut handle = file.take(5);
+    /// try!(handle.read(&mut buffer));
+    ///
+    /// let file = handle.into_inner();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "io_take_into_inner", issue = "0")]
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
