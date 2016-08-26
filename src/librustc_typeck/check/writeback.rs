@@ -201,7 +201,7 @@ impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
         self.visit_method_map_entry(ResolvingExpr(e.span),
                                     MethodCall::expr(e.id));
 
-        if let hir::ExprClosure(_, ref decl, _, _) = e.node {
+        if let hir::ExprClosure(_, ref decl, ..) = e.node {
             for input in &decl.inputs {
                 self.visit_node_id(ResolvingExpr(e.span), input.id);
             }
@@ -323,7 +323,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
                     // Free regions that come from early-bound regions are valid.
                     ty::ReFree(ty::FreeRegion {
-                        bound_region: ty::BoundRegion::BrNamed(def_id, _, _), ..
+                        bound_region: ty::BoundRegion::BrNamed(def_id, ..), ..
                     }) if self.free_to_bound_regions.contains_key(&def_id) => {
                         self.free_to_bound_regions[&def_id]
                     }

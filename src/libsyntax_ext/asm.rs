@@ -233,7 +233,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     p.bump();
                     state = st;
                 }
-                (&token::Eof, _, _) => break 'statement,
+                (&token::Eof, ..) => break 'statement,
                 _ => break,
             }
         }

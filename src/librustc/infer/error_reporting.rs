@@ -140,9 +140,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Some(ast_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
                         hir::ExprMethodCall(..) => "method call",
-                        hir::ExprMatch(_, _, hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                        hir::ExprMatch(_, _, hir::MatchSource::WhileLetDesugar) =>  "while let",
-                        hir::ExprMatch(_, _, hir::MatchSource::ForLoopDesugar) =>  "for",
+                        hir::ExprMatch(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
+                        hir::ExprMatch(.., hir::MatchSource::WhileLetDesugar) =>  "while let",
+                        hir::ExprMatch(.., hir::MatchSource::ForLoopDesugar) =>  "for",
                         hir::ExprMatch(..) => "match",
                         _ => "expression",
                     },

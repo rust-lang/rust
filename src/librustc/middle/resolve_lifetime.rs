@@ -157,7 +157,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
                 hir::ItemEnum(_, ref generics) |
                 hir::ItemStruct(_, ref generics) |
                 hir::ItemUnion(_, ref generics) |
-                hir::ItemTrait(_, ref generics, _, _) |
+                hir::ItemTrait(_, ref generics, ..) |
                 hir::ItemImpl(_, _, ref generics, ..) => {
                     // These kinds of items have only early bound lifetime parameters.
                     let lifetimes = &generics.lifetimes;
@@ -209,7 +209,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
                     this.add_scope_and_walk_fn(fk, decl, b, s, fn_id)
                 })
             }
-            FnKind::Method(_, sig, _, _) => {
+            FnKind::Method(_, sig, ..) => {
                 self.visit_early_late(
                     fn_id,
                     decl,
@@ -455,7 +455,7 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Block) {
 
     fn expression_label(ex: &hir::Expr) -> Option<(ast::Name, Span)> {
         match ex.node {
-            hir::ExprWhile(_, _, Some(label)) |
+            hir::ExprWhile(.., Some(label)) |
             hir::ExprLoop(_, Some(label)) => Some((label.node, label.span)),
             _ => None,
         }
@@ -503,7 +503,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(generics);
             }
-            FnKind::Method(_, sig, _, _) => {
+            FnKind::Method(_, sig, ..) => {
                 intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(&sig.generics);
             }
@@ -583,7 +583,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 start += 1; // Self comes first.
             }
             match parent.node {
-                hir::ItemTrait(_, ref generics, _, _) |
+                hir::ItemTrait(_, ref generics, ..) |
                 hir::ItemImpl(_, _, ref generics, ..) => {
                     start += generics.lifetimes.len() + generics.ty_params.len();
                 }

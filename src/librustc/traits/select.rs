@@ -1379,7 +1379,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // provide an impl, but only for suitable `fn` pointers
-            ty::TyFnDef(_, _, &ty::BareFnTy {
+            ty::TyFnDef(.., &ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -1635,7 +1635,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // [T; n] -> [T].
-            (&ty::TyArray(_, _), &ty::TySlice(_)) => true,
+            (&ty::TyArray(..), &ty::TySlice(_)) => true,
 
             // Struct<T> -> Struct<U>.
             (&ty::TyStruct(def_id_a, _), &ty::TyStruct(def_id_b, _)) => {

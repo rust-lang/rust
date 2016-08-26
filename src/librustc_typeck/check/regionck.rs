@@ -576,7 +576,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 /*
-                adjustment::AutoObject(_, ref bounds, _, _) => {
+                adjustment::AutoObject(_, ref bounds, ..) => {
                     // Determine if we are casting `expr` to a trait
                     // instance. If so, we have to be sure that the type
                     // of the source obeys the new region bound.
@@ -643,7 +643,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprMethodCall(_, _, ref args) => {
+            hir::ExprMethodCall(.., ref args) => {
                 self.constrain_call(expr, Some(&args[0]),
                                     args[1..].iter().map(|e| &**e), false);
 
@@ -758,7 +758,7 @@ impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprClosure(_, _, ref body, _) => {
+            hir::ExprClosure(.., ref body, _) => {
                 self.check_expr_fn_block(expr, &body);
             }
 
@@ -1156,7 +1156,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     let _ = mc.cat_pattern(discr_cmt, root_pat, |_, sub_cmt, sub_pat| {
                 match sub_pat.node {
                     // `ref x` pattern
-                    PatKind::Binding(hir::BindByRef(mutbl), _, _) => {
+                    PatKind::Binding(hir::BindByRef(mutbl), ..) => {
                         self.link_region_from_node_type(sub_pat.span, sub_pat.id,
                                                         mutbl, sub_cmt);
                     }
@@ -1269,7 +1269,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     borrow_kind = borrow_kind;
                 }
 
-                Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+                Categorization::Deref(.., mc::UnsafePtr(..)) |
                 Categorization::StaticItem |
                 Categorization::Upvar(..) |
                 Categorization::Local(..) |

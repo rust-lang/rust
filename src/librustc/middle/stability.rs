@@ -553,7 +553,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
                                            &Option<DeprecationEntry>)) {
     let span;
     let id = match e.node {
-        hir::ExprMethodCall(i, _, _) => {
+        hir::ExprMethodCall(i, ..) => {
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
             tcx.tables.borrow().method_map[&method_call].def_id

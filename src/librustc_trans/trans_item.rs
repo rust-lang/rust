@@ -454,7 +454,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              &trait_data.projection_bounds,
                              output);
         },
-        ty::TyFnDef(_, _, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+        ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
         ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");

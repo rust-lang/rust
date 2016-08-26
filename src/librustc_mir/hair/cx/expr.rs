@@ -217,7 +217,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
     let kind = match expr.node {
         // Here comes the interesting stuff:
-        hir::ExprMethodCall(_, _, ref args) => {
+        hir::ExprMethodCall(.., ref args) => {
             // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
             let expr = method_callee(cx, expr, ty::MethodCall::expr(expr.id));
             let args = args.iter()
@@ -242,7 +242,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 let method = method_callee(cx, expr, ty::MethodCall::expr(expr.id));
 
                 let sig = match method.ty.sty {
-                    ty::TyFnDef(_, _, fn_ty) => &fn_ty.sig,
+                    ty::TyFnDef(.., fn_ty) => &fn_ty.sig,
                     _ => span_bug!(expr.span, "type of method is not an fn")
                 };
 
@@ -743,7 +743,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let body_id = match cx.tcx.map.find(closure_expr_id) {
                 Some(map::NodeExpr(expr)) => {
                     match expr.node {
-                        hir::ExprClosure(_, _, ref body, _) => body.id,
+                        hir::ExprClosure(.., ref body, _) => body.id,
                         _ => {
                             span_bug!(expr.span, "closure expr is not a closure expr");
                         }

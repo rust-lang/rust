@@ -628,7 +628,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                               def_id: DefId)
                                               -> bool {
             if !match tcx.lookup_item_type(def_id).ty.sty {
-                ty::TyFnDef(def_id, _, _) => {
+                ty::TyFnDef(def_id, ..) => {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in
                     // translation item. Same for FFI functions.
@@ -1214,8 +1214,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
         hir::ItemImpl(_,
                       _,
                       ref generics,
-                      _,
-                      _,
+                      ..,
                       ref items) => {
             if generics.is_type_parameterized() {
                 return

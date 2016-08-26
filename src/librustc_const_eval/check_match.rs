@@ -372,8 +372,8 @@ fn check_arms(cx: &MatchCheckCtxt,
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
 fn pat_is_catchall(dm: &DefMap, p: &Pat) -> bool {
     match p.node {
-        PatKind::Binding(_, _, None) => true,
-        PatKind::Binding(_, _, Some(ref s)) => pat_is_catchall(dm, &s),
+        PatKind::Binding(.., None) => true,
+        PatKind::Binding(.., Some(ref s)) => pat_is_catchall(dm, &s),
         PatKind::Ref(ref s, _) => pat_is_catchall(dm, &s),
         PatKind::Tuple(ref v, _) => v.iter().all(|p| pat_is_catchall(dm, &p)),
         _ => false
@@ -382,7 +382,7 @@ fn pat_is_catchall(dm: &DefMap, p: &Pat) -> bool {
 
 fn raw_pat(p: &Pat) -> &Pat {
     match p.node {
-        PatKind::Binding(_, _, Some(ref s)) => raw_pat(&s),
+        PatKind::Binding(.., Some(ref s)) => raw_pat(&s),
         _ => p
     }
 }
@@ -804,7 +804,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
             vec![ConstantRange(eval_const_expr(cx.tcx, &lo), eval_const_expr(cx.tcx, &hi))],
         PatKind::Vec(ref before, ref slice, ref after) =>
             match left_ty.sty {
-                ty::TyArray(_, _) => vec![Single],
+                ty::TyArray(..) => vec![Single],
                 ty::TySlice(_) if slice.is_some() => {
                     (before.len() + after.len()..max_slice_length+1)
                         .map(|length| Slice(length))
@@ -866,7 +866,7 @@ fn wrap_pat<'a, 'b, 'tcx>(cx: &MatchCheckCtxt<'b, 'tcx>,
 {
     let pat_ty = cx.tcx.pat_ty(pat);
     (pat, Some(match pat.node {
-        PatKind::Binding(hir::BindByRef(..), _, _) => {
+        PatKind::Binding(hir::BindByRef(..), ..) => {
             pat_ty.builtin_deref(false, NoPreference).unwrap().ty
         }
         _ => pat_ty
@@ -1217,7 +1217,7 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
     fn visit_pat(&mut self, pat: &Pat) {
         match pat.node {
-            PatKind::Binding(_, _, ref subpat) => {
+            PatKind::Binding(.., ref subpat) => {
                 if !self.bindings_allowed {
                     span_err!(self.cx.tcx.sess, pat.span, E0303,
                               "pattern bindings are not allowed after an `@`");

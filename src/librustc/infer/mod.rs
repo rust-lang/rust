@@ -225,7 +225,7 @@ impl TypeOrigin {
             &TypeOrigin::RelateOutputImplTypes(_) |
             &TypeOrigin::ExprAssignable(_) => "mismatched types",
             &TypeOrigin::MethodCompatCheck(_) => "method not compatible with trait",
-            &TypeOrigin::MatchExpressionArm(_, _, source) => match source {
+            &TypeOrigin::MatchExpressionArm(.., source) => match source {
                 hir::MatchSource::IfLetDesugar{..} => "`if let` arms have incompatible types",
                 _ => "match arms have incompatible types",
             },
@@ -1712,7 +1712,7 @@ impl TypeOrigin {
             TypeOrigin::ExprAssignable(span) => span,
             TypeOrigin::Misc(span) => span,
             TypeOrigin::RelateOutputImplTypes(span) => span,
-            TypeOrigin::MatchExpressionArm(match_span, _, _) => match_span,
+            TypeOrigin::MatchExpressionArm(match_span, ..) => match_span,
             TypeOrigin::IfExpression(span) => span,
             TypeOrigin::IfExpressionWithNoElse(span) => span,
             TypeOrigin::RangeExpression(span) => span,
@@ -1765,7 +1765,7 @@ impl RegionVariableOrigin {
             Autoref(a) => a,
             Coercion(a) => a,
             EarlyBoundRegion(a, _) => a,
-            LateBoundRegion(a, _, _) => a,
+            LateBoundRegion(a, ..) => a,
             BoundRegionInCoherence(_) => syntax_pos::DUMMY_SP,
             UpvarRegion(_, a) => a
         }

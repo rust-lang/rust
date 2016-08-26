@@ -56,7 +56,7 @@ fn owned_ptr_base_path<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> &'a LoanPath<
                 }
             }
             LpDowncast(ref lp_base, _) |
-            LpExtend(ref lp_base, _, _) => helper(&lp_base)
+            LpExtend(ref lp_base, ..) => helper(&lp_base)
         }
     }
 }
@@ -80,7 +80,7 @@ fn owned_ptr_base_path_rc<'tcx>(loan_path: &Rc<LoanPath<'tcx>>) -> Rc<LoanPath<'
                 }
             }
             LpDowncast(ref lp_base, _) |
-            LpExtend(ref lp_base, _, _) => helper(lp_base)
+            LpExtend(ref lp_base, ..) => helper(lp_base)
         }
     }
 }
@@ -312,7 +312,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     break;
                 }
                 LpDowncast(ref lp_base, _) |
-                LpExtend(ref lp_base, _, _) => {
+                LpExtend(ref lp_base, ..) => {
                     loan_path = &lp_base;
                 }
             }
@@ -542,7 +542,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     err
                 }
 
-                (_, _) => {
+                (..) => {
                     let mut err = struct_span_err!(self.bccx, new_loan.span, E0502,
                                                    "cannot borrow `{}`{} as {} because \
                                                    {} is also borrowed as {}{}",

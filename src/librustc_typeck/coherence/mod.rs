@@ -86,7 +86,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
             TyStr | TyArray(..) | TySlice(..) | TyFnDef(..) | TyFnPtr(_) |
             TyTuple(..) | TyParam(..) | TyError | TyNever |
-            TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
+            TyRawPtr(_) | TyRef(..) | TyProjection(..) => {
                 None
             }
 

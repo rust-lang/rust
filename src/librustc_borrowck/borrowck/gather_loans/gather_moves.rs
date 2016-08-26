@@ -161,9 +161,9 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                cmt: &mc::cmt<'tcx>)
                                                -> Option<mc::cmt<'tcx>> {
     match cmt.cat {
-        Categorization::Deref(_, _, mc::BorrowedPtr(..)) |
-        Categorization::Deref(_, _, mc::Implicit(..)) |
-        Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+        Categorization::Deref(.., mc::BorrowedPtr(..)) |
+        Categorization::Deref(.., mc::Implicit(..)) |
+        Categorization::Deref(.., mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             Some(cmt.clone())
         }

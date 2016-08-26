@@ -492,7 +492,7 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
                    variant.name,
                    ctor_ty);
             let field_tys = match ctor_ty.sty {
-                ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+                ty::TyFnDef(.., &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
                     ref inputs, ..
                 }), ..}) => {
                     // tuple-struct constructors don't have escaping regions
@@ -952,7 +952,7 @@ pub fn get_impl_or_trait_item<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a
             let predicates = doc_predicates(item_doc, tcx, cdata, tag_item_predicates);
             let ity = tcx.lookup_item_type(def_id).ty;
             let fty = match ity.sty {
-                ty::TyFnDef(_, _, fty) => fty,
+                ty::TyFnDef(.., fty) => fty,
                 _ => bug!(
                     "the type {:?} of the method {:?} is not a function?",
                     ity, name)

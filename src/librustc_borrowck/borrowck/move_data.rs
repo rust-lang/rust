@@ -197,7 +197,7 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
         LpVar(_) | LpUpvar(_) => {
             true
         }
-        LpExtend(_, _, LpInterior(_, InteriorKind::InteriorElement(..))) => {
+        LpExtend(.., LpInterior(_, InteriorKind::InteriorElement(..))) => {
             // Paths involving element accesses a[i] do not refer to a unique
             // location, as there is no accurate tracking of the indices.
             //
@@ -207,7 +207,7 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
             false
         }
         LpDowncast(ref lp_base, _) |
-        LpExtend(ref lp_base, _, _) => {
+        LpExtend(ref lp_base, ..) => {
             loan_path_is_precise(&lp_base)
         }
     }
@@ -295,7 +295,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
             }
 
             LpDowncast(ref base, _) |
-            LpExtend(ref base, _, _) => {
+            LpExtend(ref base, ..) => {
                 let parent_index = self.move_path(tcx, base.clone());
 
                 let index = MovePathIndex(self.paths.borrow().len());
@@ -351,7 +351,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                 match lp.kind {
                     LpVar(..) | LpUpvar(..) => { }
                     LpDowncast(ref b, _) |
-                    LpExtend(ref b, _, _) => {
+                    LpExtend(ref b, ..) => {
                         self.add_existing_base_paths(b, result);
                     }
                 }

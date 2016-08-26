@@ -501,7 +501,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                 assert!(adr.unsize.is_none());
                                 (adr.autoderefs, None)
                             }
-                            Some(AutoPtr(_, _)) => {
+                            Some(AutoPtr(..)) => {
                                 (adr.autoderefs, adr.unsize.map(|target| {
                                     target.builtin_deref(false, NoPreference)
                                             .expect("fixup: AutoPtr is not &T").ty

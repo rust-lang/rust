@@ -381,7 +381,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                     module = path,
                                     ident = ident.node)
                         }
-                        Some(&ExprKind::MethodCall(ident, _, _)) => {
+                        Some(&ExprKind::MethodCall(ident, ..)) => {
                             format!("to call a function from the `{module}` module, \
                                      use `{module}::{ident}(..)`",
                                     module = path,
@@ -1643,7 +1643,7 @@ impl<'a> Resolver<'a> {
             ItemKind::DefaultImpl(_, ref trait_ref) => {
                 self.with_optional_trait_ref(Some(trait_ref), |_, _| {});
             }
-            ItemKind::Impl(_, _, ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
+            ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
                 self.resolve_implementation(generics,
                                             opt_trait_ref,
                                             &self_type,
@@ -2369,7 +2369,7 @@ impl<'a> Resolver<'a> {
                     self.record_def(pat.id, resolution);
                 }
 
-                PatKind::TupleStruct(ref path, _, _) => {
+                PatKind::TupleStruct(ref path, ..) => {
                     self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
                         match def {
                             Def::Struct(..) | Def::Variant(..) => true,
@@ -2388,7 +2388,7 @@ impl<'a> Resolver<'a> {
                     }, "variant, struct or constant");
                 }
 
-                PatKind::Struct(ref path, _, _) => {
+                PatKind::Struct(ref path, ..) => {
                     self.resolve_pattern_path(pat.id, None, path, TypeNS, |def| {
                         match def {
                             Def::Struct(..) | Def::Union(..) | Def::Variant(..) |
@@ -2963,7 +2963,7 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::Struct(ref path, _, _) => {
+            ExprKind::Struct(ref path, ..) => {
                 // Resolve the path to the structure it goes to. We don't
                 // check to ensure that the path is actually a structure; that
                 // is checked later during typeck.
@@ -2985,7 +2985,7 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::Loop(_, Some(label)) | ExprKind::While(_, _, Some(label)) => {
+            ExprKind::Loop(_, Some(label)) | ExprKind::While(.., Some(label)) => {
                 self.with_label_rib(|this| {
                     let def = Def::Label(expr.id);
 
@@ -3077,7 +3077,7 @@ impl<'a> Resolver<'a> {
                 let traits = self.get_traits_containing_item(name.node.name);
                 self.trait_map.insert(expr.id, traits);
             }
-            ExprKind::MethodCall(name, _, _) => {
+            ExprKind::MethodCall(name, ..) => {
                 debug!("(recording candidate traits for expr) recording traits for {}",
                        expr.id);
                 let traits = self.get_traits_containing_item(name.node.name);
@@ -3241,7 +3241,7 @@ impl<'a> Resolver<'a> {
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
-                        if !worklist.iter().any(|&(m, _, _)| m.def == module.def) {
+                        if !worklist.iter().any(|&(m, ..)| m.def == module.def) {
                             worklist.push((module, path_segments, is_extern));
                         }
                     }

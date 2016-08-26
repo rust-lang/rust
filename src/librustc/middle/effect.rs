@@ -43,7 +43,7 @@ enum RootUnsafeContext {
 
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
-        ty::TyFnDef(_, _, ref f) |
+        ty::TyFnDef(.., ref f) |
         ty::TyFnPtr(ref f) => f.unsafety == hir::Unsafety::Unsafe,
         _ => false,
     }
@@ -85,7 +85,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
             FnKind::ItemFn(_, _, unsafety, ..) =>
                 (true, unsafety == hir::Unsafety::Unsafe),
-            FnKind::Method(_, sig, _, _) =>
+            FnKind::Method(_, sig, ..) =>
                 (true, sig.unsafety == hir::Unsafety::Unsafe),
             _ => (false, false),
         };

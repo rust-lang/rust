@@ -422,7 +422,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
             }
-            ast::ExprKind::Struct(ref path, _, _) => {
+            ast::ExprKind::Struct(ref path, ..) => {
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
@@ -694,11 +694,11 @@ impl PathCollector {
 impl Visitor for PathCollector {
     fn visit_pat(&mut self, p: &ast::Pat) {
         match p.node {
-            PatKind::Struct(ref path, _, _) => {
+            PatKind::Struct(ref path, ..) => {
                 self.collected_paths.push((p.id, path.clone(),
                                            ast::Mutability::Mutable, recorder::TypeRef));
             }
-            PatKind::TupleStruct(ref path, _, _) |
+            PatKind::TupleStruct(ref path, ..) |
             PatKind::Path(_, ref path) => {
                 self.collected_paths.push((p.id, path.clone(),
                                            ast::Mutability::Mutable, recorder::VarRef));

@@ -303,7 +303,7 @@ impl Folder for NestedItemsDropper {
         blk.and_then(|hir::Block {id, stmts, expr, rules, span, ..}| {
             let stmts_sans_items = stmts.into_iter().filter_map(|stmt| {
                 let use_stmt = match stmt.node {
-                    hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
+                    hir::StmtExpr(..) | hir::StmtSemi(..) => true,
                     hir::StmtDecl(ref decl, _) => {
                         match decl.node {
                             hir::DeclLocal(_) => true,

@@ -457,7 +457,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let func_ty = func.ty(mir, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
                 let func_ty = match func_ty.sty {
-                    ty::TyFnDef(_, _, func_ty) | ty::TyFnPtr(func_ty) => func_ty,
+                    ty::TyFnDef(.., func_ty) | ty::TyFnPtr(func_ty) => func_ty,
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
                         return;
