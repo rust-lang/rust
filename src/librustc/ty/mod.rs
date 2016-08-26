@@ -1336,7 +1336,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             }
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    hir::ItemFn(_, _, _, _, _, ref body) => {
+                    hir::ItemFn(.., ref body) => {
                         // We assume this is a function.
                         let fn_def_id = tcx.map.local_def_id(id);
 
@@ -2262,7 +2262,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn provided_trait_methods(self, id: DefId) -> Vec<Rc<Method<'gcx>>> {
         if let Some(id) = self.map.as_local_node_id(id) {
-            if let ItemTrait(_, _, _, ref ms) = self.map.expect_item(id).node {
+            if let ItemTrait(.., ref ms) = self.map.expect_item(id).node {
                 ms.iter().filter_map(|ti| {
                     if let hir::MethodTraitItem(_, Some(_)) = ti.node {
                         match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
@@ -2288,7 +2288,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn associated_consts(self, id: DefId) -> Vec<Rc<AssociatedConst<'gcx>>> {
         if let Some(id) = self.map.as_local_node_id(id) {
             match self.map.expect_item(id).node {
-                ItemTrait(_, _, _, ref tis) => {
+                ItemTrait(.., ref tis) => {
                     tis.iter().filter_map(|ti| {
                         if let hir::ConstTraitItem(_, _) = ti.node {
                             match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
@@ -2304,7 +2304,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         }
                     }).collect()
                 }
-                ItemImpl(_, _, _, _, _, ref iis) => {
+                ItemImpl(.., ref iis) => {
                     iis.iter().filter_map(|ii| {
                         if let hir::ImplItemKind::Const(_, _) = ii.node {
                             match self.impl_or_trait_item(self.map.local_def_id(ii.id)) {
@@ -2334,7 +2334,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             match self.map.find(id) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
-                        hir::ItemImpl(_, polarity, _, _, _, _) => Some(polarity),
+                        hir::ItemImpl(_, polarity, ..) => Some(polarity),
                         _ => None
                     }
                 }

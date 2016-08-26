@@ -18,6 +18,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(custom_attribute)]
+#![feature(dotdot_in_tuple_patterns)]
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -124,7 +125,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
-            ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
+            ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
                 filter!(self.span_utils, sub_span, item.span, None);
@@ -217,7 +218,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     variants: def.variants.iter().map(|v| v.node.data.id()).collect(),
                 }))
             }
-            ast::ItemKind::Impl(_, _, _, ref trait_ref, ref typ, _) => {
+            ast::ItemKind::Impl(.., ref trait_ref, ref typ, _) => {
                 let mut type_data = None;
                 let sub_span;
 
@@ -295,7 +296,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Some(impl_id) => match self.tcx.map.get_if_local(impl_id) {
                 Some(NodeItem(item)) => {
                     match item.node {
-                        hir::ItemImpl(_, _, _, _, ref ty, _) => {
+                        hir::ItemImpl(.., ref ty, _) => {
                             let mut result = String::from("<");
                             result.push_str(&rustc::hir::print::ty_to_string(&ty));
 

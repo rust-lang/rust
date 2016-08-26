@@ -83,7 +83,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 block: &'v hir::Block, span: Span, id: ast::NodeId) {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
-            FnKind::ItemFn(_, _, unsafety, _, _, _, _) =>
+            FnKind::ItemFn(_, _, unsafety, ..) =>
                 (true, unsafety == hir::Unsafety::Unsafe),
             FnKind::Method(_, sig, _, _) =>
                 (true, sig.unsafety == hir::Unsafety::Unsafe),
@@ -143,7 +143,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            hir::ExprMethodCall(_, _, _) => {
+            hir::ExprMethodCall(..) => {
                 let method_call = MethodCall::expr(expr.id);
                 let base_type = self.tcx.tables.borrow().method_map[&method_call].ty;
                 debug!("effect: method call case, base type is {:?}",

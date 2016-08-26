@@ -562,7 +562,7 @@ impl Pat {
             PatKind::Wild |
             PatKind::Lit(_) |
             PatKind::Range(_, _) |
-            PatKind::Ident(_, _, _) |
+            PatKind::Ident(..) |
             PatKind::Path(..) |
             PatKind::Mac(_) => {
                 true

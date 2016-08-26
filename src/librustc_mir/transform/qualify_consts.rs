@@ -119,7 +119,7 @@ fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         let fn_like = FnLikeNode::from_node(tcx.map.get(node_id));
         match fn_like.map(|f| f.kind()) {
-            Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => {
+            Some(FnKind::ItemFn(_, _, _, c, ..)) => {
                 c == hir::Constness::Const
             }
             Some(FnKind::Method(_, m, _, _)) => {

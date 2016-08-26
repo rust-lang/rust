@@ -17,6 +17,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -125,10 +126,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let inherited_item_level = match item.node {
             // Impls inherit level from their types and traits
-            hir::ItemImpl(_, _, _, None, ref ty, _) => {
+            hir::ItemImpl(.., None, ref ty, _) => {
                 self.ty_level(&ty)
             }
-            hir::ItemImpl(_, _, _, Some(ref trait_ref), ref ty, _) => {
+            hir::ItemImpl(.., Some(ref trait_ref), ref ty, _) => {
                 cmp::min(self.ty_level(&ty), self.trait_level(trait_ref))
             }
             hir::ItemDefaultImpl(_, ref trait_ref) => {
@@ -157,19 +158,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ItemImpl(_, _, _, None, _, ref impl_items) => {
+            hir::ItemImpl(.., None, _, ref impl_items) => {
                 for impl_item in impl_items {
                     if impl_item.vis == hir::Public {
                         self.update(impl_item.id, item_level);
                     }
                 }
             }
-            hir::ItemImpl(_, _, _, Some(_), _, ref impl_items) => {
+            hir::ItemImpl(.., Some(_), _, ref impl_items) => {
                 for impl_item in impl_items {
                     self.update(impl_item.id, item_level);
                 }
             }
-            hir::ItemTrait(_, _, _, ref trait_items) => {
+            hir::ItemTrait(.., ref trait_items) => {
                 for trait_item in trait_items {
                     self.update(trait_item.id, item_level);
                 }
@@ -204,7 +205,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemUse(..) => {}
             // Visit everything
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
-            hir::ItemTrait(..) | hir::ItemTy(..) | hir::ItemImpl(_, _, _, Some(..), _, _) => {
+            hir::ItemTrait(..) | hir::ItemTy(..) | hir::ItemImpl(.., Some(..), _, _) => {
                 if item_level.is_some() {
                     self.reach().visit_item(item);
                 }

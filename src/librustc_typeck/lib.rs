@@ -76,6 +76,7 @@ This API is completely unstable and subject to change.
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -215,7 +216,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             match tcx.map.find(main_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
-                        hir::ItemFn(_, _, _, _, ref generics, _) => {
+                        hir::ItemFn(.., ref generics, _) => {
                             if generics.is_parameterized() {
                                 struct_span_err!(ccx.tcx.sess, generics.span, E0131,
                                          "main function is not allowed to have type parameters")
@@ -267,7 +268,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             match tcx.map.find(start_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
-                        hir::ItemFn(_,_,_,_,ref ps,_)
+                        hir::ItemFn(..,ref ps,_)
                         if ps.is_parameterized() => {
                             struct_span_err!(tcx.sess, ps.span, E0132,
                                 "start function is not allowed to have type parameters")

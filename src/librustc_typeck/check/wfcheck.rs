@@ -126,7 +126,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                     }
                 }
             }
-            hir::ItemFn(_, _, _, _, _, ref body) => {
+            hir::ItemFn(.., ref body) => {
                 self.check_item_fn(item, body);
             }
             hir::ItemStatic(..) => {
@@ -156,7 +156,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
-            hir::ItemTrait(_, _, _, ref items) => {
+            hir::ItemTrait(.., ref items) => {
                 self.check_trait(item, items);
             }
             _ => {}

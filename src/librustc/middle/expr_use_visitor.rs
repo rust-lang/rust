@@ -544,7 +544,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&count);
             }
 
-            hir::ExprClosure(_, _, _, fn_decl_span) => {
+            hir::ExprClosure(.., fn_decl_span) => {
                 self.walk_captures(expr, fn_decl_span)
             }
 

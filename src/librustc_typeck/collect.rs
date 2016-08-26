@@ -850,7 +850,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             enforce_impl_lifetimes_are_constrained(ccx, generics, def_id, impl_items);
         },
-        hir::ItemTrait(_, _, _, ref trait_items) => {
+        hir::ItemTrait(.., ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
             let def_id = trait_def.trait_ref.def_id;
             let _: Result<(), ErrorReported> = // any error is already reported, can ignore
@@ -1311,7 +1311,7 @@ fn trait_defines_associated_type_named(ccx: &CrateCtxt,
     };
 
     let trait_items = match item.node {
-        hir::ItemTrait(_, _, _, ref trait_items) => trait_items,
+        hir::ItemTrait(.., ref trait_items) => trait_items,
         _ => bug!("trait_node_id {} is not a trait", trait_node_id)
     };
 
@@ -1445,8 +1445,8 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
             NodeItem(item) => {
                 match item.node {
-                    ItemFn(_, _, _, _, ref generics, _) |
-                    ItemImpl(_, _, ref generics, _, _, _) => generics,
+                    ItemFn(.., ref generics, _) |
+                    ItemImpl(_, _, ref generics, ..) => generics,
 
                     ItemTy(_, ref generics) |
                     ItemEnum(_, ref generics) |
@@ -1651,7 +1651,7 @@ fn predicates_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let no_generics = hir::Generics::empty();
     let generics = match it.node {
-        hir::ItemFn(_, _, _, _, ref generics, _) |
+        hir::ItemFn(.., ref generics, _) |
         hir::ItemTy(_, ref generics) |
         hir::ItemEnum(_, ref generics) |
         hir::ItemStruct(_, ref generics) |

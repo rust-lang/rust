@@ -122,7 +122,7 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                     err.emit();
                 }
             }
-            hir::ItemImpl(_, _, _, Some(_), _, _) => {
+            hir::ItemImpl(.., Some(_), _, _) => {
                 let impl_def_id = self.tcx.map.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;

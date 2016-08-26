@@ -62,7 +62,7 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
                 _ => false
             }
         }
-        PatKind::Vec(_, _, _) => true,
+        PatKind::Vec(..) => true,
         _ => false
     }
 }

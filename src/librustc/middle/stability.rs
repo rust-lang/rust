@@ -252,11 +252,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemImpl(_, _, _, None, _, _) | hir::ItemForeignMod(..) => {
+            hir::ItemImpl(.., None, _, _) | hir::ItemForeignMod(..) => {
                 self.in_trait_impl = false;
                 kind = AnnotationKind::Container;
             }
-            hir::ItemImpl(_, _, _, Some(_), _, _) => {
+            hir::ItemImpl(.., Some(_), _, _) => {
                 self.in_trait_impl = true;
             }
             hir::ItemStruct(ref sd, _) => {
@@ -528,7 +528,7 @@ pub fn check_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // For implementations of traits, check the stability of each item
         // individually as it's possible to have a stable trait with unstable
         // items.
-        hir::ItemImpl(_, _, _, Some(ref t), _, ref impl_items) => {
+        hir::ItemImpl(.., Some(ref t), _, ref impl_items) => {
             let trait_did = tcx.expect_def(t.ref_id).def_id();
             let trait_items = tcx.trait_items(trait_did);
 
