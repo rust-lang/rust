@@ -36,6 +36,7 @@ use syntax_pos::Span;
 
 use std::collections::hash_map::Entry;
 use std::fmt;
+use std::usize;
 
 use super::promote_consts::{self, Candidate, TempState};
 
@@ -393,8 +394,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                     for index in 0..mir.var_decls.len() {
                         if !self.const_fn_arg_vars.contains(index) {
                             self.assign(&Lvalue::Var(Var::new(index)), Location {
-                                block: BasicBlock::new(0),
-                                statement_index: 0
+                                block: bb,
+                                statement_index: usize::MAX,
                             });
                         }
                     }
@@ -859,7 +860,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
-        self.nest(|this| this.super_statement(bb, statement, location));
+        self.nest(|this| {
+            this.visit_source_info(&statement.source_info);
+            match statement.kind {
+                StatementKind::Assign(ref lvalue, ref rvalue) => {
+                    this.visit_assign(bb, lvalue, rvalue, location);
+                }
+                StatementKind::SetDiscriminant { .. } |
+                StatementKind::StorageLive(_) |
+                StatementKind::StorageDead(_) => {}
+            }
+        });
     }
 
     fn visit_terminator(&mut self,
