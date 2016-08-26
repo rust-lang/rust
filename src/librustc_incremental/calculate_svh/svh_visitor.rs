@@ -236,7 +236,7 @@ enum SawAbiComponent<'a> {
     SawTyParamBound,
     SawPolyTraitRef,
     SawAssocTypeBinding,
-    SawAttribute(ast::AttrStyle, bool),
+    SawAttribute(ast::AttrStyle),
     SawMacroDef,
     SawSpan(&'a str, usize, BytePos, &'a str, usize, BytePos, SawSpanExpnKind),
 }
@@ -746,8 +746,9 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         for i in indices {
             let attr = &attributes[i].node;
 
-            if !IGNORED_ATTRIBUTES.contains(&&*meta_item_sort_key(&attr.value)) {
-                SawAttribute(attr.style, attr.is_sugared_doc).hash(self.st);
+            if !attr.is_sugared_doc &&
+               !IGNORED_ATTRIBUTES.contains(&&*meta_item_sort_key(&attr.value)) {
+                SawAttribute(attr.style).hash(self.st);
                 self.hash_meta_item(&*attr.value);
             }
         }
