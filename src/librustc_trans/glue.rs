@@ -489,7 +489,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
         }
         ty::TyStruct(def, _) | ty::TyEnum(def, _)
                 if def.dtor_kind().is_present() && !skip_dtor => {
-            trans_struct_drop(bcx, t, v0)
+            trans_struct_drop(bcx, t, v0, false)
         }
         ty::TyUnion(def, _) => {
             if def.dtor_kind().is_present() && !skip_dtor {
