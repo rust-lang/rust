@@ -192,6 +192,12 @@ declare_lint! {
     "lifetimes or labels named `'_` were erroneously allowed"
 }
 
+declare_lint! {
+    pub SAFE_EXTERN_STATICS,
+    Warn,
+    "safe access to extern statics was erroneously allowed"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -228,7 +234,8 @@ impl LintPass for HardwiredLints {
             RENAMED_AND_REMOVED_LINTS,
             SUPER_OR_SELF_IN_GLOBAL_PATH,
             HR_LIFETIME_IN_ASSOC_TYPE,
-            LIFETIME_UNDERSCORE
+            LIFETIME_UNDERSCORE,
+            SAFE_EXTERN_STATICS
         )
     }
 }

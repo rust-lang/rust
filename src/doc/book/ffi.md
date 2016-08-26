@@ -471,7 +471,7 @@ extern {
 
 fn main() {
     println!("You have readline version {} installed.",
-             rl_readline_version as i32);
+             unsafe { rl_readline_version as i32 });
 }
 ```
 

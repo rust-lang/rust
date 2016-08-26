@@ -15,6 +15,7 @@ use self::RootUnsafeContext::*;
 use dep_graph::DepNode;
 use ty::{self, Ty, TyCtxt};
 use ty::MethodCall;
+use lint;
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -57,16 +58,25 @@ struct EffectCheckVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
-    fn require_unsafe(&mut self, span: Span, description: &str) {
+    fn require_unsafe_ext(&mut self, node_id: ast::NodeId, span: Span,
+                          description: &str, is_lint: bool) {
         if self.unsafe_context.push_unsafe_count > 0 { return; }
         match self.unsafe_context.root {
             SafeContext => {
-                // Report an error.
-                struct_span_err!(
-                    self.tcx.sess, span, E0133,
-                    "{} requires unsafe function or block", description)
-                    .span_label(span, &description)
-                    .emit();
+                if is_lint {
+                    self.tcx.sess.add_lint(lint::builtin::SAFE_EXTERN_STATICS,
+                                           node_id,
+                                           span,
+                                           format!("{} requires unsafe function or \
+                                                    block (error E0133)", description));
+                } else {
+                    // Report an error.
+                    struct_span_err!(
+                        self.tcx.sess, span, E0133,
+                        "{} requires unsafe function or block", description)
+                        .span_label(span, &description)
+                        .emit();
+                }
             }
             UnsafeBlock(block_id) => {
                 // OK, but record this.
@@ -75,6 +85,10 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
             }
             UnsafeFn => {}
         }
+    }
+
+    fn require_unsafe(&mut self, span: Span, description: &str) {
+        self.require_unsafe_ext(ast::DUMMY_NODE_ID, span, description, false)
     }
 }
 
@@ -173,8 +187,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.require_unsafe(expr.span, "use of inline assembly");
             }
             hir::ExprPath(..) => {
-                if let Def::Static(_, true) = self.tcx.expect_def(expr.id) {
-                    self.require_unsafe(expr.span, "use of mutable static");
+                if let Def::Static(def_id, mutbl) = self.tcx.expect_def(expr.id) {
+                    if mutbl {
+                        self.require_unsafe(expr.span, "use of mutable static");
+                    } else if match self.tcx.map.get_if_local(def_id) {
+                        Some(hir::map::NodeForeignItem(..)) => true,
+                        Some(..) => false,
+                        None => self.tcx.sess.cstore.is_foreign_item(def_id),
+                    } {
+                        self.require_unsafe_ext(expr.id, expr.span, "use of extern static", true);
+                    }
                 }
             }
             hir::ExprField(ref base_expr, field) => {

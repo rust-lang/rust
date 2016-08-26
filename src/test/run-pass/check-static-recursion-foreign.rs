@@ -27,6 +27,6 @@ extern "C" {
     static test_static: c_int;
 }
 
-static B: &'static c_int = &test_static;
+static B: &'static c_int = unsafe { &test_static };
 
 pub fn main() {}
