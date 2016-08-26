@@ -17,5 +17,8 @@ fn some_func<T: Foo>(foo: T) {
 }
 
 fn main() {
-    some_func(5i32); //~ ERROR E0277
+    some_func(5i32);
+    //~^ ERROR the trait bound `i32: Foo` is not satisfied
+    //~| NOTE trait `i32: Foo` not satisfied
+    //~| NOTE required by `some_func`
 }
