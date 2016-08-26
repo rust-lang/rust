@@ -23,10 +23,10 @@
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print a
-// lldb-check:[...]$0 = {a = {__0 = 2 '\002', __1 = 2 '\002'}, b = 514}
+// lldb-command:print u
+// lldb-check:[...]$0 = { a = ('\x02', '\x02') b = 514 }
 // lldb-command:print union_smoke::SU
-// lldb-check:[...]$1 = {a = {__0 = 1 '\001', __1 = 1 '\001'}, b = 257}
+// lldb-check:[...]$1 = 257
 
 #![allow(unused)]
 #![feature(omit_gdb_pretty_printer_section)]

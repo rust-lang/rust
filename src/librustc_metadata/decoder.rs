@@ -291,7 +291,7 @@ fn maybe_item_name(item: rbml::Doc) -> Option<ast::Name> {
 
 fn family_to_variant_kind<'tcx>(family: Family) -> Option<ty::VariantKind> {
     match family {
-        Struct(VariantKind::Struct) | Variant(VariantKind::Struct) =>
+        Struct(VariantKind::Struct) | Variant(VariantKind::Struct) | Union =>
             Some(ty::VariantKind::Struct),
         Struct(VariantKind::Tuple) | Variant(VariantKind::Tuple) =>
             Some(ty::VariantKind::Tuple),
