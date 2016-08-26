@@ -749,12 +749,12 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             };
             match name {
                 None => {
-                    TypeContext::direct(Type::struct_(cx, &[fill_ty], un.packed))
+                    Type::struct_(cx, &[fill_ty], un.packed)
                 }
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
                     llty.set_struct_body(&[fill_ty], un.packed);
-                    TypeContext::direct(llty)
+                    llty
                 }
             }
         }

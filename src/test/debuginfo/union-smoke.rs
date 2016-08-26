@@ -16,17 +16,17 @@
 
 // gdb-command:run
 // gdb-command:print u
-// gdb-check:$1 = {a = 11 '\v', b = 11}
+// gdb-check:$1 = {a = {__0 = 2 '\002', __1 = 2 '\002'}, b = 514}
 // gdb-command:print union_smoke::SU
-// gdb-check:$2 = {a = 10 '\n', b = 10}
+// gdb-check:$2 = {a = {__0 = 1 '\001', __1 = 1 '\001'}, b = 257}
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 // lldb-command:print a
-// lldb-check:[...]$0 = {a = 11 '\v', b = 11}
+// lldb-check:[...]$0 = {a = {__0 = 2 '\002', __1 = 2 '\002'}, b = 514}
 // lldb-command:print union_smoke::SU
-// lldb-check:[...]$1 = {a = 10 '\n', b = 10}
+// lldb-check:[...]$1 = {a = {__0 = 1 '\001', __1 = 1 '\001'}, b = 257}
 
 #![allow(unused)]
 #![feature(omit_gdb_pretty_printer_section)]
@@ -34,14 +34,15 @@
 #![feature(untagged_unions)]
 
 union U {
-    a: u8,
-    b: u64,
+    a: (u8, u8),
+    b: u16,
 }
 
-static SU: U = U { a: 10 };
+static mut SU: U = U { a: (1, 1) };
 
 fn main() {
-    let u = U { b: 11 };
+    let u = U { b: (2 << 8) + 2 };
+    unsafe { SU = U { a: (1, 1) } }
 
     zzz(); // #break
 }
