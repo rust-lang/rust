@@ -47,7 +47,7 @@ use parse;
 use parse::classify;
 use parse::common::SeqSep;
 use parse::lexer::{Reader, TokenAndSpan};
-use parse::obsolete::{ParserObsoleteMethods, ObsoleteSyntax};
+use parse::obsolete::ObsoleteSyntax;
 use parse::token::{self, intern, MatchNt, SubstNt, SpecialVarNt, InternedString};
 use parse::token::{keywords, SpecialMacroVar};
 use parse::{new_sub_parser_from_file, ParseSess};
@@ -1163,36 +1163,6 @@ impl<'a> Parser<'a> {
             lifetimes: lifetime_defs,
             decl: decl
         })))
-    }
-
-    /// Parses an obsolete closure kind (`&:`, `&mut:`, or `:`).
-    pub fn parse_obsolete_closure_kind(&mut self) -> PResult<'a, ()> {
-         let lo = self.span.lo;
-        if
-            self.check(&token::BinOp(token::And)) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Mut)) &&
-            self.look_ahead(2, |t| *t == token::Colon)
-        {
-            self.bump();
-            self.bump();
-            self.bump();
-        } else if
-            self.token == token::BinOp(token::And) &&
-            self.look_ahead(1, |t| *t == token::Colon)
-        {
-            self.bump();
-            self.bump();
-        } else if
-            self.eat(&token::Colon)
-        {
-            /* nothing */
-        } else {
-            return Ok(());
-        }
-
-        let span = mk_sp(lo, self.span.hi);
-        self.obsolete(span, ObsoleteSyntax::ClosureKind);
-        Ok(())
     }
 
     pub fn parse_unsafety(&mut self) -> PResult<'a, Unsafety> {
@@ -4728,7 +4698,6 @@ impl<'a> Parser<'a> {
                 Vec::new()
             } else {
                 self.expect(&token::BinOp(token::Or))?;
-                self.parse_obsolete_closure_kind()?;
                 let args = self.parse_seq_to_before_end(
                     &token::BinOp(token::Or),
                     SeqSep::trailing_allowed(token::Comma),
