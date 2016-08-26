@@ -2041,7 +2041,7 @@ actual:\n\
 
     /// Directory where incremental work products are stored.
     fn incremental_dir(&self) -> PathBuf {
-        self.output_base_name().with_extension("incremental")
+        self.output_base_name().with_extension("inc")
     }
 
     fn run_rmake_test(&self) {
