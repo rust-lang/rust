@@ -369,8 +369,6 @@ impl OnceState {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use panic;
     use sync::mpsc::channel;
     use thread;

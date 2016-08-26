@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use clone::Clone;
-use default::Default;
 use fmt;
 use marker;
-use option::Option::{self, Some, None};
 use usize;
 
-use super::{DoubleEndedIterator, IntoIterator, Iterator, ExactSizeIterator, FusedIterator};
+use super::FusedIterator;
 
 /// An iterator that repeats an element endlessly.
 ///

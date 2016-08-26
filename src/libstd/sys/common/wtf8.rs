@@ -37,9 +37,7 @@ use mem;
 use ops;
 use slice;
 use str;
-use string::String;
 use sys_common::AsInner;
-use vec::Vec;
 
 const UTF8_REPLACEMENT_CHARACTER: &'static [u8] = b"\xEF\xBF\xBD";
 
@@ -807,7 +805,6 @@ impl AsciiExt for Wtf8 {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use borrow::Cow;
     use super::*;
 

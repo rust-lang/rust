@@ -16,8 +16,6 @@
 
 #![stable(feature = "env", since = "1.0.0")]
 
-use prelude::v1::*;
-
 use error::Error;
 use ffi::{OsStr, OsString};
 use fmt;
@@ -950,7 +948,6 @@ mod arch {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use super::*;
 
     use iter::repeat;

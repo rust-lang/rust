@@ -12,7 +12,6 @@
 
 // FIXME This module's name is a bit unfortunate, since other modules also import `core::num`.
 
-use prelude::v1::*;
 use cmp::Ordering::{self, Less, Equal, Greater};
 
 pub use num::bignum::Big32x40 as Big;

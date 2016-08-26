@@ -236,14 +236,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use self::Result::{Ok, Err};
-
-use clone::Clone;
 use fmt;
-use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSizeIterator, IntoIterator};
-use iter::FusedIterator;
-use ops::FnOnce;
-use option::Option::{self, None, Some};
+use iter::{FromIterator, FusedIterator};
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///

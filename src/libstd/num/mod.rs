@@ -24,9 +24,7 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
 
-#[cfg(test)] use cmp::PartialEq;
 #[cfg(test)] use fmt;
-#[cfg(test)] use marker::Copy;
 #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 
 /// Helper function for testing numeric operations
@@ -52,7 +50,6 @@ mod tests {
     use u32;
     use u64;
     use usize;
-    use string::ToString;
     use ops::Mul;
 
     #[test]
@@ -287,7 +284,6 @@ mod tests {
 mod bench {
     extern crate test;
     use self::test::Bencher;
-    use prelude::v1::*;
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {

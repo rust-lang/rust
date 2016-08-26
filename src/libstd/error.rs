@@ -48,16 +48,15 @@
 // reconsider what crate these items belong in.
 
 use any::TypeId;
-use boxed::Box;
 use cell;
 use char;
 use fmt::{self, Debug, Display};
-use marker::{Send, Sync, Reflect};
+use marker::Reflect;
 use mem::transmute;
 use num;
 use raw::TraitObject;
 use str;
-use string::{self, String};
+use string;
 
 /// Base functionality for all errors in Rust.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -454,7 +453,6 @@ impl Error + Send + Sync {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use super::Error;
     use fmt;
 

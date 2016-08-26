@@ -233,8 +233,6 @@ impl<T> Drop for Queue<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use sync::Arc;
     use super::Queue;
     use thread;

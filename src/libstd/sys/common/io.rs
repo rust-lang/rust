@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use prelude::v1::*;
 use io;
 use io::ErrorKind;
 use io::Read;
@@ -53,7 +52,6 @@ pub unsafe fn read_to_end_uninitialized(r: &mut Read, buf: &mut Vec<u8>) -> io::
 
 #[cfg(test)]
 pub mod test {
-    use prelude::v1::*;
     use path::{Path, PathBuf};
     use env;
     use rand::{self, Rng};
@@ -93,7 +91,6 @@ pub mod test {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use io::prelude::*;
     use super::*;
     use io;

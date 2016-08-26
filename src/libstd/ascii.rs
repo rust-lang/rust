@@ -12,8 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::v1::*;
-
 use mem;
 use ops::Range;
 use iter::FusedIterator;
@@ -454,7 +452,6 @@ static ASCII_UPPERCASE_MAP: [u8; 256] = [
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use super::*;
     use char::from_u32;
 

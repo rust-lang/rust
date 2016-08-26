@@ -113,8 +113,6 @@ impl BarrierWaitResult {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use sync::{Arc, Barrier};
     use sync::mpsc::{channel, TryRecvError};
     use thread;

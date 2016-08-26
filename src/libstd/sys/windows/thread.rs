@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use alloc::boxed::FnBox;
 use io;
 use ffi::CStr;

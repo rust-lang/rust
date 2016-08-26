@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
 use io::prelude::*;
 
 use cmp;
@@ -284,7 +283,6 @@ impl Write for Cursor<Box<[u8]>> {
 mod tests {
     use io::prelude::*;
     use io::{Cursor, SeekFrom};
-    use vec::Vec;
 
     #[test]
     fn test_vec_writer() {

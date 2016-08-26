@@ -20,16 +20,11 @@
             issue = "27778")]
 
 use borrow::{Borrow, BorrowMut};
-use clone::Clone;
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use convert::{AsRef, AsMut};
-use default::Default;
+use cmp::Ordering;
 use fmt;
 use hash::{Hash, self};
-use iter::IntoIterator;
-use marker::{Copy, Sized, Unsize};
-use option::Option;
-use slice::{Iter, IterMut, SliceExt};
+use marker::Unsize;
+use slice::{Iter, IterMut};
 
 /// Utility trait implemented only on arrays of fixed size
 ///

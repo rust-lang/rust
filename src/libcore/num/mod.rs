@@ -12,17 +12,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use char::CharExt;
-use cmp::PartialOrd;
-use convert::{From, TryFrom};
+use convert::TryFrom;
 use fmt;
 use intrinsics;
-use marker::{Copy, Sized};
 use mem::size_of;
-use option::Option::{self, Some, None};
-use result::Result::{self, Ok, Err};
-use str::{FromStr, StrExt};
-use slice::SliceExt;
+use str::FromStr;
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///

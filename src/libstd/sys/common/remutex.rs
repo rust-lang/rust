@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use fmt;
 use marker;
 use ops::Deref;
@@ -160,7 +158,6 @@ impl<'a, T> Drop for ReentrantMutexGuard<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
     use cell::RefCell;
     use sync::Arc;

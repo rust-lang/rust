@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
 use cell::UnsafeCell;
 use fmt;
 use marker;
@@ -355,8 +353,6 @@ pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Fla
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use sync::mpsc::channel;
     use sync::{Arc, Mutex, Condvar};
     use sync::atomic::{AtomicUsize, Ordering};

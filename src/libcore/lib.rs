@@ -91,6 +91,11 @@
 #![feature(unboxed_closures)]
 #![feature(question_mark)]
 #![feature(never_type)]
+#![feature(prelude_import)]
+
+#[prelude_import]
+#[allow(unused)]
+use prelude::v1::*;
 
 #[macro_use]
 mod macros;

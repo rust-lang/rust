@@ -12,8 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use marker::Sized;
-
 /// A trait for borrowing data.
 ///
 /// In general, there may be several ways to "borrow" a piece of data.  The

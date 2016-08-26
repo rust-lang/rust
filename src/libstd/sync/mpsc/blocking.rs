@@ -13,9 +13,7 @@
 use thread::{self, Thread};
 use sync::atomic::{AtomicBool, Ordering};
 use sync::Arc;
-use marker::{Sync, Send};
 use mem;
-use clone::Clone;
 use time::Instant;
 
 struct Inner {

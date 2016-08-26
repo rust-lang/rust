@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use clone::Clone;
-use cmp::PartialOrd;
 use mem;
 use ops::{self, Add, Sub};
-use option::Option::{self, Some, None};
-use marker::Sized;
 use usize;
 
-use super::{DoubleEndedIterator, ExactSizeIterator, Iterator, FusedIterator};
+use super::FusedIterator;
 
 /// Objects that can be stepped over in both directions.
 ///
