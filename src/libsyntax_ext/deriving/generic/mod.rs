@@ -401,18 +401,29 @@ impl<'a> TraitDef<'a> {
                   mitem: &ast::MetaItem,
                   item: &'a Annotatable,
                   push: &mut FnMut(Annotatable)) {
+        self.expand_ext(cx, mitem, item, push, false);
+    }
+
+    pub fn expand_ext(&self,
+                      cx: &mut ExtCtxt,
+                      mitem: &ast::MetaItem,
+                      item: &'a Annotatable,
+                      push: &mut FnMut(Annotatable),
+                      from_scratch: bool) {
         match *item {
             Annotatable::Item(ref item) => {
                 let newitem = match item.node {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => {
-                        self.expand_struct_def(cx, &struct_def, item.ident, generics)
+                        self.expand_struct_def(cx, &struct_def, item.ident, generics, from_scratch)
                     }
                     ast::ItemKind::Enum(ref enum_def, ref generics) => {
-                        self.expand_enum_def(cx, enum_def, &item.attrs, item.ident, generics)
+                        self.expand_enum_def(cx, enum_def, &item.attrs,
+                                             item.ident, generics, from_scratch)
                     }
                     ast::ItemKind::Union(ref struct_def, ref generics) => {
                         if self.supports_unions {
-                            self.expand_struct_def(cx, &struct_def, item.ident, generics)
+                            self.expand_struct_def(cx, &struct_def, item.ident,
+                                                   generics, from_scratch)
                         } else {
                             cx.span_err(mitem.span,
                                         "this trait cannot be derived for unions");
@@ -661,7 +672,8 @@ impl<'a> TraitDef<'a> {
                          cx: &mut ExtCtxt,
                          struct_def: &'a VariantData,
                          type_ident: Ident,
-                         generics: &Generics)
+                         generics: &Generics,
+                         from_scratch: bool)
                          -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> = struct_def.fields()
             .iter()
@@ -674,7 +686,7 @@ impl<'a> TraitDef<'a> {
                 let (explicit_self, self_args, nonself_args, tys) =
                     method_def.split_self_nonself_args(cx, self, type_ident, generics);
 
-                let body = if method_def.is_static() {
+                let body = if from_scratch || method_def.is_static() {
                     method_def.expand_static_struct_method_body(cx,
                                                                 self,
                                                                 struct_def,
@@ -709,7 +721,8 @@ impl<'a> TraitDef<'a> {
                        enum_def: &'a EnumDef,
                        type_attrs: &[ast::Attribute],
                        type_ident: Ident,
-                       generics: &Generics)
+                       generics: &Generics,
+                       from_scratch: bool)
                        -> P<ast::Item> {
         let mut field_tys = Vec::new();
 
@@ -727,7 +740,7 @@ impl<'a> TraitDef<'a> {
                 let (explicit_self, self_args, nonself_args, tys) =
                     method_def.split_self_nonself_args(cx, self, type_ident, generics);
 
-                let body = if method_def.is_static() {
+                let body = if from_scratch || method_def.is_static() {
                     method_def.expand_static_enum_method_body(cx,
                                                               self,
                                                               enum_def,

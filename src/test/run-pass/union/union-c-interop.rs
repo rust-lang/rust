@@ -10,23 +10,20 @@
 
 #![feature(untagged_unions)]
 
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 #[repr(C)]
 struct LARGE_INTEGER_U {
     LowPart: u32,
     HighPart: u32,
 }
 
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 #[repr(C)]
 union LARGE_INTEGER {
   __unnamed__: LARGE_INTEGER_U,
   u: LARGE_INTEGER_U,
   QuadPart: u64,
 }
-
-impl Clone for LARGE_INTEGER_U { fn clone(&self) -> Self { *self } }
-impl Clone for LARGE_INTEGER { fn clone(&self) -> Self { *self } }
 
 #[link(name = "rust_test_helpers")]
 extern "C" {
