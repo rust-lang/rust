@@ -89,7 +89,9 @@ pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F)
     where F: Fn(u32) -> String
 {
     match term::stdout() {
-        Some(_) if isatty() => print_diff_fancy(diff, get_section_title, term::stdout().unwrap()),
+        Some(ref t) if isatty() && t.supports_color() => {
+            print_diff_fancy(diff, get_section_title, term::stdout().unwrap())
+        }
         _ => print_diff_basic(diff, get_section_title),
     }
 
