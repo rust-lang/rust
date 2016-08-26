@@ -24,12 +24,12 @@ pub trait Encoder {
 
     // Primitive types:
     fn emit_nil(&mut self) -> Result<(), Self::Error>;
-    fn emit_uint(&mut self, v: usize) -> Result<(), Self::Error>;
+    fn emit_usize(&mut self, v: usize) -> Result<(), Self::Error>;
     fn emit_u64(&mut self, v: u64) -> Result<(), Self::Error>;
     fn emit_u32(&mut self, v: u32) -> Result<(), Self::Error>;
     fn emit_u16(&mut self, v: u16) -> Result<(), Self::Error>;
     fn emit_u8(&mut self, v: u8) -> Result<(), Self::Error>;
-    fn emit_int(&mut self, v: isize) -> Result<(), Self::Error>;
+    fn emit_isize(&mut self, v: isize) -> Result<(), Self::Error>;
     fn emit_i64(&mut self, v: i64) -> Result<(), Self::Error>;
     fn emit_i32(&mut self, v: i32) -> Result<(), Self::Error>;
     fn emit_i16(&mut self, v: i16) -> Result<(), Self::Error>;
@@ -108,12 +108,12 @@ pub trait Decoder {
 
     // Primitive types:
     fn read_nil(&mut self) -> Result<(), Self::Error>;
-    fn read_uint(&mut self) -> Result<usize, Self::Error>;
+    fn read_usize(&mut self) -> Result<usize, Self::Error>;
     fn read_u64(&mut self) -> Result<u64, Self::Error>;
     fn read_u32(&mut self) -> Result<u32, Self::Error>;
     fn read_u16(&mut self) -> Result<u16, Self::Error>;
     fn read_u8(&mut self) -> Result<u8, Self::Error>;
-    fn read_int(&mut self) -> Result<isize, Self::Error>;
+    fn read_isize(&mut self) -> Result<isize, Self::Error>;
     fn read_i64(&mut self) -> Result<i64, Self::Error>;
     fn read_i32(&mut self) -> Result<i32, Self::Error>;
     fn read_i16(&mut self) -> Result<i16, Self::Error>;
@@ -200,13 +200,13 @@ pub trait Decodable: Sized {
 
 impl Encodable for usize {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_uint(*self)
+        s.emit_usize(*self)
     }
 }
 
 impl Decodable for usize {
     fn decode<D: Decoder>(d: &mut D) -> Result<usize, D::Error> {
-        d.read_uint()
+        d.read_usize()
     }
 }
 
@@ -260,13 +260,13 @@ impl Decodable for u64 {
 
 impl Encodable for isize {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_int(*self)
+        s.emit_isize(*self)
     }
 }
 
 impl Decodable for isize {
     fn decode<D: Decoder>(d: &mut D) -> Result<isize, D::Error> {
-        d.read_int()
+        d.read_isize()
     }
 }
 

@@ -222,15 +222,20 @@ extern "rust-intrinsic" {
     ///   trait objects, because they can't be read out onto the stack and
     ///   dropped normally.
     ///
-    /// * It is friendlier to the optimizer to do this over `ptr::read` when
-    ///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
-    ///   as the compiler doesn't need to prove that it's sound to elide the
-    ///   copy.
+    /// * It is friendlier to the optimizer to do this over [`ptr::read`] when
+    ///   dropping manually allocated memory (e.g. when writing
+    ///   [`Box`]/[`Rc`]/[`Vec`]), as the compiler doesn't need to prove that
+    ///   it's sound to elide the copy.
     ///
     /// # Undefined Behavior
     ///
-    /// This has all the same safety problems as `ptr::read` with respect to
+    /// This has all the same safety problems as [`ptr::read`] with respect to
     /// invalid pointers, types, and double drops.
+    ///
+    /// [`ptr::read`]: fn.read.html
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`Rc`]: ../rc/struct.Rc.html
+    /// [`Vec`]: ../vec/struct.Vec.html
     #[stable(feature = "drop_in_place", since = "1.8.0")]
     pub fn drop_in_place<T: ?Sized>(to_drop: *mut T);
 

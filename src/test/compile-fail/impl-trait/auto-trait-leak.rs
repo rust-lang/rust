@@ -26,6 +26,7 @@ fn send<T: Send>(_: T) {}
 fn main() {
     send(before());
     //~^ ERROR the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied
+    //~| NOTE trait `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` not satisfied
     //~| NOTE `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
     //~| NOTE required because it appears within the type `[closure
     //~| NOTE required because it appears within the type `impl std::ops::Fn<(i32,)>`
@@ -33,6 +34,7 @@ fn main() {
 
     send(after());
     //~^ ERROR the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied
+    //~| NOTE trait `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` not satisfied
     //~| NOTE `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
     //~| NOTE required because it appears within the type `[closure
     //~| NOTE required because it appears within the type `impl std::ops::Fn<(i32,)>`
@@ -52,6 +54,7 @@ fn after() -> impl Fn(i32) {
 fn cycle1() -> impl Clone {
     send(cycle2().clone());
     //~^ ERROR the trait bound `std::rc::Rc<std::string::String>: std::marker::Send` is not satisfied
+    //~| NOTE trait `std::rc::Rc<std::string::String>: std::marker::Send` not satisfied
     //~| NOTE `std::rc::Rc<std::string::String>` cannot be sent between threads safely
     //~| NOTE required because it appears within the type `impl std::clone::Clone`
     //~| NOTE required by `send`
@@ -62,6 +65,7 @@ fn cycle1() -> impl Clone {
 fn cycle2() -> impl Clone {
     send(cycle1().clone());
     //~^ ERROR the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied
+    //~| NOTE trait `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` not satisfied
     //~| NOTE `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
     //~| NOTE required because it appears within the type `impl std::clone::Clone`
     //~| NOTE required by `send`
