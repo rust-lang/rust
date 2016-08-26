@@ -345,7 +345,7 @@ impl<'tcx> TypeMap<'tcx> {
             if substs.types().next().is_some() {
                 output.push('<');
 
-                for &type_parameter in substs.types() {
+                for type_parameter in substs.types() {
                     let param_type_id =
                         type_map.get_unique_type_id_of_type(cx, type_parameter);
                     let param_type_id =

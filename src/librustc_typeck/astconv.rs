@@ -473,7 +473,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let mut output_assoc_binding = None;
         let substs = Substs::for_item(tcx, def_id, |def, _| {
-            tcx.mk_region(regions[def.index as usize])
+            let i = def.index as usize - self_ty.is_some() as usize;
+            tcx.mk_region(regions[i])
         }, |def, substs| {
             let i = def.index as usize;
 
@@ -482,7 +483,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
-            let i = i - self_ty.is_some() as usize;
+            let i = i - self_ty.is_some() as usize - decl_generics.regions.len();
             if num_types_provided.map_or(false, |n| i < n) {
                 // A provided type parameter.
                 match *parameters {

@@ -643,7 +643,7 @@ impl Clean<TyParamBound> for hir::TyParamBound {
 fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: bool,
                         bindings: Vec<TypeBinding>, substs: &Substs) -> PathParameters {
     let lifetimes = substs.regions().filter_map(|v| v.clean(cx)).collect();
-    let types = substs.types().skip(has_self as usize).cloned().collect::<Vec<_>>();
+    let types = substs.types().skip(has_self as usize).collect::<Vec<_>>();
 
     match (trait_did, cx.tcx_opt()) {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
@@ -741,7 +741,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
 
         // collect any late bound regions
         let mut late_bounds = vec![];
-        for &ty_s in self.input_types().skip(1) {
+        for ty_s in self.input_types().skip(1) {
             if let ty::TyTuple(ts) = ty_s.sty {
                 for &ty_s in ts {
                     if let ty::TyRef(ref reg, _) = ty_s.sty {

@@ -149,7 +149,7 @@ pub trait CrateStore<'tcx> {
     fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind;
     fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                       -> ty::ClosureTy<'tcx>;
-    fn item_variances(&self, def: DefId) -> ty::ItemVariances;
+    fn item_variances(&self, def: DefId) -> Vec<ty::Variance>;
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                      -> Ty<'tcx>;
@@ -328,7 +328,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind  { bug!("closure_kind") }
     fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                       -> ty::ClosureTy<'tcx>  { bug!("closure_ty") }
-    fn item_variances(&self, def: DefId) -> ty::ItemVariances { bug!("item_variances") }
+    fn item_variances(&self, def: DefId) -> Vec<ty::Variance> { bug!("item_variances") }
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { bug!("repr_attrs") }
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                      -> Ty<'tcx> { bug!("item_type") }

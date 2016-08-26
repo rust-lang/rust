@@ -753,7 +753,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                    .drop_trait()
                                    .unwrap();
 
-        let self_type_substs = Substs::new_trait(scx.tcx(), vec![], vec![], ty);
+        let self_type_substs = Substs::new_trait(scx.tcx(), ty, &[]);
 
         let trait_ref = ty::TraitRef {
             def_id: drop_trait_def_id,

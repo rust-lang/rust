@@ -354,7 +354,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
 
         name_to_append_suffix_to.push('<');
-        for (i, &actual_type) in substs.types().enumerate() {
+        for (i, actual_type) in substs.types().enumerate() {
             if i != 0 {
                 name_to_append_suffix_to.push_str(",");
             }
@@ -372,7 +372,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
             let names = get_type_parameter_names(cx, generics);
             substs.types().zip(names).map(|(ty, name)| {
-                let actual_type = cx.tcx().normalize_associated_type(ty);
+                let actual_type = cx.tcx().normalize_associated_type(&ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                 let name = CString::new(name.as_str().as_bytes()).unwrap();
                 unsafe {

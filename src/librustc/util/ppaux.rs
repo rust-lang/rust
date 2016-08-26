@@ -143,14 +143,14 @@ pub fn parameterized(f: &mut fmt::Formatter,
         }
     };
 
-    let print_regions = |f: &mut fmt::Formatter, start: &str, regions| {
+    let print_regions = |f: &mut fmt::Formatter, start: &str, skip, count| {
         // Don't print any regions if they're all erased.
-        if Iterator::all(&mut Clone::clone(&regions),
-                         |r: &ty::Region| *r == ty::ReErased) {
+        let regions = || substs.regions().skip(skip).take(count);
+        if regions().all(|r: &ty::Region| *r == ty::ReErased) {
             return Ok(());
         }
 
-        for region in regions {
+        for region in regions() {
             let region: &ty::Region = region;
             start_or_continue(f, start, ", ")?;
             if verbose {
@@ -173,12 +173,12 @@ pub fn parameterized(f: &mut fmt::Formatter,
         Ok(())
     };
 
-    print_regions(f, "<", substs.regions().take(num_regions).skip(0))?;
+    print_regions(f, "<", 0, num_regions)?;
 
     let tps = substs.types().take(num_types - num_supplied_defaults)
                             .skip(has_self as usize);
 
-    for &ty in tps {
+    for ty in tps {
         start_or_continue(f, "<", ", ")?;
         write!(f, "{}", ty)?;
     }
@@ -204,7 +204,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
             write!(f, "::{}", item_name)?;
         }
 
-        print_regions(f, "::<", substs.regions().take(usize::MAX).skip(num_regions))?;
+        print_regions(f, "::<", num_regions, usize::MAX)?;
 
         // FIXME: consider being smart with defaults here too
         for ty in substs.types().skip(num_types) {
@@ -652,13 +652,6 @@ impl fmt::Debug for ty::Variance {
             ty::Invariant => "o",
             ty::Bivariant => "*",
         })
-    }
-}
-
-impl fmt::Debug for ty::ItemVariances {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ItemVariances(types={:?}, regions={:?})",
-               self.types, self.regions)
     }
 }
 

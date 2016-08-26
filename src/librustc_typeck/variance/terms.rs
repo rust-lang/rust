@@ -31,7 +31,6 @@ use rustc::hir::intravisit::Visitor;
 use util::nodemap::NodeMap;
 
 use self::VarianceTerm::*;
-use self::ParamKind::*;
 
 pub type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
@@ -61,7 +60,7 @@ pub struct TermsContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub arena: &'a TypedArena<VarianceTerm<'a>>,
 
-    pub empty_variances: Rc<ty::ItemVariances>,
+    pub empty_variances: Rc<Vec<ty::Variance>>,
 
     // For marker types, UnsafeCell, and other lang items where
     // variance is hardcoded, records the item-id and the hardcoded
@@ -76,15 +75,8 @@ pub struct TermsContext<'a, 'tcx: 'a> {
     pub inferred_infos: Vec<InferredInfo<'a>> ,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ParamKind {
-    TypeParam,
-    RegionParam,
-}
-
 pub struct InferredInfo<'a> {
     pub item_id: ast::NodeId,
-    pub kind: ParamKind,
     pub index: usize,
     pub param_id: ast::NodeId,
     pub term: VarianceTermPtr<'a>,
@@ -110,7 +102,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
 
         // cache and share the variance struct used for items with
         // no type/region parameters
-        empty_variances: Rc::new(ty::ItemVariances::empty())
+        empty_variances: Rc::new(vec![])
     };
 
     // See README.md for a discussion on dep-graph management.
@@ -162,17 +154,19 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
         let inferreds_on_entry = self.num_inferred();
 
-        for (i, p) in generics.lifetimes.iter().enumerate() {
-            let id = p.lifetime.id;
-            self.add_inferred(item_id, RegionParam, i, id);
+        if has_self {
+            self.add_inferred(item_id, 0, item_id);
         }
 
-        if has_self {
-            self.add_inferred(item_id, TypeParam, 0, item_id);
-        }
-        for (i, p) in generics.ty_params.iter().enumerate() {
+        for (i, p) in generics.lifetimes.iter().enumerate() {
+            let id = p.lifetime.id;
             let i = has_self as usize + i;
-            self.add_inferred(item_id, TypeParam, i, p.id);
+            self.add_inferred(item_id, i, id);
+        }
+
+        for (i, p) in generics.ty_params.iter().enumerate() {
+            let i = has_self as usize + generics.lifetimes.len() + i;
+            self.add_inferred(item_id, i, p.id);
         }
 
         // If this item has no type or lifetime parameters,
@@ -194,14 +188,12 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
     fn add_inferred(&mut self,
                     item_id: ast::NodeId,
-                    kind: ParamKind,
                     index: usize,
                     param_id: ast::NodeId) {
         let inf_index = InferredIndex(self.inferred_infos.len());
         let term = self.arena.alloc(InferredTerm(inf_index));
         let initial_variance = self.pick_initial_variance(item_id, index);
         self.inferred_infos.push(InferredInfo { item_id: item_id,
-                                                kind: kind,
                                                 index: index,
                                                 param_id: param_id,
                                                 term: term,
@@ -211,13 +203,12 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
         debug!("add_inferred(item_path={}, \
                 item_id={}, \
-                kind={:?}, \
                 index={}, \
                 param_id={}, \
                 inf_index={:?}, \
                 initial_variance={:?})",
                self.tcx.item_path_str(self.tcx.map.local_def_id(item_id)),
-               item_id, kind, index, param_id, inf_index,
+               item_id, index, param_id, inf_index,
                initial_variance);
     }
 

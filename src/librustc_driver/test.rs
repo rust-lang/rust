@@ -20,13 +20,14 @@ use rustc::middle::region::{self, CodeExtent};
 use rustc::middle::region::CodeExtentData;
 use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
+use std::iter;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -676,7 +677,7 @@ fn subst_ty_renumber_bound() {
             env.t_fn(&[t_param], env.t_nil())
         };
 
-        let substs = Substs::new(env.infcx.tcx, vec![t_rptr_bound1], vec![]);
+        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(t_rptr_bound1)));
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -711,7 +712,7 @@ fn subst_ty_renumber_some_bounds() {
             env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
         };
 
-        let substs = Substs::new(env.infcx.tcx, vec![t_rptr_bound1], vec![]);
+        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(t_rptr_bound1)));
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = (&'a isize, fn(&'a isize))
@@ -773,7 +774,7 @@ fn subst_region_renumber_region() {
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
         };
 
-        let substs = Substs::new(env.infcx.tcx, vec![], vec![re_bound1]);
+        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(re_bound1)));
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)

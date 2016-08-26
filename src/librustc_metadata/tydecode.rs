@@ -20,7 +20,7 @@ use rustc::hir;
 
 use rustc::hir::def_id::{DefId, DefIndex};
 use middle::region;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use rbml;
@@ -129,19 +129,19 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     pub fn parse_substs(&mut self) -> &'tcx Substs<'tcx> {
-        let mut regions = vec![];
-        let mut types = vec![];
+        let mut params = vec![];
         assert_eq!(self.next(), '[');
-        while self.peek() != '|' {
-            regions.push(self.parse_region());
-        }
-        assert_eq!(self.next(), '|');
         while self.peek() != ']' {
-            types.push(self.parse_ty());
+            let k = match self.next() {
+                'r' => Kind::from(self.parse_region()),
+                't' => Kind::from(self.parse_ty()),
+                _ => bug!()
+            };
+            params.push(k);
         }
         assert_eq!(self.next(), ']');
 
-        Substs::new(self.tcx, types, regions)
+        Substs::new(self.tcx, params)
     }
 
     pub fn parse_generics(&mut self) -> &'tcx ty::Generics<'tcx> {
