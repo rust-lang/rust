@@ -320,6 +320,24 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 }
 
 /// Gets a handle to the thread that invokes it.
+///
+/// #Examples
+///
+/// Getting a handle to the current thread with `thread::current()`:
+///
+/// ```
+/// use std::thread;
+///
+/// let handler = thread::Builder::new()
+///     .name("named thread".into())
+///     .spawn(|| {
+///         let handle = thread::current();
+///         assert_eq!(handle.name(), Some("named thread"));
+///     })
+///     .unwrap();
+///
+/// handler.join().unwrap();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
     thread_info::current_thread().expect("use of std::thread::current() is not \

@@ -477,10 +477,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                     return;
                                 }
 
-                                let mut err = struct_span_err!(
-                                    self.tcx.sess, span, E0277,
+                                let mut err = struct_span_err!(self.tcx.sess, span, E0277,
                                     "the trait bound `{}` is not satisfied",
                                     trait_ref.to_predicate());
+                                err.span_label(span, &format!("trait `{}` not satisfied",
+                                                              trait_ref.to_predicate()));
 
                                 // Try to report a help message
 

@@ -165,9 +165,15 @@
 //! provides some helper methods.
 //!
 //! Additionally, the return value of this function is `fmt::Result` which is a
-//! typedef to `Result<(), std::io::Error>` (also known as `std::io::Result<()>`).
-//! Formatting implementations should ensure that they return errors from `write!`
-//! correctly (propagating errors upward).
+//! type alias of `Result<(), std::fmt::Error>`. Formatting implementations
+//! should ensure that they propagate errors from the `Formatter` (e.g., when
+//! calling `write!`) however, they should never return errors spuriously. That
+//! is, a formatting implementation must and may only return an error if the
+//! passed-in `Formatter` returns an error. This is because, contrary to what
+//! the function signature might suggest, string formatting is an infallible
+//! operation. This function only returns a result because writing to the
+//! underlying stream might fail and it must provide a way to propagate the fact
+//! that an error has occurred back up the stack.
 //!
 //! An example of implementing the formatting traits would look
 //! like:
