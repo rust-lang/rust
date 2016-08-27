@@ -342,11 +342,10 @@ impl<'tcx> TypeMap<'tcx> {
             // Add the def-index as the second part
             output.push_str(&format!("{:x}", def_id.index.as_usize()));
 
-            let tps = &substs.types;
-            if !tps.is_empty() {
+            if substs.types().next().is_some() {
                 output.push('<');
 
-                for &type_parameter in tps {
+                for type_parameter in substs.types() {
                     let param_type_id =
                         type_map.get_unique_type_id_of_type(cx, type_parameter);
                     let param_type_id =

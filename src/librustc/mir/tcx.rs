@@ -145,8 +145,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             &Rvalue::Ref(reg, bk, ref lv) => {
                 let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
-                Some(tcx.mk_ref(
-                    tcx.mk_region(reg),
+                Some(tcx.mk_ref(reg,
                     ty::TypeAndMut {
                         ty: lv_ty,
                         mutbl: bk.to_mutbl_lossy()

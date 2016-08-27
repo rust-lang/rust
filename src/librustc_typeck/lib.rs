@@ -172,7 +172,7 @@ fn write_substs_to_tcx<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                node_id,
                item_substs);
 
-        assert!(!item_substs.substs.types.needs_infer());
+        assert!(!item_substs.substs.needs_infer());
 
         ccx.tcx.tables.borrow_mut().item_substs.insert(node_id, item_substs);
     }

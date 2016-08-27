@@ -32,7 +32,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
 impl<'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>)
                -> Instance<'tcx> {
-        assert!(substs.regions.iter().all(|&r| r == ty::ReErased));
+        assert!(substs.regions().all(|&r| r == ty::ReErased));
         Instance { def: def_id, substs: substs }
     }
     pub fn mono<'a>(scx: &SharedCrateContext<'a, 'tcx>, def_id: DefId) -> Instance<'tcx> {

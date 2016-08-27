@@ -20,13 +20,14 @@ use rustc::middle::region::{self, CodeExtent};
 use rustc::middle::region::CodeExtentData;
 use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
+use std::iter;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -283,25 +284,26 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn re_early_bound(&self,
                           index: u32,
                           name: &'static str)
-                          -> ty::Region {
+                          -> &'tcx ty::Region {
         let name = token::intern(name);
-        ty::ReEarlyBound(ty::EarlyBoundRegion {
+        self.infcx.tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             index: index,
             name: name,
-        })
+        }))
     }
 
-    pub fn re_late_bound_with_debruijn(&self, id: u32, debruijn: ty::DebruijnIndex) -> ty::Region {
-        ty::ReLateBound(debruijn, ty::BrAnon(id))
+    pub fn re_late_bound_with_debruijn(&self, id: u32, debruijn: ty::DebruijnIndex)
+                                       -> &'tcx ty::Region {
+        self.infcx.tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(id)))
     }
 
-    pub fn t_rptr(&self, r: ty::Region) -> Ty<'tcx> {
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
+    pub fn t_rptr(&self, r: &'tcx ty::Region) -> Ty<'tcx> {
+        self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
     pub fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1));
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
     pub fn t_rptr_late_bound_with_debruijn(&self,
@@ -309,7 +311,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                                            debruijn: ty::DebruijnIndex)
                                            -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, debruijn);
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
     pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
@@ -317,16 +319,16 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
-    pub fn re_free(&self, nid: ast::NodeId, id: u32) -> ty::Region {
-        ty::ReFree(ty::FreeRegion {
+    pub fn re_free(&self, nid: ast::NodeId, id: u32) -> &'tcx ty::Region {
+        self.infcx.tcx.mk_region(ty::ReFree(ty::FreeRegion {
             scope: self.tcx().region_maps.item_extent(nid),
             bound_region: ty::BrAnon(id),
-        })
+        }))
     }
 
     pub fn t_rptr_free(&self, nid: ast::NodeId, id: u32) -> Ty<'tcx> {
         let r = self.re_free(nid, id);
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
     pub fn t_rptr_static(&self) -> Ty<'tcx> {
@@ -675,7 +677,7 @@ fn subst_ty_renumber_bound() {
             env.t_fn(&[t_param], env.t_nil())
         };
 
-        let substs = Substs::new(env.infcx.tcx, vec![t_rptr_bound1], vec![]);
+        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(t_rptr_bound1)));
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -710,7 +712,7 @@ fn subst_ty_renumber_some_bounds() {
             env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
         };
 
-        let substs = Substs::new(env.infcx.tcx, vec![t_rptr_bound1], vec![]);
+        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(t_rptr_bound1)));
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = (&'a isize, fn(&'a isize))
@@ -772,7 +774,7 @@ fn subst_region_renumber_region() {
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
         };
 
-        let substs = Substs::new(env.infcx.tcx, vec![], vec![re_bound1]);
+        let substs = Substs::new(env.infcx.tcx, iter::once(Kind::from(re_bound1)));
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)

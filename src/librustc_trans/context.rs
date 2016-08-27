@@ -563,7 +563,9 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     /// Given the def-id of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx(), item_def_id, |_, _| ty::ReErased, |_, _| {
+        Substs::for_item(self.tcx(), item_def_id,
+                         |_, _| self.tcx().mk_region(ty::ReErased),
+                         |_, _| {
             bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
         })
     }

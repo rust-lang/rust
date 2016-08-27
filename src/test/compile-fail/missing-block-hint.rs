@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! Id {
-    ($T:tt) => ($T);
-}
-
-struct Foo<T> {
-    x: Id!(T)
-    //~^ ERROR: type macros are experimental (see issue #27245)
-}
-
 fn main() {
-    let foo = Foo { x: i32 };
+    {
+        if (foo) => {} //~ ERROR expected `{`, found `=>`
+    }
+    {
+        if (foo)
+            bar; //~ ERROR expected `{`, found `bar`
+                 //^ HELP try placing this code inside a block
+    }
 }

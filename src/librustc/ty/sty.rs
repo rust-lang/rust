@@ -19,8 +19,8 @@ use util::common::ErrorReported;
 
 use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
-use std::ops;
 use std::mem;
+use std::ops;
 use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::parse::token::keywords;
@@ -293,7 +293,7 @@ impl<'tcx> Decodable for ClosureSubsts<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TraitObject<'tcx> {
     pub principal: PolyExistentialTraitRef<'tcx>,
-    pub region_bound: ty::Region,
+    pub region_bound: &'tcx ty::Region,
     pub builtin_bounds: BuiltinBounds,
     pub projection_bounds: Vec<PolyExistentialProjection<'tcx>>,
 }
@@ -335,7 +335,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
         self.0.substs
     }
 
-    pub fn input_types(&self) -> &[Ty<'tcx>] {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
     }
@@ -360,12 +360,12 @@ pub struct ExistentialTraitRef<'tcx> {
 }
 
 impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn input_types(&self) -> &[Ty<'tcx>] {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
         // associated types.
-        &self.substs.types
+        self.substs.types()
     }
 }
 
@@ -376,7 +376,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
         self.0.def_id
     }
 
-    pub fn input_types(&self) -> &[Ty<'tcx>] {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
     }
@@ -673,6 +673,15 @@ pub enum Region {
 
     /// Erased region, used by trait selection, in MIR and during trans.
     ReErased,
+}
+
+impl<'tcx> Decodable for &'tcx Region {
+    fn decode<D: Decoder>(d: &mut D) -> Result<&'tcx Region, D::Error> {
+        let r = Decodable::decode(d)?;
+        cstore::tls::with_decoding_context(d, |dcx, _| {
+            Ok(dcx.tcx().mk_region(r))
+        })
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -1206,26 +1215,26 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Returns the regions directly referenced from this type (but
     /// not types reachable from this type via `walk_tys`). This
     /// ignores late-bound regions binders.
-    pub fn regions(&self) -> Vec<ty::Region> {
+    pub fn regions(&self) -> Vec<&'tcx ty::Region> {
         match self.sty {
             TyRef(region, _) => {
-                vec![*region]
+                vec![region]
             }
             TyTrait(ref obj) => {
                 let mut v = vec![obj.region_bound];
-                v.extend_from_slice(&obj.principal.skip_binder().substs.regions);
+                v.extend(obj.principal.skip_binder().substs.regions());
                 v
             }
             TyEnum(_, substs) |
             TyStruct(_, substs) |
             TyAnon(_, substs) => {
-                substs.regions.to_vec()
+                substs.regions().collect()
             }
             TyClosure(_, ref substs) => {
-                substs.func_substs.regions.to_vec()
+                substs.func_substs.regions().collect()
             }
             TyProjection(ref data) => {
-                data.trait_ref.substs.regions.to_vec()
+                data.trait_ref.substs.regions().collect()
             }
             TyFnDef(..) |
             TyFnPtr(_) |

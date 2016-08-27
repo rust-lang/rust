@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match predicate {
                     ty::Predicate::Trait(ref data) => {
                         // In the case of a trait predicate, we can skip the "self" type.
-                        data.0.trait_ref.input_types()[1..].iter().any(|t| t.has_self_ty())
+                        data.skip_binder().input_types().skip(1).any(|t| t.has_self_ty())
                     }
                     ty::Predicate::Projection(..) |
                     ty::Predicate::WellFormed(..) |

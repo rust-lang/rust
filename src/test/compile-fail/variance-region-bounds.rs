@@ -13,11 +13,11 @@
 #![feature(rustc_attrs)]
 
 #[rustc_variance]
-trait Foo: 'static { //~ ERROR types=[o]
+trait Foo: 'static { //~ ERROR [o]
 }
 
 #[rustc_variance]
-trait Bar<T> { //~ ERROR types=[o, o]
+trait Bar<T> { //~ ERROR [o, o]
     fn do_it(&self)
         where T: 'static;
 }

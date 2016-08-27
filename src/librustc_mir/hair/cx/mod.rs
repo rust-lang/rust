@@ -144,10 +144,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                         trait_def_id: DefId,
                         method_name: &str,
                         self_ty: Ty<'tcx>,
-                        params: Vec<Ty<'tcx>>)
+                        params: &[Ty<'tcx>])
                         -> (Ty<'tcx>, Literal<'tcx>) {
         let method_name = token::intern(method_name);
-        let substs = Substs::new_trait(self.tcx, params, vec![], self_ty);
+        let substs = Substs::new_trait(self.tcx, self_ty, params);
         for trait_item in self.tcx.trait_items(trait_def_id).iter() {
             match *trait_item {
                 ty::ImplOrTraitItem::MethodTraitItem(ref method) => {

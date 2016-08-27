@@ -540,7 +540,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 if let Literal::Item { def_id, substs } = constant.literal {
                     // Don't peek inside generic (associated) constants.
-                    if !substs.types.is_empty() {
+                    if substs.types().next().is_some() {
                         self.add_type(constant.ty);
                     } else {
                         let qualif = qualify_const_item_cached(self.tcx,

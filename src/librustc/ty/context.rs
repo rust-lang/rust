@@ -213,7 +213,7 @@ pub struct Tables<'tcx> {
     pub method_map: ty::MethodMap<'tcx>,
 
     /// Borrows
-    pub upvar_capture_map: ty::UpvarCaptureMap,
+    pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
@@ -1152,12 +1152,17 @@ fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 impl_interners!('tcx,
     type_list: mk_type_list(Vec<Ty<'tcx>>, keep_local) -> [Ty<'tcx>],
     substs: mk_substs(Substs<'tcx>, |substs: &Substs| {
-        keep_local(&substs.types) || keep_local(&substs.regions)
+        substs.params().iter().any(keep_local)
     }) -> Substs<'tcx>,
     bare_fn: mk_bare_fn(BareFnTy<'tcx>, |fty: &BareFnTy| {
         keep_local(&fty.sig)
     }) -> BareFnTy<'tcx>,
-    region: mk_region(Region, keep_local) -> Region
+    region: mk_region(Region, |r| {
+        match r {
+            &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
+            _ => false
+        }
+    }) -> Region
 );
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {

@@ -213,9 +213,6 @@ declare_features! (
     // Allows associated type defaults
     (active, associated_type_defaults, "1.2.0", Some(29661)),
 
-    // Allows macros to appear in the type position.
-    (active, type_macros, "1.3.0", Some(27245)),
-
     // allow `repr(simd)`, and importing the various simd intrinsics
     (active, repr_simd, "1.4.0", Some(27731)),
 
@@ -321,6 +318,8 @@ declare_features! (
     // mean anything
     (accepted, test_accepted_feature, "1.0.0", None),
     (accepted, tuple_indexing, "1.0.0", None),
+    // Allows macros to appear in the type position.
+    (accepted, type_macros, "1.13.0", Some(27245)),
     (accepted, while_let, "1.0.0", None),
     // Allows `#[deprecated]` attribute
     (accepted, deprecated, "1.9.0", Some(29935))
