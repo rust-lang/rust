@@ -13,8 +13,24 @@ mod Bar {
         pub a: isize,
         b: isize,
     }
+
+    pub struct FooTuple (
+        pub isize,
+        isize,
+    );
+}
+
+fn pat_match(foo: Bar::Foo) {
+    let Bar::Foo{a:a, b:b} = foo; //~ ERROR E0451
+                                  //~^ NOTE field `b` is private
+}
+
+fn pat_match_tuple(foo: Bar::FooTuple) {
+    let Bar::FooTuple(a,b) = foo; //~ ERROR E0451
+                                  //~^ NOTE field `1` is private
 }
 
 fn main() {
     let f = Bar::Foo{ a: 0, b: 0 }; //~ ERROR E0451
+                                    //~^ NOTE field `b` is private
 }
