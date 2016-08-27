@@ -9,9 +9,13 @@
 // except according to those terms.
 
 mod Bar {
-    pub struct Foo(isize);
+    pub struct Foo( bool, pub i32, f32, bool);
+    //~^ NOTE private field declared here
+    //~| NOTE private field declared here
+    //~| NOTE private field declared here
 }
 
 fn main() {
-    let f = Bar::Foo(0); //~ ERROR E0450
+    let f = Bar::Foo(false,1,0.1, true); //~ ERROR E0450
+                         //~^ NOTE cannot construct with a private field
 }

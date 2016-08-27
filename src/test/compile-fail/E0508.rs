@@ -8,17 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn bar(&self);
-}
-
-fn some_func<T: Foo>(foo: T) {
-    foo.bar();
-}
+struct NonCopy;
 
 fn main() {
-    some_func(5i32);
-    //~^ ERROR the trait bound `i32: Foo` is not satisfied
-    //~| NOTE trait `i32: Foo` not satisfied
-    //~| NOTE required by `some_func`
+    let array = [NonCopy; 1];
+    let _value = array[0]; //~ ERROR E0508
 }

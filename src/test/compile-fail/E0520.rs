@@ -8,17 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn bar(&self);
+#![feature(specialization)]
+
+trait SpaceLlama {
+    fn fly(&self);
 }
 
-fn some_func<T: Foo>(foo: T) {
-    foo.bar();
+impl<T> SpaceLlama for T {
+    default fn fly(&self) {}
+}
+
+impl<T: Clone> SpaceLlama for T {
+    fn fly(&self) {}
+}
+
+impl SpaceLlama for i32 {
+    default fn fly(&self) {} //~ ERROR E0520
 }
 
 fn main() {
-    some_func(5i32);
-    //~^ ERROR the trait bound `i32: Foo` is not satisfied
-    //~| NOTE trait `i32: Foo` not satisfied
-    //~| NOTE required by `some_func`
 }

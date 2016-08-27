@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn bar(&self);
-}
+use std::cell::RefCell;
 
-fn some_func<T: Foo>(foo: T) {
-    foo.bar();
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
 }
 
 fn main() {
-    some_func(5i32);
-    //~^ ERROR the trait bound `i32: Foo` is not satisfied
-    //~| NOTE trait `i32: Foo` not satisfied
-    //~| NOTE required by `some_func`
+    let x = RefCell::new(TheDarkKnight);
+
+    x.borrow().nothing_is_true(); //~ ERROR E0507
 }
