@@ -92,7 +92,6 @@ macro_rules! targets {
             (doc, Doc { stage: u32 }),
             (doc_book, DocBook { stage: u32 }),
             (doc_nomicon, DocNomicon { stage: u32 }),
-            (doc_style, DocStyle { stage: u32 }),
             (doc_standalone, DocStandalone { stage: u32 }),
             (doc_std, DocStd { stage: u32 }),
             (doc_test, DocTest { stage: u32 }),
@@ -366,8 +365,7 @@ impl<'a> Step<'a> {
                 vec![self.libtest(compiler)]
             }
             Source::DocBook { stage } |
-            Source::DocNomicon { stage } |
-            Source::DocStyle { stage } => {
+            Source::DocNomicon { stage } => {
                 vec![self.target(&build.config.build).tool_rustbook(stage)]
             }
             Source::DocErrorIndex { stage } => {
@@ -382,8 +380,7 @@ impl<'a> Step<'a> {
             Source::Doc { stage } => {
                 let mut deps = vec![
                     self.doc_book(stage), self.doc_nomicon(stage),
-                    self.doc_style(stage), self.doc_standalone(stage),
-                    self.doc_std(stage),
+                    self.doc_standalone(stage), self.doc_std(stage),
                     self.doc_error_index(stage),
                 ];
 
