@@ -23,8 +23,10 @@ extern "platform-intrinsic" {
     fn simd_add<T>(a: T, b: T) -> T;
 }
 
-unsafe { simd_add(0, 1); }
-// error: invalid monomorphization of `simd_add` intrinsic
+fn main() {
+    unsafe { simd_add(0, 1); }
+    // error: invalid monomorphization of `simd_add` intrinsic
+}
 ```
 
 The generic type has to be a SIMD type. Example:

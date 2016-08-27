@@ -8,17 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn bar(&self);
-}
-
-fn some_func<T: Foo>(foo: T) {
-    foo.bar();
-}
+fn takes_u8(_: u8) {}
 
 fn main() {
-    some_func(5i32);
-    //~^ ERROR the trait bound `i32: Foo` is not satisfied
-    //~| NOTE trait `i32: Foo` not satisfied
-    //~| NOTE required by `some_func`
+    unsafe { takes_u8(::std::mem::transmute(0u16)); } //~ ERROR E0512
 }

@@ -606,11 +606,12 @@ pub trait LintContext: Sized {
                                                             "{}({}) overruled by outer forbid({})",
                                                             level.as_str(), lint_name,
                                                             lint_name);
+                    diag_builder.span_label(span, &format!("overruled by previous forbid"));
                     match now_source {
                         LintSource::Default => &mut diag_builder,
                         LintSource::Node(forbid_source_span) => {
-                            diag_builder.span_note(forbid_source_span,
-                                                   "`forbid` lint level set here")
+                            diag_builder.span_label(forbid_source_span,
+                                                    &format!("`forbid` level set here"))
                         },
                         LintSource::CommandLine => {
                             diag_builder.note("`forbid` lint level was set on command line")
