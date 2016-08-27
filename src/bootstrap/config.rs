@@ -78,6 +78,7 @@ pub struct Config {
     pub channel: String,
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<String>,
+    pub codegen_tests: bool,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -169,6 +170,7 @@ impl Config {
         config.rust_codegen_units = 1;
         config.build = build.to_string();
         config.channel = "dev".to_string();
+        config.codegen_tests = true;
 
         let toml = file.map(|file| {
             let mut f = t!(File::open(&file));
@@ -322,6 +324,7 @@ impl Config {
                 ("DEBUGINFO_TESTS", self.rust_debuginfo_tests),
                 ("LOCAL_REBUILD", self.local_rebuild),
                 ("NINJA", self.ninja),
+                ("CODEGEN_TESTS", self.codegen_tests),
             }
 
             match key {
