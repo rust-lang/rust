@@ -270,18 +270,6 @@ fn expand_mac_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
     fully_expanded
 }
 
-// eval $e with a new exts frame.
-// must be a macro so that $e isn't evaluated too early.
-macro_rules! with_exts_frame {
-    ($extsboxexpr:expr,$macros_escape:expr,$e:expr) =>
-    ({$extsboxexpr.push_frame();
-      $extsboxexpr.info().macros_escape = $macros_escape;
-      let result = $e;
-      $extsboxexpr.pop_frame();
-      result
-     })
-}
-
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
                    -> SmallVector<P<ast::Item>> {
@@ -378,9 +366,7 @@ fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector
                     fld.cx.mod_push(it.ident);
                 }
                 let macro_use = contains_macro_use(fld, &it.attrs);
-                let result = with_exts_frame!(fld.cx.syntax_env,
-                                              macro_use,
-                                              noop_fold_item(it, fld));
+                let result = fld.with_exts_frame(macro_use, |fld| noop_fold_item(it, fld));
                 if valid_ident {
                     fld.cx.mod_pop();
                 }
@@ -561,6 +547,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mark = Mark::fresh();
         Invocation { span: span, attrs: attrs, mac: mac, mark: mark, kind: kind, ident: None }
     }
+
+    fn with_exts_frame<T, F: FnOnce(&mut Self) -> T>(&mut self, macros_escape: bool, f: F) -> T {
+        self.cx.syntax_env.push_frame();
+        self.cx.syntax_env.info().macros_escape = macros_escape;
+        let result = f(self);
+        self.cx.syntax_env.pop_frame();
+        result
+    }
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
@@ -624,7 +618,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
         let was_in_block = ::std::mem::replace(&mut self.cx.in_block, true);
-        let result = with_exts_frame!(self.cx.syntax_env, false, noop_fold_block(block, self));
+        let result = self.with_exts_frame(false, |this| noop_fold_block(block, this));
         self.cx.in_block = was_in_block;
         result
     }
