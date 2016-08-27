@@ -1486,6 +1486,7 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         let has_self = opt_self.is_some();
         let mut parent_has_self = false;
+        let mut own_start = has_self as u32;
         let (parent_regions, parent_types) = parent_def_id.map_or((0, 0), |def_id| {
             let generics = generics_of_def_id(ccx, def_id);
             assert_eq!(generics.parent, None);
@@ -1493,6 +1494,7 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             assert_eq!(generics.parent_types, 0);
             assert_eq!(has_self, false);
             parent_has_self = generics.has_self;
+            own_start = generics.count() as u32;
             (generics.regions.len() as u32, generics.types.len() as u32)
         });
 
@@ -1500,17 +1502,18 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let regions = early_lifetimes.iter().enumerate().map(|(i, l)| {
             ty::RegionParameterDef {
                 name: l.lifetime.name,
-                index: parent_regions + i as u32,
+                index: own_start + i as u32,
                 def_id: tcx.map.local_def_id(l.lifetime.id),
                 bounds: l.bounds.iter().map(|l| {
                     ast_region_to_region(tcx, l)
                 }).collect()
             }
-        }).collect();
+        }).collect::<Vec<_>>();
 
         // Now create the real type parameters.
+        let type_start = own_start + regions.len() as u32;
         let types = ast_generics.ty_params.iter().enumerate().map(|(i, p)| {
-            let i = parent_types + has_self as u32 + i as u32;
+            let i = type_start + i as u32;
             get_or_create_type_parameter_def(ccx, ast_generics, i, p, allow_defaults)
         });
         let types: Vec<_> = opt_self.into_iter().chain(types).collect();
@@ -1529,8 +1532,8 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         tcx.alloc_generics(ty::Generics {
             parent: parent_def_id,
-            parent_regions: parent_regions as u32,
-            parent_types: parent_types as u32,
+            parent_regions: parent_regions,
+            parent_types: parent_types,
             regions: regions,
             types: types,
             has_self: has_self || parent_has_self
@@ -1741,12 +1744,12 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                   -> ty::GenericPredicates<'tcx>
 {
     let tcx = ccx.tcx;
-    let (parent_regions, parent_types) = parent.map_or((0, 0), |def_id| {
+    let parent_count = parent.map_or(0, |def_id| {
         let generics = generics_of_def_id(ccx, def_id);
         assert_eq!(generics.parent, None);
         assert_eq!(generics.parent_regions, 0);
         assert_eq!(generics.parent_types, 0);
-        (generics.regions.len() as u32, generics.types.len() as u32)
+        generics.count() as u32
     });
     let ref base_predicates = match parent {
         Some(def_id) => {
@@ -1762,10 +1765,29 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     };
     let mut predicates = super_predicates;
 
+    // Collect the region predicates that were declared inline as
+    // well. In the case of parameters declared on a fn or method, we
+    // have to be careful to only iterate over early-bound regions.
+    let own_start = parent_count + has_self as u32;
+    let early_lifetimes = early_bound_lifetimes_from_generics(ccx, ast_generics);
+    for (index, param) in early_lifetimes.iter().enumerate() {
+        let index = own_start + index as u32;
+        let region = ccx.tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+            index: index,
+            name: param.lifetime.name
+        }));
+        for bound in &param.bounds {
+            let bound_region = ast_region_to_region(ccx.tcx, bound);
+            let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
+            predicates.push(outlives.to_predicate());
+        }
+    }
+
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
+    let type_start = own_start + early_lifetimes.len() as u32;
     for (index, param) in ast_generics.ty_params.iter().enumerate() {
-        let index = parent_types + has_self as u32 + index as u32;
+        let index = type_start + index as u32;
         let param_ty = ty::ParamTy::new(index, param.name).to_ty(ccx.tcx);
         let bounds = compute_bounds(&ccx.icx(&(base_predicates, ast_generics)),
                                     param_ty,
@@ -1774,24 +1796,6 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     None,
                                     param.span);
         predicates.extend(bounds.predicates(ccx.tcx, param_ty));
-    }
-
-    // Collect the region predicates that were declared inline as
-    // well. In the case of parameters declared on a fn or method, we
-    // have to be careful to only iterate over early-bound regions.
-    let early_lifetimes = early_bound_lifetimes_from_generics(ccx, ast_generics);
-    for (index, param) in early_lifetimes.iter().enumerate() {
-        let index = parent_regions + index as u32;
-        let region =
-            ty::ReEarlyBound(ty::EarlyBoundRegion {
-                index: index,
-                name: param.lifetime.name
-            });
-        for bound in &param.bounds {
-            let bound_region = ast_region_to_region(ccx.tcx, bound);
-            let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
-            predicates.push(outlives.to_predicate());
-        }
     }
 
     // Add in the bounds that appear in the where-clause
@@ -1919,7 +1923,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                             param_id: ast::NodeId,
                                             param_bounds: &[hir::TyParamBound],
                                             where_clause: &hir::WhereClause)
-                                            -> ty::ObjectLifetimeDefault
+                                            -> ty::ObjectLifetimeDefault<'tcx>
 {
     let inline_bounds = from_bounds(ccx, param_bounds);
     let where_bounds = from_predicates(ccx, param_id, &where_clause.predicates);
@@ -1937,7 +1941,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
     fn from_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                             bounds: &[hir::TyParamBound])
-                            -> Vec<ty::Region>
+                            -> Vec<&'tcx ty::Region>
     {
         bounds.iter()
               .filter_map(|bound| {
@@ -1954,7 +1958,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     fn from_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                 param_id: ast::NodeId,
                                 predicates: &[hir::WherePredicate])
-                                -> Vec<ty::Region>
+                                -> Vec<&'tcx ty::Region>
     {
         predicates.iter()
                   .flat_map(|predicate| {
@@ -2126,7 +2130,7 @@ pub fn mk_item_substs<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     }
 
     Substs::for_item(tcx, def_id,
-                     |def, _| def.to_early_bound_region(),
+                     |def, _| tcx.mk_region(def.to_early_bound_region()),
                      |def, _| tcx.mk_param_from_def(def))
 }
 

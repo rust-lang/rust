@@ -342,7 +342,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         TransItem::DropGlue(..) => unreachable!(),
                         // Is there any benefit to using ExternalLinkage?:
                         TransItem::Fn(ref instance) => {
-                            if instance.substs.types.is_empty() {
+                            if instance.substs.types().next().is_none() {
                                 // This is a non-generic functions, we always
                                 // make it visible externally on the chance that
                                 // it might be used in another codegen unit.
@@ -487,7 +487,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // DefId, we use the location of the impl after all.
 
             if tcx.trait_of_item(instance.def).is_some() {
-                let self_ty = instance.substs.types[0];
+                let self_ty = instance.substs.type_at(0);
                 // This is an implementation of a trait method.
                 return characteristic_def_id_of_type(self_ty).or(Some(instance.def));
             }

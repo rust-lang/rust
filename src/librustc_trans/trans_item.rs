@@ -171,8 +171,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
                     instance: Instance<'tcx>,
                     linkage: llvm::Linkage,
                     symbol_name: &str) {
-        assert!(!instance.substs.types.needs_infer() &&
-                !instance.substs.types.has_param_types());
+        assert!(!instance.substs.needs_infer() &&
+                !instance.substs.has_param_types());
 
         let item_ty = ccx.tcx().lookup_item_type(instance.def).ty;
         let item_ty = ccx.tcx().erase_regions(&item_ty);
@@ -244,7 +244,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
     pub fn requests_inline(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         match *self {
             TransItem::Fn(ref instance) => {
-                !instance.substs.types.is_empty() || {
+                instance.substs.types().next().is_some() || {
                     let attributes = tcx.get_attrs(instance.def);
                     attr::requests_inline(&attributes[..])
                 }
@@ -264,8 +264,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     pub fn is_instantiated_only_on_demand(&self) -> bool {
         match *self {
-            TransItem::Fn(ref instance) => !instance.def.is_local() ||
-                                           !instance.substs.types.is_empty(),
+            TransItem::Fn(ref instance) => {
+                !instance.def.is_local() || instance.substs.types().next().is_some()
+            }
             TransItem::DropGlue(..) => true,
             TransItem::Static(..)   => false,
         }
@@ -273,7 +274,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     pub fn is_generic_fn(&self) -> bool {
         match *self {
-            TransItem::Fn(ref instance) => !instance.substs.types.is_empty(),
+            TransItem::Fn(ref instance) => {
+                instance.substs.types().next().is_some()
+            }
             TransItem::DropGlue(..) |
             TransItem::Static(..)   => false,
         }
@@ -374,7 +377,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
 pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       t: ty::Ty<'tcx>,
+                                       t: Ty<'tcx>,
                                        output: &mut String) {
     match t.sty {
         ty::TyBool              => output.push_str("bool"),
@@ -396,7 +399,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyStruct(adt_def, substs) |
         ty::TyEnum(adt_def, substs) => {
             push_item_name(tcx, adt_def.did, output);
-            push_type_params(tcx, &substs.types, &[], output);
+            push_type_params(tcx, substs, &[], output);
         },
         ty::TyTuple(component_types) => {
             output.push('(');
@@ -446,7 +449,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyTrait(ref trait_data) => {
             push_item_name(tcx, trait_data.principal.def_id(), output);
             push_type_params(tcx,
-                             &trait_data.principal.skip_binder().substs.types,
+                             trait_data.principal.skip_binder().substs,
                              &trait_data.projection_bounds,
                              output);
         },
@@ -494,7 +497,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             output.push_str("{");
             output.push_str(&format!("{}:{}", def_id.krate, def_id.index.as_usize()));
             output.push_str("}");
-            push_type_params(tcx, &closure_substs.func_substs.types, &[], output);
+            push_type_params(tcx, closure_substs.func_substs, &[], output);
         }
         ty::TyError |
         ty::TyInfer(_) |
@@ -529,16 +532,16 @@ fn push_item_name(tcx: TyCtxt,
 }
 
 fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              types: &[Ty<'tcx>],
+                              substs: &Substs<'tcx>,
                               projections: &[ty::PolyExistentialProjection<'tcx>],
                               output: &mut String) {
-    if types.is_empty() && projections.is_empty() {
+    if substs.types().next().is_none() && projections.is_empty() {
         return;
     }
 
     output.push('<');
 
-    for &type_parameter in types {
+    for type_parameter in substs.types() {
         push_unique_type_name(tcx, type_parameter, output);
         output.push_str(", ");
     }
@@ -562,7 +565,7 @@ fn push_instance_as_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      instance: Instance<'tcx>,
                                      output: &mut String) {
     push_item_name(tcx, instance.def, output);
-    push_type_params(tcx, &instance.substs.types, &[], output);
+    push_type_params(tcx, instance.substs, &[], output);
 }
 
 pub fn def_id_to_string(tcx: TyCtxt, def_id: DefId) -> String {
@@ -572,7 +575,7 @@ pub fn def_id_to_string(tcx: TyCtxt, def_id: DefId) -> String {
 }
 
 pub fn type_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                ty: ty::Ty<'tcx>)
+                                ty: Ty<'tcx>)
                                 -> String {
     let mut output = String::new();
     push_unique_type_name(tcx, ty, &mut output);

@@ -386,7 +386,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
             let source = tcx.lookup_item_type(impl_did).ty;
             let trait_ref = self.crate_context.tcx.impl_trait_ref(impl_did).unwrap();
-            let target = trait_ref.substs.types[1];
+            let target = trait_ref.substs.type_at(1);
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (bound)",
                    source, target);
 
@@ -413,7 +413,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                     (&ty::TyBox(a), &ty::TyBox(b)) => (a, b, unsize_trait, None),
 
                     (&ty::TyRef(r_a, mt_a), &ty::TyRef(r_b, mt_b)) => {
-                        infcx.sub_regions(infer::RelateObjectBound(span), *r_b, *r_a);
+                        infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
                         check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
                     }
 
@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 // Register an obligation for `A: Trait<B>`.
                 let cause = traits::ObligationCause::misc(span, impl_node_id);
                 let predicate = tcx.predicate_for_trait_def(cause, trait_def_id, 0,
-                                                            source, vec![target]);
+                                                            source, &[target]);
                 fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
                 // Check that all transitive obligations are satisfied.

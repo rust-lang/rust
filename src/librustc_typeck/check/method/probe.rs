@@ -519,9 +519,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                        trait_ref.substs,
                        m);
                 assert_eq!(m.generics.parent_types as usize,
-                           trait_ref.substs.types.len());
+                           trait_ref.substs.types().count());
                 assert_eq!(m.generics.parent_regions as usize,
-                           trait_ref.substs.regions.len());
+                           trait_ref.substs.regions().count());
             }
 
             // Because this trait derives from a where-clause, it
@@ -529,7 +529,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // artifacts. This means it is safe to put into the
             // `WhereClauseCandidate` and (eventually) into the
             // `WhereClausePick`.
-            assert!(!trait_ref.substs.types.needs_infer());
+            assert!(!trait_ref.substs.needs_infer());
 
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
@@ -1220,8 +1220,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // are given do not include type/lifetime parameters for the
         // method yet. So create fresh variables here for those too,
         // if there are any.
-        assert_eq!(substs.types.len(), method.generics.parent_types as usize);
-        assert_eq!(substs.regions.len(), method.generics.parent_regions as usize);
+        assert_eq!(substs.types().count(), method.generics.parent_types as usize);
+        assert_eq!(substs.regions().count(), method.generics.parent_regions as usize);
 
         if self.mode == Mode::Path {
             return impl_ty;
@@ -1236,16 +1236,18 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             xform_self_ty.subst(self.tcx, substs)
         } else {
             let substs = Substs::for_item(self.tcx, method.def_id, |def, _| {
-                if let Some(&r) = substs.regions.get(def.index as usize) {
-                    r
+                let i = def.index as usize;
+                if i < substs.params().len() {
+                    substs.region_at(i)
                 } else {
                     // In general, during probe we erase regions. See
                     // `impl_self_ty()` for an explanation.
-                    ty::ReErased
+                    self.tcx.mk_region(ty::ReErased)
                 }
             }, |def, cur_substs| {
-                if let Some(&ty) = substs.types.get(def.index as usize) {
-                    ty
+                let i = def.index as usize;
+                if i < substs.params().len() {
+                    substs.type_at(i)
                 } else {
                     self.type_var_for_def(self.span, def, cur_substs)
                 }
@@ -1262,7 +1264,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let impl_ty = self.tcx.lookup_item_type(impl_def_id).ty;
 
         let substs = Substs::for_item(self.tcx, impl_def_id,
-                                      |_, _| ty::ReErased,
+                                      |_, _| self.tcx.mk_region(ty::ReErased),
                                       |_, _| self.next_ty_var());
 
         (impl_ty, substs)
@@ -1324,7 +1326,7 @@ impl<'tcx> Candidate<'tcx> {
                     // inference variables or other artifacts. This
                     // means they are safe to put into the
                     // `WhereClausePick`.
-                    assert!(!trait_ref.substs().types.needs_infer());
+                    assert!(!trait_ref.substs().needs_infer());
 
                     WhereClausePick(trait_ref.clone())
                 }

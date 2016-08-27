@@ -1172,7 +1172,7 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
               _: NodeId,
               span: Span,
               _: cmt,
-              _: Region,
+              _: &'tcx Region,
               kind: BorrowKind,
               _: LoanCause) {
         match kind {

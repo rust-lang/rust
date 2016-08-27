@@ -95,7 +95,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_)
             if self.tcx.trait_of_item(def.def_id()).is_some() => {
                 if let Some(substs) = self.tcx.tables.borrow().item_substs.get(&id) {
-                    match substs.substs.types[0].sty {
+                    match substs.substs.type_at(0).sty {
                         TyEnum(tyid, _) | TyStruct(tyid, _) => {
                             self.check_def_id(tyid.did)
                         }

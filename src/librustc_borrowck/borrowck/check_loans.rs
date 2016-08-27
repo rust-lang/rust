@@ -126,7 +126,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              loan_region: ty::Region,
+              loan_region: &'tcx ty::Region,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
     {

@@ -400,9 +400,9 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     debug!("get_fn(def_id={:?}, substs={:?})", def_id, substs);
 
-    assert!(!substs.types.needs_infer());
-    assert!(!substs.types.has_escaping_regions());
-    assert!(!substs.types.has_param_types());
+    assert!(!substs.needs_infer());
+    assert!(!substs.has_escaping_regions());
+    assert!(!substs.has_param_types());
 
     let substs = tcx.normalize_associated_type(&substs);
     let instance = Instance::new(def_id, substs);

@@ -137,7 +137,7 @@ impl FlagComputation {
             }
 
             &ty::TyRef(r, ref m) => {
-                self.add_region(*r);
+                self.add_region(r);
                 self.add_ty(m.ty);
             }
 
@@ -176,8 +176,8 @@ impl FlagComputation {
         self.add_bound_computation(&computation);
     }
 
-    fn add_region(&mut self, r: ty::Region) {
-        match r {
+    fn add_region(&mut self, r: &ty::Region) {
+        match *r {
             ty::ReVar(..) => {
                 self.add_flags(TypeFlags::HAS_RE_INFER);
                 self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX);
@@ -208,8 +208,11 @@ impl FlagComputation {
     }
 
     fn add_substs(&mut self, substs: &Substs) {
-        self.add_tys(&substs.types);
-        for &r in &substs.regions {
+        for ty in substs.types() {
+            self.add_ty(ty);
+        }
+
+        for r in substs.regions() {
             self.add_region(r);
         }
     }

@@ -149,7 +149,7 @@ pub trait CrateStore<'tcx> {
     fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind;
     fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                       -> ty::ClosureTy<'tcx>;
-    fn item_variances(&self, def: DefId) -> ty::ItemVariances;
+    fn item_variances(&self, def: DefId) -> Vec<ty::Variance>;
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                      -> Ty<'tcx>;
@@ -198,7 +198,6 @@ pub trait CrateStore<'tcx> {
     fn is_default_impl(&self, impl_did: DefId) -> bool;
     fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool;
     fn is_foreign_item(&self, did: DefId) -> bool;
-    fn is_static_method(&self, did: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
     fn is_typedef(&self, did: DefId) -> bool;
 
@@ -329,7 +328,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind  { bug!("closure_kind") }
     fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                       -> ty::ClosureTy<'tcx>  { bug!("closure_ty") }
-    fn item_variances(&self, def: DefId) -> ty::ItemVariances { bug!("item_variances") }
+    fn item_variances(&self, def: DefId) -> Vec<ty::Variance> { bug!("item_variances") }
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { bug!("repr_attrs") }
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                      -> Ty<'tcx> { bug!("item_type") }
@@ -391,7 +390,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool
         { bug!("is_extern_item") }
     fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
-    fn is_static_method(&self, did: DefId) -> bool { bug!("is_static_method") }
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool { false }
     fn is_typedef(&self, did: DefId) -> bool { bug!("is_typedef") }
 
