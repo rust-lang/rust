@@ -27,6 +27,7 @@ install_rust() {
         rustup default nightly
     fi
 
+    rustup -V
     rustc -V
     cargo -V
 }
