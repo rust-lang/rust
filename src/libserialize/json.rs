@@ -496,14 +496,14 @@ impl<'a> ::Encoder for Encoder<'a> {
     }
 
     fn emit_usize(&mut self, v: usize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u128(&mut self, _: u128) -> EncodeResult { unimplemented!() }
+    fn emit_u128(&mut self, v: u128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
 
     fn emit_isize(&mut self, v: isize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i128(&mut self, _: i128) -> EncodeResult { unimplemented!() }
+    fn emit_i128(&mut self, v: i128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
@@ -746,14 +746,14 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     }
 
     fn emit_usize(&mut self, v: usize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_u128(&mut self, _: u128) -> EncodeResult { unimplemented!() }
+    fn emit_u128(&mut self, v: u128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
 
     fn emit_isize(&mut self, v: isize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
-    fn emit_i128(&mut self, _: i128) -> EncodeResult { unimplemented!() }
+    fn emit_i128(&mut self, v: i128) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
