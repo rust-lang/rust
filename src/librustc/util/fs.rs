@@ -68,7 +68,7 @@ pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<Li
     let p = p.as_ref();
     let q = q.as_ref();
     if q.exists() {
-        try!(fs::remove_file(&q));
+        fs::remove_file(&q)?;
     }
 
     match fs::hard_link(p, q) {
