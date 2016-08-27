@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'gcx, 'tc
               _borrow_id: ast::NodeId,
               _borrow_span: Span,
               _cmt: mc::cmt,
-              _loan_region: ty::Region,
+              _loan_region: &'tcx ty::Region,
               _bk: ty::BorrowKind,
               _loan_cause: euv::LoanCause) {
     }

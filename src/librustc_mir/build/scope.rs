@@ -89,12 +89,14 @@ should go to.
 use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary, ScopeId};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
-use rustc::ty::subst::{Substs, Subst};
+use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::repr::*;
 use syntax_pos::Span;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fnv::FnvHashMap;
+
+use std::iter;
 
 pub struct Scope<'tcx> {
     /// the scope-id within the scope_auxiliary
@@ -789,7 +791,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               -> TerminatorKind<'tcx> {
     let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
                        .unwrap_or_else(|e| tcx.sess.fatal(&e));
-    let substs = Substs::new(tcx, vec![data.item_ty], vec![]);
+    let substs = Substs::new(tcx, iter::once(Kind::from(data.item_ty)));
     TerminatorKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,

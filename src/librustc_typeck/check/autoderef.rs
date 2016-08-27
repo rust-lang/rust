@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                 Some(f) => f,
                 None => return None
             },
-            substs: Substs::new_trait(tcx, vec![], vec![], self.cur_ty)
+            substs: Substs::new_trait(tcx, self.cur_ty, &[])
         };
 
         let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);

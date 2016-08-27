@@ -133,7 +133,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         ty::TyRawPtr(mt) => { write!(w, "*"); enc_mt(w, cx, mt); }
         ty::TyRef(r, mt) => {
             write!(w, "&");
-            enc_region(w, cx, *r);
+            enc_region(w, cx, r);
             enc_mt(w, cx, mt);
         }
         ty::TyArray(t, sz) => {
@@ -251,12 +251,16 @@ fn enc_opt<T, F>(w: &mut Cursor<Vec<u8>>, t: Option<T>, enc_f: F) where
 pub fn enc_substs<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                             substs: &Substs<'tcx>) {
     write!(w, "[");
-    for &r in &substs.regions {
-        enc_region(w, cx, r);
-    }
-    write!(w, "|");
-    for &ty in &substs.types {
-        enc_ty(w, cx, ty);
+    for &k in substs.params() {
+        if let Some(ty) = k.as_type() {
+            write!(w, "t");
+            enc_ty(w, cx, ty);
+        } else if let Some(r) = k.as_region() {
+            write!(w, "r");
+            enc_region(w, cx, r);
+        } else {
+            bug!()
+        }
     }
     write!(w, "]");
 }
@@ -286,8 +290,8 @@ pub fn enc_generics<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     }
 }
 
-pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: ty::Region) {
-    match r {
+pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: &ty::Region) {
+    match *r {
         ty::ReLateBound(id, br) => {
             write!(w, "b[{}|", id.depth);
             enc_bound_region(w, cx, br);

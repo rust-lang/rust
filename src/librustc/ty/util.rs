@@ -306,7 +306,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn required_region_bounds(self,
                                   erased_self_ty: Ty<'tcx>,
                                   predicates: Vec<ty::Predicate<'tcx>>)
-                                  -> Vec<ty::Region>    {
+                                  -> Vec<&'tcx ty::Region>    {
         debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
                erased_self_ty,
                predicates);
@@ -496,8 +496,8 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
         ty.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: ty::Region) -> bool {
-        match r {
+    fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
+        match *r {
             ty::ReStatic | ty::ReErased => {
                 self.hash::<u32>(0);
             }
@@ -693,10 +693,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         return false;
                     }
 
-                    let types_a = &substs_a.types;
-                    let types_b = &substs_b.types;
-
-                    types_a.iter().zip(types_b).all(|(&a, &b)| same_type(a, b))
+                    substs_a.types().zip(substs_b.types()).all(|(a, b)| same_type(a, b))
                 }
                 _ => {
                     a == b

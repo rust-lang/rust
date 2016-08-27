@@ -54,7 +54,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 self.autoderef(span, ty).any(|(ty, _)| self.probe(|_| {
                     let fn_once_substs =
-                        Substs::new_trait(tcx, vec![self.next_ty_var()], vec![], ty);
+                        Substs::new_trait(tcx, ty, &[self.next_ty_var()]);
                     let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                     let poly_trait_ref = trait_ref.to_poly_trait_ref();
                     let obligation = Obligation::misc(span,

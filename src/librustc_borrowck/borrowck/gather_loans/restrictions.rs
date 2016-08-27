@@ -31,7 +31,7 @@ pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       span: Span,
                                       cause: euv::LoanCause,
                                       cmt: mc::cmt<'tcx>,
-                                      loan_region: ty::Region)
+                                      loan_region: &'tcx ty::Region)
                                       -> RestrictionResult<'tcx> {
     let ctxt = RestrictionsContext {
         bccx: bccx,
@@ -49,7 +49,7 @@ pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 struct RestrictionsContext<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
     span: Span,
-    loan_region: ty::Region,
+    loan_region: &'tcx ty::Region,
     cause: euv::LoanCause,
 }
 
@@ -157,7 +157,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
     fn extend(&self,
               result: RestrictionResult<'tcx>,
               cmt: &mc::cmt<'tcx>,
-              elem: LoanPathElem) -> RestrictionResult<'tcx> {
+              elem: LoanPathElem<'tcx>) -> RestrictionResult<'tcx> {
         match result {
             RestrictionResult::Safe => RestrictionResult::Safe,
             RestrictionResult::SafeIf(base_lp, mut base_vec) => {

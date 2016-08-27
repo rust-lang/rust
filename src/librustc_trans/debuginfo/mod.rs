@@ -344,37 +344,35 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     fn get_template_parameters<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          generics: &ty::Generics<'tcx>,
-                                         param_substs: &Substs<'tcx>,
+                                         substs: &Substs<'tcx>,
                                          file_metadata: DIFile,
                                          name_to_append_suffix_to: &mut String)
                                          -> DIArray
     {
-        let actual_types = &param_substs.types;
-
-        if actual_types.is_empty() {
+        if substs.types().next().is_none() {
             return create_DIArray(DIB(cx), &[]);
         }
 
         name_to_append_suffix_to.push('<');
-        for (i, &actual_type) in actual_types.iter().enumerate() {
+        for (i, actual_type) in substs.types().enumerate() {
+            if i != 0 {
+                name_to_append_suffix_to.push_str(",");
+            }
+
             let actual_type = cx.tcx().normalize_associated_type(&actual_type);
             // Add actual type name to <...> clause of function name
             let actual_type_name = compute_debuginfo_type_name(cx,
                                                                actual_type,
                                                                true);
             name_to_append_suffix_to.push_str(&actual_type_name[..]);
-
-            if i != actual_types.len() - 1 {
-                name_to_append_suffix_to.push_str(",");
-            }
         }
         name_to_append_suffix_to.push('>');
 
         // Again, only create type information if full debuginfo is enabled
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
             let names = get_type_parameter_names(cx, generics);
-            actual_types.iter().zip(names).map(|(ty, name)| {
-                let actual_type = cx.tcx().normalize_associated_type(ty);
+            substs.types().zip(names).map(|(ty, name)| {
+                let actual_type = cx.tcx().normalize_associated_type(&ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                 let name = CString::new(name.as_str().as_bytes()).unwrap();
                 unsafe {

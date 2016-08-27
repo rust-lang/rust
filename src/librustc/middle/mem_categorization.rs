@@ -90,11 +90,11 @@ use std::rc::Rc;
 
 #[derive(Clone, PartialEq)]
 pub enum Categorization<'tcx> {
-    Rvalue(ty::Region),                    // temporary val, argument is its scope
+    Rvalue(&'tcx ty::Region),                    // temporary val, argument is its scope
     StaticItem,
     Upvar(Upvar),                          // upvar referenced by closure env
     Local(ast::NodeId),                    // local variable
-    Deref(cmt<'tcx>, usize, PointerKind),  // deref of a ptr
+    Deref(cmt<'tcx>, usize, PointerKind<'tcx>),  // deref of a ptr
     Interior(cmt<'tcx>, InteriorKind),     // something interior: field, tuple, etc
     Downcast(cmt<'tcx>, DefId),            // selects a particular enum variant (*1)
 
@@ -110,18 +110,18 @@ pub struct Upvar {
 
 // different kinds of pointers:
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PointerKind {
+pub enum PointerKind<'tcx> {
     /// `Box<T>`
     Unique,
 
     /// `&T`
-    BorrowedPtr(ty::BorrowKind, ty::Region),
+    BorrowedPtr(ty::BorrowKind, &'tcx ty::Region),
 
     /// `*T`
     UnsafePtr(hir::Mutability),
 
     /// Implicit deref of the `&T` that results from an overloaded index `[]`.
-    Implicit(ty::BorrowKind, ty::Region),
+    Implicit(ty::BorrowKind, &'tcx ty::Region),
 }
 
 // We use the term "interior" to mean "something reachable from the
@@ -198,8 +198,8 @@ pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
 #[derive(Copy, Clone)]
-pub enum deref_kind {
-    deref_ptr(PointerKind),
+pub enum deref_kind<'tcx> {
+    deref_ptr(PointerKind<'tcx>),
     deref_interior(InteriorKind),
 }
 
@@ -216,7 +216,7 @@ fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
 
         ty::TyRef(r, mt) => {
             let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
-            Ok(deref_ptr(BorrowedPtr(kind, *r)))
+            Ok(deref_ptr(BorrowedPtr(kind, r)))
         }
 
         ty::TyRawPtr(ref mt) => {
@@ -767,13 +767,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         };
 
         // Region of environment pointer
-        let env_region = ty::ReFree(ty::FreeRegion {
+        let env_region = self.tcx().mk_region(ty::ReFree(ty::FreeRegion {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
             scope: self.tcx().region_maps.item_extent(fn_body_id),
             bound_region: ty::BrEnv
-        });
+        }));
 
         let env_ptr = BorrowedPtr(env_borrow_kind, env_region);
 
@@ -817,11 +817,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     /// Returns the lifetime of a temporary created by expr with id `id`.
     /// This could be `'static` if `id` is part of a constant expression.
-    pub fn temporary_scope(&self, id: ast::NodeId) -> ty::Region {
-        match self.infcx.temporary_scope(id) {
+    pub fn temporary_scope(&self, id: ast::NodeId) -> &'tcx ty::Region {
+        self.tcx().mk_region(match self.infcx.temporary_scope(id) {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic
-        }
+        })
     }
 
     pub fn cat_rvalue_node(&self,
@@ -845,7 +845,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let re = if qualif.intersects(ConstQualif::NON_STATIC_BORROWS) {
             self.temporary_scope(id)
         } else {
-            ty::ReStatic
+            self.tcx().mk_region(ty::ReStatic)
         };
         let ret = self.cat_rvalue(id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {:?}", ret);
@@ -855,7 +855,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn cat_rvalue(&self,
                       cmt_id: ast::NodeId,
                       span: Span,
-                      temp_scope: ty::Region,
+                      temp_scope: &'tcx ty::Region,
                       expr_ty: Ty<'tcx>) -> cmt<'tcx> {
         let ret = Rc::new(cmt_ {
             id:cmt_id,
@@ -1480,7 +1480,7 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
     }
 }
 
-impl fmt::Debug for PointerKind {
+impl<'tcx> fmt::Debug for PointerKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Unique => write!(f, "Box"),

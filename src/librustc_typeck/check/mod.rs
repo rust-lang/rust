@@ -770,7 +770,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       }
       hir::ItemTy(_, ref generics) => {
         let pty_ty = ccx.tcx.node_id_to_type(it.id);
-        check_bounds_are_used(ccx, &generics.ty_params, pty_ty);
+        check_bounds_are_used(ccx, generics, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
         if m.abi == Abi::RustIntrinsic {
@@ -1422,13 +1422,13 @@ impl<'a, 'gcx, 'tcx> RegionScope for FnCtxt<'a, 'gcx, 'tcx> {
         // (and anyway, within a fn body the right region may not even
         // be something the user can write explicitly, since it might
         // be some expression).
-        self.next_region_var(infer::MiscVariable(span))
+        *self.next_region_var(infer::MiscVariable(span))
     }
 
     fn anon_regions(&self, span: Span, count: usize)
                     -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
         Ok((0..count).map(|_| {
-            self.next_region_var(infer::MiscVariable(span))
+            *self.next_region_var(infer::MiscVariable(span))
         }).collect())
     }
 }
@@ -1862,7 +1862,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// outlive the region `r`.
     pub fn register_region_obligation(&self,
                                       ty: Ty<'tcx>,
-                                      region: ty::Region,
+                                      region: &'tcx ty::Region,
                                       cause: traits::ObligationCause<'tcx>)
     {
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
@@ -1893,13 +1893,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // FIXME(#27579) all uses of this should be migrated to register_wf_obligation eventually
         let cause = traits::ObligationCause::new(span, self.body_id, code);
-        self.register_region_obligation(ty, ty::ReEmpty, cause);
+        self.register_region_obligation(ty, self.tcx.mk_region(ty::ReEmpty), cause);
     }
 
     /// Registers obligations that all types appearing in `substs` are well-formed.
     pub fn add_wf_bounds(&self, substs: &Substs<'tcx>, expr: &hir::Expr)
     {
-        for &ty in &substs.types {
+        for ty in substs.types() {
             self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
         }
     }
@@ -3454,7 +3454,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // value whose address was taken can actually be made to live
                 // as long as it needs to live.
                 let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                tcx.mk_ref(tcx.mk_region(region), tm)
+                tcx.mk_ref(region, tm)
             };
             self.write_ty(id, oprnd_t);
           }
@@ -4242,18 +4242,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.check_path_parameter_count(span, !require_type_space, &mut type_segment);
         self.check_path_parameter_count(span, true, &mut fn_segment);
 
+        let (fn_start, has_self) = match (type_segment, fn_segment) {
+            (_, Some((_, generics))) => {
+                (generics.parent_count(), generics.has_self)
+            }
+            (Some((_, generics)), None) => {
+                (generics.own_count(), generics.has_self)
+            }
+            (None, None) => (0, false)
+        };
         let substs = Substs::for_item(self.tcx, def.def_id(), |def, _| {
             let mut i = def.index as usize;
-            let type_regions = match (type_segment, fn_segment) {
-                (_, Some((_, generics))) => generics.parent_regions as usize,
-                (Some((_, generics)), None) => generics.regions.len(),
-                (None, None) => 0
-            };
 
-            let segment = if i < type_regions {
+            let segment = if i < fn_start {
+                i -= has_self as usize;
                 type_segment
             } else {
-                i -= type_regions;
+                i -= fn_start;
                 fn_segment
             };
             let lifetimes = match segment.map(|(s, _)| &s.parameters) {
@@ -4269,18 +4274,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }, |def, substs| {
             let mut i = def.index as usize;
-            let (type_types, has_self) = match (type_segment, fn_segment) {
-                (_, Some((_, generics))) => {
-                    (generics.parent_types as usize, generics.has_self)
-                }
-                (Some((_, generics)), None) => {
-                    (generics.types.len(), generics.has_self)
-                }
-                (None, None) => (0, false)
-            };
 
-            let can_omit = i >= type_types || !require_type_space;
-            let segment = if i < type_types {
+            let can_omit = i >= fn_start || !require_type_space;
+            let segment = if i < fn_start {
                 // Handle Self first, so we can adjust the index to match the AST.
                 if has_self && i == 0 {
                     return opt_self_ty.unwrap_or_else(|| {
@@ -4290,7 +4286,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= has_self as usize;
                 type_segment
             } else {
-                i -= type_types;
+                i -= fn_start;
                 fn_segment
             };
             let types = match segment.map(|(s, _)| &s.parameters) {
@@ -4298,6 +4294,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(&hir::ParenthesizedParameters(_)) => bug!(),
                 None => &[]
             };
+
+            // Skip over the lifetimes in the same segment.
+            if let Some((_, generics)) = segment {
+                i -= generics.regions.len();
+            }
 
             let omitted = can_omit && types.is_empty();
             if let Some(ast_ty) = types.get(i) {
@@ -4502,28 +4503,28 @@ pub fn may_break(tcx: TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
 }
 
 pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                       tps: &[hir::TyParam],
+                                       generics: &hir::Generics,
                                        ty: Ty<'tcx>) {
     debug!("check_bounds_are_used(n_tps={}, ty={:?})",
-           tps.len(),  ty);
+           generics.ty_params.len(),  ty);
 
     // make a vector of booleans initially false, set to true when used
-    if tps.is_empty() { return; }
-    let mut tps_used = vec![false; tps.len()];
+    if generics.ty_params.is_empty() { return; }
+    let mut tps_used = vec![false; generics.ty_params.len()];
 
     for leaf_ty in ty.walk() {
         if let ty::TyParam(ParamTy {idx, ..}) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
-            tps_used[idx as usize] = true;
+            tps_used[idx as usize - generics.lifetimes.len()] = true;
         }
     }
 
-    for (i, b) in tps_used.iter().enumerate() {
-        if !*b {
-            struct_span_err!(ccx.tcx.sess, tps[i].span, E0091,
+    for (&used, param) in tps_used.iter().zip(&generics.ty_params) {
+        if !used {
+            struct_span_err!(ccx.tcx.sess, param.span, E0091,
                 "type parameter `{}` is unused",
-                tps[i].name)
-                .span_label(tps[i].span, &format!("unused type parameter"))
+                param.name)
+                .span_label(param.span, &format!("unused type parameter"))
                 .emit();
         }
     }

@@ -99,7 +99,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
-                                   region: ty::Region,
+                                   region: &'tcx ty::Region,
                                    suffix: &str) {
         fn item_scope_tag(item: &hir::Item) -> &'static str {
             match item.node {
@@ -120,7 +120,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
              Some(span))
         }
 
-        let (description, span) = match region {
+        let (description, span) = match *region {
             ty::ReScope(scope) => {
                 let new_string;
                 let unknown_scope = || {
@@ -405,12 +405,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         fn free_regions_from_same_fn<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                     sub: Region,
-                                                     sup: Region)
+                                                     sub: &'tcx Region,
+                                                     sup: &'tcx Region)
                                                      -> Option<FreeRegionsFromSameFn> {
             debug!("free_regions_from_same_fn(sub={:?}, sup={:?})", sub, sup);
             let (scope_id, fr1, fr2) = match (sub, sup) {
-                (ReFree(fr1), ReFree(fr2)) => {
+                (&ReFree(fr1), &ReFree(fr2)) => {
                     if fr1.scope != fr2.scope {
                         return None
                     }
@@ -602,7 +602,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn report_generic_bound_failure(&self,
                                     origin: SubregionOrigin<'tcx>,
                                     bound_kind: GenericKind<'tcx>,
-                                    sub: Region)
+                                    sub: &'tcx Region)
     {
         // FIXME: it would be better to report the first error message
         // with the span of the parameter itself, rather than the span
@@ -616,7 +616,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!("the associated type `{}`", p),
         };
 
-        let mut err = match sub {
+        let mut err = match *sub {
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(self.tcx.sess,
@@ -667,8 +667,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn report_concrete_failure(&self,
                                origin: SubregionOrigin<'tcx>,
-                               sub: Region,
-                               sup: Region)
+                               sub: &'tcx Region,
+                               sup: &'tcx Region)
                                 -> DiagnosticBuilder<'tcx> {
         match origin {
             infer::Subtype(trace) => {
@@ -939,9 +939,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn report_sub_sup_conflict(&self,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin<'tcx>,
-                               sub_region: Region,
+                               sub_region: &'tcx Region,
                                sup_origin: SubregionOrigin<'tcx>,
-                               sup_region: Region) {
+                               sup_region: &'tcx Region) {
         let mut err = self.report_inference_failure(var_origin);
 
         self.tcx.note_and_explain_region(&mut err,

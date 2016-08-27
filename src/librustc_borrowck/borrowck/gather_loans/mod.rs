@@ -130,7 +130,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              loan_region: ty::Region,
+              loan_region: &'tcx ty::Region,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
     {
@@ -307,7 +307,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                        borrow_span: Span,
                        cmt: mc::cmt<'tcx>,
                        req_kind: ty::BorrowKind,
-                       loan_region: ty::Region,
+                       loan_region: &'tcx ty::Region,
                        cause: euv::LoanCause) {
         debug!("guarantee_valid(borrow_id={}, cmt={:?}, \
                 req_mutbl={:?}, loan_region={:?})",
@@ -318,7 +318,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
         // a loan for the empty region can never be dereferenced, so
         // it is always safe
-        if loan_region == ty::ReEmpty {
+        if *loan_region == ty::ReEmpty {
             return;
         }
 
@@ -358,7 +358,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             }
 
             RestrictionResult::SafeIf(loan_path, restricted_paths) => {
-                let loan_scope = match loan_region {
+                let loan_scope = match *loan_region {
                     ty::ReScope(scope) => scope,
 
                     ty::ReFree(ref fr) => fr.scope,

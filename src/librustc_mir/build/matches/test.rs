@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     assert!(ty.is_slice());
                     let eq_def_id = self.hir.tcx().lang_items.eq_trait().unwrap();
                     let ty = mt.ty;
-                    let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, vec![ty]);
+                    let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty]);
 
                     let bool_ty = self.hir.bool_ty();
                     let eq_result = self.temp(bool_ty);

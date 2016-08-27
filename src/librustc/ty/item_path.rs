@@ -264,7 +264,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         match self_ty.sty {
             ty::TyStruct(adt_def, substs) |
             ty::TyEnum(adt_def, substs) => {
-                if substs.types.is_empty() { // ignore regions
+                if substs.types().next().is_none() { // ignore regions
                     self.push_item_path(buffer, adt_def.did);
                 } else {
                     buffer.push(&format!("<{}>", self_ty));

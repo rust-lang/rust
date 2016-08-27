@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use infer::type_variable;
-use ty::subst::Substs;
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
@@ -70,13 +69,6 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Vec<T> {
     type Lifted = Vec<T::Lifted>;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self[..])
-    }
-}
-
-impl<'tcx> Lift<'tcx> for ty::Region {
-    type Lifted = Self;
-    fn lift_to_tcx(&self, _: TyCtxt) -> Option<ty::Region> {
-        Some(*self)
     }
 }
 
@@ -316,13 +308,21 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             FixedArraySize(x) => FixedArraySize(x),
             TyParamSize(x) => TyParamSize(x),
             ArgCount => ArgCount,
-            RegionsDoesNotOutlive(a, b) => RegionsDoesNotOutlive(a, b),
-            RegionsNotSame(a, b) => RegionsNotSame(a, b),
-            RegionsNoOverlap(a, b) => RegionsNoOverlap(a, b),
-            RegionsInsufficientlyPolymorphic(a, b) => {
-                RegionsInsufficientlyPolymorphic(a, b)
+            RegionsDoesNotOutlive(a, b) => {
+                return tcx.lift(&(a, b)).map(|(a, b)| RegionsDoesNotOutlive(a, b))
             }
-            RegionsOverlyPolymorphic(a, b) => RegionsOverlyPolymorphic(a, b),
+            RegionsNotSame(a, b) => {
+                return tcx.lift(&(a, b)).map(|(a, b)| RegionsNotSame(a, b))
+            }
+            RegionsNoOverlap(a, b) => {
+                return tcx.lift(&(a, b)).map(|(a, b)| RegionsNoOverlap(a, b))
+            }
+            RegionsInsufficientlyPolymorphic(a, b) => {
+                return tcx.lift(&b).map(|b| RegionsInsufficientlyPolymorphic(a, b))
+            }
+            RegionsOverlyPolymorphic(a, b) => {
+                return tcx.lift(&b).map(|b| RegionsOverlyPolymorphic(a, b))
+            }
             IntegerAsChar => IntegerAsChar,
             IntMismatch(x) => IntMismatch(x),
             FloatMismatch(x) => FloatMismatch(x),
@@ -655,7 +655,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ImplHeader<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::Region {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Region {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
         *self
     }
@@ -670,41 +670,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region {
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         visitor.visit_region(*self)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Region {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
-        *self
-    }
-
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let region = folder.fold_region(**self);
-        folder.tcx().mk_region(region)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
-        false
-    }
-
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        visitor.visit_region(**self)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let types = self.types.fold_with(folder);
-        let regions = self.regions.fold_with(folder);
-        Substs::new(folder.tcx(), types, regions)
-    }
-
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_substs(self)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.types.visit_with(visitor) || self.regions.visit_with(visitor)
     }
 }
 
@@ -783,7 +748,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::ObjectLifetimeDefault {
+impl<'tcx> TypeFoldable<'tcx> for ty::ObjectLifetimeDefault<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             ty::ObjectLifetimeDefault::Ambiguous =>
@@ -805,7 +770,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ObjectLifetimeDefault {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef {
+impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::RegionParameterDef {
             name: self.name,

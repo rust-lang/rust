@@ -115,9 +115,9 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// For `&'a T` to be WF, `T: 'a` must hold. So we can assume `T: 'a`.
 #[derive(Debug)]
 pub enum ImpliedBound<'tcx> {
-    RegionSubRegion(ty::Region, ty::Region),
-    RegionSubParam(ty::Region, ty::ParamTy),
-    RegionSubProjection(ty::Region, ty::ProjectionTy<'tcx>),
+    RegionSubRegion(&'tcx ty::Region, &'tcx ty::Region),
+    RegionSubParam(&'tcx ty::Region, ty::ParamTy),
+    RegionSubProjection(&'tcx ty::Region, ty::ProjectionTy<'tcx>),
 }
 
 /// Compute the implied bounds that a callee/impl can assume based on
@@ -196,7 +196,7 @@ pub fn implied_bounds<'a, 'gcx, 'tcx>(
 /// this down to determine what relationships would have to hold for
 /// `T: 'a` to hold. We get to assume that the caller has validated
 /// those relationships.
-fn implied_bounds_from_components<'tcx>(sub_region: ty::Region,
+fn implied_bounds_from_components<'tcx>(sub_region: &'tcx ty::Region,
                                         sup_components: Vec<Component<'tcx>>)
                                         -> Vec<ImpliedBound<'tcx>>
 {
@@ -260,8 +260,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
         let cause = self.cause(traits::MiscObligation);
         self.out.extend(
-            trait_ref.substs.types
-                            .iter()
+            trait_ref.substs.types()
                             .filter(|ty| !ty.has_escaping_regions())
                             .map(|ty| traits::Obligation::new(cause.clone(),
                                                               ty::Predicate::WellFormed(ty))));
@@ -364,7 +363,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                                 cause,
                                 ty::Predicate::TypeOutlives(
                                     ty::Binder(
-                                        ty::OutlivesPredicate(mt.ty, *r)))));
+                                        ty::OutlivesPredicate(mt.ty, r)))));
                     }
                 }
 
@@ -535,7 +534,7 @@ pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     principal: ty::PolyExistentialTraitRef<'tcx>,
     others: ty::BuiltinBounds)
-    -> Vec<ty::Region>
+    -> Vec<&'tcx ty::Region>
 {
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically

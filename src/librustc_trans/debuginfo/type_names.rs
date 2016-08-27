@@ -175,13 +175,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     fn push_type_params<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                   substs: &Substs<'tcx>,
                                   output: &mut String) {
-        if substs.types.is_empty() {
+        if substs.types().next().is_none() {
             return;
         }
 
         output.push('<');
 
-        for &type_parameter in &substs.types {
+        for type_parameter in substs.types() {
             push_debuginfo_type_name(cx, type_parameter, true, output);
             output.push_str(", ");
         }

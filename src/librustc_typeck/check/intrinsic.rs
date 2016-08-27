@@ -37,7 +37,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let i_ty = tcx.lookup_item_type(def_id);
 
     let substs = Substs::for_item(tcx, def_id,
-                                  |_, _| ty::ReErased,
+                                  |_, _| tcx.mk_region(ty::ReErased),
                                   |def, _| tcx.mk_param_from_def(def));
 
     let fty = tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
