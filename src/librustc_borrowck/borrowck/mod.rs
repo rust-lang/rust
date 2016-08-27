@@ -926,9 +926,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 err
             }
             mc::AliasableBorrowed => {
-                struct_span_err!(
+                let mut e = struct_span_err!(
                     self.tcx.sess, span, E0389,
-                    "{} in a `&` reference", prefix)
+                    "{} in a `&` reference", prefix);
+                e.span_label(span, &"assignment into an immutable reference");
+                e
             }
         };
 
