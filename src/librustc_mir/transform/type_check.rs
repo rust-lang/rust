@@ -68,17 +68,20 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, _context: visit::LvalueContext) {
-        self.sanitize_lvalue(lvalue);
+    fn visit_lvalue(&mut self,
+                    lvalue: &Lvalue<'tcx>,
+                    _context: visit::LvalueContext,
+                    location: Location) {
+        self.sanitize_lvalue(lvalue, location);
     }
 
-    fn visit_constant(&mut self, constant: &Constant<'tcx>) {
-        self.super_constant(constant);
+    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+        self.super_constant(constant, location);
         self.sanitize_type(constant, constant.ty);
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
-        self.super_rvalue(rvalue);
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        self.super_rvalue(rvalue, location);
         if let Some(ty) = rvalue.ty(self.mir, self.tcx()) {
             self.sanitize_type(rvalue, ty);
         }
@@ -124,7 +127,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn sanitize_lvalue(&mut self, lvalue: &Lvalue<'tcx>) -> LvalueTy<'tcx> {
+    fn sanitize_lvalue(&mut self, lvalue: &Lvalue<'tcx>, location: Location) -> LvalueTy<'tcx> {
         debug!("sanitize_lvalue: {:?}", lvalue);
         match *lvalue {
             Lvalue::Var(index) => LvalueTy::Ty { ty: self.mir.var_decls[index].ty },
@@ -136,14 +139,14 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 LvalueTy::Ty { ty: self.mir.return_ty }
             }
             Lvalue::Projection(ref proj) => {
-                let base_ty = self.sanitize_lvalue(&proj.base);
+                let base_ty = self.sanitize_lvalue(&proj.base, location);
                 if let LvalueTy::Ty { ty } = base_ty {
                     if ty.references_error() {
                         assert!(self.errors_reported);
                         return LvalueTy::Ty { ty: self.tcx().types.err };
                     }
                 }
-                self.sanitize_projection(base_ty, &proj.elem, lvalue)
+                self.sanitize_projection(base_ty, &proj.elem, lvalue, location)
             }
         }
     }
@@ -151,7 +154,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn sanitize_projection(&mut self,
                            base: LvalueTy<'tcx>,
                            pi: &LvalueElem<'tcx>,
-                           lvalue: &Lvalue<'tcx>)
+                           lvalue: &Lvalue<'tcx>,
+                           location: Location)
                            -> LvalueTy<'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, lvalue);
         let tcx = self.tcx();
@@ -168,7 +172,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 }
             }
             ProjectionElem::Index(ref i) => {
-                self.visit_operand(i);
+                self.visit_operand(i, location);
                 let index_ty = i.ty(self.mir, tcx);
                 if index_ty != tcx.types.usize {
                     LvalueTy::Ty {

@@ -9,10 +9,9 @@
 // except according to those terms.
 
 use rustc::ty::TyCtxt;
-use rustc::mir::repr::{self, Mir};
+use rustc::mir::repr::{self, Mir, Location};
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::super::gather_moves::{Location};
 use super::super::gather_moves::{MoveOutIndex, MovePathIndex};
 use super::super::MoveDataParamEnv;
 use super::super::DropFlagState;
@@ -252,7 +251,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     {
         drop_flag_effects_for_location(
             self.tcx, self.mir, ctxt,
-            Location { block: bb, index: idx },
+            Location { block: bb, statement_index: idx },
             |path, s| Self::update_bits(sets, path, s)
         )
     }
@@ -265,7 +264,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     {
         drop_flag_effects_for_location(
             self.tcx, self.mir, ctxt,
-            Location { block: bb, index: statements_len },
+            Location { block: bb, statement_index: statements_len },
             |path, s| Self::update_bits(sets, path, s)
         )
     }
@@ -314,7 +313,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     {
         drop_flag_effects_for_location(
             self.tcx, self.mir, ctxt,
-            Location { block: bb, index: idx },
+            Location { block: bb, statement_index: idx },
             |path, s| Self::update_bits(sets, path, s)
         )
     }
@@ -327,7 +326,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     {
         drop_flag_effects_for_location(
             self.tcx, self.mir, ctxt,
-            Location { block: bb, index: statements_len },
+            Location { block: bb, statement_index: statements_len },
             |path, s| Self::update_bits(sets, path, s)
         )
     }
@@ -375,7 +374,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     {
         drop_flag_effects_for_location(
             self.tcx, self.mir, ctxt,
-            Location { block: bb, index: idx },
+            Location { block: bb, statement_index: idx },
             |path, s| Self::update_bits(sets, path, s)
         )
     }
@@ -388,7 +387,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     {
         drop_flag_effects_for_location(
             self.tcx, self.mir, ctxt,
-            Location { block: bb, index: statements_len },
+            Location { block: bb, statement_index: statements_len },
             |path, s| Self::update_bits(sets, path, s)
         )
     }
@@ -431,7 +430,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
         let path_map = &move_data.path_map;
         let rev_lookup = &move_data.rev_lookup;
 
-        let loc = Location { block: bb, index: idx };
+        let loc = Location { block: bb, statement_index: idx };
         debug!("stmt {:?} at loc {:?} moves out of move_indexes {:?}",
                stmt, loc, &loc_map[loc]);
         for move_index in &loc_map[loc] {
@@ -473,7 +472,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
         let (mir, move_data) = (self.mir, &ctxt.move_data);
         let term = mir[bb].terminator();
         let loc_map = &move_data.loc_map;
-        let loc = Location { block: bb, index: statements_len };
+        let loc = Location { block: bb, statement_index: statements_len };
         debug!("terminator {:?} at loc {:?} moves out of move_indexes {:?}",
                term, loc, &loc_map[loc]);
         let bits_per_block = self.bits_per_block(ctxt);

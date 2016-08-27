@@ -42,6 +42,7 @@ use rustc_const_math::ConstInt;
 
 use rustc::mir;
 use rustc::mir::visit::MutVisitor;
+use rustc::mir::repr::Location;
 
 use std::cell::Cell;
 use std::io;
@@ -846,7 +847,7 @@ pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
     impl<'v, 'cdata, 'codemap> mir::visit::MutVisitor<'v>
         for MirDefIdAndSpanTranslator<'cdata, 'codemap>
     {
-        fn visit_def_id(&mut self, def_id: &mut DefId) {
+        fn visit_def_id(&mut self, def_id: &mut DefId, _: Location) {
             *def_id = translate_def_id(self.crate_metadata, *def_id);
         }
 
