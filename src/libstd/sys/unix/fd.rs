@@ -10,8 +10,6 @@
 
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
-use prelude::v1::*;
-
 use io::{self, Read};
 use libc::{self, c_int, size_t, c_void};
 use mem;

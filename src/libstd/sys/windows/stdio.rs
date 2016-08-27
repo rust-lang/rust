@@ -10,7 +10,6 @@
 
 #![unstable(issue = "0", feature = "windows_stdio")]
 
-use prelude::v1::*;
 use io::prelude::*;
 
 use cmp;

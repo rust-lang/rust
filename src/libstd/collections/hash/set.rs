@@ -1067,8 +1067,6 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use prelude::v1::*;
-
     use super::HashSet;
 
     #[test]

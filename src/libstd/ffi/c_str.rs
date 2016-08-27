@@ -9,25 +9,18 @@
 // except according to those terms.
 
 use ascii;
-use borrow::{Cow, ToOwned, Borrow};
-use boxed::Box;
-use convert::{Into, From};
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use borrow::{Cow, Borrow};
+use cmp::Ordering;
 use error::Error;
 use fmt::{self, Write};
 use io;
-use iter::Iterator;
 use libc;
 use mem;
 use memchr;
 use ops;
-use option::Option::{self, Some, None};
 use os::raw::c_char;
-use result::Result::{self, Ok, Err};
 use slice;
 use str::{self, Utf8Error};
-use string::String;
-use vec::Vec;
 
 /// A type representing an owned C-compatible string
 ///
@@ -700,7 +693,6 @@ impl AsRef<CStr> for CString {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use super::*;
     use os::raw::c_char;
     use borrow::Cow::{Borrowed, Owned};

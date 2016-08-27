@@ -19,7 +19,10 @@ use rustc::mir::transform::{Pass, MirPass, MirSource};
 pub struct NoLandingPads;
 
 impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
-    fn visit_terminator(&mut self, bb: BasicBlock, terminator: &mut Terminator<'tcx>) {
+    fn visit_terminator(&mut self,
+                        bb: BasicBlock,
+                        terminator: &mut Terminator<'tcx>,
+                        location: Location) {
         match terminator.kind {
             TerminatorKind::Goto { .. } |
             TerminatorKind::Resume |
@@ -37,7 +40,7 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
                 unwind.take();
             },
         }
-        self.super_terminator(bb, terminator);
+        self.super_terminator(bb, terminator, location);
     }
 }
 

@@ -10,8 +10,6 @@
 
 //! An implementation of SipHash.
 
-use prelude::v1::*;
-
 use marker::PhantomData;
 use ptr;
 

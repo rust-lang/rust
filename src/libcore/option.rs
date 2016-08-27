@@ -139,17 +139,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use self::Option::*;
-
-use clone::Clone;
-use convert::From;
-use default::Default;
-use iter::{Iterator, FromIterator, IntoIterator, ExactSizeIterator, DoubleEndedIterator};
-use iter::FusedIterator;
+use iter::{FromIterator, FusedIterator};
 use mem;
-use ops::FnOnce;
-use result::Result::{Ok, Err};
-use result::Result;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of

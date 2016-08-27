@@ -355,8 +355,6 @@ impl fmt::Debug for UdpSocket {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use io::ErrorKind;
     use net::*;
     use net::test::{next_test_ip4, next_test_ip6};

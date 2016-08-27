@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
 use os::unix::prelude::*;
 
 use collections::hash_map::{HashMap, Entry};
@@ -593,7 +592,6 @@ impl Process {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prelude::v1::*;
 
     use ffi::OsStr;
     use mem;

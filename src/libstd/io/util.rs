@@ -167,8 +167,6 @@ impl Write for Sink {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use io::prelude::*;
     use io::{copy, sink, empty, repeat};
 

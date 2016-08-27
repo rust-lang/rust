@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use boxed::Box;
-use convert::Into;
 use error;
 use fmt;
-use marker::{Send, Sync};
-use option::Option::{self, Some, None};
 use result;
 use sys;
 
@@ -522,7 +518,6 @@ fn _assert_error_is_sync_send() {
 
 #[cfg(test)]
 mod test {
-    use prelude::v1::*;
     use super::{Error, ErrorKind};
     use error;
     use fmt;

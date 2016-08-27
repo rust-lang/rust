@@ -14,7 +14,6 @@
 
 use libc;
 
-use prelude::v1::*;
 use ascii;
 use ffi::OsStr;
 use fmt;
@@ -789,7 +788,6 @@ impl IntoRawFd for UnixDatagram {
 
 #[cfg(test)]
 mod test {
-    use prelude::v1::*;
     use thread;
     use io;
     use io::prelude::*;

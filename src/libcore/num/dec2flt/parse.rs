@@ -20,7 +20,6 @@
 //! modules rely on to not panic (or overflow) in turn.
 //! To make matters worse, all that happens in a single pass over the input.
 //! So, be careful when modifying anything, and double-check with the other modules.
-use prelude::v1::*;
 use super::num;
 use self::ParseResult::{Valid, ShortcutToInf, ShortcutToZero, Invalid};
 

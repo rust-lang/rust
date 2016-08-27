@@ -23,7 +23,6 @@ use io::{self, SeekFrom, Seek, Read, Write};
 use path::{Path, PathBuf};
 use sys::fs as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
-use vec::Vec;
 use time::SystemTime;
 
 /// A reference to an open file on the filesystem.
@@ -1677,7 +1676,6 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use io::prelude::*;
 
     use fs::{self, File, OpenOptions};

@@ -12,7 +12,6 @@
 
 #![allow(bad_style)]
 
-use prelude::v1::*;
 use os::windows::prelude::*;
 
 use error::Error as StdError;

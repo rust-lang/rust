@@ -34,9 +34,6 @@
 
 use self::Ordering::*;
 
-use marker::Sized;
-use option::Option::{self, Some};
-
 /// Trait for equality comparisons which are [partial equivalence
 /// relations](http://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
@@ -571,11 +568,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 mod impls {
-    use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering};
-    use cmp::Ordering::{Less, Greater, Equal};
-    use marker::Sized;
-    use option::Option;
-    use option::Option::{Some, None};
+    use cmp::Ordering::{self, Less, Greater, Equal};
 
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(

@@ -100,7 +100,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use ascii::*;
-use borrow::{Borrow, ToOwned, Cow};
+use borrow::{Borrow, Cow};
 use cmp;
 use error::Error;
 use fmt;
@@ -110,8 +110,6 @@ use io;
 use iter::{self, FusedIterator};
 use mem;
 use ops::{self, Deref};
-use string::String;
-use vec::Vec;
 
 use ffi::{OsStr, OsString};
 
@@ -2152,8 +2150,6 @@ impl Error for StripPrefixError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use string::{ToString, String};
-    use vec::Vec;
 
     macro_rules! t(
         ($path:expr, iter: $iter:expr) => (

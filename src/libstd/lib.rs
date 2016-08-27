@@ -252,6 +252,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(panic_unwind)]
 #![feature(placement_in_syntax)]
+#![feature(prelude_import)]
 #![feature(question_mark)]
 #![feature(rand)]
 #![feature(raw)]
@@ -291,6 +292,10 @@
 #![deny(missing_docs)]
 #![allow(unused_features)] // std may use features in a platform-specific way
 #![cfg_attr(not(stage0), deny(warnings))]
+
+#[prelude_import]
+#[allow(unused)]
+use prelude::v1::*;
 
 #[cfg(test)] extern crate test;
 

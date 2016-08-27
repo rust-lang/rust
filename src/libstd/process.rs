@@ -12,7 +12,6 @@
 
 #![stable(feature = "process", since = "1.0.0")]
 
-use prelude::v1::*;
 use io::prelude::*;
 
 use ffi::OsStr;
@@ -810,7 +809,6 @@ pub fn exit(code: i32) -> ! {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use io::prelude::*;
 
     use io::ErrorKind;
