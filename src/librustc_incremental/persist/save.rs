@@ -110,7 +110,7 @@ pub fn encode_dep_graph(preds: &Predecessors,
                         -> io::Result<()> {
     // First encode the commandline arguments hash
     let tcx = builder.tcx();
-    try!(tcx.sess.opts.dep_tracking_hash().encode(encoder));
+    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
     // Create a flat list of (Input, WorkProduct) edges for
     // serialization.
@@ -149,8 +149,8 @@ pub fn encode_dep_graph(preds: &Predecessors,
     debug!("graph = {:#?}", graph);
 
     // Encode the directory and then the graph data.
-    try!(builder.directory().encode(encoder));
-    try!(graph.encode(encoder));
+    builder.directory().encode(encoder)?;
+    graph.encode(encoder)?;
 
     Ok(())
 }
@@ -222,8 +222,8 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
     }
 
     // Encode everything.
-    try!(svh.encode(encoder));
-    try!(serialized_hashes.encode(encoder));
+    svh.encode(encoder)?;
+    serialized_hashes.encode(encoder)?;
 
     Ok(())
 }
