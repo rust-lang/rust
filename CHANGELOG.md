@@ -2,6 +2,7 @@
 All notable changes to this project will be documented in this file.
 
 ## 0.0.87 — ??
+* New lints: [`builtin_type_shadow`]
 * Fix FP in [`zero_prefixed_literal`] and `0b`/`Oo`
 
 ## 0.0.86 — 2016-08-28
@@ -178,6 +179,7 @@ All notable changes to this project will be documented in this file.
 [`bool_comparison`]: https://github.com/Manishearth/rust-clippy/wiki#bool_comparison
 [`box_vec`]: https://github.com/Manishearth/rust-clippy/wiki#box_vec
 [`boxed_local`]: https://github.com/Manishearth/rust-clippy/wiki#boxed_local
+[`builtin_type_shadow`]: https://github.com/Manishearth/rust-clippy/wiki#builtin_type_shadow
 [`cast_possible_truncation`]: https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation
 [`cast_possible_wrap`]: https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap
 [`cast_precision_loss`]: https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss

@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 169 lints included in this crate:
+There are 170 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -33,6 +33,7 @@ name                                                                            
 [bool_comparison](https://github.com/Manishearth/rust-clippy/wiki#bool_comparison)                                   | warn    | comparing a variable to a boolean, e.g. `if x == true`
 [box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                                   | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
 [boxed_local](https://github.com/Manishearth/rust-clippy/wiki#boxed_local)                                           | warn    | using `Box<T>` where unnecessary
+[builtin_type_shadow](https://github.com/Manishearth/rust-clippy/wiki#builtin_type_shadow)                           | warn    | shadowing a builtin type
 [cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation)                 | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
 [cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)                             | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
 [cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)                           | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`

@@ -22,6 +22,7 @@ use syntax::ptr::P;
 pub mod cargo;
 pub mod comparisons;
 pub mod conf;
+pub mod constants;
 mod hir;
 pub mod paths;
 pub mod sugg;
