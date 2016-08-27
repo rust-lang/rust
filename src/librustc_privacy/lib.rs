@@ -444,13 +444,32 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         }), ..}) => ty,
                         _ => expr_ty
                     }.ty_adt_def().unwrap();
-                    let any_priv = def.struct_variant().fields.iter().any(|f| {
-                        !f.vis.is_accessible_from(self.curitem, &self.tcx.map)
-                    });
-                    if any_priv {
-                        span_err!(self.tcx.sess, expr.span, E0450,
-                                  "cannot invoke tuple struct constructor with private \
-                                   fields");
+
+                    let private_indexes : Vec<_> = def.struct_variant().fields.iter().enumerate()
+                        .filter(|&(_,f)| {
+                            !f.vis.is_accessible_from(self.curitem, &self.tcx.map)
+                    }).map(|(n,&_)|n).collect();
+
+                    if !private_indexes.is_empty() {
+
+                        let mut error = struct_span_err!(self.tcx.sess, expr.span, E0450,
+                                                         "cannot invoke tuple struct constructor \
+                                                         with private fields");
+                        error.span_label(expr.span,
+                                         &format!("cannot construct with a private field"));
+
+                        if let Some(def_id) = self.tcx.map.as_local_node_id(def.did) {
+                            if let Some(hir::map::NodeItem(node)) = self.tcx.map.find(def_id) {
+                                if let hir::Item_::ItemStruct(ref tuple_data, _) = node.node {
+
+                                    for i in private_indexes {
+                                        error.span_label(tuple_data.fields()[i].span,
+                                                         &format!("private field declared here"));
+                                    }
+                                }
+                            }
+                        }
+                        error.emit();
                     }
                 }
             }
