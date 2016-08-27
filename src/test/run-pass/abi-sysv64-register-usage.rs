@@ -11,93 +11,42 @@
 // Checks if the correct registers are being used to pass arguments
 // when the sysv64 ABI is specified.
 
+// ignore-android
+// ignore-arm
+// ignore-aarch64
+
 #![feature(abi_sysv64)]
-#![feature(naked_functions)]
 #![feature(asm)]
 
-#[naked]
-#[inline(never)]
-#[allow(unused_variables)]
-pub unsafe extern "sysv64" fn all_the_registers(rdi: i64, rsi: i64, rdx: i64,
-                                                rcx: i64, r8 : i64, r9 : i64,
-                                                xmm0: f32, xmm1: f32, xmm2: f32,
-                                                xmm3: f32, xmm4: f32, xmm5: f32,
-                                                xmm6: f32, xmm7: f32) -> i64 {
-    // this assembly checks all registers for specific values, and puts in rax
-    // how many values were correct.
-    asm!("cmp rdi, 0x1;
-          xor rax, rax;
-          setz al;
-
-          cmp rsi, 0x2;
-          xor rdi, rdi
-          setz dil;
-          add rax, rdi;
-
-          cmp rdx, 0x3;
-          setz dil;
-          add rax, rdi;
-
-          cmp rcx, 0x4;
-          setz dil;
-          add rax, rdi;
-
-          cmp r8, 0x5;
-          setz dil;
-          add rax, rdi;
-
-          cmp r9, 0x6;
-          setz dil;
-          add rax, rdi;
-
-          movd esi, xmm0;
-          cmp rsi, 0x3F800000;
-          setz dil;
-          add rax, rdi;
-
-          movd esi, xmm1;
-          cmp rsi, 0x40000000;
-          setz dil;
-          add rax, rdi;
-
-          movd esi, xmm2;
-          cmp rsi, 0x40800000;
-          setz dil;
-          add rax, rdi;
-
-          movd esi, xmm3;
-          cmp rsi, 0x41000000;
-          setz dil;
-          add rax, rdi;
-
-          movd esi, xmm4;
-          cmp rsi, 0x41800000;
-          setz dil;
-          add rax, rdi;
-
-          movd esi, xmm5;
-          cmp rsi, 0x42000000;
-          setz dil;
-          add rax, rdi;
-
-          movd esi, xmm6;
-          cmp rsi, 0x42800000;
-          setz dil;
-          add rax, rdi;
-
-          movd esi, xmm7;
-          cmp rsi, 0x43000000;
-          setz dil;
-          add rax, rdi;
-          ret
-         " :::: "intel");
-    unreachable!();
+#[cfg(target_arch = "x86_64")]
+pub extern "sysv64" fn all_the_registers(rdi: i64, rsi: i64, rdx: i64,
+                                         rcx: i64, r8 : i64, r9 : i64,
+                                         xmm0: f32, xmm1: f32, xmm2: f32,
+                                         xmm3: f32, xmm4: f32, xmm5: f32,
+                                         xmm6: f32, xmm7: f32) -> i64 {
+    assert_eq!(rdi, 1);
+    assert_eq!(rsi, 2);
+    assert_eq!(rdx, 3);
+    assert_eq!(rcx, 4);
+    assert_eq!(r8,  5);
+    assert_eq!(r9,  6);
+    assert_eq!(xmm0, 1.0f32);
+    assert_eq!(xmm1, 2.0f32);
+    assert_eq!(xmm2, 4.0f32);
+    assert_eq!(xmm3, 8.0f32);
+    assert_eq!(xmm4, 16.0f32);
+    assert_eq!(xmm5, 32.0f32);
+    assert_eq!(xmm6, 64.0f32);
+    assert_eq!(xmm7, 128.0f32);
+    42
 }
 
 // this struct contains 8 i64's, while only 6 can be passed in registers.
+#[cfg(target_arch = "x86_64")]
 #[derive(PartialEq, Eq, Debug)]
 pub struct LargeStruct(i64, i64, i64, i64, i64, i64, i64, i64);
 
+#[cfg(target_arch = "x86_64")]
 #[inline(never)]
 pub extern "sysv64" fn large_struct_by_val(mut foo: LargeStruct) -> LargeStruct {
     foo.0 *= 1;
@@ -111,15 +60,47 @@ pub extern "sysv64" fn large_struct_by_val(mut foo: LargeStruct) -> LargeStruct 
     foo
 }
 
+#[cfg(target_arch = "x86_64")]
 pub fn main() {
-    assert_eq!(unsafe {
-        all_the_registers(1, 2, 3, 4, 5, 6,
-                          1.0, 2.0, 4.0, 8.0,
-                          16.0, 32.0, 64.0, 128.0)
-    }, 14);
+    let result: i64;
+    unsafe {
+        asm!("mov rdi, 1;
+              mov rsi, 2;
+              mov rdx, 3;
+              mov rcx, 4;
+              mov r8,  5;
+              mov r9,  6;
+              mov eax, 0x3F800000;
+              movd xmm0, eax;
+              mov eax, 0x40000000;
+              movd xmm1, eax;
+              mov eax, 0x40800000;
+              movd xmm2, eax;
+              mov eax, 0x41000000;
+              movd xmm3, eax;
+              mov eax, 0x41800000;
+              movd xmm4, eax;
+              mov eax, 0x42000000;
+              movd xmm5, eax;
+              mov eax, 0x42800000;
+              movd xmm6, eax;
+              mov eax, 0x43000000;
+              movd xmm7, eax;
+              call r10
+              "
+            : "={rax}"(result)
+            : "{r10}"(all_the_registers as usize)
+            : "rdi", "rsi", "rdx", "rcx", "r8", "r9", "r11", "cc", "memory"
+            : "intel", "alignstack"
+        )
+    }
+    assert_eq!(result, 42);
 
     assert_eq!(
         large_struct_by_val(LargeStruct(1, 2, 3, 4, 5, 6, 7, 8)),
         LargeStruct(1, 4, 9, 16, 25, 36, 49, 64)
     );
 }
+
+#[cfg(not(target_arch = "x86_64"))]
+pub fn main() {}
