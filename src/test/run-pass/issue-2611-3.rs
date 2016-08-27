@@ -22,7 +22,6 @@ struct E {
 
 impl A for E {
   fn b<F,G>(&self, _x: F) -> F { panic!() }
-  //~^ ERROR in method `b`, type parameter 0 has 1 bound, but
 }
 
 pub fn main() {}

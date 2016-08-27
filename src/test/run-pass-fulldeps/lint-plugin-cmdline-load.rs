@@ -13,6 +13,8 @@
 // ignore-pretty: Random space appears with the pretty test
 // compile-flags: -Z extra-plugins=lint_plugin_test
 
+#![allow(dead_code)]
+
 fn lintme() { } //~ WARNING item is named 'lintme'
 
 #[allow(test_lint)]
