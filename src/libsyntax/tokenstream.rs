@@ -376,12 +376,12 @@ impl fmt::Debug for InternalTS {
             InternalTS::Empty(..) => Ok(()),
             InternalTS::Leaf { ref tts, offset, len, .. } => {
                 for t in tts.iter().skip(offset).take(len) {
-                    try!(write!(f, "{:?}", t));
+                    write!(f, "{:?}", t)?;
                 }
                 Ok(())
             }
             InternalTS::Node { ref left, ref right, .. } => {
-                try!(left.fmt(f));
+                left.fmt(f)?;
                 right.fmt(f)
             }
         }
