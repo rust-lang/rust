@@ -68,7 +68,7 @@ fn build_pre_link_args(arch: Arch) -> Result<Vec<String>, String> {
 
     let arch_name = arch.to_string();
 
-    let sdk_root = try!(get_sdk_root(sdk_name));
+    let sdk_root = get_sdk_root(sdk_name)?;
 
     Ok(vec!["-arch".to_string(), arch_name.to_string(),
          "-Wl,-syslibroot".to_string(), sdk_root])
@@ -85,7 +85,7 @@ fn target_cpu(arch: Arch) -> String {
 }
 
 pub fn opts(arch: Arch) -> Result<TargetOptions, String> {
-    let pre_link_args = try!(build_pre_link_args(arch));
+    let pre_link_args = build_pre_link_args(arch)?;
     Ok(TargetOptions {
         cpu: target_cpu(arch),
         dynamic_linking: false,
