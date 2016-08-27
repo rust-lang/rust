@@ -209,7 +209,7 @@ mod fallback {
         let end_align = (ptr as usize + len) & (usize_bytes - 1);
         let mut offset;
         if end_align > 0 {
-            offset = len - cmp::min(usize_bytes - end_align, len);
+            offset = if end_align >= len { 0 } else { len - end_align };
             if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
                 return Some(offset + index);
             }
@@ -309,6 +309,17 @@ mod fallback {
     fn no_match_reversed() {
         assert_eq!(None, memrchr(b'a', b"xyz"));
     }
+
+    #[test]
+    fn each_alignment_reversed() {
+        let mut data = [1u8; 64];
+        let needle = 2;
+        let pos = 40;
+        data[pos] = needle;
+        for start in 0..16 {
+            assert_eq!(Some(pos - start), memrchr(needle, &data[start..]));
+        }
+    }
 }
 
 #[cfg(test)]
@@ -384,5 +395,16 @@ mod tests {
     #[test]
     fn no_match_reversed() {
         assert_eq!(None, memrchr(b'a', b"xyz"));
+    }
+
+    #[test]
+    fn each_alignment() {
+        let mut data = [1u8; 64];
+        let needle = 2;
+        let pos = 40;
+        data[pos] = needle;
+        for start in 0..16 {
+            assert_eq!(Some(pos - start), memchr(needle, &data[start..]));
+        }
     }
 }
