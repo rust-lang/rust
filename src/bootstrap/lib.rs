@@ -308,10 +308,6 @@ impl Build {
                     doc::rustbook(self, stage, target.target, "nomicon",
                                   &doc_out);
                 }
-                DocStyle { stage } => {
-                    doc::rustbook(self, stage, target.target, "style",
-                                  &doc_out);
-                }
                 DocStandalone { stage } => {
                     doc::standalone(self, stage, target.target, &doc_out);
                 }
