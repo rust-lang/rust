@@ -150,14 +150,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.write_ty(pat.id, typ);
             }
             PatKind::TupleStruct(ref path, ref subpats, ddpos) => {
-                self.check_pat_tuple_struct(pat, path, &subpats, ddpos, expected);
+                let pat_ty = self.check_pat_tuple_struct(pat, path, &subpats, ddpos, expected);
+                write_ty(pat.id, pat_ty);
             }
             PatKind::Path(ref opt_qself, ref path) => {
                 let opt_qself_ty = opt_qself.as_ref().map(|qself| self.to_ty(&qself.ty));
-                self.check_pat_path(pat, opt_qself_ty, path, expected);
+                let pat_ty = self.check_pat_path(pat, opt_qself_ty, path, expected);
+                write_ty(pat.id, pat_ty);
             }
             PatKind::Struct(ref path, ref fields, etc) => {
-                self.check_pat_struct(pat, path, fields, etc, expected);
+                let pat_ty = self.check_pat_struct(pat, path, fields, etc, expected);
+                write_ty(pat.id, pat_ty);
             }
             PatKind::Tuple(ref elements, ddpos) => {
                 let mut expected_len = elements.len();
@@ -481,40 +484,38 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         path: &hir::Path,
                         fields: &'gcx [Spanned<hir::FieldPat>],
                         etc: bool,
-                        expected: Ty<'tcx>)
+                        expected: Ty<'tcx>) -> Ty<'tcx>
     {
         // Resolve the path and check the definition for errors.
         let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(path, pat.id,
                                                                                  pat.span) {
             variant_ty
         } else {
-            self.write_error(pat.id);
             for field in fields {
                 self.check_pat(&field.node.pat, self.tcx.types.err);
             }
-            return;
+            return tcx.types.err;
         };
-        self.write_ty(pat.id, pat_ty);
 
         // Type check the path.
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
         self.check_struct_pat_fields(pat_ty, pat.span, variant, fields, etc);
+        pat_ty
     }
 
     fn check_pat_path(&self,
                       pat: &hir::Pat,
                       opt_self_ty: Option<Ty<'tcx>>,
                       path: &hir::Path,
-                      expected: Ty<'tcx>)
+                      expected: Ty<'tcx>) -> Ty<'tcx>
     {
         let tcx = self.tcx;
         let report_unexpected_def = || {
             span_err!(tcx.sess, pat.span, E0533,
                       "`{}` does not name a unit variant, unit struct or a constant",
                       pprust::path_to_string(path));
-            self.write_error(pat.id);
         };
 
         // Resolve the path and check the definition for errors.
@@ -523,18 +524,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match def {
             Def::Err => {
                 self.set_tainted_by_errors();
-                self.write_error(pat.id);
-                return;
+                return tcx.types.err;
             }
             Def::Method(..) => {
                 report_unexpected_def();
-                return;
+                return tcx.types.err;
             }
             Def::Variant(..) | Def::Struct(..) => {
                 let variant = tcx.expect_variant_def(def);
                 if variant.kind != VariantKind::Unit {
                     report_unexpected_def();
-                    return;
+                    return tcx.types.err;
                 }
             }
             Def::Const(..) | Def::AssociatedConst(..) => {} // OK
@@ -543,8 +543,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
-        self.write_ty(pat.id, pat_ty);
         self.demand_suptype(pat.span, expected, pat_ty);
+        pat_ty
     }
 
     fn check_pat_tuple_struct(&self,
@@ -552,11 +552,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               path: &hir::Path,
                               subpats: &'gcx [P<hir::Pat>],
                               ddpos: Option<usize>,
-                              expected: Ty<'tcx>)
+                              expected: Ty<'tcx>) -> Ty<'tcx>
     {
         let tcx = self.tcx;
         let on_error = || {
-            self.write_error(pat.id);
             for pat in subpats {
                 self.check_pat(&pat, tcx.types.err);
             }
@@ -580,11 +579,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Err => {
                 self.set_tainted_by_errors();
                 on_error();
-                return;
+                return tcx.types.err;
             }
             Def::Const(..) | Def::AssociatedConst(..) | Def::Method(..) => {
                 report_unexpected_def(false);
-                return;
+                return tcx.types.err;
             }
             Def::Variant(..) | Def::Struct(..) => {
                 tcx.expect_variant_def(def)
@@ -597,13 +596,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             report_unexpected_def(true);
         } else if variant.kind != VariantKind::Tuple {
             report_unexpected_def(false);
-            return;
+            return tcx.types.err;
         }
 
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
-        self.write_ty(pat.id, pat_ty);
-
         let pat_ty = if pat_ty.is_fn() {
             // Replace constructor type with constructed type for tuple struct patterns.
             tcx.no_late_bound_regions(&pat_ty.fn_ret()).unwrap()
@@ -611,7 +608,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Leave the type as is for unit structs (backward compatibility).
             pat_ty
         };
-        self.write_ty(pat.id, pat_ty);
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
@@ -644,7 +640,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                variant.fields.len(), fields_ending, subpats.len()))
                 .emit();
             on_error();
+            return tcx.types.err;
         }
+        pat_ty
     }
 
     fn check_struct_pat_fields(&self,
