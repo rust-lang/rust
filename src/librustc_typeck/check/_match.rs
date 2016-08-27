@@ -54,8 +54,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                self.write_ty(pat.id, pat_ty);
-
                 // somewhat surprising: in this case, the subtyping
                 // relation goes the opposite way as the other
                 // cases. Actually what we really want is not a subtyping
@@ -69,6 +67,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //
                 // that's equivalent to there existing a LUB.
                 self.demand_suptype(pat.span, expected, pat_ty);
+                self.write_ty(pat.id, pat_ty);
             }
             PatKind::Range(ref begin, ref end) => {
                 let lhs_ty = self.check_expr(begin);
@@ -101,11 +100,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // it to type the entire expression.
                 let common_type = self.resolve_type_vars_if_possible(&lhs_ty);
 
-                self.write_ty(pat.id, common_type);
-
                 // subtyping doesn't matter here, as the value is some kind of scalar
                 self.demand_eqtype(pat.span, expected, lhs_ty);
                 self.demand_eqtype(pat.span, expected, rhs_ty);
+                self.write_ty(pat.id, common_type);
             }
             PatKind::Binding(bm, _, ref sub) => {
                 let typ = self.local_ty(pat.span, pat.id);
@@ -132,8 +130,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                self.write_ty(pat.id, typ);
-
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
                 match tcx.expect_def(pat.id) {
@@ -150,6 +146,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Some(ref p) = *sub {
                     self.check_pat(&p, expected);
                 }
+
+                self.write_ty(pat.id, typ);
             }
             PatKind::TupleStruct(ref path, ref subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, path, &subpats, ddpos, expected);
@@ -174,11 +172,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 let element_tys: Vec<_> = (0 .. max_len).map(|_| self.next_ty_var()).collect();
                 let pat_ty = tcx.mk_tup(element_tys.clone());
-                self.write_ty(pat.id, pat_ty);
                 self.demand_eqtype(pat.span, expected, pat_ty);
                 for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                     self.check_pat(elem, &element_tys[i]);
                 }
+                self.write_ty(pat.id, pat_ty);
             }
             PatKind::Box(ref inner) => {
                 let inner_ty = self.next_ty_var();
@@ -189,11 +187,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // think any errors can be introduced by using
                     // `demand::eqtype`.
                     self.demand_eqtype(pat.span, expected, uniq_ty);
-                    self.write_ty(pat.id, uniq_ty);
                     self.check_pat(&inner, inner_ty);
+                    self.write_ty(pat.id, uniq_ty);
                 } else {
-                    self.write_error(pat.id);
                     self.check_pat(&inner, tcx.types.err);
+                    self.write_error(pat.id);
                 }
             }
             PatKind::Ref(ref inner, mutbl) => {
@@ -221,11 +219,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     };
 
-                    self.write_ty(pat.id, rptr_ty);
                     self.check_pat(&inner, inner_ty);
+                    self.write_ty(pat.id, rptr_ty);
                 } else {
-                    self.write_error(pat.id);
                     self.check_pat(&inner, tcx.types.err);
+                    self.write_error(pat.id);
                 }
             }
             PatKind::Vec(ref before, ref slice, ref after) => {
@@ -277,8 +275,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                self.write_ty(pat.id, expected_ty);
-
                 for elt in before {
                     self.check_pat(&elt, inner_ty);
                 }
@@ -288,6 +284,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 for elt in after {
                     self.check_pat(&elt, inner_ty);
                 }
+                self.write_ty(pat.id, expected_ty);
             }
         }
 
