@@ -1228,7 +1228,9 @@ pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, id: ast::Node
             }
             let e = fields[0].ty(tcx, substs);
             if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
-                span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous");
+                struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
+                                .span_label(sp, &format!("SIMD elements must have the same type"))
+                                .emit();
                 return;
             }
             match e.sty {
