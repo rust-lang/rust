@@ -160,8 +160,8 @@ impl Index<Location> for LocMap {
     type Output = [MoveOutIndex];
     fn index(&self, index: Location) -> &Self::Output {
         assert!(index.block.index() < self.map.len());
-        assert!(index.index < self.map[index.block.index()].len());
-        &self.map[index.block.index()][index.index]
+        assert!(index.statement_index < self.map[index.block.index()].len());
+        &self.map[index.block.index()][index.statement_index]
     }
 }
 
@@ -197,21 +197,6 @@ pub struct MoveOut {
 impl fmt::Debug for MoveOut {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "p{}@{:?}", self.path.index(), self.source)
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Location {
-    /// block where action is located
-    pub block: BasicBlock,
-    /// index within above block; statement when < statments.len) or
-    /// the terminator (when = statements.len).
-    pub index: usize,
-}
-
-impl fmt::Debug for Location {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{:?}[{}]", self.block, self.index)
     }
 }
 
@@ -569,7 +554,7 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
         };
 
         for (i, stmt) in bb_data.statements.iter().enumerate() {
-            let source = Location { block: bb, index: i };
+            let source = Location { block: bb, statement_index: i };
             match stmt.kind {
                 StatementKind::Assign(ref lval, ref rval) => {
                     bb_ctxt.builder.create_move_path(lval);
@@ -631,14 +616,14 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
 
             TerminatorKind::Return => {
                 let source = Location { block: bb,
-                                        index: bb_data.statements.len() };
+                                        statement_index: bb_data.statements.len() };
                 debug!("gather_moves Return on_move_out_lval return {:?}", source);
                 bb_ctxt.on_move_out_lval(SK::Return, &Lvalue::ReturnPointer, source);
             }
 
             TerminatorKind::If { ref cond, targets: _ } => {
                 let source = Location { block: bb,
-                                        index: bb_data.statements.len() };
+                                        statement_index: bb_data.statements.len() };
                 bb_ctxt.on_operand(SK::If, cond, source);
             }
 
@@ -669,7 +654,7 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
 
             TerminatorKind::Drop { ref location, target: _, unwind: _ } => {
                 let source = Location { block: bb,
-                                        index: bb_data.statements.len() };
+                                        statement_index: bb_data.statements.len() };
                 bb_ctxt.on_move_out_lval(SK::Drop, location, source);
             }
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
@@ -677,12 +662,12 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                 bb_ctxt.path_map.fill_to(assigned_path.index());
 
                 let source = Location { block: bb,
-                                        index: bb_data.statements.len() };
+                                        statement_index: bb_data.statements.len() };
                 bb_ctxt.on_operand(SK::Use, value, source);
             }
             TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
                 let source = Location { block: bb,
-                                        index: bb_data.statements.len() };
+                                        statement_index: bb_data.statements.len() };
                 bb_ctxt.on_operand(SK::CallFn, func, source);
                 for arg in args {
                     debug!("gather_moves Call on_operand {:?} {:?}", arg, source);
@@ -757,7 +742,7 @@ impl<'b, 'tcx: 'b> BlockContext<'b, 'tcx> {
                         stmt_kind: StmtKind,
                         lval: &Lvalue<'tcx>,
                         source: Location) {
-        let i = source.index;
+        let i = source.statement_index;
         let index = MoveOutIndex::new(self.moves.len());
 
         let path = self.builder.move_path_for(lval);

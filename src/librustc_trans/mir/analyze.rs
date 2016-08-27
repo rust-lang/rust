@@ -15,6 +15,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::repr as mir;
 use rustc::mir::repr::TerminatorKind;
+use rustc::mir::repr::Location;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common::{self, Block, BlockAndBuilder};
@@ -104,7 +105,8 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
                     lvalue: &mir::Lvalue<'tcx>,
-                    rvalue: &mir::Rvalue<'tcx>) {
+                    rvalue: &mir::Rvalue<'tcx>,
+                    location: Location) {
         debug!("visit_assign(block={:?}, lvalue={:?}, rvalue={:?})", block, lvalue, rvalue);
 
         if let Some(index) = self.mir.local_index(lvalue) {
@@ -113,15 +115,16 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
                 self.mark_as_lvalue(index);
             }
         } else {
-            self.visit_lvalue(lvalue, LvalueContext::Store);
+            self.visit_lvalue(lvalue, LvalueContext::Store, location);
         }
 
-        self.visit_rvalue(rvalue);
+        self.visit_rvalue(rvalue, location);
     }
 
     fn visit_terminator_kind(&mut self,
                              block: mir::BasicBlock,
-                             kind: &mir::TerminatorKind<'tcx>) {
+                             kind: &mir::TerminatorKind<'tcx>,
+                             location: Location) {
         match *kind {
             mir::TerminatorKind::Call {
                 func: mir::Operand::Constant(mir::Constant {
@@ -133,18 +136,19 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
                 if let mir::Operand::Consume(ref lvalue) = args[0] {
-                    self.visit_lvalue(lvalue, LvalueContext::Drop);
+                    self.visit_lvalue(lvalue, LvalueContext::Drop, location);
                 }
             }
             _ => {}
         }
 
-        self.super_terminator_kind(block, kind);
+        self.super_terminator_kind(block, kind, location);
     }
 
     fn visit_lvalue(&mut self,
                     lvalue: &mir::Lvalue<'tcx>,
-                    context: LvalueContext) {
+                    context: LvalueContext,
+                    location: Location) {
         debug!("visit_lvalue(lvalue={:?}, context={:?})", lvalue, context);
 
         // Allow uses of projections of immediate pair fields.
@@ -196,11 +200,11 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
         // A deref projection only reads the pointer, never needs the lvalue.
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
             if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_lvalue(&proj.base, LvalueContext::Consume);
+                return self.visit_lvalue(&proj.base, LvalueContext::Consume, location);
             }
         }
 
-        self.super_lvalue(lvalue, context);
+        self.super_lvalue(lvalue, context, location);
     }
 }
 
