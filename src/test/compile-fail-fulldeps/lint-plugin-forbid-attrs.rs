@@ -15,11 +15,13 @@
 #![plugin(lint_plugin_test)]
 #![forbid(test_lint)]
 //~^ NOTE lint level defined here
-//~| NOTE `forbid` lint level set here
+//~| NOTE `forbid` level set here
 
 fn lintme() { } //~ ERROR item is named 'lintme'
 
-#[allow(test_lint)] //~ ERROR allow(test_lint) overruled by outer forbid(test_lint)
+#[allow(test_lint)]
+//~^ ERROR allow(test_lint) overruled by outer forbid(test_lint)
+//~| NOTE overruled by previous forbid
 pub fn main() {
     lintme();
 }

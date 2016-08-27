@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn bar(&self);
-}
+struct Value {}
 
-fn some_func<T: Foo>(foo: T) {
-    foo.bar();
-}
+fn eat(val: Value) {}
 
 fn main() {
-    some_func(5i32);
-    //~^ ERROR the trait bound `i32: Foo` is not satisfied
-    //~| NOTE trait `i32: Foo` not satisfied
-    //~| NOTE required by `some_func`
+    let x = Value{};
+    {
+        let _ref_to_val: &Value = &x;
+        eat(x); //~ ERROR E0505
+    }
 }

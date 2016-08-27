@@ -16,5 +16,6 @@ fn main() {
     let mut fancy = FancyNum{ num: 5 };
     let fancy_ref = &(&mut fancy);
     fancy_ref.num = 6; //~ ERROR E0389
+                       //~^ NOTE assignment into an immutable reference
     println!("{}", fancy_ref.num);
 }
