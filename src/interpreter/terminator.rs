@@ -1,9 +1,9 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::repr as mir;
-use rustc::traits::{self, ProjectionMode};
+use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::layout::Layout;
-use rustc::ty::subst::{self, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
 use std::rc::Rc;
 use std::iter;
@@ -150,25 +150,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use syntax::abi::Abi;
         match fn_ty.abi {
             Abi::RustIntrinsic => {
-                let name = self.tcx.item_name(def_id).as_str();
-                match fn_ty.sig.0.output {
-                    ty::FnConverging(ty) => {
-                        let layout = self.type_layout(ty);
-                        let ret = return_ptr.unwrap();
-                        self.call_intrinsic(&name, substs, args, ret, layout)
-                    }
-                    ty::FnDiverging => unimplemented!(),
-                }
+                let ty = fn_ty.sig.0.output;
+                let layout = self.type_layout(ty);
+                let ret = return_ptr.unwrap();
+                self.call_intrinsic(def_id, substs, args, ret, layout)
             }
 
             Abi::C => {
-                match fn_ty.sig.0.output {
-                    ty::FnConverging(ty) => {
-                        let size = self.type_size(ty);
-                        self.call_c_abi(def_id, args, return_ptr.unwrap(), size)
-                    }
-                    ty::FnDiverging => unimplemented!(),
-                }
+                let ty = fn_ty.sig.0.output;
+                let size = self.type_size(ty);
+                self.call_c_abi(def_id, args, return_ptr.unwrap(), size)
             }
 
             Abi::Rust | Abi::RustCall => {
@@ -176,11 +167,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // FnMut closure via FnOnce::call_once.
 
                 // Only trait methods can have a Self parameter.
-                let (resolved_def_id, resolved_substs) = if substs.self_ty().is_some() {
-                    self.trait_method(def_id, substs)
-                } else {
-                    (def_id, substs)
-                };
+                let (resolved_def_id, resolved_substs) =
+                    if let Some(trait_id) = self.tcx.trait_of_item(def_id) {
+                        self.trait_method(trait_id, def_id, substs)
+                    } else {
+                        (def_id, substs)
+                    };
 
                 let mut arg_srcs = Vec::new();
                 for arg in args {
@@ -265,7 +257,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn call_intrinsic(
         &mut self,
-        name: &str,
+        def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         args: &[mir::Operand<'tcx>],
         dest: Pointer,
@@ -275,10 +267,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             .map(|arg| self.eval_operand(arg))
             .collect();
         let args_ptrs = args_res?;
-
         let pointer_size = self.memory.pointer_size();
 
-        match name {
+        match &self.tcx.item_name(def_id).as_str()[..] {
             "add_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_layout)?,
             "sub_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Sub, &args[0], &args[1], dest, dest_layout)?,
             "mul_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Mul, &args[0], &args[1], dest, dest_layout)?,
@@ -287,7 +278,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "assume" => {}
 
             "copy_nonoverlapping" => {
-                let elem_ty = *substs.types.get(subst::FnSpace, 0);
+                let elem_ty = substs.types[0];
                 let elem_size = self.type_size(elem_ty);
                 let elem_align = self.type_align(elem_ty);
                 let src = self.memory.read_ptr(args_ptrs[0])?;
@@ -297,7 +288,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "discriminant_value" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
+                let ty = substs.types[0];
                 let adt_ptr = self.memory.read_ptr(args_ptrs[0])?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
                 self.memory.write_uint(dest, discr_val, 8)?;
@@ -308,19 +299,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "init" => self.memory.write_repeat(dest, 0, dest_layout.size(&self.tcx.data_layout).bytes() as usize)?,
 
             "min_align_of" => {
-                let elem_ty = *substs.types.get(subst::FnSpace, 0);
+                let elem_ty = substs.types[0];
                 let elem_align = self.type_align(elem_ty);
                 self.memory.write_uint(dest, elem_align as u64, pointer_size)?;
             }
 
             "move_val_init" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
+                let ty = substs.types[0];
                 let ptr = self.memory.read_ptr(args_ptrs[0])?;
                 self.move_(args_ptrs[1], ptr, ty)?;
             }
 
             "offset" => {
-                let pointee_ty = *substs.types.get(subst::FnSpace, 0);
+                let pointee_ty = substs.types[0];
                 let pointee_size = self.type_size(pointee_ty) as isize;
                 let ptr_arg = args_ptrs[0];
                 let offset = self.memory.read_isize(args_ptrs[1])?;
@@ -342,21 +333,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "overflowing_sub" => {
                 self.intrinsic_overflowing(mir::BinOp::Sub, &args[0], &args[1], dest)?;
             }
+
             "overflowing_mul" => {
                 self.intrinsic_overflowing(mir::BinOp::Mul, &args[0], &args[1], dest)?;
             }
+
             "overflowing_add" => {
                 self.intrinsic_overflowing(mir::BinOp::Add, &args[0], &args[1], dest)?;
             }
 
             "size_of" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
+                let ty = substs.types[0];
                 let size = self.type_size(ty) as u64;
                 self.memory.write_uint(dest, size, pointer_size)?;
             }
 
             "size_of_val" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
+                let ty = substs.types[0];
                 if self.type_is_sized(ty) {
                     let size = self.type_size(ty) as u64;
                     self.memory.write_uint(dest, size, pointer_size)?;
@@ -376,7 +369,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "transmute" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
+                let ty = substs.types[0];
                 self.move_(args_ptrs[0], dest, ty)?;
             }
             "uninit" => self.memory.mark_definedness(dest, dest_layout.size(&self.tcx.data_layout).bytes() as usize, false)?,
@@ -464,7 +457,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
-        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+        self.tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
             let mut selcx = traits::SelectionContext::new(&infcx);
 
             let obligation = traits::Obligation::new(
@@ -486,21 +479,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     /// Trait method, which has to be resolved to an impl method.
     fn trait_method(
         &self,
+        trait_id: DefId,
         def_id: DefId,
         substs: &'tcx Substs<'tcx>
     ) -> (DefId, &'tcx Substs<'tcx>) {
-        let method_item = self.tcx.impl_or_trait_item(def_id);
-        let trait_id = method_item.container().id();
-        let trait_ref = ty::Binder(substs.to_trait_ref(self.tcx, trait_id));
+        let trait_ref = ty::TraitRef::from_method(self.tcx, trait_id, substs);
+        let trait_ref = self.tcx.normalize_associated_type(&ty::Binder(trait_ref));
+
         match self.fulfill_obligation(trait_ref) {
             traits::VtableImpl(vtable_impl) => {
                 let impl_did = vtable_impl.impl_def_id;
                 let mname = self.tcx.item_name(def_id);
                 // Create a concatenated set of substitutions which includes those from the impl
                 // and those from the method:
-                let impl_substs = vtable_impl.substs.with_method_from(substs);
-                let substs = self.tcx.mk_substs(impl_substs);
-                let mth = get_impl_method(self.tcx, impl_did, substs, mname);
+                let mth = get_impl_method(self.tcx, substs, impl_did, vtable_impl.substs, mname);
 
                 (mth.method.def_id, mth.substs)
             }
@@ -573,8 +565,9 @@ struct ImplMethod<'tcx> {
 /// Locates the applicable definition of a method, given its name.
 fn get_impl_method<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    impl_def_id: DefId,
     substs: &'tcx Substs<'tcx>,
+    impl_def_id: DefId,
+    impl_substs: &'tcx Substs<'tcx>,
     name: ast::Name,
 ) -> ImplMethod<'tcx> {
     assert!(!substs.types.needs_infer());
@@ -584,7 +577,8 @@ fn get_impl_method<'a, 'tcx>(
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
-            let substs = tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+            let substs = tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+                let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);
                 let substs = traits::translate_substs(&infcx, impl_def_id,
                                                       substs, node_item.node);
                 tcx.lift(&substs).unwrap_or_else(|| {

@@ -1,7 +1,7 @@
-fn main() { //~ ERROR tried to call a function of type
+fn main() {
     fn f() {}
 
-    let g = unsafe {
+    let g = unsafe { //~ ERROR tried to call a function of type
         std::mem::transmute::<fn(), fn(i32)>(f)
     };
 

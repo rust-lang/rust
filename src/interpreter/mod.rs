@@ -2,7 +2,7 @@ use rustc::middle::const_val;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
-use rustc::traits::ProjectionMode;
+use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -12,7 +12,6 @@ use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::iter;
-use syntax::ast;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
@@ -148,15 +147,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn alloc_ret_ptr(&mut self, output_ty: ty::FnOutput<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, Option<Pointer>> {
-        match output_ty {
-            ty::FnConverging(ty) => {
-                let size = self.type_size_with_substs(ty, substs);
-                let align = self.type_align_with_substs(ty, substs);
-                self.memory.allocate(size, align).map(Some)
-            }
-            ty::FnDiverging => Ok(None),
-        }
+    pub fn alloc_ret_ptr(&mut self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, Pointer> {
+        let size = self.type_size_with_substs(ty, substs);
+        let align = self.type_align_with_substs(ty, substs);
+        self.memory.allocate(size, align)
     }
 
     pub fn memory(&self) -> &Memory<'a, 'tcx> {
@@ -251,22 +245,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
-        match self.tcx.map.as_local_node_id(def_id) {
-            Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
-            None => {
-                let mut mir_cache = self.mir_cache.borrow_mut();
-                if let Some(mir) = mir_cache.get(&def_id) {
-                    return CachedMir::Owned(mir.clone());
-                }
-
-                let cs = &self.tcx.sess.cstore;
-                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
-                    panic!("no mir for `{}`", self.tcx.item_path_str(def_id));
-                });
-                let cached = Rc::new(mir);
-                mir_cache.insert(def_id, cached.clone());
-                CachedMir::Owned(cached)
+        if def_id.is_local() {
+            CachedMir::Ref(self.mir_map.map.get(&def_id).unwrap())
+        } else {
+            let mut mir_cache = self.mir_cache.borrow_mut();
+            if let Some(mir) = mir_cache.get(&def_id) {
+                return CachedMir::Owned(mir.clone());
             }
+
+            let cs = &self.tcx.sess.cstore;
+            let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
+                panic!("no mir for `{}`", self.tcx.item_path_str(def_id));
+            });
+            let cached = Rc::new(mir);
+            mir_cache.insert(def_id, cached.clone());
+            CachedMir::Owned(cached)
         }
     }
 
@@ -299,7 +292,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty, substs);
 
-        self.tcx.normalizing_infer_ctxt(ProjectionMode::Any).enter(|infcx| {
+        self.tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
             // TODO(solson): Report this error properly.
             ty.layout(&infcx).unwrap()
         })
@@ -755,7 +748,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Temp(i) => self.frame().locals[self.frame().temp_offset + i.index()],
 
             Static(def_id) => {
-                let substs = self.tcx.mk_substs(subst::Substs::empty());
+                let substs = subst::Substs::empty(self.tcx);
                 let cid = ConstantId {
                     def_id: def_id,
                     substs: substs,
@@ -846,11 +839,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx), self.substs())
+        self.monomorphize(lvalue.ty(&self.mir(), self.tcx).to_ty(self.tcx), self.substs())
     }
 
     fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(self.mir().operand_ty(self.tcx, operand), self.substs())
+        self.monomorphize(operand.ty(&self.mir(), self.tcx), self.substs())
     }
 
     fn move_(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
@@ -961,21 +954,19 @@ impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir_map: &'a MirMap<'tcx>,
-    node_id: ast::NodeId,
+    def_id: DefId,
     memory_size: usize,
     step_limit: u64,
     stack_limit: usize,
 ) {
-    let mir = mir_map.map.get(&node_id).expect("no mir for main function");
-    let def_id = tcx.map.local_def_id(node_id);
+    let mir = mir_map.map.get(&def_id).expect("no mir for main function");
     let mut ecx = EvalContext::new(tcx, mir_map, memory_size, stack_limit);
-    let substs = tcx.mk_substs(subst::Substs::empty());
+    let substs = subst::Substs::empty(tcx);
     let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
-                        .expect("should at least be able to allocate space for the main function's return value")
-                        .expect("main function should not be diverging");
+        .expect("should at least be able to allocate space for the main function's return value");
 
     ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr))
-       .expect("could not allocate first stack frame");
+        .expect("could not allocate first stack frame");
 
     if mir.arg_decls.len() == 2 {
         // start function
@@ -1018,8 +1009,7 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
         struct Instance<'tcx>(DefId, &'tcx subst::Substs<'tcx>);
         impl<'tcx> fmt::Display for Instance<'tcx> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
-                    |tcx| Some(tcx.lookup_item_type(self.0).generics))
+                ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[])
             }
         }
         err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));

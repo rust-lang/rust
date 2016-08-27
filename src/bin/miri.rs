@@ -33,8 +33,9 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 
             let tcx = state.tcx.unwrap();
             let mir_map = state.mir_map.unwrap();
-            let (node_id, _) = state.session.entry_fn.borrow()
+            let (entry_node_id, _) = state.session.entry_fn.borrow()
                 .expect("no main or start function found");
+            let entry_def_id = tcx.map.local_def_id(entry_node_id);
 
             let krate = state.hir_crate.as_ref().unwrap();
             let mut memory_size = 100*1024*1024; // 100MB
@@ -66,9 +67,12 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                 }
             }
 
-            let mut mir_map = MirMap { map: mir_map.map.clone() };
-            run_mir_passes(tcx, &mut mir_map);
-            eval_main(tcx, &mir_map, node_id, memory_size, step_limit, stack_limit);
+            let mut mir_map_copy = MirMap::new(tcx.dep_graph.clone());
+            for def_id in mir_map.map.keys() {
+                mir_map_copy.map.insert(def_id, mir_map.map.get(&def_id).unwrap().clone());
+            }
+            run_mir_passes(tcx, &mut mir_map_copy);
+            eval_main(tcx, &mir_map_copy, entry_def_id, memory_size, step_limit, stack_limit);
 
             state.session.abort_if_errors();
         });

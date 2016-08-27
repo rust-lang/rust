@@ -66,8 +66,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx, ()> {
         trace!("{:?}", stmt);
-        let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-        self.eval_assignment(lvalue, rvalue)?;
+
+        use rustc::mir::repr::StatementKind::*;
+        match stmt.kind {
+            Assign(ref lvalue, ref rvalue) => self.eval_assignment(lvalue, rvalue)?,
+            SetDiscriminant { .. } => unimplemented!(),
+
+            // Miri can safely ignore these. Only translation needs them.
+            StorageLive(_) | StorageDead(_) => {}
+        }
+
         self.frame_mut().stmt += 1;
         Ok(())
     }
@@ -110,7 +118,6 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         let mir = self.ecx.load_mir(def_id);
         self.try(|this| {
             let ptr = this.ecx.alloc_ret_ptr(mir.return_ty, substs)?;
-            let ptr = ptr.expect("there's no such thing as an unreachable static");
             this.ecx.statics.insert(cid.clone(), ptr);
             this.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr))
         });
@@ -155,7 +162,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 let return_ty = mir.return_ty;
                 self.try(|this| {
                     let return_ptr = this.ecx.alloc_ret_ptr(return_ty, cid.substs)?;
-                    let return_ptr = return_ptr.expect("there's no such thing as an unreachable static");
                     let mir = CachedMir::Owned(Rc::new(mir));
                     this.ecx.statics.insert(cid.clone(), return_ptr);
                     this.ecx.push_stack_frame(this.def_id, constant.span, mir, this.substs, Some(return_ptr))
@@ -167,7 +173,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>, context: LvalueContext) {
         self.super_lvalue(lvalue, context);
         if let mir::Lvalue::Static(def_id) = *lvalue {
-            let substs = self.ecx.tcx.mk_substs(subst::Substs::empty());
+            let substs = subst::Substs::empty(self.ecx.tcx);
             let span = self.span;
             self.global_item(def_id, substs, span);
         }
