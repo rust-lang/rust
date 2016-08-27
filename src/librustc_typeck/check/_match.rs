@@ -32,9 +32,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("check_pat(pat={:?},expected={:?})", pat, expected);
 
-        match pat.node {
+        let ty = match pat.node {
             PatKind::Wild => {
-                self.write_ty(pat.id, expected);
+                expected
             }
             PatKind::Lit(ref lt) => {
                 let ty = self.check_expr(&lt);
@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //
                 // that's equivalent to there existing a LUB.
                 self.demand_suptype(pat.span, expected, pat_ty);
-                self.write_ty(pat.id, pat_ty);
+                pat_ty
             }
             PatKind::Range(ref begin, ref end) => {
                 let lhs_ty = self.check_expr(begin);
@@ -103,7 +103,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // subtyping doesn't matter here, as the value is some kind of scalar
                 self.demand_eqtype(pat.span, expected, lhs_ty);
                 self.demand_eqtype(pat.span, expected, rhs_ty);
-                self.write_ty(pat.id, common_type);
+                common_type
             }
             PatKind::Binding(bm, _, ref sub) => {
                 let typ = self.local_ty(pat.span, pat.id);
@@ -147,20 +147,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.check_pat(&p, expected);
                 }
 
-                self.write_ty(pat.id, typ);
+                typ
             }
             PatKind::TupleStruct(ref path, ref subpats, ddpos) => {
-                let pat_ty = self.check_pat_tuple_struct(pat, path, &subpats, ddpos, expected);
-                write_ty(pat.id, pat_ty);
+                self.check_pat_tuple_struct(pat, path, &subpats, ddpos, expected)
             }
             PatKind::Path(ref opt_qself, ref path) => {
                 let opt_qself_ty = opt_qself.as_ref().map(|qself| self.to_ty(&qself.ty));
-                let pat_ty = self.check_pat_path(pat, opt_qself_ty, path, expected);
-                write_ty(pat.id, pat_ty);
+                self.check_pat_path(pat, opt_qself_ty, path, expected)
             }
             PatKind::Struct(ref path, ref fields, etc) => {
-                let pat_ty = self.check_pat_struct(pat, path, fields, etc, expected);
-                write_ty(pat.id, pat_ty);
+                self.check_pat_struct(pat, path, fields, etc, expected)
             }
             PatKind::Tuple(ref elements, ddpos) => {
                 let mut expected_len = elements.len();
@@ -179,7 +176,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                     self.check_pat(elem, &element_tys[i]);
                 }
-                self.write_ty(pat.id, pat_ty);
+                pat_ty
             }
             PatKind::Box(ref inner) => {
                 let inner_ty = self.next_ty_var();
@@ -191,10 +188,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // `demand::eqtype`.
                     self.demand_eqtype(pat.span, expected, uniq_ty);
                     self.check_pat(&inner, inner_ty);
-                    self.write_ty(pat.id, uniq_ty);
+                    uniq_ty
                 } else {
                     self.check_pat(&inner, tcx.types.err);
-                    self.write_error(pat.id);
+                    tcx.types.err
                 }
             }
             PatKind::Ref(ref inner, mutbl) => {
@@ -223,10 +220,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     };
 
                     self.check_pat(&inner, inner_ty);
-                    self.write_ty(pat.id, rptr_ty);
+                    rptr_ty
                 } else {
                     self.check_pat(&inner, tcx.types.err);
-                    self.write_error(pat.id);
+                    tcx.types.err
                 }
             }
             PatKind::Vec(ref before, ref slice, ref after) => {
@@ -287,9 +284,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 for elt in after {
                     self.check_pat(&elt, inner_ty);
                 }
-                self.write_ty(pat.id, expected_ty);
+                expected_ty
             }
-        }
+        };
+
+        self.write_ty(pat.id, ty);
 
         // (*) In most of the cases above (literals and constants being
         // the exception), we relate types using strict equality, evewn
@@ -494,7 +493,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for field in fields {
                 self.check_pat(&field.node.pat, self.tcx.types.err);
             }
-            return tcx.types.err;
+            return self.tcx.types.err;
         };
 
         // Type check the path.
