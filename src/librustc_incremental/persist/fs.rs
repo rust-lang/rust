@@ -412,7 +412,7 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     let random_number = thread_rng().next_u32();
     debug!("generate_session_dir_path: random_number = {}", random_number);
 
-    let directory_name = format!("s-{}-{}-working", 
+    let directory_name = format!("s-{}-{}-working",
                                   timestamp,
                                   encode_base_36(random_number as u64));
     debug!("generate_session_dir_path: directory_name = {}", directory_name);
@@ -1005,7 +1005,7 @@ fn test_find_metadata_hashes_iter()
         None
     );
 }
- 
+
 #[test]
 fn test_encode_base_36() {
     fn test(n: u64) {
