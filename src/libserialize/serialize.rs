@@ -14,6 +14,7 @@
 Core encoding and decoding interfaces.
 */
 
+use std::intrinsics;
 use std::path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
@@ -635,3 +636,97 @@ impl<D: Decoder> DecoderHelpers for D {
         })
     }
 }
+
+// ___________________________________________________________________________
+// Specialization-based interface for multi-dispatch Encodable/Decodable.
+
+/// Implement this trait on your `{Encodable,Decodable}::Error` types
+/// to override the default panic behavior for missing specializations.
+pub trait SpecializationError {
+    /// Create an error for a missing method specialization.
+    /// Defaults to panicking with type, trait & method names.
+    /// `S` is the encoder/decoder state type,
+    /// `T` is the type being encoded/decoded, and
+    /// the arguments are the names of the trait
+    /// and method that should've been overriden.
+    fn not_found<S, T: ?Sized>(trait_name: &'static str,
+                               method_name: &'static str) -> Self;
+}
+
+impl<E> SpecializationError for E {
+    default fn not_found<S, T: ?Sized>(trait_name: &'static str,
+                                       method_name: &'static str) -> E {
+        panic!("missing specializaiton: `<{} as {}<{}>>::{}` not overriden",
+               unsafe { intrinsics::type_name::<S>() },
+               trait_name,
+               unsafe { intrinsics::type_name::<T>() },
+               method_name);
+    }
+}
+
+/// Implement this trait on encoders, with `T` being the type
+/// you want to encode (employing `UseSpecializedEncodable`),
+/// using a strategy specific to the encoder.
+/// Can also be implemented alongside `UseSpecializedEncodable`
+/// to provide a default `specialized_encode` for encoders
+/// which do not implement `SpecializedEncoder` themselves.
+pub trait SpecializedEncoder<T: ?Sized>: Encoder {
+    /// Encode the value in a manner specific to this encoder state.
+    /// Defaults to returning an error (see `SpecializationError`).
+    fn specialized_encode(&mut self, value: &T) -> Result<(), Self::Error>;
+}
+
+impl<E: Encoder, T: ?Sized> SpecializedEncoder<T> for E {
+    default fn specialized_encode(&mut self, _: &T) -> Result<(), E::Error> {
+        Err(E::Error::not_found::<E, T>("SpecializedEncoder", "specialized_encode"))
+    }
+}
+
+/// Implement this trait on decoders, with `T` being the type
+/// you want to decode (employing `UseSpecializedDecodable`),
+/// using a strategy specific to the decoder.
+/// Can also be implemented alongside `UseSpecializedDecodable`
+/// to provide a default `specialized_decode` for decoders
+/// which do not implement `SpecializedDecoder` themselves.
+pub trait SpecializedDecoder<T>: Decoder {
+    /// Decode a value in a manner specific to this decoder state.
+    /// Defaults to returning an error (see `SpecializationError`).
+    fn specialized_decode(&mut self) -> Result<T, Self::Error>;
+}
+
+impl<D: Decoder, T> SpecializedDecoder<T> for D {
+    default fn specialized_decode(&mut self) -> Result<T, D::Error> {
+        Err(D::Error::not_found::<D, T>("SpecializedDecoder", "specialized_decode"))
+    }
+}
+
+/// Implement this trait on your type to get an `Encodable`
+/// implementation which goes through `SpecializedEncoder`.
+pub trait UseSpecializedEncodable {}
+
+impl<T: ?Sized + UseSpecializedEncodable> Encodable for T {
+    default fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+        E::specialized_encode(e, self)
+    }
+}
+
+/// Implement this trait on your type to get an `Decodable`
+/// implementation which goes through `SpecializedDecoder`.
+pub trait UseSpecializedDecodable: Sized {}
+
+impl<T: UseSpecializedDecodable> Decodable for T {
+    default fn decode<D: Decoder>(d: &mut D) -> Result<T, D::Error> {
+        D::specialized_decode(d)
+    }
+}
+
+// Can't avoid specialization for &T and Box<T> impls,
+// as proxy impls on them are blankets that conflict
+// with the Encodable and Decodable impls above,
+// which only have `default` on their methods
+// for this exact reason.
+// May be fixable in a simpler fashion via the
+// more complex lattice model for specialization.
+impl<'a, T: ?Sized + Encodable> UseSpecializedEncodable for &'a T {}
+impl<T: ?Sized + Encodable> UseSpecializedEncodable for Box<T> {}
+impl<T: Decodable> UseSpecializedDecodable for Box<T> {}

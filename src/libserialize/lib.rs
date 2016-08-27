@@ -29,8 +29,10 @@ Core encoding and decoding interfaces.
 
 #![feature(box_syntax)]
 #![feature(collections)]
+#![feature(core_intrinsics)]
 #![feature(enumset)]
 #![feature(rustc_private)]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unicode)]
 #![feature(question_mark)]
@@ -45,6 +47,9 @@ extern crate collections;
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
                           DecoderHelpers, EncoderHelpers};
+
+pub use self::serialize::{SpecializationError, SpecializedEncoder, SpecializedDecoder};
+pub use self::serialize::{UseSpecializedEncodable, UseSpecializedDecodable};
 
 mod serialize;
 mod collection_impls;
