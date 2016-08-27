@@ -30,249 +30,230 @@ use std_inject;
 
 use std::path::PathBuf;
 
-// A trait for AST nodes and AST node lists into which macro invocations may expand.
-trait MacroGenerable: Sized {
-    // Expand the given MacResult using its appropriate `make_*` method.
-    fn make_with<'a>(result: Box<MacResult + 'a>) -> Option<Self>;
+macro_rules! expansions {
+    ($($kind:ident: $ty:ty, $kind_name:expr, .$make:ident,
+            $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
+            $(.$visit:ident)* $(lift .$visit_elt:ident)*;)*) => {
+        #[derive(Copy, Clone)]
+        enum ExpansionKind { OptExpr, $( $kind, )*  }
+        enum Expansion { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
 
-    // Fold this node or list of nodes using the given folder.
-    fn fold_with<F: Folder>(self, folder: &mut F) -> Self;
-    fn visit_with<V: Visitor>(&self, visitor: &mut V);
+        impl ExpansionKind {
+            fn name(self) -> &'static str {
+                match self {
+                    ExpansionKind::OptExpr => "expression",
+                    $( ExpansionKind::$kind => $kind_name, )*
+                }
+            }
 
-    // The user-friendly name of the node type (e.g. "expression", "item", etc.) for diagnostics.
-    fn kind_name() -> &'static str;
+            fn make_from<'a>(self, result: Box<MacResult + 'a>) -> Option<Expansion> {
+                match self {
+                    ExpansionKind::OptExpr => result.make_expr().map(Some).map(Expansion::OptExpr),
+                    $( ExpansionKind::$kind => result.$make().map(Expansion::$kind), )*
+                }
+            }
+        }
 
-    // Return a placeholder expansion to allow compilation to continue after an erroring expansion.
-    fn dummy(span: Span) -> Self {
-        Self::make_with(DummyResult::any(span)).unwrap()
+        impl Expansion {
+            fn make_opt_expr(self) -> Option<P<ast::Expr>> {
+                match self {
+                    Expansion::OptExpr(expr) => expr,
+                    _ => panic!("Expansion::make_* called on the wrong kind of expansion"),
+                }
+            }
+            $( fn $make(self) -> $ty {
+                match self {
+                    Expansion::$kind(ast) => ast,
+                    _ => panic!("Expansion::make_* called on the wrong kind of expansion"),
+                }
+            } )*
+
+            fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
+                use self::Expansion::*;
+                match self {
+                    OptExpr(expr) => OptExpr(expr.and_then(|expr| folder.fold_opt_expr(expr))),
+                    $($( $kind(ast) => $kind(folder.$fold(ast)), )*)*
+                    $($( $kind(ast) => {
+                        $kind(ast.into_iter().flat_map(|ast| folder.$fold_elt(ast)).collect())
+                    }, )*)*
+                }
+            }
+
+            fn visit_with<V: Visitor>(&self, visitor: &mut V) {
+                match *self {
+                    Expansion::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
+                    $($( Expansion::$kind(ref ast) => visitor.$visit(ast), )*)*
+                    $($( Expansion::$kind(ref ast) => for ast in ast.as_slice() {
+                        visitor.$visit_elt(ast);
+                    }, )*)*
+                    _ => {}
+                }
+            }
+        }
     }
 }
 
-macro_rules! impl_macro_generable {
-    ($($ty:ty: $kind_name:expr, .$make:ident,
-               $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
-               $(.$visit:ident)* $(lift .$visit_elt:ident)*;)*) => { $(
-        impl MacroGenerable for $ty {
-            fn kind_name() -> &'static str { $kind_name }
-            fn make_with<'a>(result: Box<MacResult + 'a>) -> Option<Self> { result.$make() }
-            fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
-                $( folder.$fold(self) )*
-                $( self.into_iter().flat_map(|item| folder. $fold_elt (item)).collect() )*
-            }
-            fn visit_with<V: Visitor>(&self, visitor: &mut V) {
-                $( visitor.$visit(self) )*
-                $( for item in self.as_slice() { visitor. $visit_elt (item) } )*
-            }
-        }
-    )* }
-}
-
-impl_macro_generable! {
-    P<ast::Expr>: "expression", .make_expr, .fold_expr, .visit_expr;
-    P<ast::Pat>:  "pattern",    .make_pat,  .fold_pat,  .visit_pat;
-    P<ast::Ty>:   "type",       .make_ty,   .fold_ty,   .visit_ty;
-    SmallVector<ast::Stmt>: "statement", .make_stmts, lift .fold_stmt, lift .visit_stmt;
-    SmallVector<P<ast::Item>>: "item",   .make_items, lift .fold_item, lift .visit_item;
-    SmallVector<ast::TraitItem>:
+expansions! {
+    Expr: P<ast::Expr>, "expression", .make_expr, .fold_expr, .visit_expr;
+    Pat: P<ast::Pat>,   "pattern",    .make_pat,  .fold_pat,  .visit_pat;
+    Ty: P<ast::Ty>,     "type",       .make_ty,   .fold_ty,   .visit_ty;
+    Stmts: SmallVector<ast::Stmt>, "statement", .make_stmts, lift .fold_stmt, lift .visit_stmt;
+    Items: SmallVector<P<ast::Item>>, "item",   .make_items, lift .fold_item, lift .visit_item;
+    TraitItems: SmallVector<ast::TraitItem>,
         "trait item", .make_trait_items, lift .fold_trait_item, lift .visit_trait_item;
-    SmallVector<ast::ImplItem>:
+    ImplItems: SmallVector<ast::ImplItem>,
         "impl item",  .make_impl_items,  lift .fold_impl_item,  lift .visit_impl_item;
 }
 
-impl MacroGenerable for Option<P<ast::Expr>> {
-    fn kind_name() -> &'static str { "expression" }
-    fn make_with<'a>(result: Box<MacResult + 'a>) -> Option<Self> {
-        result.make_expr().map(Some)
+impl ExpansionKind {
+    fn dummy(self, span: Span) -> Expansion {
+        self.make_from(DummyResult::any(span)).unwrap()
     }
-    fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
-        self.and_then(|expr| folder.fold_opt_expr(expr))
-    }
-    fn visit_with<V: Visitor>(&self, visitor: &mut V) {
-        self.as_ref().map(|expr| visitor.visit_expr(expr));
-    }
+}
+
+pub struct Invocation {
+    span: Span,
+    attrs: Vec<ast::Attribute>,
+    mac: ast::Mac,
+    ident: Option<Ident>,
+    mark: Mark,
+    kind: ExpansionKind,
 }
 
 pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
-    match expr.node {
-        // expr_mac should really be expr_ext or something; it's the
-        // entry-point for all syntax extensions.
-        ast::ExprKind::Mac(mac) => {
-            return expand_mac_invoc(mac, None, expr.attrs.into(), expr.span, fld);
-        }
-        _ => P(noop_fold_expr(expr, fld)),
-    }
-}
-
-struct MacroScopePlaceholder;
-impl MacResult for MacroScopePlaceholder {
-    fn make_items(self: Box<Self>) -> Option<SmallVector<P<ast::Item>>> {
-        Some(SmallVector::one(P(ast::Item {
-            ident: keywords::Invalid.ident(),
-            attrs: Vec::new(),
-            id: ast::DUMMY_NODE_ID,
-            node: ast::ItemKind::Mac(dummy_spanned(ast::Mac_ {
-                path: ast::Path { span: syntax_pos::DUMMY_SP, global: false, segments: Vec::new() },
-                tts: Vec::new(),
-            })),
-            vis: ast::Visibility::Inherited,
-            span: syntax_pos::DUMMY_SP,
-        })))
+    if let ast::ExprKind::Mac(mac) = expr.node {
+        let invoc = fld.new_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::Expr);
+        expand_mac_invoc(invoc, fld).make_expr()
+    } else {
+        P(noop_fold_expr(expr, fld))
     }
 }
 
 /// Expand a macro invocation. Returns the result of expansion.
-fn expand_mac_invoc<T>(mac: ast::Mac, ident: Option<Ident>, attrs: Vec<ast::Attribute>, span: Span,
-                       fld: &mut MacroExpander) -> T
-    where T: MacroGenerable,
-{
-    // It would almost certainly be cleaner to pass the whole macro invocation in,
-    // rather than pulling it apart and marking the tts and the ctxt separately.
+fn expand_mac_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
+    let Invocation { span, attrs, mac, ident, mark, kind } = invoc;
     let Mac_ { path, tts, .. } = mac.node;
-    let mark = Mark::fresh();
 
-    fn mac_result<'a>(path: &ast::Path, ident: Option<Ident>, tts: Vec<TokenTree>, mark: Mark,
-                      attrs: Vec<ast::Attribute>, call_site: Span, fld: &'a mut MacroExpander)
-                      -> Option<Box<MacResult + 'a>> {
-        // Detect use of feature-gated or invalid attributes on macro invoations
-        // since they will not be detected after macro expansion.
-        for attr in attrs.iter() {
-            feature_gate::check_attribute(&attr, &fld.cx.parse_sess.span_diagnostic,
-                                          &fld.cx.parse_sess.codemap(),
-                                          &fld.cx.ecfg.features.unwrap());
-        }
-
-        if path.segments.len() > 1 || path.global || !path.segments[0].parameters.is_empty() {
-            fld.cx.span_err(path.span, "expected macro name without module separators");
-            return None;
-        }
-
-        let extname = path.segments[0].identifier.name;
-        let extension = if let Some(extension) = fld.cx.syntax_env.find(extname) {
-            extension
-        } else {
-            let mut err = fld.cx.struct_span_err(path.span,
-                                                 &format!("macro undefined: '{}!'", &extname));
-            fld.cx.suggest_macro_name(&extname.as_str(), &mut err);
-            err.emit();
-            return None;
-        };
-
-        let ident = ident.unwrap_or(keywords::Invalid.ident());
-        let marked_tts = mark_tts(&tts, mark);
-        match *extension {
-            NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
-                if ident.name != keywords::Invalid.name() {
-                    let msg =
-                        format!("macro {}! expects no ident argument, given '{}'", extname, ident);
-                    fld.cx.span_err(path.span, &msg);
-                    return None;
-                }
-
-                fld.cx.bt_push(ExpnInfo {
-                    call_site: call_site,
-                    callee: NameAndSpan {
-                        format: MacroBang(extname),
-                        span: exp_span,
-                        allow_internal_unstable: allow_internal_unstable,
-                    },
-                });
-
-                Some(expandfun.expand(fld.cx, call_site, &marked_tts))
-            }
-
-            IdentTT(ref expander, tt_span, allow_internal_unstable) => {
-                if ident.name == keywords::Invalid.name() {
-                    fld.cx.span_err(path.span,
-                                    &format!("macro {}! expects an ident argument", extname));
-                    return None;
-                };
-
-                fld.cx.bt_push(ExpnInfo {
-                    call_site: call_site,
-                    callee: NameAndSpan {
-                        format: MacroBang(extname),
-                        span: tt_span,
-                        allow_internal_unstable: allow_internal_unstable,
-                    }
-                });
-
-                Some(expander.expand(fld.cx, call_site, ident, marked_tts))
-            }
-
-            MacroRulesTT => {
-                if ident.name == keywords::Invalid.name() {
-                    fld.cx.span_err(path.span,
-                                    &format!("macro {}! expects an ident argument", extname));
-                    return None;
-                };
-
-                fld.cx.bt_push(ExpnInfo {
-                    call_site: call_site,
-                    callee: NameAndSpan {
-                        format: MacroBang(extname),
-                        span: None,
-                        // `macro_rules!` doesn't directly allow unstable
-                        // (this is orthogonal to whether the macro it creates allows it)
-                        allow_internal_unstable: false,
-                    }
-                });
-
-                let def = ast::MacroDef {
-                    ident: ident,
-                    id: ast::DUMMY_NODE_ID,
-                    span: call_site,
-                    imported_from: None,
-                    use_locally: true,
-                    body: marked_tts,
-                    export: attr::contains_name(&attrs, "macro_export"),
-                    allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
-                    attrs: attrs,
-                };
-
-                fld.cx.insert_macro(def.clone());
-
-                // macro_rules! has a side effect, but expands to nothing.
-                // If keep_macs is true, expands to a MacEager::items instead.
-                if fld.keep_macs {
-                    Some(MacEager::items(SmallVector::one(P(ast::Item {
-                        ident: def.ident,
-                        attrs: def.attrs.clone(),
-                        id: ast::DUMMY_NODE_ID,
-                        node: ast::ItemKind::Mac(ast::Mac {
-                            span: def.span,
-                            node: ast::Mac_ {
-                                path: path.clone(),
-                                tts: def.body.clone(),
-                            }
-                        }),
-                        vis: ast::Visibility::Inherited,
-                        span: def.span,
-                    }))))
-                } else {
-                    Some(Box::new(MacroScopePlaceholder))
-                }
-            }
-
-            MultiDecorator(..) | MultiModifier(..) => {
-                fld.cx.span_err(path.span,
-                                &format!("`{}` can only be used in attributes", extname));
-                None
-            }
-        }
+    // Detect use of feature-gated or invalid attributes on macro invoations
+    // since they will not be detected after macro expansion.
+    for attr in attrs.iter() {
+        feature_gate::check_attribute(&attr, &fld.cx.parse_sess.span_diagnostic,
+                                      &fld.cx.parse_sess.codemap(),
+                                      &fld.cx.ecfg.features.unwrap());
     }
 
-    let opt_expanded = T::make_with(match mac_result(&path, ident, tts, mark, attrs, span, fld) {
-        Some(result) => result,
-        None => return T::dummy(span),
-    });
+    if path.segments.len() > 1 || path.global || !path.segments[0].parameters.is_empty() {
+        fld.cx.span_err(path.span, "expected macro name without module separators");
+        return kind.dummy(span);
+    }
+
+    let extname = path.segments[0].identifier.name;
+    let extension = if let Some(extension) = fld.cx.syntax_env.find(extname) {
+        extension
+    } else {
+        let mut err =
+            fld.cx.struct_span_err(path.span, &format!("macro undefined: '{}!'", &extname));
+        fld.cx.suggest_macro_name(&extname.as_str(), &mut err);
+        err.emit();
+        return kind.dummy(span);
+    };
+
+    let ident = ident.unwrap_or(keywords::Invalid.ident());
+    let marked_tts = mark_tts(&tts, mark);
+    let opt_expanded = match *extension {
+        NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
+            if ident.name != keywords::Invalid.name() {
+                let msg =
+                    format!("macro {}! expects no ident argument, given '{}'", extname, ident);
+                fld.cx.span_err(path.span, &msg);
+                return kind.dummy(span);
+            }
+
+            fld.cx.bt_push(ExpnInfo {
+                call_site: span,
+                callee: NameAndSpan {
+                    format: MacroBang(extname),
+                    span: exp_span,
+                    allow_internal_unstable: allow_internal_unstable,
+                },
+            });
+
+            kind.make_from(expandfun.expand(fld.cx, span, &marked_tts))
+        }
+
+        IdentTT(ref expander, tt_span, allow_internal_unstable) => {
+            if ident.name == keywords::Invalid.name() {
+                fld.cx.span_err(path.span,
+                                &format!("macro {}! expects an ident argument", extname));
+                return kind.dummy(span);
+            };
+
+            fld.cx.bt_push(ExpnInfo {
+                call_site: span,
+                callee: NameAndSpan {
+                    format: MacroBang(extname),
+                    span: tt_span,
+                    allow_internal_unstable: allow_internal_unstable,
+                }
+            });
+
+            kind.make_from(expander.expand(fld.cx, span, ident, marked_tts))
+        }
+
+        MacroRulesTT => {
+            if ident.name == keywords::Invalid.name() {
+                fld.cx.span_err(path.span,
+                                &format!("macro {}! expects an ident argument", extname));
+                return kind.dummy(span);
+            };
+
+            fld.cx.bt_push(ExpnInfo {
+                call_site: span,
+                callee: NameAndSpan {
+                    format: MacroBang(extname),
+                    span: None,
+                    // `macro_rules!` doesn't directly allow unstable
+                    // (this is orthogonal to whether the macro it creates allows it)
+                    allow_internal_unstable: false,
+                }
+            });
+
+            let def = ast::MacroDef {
+                ident: ident,
+                id: ast::DUMMY_NODE_ID,
+                span: span,
+                imported_from: None,
+                use_locally: true,
+                body: marked_tts,
+                export: attr::contains_name(&attrs, "macro_export"),
+                allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
+                attrs: attrs,
+            };
+
+            fld.cx.insert_macro(def.clone());
+
+            // If keep_macs is true, expands to a MacEager::items instead.
+            if fld.keep_macs {
+                Some(reconstruct_macro_rules(&def, &path))
+            } else {
+                Some(macro_scope_placeholder())
+            }
+        }
+
+        MultiDecorator(..) | MultiModifier(..) => {
+            fld.cx.span_err(path.span,
+                            &format!("`{}` can only be used in attributes", extname));
+            return kind.dummy(span);
+        }
+    };
 
     let expanded = if let Some(expanded) = opt_expanded {
         expanded
     } else {
         let msg = format!("non-{kind} macro in {kind} position: {name}",
-                          name = path.segments[0].identifier.name, kind = T::kind_name());
+                          name = path.segments[0].identifier.name, kind = kind.name());
         fld.cx.span_err(path.span, &msg);
-        return T::dummy(span);
+        return kind.dummy(span);
     };
 
     let marked = expanded.fold_with(&mut Marker { mark: mark, expn_id: Some(fld.cx.backtrace()) });
@@ -342,8 +323,8 @@ fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
         _ => return noop_fold_stmt(stmt, fld)
     };
 
-    let mut fully_expanded: SmallVector<ast::Stmt> =
-        expand_mac_invoc(mac, None, attrs.into(), stmt.span, fld);
+    let invoc = fld.new_invoc(mac, attrs.into(), stmt.span, ExpansionKind::Stmts);
+    let mut fully_expanded = expand_mac_invoc(invoc, fld).make_stmts();
 
     // If this is a macro invocation with a semicolon, then apply that
     // semicolon to the final statement produced by expansion.
@@ -361,11 +342,12 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
         PatKind::Mac(_) => {}
         _ => return noop_fold_pat(p, fld)
     }
-    p.and_then(|ast::Pat {node, span, ..}| {
-        match node {
-            PatKind::Mac(mac) => expand_mac_invoc(mac, None, Vec::new(), span, fld),
-            _ => unreachable!()
+    p.and_then(|p| match p.node {
+        PatKind::Mac(mac) => {
+            let invoc = fld.new_invoc(mac, Vec::new(), p.span, ExpansionKind::Pat);
+            expand_mac_invoc(invoc, fld).make_pat()
         }
+        _ => unreachable!(),
     })
 }
 
@@ -380,8 +362,11 @@ fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector
                     return SmallVector::one(Annotatable::Item(it));
                 }
                 it.and_then(|it| match it.node {
-                    ItemKind::Mac(mac) =>
-                        expand_mac_invoc(mac, Some(it.ident), it.attrs, it.span, fld),
+                    ItemKind::Mac(mac) => {
+                        let mut invoc = fld.new_invoc(mac, it.attrs, it.span, ExpansionKind::Items);
+                        invoc.ident = Some(it.ident);
+                        expand_mac_invoc(invoc, fld).make_items()
+                    }
                     _ => unreachable!(),
                 })
             }
@@ -472,7 +457,8 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
                  -> SmallVector<ast::ImplItem> {
     match ii.node {
         ast::ImplItemKind::Macro(mac) => {
-            expand_mac_invoc(mac, None, ii.attrs, ii.span, fld)
+            let invoc = fld.new_invoc(mac, ii.attrs, ii.span, ExpansionKind::ImplItems);
+            expand_mac_invoc(invoc, fld).make_impl_items()
         }
         _ => fold::noop_fold_impl_item(ii, fld)
     }
@@ -482,7 +468,8 @@ fn expand_trait_item(ti: ast::TraitItem, fld: &mut MacroExpander)
                      -> SmallVector<ast::TraitItem> {
     match ti.node {
         ast::TraitItemKind::Macro(mac) => {
-            expand_mac_invoc(mac, None, ti.attrs, ti.span, fld)
+            let invoc = fld.new_invoc(mac, ti.attrs, ti.span, ExpansionKind::TraitItems);
+            expand_mac_invoc(invoc, fld).make_trait_items()
         }
         _ => fold::noop_fold_trait_item(ti, fld)
     }
@@ -496,7 +483,8 @@ pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
 
     match t.node {
         ast::TyKind::Mac(mac) => {
-            expand_mac_invoc(mac, None, Vec::new(), t.span, fld)
+            let invoc = fld.new_invoc(mac, Vec::new(), t.span, ExpansionKind::Ty);
+            expand_mac_invoc(invoc, fld).make_ty()
         }
         _ => unreachable!(),
     }
@@ -529,7 +517,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn load_macros<T: MacroGenerable>(&mut self, node: &T) {
+    fn load_macros(&mut self, node: &Expansion) {
         struct MacroLoadingVisitor<'a, 'b: 'a>{
             cx: &'a mut ExtCtxt<'b>,
             at_crate_root: bool,
@@ -567,6 +555,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             cx: self.cx,
         });
     }
+
+    fn new_invoc(&self, mac: ast::Mac, attrs: Vec<ast::Attribute>, span: Span, kind: ExpansionKind)
+                 -> Invocation {
+        let mark = Mark::fresh();
+        Invocation { span: span, attrs: attrs, mac: mac, mark: mark, kind: kind, ident: None }
+    }
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
@@ -583,8 +577,11 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         expr.and_then(|expr| match expr.node {
-            ast::ExprKind::Mac(mac) =>
-                expand_mac_invoc(mac, None, expr.attrs.into(), expr.span, self),
+            ast::ExprKind::Mac(mac) => {
+                let invoc =
+                    self.new_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::OptExpr);
+                expand_mac_invoc(invoc, self).make_opt_expr()
+            }
             _ => Some(expand_expr(expr, self)),
         })
     }
@@ -645,6 +642,37 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
         expand_type(ty, self)
     }
+}
+
+fn macro_scope_placeholder() -> Expansion {
+    Expansion::Items(SmallVector::one(P(ast::Item {
+        ident: keywords::Invalid.ident(),
+        attrs: Vec::new(),
+        id: ast::DUMMY_NODE_ID,
+        node: ast::ItemKind::Mac(dummy_spanned(ast::Mac_ {
+            path: ast::Path { span: syntax_pos::DUMMY_SP, global: false, segments: Vec::new() },
+            tts: Vec::new(),
+        })),
+        vis: ast::Visibility::Inherited,
+        span: syntax_pos::DUMMY_SP,
+    })))
+}
+
+fn reconstruct_macro_rules(def: &ast::MacroDef, path: &ast::Path) -> Expansion {
+    Expansion::Items(SmallVector::one(P(ast::Item {
+        ident: def.ident,
+        attrs: def.attrs.clone(),
+        id: ast::DUMMY_NODE_ID,
+        node: ast::ItemKind::Mac(ast::Mac {
+            span: def.span,
+            node: ast::Mac_ {
+                path: path.clone(),
+                tts: def.body.clone(),
+            }
+        }),
+        vis: ast::Visibility::Inherited,
+        span: def.span,
+    })))
 }
 
 pub struct ExpansionConfig<'feat> {
@@ -718,10 +746,10 @@ pub fn expand_crate_with_expander(expander: &mut MacroExpander,
         expander.cx.syntax_env.insert(name, extension);
     }
 
-    let items = SmallVector::many(c.module.items);
+    let items = Expansion::Items(SmallVector::many(c.module.items));
     let configured = items.fold_with(&mut expander.strip_unconfigured());
     expander.load_macros(&configured);
-    c.module.items = configured.into();
+    c.module.items = configured.make_items().into();
 
     let err_count = expander.cx.parse_sess.span_diagnostic.err_count();
     let mut ret = expander.fold_crate(c);
