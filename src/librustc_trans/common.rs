@@ -124,18 +124,7 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
 /// Returns true if the type is represented as a pair of immediates.
 pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                                   -> bool {
-    let tcx = ccx.tcx();
-    let layout = tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
-        match ty.layout(&infcx) {
-            Ok(layout) => layout,
-            Err(err) => {
-                bug!("type_is_imm_pair: layout for `{:?}` failed: {}",
-                     ty, err);
-            }
-        }
-    });
-
-    match *layout {
+    match *ccx.layout_of(ty) {
         Layout::FatPointer { .. } => true,
         Layout::Univariant { ref variant, .. } => {
             // There must be only 2 fields.
