@@ -87,7 +87,7 @@ struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     // early-bound versions of them, visible from the
     // outside of the function. This is needed by, and
     // only populated if there are any `impl Trait`.
-    free_to_bound_regions: DefIdMap<ty::Region>
+    free_to_bound_regions: DefIdMap<&'gcx ty::Region>
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
@@ -102,16 +102,22 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             return wbcx;
         }
 
+        let gcx = fcx.tcx.global_tcx();
         let free_substs = fcx.parameter_environment.free_substs;
-        for (i, r) in free_substs.regions.iter().enumerate() {
+        for (i, k) in free_substs.params().iter().enumerate() {
+            let r = if let Some(r) = k.as_region() {
+                r
+            } else {
+                continue;
+            };
             match *r {
                 ty::ReFree(ty::FreeRegion {
                     bound_region: ty::BoundRegion::BrNamed(def_id, name, _), ..
                 }) => {
-                    let bound_region = ty::ReEarlyBound(ty::EarlyBoundRegion {
+                    let bound_region = gcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                         index: i as u32,
                         name: name,
-                    });
+                    }));
                     wbcx.free_to_bound_regions.insert(def_id, bound_region);
                 }
                 _ => {
@@ -311,9 +317,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             // Convert the type from the function into a type valid outside
             // the function, by replacing free regions with early-bound ones.
             let outside_ty = gcx.fold_regions(&inside_ty, &mut false, |r, _| {
-                match r {
+                match *r {
                     // 'static is valid everywhere.
-                    ty::ReStatic => ty::ReStatic,
+                    ty::ReStatic => gcx.mk_region(ty::ReStatic),
 
                     // Free regions that come from early-bound regions are valid.
                     ty::ReFree(ty::FreeRegion {
@@ -331,7 +337,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                         span_err!(self.tcx().sess, span, E0564,
                                   "only named lifetimes are allowed in `impl Trait`, \
                                    but `{}` was found in the type `{}`", r, inside_ty);
-                        ty::ReStatic
+                        gcx.mk_region(ty::ReStatic)
                     }
 
                     ty::ReVar(_) |
@@ -626,12 +632,12 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
         match self.infcx.fully_resolve(&r) {
             Ok(r) => r,
             Err(e) => {
                 self.report_error(e);
-                ty::ReStatic
+                self.tcx.mk_region(ty::ReStatic)
             }
         }
     }

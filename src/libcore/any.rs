@@ -72,8 +72,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use fmt;
-use mem::transmute;
-use raw::TraitObject;
 use intrinsics;
 use marker::Reflect;
 
@@ -199,11 +197,7 @@ impl Any {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
             unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject = transmute(self);
-
-                // Extract the data pointer
-                Some(&*(to.data as *const T))
+                Some(&*(self as *const Any as *const T))
             }
         } else {
             None
@@ -240,11 +234,7 @@ impl Any {
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
             unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject = transmute(self);
-
-                // Extract the data pointer
-                Some(&mut *(to.data as *const T as *mut T))
+                Some(&mut *(self as *mut Any as *mut T))
             }
         } else {
             None

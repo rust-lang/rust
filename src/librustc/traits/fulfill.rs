@@ -93,7 +93,7 @@ pub struct FulfillmentContext<'tcx> {
 
 #[derive(Clone)]
 pub struct RegionObligation<'tcx> {
-    pub sub_region: ty::Region,
+    pub sub_region: &'tcx ty::Region,
     pub sup_type: Ty<'tcx>,
     pub cause: ObligationCause<'tcx>,
 }
@@ -142,7 +142,7 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
         // Auto trait obligations on `impl Trait`.
         if tcx.trait_has_default_impl(predicate.def_id()) {
             let substs = predicate.skip_binder().trait_ref.substs;
-            if substs.types.len() == 1 && substs.regions.is_empty() {
+            if substs.types().count() == 1 && substs.regions().next().is_none() {
                 if let ty::TyAnon(..) = predicate.skip_binder().self_ty().sty {
                     return true;
                 }
@@ -162,7 +162,7 @@ impl<'a, 'gcx, 'tcx> DeferredObligation<'tcx> {
                 let concrete_ty = ty_scheme.ty.subst(tcx, substs);
                 let predicate = ty::TraitRef {
                     def_id: self.predicate.def_id(),
-                    substs: Substs::new_trait(tcx, vec![], vec![], concrete_ty)
+                    substs: Substs::new_trait(tcx, concrete_ty, &[])
                 }.to_predicate();
 
                 let original_obligation = Obligation::new(self.cause.clone(),
@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
     pub fn register_region_obligation(&mut self,
                                       t_a: Ty<'tcx>,
-                                      r_b: ty::Region,
+                                      r_b: &'tcx ty::Region,
                                       cause: ObligationCause<'tcx>)
     {
         register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
@@ -440,8 +440,7 @@ fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 't
 {
     t.skip_binder() // ok b/c this check doesn't care about regions
      .input_types()
-     .iter()
-     .map(|t| selcx.infcx().resolve_type_vars_if_possible(t))
+     .map(|t| selcx.infcx().resolve_type_vars_if_possible(&t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())
      .filter(|t| match t.sty { ty::TyInfer(_) => true, _ => false })
@@ -581,7 +580,8 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                         // Otherwise, we have something of the form
                         // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
                         Some(t_a) => {
-                            register_region_obligation(t_a, ty::ReStatic,
+                            let r_static = selcx.tcx().mk_region(ty::ReStatic);
+                            register_region_obligation(t_a, r_static,
                                                        obligation.cause.clone(),
                                                        region_obligations);
                             Ok(Some(vec![]))
@@ -691,7 +691,7 @@ fn coinductive_obligation<'a,'gcx,'tcx>(selcx: &SelectionContext<'a,'gcx,'tcx>,
 }
 
 fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
-                                    r_b: ty::Region,
+                                    r_b: &'tcx ty::Region,
                                     cause: ObligationCause<'tcx>,
                                     region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
 {

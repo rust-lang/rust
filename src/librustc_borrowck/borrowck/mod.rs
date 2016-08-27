@@ -41,6 +41,7 @@ use rustc::ty::{self, TyCtxt};
 use std::fmt;
 use std::mem;
 use std::rc::Rc;
+use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax_pos::{MultiSpan, Span};
@@ -345,7 +346,7 @@ impl<'tcx> Loan<'tcx> {
     }
 }
 
-#[derive(Eq, Hash)]
+#[derive(Eq)]
 pub struct LoanPath<'tcx> {
     kind: LoanPathKind<'tcx>,
     ty: ty::Ty<'tcx>,
@@ -353,10 +354,13 @@ pub struct LoanPath<'tcx> {
 
 impl<'tcx> PartialEq for LoanPath<'tcx> {
     fn eq(&self, that: &LoanPath<'tcx>) -> bool {
-        let r = self.kind == that.kind;
-        debug_assert!(self.ty == that.ty || !r,
-                      "Somehow loan paths are equal though their tys are not.");
-        r
+        self.kind == that.kind
+    }
+}
+
+impl<'tcx> Hash for LoanPath<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
     }
 }
 
@@ -365,7 +369,7 @@ pub enum LoanPathKind<'tcx> {
     LpVar(ast::NodeId),                         // `x` in README.md
     LpUpvar(ty::UpvarId),                       // `x` captured by-value into closure
     LpDowncast(Rc<LoanPath<'tcx>>, DefId), // `x` downcast to particular enum variant
-    LpExtend(Rc<LoanPath<'tcx>>, mc::MutabilityCategory, LoanPathElem)
+    LpExtend(Rc<LoanPath<'tcx>>, mc::MutabilityCategory, LoanPathElem<'tcx>)
 }
 
 impl<'tcx> LoanPath<'tcx> {
@@ -410,8 +414,8 @@ impl ToInteriorKind for mc::InteriorKind {
 // `enum E { X { foo: u32 }, Y { foo: u32 }}`
 // each `foo` is qualified by the definitition id of the variant (`X` or `Y`).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum LoanPathElem {
-    LpDeref(mc::PointerKind),
+pub enum LoanPathElem<'tcx> {
+    LpDeref(mc::PointerKind<'tcx>),
     LpInterior(Option<DefId>, InteriorKind),
 }
 
@@ -564,10 +568,11 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
 
 // Errors that can occur
 #[derive(PartialEq)]
-pub enum bckerr_code {
+pub enum bckerr_code<'tcx> {
     err_mutbl,
-    err_out_of_scope(ty::Region, ty::Region, euv::LoanCause), // superscope, subscope, loan cause
-    err_borrowed_pointer_too_short(ty::Region, ty::Region), // loan, ptr
+    /// superscope, subscope, loan cause
+    err_out_of_scope(&'tcx ty::Region, &'tcx ty::Region, euv::LoanCause),
+    err_borrowed_pointer_too_short(&'tcx ty::Region, &'tcx ty::Region), // loan, ptr
 }
 
 // Combination of an error code and the categorization of the expression
@@ -577,7 +582,7 @@ pub struct BckError<'tcx> {
     span: Span,
     cause: AliasableViolationKind,
     cmt: mc::cmt<'tcx>,
-    code: bckerr_code
+    code: bckerr_code<'tcx>
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -605,7 +610,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.free_region_map = old_free_region_map;
     }
 
-    pub fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region)
+    pub fn is_subregion_of(&self, r_sub: &'tcx ty::Region, r_sup: &'tcx ty::Region)
                            -> bool
     {
         self.free_region_map.is_subregion_of(self.tcx, r_sub, r_sup)
@@ -614,9 +619,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn report(&self, err: BckError<'tcx>) {
         // Catch and handle some particular cases.
         match (&err.code, &err.cause) {
-            (&err_out_of_scope(ty::ReScope(_), ty::ReStatic, _),
+            (&err_out_of_scope(&ty::ReScope(_), &ty::ReStatic, _),
              &BorrowViolation(euv::ClosureCapture(span))) |
-            (&err_out_of_scope(ty::ReScope(_), ty::ReFree(..), _),
+            (&err_out_of_scope(&ty::ReScope(_), &ty::ReFree(..), _),
              &BorrowViolation(euv::ClosureCapture(span))) => {
                 return self.report_out_of_scope_escaping_closure_capture(&err, span);
             }
@@ -965,8 +970,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             .emit();
     }
 
-    fn region_end_span(&self, region: ty::Region) -> Option<Span> {
-        match region {
+    fn region_end_span(&self, region: &'tcx ty::Region) -> Option<Span> {
+        match *region {
             ty::ReScope(scope) => {
                 match scope.span(&self.tcx.region_maps, &self.tcx.map) {
                     Some(s) => {
@@ -1194,8 +1199,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-fn statement_scope_span(tcx: TyCtxt, region: ty::Region) -> Option<Span> {
-    match region {
+fn statement_scope_span(tcx: TyCtxt, region: &ty::Region) -> Option<Span> {
+    match *region {
         ty::ReScope(scope) => {
             match tcx.map.find(scope.node_id(&tcx.region_maps)) {
                 Some(hir_map::NodeStmt(stmt)) => Some(stmt.span),

@@ -178,8 +178,9 @@ type TraitAndProjections<'tcx> = (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjection
 /// This type must not appear anywhere in other converted types.
 const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::FreshTy(0));
 
-pub fn ast_region_to_region(tcx: TyCtxt, lifetime: &hir::Lifetime)
-                            -> ty::Region {
+pub fn ast_region_to_region<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                            lifetime: &hir::Lifetime)
+                                            -> &'tcx ty::Region {
     let r = match tcx.named_region_map.defs.get(&lifetime.id) {
         None => {
             // should have been recorded by the `resolve_lifetime` pass
@@ -238,7 +239,7 @@ pub fn ast_region_to_region(tcx: TyCtxt, lifetime: &hir::Lifetime)
            lifetime.id,
            r);
 
-    r
+    tcx.mk_region(r)
 }
 
 fn report_elision_failure(
@@ -313,14 +314,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn opt_ast_region_to_region(&self,
         rscope: &RegionScope,
         default_span: Span,
-        opt_lifetime: &Option<hir::Lifetime>) -> ty::Region
+        opt_lifetime: &Option<hir::Lifetime>) -> &'tcx ty::Region
     {
         let r = match *opt_lifetime {
             Some(ref lifetime) => {
                 ast_region_to_region(self.tcx(), lifetime)
             }
 
-            None => match rscope.anon_regions(default_span, 1) {
+            None => self.tcx().mk_region(match rscope.anon_regions(default_span, 1) {
                 Ok(rs) => rs[0],
                 Err(params) => {
                     let ampersand_span = Span { hi: default_span.lo, ..default_span};
@@ -335,7 +336,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     err.emit();
                     ty::ReStatic
                 }
-            }
+            })
         };
 
         debug!("opt_ast_region_to_region(opt_lifetime={:?}) yields {:?}",
@@ -366,7 +367,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     .emit();
 
                 return Substs::for_item(tcx, def_id, |_, _| {
-                    ty::ReStatic
+                    tcx.mk_region(ty::ReStatic)
                 }, |_, _| {
                     tcx.types.err
                 });
@@ -431,7 +432,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let expected_num_region_params = decl_generics.regions.len();
         let supplied_num_region_params = lifetimes.len();
         let regions = if expected_num_region_params == supplied_num_region_params {
-            lifetimes.iter().map(|l| ast_region_to_region(tcx, l)).collect()
+            lifetimes.iter().map(|l| *ast_region_to_region(tcx, l)).collect()
         } else {
             let anon_regions =
                 rscope.anon_regions(span, expected_num_region_params);
@@ -472,7 +473,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let mut output_assoc_binding = None;
         let substs = Substs::for_item(tcx, def_id, |def, _| {
-            regions[def.index as usize]
+            let i = def.index as usize - self_ty.is_some() as usize;
+            tcx.mk_region(regions[i])
         }, |def, substs| {
             let i = def.index as usize;
 
@@ -481,7 +483,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
-            let i = i - self_ty.is_some() as usize;
+            let i = i - self_ty.is_some() as usize - decl_generics.regions.len();
             if num_types_provided.map_or(false, |n| i < n) {
                 // A provided type parameter.
                 match *parameters {
@@ -588,7 +590,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         if lifetimes_for_params.iter().map(|e| e.lifetime_count).sum::<usize>() == 1 {
-            Ok(possible_implied_output_region.unwrap())
+            Ok(*possible_implied_output_region.unwrap())
         } else {
             Err(Some(lifetimes_for_params))
         }
@@ -937,8 +939,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // FIXME(#12938): This is a hack until we have full support for DST.
         if Some(did) == self.tcx().lang_items.owned_box() {
-            assert_eq!(substs.types.len(), 1);
-            return self.tcx().mk_box(substs.types[0]);
+            assert_eq!(substs.types().count(), 1);
+            return self.tcx().mk_box(substs.type_at(0));
         }
 
         decl_ty.subst(self.tcx(), substs)
@@ -1100,7 +1102,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let region_bound = match region_bound {
             Some(r) => r,
             None => {
-                match rscope.object_lifetime_default(span) {
+                tcx.mk_region(match rscope.object_lifetime_default(span) {
                     Some(r) => r,
                     None => {
                         span_err!(self.tcx().sess, span, E0228,
@@ -1108,7 +1110,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                    from context; please supply an explicit bound");
                         ty::ReStatic
                     }
-                }
+                })
             }
         };
 
@@ -1643,7 +1645,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         rscope,
                         ty::ObjectLifetimeDefault::Specific(r));
                 let t = self.ast_ty_to_ty(rscope1, &mt.ty);
-                tcx.mk_ref(tcx.mk_region(r), ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
+                tcx.mk_ref(r, ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
             }
             hir::TyNever => {
                 tcx.types.never
@@ -1801,7 +1803,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         sig: &hir::MethodSig,
                         untransformed_self_ty: Ty<'tcx>,
                         anon_scope: Option<AnonTypeScope>)
-                        -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory) {
+                        -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory<'tcx>) {
         self.ty_of_method_or_bare_fn(sig.unsafety,
                                      sig.abi,
                                      Some(untransformed_self_ty),
@@ -1826,7 +1828,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                decl: &hir::FnDecl,
                                arg_anon_scope: Option<AnonTypeScope>,
                                ret_anon_scope: Option<AnonTypeScope>)
-                               -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory)
+                               -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory<'tcx>)
     {
         debug!("ty_of_method_or_bare_fn");
 
@@ -1863,7 +1865,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // reference) in the arguments, then any anonymous regions in the output
         // have that lifetime.
         let implied_output_region = match explicit_self_category {
-            ty::ExplicitSelfCategory::ByReference(region, _) => Ok(region),
+            ty::ExplicitSelfCategory::ByReference(region, _) => Ok(*region),
             _ => self.find_implied_output_region(&arg_tys, arg_pats)
         };
 
@@ -1890,7 +1892,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                rscope: &RegionScope,
                                untransformed_self_ty: Ty<'tcx>,
                                explicit_self: &hir::ExplicitSelf)
-                               -> (Ty<'tcx>, ty::ExplicitSelfCategory)
+                               -> (Ty<'tcx>, ty::ExplicitSelfCategory<'tcx>)
     {
         return match explicit_self.node {
             SelfKind::Value(..) => {
@@ -1902,8 +1904,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                              rscope,
                                              explicit_self.span,
                                              lifetime);
-                (self.tcx().mk_ref(
-                    self.tcx().mk_region(region),
+                (self.tcx().mk_ref(region,
                     ty::TypeAndMut {
                         ty: untransformed_self_ty,
                         mutbl: mutability
@@ -1957,7 +1958,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     ty::ExplicitSelfCategory::ByValue
                 } else {
                     match explicit_type.sty {
-                        ty::TyRef(r, mt) => ty::ExplicitSelfCategory::ByReference(*r, mt.mutbl),
+                        ty::TyRef(r, mt) => ty::ExplicitSelfCategory::ByReference(r, mt.mutbl),
                         ty::TyBox(_) => ty::ExplicitSelfCategory::ByBox,
                         _ => ty::ExplicitSelfCategory::ByValue,
                     }
@@ -2070,7 +2071,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         explicit_region_bounds: &[&hir::Lifetime],
         principal_trait_ref: ty::PolyExistentialTraitRef<'tcx>,
         builtin_bounds: ty::BuiltinBounds)
-        -> Option<ty::Region> // if None, use the default
+        -> Option<&'tcx ty::Region> // if None, use the default
     {
         let tcx = self.tcx();
 
@@ -2093,7 +2094,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         if let Err(ErrorReported) =
                 self.ensure_super_predicates(span, principal_trait_ref.def_id()) {
-            return Some(ty::ReStatic);
+            return Some(tcx.mk_region(ty::ReStatic));
         }
 
         // No explicit region bound specified. Therefore, examine trait
@@ -2109,8 +2110,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // If any of the derived region bounds are 'static, that is always
         // the best choice.
-        if derived_region_bounds.iter().any(|r| ty::ReStatic == *r) {
-            return Some(ty::ReStatic);
+        if derived_region_bounds.iter().any(|&r| ty::ReStatic == *r) {
+            return Some(tcx.mk_region(ty::ReStatic));
         }
 
         // Determine whether there is exactly one unique region in the set
@@ -2242,7 +2243,7 @@ fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected
 // and return from functions in multiple places.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
-    pub region_bounds: Vec<ty::Region>,
+    pub region_bounds: Vec<&'tcx ty::Region>,
     pub builtin_bounds: ty::BuiltinBounds,
     pub trait_bounds: Vec<ty::PolyTraitRef<'tcx>>,
     pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
@@ -2264,7 +2265,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
         for &region_bound in &self.region_bounds {
             // account for the binder being introduced below; no need to shift `param_ty`
             // because, at present at least, it can only refer to early-bound regions
-            let region_bound = ty::fold::shift_region(region_bound, 1);
+            let region_bound = tcx.mk_region(ty::fold::shift_region(*region_bound, 1));
             vec.push(ty::Binder(ty::OutlivesPredicate(param_ty, region_bound)).to_predicate());
         }
 

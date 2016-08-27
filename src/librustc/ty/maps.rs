@@ -38,7 +38,7 @@ dep_map_ty! { TraitItemDefIds: TraitItemDefIds(DefId) -> Rc<Vec<ty::ImplOrTraitI
 dep_map_ty! { ImplTraitRefs: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>> }
 dep_map_ty! { TraitDefs: ItemSignature(DefId) -> &'tcx ty::TraitDef<'tcx> }
 dep_map_ty! { AdtDefs: ItemSignature(DefId) -> ty::AdtDefMaster<'tcx> }
-dep_map_ty! { ItemVariances: ItemSignature(DefId) -> Rc<ty::ItemVariances> }
+dep_map_ty! { ItemVariances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>> }
 dep_map_ty! { InherentImpls: InherentImpls(DefId) -> Rc<Vec<DefId>> }
 dep_map_ty! { ImplItems: ImplItems(DefId) -> Vec<ty::ImplOrTraitItemId> }
 dep_map_ty! { TraitItems: TraitItems(DefId) -> Rc<Vec<ty::ImplOrTraitItem<'tcx>>> }

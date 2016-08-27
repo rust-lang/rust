@@ -123,7 +123,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
 struct ConstraintGraph<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     graph_name: String,
-    map: &'a FnvHashMap<Constraint, SubregionOrigin<'tcx>>,
+    map: &'a FnvHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
     node_ids: FnvHashMap<Node, usize>,
 }
 
@@ -135,8 +135,8 @@ enum Node {
 
 // type Edge = Constraint;
 #[derive(Clone, PartialEq, Eq, Debug, Copy)]
-enum Edge {
-    Constraint(Constraint),
+enum Edge<'tcx> {
+    Constraint(Constraint<'tcx>),
     EnclScope(CodeExtent, CodeExtent),
 }
 
@@ -177,7 +177,7 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
-    type Edge = Edge;
+    type Edge = Edge<'tcx>;
     fn graph_id(&self) -> dot::Id {
         dot::Id::new(&*self.graph_name).unwrap()
     }
@@ -214,11 +214,11 @@ fn constraint_to_nodes(c: &Constraint) -> (Node, Node) {
         Constraint::ConstrainVarSubVar(rv_1, rv_2) =>
             (Node::RegionVid(rv_1), Node::RegionVid(rv_2)),
         Constraint::ConstrainRegSubVar(r_1, rv_2) =>
-            (Node::Region(r_1), Node::RegionVid(rv_2)),
+            (Node::Region(*r_1), Node::RegionVid(rv_2)),
         Constraint::ConstrainVarSubReg(rv_1, r_2) =>
-            (Node::RegionVid(rv_1), Node::Region(r_2)),
+            (Node::RegionVid(rv_1), Node::Region(*r_2)),
         Constraint::ConstrainRegSubReg(r_1, r_2) =>
-            (Node::Region(r_1), Node::Region(r_2)),
+            (Node::Region(*r_1), Node::Region(*r_2)),
     }
 }
 
@@ -234,7 +234,7 @@ fn edge_to_nodes(e: &Edge) -> (Node, Node) {
 
 impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
-    type Edge = Edge;
+    type Edge = Edge<'tcx>;
     fn nodes(&self) -> dot::Nodes<Node> {
         let mut set = FnvHashSet();
         for node in self.node_ids.keys() {
@@ -243,26 +243,26 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
         debug!("constraint graph has {} nodes", set.len());
         set.into_iter().collect()
     }
-    fn edges(&self) -> dot::Edges<Edge> {
+    fn edges(&self) -> dot::Edges<Edge<'tcx>> {
         debug!("constraint graph has {} edges", self.map.len());
         let mut v: Vec<_> = self.map.keys().map(|e| Edge::Constraint(*e)).collect();
         self.tcx.region_maps.each_encl_scope(|sub, sup| v.push(Edge::EnclScope(*sub, *sup)));
         debug!("region graph has {} edges", v.len());
         Cow::Owned(v)
     }
-    fn source(&self, edge: &Edge) -> Node {
+    fn source(&self, edge: &Edge<'tcx>) -> Node {
         let (n1, _) = edge_to_nodes(edge);
         debug!("edge {:?} has source {:?}", edge, n1);
         n1
     }
-    fn target(&self, edge: &Edge) -> Node {
+    fn target(&self, edge: &Edge<'tcx>) -> Node {
         let (_, n2) = edge_to_nodes(edge);
         debug!("edge {:?} has target {:?}", edge, n2);
         n2
     }
 }
 
-pub type ConstraintMap<'tcx> = FnvHashMap<Constraint, SubregionOrigin<'tcx>>;
+pub type ConstraintMap<'tcx> = FnvHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
 fn dump_region_constraints_to<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                               map: &ConstraintMap<'tcx>,

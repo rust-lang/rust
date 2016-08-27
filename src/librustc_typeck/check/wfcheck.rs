@@ -416,7 +416,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             ty::ExplicitSelfCategory::Static => return,
             ty::ExplicitSelfCategory::ByValue => self_ty,
             ty::ExplicitSelfCategory::ByReference(region, mutability) => {
-                fcx.tcx.mk_ref(fcx.tcx.mk_region(region), ty::TypeAndMut {
+                fcx.tcx.mk_ref(region, ty::TypeAndMut {
                     ty: self_ty,
                     mutbl: mutability
                 })
@@ -457,7 +457,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let variances = self.tcx().item_variances(item_def_id);
 
         let mut constrained_parameters: HashSet<_> =
-            variances.types
+            variances[ast_generics.lifetimes.len()..]
                      .iter().enumerate()
                      .filter(|&(_, &variance)| variance != ty::Bivariant)
                      .map(|(index, _)| self.param_ty(ast_generics, index))
@@ -468,22 +468,22 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                                          None,
                                          &mut constrained_parameters);
 
-        for (index, _) in variances.types.iter().enumerate() {
-            let param_ty = self.param_ty(ast_generics, index);
-            if constrained_parameters.contains(&Parameter::Type(param_ty)) {
-                continue;
-            }
-            let span = ast_generics.ty_params[index].span;
-            self.report_bivariance(span, param_ty.name);
-        }
+        for (index, &variance) in variances.iter().enumerate() {
+            let (span, name) = if index < ast_generics.lifetimes.len() {
+                if variance != ty::Bivariant {
+                    continue;
+                }
 
-        for (index, &variance) in variances.regions.iter().enumerate() {
-            if variance != ty::Bivariant {
-                continue;
-            }
-
-            let span = ast_generics.lifetimes[index].lifetime.span;
-            let name = ast_generics.lifetimes[index].lifetime.name;
+                (ast_generics.lifetimes[index].lifetime.span,
+                 ast_generics.lifetimes[index].lifetime.name)
+            } else {
+                let index = index - ast_generics.lifetimes.len();
+                let param_ty = self.param_ty(ast_generics, index);
+                if constrained_parameters.contains(&Parameter::Type(param_ty)) {
+                    continue;
+                }
+                (ast_generics.ty_params[index].span, param_ty.name)
+            };
             self.report_bivariance(span, name);
         }
     }
@@ -597,7 +597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Trait impl: take implied bounds from all types that
                 // appear in the trait reference.
                 let trait_ref = self.instantiate_type_scheme(span, free_substs, trait_ref);
-                trait_ref.substs.types.to_vec()
+                trait_ref.substs.types().collect()
             }
 
             None => {

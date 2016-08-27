@@ -21,7 +21,6 @@ use std::rc::Rc;
 use super::constraints::*;
 use super::terms::*;
 use super::terms::VarianceTerm::*;
-use super::terms::ParamKind::*;
 use super::xform::*;
 
 struct SolveContext<'a, 'tcx: 'a> {
@@ -109,24 +108,16 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         while index < num_inferred {
             let item_id = inferred_infos[index].item_id;
 
-            let mut item_variances = ty::ItemVariances::empty();
+            let mut item_variances = vec![];
 
             while index < num_inferred && inferred_infos[index].item_id == item_id {
                 let info = &inferred_infos[index];
                 let variance = solutions[index];
-                debug!("Index {} Info {} / {:?} Variance {:?}",
-                       index, info.index, info.kind, variance);
-                match info.kind {
-                    TypeParam => {
-                        assert_eq!(item_variances.types.len(), info.index);
-                        item_variances.types.push(variance);
-                    }
-                    RegionParam => {
-                        assert_eq!(item_variances.regions.len(), info.index);
-                        item_variances.regions.push(variance);
-                    }
-                }
+                debug!("Index {} Info {} Variance {:?}",
+                       index, info.index, variance);
 
+                assert_eq!(item_variances.len(), info.index);
+                item_variances.push(variance);
                 index += 1;
             }
 

@@ -28,7 +28,7 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     span: Span,
                                     cause: euv::LoanCause,
                                     cmt: mc::cmt<'tcx>,
-                                    loan_region: ty::Region,
+                                    loan_region: &'tcx ty::Region,
                                     _: ty::BorrowKind)
                                     -> Result<(),()> {
     //! Reports error if `loan_region` is larger than S
@@ -56,7 +56,7 @@ struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
 
     span: Span,
     cause: euv::LoanCause,
-    loan_region: ty::Region,
+    loan_region: &'tcx ty::Region,
     cmt_original: mc::cmt<'tcx>
 }
 
@@ -92,7 +92,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn check_scope(&self, max_scope: ty::Region) -> R {
+    fn check_scope(&self, max_scope: &'tcx ty::Region) -> R {
         //! Reports an error if `loan_region` is larger than `max_scope`
 
         if !self.bccx.is_subregion_of(self.loan_region, max_scope) {
@@ -102,7 +102,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn scope(&self, cmt: &mc::cmt) -> ty::Region {
+    fn scope(&self, cmt: &mc::cmt<'tcx>) -> &'tcx ty::Region {
         //! Returns the maximal region scope for the which the
         //! lvalue `cmt` is guaranteed to be valid without any
         //! rooting etc, and presuming `cmt` is not mutated.
@@ -112,16 +112,15 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
                 temp_scope
             }
             Categorization::Upvar(..) => {
-                ty::ReScope(self.item_scope)
-            }
-            Categorization::StaticItem => {
-                ty::ReStatic
+                self.bccx.tcx.mk_region(ty::ReScope(self.item_scope))
             }
             Categorization::Local(local_id) => {
-                ty::ReScope(self.bccx.tcx.region_maps.var_scope(local_id))
+                self.bccx.tcx.mk_region(ty::ReScope(
+                    self.bccx.tcx.region_maps.var_scope(local_id)))
             }
+            Categorization::StaticItem |
             Categorization::Deref(_, _, mc::UnsafePtr(..)) => {
-                ty::ReStatic
+                self.bccx.tcx.mk_region(ty::ReStatic)
             }
             Categorization::Deref(_, _, mc::BorrowedPtr(_, r)) |
             Categorization::Deref(_, _, mc::Implicit(_, r)) => {
@@ -135,7 +134,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn report_error(&self, code: bckerr_code) {
+    fn report_error(&self, code: bckerr_code<'tcx>) {
         self.bccx.report(BckError { cmt: self.cmt_original.clone(),
                                     span: self.span,
                                     cause: BorrowViolation(self.cause),

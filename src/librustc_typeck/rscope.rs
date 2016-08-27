@@ -257,12 +257,12 @@ impl RegionScope for BindingRscope {
 /// A scope which overrides the default object lifetime but has no other effect.
 pub struct ObjectLifetimeDefaultRscope<'r> {
     base_scope: &'r (RegionScope+'r),
-    default: ty::ObjectLifetimeDefault,
+    default: ty::ObjectLifetimeDefault<'r>,
 }
 
 impl<'r> ObjectLifetimeDefaultRscope<'r> {
     pub fn new(base_scope: &'r (RegionScope+'r),
-               default: ty::ObjectLifetimeDefault)
+               default: ty::ObjectLifetimeDefault<'r>)
                -> ObjectLifetimeDefaultRscope<'r>
     {
         ObjectLifetimeDefaultRscope {
@@ -283,7 +283,7 @@ impl<'r> RegionScope for ObjectLifetimeDefaultRscope<'r> {
                 Some(self.base_object_lifetime_default(span)),
 
             ty::ObjectLifetimeDefault::Specific(r) =>
-                Some(r),
+                Some(*r),
         }
     }
 

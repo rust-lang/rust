@@ -73,7 +73,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::closure_ty(&cdata, def_id.index, tcx)
     }
 
-    fn item_variances(&self, def: DefId) -> ty::ItemVariances {
+    fn item_variances(&self, def: DefId) -> Vec<ty::Variance> {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
         decoder::get_item_variances(&cdata, def.index)
@@ -289,13 +289,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn is_foreign_item(&self, did: DefId) -> bool {
         let cdata = self.get_crate_data(did.krate);
         decoder::is_foreign_item(&cdata, did.index)
-    }
-
-    fn is_static_method(&self, def: DefId) -> bool
-    {
-        self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::is_static_method(&cdata, def.index)
     }
 
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool

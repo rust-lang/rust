@@ -177,7 +177,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
 /// region that each late-bound region was replaced with.
-pub type SkolemizationMap = FnvHashMap<ty::BoundRegion, ty::Region>;
+pub type SkolemizationMap<'tcx> = FnvHashMap<ty::BoundRegion, &'tcx ty::Region>;
 
 /// Why did we require that the two types be related?
 ///
@@ -1123,8 +1123,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn sub_regions(&self,
                        origin: SubregionOrigin<'tcx>,
-                       a: ty::Region,
-                       b: ty::Region) {
+                       a: &'tcx ty::Region,
+                       b: &'tcx ty::Region) {
         debug!("sub_regions({:?} <: {:?})", a, b);
         self.region_vars.make_subregion(origin, a, b);
     }
@@ -1147,7 +1147,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn region_outlives_predicate(&self,
                                      span: Span,
-                                     predicate: &ty::PolyRegionOutlivesPredicate)
+                                     predicate: &ty::PolyRegionOutlivesPredicate<'tcx>)
         -> UnitResult<'tcx>
     {
         self.commit_if_ok(|snapshot| {
@@ -1190,8 +1190,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .new_key(None)
     }
 
-    pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region {
-        ty::ReVar(self.region_vars.new_region_var(origin))
+    pub fn next_region_var(&self, origin: RegionVariableOrigin)
+                           -> &'tcx ty::Region {
+        self.tcx.mk_region(ty::ReVar(self.region_vars.new_region_var(origin)))
     }
 
     /// Create a region inference variable for the given
@@ -1199,7 +1200,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn region_var_for_def(&self,
                               span: Span,
                               def: &ty::RegionParameterDef)
-                              -> ty::Region {
+                              -> &'tcx ty::Region {
         self.next_region_var(EarlyBoundRegion(span, def.name))
     }
 
@@ -1245,7 +1246,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {
+    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> &'tcx ty::Region {
         self.region_vars.new_bound(debruijn)
     }
 
@@ -1530,7 +1531,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &ty::Binder<T>)
-        -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
+        -> (T, FnvHashMap<ty::BoundRegion, &'tcx ty::Region>)
         where T : TypeFoldable<'tcx>
     {
         self.tcx.replace_late_bound_regions(
@@ -1576,8 +1577,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn verify_generic_bound(&self,
                                 origin: SubregionOrigin<'tcx>,
                                 kind: GenericKind<'tcx>,
-                                a: ty::Region,
-                                bound: VerifyBound) {
+                                a: &'tcx ty::Region,
+                                bound: VerifyBound<'tcx>) {
         debug!("verify_generic_bound({:?}, {:?} <: {:?})",
                kind,
                a,
@@ -1666,7 +1667,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.region_maps.temporary_scope(rvalue_id)
     }
 
-    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
         self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
     }
 

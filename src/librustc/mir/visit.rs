@@ -757,7 +757,7 @@ make_mir_visitor!(Visitor,);
 make_mir_visitor!(MutVisitor,mut);
 
 #[derive(Copy, Clone, Debug)]
-pub enum LvalueContext {
+pub enum LvalueContext<'tcx> {
     // Appears as LHS of an assignment
     Store,
 
@@ -771,7 +771,7 @@ pub enum LvalueContext {
     Inspect,
 
     // Being borrowed
-    Borrow { region: Region, kind: BorrowKind },
+    Borrow { region: &'tcx Region, kind: BorrowKind },
 
     // Being sliced -- this should be same as being borrowed, probably
     Slice { from_start: usize, from_end: usize },

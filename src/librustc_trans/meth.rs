@@ -265,7 +265,7 @@ pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // the method may have some early-bound lifetimes, add
             // regions for those
             let method_substs = Substs::for_item(tcx, trait_method_def_id,
-                                                 |_, _| ty::ReErased,
+                                                 |_, _| tcx.mk_region(ty::ReErased),
                                                  |_, _| tcx.types.err);
 
             // The substitutions we have are on the impl, so we grab
@@ -307,7 +307,7 @@ pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  name: Name)
                                  -> ImplMethod<'tcx>
 {
-    assert!(!substs.types.needs_infer());
+    assert!(!substs.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);

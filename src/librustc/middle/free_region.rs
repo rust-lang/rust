@@ -37,7 +37,7 @@ impl FreeRegionMap {
         for implied_bound in implied_bounds {
             debug!("implied bound: {:?}", implied_bound);
             match *implied_bound {
-                ImpliedBound::RegionSubRegion(ty::ReFree(free_a), ty::ReFree(free_b)) => {
+                ImpliedBound::RegionSubRegion(&ty::ReFree(free_a), &ty::ReFree(free_b)) => {
                     self.relate_free_regions(free_a, free_b);
                 }
                 ImpliedBound::RegionSubRegion(..) |
@@ -65,9 +65,9 @@ impl FreeRegionMap {
                 }
                 ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
                     match (r_a, r_b) {
-                        (ty::ReStatic, ty::ReFree(_)) => {},
-                        (ty::ReFree(fr_a), ty::ReStatic) => self.relate_to_static(fr_a),
-                        (ty::ReFree(fr_a), ty::ReFree(fr_b)) => {
+                        (&ty::ReStatic, &ty::ReFree(_)) => {},
+                        (&ty::ReFree(fr_a), &ty::ReStatic) => self.relate_to_static(fr_a),
+                        (&ty::ReFree(fr_a), &ty::ReFree(fr_b)) => {
                             // Record that `'a:'b`. Or, put another way, `'b <= 'a`.
                             self.relate_free_regions(fr_b, fr_a);
                         }
@@ -122,26 +122,26 @@ impl FreeRegionMap {
     /// inference* and sadly the logic is somewhat duplicated with the code in infer.rs.
     pub fn is_subregion_of(&self,
                            tcx: TyCtxt,
-                           sub_region: ty::Region,
-                           super_region: ty::Region)
+                           sub_region: &ty::Region,
+                           super_region: &ty::Region)
                            -> bool {
         let result = sub_region == super_region || {
             match (sub_region, super_region) {
-                (ty::ReEmpty, _) |
-                (_, ty::ReStatic) =>
+                (&ty::ReEmpty, _) |
+                (_, &ty::ReStatic) =>
                     true,
 
-                (ty::ReScope(sub_scope), ty::ReScope(super_scope)) =>
+                (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
                     tcx.region_maps.is_subscope_of(sub_scope, super_scope),
 
-                (ty::ReScope(sub_scope), ty::ReFree(fr)) =>
+                (&ty::ReScope(sub_scope), &ty::ReFree(fr)) =>
                     tcx.region_maps.is_subscope_of(sub_scope, fr.scope) ||
                     self.is_static(fr),
 
-                (ty::ReFree(sub_fr), ty::ReFree(super_fr)) =>
+                (&ty::ReFree(sub_fr), &ty::ReFree(super_fr)) =>
                     self.sub_free_region(sub_fr, super_fr),
 
-                (ty::ReStatic, ty::ReFree(sup_fr)) =>
+                (&ty::ReStatic, &ty::ReFree(sup_fr)) =>
                     self.is_static(sup_fr),
 
                 _ =>

@@ -41,11 +41,11 @@ pub enum TypeError<'tcx> {
     FixedArraySize(ExpectedFound<usize>),
     TyParamSize(ExpectedFound<usize>),
     ArgCount,
-    RegionsDoesNotOutlive(Region, Region),
-    RegionsNotSame(Region, Region),
-    RegionsNoOverlap(Region, Region),
-    RegionsInsufficientlyPolymorphic(BoundRegion, Region),
-    RegionsOverlyPolymorphic(BoundRegion, Region),
+    RegionsDoesNotOutlive(&'tcx Region, &'tcx Region),
+    RegionsNotSame(&'tcx Region, &'tcx Region),
+    RegionsNoOverlap(&'tcx Region, &'tcx Region),
+    RegionsInsufficientlyPolymorphic(BoundRegion, &'tcx Region),
+    RegionsOverlyPolymorphic(BoundRegion, &'tcx Region),
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntegerAsChar,
     IntMismatch(ExpectedFound<ty::IntVarValue>),
@@ -296,7 +296,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.note_and_explain_region(db, "concrete lifetime that was found is ",
                                            conc_region, "");
             }
-            RegionsOverlyPolymorphic(_, ty::ReVar(_)) => {
+            RegionsOverlyPolymorphic(_, &ty::ReVar(_)) => {
                 // don't bother to print out the message below for
                 // inference variables, it's not very illuminating.
             }

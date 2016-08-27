@@ -232,8 +232,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if let Ok(..) = self.can_equate(&trait_self_ty, &impl_self_ty) {
                     self_match_impls.push(def_id);
 
-                    if trait_ref.substs.types[1..].iter()
-                        .zip(&impl_trait_ref.substs.types[1..])
+                    if trait_ref.substs.types().skip(1)
+                        .zip(impl_trait_ref.substs.types().skip(1))
                         .all(|(u,v)| self.fuzzy_match_tys(u, v))
                     {
                         fuzzy_match_impls.push(def_id);
@@ -738,8 +738,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::Predicate::Trait(ref data) => {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
-                let all_types = &trait_ref.substs().types;
-                if all_types.references_error() {
+                if predicate.references_error() {
                 } else {
                     // Typically, this ambiguity should only happen if
                     // there are unresolved type inference variables
