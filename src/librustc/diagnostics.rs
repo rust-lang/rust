@@ -1721,6 +1721,50 @@ fn cookie() -> ! { // error: definition of an unknown language item: `cookie`
 ```
 "##,
 
+E0525: r##"
+A closure was attempted to get used whereas it doesn't implement the expected
+trait.
+
+Erroneous code example:
+
+```compile_fail,E0525
+struct X;
+
+fn foo<T>(_: T) {}
+fn bar<T: Fn(u32)>(_: T) {}
+
+fn main() {
+    let x = X;
+    let closure = |_| foo(x); // error: expected a closure that implements
+                              //        the `Fn` trait, but this closure only
+                              //        implements `FnOnce`
+    bar(closure);
+}
+```
+
+In the example above, `closure` is an `FnOnce` closure whereas the `bar`
+function expected an `Fn` closure. In this case, it's simple to fix the issue,
+you just have to implement `Copy` and `Clone` traits on `struct X` and it'll
+be ok:
+
+```
+#[derive(Clone, Copy)] // We implement `Clone` and `Copy` traits.
+struct X;
+
+fn foo<T>(_: T) {}
+fn bar<T: Fn(u32)>(_: T) {}
+
+fn main() {
+    let x = X;
+    let closure = |_| foo(x);
+    bar(closure); // ok!
+}
+```
+
+To understand better how closures work in Rust, read:
+https://doc.rust-lang.org/book/closures.html
+"##,
+
 }
 
 
@@ -1760,5 +1804,4 @@ register_diagnostics! {
     E0490, // a value of type `..` is borrowed for too long
     E0491, // in type `..`, reference has a longer lifetime than the data it...
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
-    E0525  // expected a closure that implements `..` but this closure only implements `..`
 }
