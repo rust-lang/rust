@@ -161,6 +161,24 @@ fn main() {}
 ```
 "##,
 
+E0565: r##"
+A literal was used in an attribute that doesn't support literals.
+
+Erroneous code example:
+
+```compile_fail,E0565
+#[inline("always")] // error: unsupported literal
+pub fn something() {}
+```
+
+Literals in attributes are new and largely unsupported. Work to support literals
+where appropriate is ongoing. Try using an unquoted name instead:
+
+```
+#[inline(always)]
+pub fn something() {}
+```
+"##,
 }
 
 register_diagnostics! {

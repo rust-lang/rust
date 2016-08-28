@@ -19,7 +19,6 @@ use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroExpanderFn, MacroRulesTT};
 use syntax::parse::token;
-use syntax::ptr::P;
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
 use syntax_pos::Span;
@@ -41,7 +40,7 @@ pub struct Registry<'a> {
     pub sess: &'a Session,
 
     #[doc(hidden)]
-    pub args_hidden: Option<Vec<P<ast::MetaItem>>>,
+    pub args_hidden: Option<Vec<ast::NestedMetaItem>>,
 
     #[doc(hidden)]
     pub krate_span: Span,
@@ -95,7 +94,7 @@ impl<'a> Registry<'a> {
     ///
     /// Returns empty slice in case the plugin was loaded
     /// with `--extra-plugins`
-    pub fn args<'b>(&'b self) -> &'b [P<ast::MetaItem>] {
+    pub fn args<'b>(&'b self) -> &'b [ast::NestedMetaItem] {
         self.args_hidden.as_ref().map(|v| &v[..]).unwrap_or(&[])
     }
 

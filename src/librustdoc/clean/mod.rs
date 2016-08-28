@@ -26,10 +26,11 @@ pub use self::Visibility::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::{AttributeMethods, AttrMetaMethods};
+use syntax::attr::{AttributeMethods, AttrMetaMethods, AttrNestedMetaItemMethods};
 use syntax::codemap::Spanned;
 use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
+use syntax::print::pprust as syntax_pprust;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc_trans::back::link;
@@ -501,11 +502,24 @@ impl Attributes for [Attribute] {
     }
 }
 
+/// This is a flattened version of the AST's Attribute + MetaItem.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub enum Attribute {
     Word(String),
     List(String, Vec<Attribute>),
-    NameValue(String, String)
+    NameValue(String, String),
+    Literal(String),
+}
+
+impl Clean<Attribute> for ast::NestedMetaItem {
+    fn clean(&self, cx: &DocContext) -> Attribute {
+        if let Some(mi) = self.meta_item() {
+            mi.clean(cx)
+        } else { // must be a literal
+            let lit = self.literal().unwrap();
+            Literal(syntax_pprust::lit_to_string(lit))
+        }
+    }
 }
 
 impl Clean<Attribute> for ast::MetaItem {
@@ -528,12 +542,28 @@ impl Clean<Attribute> for ast::Attribute {
 }
 
 // This is a rough approximation that gets us what we want.
-impl attr::AttrMetaMethods for Attribute {
-    fn name(&self) -> InternedString {
+impl attr::AttrNestedMetaItemMethods for Attribute {
+    fn check_name(&self, name: &str) -> bool {
+        self.name().map_or(false, |mi_name| &*mi_name == name)
+    }
+
+    fn literal(&self) -> Option<&ast::Lit> { None }
+
+    fn is_literal(&self) -> bool {
+      match *self {
+        Literal(..) => true,
+        _ => false,
+      }
+    }
+
+    fn meta_item(&self) -> Option<&P<ast::MetaItem>> { None }
+
+    fn name(&self) -> Option<InternedString> {
         match *self {
             Word(ref n) | List(ref n, _) | NameValue(ref n, _) => {
-                token::intern_and_get_ident(n)
-            }
+                Some(token::intern_and_get_ident(n))
+            },
+            _ => None
         }
     }
 
@@ -545,7 +575,8 @@ impl attr::AttrMetaMethods for Attribute {
             _ => None,
         }
     }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
+
+    fn word(&self) -> Option<&P<ast::MetaItem>> { None }
 
     fn is_word(&self) -> bool {
       match *self {
@@ -554,12 +585,7 @@ impl attr::AttrMetaMethods for Attribute {
       }
     }
 
-    fn is_value_str(&self) -> bool {
-      match *self {
-        NameValue(..) => true,
-        _ => false,
-      }
-    }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [ast::NestedMetaItem]> { None }
 
     fn is_meta_item_list(&self) -> bool {
       match *self {
@@ -2534,8 +2560,8 @@ impl Clean<Vec<Item>> for doctree::Import {
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let denied = self.vis != hir::Public || self.attrs.iter().any(|a| {
             &a.name()[..] == "doc" && match a.meta_item_list() {
-                Some(l) => attr::contains_name(l, "no_inline") ||
-                           attr::contains_name(l, "hidden"),
+                Some(l) => attr::list_contains_name(l, "no_inline") ||
+                           attr::list_contains_name(l, "hidden"),
                 None => false,
             }
         });
