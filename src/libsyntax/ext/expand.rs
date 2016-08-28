@@ -409,42 +409,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
 
 fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> Expansion {
     match a {
-        Annotatable::Item(it) => match it.node {
-            ast::ItemKind::Mac(..) => {
-                if match it.node {
-                    ItemKind::Mac(ref mac) => mac.node.path.segments.is_empty(),
-                    _ => unreachable!(),
-                } {
-                    return Expansion::Items(SmallVector::one(it));
-                }
-                it.and_then(|it| match it.node {
-                    ItemKind::Mac(mac) => {
-                        let invoc =
-                            fld.new_invoc(ExpansionKind::Items, InvocationKind::Bang {
-                                mac: mac, attrs: it.attrs, ident: Some(it.ident), span: it.span,
-                            });
-                        expand_invoc(invoc, fld)
-                    }
-                    _ => unreachable!(),
-                })
-            }
-            ast::ItemKind::Mod(_) | ast::ItemKind::ForeignMod(_) => {
-                let valid_ident =
-                    it.ident.name != keywords::Invalid.name();
-
-                if valid_ident {
-                    fld.cx.mod_push(it.ident);
-                }
-                let macro_use = contains_macro_use(fld, &it.attrs);
-                let result = fld.with_exts_frame(macro_use, |fld| noop_fold_item(it, fld));
-                if valid_ident {
-                    fld.cx.mod_pop();
-                }
-                Expansion::Items(result)
-            },
-            _ => Expansion::Items(noop_fold_item(it, fld)),
-        },
-
+        Annotatable::Item(it) => Expansion::Items(expand_item(it, fld)),
         Annotatable::TraitItem(it) => Expansion::TraitItems(expand_trait_item(it.unwrap(), fld)),
         Annotatable::ImplItem(ii) => Expansion::ImplItems(expand_impl_item(ii.unwrap(), fld)),
     }
@@ -477,6 +442,44 @@ fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> Expansi
         expand_invoc(invoc, fld)
     } else {
         expand_multi_modified(item, fld)
+    }
+}
+
+fn expand_item(item: P<ast::Item>, fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
+    match item.node {
+        ast::ItemKind::Mac(..) => {
+            if match item.node {
+                ItemKind::Mac(ref mac) => mac.node.path.segments.is_empty(),
+                _ => unreachable!(),
+            } {
+                return SmallVector::one(item);
+            }
+            item.and_then(|item| match item.node {
+                ItemKind::Mac(mac) => {
+                    let invoc =
+                        fld.new_invoc(ExpansionKind::Items, InvocationKind::Bang {
+                            mac: mac, attrs: item.attrs, ident: Some(item.ident), span: item.span,
+                        });
+                    expand_invoc(invoc, fld).make_items()
+                }
+                _ => unreachable!(),
+            })
+        }
+        ast::ItemKind::Mod(_) | ast::ItemKind::ForeignMod(_) => {
+            let valid_ident =
+                item.ident.name != keywords::Invalid.name();
+
+            if valid_ident {
+                fld.cx.mod_push(item.ident);
+            }
+            let macro_use = contains_macro_use(fld, &item.attrs);
+            let result = fld.with_exts_frame(macro_use, |fld| noop_fold_item(item, fld));
+            if valid_ident {
+                fld.cx.mod_pop();
+            }
+            result
+        },
+        _ => noop_fold_item(item, fld),
     }
 }
 
