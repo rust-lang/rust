@@ -32,7 +32,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::Visitor;
 use rustc_data_structures::fnv::FnvHashSet;
 use syntax::ast::{self, Attribute, NestedMetaItem};
-use syntax::attr::{AttrNestedMetaItemMethods, AttrMetaMethods};
 use syntax::parse::token::InternedString;
 use rustc::ty::TyCtxt;
 

@@ -29,7 +29,7 @@ use rustc::hir;
 
 use std::ffi::{CStr, CString};
 use syntax::ast;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::parse::token;
 
 pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {

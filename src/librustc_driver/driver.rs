@@ -49,7 +49,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::{ast, diagnostics, visit};
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
 use syntax;

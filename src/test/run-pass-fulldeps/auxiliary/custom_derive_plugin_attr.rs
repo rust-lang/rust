@@ -21,7 +21,6 @@ extern crate rustc;
 extern crate rustc_plugin;
 
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;

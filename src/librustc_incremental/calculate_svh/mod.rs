@@ -28,7 +28,6 @@
 //! at the beginning.
 
 use syntax::ast;
-use syntax::attr::AttributeMethods;
 use std::hash::{Hash, SipHasher, Hasher};
 use rustc::dep_graph::DepNode;
 use rustc::hir;

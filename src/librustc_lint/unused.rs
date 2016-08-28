@@ -18,7 +18,7 @@ use lint::{LintPass, EarlyLintPass, LateLintPass};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::ast;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::parse::token::keywords;
 use syntax::ptr::P;

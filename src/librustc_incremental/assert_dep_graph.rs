@@ -56,7 +56,6 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 use syntax::ast;
-use syntax::attr::{AttrNestedMetaItemMethods, AttrMetaMethods};
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
 

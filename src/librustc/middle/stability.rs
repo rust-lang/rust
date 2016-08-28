@@ -27,7 +27,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
-use syntax::attr::{self, Stability, Deprecation, AttrMetaMethods};
+use syntax::attr::{self, Stability, Deprecation};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use hir;

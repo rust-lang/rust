@@ -30,7 +30,6 @@ use middle::weak_lang_items;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
 use hir::intravisit::Visitor;
 use hir;
