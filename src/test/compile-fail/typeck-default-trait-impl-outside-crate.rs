@@ -10,7 +10,6 @@
 
 #![feature(optin_builtin_traits)]
 
-impl Copy for .. {}
-//~^ ERROR E0318
-
+impl Copy for .. {} //~ ERROR E0318
+     //~^ NOTE `Copy` trait not defined in this crate
 fn main() {}
