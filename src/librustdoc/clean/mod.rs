@@ -43,10 +43,10 @@ use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
 use rustc::ty;
 use rustc::middle::stability;
+use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
 
 use rustc::hir;
 
-use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -121,7 +121,7 @@ pub struct Crate {
     pub access_levels: Arc<AccessLevels<DefId>>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    pub external_traits: HashMap<DefId, Trait>,
+    pub external_traits: FnvHashMap<DefId, Trait>,
 }
 
 struct CrateNum(ast::CrateNum);
@@ -1010,7 +1010,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // Note that associated types also have a sized bound by default, but we
         // don't actually know the set of associated types right here so that's
         // handled in cleaning associated types
-        let mut sized_params = HashSet::new();
+        let mut sized_params = FnvHashSet();
         where_predicates.retain(|pred| {
             match *pred {
                 WP::BoundPredicate { ty: Generic(ref g), ref bounds } => {
@@ -1656,9 +1656,9 @@ impl From<ast::FloatTy> for PrimitiveType {
 struct SubstAlias<'a, 'tcx: 'a> {
     tcx: &'a ty::TyCtxt<'a, 'tcx, 'tcx>,
     // Table type parameter definition -> substituted type
-    ty_substs: HashMap<Def, hir::Ty>,
+    ty_substs: FnvHashMap<Def, hir::Ty>,
     // Table node id of lifetime parameter definition -> substituted lifetime
-    lt_substs: HashMap<ast::NodeId, hir::Lifetime>,
+    lt_substs: FnvHashMap<ast::NodeId, hir::Lifetime>,
 }
 
 impl<'a, 'tcx: 'a, 'b: 'tcx> Folder for SubstAlias<'a, 'tcx> {
@@ -1727,8 +1727,8 @@ impl Clean<Type> for hir::Ty {
                                 let item = tcx.map.expect_item(node_id);
                                 if let hir::ItemTy(ref ty, ref generics) = item.node {
                                     let provided_params = &path.segments.last().unwrap().parameters;
-                                    let mut ty_substs = HashMap::new();
-                                    let mut lt_substs = HashMap::new();
+                                    let mut ty_substs = FnvHashMap();
+                                    let mut lt_substs = FnvHashMap();
                                     for (i, ty_param) in generics.ty_params.iter().enumerate() {
                                         let ty_param_def = tcx.expect_def(ty_param.id);
                                         if let Some(ty) = provided_params.types().get(i).cloned()
@@ -2384,7 +2384,7 @@ impl Clean<ImplPolarity> for hir::ImplPolarity {
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub generics: Generics,
-    pub provided_trait_methods: HashSet<String>,
+    pub provided_trait_methods: FnvHashSet<String>,
     pub trait_: Option<Type>,
     pub for_: Type,
     pub items: Vec<Item>,
@@ -2410,7 +2410,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                    .map(|meth| meth.name.to_string())
                    .collect()
             })
-        }).unwrap_or(HashSet::new());
+        }).unwrap_or(FnvHashSet());
 
         ret.push(Item {
             name: None,

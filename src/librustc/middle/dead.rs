@@ -22,8 +22,8 @@ use ty::{self, TyCtxt};
 use hir::def::Def;
 use hir::def_id::{DefId};
 use lint;
+use util::nodemap::FnvHashSet;
 
-use std::collections::HashSet;
 use syntax::{ast, codemap};
 use syntax::attr;
 use syntax_pos;
@@ -48,7 +48,7 @@ fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<ast::NodeId>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    live_symbols: Box<HashSet<ast::NodeId>>,
+    live_symbols: Box<FnvHashSet<ast::NodeId>>,
     struct_has_extern_repr: bool,
     ignore_non_const_paths: bool,
     inherited_pub_visibility: bool,
@@ -61,7 +61,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         MarkSymbolVisitor {
             worklist: worklist,
             tcx: tcx,
-            live_symbols: box HashSet::new(),
+            live_symbols: box FnvHashSet(),
             struct_has_extern_repr: false,
             ignore_non_const_paths: false,
             inherited_pub_visibility: false,
@@ -162,7 +162,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn mark_live_symbols(&mut self) {
-        let mut scanned = HashSet::new();
+        let mut scanned = FnvHashSet();
         while !self.worklist.is_empty() {
             let id = self.worklist.pop().unwrap();
             if scanned.contains(&id) {
@@ -395,7 +395,7 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        access_levels: &privacy::AccessLevels,
                        krate: &hir::Crate)
-                       -> Box<HashSet<ast::NodeId>> {
+                       -> Box<FnvHashSet<ast::NodeId>> {
     let worklist = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor::new(tcx, worklist);
     symbol_visitor.mark_live_symbols();
@@ -413,7 +413,7 @@ fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
 
 struct DeadVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    live_symbols: Box<HashSet<ast::NodeId>>,
+    live_symbols: Box<FnvHashSet<ast::NodeId>>,
 }
 
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
