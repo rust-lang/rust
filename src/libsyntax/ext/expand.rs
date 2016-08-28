@@ -345,10 +345,6 @@ fn expand_bang_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
     fully_expanded
 }
 
-pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
-    expand_annotatable(Annotatable::Item(it), fld).make_items()
-}
-
 // does this attribute list contain "macro_use" ?
 fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool {
     for attr in attrs {
@@ -649,7 +645,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
                     ::attr::first_attr_value_str_by_name(&item.attrs, "path")
                         .unwrap_or(item.ident.name.as_str())
                 });
-                result = expand_item(item, self);
+                result = expand_annotatable(Annotatable::Item(item), self).make_items();
                 self.cx.directory = directory;
             } else {
                 let mut directory = match inner {
@@ -658,11 +654,11 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
                 };
                 directory.pop();
                 let directory = replace(&mut self.cx.directory, directory);
-                result = expand_item(item, self);
+                result = expand_annotatable(Annotatable::Item(item), self).make_items();
                 self.cx.directory = directory;
             }
         } else {
-            result = expand_item(item, self);
+            result = expand_annotatable(Annotatable::Item(item), self).make_items();
         }
         result
     }
