@@ -965,8 +965,9 @@ impl<'a> LocalCrateReader<'a> {
                 Some("dylib") => cstore::NativeUnknown,
                 Some("framework") => cstore::NativeFramework,
                 Some(k) => {
-                    span_err!(self.sess, m.span, E0458,
-                              "unknown kind: `{}`", k);
+                    struct_span_err!(self.sess, m.span, E0458,
+                              "unknown kind: `{}`", k)
+                        .span_label(m.span, &format!("unknown kind")).emit();
                     cstore::NativeUnknown
                 }
                 None => cstore::NativeUnknown
