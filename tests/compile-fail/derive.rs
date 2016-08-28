@@ -3,7 +3,6 @@
 
 #![deny(warnings)]
 #![allow(dead_code)]
-#![allow(unused_variables)] // Temporary fix for rustc false positive. To be removed.
 
 use std::hash::{Hash, Hasher};
 
