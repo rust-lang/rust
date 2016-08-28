@@ -338,13 +338,22 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         ty::TyStruct(def, substs) => {
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
-            // Don't use type_of::sizing_type_of because that expects t to be sized.
+            // Don't use type_of::sizing_type_of because that expects t to be sized,
+            // and it also rounds up to alignment, which we want to avoid,
+            // as the unsized field's alignment could be smaller.
             assert!(!t.is_simd());
-            let repr = adt::represent_type(ccx, t);
-            let sizing_type = adt::sizing_type_of(ccx, &repr, true);
-            debug!("DST {} sizing_type: {:?}", t, sizing_type);
-            let sized_size = llsize_of_alloc(ccx, sizing_type);
-            let sized_align = llalign_of_min(ccx, sizing_type);
+            let layout = ccx.layout_of(t);
+            debug!("DST {} layout: {:?}", t, layout);
+
+            let (sized_size, sized_align) = match *layout {
+                ty::layout::Layout::Univariant { ref variant, .. } => {
+                    (variant.min_size().bytes(), variant.align.abi())
+                }
+                _ => {
+                    bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
+                         t, layout);
+                }
+            };
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
             let sized_size = C_uint(ccx, sized_size);
