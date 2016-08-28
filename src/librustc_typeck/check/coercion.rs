@@ -664,7 +664,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            -> RelateResult<'tcx, Ty<'tcx>>
         // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
         where E: Fn() -> I,
-              I: IntoIterator<Item=(&'b hir::Expr, Ty<'tcx>)> {
+              I: IntoIterator<Item=&'b hir::Expr> {
 
         let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
         let new_ty = self.resolve_type_vars_with_obligations(new_ty);
@@ -703,7 +703,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 // Reify both sides and return the reified fn pointer type.
-                for (expr, _) in exprs().into_iter().chain(Some((new, new_ty))) {
+                for expr in exprs().into_iter().chain(Some(new)) {
                     // No adjustments can produce a fn item, so this should never trip.
                     assert!(!self.tables.borrow().adjustments.contains_key(&expr.id));
                     self.write_adjustment(expr.id, AdjustReifyFnPointer);
@@ -737,13 +737,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Then try to coerce the previous expressions to the type of the new one.
         // This requires ensuring there are no coercions applied to *any* of the
         // previous expressions, other than noop reborrows (ignoring lifetimes).
-        for (expr, expr_ty) in exprs() {
+        for expr in exprs() {
             let noop = match self.tables.borrow().adjustments.get(&expr.id) {
                 Some(&AdjustDerefRef(AutoDerefRef {
                     autoderefs: 1,
                     autoref: Some(AutoPtr(_, mutbl_adj)),
                     unsize: None
-                })) => match expr_ty.sty {
+                })) => match self.node_ty(expr.id).sty {
                     ty::TyRef(_, mt_orig) => {
                         // Reborrow that we can safely ignore.
                         mutbl_adj == mt_orig.mutbl
@@ -767,9 +767,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        match self.commit_if_ok(|_| apply(&mut coerce,
-                                          &|| exprs().into_iter().map(|(e, _)| e),
-                                          prev_ty, new_ty)) {
+        match self.commit_if_ok(|_| apply(&mut coerce, &exprs, prev_ty, new_ty)) {
             Err(_) => {
                 // Avoid giving strange errors on failed attempts.
                 if let Some(e) = first_error {
@@ -787,7 +785,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             Ok((ty, adjustment)) => {
                 if !adjustment.is_identity() {
-                    for (expr, _) in exprs() {
+                    for expr in exprs() {
                         let previous = self.tables.borrow().adjustments.get(&expr.id).cloned();
                         if let Some(AdjustNeverToAny(_)) = previous {
                             self.write_adjustment(expr.id, AdjustNeverToAny(ty));
