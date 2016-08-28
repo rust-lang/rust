@@ -57,8 +57,8 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructur
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
             match *summary {
-                Unnamed(ref fields) => {
-                    if fields.is_empty() {
+                Unnamed(ref fields, is_tuple) => {
+                    if !is_tuple {
                         cx.expr_ident(trait_span, substr.type_ident)
                     } else {
                         let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
