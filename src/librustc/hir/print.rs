@@ -2134,16 +2134,7 @@ impl<'a> State<'a> {
                     self.print_path(path, false, 0)?;
                     word(&mut self.s, "::{")?;
                 }
-                self.commasep(Inconsistent, &segments[..], |s, w| {
-                    match w.node {
-                        hir::PathListIdent { name, .. } => {
-                            s.print_name(name)
-                        }
-                        hir::PathListMod { .. } => {
-                            word(&mut s.s, "self")
-                        }
-                    }
-                })?;
+                self.commasep(Inconsistent, &segments[..], |s, w| s.print_name(w.node.name))?;
                 word(&mut self.s, "}")
             }
         }

@@ -120,7 +120,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                     match view_path.node {
                         ViewPathList(_, ref paths) => {
                             for path in paths {
-                                this.insert(path.node.id(), NodeItem(i));
+                                this.insert(path.node.id, NodeItem(i));
                             }
                         }
                         _ => ()

@@ -294,7 +294,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_path_list_item(&mut self, path: &hir::Path, item: &hir::PathListItem) {
-        self.lookup_and_handle_definition(item.node.id());
+        self.lookup_and_handle_definition(item.node.id);
         intravisit::walk_path_list_item(self, path, item);
     }
 }

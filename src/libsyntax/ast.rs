@@ -1626,42 +1626,14 @@ pub struct Variant_ {
 pub type Variant = Spanned<Variant_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum PathListItemKind {
-    Ident {
-        name: Ident,
-        /// renamed in list, e.g. `use foo::{bar as baz};`
-        rename: Option<Ident>,
-        id: NodeId
-    },
-    Mod {
-        /// renamed in list, e.g. `use foo::{self as baz};`
-        rename: Option<Ident>,
-        id: NodeId
-    }
+pub struct PathListItem_ {
+    pub name: Ident,
+    /// renamed in list, e.g. `use foo::{bar as baz};`
+    pub rename: Option<Ident>,
+    pub id: NodeId,
 }
 
-impl PathListItemKind {
-    pub fn id(&self) -> NodeId {
-        match *self {
-            PathListItemKind::Ident { id, .. } | PathListItemKind::Mod { id, .. } => id
-        }
-    }
-
-    pub fn name(&self) -> Option<Ident> {
-        match *self {
-            PathListItemKind::Ident { name, .. } => Some(name),
-            PathListItemKind::Mod { .. } => None,
-        }
-    }
-
-    pub fn rename(&self) -> Option<Ident> {
-        match *self {
-            PathListItemKind::Ident { rename, .. } | PathListItemKind::Mod { rename, .. } => rename
-        }
-    }
-}
-
-pub type PathListItem = Spanned<PathListItemKind>;
+pub type PathListItem = Spanned<PathListItem_>;
 
 pub type ViewPath = Spanned<ViewPath_>;
 

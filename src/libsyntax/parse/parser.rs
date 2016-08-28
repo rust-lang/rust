@@ -6040,13 +6040,16 @@ impl<'a> Parser<'a> {
                                  &token::CloseDelim(token::Brace),
                                  SeqSep::trailing_allowed(token::Comma), |this| {
             let lo = this.span.lo;
-            let node = if this.eat_keyword(keywords::SelfValue) {
-                let rename = this.parse_rename()?;
-                ast::PathListItemKind::Mod { id: ast::DUMMY_NODE_ID, rename: rename }
+            let ident = if this.eat_keyword(keywords::SelfValue) {
+                keywords::SelfValue.ident()
             } else {
-                let ident = this.parse_ident()?;
-                let rename = this.parse_rename()?;
-                ast::PathListItemKind::Ident { name: ident, rename: rename, id: ast::DUMMY_NODE_ID }
+                this.parse_ident()?
+            };
+            let rename = this.parse_rename()?;
+            let node = ast::PathListItem_ {
+                name: ident,
+                rename: rename,
+                id: ast::DUMMY_NODE_ID
             };
             let hi = this.last_span.hi;
             Ok(spanned(lo, hi, node))
