@@ -24,7 +24,6 @@ use syntax::ast;
 use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
-use syntax::ptr::P;
 use syntax_ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_substructure};
 use syntax_ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
 use syntax_pos::Span;

@@ -57,7 +57,6 @@ use syntax::parse::token;
 use syntax::ast;
 use syntax::codemap;
 use syntax::print::pprust;
-use syntax::ptr::P;
 use syntax_pos::{self, Span, BytePos, NO_EXPANSION};
 
 pub type Cmd<'a> = &'a CrateMetadata;
@@ -1113,44 +1112,20 @@ pub fn get_struct_field_names(cdata: Cmd, id: DefIndex) -> Vec<ast::Name> {
     })).collect()
 }
 
-fn get_meta_items(md: rbml::Doc) -> Vec<P<ast::MetaItem>> {
-    reader::tagged_docs(md, tag_meta_item_word).map(|meta_item_doc| {
-        let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = token::intern_and_get_ident(nd.as_str());
-        attr::mk_word_item(n)
-    }).chain(reader::tagged_docs(md, tag_meta_item_name_value).map(|meta_item_doc| {
-        let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = token::intern_and_get_ident(nd.as_str());
-        let v = token::intern_and_get_ident(vd.as_str());
-        // FIXME (#623): Should be able to decode MetaItemKind::NameValue variants,
-        // but currently the encoder just drops them
-        attr::mk_name_value_item_str(n, v)
-    })).chain(reader::tagged_docs(md, tag_meta_item_list).map(|meta_item_doc| {
-        let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = token::intern_and_get_ident(nd.as_str());
-        let subitems = get_meta_items(meta_item_doc);
-        attr::mk_list_item(n, subitems)
-    })).collect()
-}
-
 fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
-    match reader::maybe_get_doc(md, tag_attributes) {
-        Some(attrs_d) => {
-            reader::tagged_docs(attrs_d, tag_attribute).map(|attr_doc| {
-                let is_sugared_doc = reader::doc_as_u8(
-                    reader::get_doc(attr_doc, tag_attribute_is_sugared_doc)
-                ) == 1;
-                let meta_items = get_meta_items(attr_doc);
-                // Currently it's only possible to have a single meta item on
-                // an attribute
-                assert_eq!(meta_items.len(), 1);
-                let meta_item = meta_items.into_iter().nth(0).unwrap();
-                attr::mk_doc_attr_outer(attr::mk_attr_id(), meta_item, is_sugared_doc)
-            }).collect()
-        },
-        None => vec![],
-    }
+    reader::maybe_get_doc(md, tag_attributes).map_or(vec![], |attrs_doc| {
+        let mut decoder = reader::Decoder::new(attrs_doc);
+        let mut attrs: Vec<ast::Attribute> = decoder.read_opaque(|opaque_decoder, _| {
+            Decodable::decode(opaque_decoder)
+        }).unwrap();
+
+        // Need new unique IDs: old thread-local IDs won't map to new threads.
+        for attr in attrs.iter_mut() {
+            attr.node.id = attr::mk_attr_id();
+        }
+
+        attrs
+    })
 }
 
 fn list_crate_attributes(md: rbml::Doc, hash: &Svh,

@@ -120,7 +120,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let prelude_import_meta = attr::mk_word_item(InternedString::new("prelude_import"));
+        let prelude_import_meta = attr::mk_list_word_item(InternedString::new("prelude_import"));
         let list = attr::mk_list_item(InternedString::new("feature"),
                                       vec![prelude_import_meta]);
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), list);
@@ -404,6 +404,10 @@ pub fn block_to_string(blk: &ast::Block) -> String {
         try!(s.ibox(0));
         s.print_block(blk)
     })
+}
+
+pub fn meta_list_item_to_string(li: &ast::NestedMetaItem) -> String {
+    to_string(|s| s.print_meta_list_item(li))
 }
 
 pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
@@ -764,6 +768,17 @@ pub trait PrintState<'a> {
         }
     }
 
+    fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) -> io::Result<()> {
+        match item.node {
+            ast::NestedMetaItemKind::MetaItem(ref mi) => {
+                self.print_meta_item(mi)
+            },
+            ast::NestedMetaItemKind::Literal(ref lit) => {
+                self.print_literal(lit)
+            }
+        }
+    }
+
     fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
         try!(self.ibox(INDENT_UNIT));
         match item.node {
@@ -780,7 +795,7 @@ pub trait PrintState<'a> {
                 try!(self.popen());
                 try!(self.commasep(Consistent,
                               &items[..],
-                              |s, i| s.print_meta_item(&i)));
+                              |s, i| s.print_meta_list_item(&i)));
                 try!(self.pclose());
             }
         }

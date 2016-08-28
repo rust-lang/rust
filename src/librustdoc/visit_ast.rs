@@ -17,7 +17,7 @@ use std::mem;
 use syntax::abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
+use syntax::attr::{AttrMetaMethods, AttrNestedMetaItemMethods};
 use syntax_pos::Span;
 
 use rustc::hir::map as hir_map;
@@ -333,8 +333,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let node = if item.vis == hir::Public {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
-                            Some(list) if &item.name()[..] == "doc" => {
-                                list.iter().any(|i| &i.name()[..] == "inline")
+                            Some(list) if item.check_name("doc") => {
+                                list.iter().any(|i| i.check_name("inline"))
                             }
                             _ => false,
                         }
