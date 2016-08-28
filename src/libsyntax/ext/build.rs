@@ -171,9 +171,11 @@ pub trait AstBuilder {
                               span: Span,
                               ident: ast::Ident,
                               bm: ast::BindingMode) -> P<ast::Pat>;
-    fn pat_enum(&self, span: Span, path: ast::Path, subpats: Vec<P<ast::Pat>> ) -> P<ast::Pat>;
-    fn pat_struct(&self, span: Span,
-                  path: ast::Path, field_pats: Vec<Spanned<ast::FieldPat>> ) -> P<ast::Pat>;
+    fn pat_path(&self, span: Span, path: ast::Path) -> P<ast::Pat>;
+    fn pat_tuple_struct(&self, span: Span, path: ast::Path,
+                        subpats: Vec<P<ast::Pat>>) -> P<ast::Pat>;
+    fn pat_struct(&self, span: Span, path: ast::Path,
+                  field_pats: Vec<Spanned<ast::FieldPat>>) -> P<ast::Pat>;
     fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat>;
 
     fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat>;
@@ -802,10 +804,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let binding_expr = self.expr_ident(sp, binding_variable);
 
         // Ok(__try_var) pattern
-        let ok_pat = self.pat_enum(sp, ok_path, vec!(binding_pat.clone()));
+        let ok_pat = self.pat_tuple_struct(sp, ok_path, vec![binding_pat.clone()]);
 
         // Err(__try_var)  (pattern and expression resp.)
-        let err_pat = self.pat_enum(sp, err_path.clone(), vec!(binding_pat));
+        let err_pat = self.pat_tuple_struct(sp, err_path.clone(), vec![binding_pat]);
         let err_inner_expr = self.expr_call(sp, self.expr_path(err_path),
                                             vec!(binding_expr.clone()));
         // return Err(__try_var)
@@ -842,18 +844,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let pat = PatKind::Ident(bm, Spanned{span: span, node: ident}, None);
         self.pat(span, pat)
     }
-    fn pat_enum(&self, span: Span, path: ast::Path, subpats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
-        let pat = if subpats.is_empty() {
-            PatKind::Path(None, path)
-        } else {
-            PatKind::TupleStruct(path, subpats, None)
-        };
-        self.pat(span, pat)
+    fn pat_path(&self, span: Span, path: ast::Path) -> P<ast::Pat> {
+        self.pat(span, PatKind::Path(None, path))
     }
-    fn pat_struct(&self, span: Span,
-                  path: ast::Path, field_pats: Vec<Spanned<ast::FieldPat>>) -> P<ast::Pat> {
-        let pat = PatKind::Struct(path, field_pats, false);
-        self.pat(span, pat)
+    fn pat_tuple_struct(&self, span: Span, path: ast::Path,
+                        subpats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
+        self.pat(span, PatKind::TupleStruct(path, subpats, None))
+    }
+    fn pat_struct(&self, span: Span, path: ast::Path,
+                  field_pats: Vec<Spanned<ast::FieldPat>>) -> P<ast::Pat> {
+        self.pat(span, PatKind::Struct(path, field_pats, false))
     }
     fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
         self.pat(span, PatKind::Tuple(pats, None))
@@ -862,25 +862,25 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
         let some = self.std_path(&["option", "Option", "Some"]);
         let path = self.path_global(span, some);
-        self.pat_enum(span, path, vec!(pat))
+        self.pat_tuple_struct(span, path, vec![pat])
     }
 
     fn pat_none(&self, span: Span) -> P<ast::Pat> {
         let some = self.std_path(&["option", "Option", "None"]);
         let path = self.path_global(span, some);
-        self.pat_enum(span, path, vec!())
+        self.pat_path(span, path)
     }
 
     fn pat_ok(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
         let some = self.std_path(&["result", "Result", "Ok"]);
         let path = self.path_global(span, some);
-        self.pat_enum(span, path, vec!(pat))
+        self.pat_tuple_struct(span, path, vec![pat])
     }
 
     fn pat_err(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
         let some = self.std_path(&["result", "Result", "Err"]);
         let path = self.path_global(span, some);
-        self.pat_enum(span, path, vec!(pat))
+        self.pat_tuple_struct(span, path, vec![pat])
     }
 
     fn arm(&self, _span: Span, pats: Vec<P<ast::Pat>>, expr: P<ast::Expr>) -> ast::Arm {
