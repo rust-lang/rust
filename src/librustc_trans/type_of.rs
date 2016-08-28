@@ -15,7 +15,6 @@ use abi::FnType;
 use adt;
 use common::*;
 use machine;
-use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::subst::Substs;
 
@@ -125,37 +124,31 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
 
     // FIXME(eddyb) Temporary sanity check for ty::layout.
-    let layout = cx.tcx().normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
-        t.layout(&infcx)
-    });
-    match layout {
-        Ok(layout) => {
-            if !type_is_sized(cx.tcx(), t) {
-                if !layout.is_unsized() {
-                    bug!("layout should be unsized for type `{}` / {:#?}",
-                         t, layout);
-                }
+    let layout = cx.layout_of(t);
+    if !type_is_sized(cx.tcx(), t) {
+        if !layout.is_unsized() {
+            bug!("layout should be unsized for type `{}` / {:#?}",
+                 t, layout);
+        }
 
-                // Unsized types get turned into a fat pointer for LLVM.
-                return llsizingty;
-            }
-            let r = layout.size(&cx.tcx().data_layout).bytes();
-            let l = machine::llsize_of_alloc(cx, llsizingty);
-            if r != l {
-                bug!("size differs (rustc: {}, llvm: {}) for type `{}` / {:#?}",
-                     r, l, t, layout);
-            }
-            let r = layout.align(&cx.tcx().data_layout).abi();
-            let l = machine::llalign_of_min(cx, llsizingty) as u64;
-            if r != l {
-                bug!("align differs (rustc: {}, llvm: {}) for type `{}` / {:#?}",
-                     r, l, t, layout);
-            }
-        }
-        Err(e) => {
-            bug!("failed to get layout for `{}`: {}", t, e);
-        }
+        // Unsized types get turned into a fat pointer for LLVM.
+        return llsizingty;
     }
+
+    let r = layout.size(&cx.tcx().data_layout).bytes();
+    let l = machine::llsize_of_alloc(cx, llsizingty);
+    if r != l {
+        bug!("size differs (rustc: {}, llvm: {}) for type `{}` / {:#?}",
+             r, l, t, layout);
+    }
+
+    let r = layout.align(&cx.tcx().data_layout).abi();
+    let l = machine::llalign_of_min(cx, llsizingty) as u64;
+    if r != l {
+        bug!("align differs (rustc: {}, llvm: {}) for type `{}` / {:#?}",
+             r, l, t, layout);
+    }
+
     llsizingty
 }
 

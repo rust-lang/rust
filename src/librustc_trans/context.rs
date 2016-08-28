@@ -949,6 +949,14 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         TypeOfDepthLock(self.local())
     }
 
+    pub fn layout_of(&self, ty: Ty<'tcx>) -> &'tcx ty::layout::Layout {
+        self.tcx().normalizing_infer_ctxt(traits::Reveal::All).enter(|infcx| {
+            ty.layout(&infcx).unwrap_or_else(|e| {
+                bug!("failed to get layout for `{}`: {}", ty, e);
+            })
+        })
+    }
+
     pub fn check_overflow(&self) -> bool {
         self.shared.check_overflow
     }
