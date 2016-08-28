@@ -542,7 +542,14 @@ impl Build {
         for submodule in submodules {
             // If using llvm-root then don't touch the llvm submodule.
             if submodule.path.components().any(|c| c == Component::Normal("llvm".as_ref())) &&
-                self.config.target_config.get(&self.config.build).and_then(|c| c.llvm_config.as_ref()).is_some()
+                self.config.target_config.get(&self.config.build)
+                    .and_then(|c| c.llvm_config.as_ref()).is_some()
+            {
+                continue
+            }
+
+            if submodule.path.components().any(|c| c == Component::Normal("jemalloc".as_ref())) &&
+                !self.config.use_jemalloc
             {
                 continue
             }
