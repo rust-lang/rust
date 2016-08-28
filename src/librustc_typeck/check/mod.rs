@@ -2861,7 +2861,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Only try to coerce-unify if we have a then expression
             // to assign coercions to, otherwise it's () or diverging.
             let result = if let Some(ref then) = then_blk.expr {
-                let res = self.try_find_coercion_lub(origin, || Some((&**then, then_ty)),
+                let res = self.try_find_coercion_lub(origin, || Some(&**then),
                                                      then_ty, else_expr, else_ty);
 
                 // In case we did perform an adjustment, we have to update
@@ -3594,18 +3594,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut unified = self.next_ty_var();
             let coerce_to = uty.unwrap_or(unified);
 
-            let mut arg_tys = Vec::new();
             for (i, e) in args.iter().enumerate() {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
-                arg_tys.push(e_ty);
                 let origin = TypeOrigin::Misc(e.span);
 
                 // Special-case the first element, as it has no "previous expressions".
                 let result = if i == 0 {
                     self.try_coerce(e, e_ty, coerce_to)
                 } else {
-                    let prev_elems = || args[..i].iter().map(|e| &**e)
-                                                 .zip(arg_tys.iter().cloned());
+                    let prev_elems = || args[..i].iter().map(|e| &**e);
                     self.try_find_coercion_lub(origin, prev_elems, unified, e, e_ty)
                 };
 
