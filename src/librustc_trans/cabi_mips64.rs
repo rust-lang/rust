@@ -124,14 +124,14 @@ fn is_reg_ty(ty: Type) -> bool {
 
 fn padding_ty(ccx: &CrateContext, align: usize, offset: usize) -> Option<Type> {
     if ((align - 1 ) & offset) > 0 {
-        Some(Type::i32(ccx))
+        Some(Type::i64(ccx))
     } else {
         None
     }
 }
 
 fn coerce_to_int(ccx: &CrateContext, size: usize) -> Vec<Type> {
-    let int_ty = Type::i32(ccx);
+    let int_ty = Type::i64(ccx);
     let mut args = Vec::new();
 
     let mut n = size / 64;
