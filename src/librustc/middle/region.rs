@@ -803,7 +803,8 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &hir::Expr) {
                 terminating(r.id);
             }
 
-            hir::ExprIf(_, ref then, Some(ref otherwise)) => {
+            hir::ExprIf(ref expr, ref then, Some(ref otherwise)) => {
+                terminating(expr.id);
                 terminating(then.id);
                 terminating(otherwise.id);
             }
