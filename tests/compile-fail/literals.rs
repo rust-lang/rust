@@ -32,4 +32,7 @@ fn main() {
     //~|SUGGESTION = 123;
     //~|HELP use `0o`
     //~|SUGGESTION = 0o123;
+
+    let ok11 = 0o123;
+    let ok12 = 0b101010;
 }
