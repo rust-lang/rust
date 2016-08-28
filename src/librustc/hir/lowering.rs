@@ -804,8 +804,8 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_constness(&mut self, c: Constness) -> hir::Constness {
-        match c {
+    fn lower_constness(&mut self, c: Spanned<Constness>) -> hir::Constness {
+        match c.node {
             Constness::Const => hir::Constness::Const,
             Constness::NotConst => hir::Constness::NotConst,
         }

@@ -31,7 +31,7 @@ use codemap::Spanned;
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Ident, &'a Generics, Unsafety, Constness, Abi, &'a Visibility),
+    ItemFn(Ident, &'a Generics, Unsafety, Spanned<Constness>, Abi, &'a Visibility),
 
     /// fn foo(&self)
     Method(Ident, &'a MethodSig, Option<&'a Visibility>),

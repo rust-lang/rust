@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that const fn is illegal in a trait declaration, whether or
-// not a default is provided.
+// rustc-env:RUST_NEW_ERROR_FORMAT
 
 #![feature(const_fn)]
 
 trait Foo {
-    const fn f() -> u32;
-    //~^ ERROR trait fns cannot be declared const
-    //~| NOTE trait fns cannot be const
-    const fn g() -> u32 { 0 }
-    //~^ ERROR trait fns cannot be declared const
-    //~| NOTE trait fns cannot be const
+    fn f() -> u32;
+    const fn g();
+}
+
+impl Foo for u32 {
+    const fn f() -> u32 { 22 }
+    fn g() {}
 }
 
 fn main() { }

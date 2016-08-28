@@ -12,7 +12,7 @@ use abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
 use syntax_pos::{Span, DUMMY_SP, Pos};
-use codemap::{respan, Spanned};
+use codemap::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use parse::token::{self, keywords, InternedString};
 use ptr::P;
@@ -1016,7 +1016,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   Vec::new(),
                   ast::ItemKind::Fn(self.fn_decl(inputs, output),
                               ast::Unsafety::Normal,
-                              ast::Constness::NotConst,
+                              dummy_spanned(ast::Constness::NotConst),
                               Abi::Rust,
                               generics,
                               body))
