@@ -1297,6 +1297,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
             lifetimes: lifetimes.into(),
             ty_params: ty_params,
             where_clause: where_clause,
+            span: generics.span,
         }
     }
 

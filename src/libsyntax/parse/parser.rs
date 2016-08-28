@@ -725,8 +725,8 @@ impl<'a> Parser<'a> {
                 let gt_str = Parser::token_to_string(&token::Gt);
                 let this_token_str = self.this_token_to_string();
                 Err(self.fatal(&format!("expected `{}`, found `{}`",
-                                   gt_str,
-                                   this_token_str)))
+                                        gt_str,
+                                        this_token_str)))
             }
         }
     }
@@ -4293,6 +4293,7 @@ impl<'a> Parser<'a> {
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     pub fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
         maybe_whole!(self, NtGenerics);
+        let span_lo = self.span.lo;
 
         if self.eat(&token::Lt) {
             let lifetime_defs = self.parse_lifetime_defs()?;
@@ -4315,7 +4316,8 @@ impl<'a> Parser<'a> {
                 where_clause: WhereClause {
                     id: ast::DUMMY_NODE_ID,
                     predicates: Vec::new(),
-                }
+                },
+                span: mk_sp(span_lo, self.last_span.hi),
             })
         } else {
             Ok(ast::Generics::default())

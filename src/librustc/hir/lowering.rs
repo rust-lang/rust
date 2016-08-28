@@ -466,6 +466,7 @@ impl<'a> LoweringContext<'a> {
             ty_params: self.lower_ty_params(&g.ty_params),
             lifetimes: self.lower_lifetime_defs(&g.lifetimes),
             where_clause: self.lower_where_clause(&g.where_clause),
+            span: g.span,
         }
     }
 
