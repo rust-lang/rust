@@ -9,7 +9,9 @@
 // except according to those terms.
 
 #![feature(plugin)]
-#![plugin(cookie_monster)] //~ ERROR E0463
+#![plugin(cookie_monster)]
+//~^ ERROR E0463
+//~| NOTE can't find crate
 extern crate cake_is_a_lie;
 
 fn main() {
