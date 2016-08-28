@@ -279,7 +279,7 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
                                                         trait_id,
                                                         0,
                                                         ty,
-                                                        ty_params);
+                                                        &ty_params);
 
         traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
     })

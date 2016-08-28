@@ -8,7 +8,6 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
-#![feature(type_macros)]
 
 #![allow(indexing_slicing, shadow_reuse, unknown_lints, missing_docs_in_private_items)]
 

@@ -107,7 +107,7 @@ fn check_hash_peq<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, span: Span, trait_re
 
             // Only care about `impl PartialEq<Foo> for Foo`
             // For `impl PartialEq<B> for A, input_types is [A, B]
-            if trait_ref.input_types()[1] == ty {
+            if trait_ref.substs.type_at(1) == ty {
                 let mess = if peq_is_automatically_derived {
                     "you are implementing `Hash` explicitly but have derived `PartialEq`"
                 } else {
