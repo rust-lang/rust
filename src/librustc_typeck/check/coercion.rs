@@ -630,9 +630,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// The expressions *must not* have any pre-existing adjustments.
     pub fn try_coerce(&self,
                       expr: &hir::Expr,
+                      expr_ty: Ty<'tcx>,
                       target: Ty<'tcx>)
                       -> RelateResult<'tcx, Ty<'tcx>> {
-        let source = self.resolve_type_vars_with_obligations(self.expr_ty(expr));
+        let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let mut coerce = Coerce::new(self, TypeOrigin::ExprAssignable(expr.span));
@@ -658,14 +659,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            origin: TypeOrigin,
                                            exprs: E,
                                            prev_ty: Ty<'tcx>,
-                                           new: &'b hir::Expr)
+                                           new: &'b hir::Expr,
+                                           new_ty: Ty<'tcx>)
                                            -> RelateResult<'tcx, Ty<'tcx>>
         // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
         where E: Fn() -> I,
-              I: IntoIterator<Item=&'b hir::Expr> {
+              I: IntoIterator<Item=(&'b hir::Expr, Ty<'tcx>)> {
 
         let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
-        let new_ty = self.resolve_type_vars_with_obligations(self.expr_ty(new));
+        let new_ty = self.resolve_type_vars_with_obligations(new_ty);
         debug!("coercion::try_find_lub({:?}, {:?})", prev_ty, new_ty);
 
         let trace = TypeTrace::types(origin, true, prev_ty, new_ty);
@@ -701,7 +703,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 // Reify both sides and return the reified fn pointer type.
-                for expr in exprs().into_iter().chain(Some(new)) {
+                for (expr, _) in exprs().into_iter().chain(Some((new, new_ty))) {
                     // No adjustments can produce a fn item, so this should never trip.
                     assert!(!self.tables.borrow().adjustments.contains_key(&expr.id));
                     self.write_adjustment(expr.id, AdjustReifyFnPointer);
@@ -735,13 +737,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Then try to coerce the previous expressions to the type of the new one.
         // This requires ensuring there are no coercions applied to *any* of the
         // previous expressions, other than noop reborrows (ignoring lifetimes).
-        for expr in exprs() {
+        for (expr, expr_ty) in exprs() {
             let noop = match self.tables.borrow().adjustments.get(&expr.id) {
                 Some(&AdjustDerefRef(AutoDerefRef {
                     autoderefs: 1,
                     autoref: Some(AutoPtr(_, mutbl_adj)),
                     unsize: None
-                })) => match self.expr_ty(expr).sty {
+                })) => match expr_ty.sty {
                     ty::TyRef(_, mt_orig) => {
                         // Reborrow that we can safely ignore.
                         mutbl_adj == mt_orig.mutbl
@@ -765,7 +767,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        match self.commit_if_ok(|_| apply(&mut coerce, &exprs, prev_ty, new_ty)) {
+        match self.commit_if_ok(|_| apply(&mut coerce,
+                                          &|| exprs().into_iter().map(|(e, _)| e),
+                                          prev_ty, new_ty)) {
             Err(_) => {
                 // Avoid giving strange errors on failed attempts.
                 if let Some(e) = first_error {
@@ -783,7 +787,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             Ok((ty, adjustment)) => {
                 if !adjustment.is_identity() {
-                    for expr in exprs() {
+                    for (expr, _) in exprs() {
                         let previous = self.tables.borrow().adjustments.get(&expr.id).cloned();
                         if let Some(AdjustNeverToAny(_)) = previous {
                             self.write_adjustment(expr.id, AdjustNeverToAny(ty));

@@ -2567,13 +2567,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         Expectation::rvalue_hint(self, ty)
                     });
 
-                    self.check_expr_with_expectation(&arg,
-                        expected.unwrap_or(ExpectHasType(formal_ty)));
+                    let checked_ty = self.check_expr_with_expectation(&arg,
+                                            expected.unwrap_or(ExpectHasType(formal_ty)));
                     // 2. Coerce to the most detailed type that could be coerced
                     //    to, which is `expected_ty` if `rvalue_hint` returns an
                     //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
                     let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                    self.demand_coerce(&arg, coerce_ty.unwrap_or(formal_ty));
+                    self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty));
 
                     // 3. Relate the expected type and the formal one,
                     //    if the expected type was used for the coercion.
@@ -2715,7 +2715,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     expr: &'gcx hir::Expr,
                                     expected: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.check_expr_with_hint(expr, expected);
-        self.demand_coerce(expr, expected);
+        self.demand_coerce(expr, ty, expected);
         ty
     }
 
@@ -2861,8 +2861,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Only try to coerce-unify if we have a then expression
             // to assign coercions to, otherwise it's () or diverging.
             let result = if let Some(ref then) = then_blk.expr {
-                let res = self.try_find_coercion_lub(origin, || Some(&**then),
-                                                     then_ty, else_expr);
+                let res = self.try_find_coercion_lub(origin, || Some((&**then, then_ty)),
+                                                     then_ty, else_expr, else_ty);
 
                 // In case we did perform an adjustment, we have to update
                 // the type of the block, because old trans still uses it.
@@ -3594,16 +3594,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut unified = self.next_ty_var();
             let coerce_to = uty.unwrap_or(unified);
 
+            let mut arg_tys = Vec::new();
             for (i, e) in args.iter().enumerate() {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
+                arg_tys.push(e_ty);
                 let origin = TypeOrigin::Misc(e.span);
 
                 // Special-case the first element, as it has no "previous expressions".
                 let result = if i == 0 {
-                    self.try_coerce(e, coerce_to)
+                    self.try_coerce(e, e_ty, coerce_to)
                 } else {
-                    let prev_elems = || args[..i].iter().map(|e| &**e);
-                    self.try_find_coercion_lub(origin, prev_elems, unified, e)
+                    let prev_elems = || args[..i].iter().map(|e| &**e)
+                                                 .zip(arg_tys.iter().cloned());
+                    self.try_find_coercion_lub(origin, prev_elems, unified, e, e_ty)
                 };
 
                 match result {

@@ -419,11 +419,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             _ => result_ty
         };
+
+        let mut arm_tys = Vec::new();
         for (i, arm) in arms.iter().enumerate() {
             if let Some(ref e) = arm.guard {
                 self.check_expr_has_type(e, tcx.types.bool);
             }
             let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
+            arm_tys.push(arm_ty);
 
             if result_ty.references_error() || arm_ty.references_error() {
                 result_ty = tcx.types.err;
@@ -453,10 +456,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     })
             } else if i == 0 {
                 // Special-case the first arm, as it has no "previous expressions".
-                self.try_coerce(&arm.body, coerce_first)
+                self.try_coerce(&arm.body, arm_ty, coerce_first)
             } else {
-                let prev_arms = || arms[..i].iter().map(|arm| &*arm.body);
-                self.try_find_coercion_lub(origin, prev_arms, result_ty, &arm.body)
+                let prev_arms = || arms[..i].iter().map(|arm| &*arm.body)
+                                            .zip(arm_tys.iter().cloned());
+                self.try_find_coercion_lub(origin, prev_arms, result_ty, &arm.body, arm_ty)
             };
 
             result_ty = match result {
