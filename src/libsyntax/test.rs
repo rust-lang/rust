@@ -24,7 +24,7 @@ use attr;
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
 use std::rc::Rc;
 
-use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute};
+use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned};
 use errors;
 use errors::snippet::{SnippetData};
 use config;
@@ -485,7 +485,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main_body = ecx.block(sp, vec![call_test_main]);
     let main = ast::ItemKind::Fn(ecx.fn_decl(vec![], main_ret_ty),
                            ast::Unsafety::Normal,
-                           ast::Constness::NotConst,
+                           dummy_spanned(ast::Constness::NotConst),
                            ::abi::Abi::Rust, ast::Generics::default(), main_body);
     let main = P(ast::Item {
         ident: token::str_to_ident("main"),

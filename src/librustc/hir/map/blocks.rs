@@ -23,13 +23,13 @@
 
 pub use self::Code::*;
 
-use hir::map::{self, Node};
-use syntax::abi;
-use hir::{Block, FnDecl};
-use syntax::ast::{Attribute, Name, NodeId};
 use hir as ast;
-use syntax_pos::Span;
+use hir::map::{self, Node};
+use hir::{Block, FnDecl};
 use hir::intravisit::FnKind;
+use syntax::abi;
+use syntax::ast::{Attribute, Name, NodeId};
+use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
 /// and a body (as well as a NodeId, a span, etc).
