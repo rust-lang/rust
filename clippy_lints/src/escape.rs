@@ -144,7 +144,7 @@ impl<'a, 'tcx: 'a+'gcx, 'gcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx, 'g
         }
 
     }
-    fn borrow(&mut self, borrow_id: NodeId, _: Span, cmt: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind,
+    fn borrow(&mut self, borrow_id: NodeId, _: Span, cmt: cmt<'tcx>, _: &ty::Region, _: ty::BorrowKind,
               loan_cause: LoanCause) {
 
         if let Categorization::Local(lid) = cmt.cat {

@@ -1083,12 +1083,12 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     if !match_type(cx, ty, &paths::RESULT) {
         return None;
     }
+
     if let ty::TyEnum(_, substs) = ty.sty {
-        if let Some(err_ty) = substs.types.get(1) {
-            return Some(err_ty);
-        }
+        substs.types().nth(1)
+    } else {
+        None
     }
-    None
 }
 
 /// This checks whether a given type is known to implement Debug.

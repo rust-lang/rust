@@ -89,7 +89,7 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
 /// Return the item type of the vector (ie. the `T` in `Vec<T>`).
 fn vec_type(ty: ty::Ty) -> ty::Ty {
     if let ty::TyStruct(_, substs) = ty.sty {
-        substs.types[0]
+        substs.type_at(0)
     } else {
         panic!("The type of `vec!` is a not a struct?");
     }
