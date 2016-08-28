@@ -1,6 +1,8 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+#![feature(untagged_unions)]
+
 #![deny(warnings)]
 #![allow(dead_code)]
 
@@ -43,6 +45,20 @@ struct Qux;
 impl Clone for Qux {
 //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
     fn clone(&self) -> Self { Qux }
+}
+
+// looks like unions don't support deriving Clone for now
+#[derive(Copy)]
+union Union {
+    a: u8,
+}
+
+impl Clone for Union {
+    fn clone(&self) -> Self {
+        Union {
+            a: 42,
+        }
+    }
 }
 
 // See #666

@@ -4,6 +4,7 @@
 #![deny(no_effect, unnecessary_operation)]
 #![allow(dead_code)]
 #![allow(path_statements)]
+#![feature(untagged_unions)]
 
 struct Unit;
 struct Tuple(i32);
@@ -13,6 +14,11 @@ struct Struct {
 enum Enum {
     Tuple(i32),
     Struct { field: i32 },
+}
+
+union Union {
+    a: u8,
+    b: f64,
 }
 
 fn get_number() -> i32 { 0 }
@@ -30,6 +36,7 @@ fn main() {
     Tuple(0); //~ERROR statement with no effect
     Struct { field: 0 }; //~ERROR statement with no effect
     Struct { ..s }; //~ERROR statement with no effect
+    Union { a: 0 }; //~ERROR statement with no effect
     Enum::Tuple(0); //~ERROR statement with no effect
     Enum::Struct { field: 0 }; //~ERROR statement with no effect
     5 + 6; //~ERROR statement with no effect
