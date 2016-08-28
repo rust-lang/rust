@@ -62,7 +62,8 @@
                 </div>
             </div>
 
-            <article class="panel panel-default" id="{{lint.id}}" ng-repeat="lint in data | filter:byLevels | filter:search | orderBy:'id' track by lint.id">
+            <article class="panel panel-default" id="{{lint.id}}"
+                ng-repeat="lint in data | filter:byLevels | filter:search | orderBy:'id' track by lint.id" on-finish-render="ngRepeatFinished">
                 <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
                     <button class="btn btn-default btn-sm pull-right" style="margin-top: -6px;">
                         <span ng-show="open[lint.id]">&minus;</span>
@@ -96,7 +97,7 @@
     <a href="https://github.com/Manishearth/rust-clippy">
         <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"/>
     </a>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/7.0.0/markdown-it.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/languages/rust.min.js"></script>
@@ -122,8 +123,17 @@
 
         function scrollToLint(lintId) {
             var target = document.getElementById(lintId);
-            if (!target) { return; }
-            document.body.scrollTop = target.offsetTop;
+            if (!target) {
+                return;
+            }
+            target.scrollIntoView();
+        }
+
+        function scrollToLintByURL($scope) {
+            var removeListener = $scope.$on('ngRepeatFinished', function(ngRepeatFinishedEvent) {
+                scrollToLint(window.location.hash.slice(1));
+                removeListener();
+            });
         }
 
         angular.module("clippy", [])
@@ -134,6 +144,18 @@
                     // Oh deer, what a hack :O
                     .replace('<table', '<table class="table"')
                 );
+            };
+        })
+        .directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit(attr.onFinishRender);
+                        });
+                    }
+                }
             };
         })
         .controller("lintList", function ($scope, $http, $timeout) {
@@ -149,7 +171,9 @@
             $scope.loading = true;
 
             if (window.location.hash.length > 1) {
+                $scope.search = window.location.hash.slice(1);
                 $scope.open[window.location.hash.slice(1)] = true;
+                scrollToLintByURL($scope);
             }
 
             $http.get('./lints.json')
@@ -157,9 +181,7 @@
                 $scope.data = data;
                 $scope.loading = false;
 
-                $timeout(function () {
-                    scrollToLint(window.location.hash.slice(1));
-                }, 100);
+                scrollToLintByURL($scope);
             })
             .error(function (data) {
                 $scope.error = data;
@@ -169,12 +191,11 @@
             window.addEventListener('hashchange', function () {
                 // trigger re-render
                 $timeout(function () {
-                    $scope.search = "";
                     $scope.levels = LEVEL_FILTERS_DEFAULT;
-                    // quick n dirty: wait for re-render to finish
-                    $timeout(function () {
-                        scrollToLint(window.location.hash.slice(1));
-                    }, 100);
+                    $scope.search = window.location.hash.slice(1);
+                    $scope.open[window.location.hash.slice(1)] = true;
+
+                    scrollToLintByURL($scope);
                 });
                 return true;
             }, false);
