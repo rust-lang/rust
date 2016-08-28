@@ -4,7 +4,7 @@ use std::char;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use utils::{span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
+use utils::{constants, span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
@@ -141,6 +141,27 @@ declare_lint! {
     "integer literals starting with `0`"
 }
 
+/// **What it does:** Warns if a generic shadows a built-in type.
+///
+/// **Why is this bad?** This gives surprising type errors.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+///
+/// ```rust
+/// impl<u32> Foo<u32> {
+///     fn impl_func(&self) -> u32 {
+///         42
+///     }
+/// }
+/// ```
+declare_lint! {
+    pub BUILTIN_TYPE_SHADOW,
+    Warn,
+    "shadowing a builtin type"
+}
+
 
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
@@ -149,11 +170,23 @@ impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL,
                     DOUBLE_NEG, MIXED_CASE_HEX_LITERALS, UNSEPARATED_LITERAL_SUFFIX,
-                    ZERO_PREFIXED_LITERAL)
+                    ZERO_PREFIXED_LITERAL, BUILTIN_TYPE_SHADOW)
     }
 }
 
 impl EarlyLintPass for MiscEarly {
+    fn check_generics(&mut self, cx: &EarlyContext, gen: &Generics) {
+        for ty in &gen.ty_params {
+            let name = ty.ident.name.as_str();
+            if constants::BUILTIN_TYPES.contains(&&*name) {
+                span_lint(cx,
+                          BUILTIN_TYPE_SHADOW,
+                          ty.span,
+                          &format!("This generic shadows the built-in type `{}`", name));
+            }
+        }
+    }
+
     fn check_pat(&mut self, cx: &EarlyContext, pat: &Pat) {
         if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
