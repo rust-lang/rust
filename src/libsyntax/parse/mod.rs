@@ -678,7 +678,7 @@ mod tests {
     use codemap::Spanned;
     use ast::{self, PatKind};
     use abi::Abi;
-    use attr::{first_attr_value_str_by_name, AttrMetaMethods};
+    use attr::first_attr_value_str_by_name;
     use parse;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};

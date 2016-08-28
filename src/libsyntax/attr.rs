@@ -81,32 +81,47 @@ pub fn is_used(attr: &Attribute) -> bool {
     })
 }
 
-pub trait AttrNestedMetaItemMethods {
+impl NestedMetaItem {
+    /// Returns the MetaItem if self is a NestedMetaItemKind::MetaItem.
+    pub fn meta_item(&self) -> Option<&P<MetaItem>> {
+        match self.node {
+            NestedMetaItemKind::MetaItem(ref item) => Some(&item),
+            _ => None
+        }
+    }
+
+    /// Returns the Lit if self is a NestedMetaItemKind::Literal.
+    pub fn literal(&self) -> Option<&Lit> {
+        match self.node {
+            NestedMetaItemKind::Literal(ref lit) => Some(&lit),
+            _ => None
+        }
+    }
+
+    /// Returns the Span for `self`.
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
     /// Returns true if this list item is a MetaItem with a name of `name`.
-    fn check_name(&self, name: &str) -> bool {
+    pub fn check_name(&self, name: &str) -> bool {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
     }
 
     /// Returns the name of the meta item, e.g. `foo` in `#[foo]`,
     /// `#[foo="bar"]` and `#[foo(bar)]`, if self is a MetaItem
-    fn name(&self) -> Option<InternedString> {
+    pub fn name(&self) -> Option<InternedString> {
         self.meta_item().and_then(|meta_item| Some(meta_item.name()))
     }
 
-    /// Returns the MetaItem if self is a NestedMetaItemKind::MetaItem.
-    fn meta_item(&self) -> Option<&P<MetaItem>>;
-
-    /// Returns the Lit if self is a NestedMetaItemKind::Literal.
-    fn literal(&self) -> Option<&Lit>;
-
     /// Gets the string value if self is a MetaItem and the MetaItem is a
     /// MetaItemKind::NameValue variant containing a string, otherwise None.
-    fn value_str(&self) -> Option<InternedString> {
+    pub fn value_str(&self) -> Option<InternedString> {
         self.meta_item().and_then(|meta_item| meta_item.value_str())
     }
 
     /// Returns a MetaItem if self is a MetaItem with Kind Word.
-    fn word(&self) -> Option<&P<MetaItem>> {
+    pub fn word(&self) -> Option<&P<MetaItem>> {
         self.meta_item().and_then(|meta_item| if meta_item.is_word() {
             Some(meta_item)
         } else {
@@ -115,93 +130,38 @@ pub trait AttrNestedMetaItemMethods {
     }
 
     /// Gets a list of inner meta items from a list MetaItem type.
-    fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
+    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
         self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
     }
 
     /// Returns `true` if the variant is MetaItem.
-    fn is_meta_item(&self) -> bool {
+    pub fn is_meta_item(&self) -> bool {
         self.meta_item().is_some()
     }
 
     /// Returns `true` if the variant is Literal.
-    fn is_literal(&self) -> bool {
+    pub fn is_literal(&self) -> bool {
         self.literal().is_some()
     }
 
     /// Returns `true` if self is a MetaItem and the meta item is a word.
-    fn is_word(&self) -> bool {
+    pub fn is_word(&self) -> bool {
         self.word().is_some()
     }
 
     /// Returns `true` if self is a MetaItem and the meta item is a ValueString.
-    fn is_value_str(&self) -> bool {
+    pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
     }
 
     /// Returns `true` if self is a MetaItem and the meta item is a list.
-    fn is_meta_item_list(&self) -> bool {
+    pub fn is_meta_item_list(&self) -> bool {
         self.meta_item_list().is_some()
     }
-
-    /// Returns the Span for `self`.
-    fn span(&self) -> Span;
 }
 
-impl AttrNestedMetaItemMethods for NestedMetaItem {
-    fn meta_item(&self) -> Option<&P<MetaItem>> {
-        match self.node {
-            NestedMetaItemKind::MetaItem(ref item) => Some(&item),
-            _ => None
-        }
-    }
-
-    fn literal(&self) -> Option<&Lit> {
-        match self.node {
-            NestedMetaItemKind::Literal(ref lit) => Some(&lit),
-            _ => None
-        }
-    }
-
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
-pub trait AttrMetaMethods {
-    fn check_name(&self, name: &str) -> bool {
-        name == &self.name()[..]
-    }
-
-    /// Retrieve the name of the meta item, e.g. `foo` in `#[foo]`,
-    /// `#[foo="bar"]` and `#[foo(bar)]`
-    fn name(&self) -> InternedString;
-
-    /// Gets the string value if self is a MetaItemKind::NameValue variant
-    /// containing a string, otherwise None.
-    fn value_str(&self) -> Option<InternedString>;
-
-    /// Gets a list of inner meta items from a list MetaItem type.
-    fn meta_item_list(&self) -> Option<&[NestedMetaItem]>;
-
-    /// Indicates if the attribute is a Word.
-    fn is_word(&self) -> bool;
-
-    /// Indicates if the attribute is a Value String.
-    fn is_value_str(&self) -> bool {
-        self.value_str().is_some()
-    }
-
-    /// Indicates if the attribute is a Meta-Item List.
-    fn is_meta_item_list(&self) -> bool {
-        self.meta_item_list().is_some()
-    }
-
-    fn span(&self) -> Span;
-}
-
-impl AttrMetaMethods for Attribute {
-    fn check_name(&self, name: &str) -> bool {
+impl Attribute {
+    pub fn check_name(&self, name: &str) -> bool {
         let matches = name == &self.name()[..];
         if matches {
             mark_used(self);
@@ -209,23 +169,32 @@ impl AttrMetaMethods for Attribute {
         matches
     }
 
-    fn name(&self) -> InternedString { self.meta().name() }
+    pub fn name(&self) -> InternedString { self.meta().name() }
 
-    fn value_str(&self) -> Option<InternedString> {
+    pub fn value_str(&self) -> Option<InternedString> {
         self.meta().value_str()
     }
 
-    fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
+    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
         self.meta().meta_item_list()
     }
 
-    fn is_word(&self) -> bool { self.meta().is_word() }
+    pub fn is_word(&self) -> bool { self.meta().is_word() }
 
-    fn span(&self) -> Span { self.meta().span }
+    pub fn span(&self) -> Span { self.meta().span }
+
+    pub fn is_meta_item_list(&self) -> bool {
+        self.meta_item_list().is_some()
+    }
+
+    /// Indicates if the attribute is a Value String.
+    pub fn is_value_str(&self) -> bool {
+        self.value_str().is_some()
+    }
 }
 
-impl AttrMetaMethods for MetaItem {
-    fn name(&self) -> InternedString {
+impl MetaItem {
+    pub fn name(&self) -> InternedString {
         match self.node {
             MetaItemKind::Word(ref n) => (*n).clone(),
             MetaItemKind::NameValue(ref n, _) => (*n).clone(),
@@ -233,7 +202,7 @@ impl AttrMetaMethods for MetaItem {
         }
     }
 
-    fn value_str(&self) -> Option<InternedString> {
+    pub fn value_str(&self) -> Option<InternedString> {
         match self.node {
             MetaItemKind::NameValue(_, ref v) => {
                 match v.node {
@@ -245,53 +214,45 @@ impl AttrMetaMethods for MetaItem {
         }
     }
 
-    fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
+    pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
         match self.node {
             MetaItemKind::List(_, ref l) => Some(&l[..]),
             _ => None
         }
     }
 
-    fn is_word(&self) -> bool {
+    pub fn is_word(&self) -> bool {
         match self.node {
             MetaItemKind::Word(_) => true,
             _ => false,
         }
     }
 
-    fn span(&self) -> Span { self.span }
-}
+    pub fn span(&self) -> Span { self.span }
 
-// Annoying, but required to get test_cfg to work
-impl AttrMetaMethods for P<MetaItem> {
-    fn name(&self) -> InternedString { (**self).name() }
-    fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
-    fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
-        (**self).meta_item_list()
+    pub fn check_name(&self, name: &str) -> bool {
+        name == &self.name()[..]
     }
-    fn is_word(&self) -> bool { (**self).is_word() }
-    fn is_value_str(&self) -> bool { (**self).is_value_str() }
-    fn is_meta_item_list(&self) -> bool { (**self).is_meta_item_list() }
-    fn span(&self) -> Span { (**self).span() }
+
+    pub fn is_value_str(&self) -> bool {
+        self.value_str().is_some()
+    }
+
+    pub fn is_meta_item_list(&self) -> bool {
+        self.meta_item_list().is_some()
+    }
 }
 
-
-pub trait AttributeMethods {
-    fn meta(&self) -> &MetaItem;
-    fn with_desugared_doc<T, F>(&self, f: F) -> T where
-        F: FnOnce(&Attribute) -> T;
-}
-
-impl AttributeMethods for Attribute {
+impl Attribute {
     /// Extract the MetaItem from inside this Attribute.
-    fn meta(&self) -> &MetaItem {
+    pub fn meta(&self) -> &MetaItem {
         &self.node.value
     }
 
     /// Convert self to a normal #[doc="foo"] comment, if it is a
     /// comment like `///` or `/** */`. (Returns self unchanged for
     /// non-sugared doc attributes.)
-    fn with_desugared_doc<T, F>(&self, f: F) -> T where
+    pub fn with_desugared_doc<T, F>(&self, f: F) -> T where
         F: FnOnce(&Attribute) -> T,
     {
         if self.node.is_sugared_doc {
@@ -431,7 +392,7 @@ pub fn contains(haystack: &[P<MetaItem>], needle: &MetaItem) -> bool {
     })
 }
 
-pub fn list_contains_name<AM: AttrNestedMetaItemMethods>(items: &[AM], name: &str) -> bool {
+pub fn list_contains_name(items: &[NestedMetaItem], name: &str) -> bool {
     debug!("attr::list_contains_name (name={})", name);
     items.iter().any(|item| {
         debug!("  testing: {:?}", item.name());
@@ -439,9 +400,9 @@ pub fn list_contains_name<AM: AttrNestedMetaItemMethods>(items: &[AM], name: &st
     })
 }
 
-pub fn contains_name<AM: AttrMetaMethods>(metas: &[AM], name: &str) -> bool {
+pub fn contains_name(attrs: &[Attribute], name: &str) -> bool {
     debug!("attr::contains_name (name={})", name);
-    metas.iter().any(|item| {
+    attrs.iter().any(|item| {
         debug!("  testing: {}", item.name());
         item.check_name(name)
     })

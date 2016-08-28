@@ -18,7 +18,7 @@ use rustc::session::Session;
 use std::collections::{HashSet, HashMap};
 use syntax::parse::token;
 use syntax::ast;
-use syntax::attr::{self, AttrNestedMetaItemMethods, AttrMetaMethods};
+use syntax::attr;
 use syntax::ext;
 use syntax_pos::Span;
 

@@ -194,7 +194,6 @@ use std::vec;
 use syntax::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind, VariantData};
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{self, dummy_spanned, respan};

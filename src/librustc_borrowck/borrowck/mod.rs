@@ -43,7 +43,6 @@ use std::mem;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 

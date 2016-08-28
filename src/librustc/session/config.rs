@@ -25,7 +25,6 @@ use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
@@ -1773,8 +1772,9 @@ mod tests {
     use std::path::PathBuf;
     use std::rc::Rc;
     use super::{OutputType, OutputTypes, Externs, PanicStrategy};
-    use syntax::attr;
-    use syntax::attr::AttrMetaMethods;
+    use syntax::{ast, attr};
+    use syntax::parse::token::InternedString;
+    use syntax::codemap::dummy_spanned;
 
     fn optgroups() -> Vec<OptGroup> {
         super::rustc_optgroups().into_iter()
@@ -1803,7 +1803,9 @@ mod tests {
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
         let sess = build_session(sessopts, &dep_graph, None, registry, Rc::new(DummyCrateStore));
         let cfg = build_configuration(&sess, cfg);
-        assert!((attr::contains_name(&cfg[..], "test")));
+        assert!(attr::contains(&cfg, &dummy_spanned(ast::MetaItemKind::Word({
+            InternedString::new("test")
+        }))));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add

@@ -140,8 +140,6 @@ pub fn run(input: &str,
 
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
 fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
-    use syntax::attr::AttrMetaMethods;
-    use syntax::attr::AttrNestedMetaItemMethods;
     use syntax::print::pprust;
 
     let mut opts = TestOptions {
