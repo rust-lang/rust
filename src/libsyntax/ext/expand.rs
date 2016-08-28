@@ -465,18 +465,28 @@ fn expand_item(item: P<ast::Item>, fld: &mut MacroExpander) -> SmallVector<P<ast
                 _ => unreachable!(),
             })
         }
-        ast::ItemKind::Mod(_) | ast::ItemKind::ForeignMod(_) => {
-            let valid_ident =
-                item.ident.name != keywords::Invalid.name();
-
-            if valid_ident {
-                fld.cx.mod_push(item.ident);
-            }
+        ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
+            fld.cx.mod_push(item.ident);
             let macro_use = contains_macro_use(fld, &item.attrs);
-            let result = fld.with_exts_frame(macro_use, |fld| noop_fold_item(item, fld));
-            if valid_ident {
-                fld.cx.mod_pop();
+
+            let directory = fld.cx.directory.clone();
+            if item.span.contains(inner) {
+                fld.cx.directory.push(&*{
+                    ::attr::first_attr_value_str_by_name(&item.attrs, "path")
+                        .unwrap_or(item.ident.name.as_str())
+                });
+            } else {
+                fld.cx.directory = match inner {
+                    syntax_pos::DUMMY_SP => PathBuf::new(),
+                    _ => PathBuf::from(fld.cx.parse_sess.codemap().span_to_filename(inner)),
+                };
+                fld.cx.directory.pop();
             }
+
+            let result = fld.with_exts_frame(macro_use, |fld| noop_fold_item(item, fld));
+            fld.cx.directory = directory;
+
+            fld.cx.mod_pop();
             result
         },
         _ => noop_fold_item(item, fld),
@@ -639,31 +649,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        use std::mem::replace;
-        let result;
-        if let ast::ItemKind::Mod(ast::Mod { inner, .. }) = item.node {
-            if item.span.contains(inner) {
-                let directory = self.cx.directory.clone();
-                self.cx.directory.push(&*{
-                    ::attr::first_attr_value_str_by_name(&item.attrs, "path")
-                        .unwrap_or(item.ident.name.as_str())
-                });
-                result = expand_annotatable(Annotatable::Item(item), self).make_items();
-                self.cx.directory = directory;
-            } else {
-                let mut directory = match inner {
-                    syntax_pos::DUMMY_SP => PathBuf::new(),
-                    _ => PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner)),
-                };
-                directory.pop();
-                let directory = replace(&mut self.cx.directory, directory);
-                result = expand_annotatable(Annotatable::Item(item), self).make_items();
-                self.cx.directory = directory;
-            }
-        } else {
-            result = expand_annotatable(Annotatable::Item(item), self).make_items();
-        }
-        result
+        expand_annotatable(Annotatable::Item(item), self).make_items()
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
