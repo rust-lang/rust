@@ -1763,19 +1763,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         t
     }
 
-    pub fn expr_ty(&self, ex: &hir::Expr) -> Ty<'tcx> {
-        if let Some(&adjustment::AdjustNeverToAny(ref t))
-                = self.tables.borrow().adjustments.get(&ex.id) {
-            return t;
-        }
-        match self.tables.borrow().node_types.get(&ex.id) {
-            Some(&t) => t,
-            None => {
-                bug!("no type for expr in fcx {}", self.tag());
-            }
-        }
-    }
-
     /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
                           expr: &hir::Expr,
