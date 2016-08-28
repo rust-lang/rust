@@ -189,7 +189,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             hir::ViewPathList(p, paths) => {
                 let mine = paths.into_iter().filter(|path| {
-                    !self.maybe_inline_local(path.node.id(), path.node.rename(),
+                    !self.maybe_inline_local(path.node.id, path.node.rename,
                                              false, om, please_inline)
                 }).collect::<hir::HirVec<hir::PathListItem>>();
 

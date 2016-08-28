@@ -271,16 +271,10 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
                     ViewPathList(fld.fold_path(path),
                                  path_list_idents.move_map(|path_list_ident| {
                                      Spanned {
-                                         node: match path_list_ident.node {
-                                             PathListIdent { id, name, rename } => PathListIdent {
-                                                 id: fld.new_id(id),
-                                                 name: name,
-                                                 rename: rename,
-                                             },
-                                             PathListMod { id, rename } => PathListMod {
-                                                 id: fld.new_id(id),
-                                                 rename: rename,
-                                             },
+                                         node: PathListItem_ {
+                                             id: fld.new_id(path_list_ident.node.id),
+                                             name: path_list_ident.node.name,
+                                             rename: path_list_ident.node.rename,
                                          },
                                          span: fld.new_span(path_list_ident.span),
                                      }
