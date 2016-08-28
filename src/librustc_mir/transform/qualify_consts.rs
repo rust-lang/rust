@@ -252,11 +252,15 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         let mut err =
             struct_span_err!(self.tcx.sess, self.span, E0493, "{}", msg);
+
         if self.mode != Mode::Const {
             help!(&mut err,
                   "in Nightly builds, add `#![feature(drop_types_in_const)]` \
                    to the crate attributes to enable");
+        } else {
+            err.span_label(self.span, &format!("constants cannot have destructors"));
         }
+
         err.emit();
     }
 
