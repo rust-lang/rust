@@ -428,6 +428,12 @@ pub fn initialize_available_targets() {
                  LLVMInitializePNaClTargetInfo,
                  LLVMInitializePNaClTarget,
                  LLVMInitializePNaClTargetMC);
+    init_target!(llvm_component = "systemz",
+                 LLVMInitializeSystemZTargetInfo,
+                 LLVMInitializeSystemZTarget,
+                 LLVMInitializeSystemZTargetMC,
+                 LLVMInitializeSystemZAsmPrinter,
+                 LLVMInitializeSystemZAsmParser);
 }
 
 pub fn last_error() -> Option<String> {

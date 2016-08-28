@@ -132,6 +132,7 @@ supported_targets! {
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
+    ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),

@@ -65,7 +65,7 @@ pub fn llvm(build: &Build, target: &str) {
        .out_dir(&dst)
        .profile(if build.config.llvm_optimize {"Release"} else {"Debug"})
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
-       .define("LLVM_TARGETS_TO_BUILD", "X86;ARM;AArch64;Mips;PowerPC")
+       .define("LLVM_TARGETS_TO_BUILD", "X86;ARM;AArch64;Mips;PowerPC;SystemZ")
        .define("LLVM_INCLUDE_EXAMPLES", "OFF")
        .define("LLVM_INCLUDE_TESTS", "OFF")
        .define("LLVM_INCLUDE_DOCS", "OFF")
