@@ -26,11 +26,15 @@ def get(url, path, verbose=False):
     sha_url = url + ".sha256"
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
-    with tempfile.NamedTemporaryFile(suffix=".sha256", delete=False) as sha_file:
-        sha_path = sha_file.name
+    if os.path.exists(path + ".sha256"):
+        sha_path = path + ".sha256"
+    else:
+        with tempfile.NamedTemporaryFile(suffix=".sha256", delete=False) as sha_file:
+            sha_path = sha_file.name
 
     try:
-        download(sha_path, sha_url, verbose)
+        if not os.path.exists(path + ".sha256"):
+            download(sha_path, sha_url, verbose)
         if os.path.exists(path):
             if verify(path, sha_path, False):
                 print("using already-download file " + path)
