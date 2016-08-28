@@ -68,9 +68,8 @@ fn main() {
     STATIC_SIMPLE_FN(x);
     CONST_SIMPLE_FN(x);
 
-    let y = &[1u8, 2, 3];
-    STATIC_BAZ(BYTES);
-    //CONST_BAZ(y); // strangely enough, this fails
+    STATIC_BAZ(BYTES); // neees static lifetime
+    CONST_BAZ(BYTES);
 
     // make sure this works with different lifetimes
     let a = &1;
