@@ -27,13 +27,13 @@
 #![feature(rustc_macro_internals)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 extern crate syntax_pos;
 extern crate flate;
-extern crate rbml;
 extern crate serialize as rustc_serialize; // used by deriving
 extern crate rustc_errors as errors;
 extern crate syntax_ext;
@@ -45,6 +45,18 @@ extern crate rustc_back;
 extern crate rustc_llvm;
 extern crate rustc_macro;
 extern crate rustc_const_math;
+
+#[cfg(test)]
+extern crate test;
+
+pub mod rbml {
+    pub extern crate rbml as rbml_crate;
+    pub use self::rbml_crate::{Error, leb128, opaque};
+
+    pub mod writer;
+    pub mod reader;
+    pub use self::reader::Doc;
+}
 
 pub use rustc::middle;
 

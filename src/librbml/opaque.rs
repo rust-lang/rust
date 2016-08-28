@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use Error as DecodeError;
-use writer::EncodeResult;
 use leb128::{read_signed_leb128, read_unsigned_leb128, write_signed_leb128, write_unsigned_leb128};
 use std::io::{self, Write};
 use serialize;
@@ -17,6 +16,8 @@ use serialize;
 // -----------------------------------------------------------------------------
 // Encoder
 // -----------------------------------------------------------------------------
+
+pub type EncodeResult = io::Result<()>;
 
 pub struct Encoder<'a> {
     pub cursor: &'a mut io::Cursor<Vec<u8>>,
@@ -254,10 +255,6 @@ impl<'a> serialize::Encoder for Encoder<'a> {
 impl<'a> Encoder<'a> {
     pub fn position(&self) -> usize {
         self.cursor.position() as usize
-    }
-
-    pub fn from_rbml<'b: 'c, 'c>(rbml: &'c mut ::writer::Encoder<'b>) -> Encoder<'c> {
-        Encoder { cursor: rbml.writer }
     }
 }
 
