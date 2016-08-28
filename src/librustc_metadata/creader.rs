@@ -977,8 +977,9 @@ impl<'a> LocalCrateReader<'a> {
             let n = match n {
                 Some(n) => n,
                 None => {
-                    span_err!(self.sess, m.span, E0459,
-                              "#[link(...)] specified without `name = \"foo\"`");
+                    struct_span_err!(self.sess, m.span, E0459,
+                                     "#[link(...)] specified without `name = \"foo\"`")
+                        .span_label(m.span, &format!("missing `name` argument")).emit();
                     InternedString::new("foo")
                 }
             };
