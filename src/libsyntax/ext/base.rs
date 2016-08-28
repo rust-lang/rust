@@ -60,13 +60,6 @@ impl HasAttrs for Annotatable {
 }
 
 impl Annotatable {
-    pub fn attrs(&self) -> &[ast::Attribute] {
-        HasAttrs::attrs(self)
-    }
-    pub fn fold_attrs(self, attrs: Vec<ast::Attribute>) -> Annotatable {
-        self.map_attrs(|_| attrs)
-    }
-
     pub fn expect_item(self) -> P<ast::Item> {
         match self {
             Annotatable::Item(i) => i,
