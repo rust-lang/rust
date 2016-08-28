@@ -10,7 +10,7 @@
 
 use rustc::ty::{self, Ty};
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
-use std::collections::HashSet;
+use rustc::util::nodemap::FnvHashSet;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Parameter {
@@ -71,7 +71,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
 
 pub fn identify_constrained_type_params<'tcx>(predicates: &[ty::Predicate<'tcx>],
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-                                              input_parameters: &mut HashSet<Parameter>)
+                                              input_parameters: &mut FnvHashSet<Parameter>)
 {
     let mut predicates = predicates.to_owned();
     setup_constraining_predicates(&mut predicates, impl_trait_ref, input_parameters);
@@ -120,7 +120,7 @@ pub fn identify_constrained_type_params<'tcx>(predicates: &[ty::Predicate<'tcx>]
 /// think of any.
 pub fn setup_constraining_predicates<'tcx>(predicates: &mut [ty::Predicate<'tcx>],
                                            impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-                                           input_parameters: &mut HashSet<Parameter>)
+                                           input_parameters: &mut FnvHashSet<Parameter>)
 {
     // The canonical way of doing the needed topological sort
     // would be a DFS, but getting the graph and its ownership

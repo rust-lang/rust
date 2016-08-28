@@ -32,7 +32,8 @@
 
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::TypeFolder;
-use std::collections::hash_map::{self, Entry};
+use util::nodemap::FnvHashMap;
+use std::collections::hash_map::Entry;
 
 use super::InferCtxt;
 use super::unify_key::ToType;
@@ -40,7 +41,7 @@ use super::unify_key::ToType;
 pub struct TypeFreshener<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     freshen_count: u32,
-    freshen_map: hash_map::HashMap<ty::InferTy, Ty<'tcx>>,
+    freshen_map: FnvHashMap<ty::InferTy, Ty<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
@@ -49,7 +50,7 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
         TypeFreshener {
             infcx: infcx,
             freshen_count: 0,
-            freshen_map: hash_map::HashMap::new(),
+            freshen_map: FnvHashMap(),
         }
     }
 
