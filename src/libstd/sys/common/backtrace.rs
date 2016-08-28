@@ -137,10 +137,21 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
             let i: usize = inner[.. (inner.len() - rest.len())].parse().unwrap();
             inner = &rest[i..];
             rest = &rest[..i];
+            if rest.starts_with("_$") {
+                rest = &rest[1..];
+            }
             while !rest.is_empty() {
-                if rest.starts_with("$") {
+                if rest.starts_with(".") {
+                    if let Some('.') = rest[1..].chars().next() {
+                        writer.write_all(b"::")?;
+                        rest = &rest[2..];
+                    } else {
+                        writer.write_all(b".")?;
+                        rest = &rest[1..];
+                    }
+                } else if rest.starts_with("$") {
                     macro_rules! demangle {
-                        ($($pat:expr, => $demangled:expr),*) => ({
+                        ($($pat:expr => $demangled:expr),*) => ({
                             $(if rest.starts_with($pat) {
                                 try!(writer.write_all($demangled));
                                 rest = &rest[$pat.len()..];
@@ -155,29 +166,32 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
 
                     // see src/librustc/back/link.rs for these mappings
                     demangle! (
-                        "$SP$", => b"@",
-                        "$BP$", => b"*",
-                        "$RF$", => b"&",
-                        "$LT$", => b"<",
-                        "$GT$", => b">",
-                        "$LP$", => b"(",
-                        "$RP$", => b")",
-                        "$C$", => b",",
+                        "$SP$" => b"@",
+                        "$BP$" => b"*",
+                        "$RF$" => b"&",
+                        "$LT$" => b"<",
+                        "$GT$" => b">",
+                        "$LP$" => b"(",
+                        "$RP$" => b")",
+                        "$C$" => b",",
 
                         // in theory we can demangle any Unicode code point, but
                         // for simplicity we just catch the common ones.
-                        "$u7e$", => b"~",
-                        "$u20$", => b" ",
-                        "$u27$", => b"'",
-                        "$u5b$", => b"[",
-                        "$u5d$", => b"]",
-                        "$u7b$", => b"{",
-                        "$u7d$", => b"}"
+                        "$u7e$" => b"~",
+                        "$u20$" => b" ",
+                        "$u27$" => b"'",
+                        "$u5b$" => b"[",
+                        "$u5d$" => b"]",
+                        "$u7b$" => b"{",
+                        "$u7d$" => b"}",
+                        "$u3b$" => b";",
+                        "$u2b$" => b"+",
+                        "$u22$" => b"\""
                     )
                 } else {
-                    let idx = match rest.find('$') {
+                    let idx = match rest.char_indices().find(|&(_, c)| c == '$' || c == '.') {
                         None => rest.len(),
-                        Some(i) => i,
+                        Some((i, _)) => i,
                     };
                     writer.write_all(rest[..idx].as_bytes())?;
                     rest = &rest[idx..];
@@ -212,6 +226,7 @@ mod tests {
         t!("_ZN8$RF$testE", "&test");
         t!("_ZN8$BP$test4foobE", "*test::foob");
         t!("_ZN9$u20$test4foobE", " test::foob");
+        t!("_ZN35Bar$LT$$u5b$u32$u3b$$u20$4$u5d$$GT$E", "Bar<[u32; 4]>");
     }
 
     #[test]
@@ -225,5 +240,18 @@ mod tests {
         t!("ZN4testE", "test");
         t!("ZN13test$u20$test4foobE", "test test::foob");
         t!("ZN12test$RF$test4foobE", "test&test::foob");
+    }
+
+    #[test]
+    fn demangle_elements_beginning_with_underscore() {
+        t!("_ZN13_$LT$test$GT$E", "<test>");
+        t!("_ZN28_$u7b$$u7b$closure$u7d$$u7d$E", "{{closure}}");
+        t!("_ZN15__STATIC_FMTSTRE", "__STATIC_FMTSTR");
+    }
+
+    #[test]
+    fn demangle_trait_impls() {
+        t!("_ZN71_$LT$Test$u20$$u2b$$u20$$u27$static$u20$as$u20$foo..Bar$LT$Test$GT$$GT$3barE",
+           "<Test + 'static as foo::Bar<Test>>::bar");
     }
 }
