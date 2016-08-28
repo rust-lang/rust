@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.87 — ??
+* Fix FP in [`zero_prefixed_literal`] and `0b`/`Oo`
+
 ## 0.0.86 — 2016-08-28
 * Rustup to *rustc 1.13.0-nightly (a23064af5 2016-08-27)*
 * New lints: [`missing_docs_in_private_items`], [`zero_prefixed_literal`]

@@ -287,6 +287,8 @@ impl EarlyLintPass for MiscEarly {
                             span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
                                       "inconsistent casing in hexadecimal literal");
                         }
+                    } else if src.starts_with("0b") || src.starts_with("0o") {
+                        /* nothing to do */
                     } else if value != 0 && src.starts_with('0') {
                         span_lint_and_then(cx,
                                            ZERO_PREFIXED_LITERAL,
