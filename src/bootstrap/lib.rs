@@ -390,8 +390,10 @@ impl Build {
                                        "mir-opt", "mir-opt");
                 }
                 CheckCodegen { compiler } => {
-                    check::compiletest(self, &compiler, target.target,
-                                       "codegen", "codegen");
+                    if self.config.codegen_tests {
+                        check::compiletest(self, &compiler, target.target,
+                                           "codegen", "codegen");
+                    }
                 }
                 CheckCodegenUnits { compiler } => {
                     check::compiletest(self, &compiler, target.target,
