@@ -250,7 +250,7 @@ pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
 
             // Try to remove the session directory we just allocated. We don't
             // know if there's any garbage in it from the failed copy action.
-            if let Err(err) = std_fs::remove_dir_all(&session_dir) {
+            if let Err(err) = safe_remove_dir_all(&session_dir) {
                 tcx.sess.warn(&format!("Failed to delete partly initialized \
                                         session dir `{}`: {}",
                                        session_dir.display(),
@@ -282,7 +282,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
         debug!("finalize_session_directory() - invalidating session directory: {}",
                 incr_comp_session_dir.display());
 
-        if let Err(err) = std_fs::remove_dir_all(&*incr_comp_session_dir) {
+        if let Err(err) = safe_remove_dir_all(&*incr_comp_session_dir) {
             sess.warn(&format!("Error deleting incremental compilation \
                                 session directory `{}`: {}",
                                incr_comp_session_dir.display(),
@@ -460,7 +460,7 @@ fn lock_directory(sess: &Session,
 
 fn delete_session_dir_lock_file(sess: &Session,
                                 lock_file_path: &Path) {
-    if let Err(err) = std_fs::remove_file(&lock_file_path) {
+    if let Err(err) = safe_remove_file(&lock_file_path) {
         sess.warn(&format!("Error deleting lock file for incremental \
                             compilation session directory `{}`: {}",
                            lock_file_path.display(),
@@ -841,7 +841,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
         debug!("garbage_collect_session_directories() - deleting `{}`",
                 path.display());
 
-        if let Err(err) = std_fs::remove_dir_all(&path) {
+        if let Err(err) = safe_remove_dir_all(&path) {
             sess.warn(&format!("Failed to garbage collect finalized incremental \
                                 compilation session directory `{}`: {}",
                                path.display(),
@@ -860,7 +860,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
         debug!("garbage_collect_session_directories() - deleting `{}`",
                 path.display());
 
-        if let Err(err) = std_fs::remove_dir_all(&path) {
+        if let Err(err) = safe_remove_dir_all(&path) {
             sess.warn(&format!("Failed to garbage collect incremental \
                                 compilation session directory `{}`: {}",
                                path.display(),
@@ -890,6 +890,30 @@ fn all_except_most_recent(deletion_candidates: Vec<(SystemTime, PathBuf, Option<
                            .collect()
     } else {
         FnvHashMap()
+    }
+}
+
+/// Since paths of artifacts within session directories can get quite long, we
+/// need to support deleting files with very long paths. The regular
+/// WinApi functions only support paths up to 260 characters, however. In order
+/// to circumvent this limitation, we canonicalize the path of the directory
+/// before passing it to std::fs::remove_dir_all(). This will convert the path
+/// into the '\\?\' format, which supports much longer paths.
+fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
+    if p.exists() {
+        let canonicalized = try!(p.canonicalize());
+        std_fs::remove_dir_all(canonicalized)
+    } else {
+        Ok(())
+    }
+}
+
+fn safe_remove_file(p: &Path) -> io::Result<()> {
+    if p.exists() {
+        let canonicalized = try!(p.canonicalize());
+        std_fs::remove_file(canonicalized)
+    } else {
+        Ok(())
     }
 }
 
