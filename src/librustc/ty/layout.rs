@@ -328,6 +328,33 @@ pub enum Integer {
 }
 
 impl Integer {
+
+    pub fn size(&self) -> Size {
+        match *self {
+            I1 => Size::from_bits(1),
+            I8 => Size::from_bytes(1),
+            I16 => Size::from_bytes(2),
+            I32 => Size::from_bytes(4),
+            I64  => Size::from_bytes(8),
+        }
+    }
+
+    pub fn to_ty<'a, 'tcx>(&self, tcx: &ty::TyCtxt<'a, 'tcx, 'tcx>,
+                       signed: bool) -> Ty<'tcx> {
+        match (*self, signed) {
+            (I1, false) => tcx.types.u8,
+            (I8, false) => tcx.types.u8,
+            (I16, false) => tcx.types.u16,
+            (I32, false) => tcx.types.u32,
+            (I64, false) => tcx.types.u64,
+            (I1, true) => tcx.types.i8,
+            (I8, true) => tcx.types.i8,
+            (I16, true) => tcx.types.i16,
+            (I32, true) => tcx.types.i32,
+            (I64, true) => tcx.types.i64,
+        }
+    }
+
     /// Find the smallest Integer type which can represent the signed value.
     pub fn fit_signed(x: i64) -> Integer {
         match x {
@@ -912,7 +939,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 Univariant { variant: unit, non_zero: false }
             }
 
-            // Tuples.
+            // Tuples and closures.
             ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. }) |
             ty::TyTuple(tys) => {
                 let mut st = Struct::new(dl, false);
@@ -975,7 +1002,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 if def.variants.len() == 1 {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
-                    assert!(!def.is_enum() || hint == attr::ReprAny);
+
                     let fields = def.variants[0].fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
                     });
@@ -1001,6 +1028,16 @@ impl<'a, 'gcx, 'tcx> Layout {
                         bug!("non-C-like enum {} with specified discriminants",
                             tcx.item_path_str(def.did));
                     }
+                }
+
+                if def.variants.len() == 1 && hint == attr::ReprAny{
+                    // Equivalent to a struct/tuple/newtype.
+                    let fields = def.variants[0].fields.iter().map(|field| {
+                        field.ty(tcx, substs).layout(infcx)
+                    });
+                    let mut st = Struct::new(dl, false);
+                    st.extend(dl, fields, ty)?;
+                    return success(Univariant { variant: st, non_zero: false });
                 }
 
                 // Cache the substituted and normalized variant field types.

@@ -152,7 +152,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
                         let base_ty = tr_base.ty.to_ty(tcx);
-                        let base_repr = adt::represent_type(ccx, base_ty);
                         let discr = match tr_base.ty {
                             LvalueTy::Ty { .. } => 0,
                             LvalueTy::Downcast { adt_def: _, substs: _, variant_index: v } => v,
@@ -164,7 +163,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         } else {
                             adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
                         };
-                        let llprojected = adt::trans_field_ptr_builder(bcx, &base_repr, base,
+                        let llprojected = adt::trans_field_ptr_builder(bcx, base_ty, base,
                                                                        Disr(discr), field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()

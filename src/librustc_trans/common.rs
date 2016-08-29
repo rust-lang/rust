@@ -875,12 +875,6 @@ pub fn const_get_elt(v: ValueRef, us: &[c_uint])
     }
 }
 
-pub fn const_to_int(v: ValueRef) -> i64 {
-    unsafe {
-        llvm::LLVMConstIntGetSExtValue(v)
-    }
-}
-
 pub fn const_to_uint(v: ValueRef) -> u64 {
     unsafe {
         llvm::LLVMConstIntGetZExtValue(v)

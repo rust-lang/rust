@@ -418,8 +418,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let val_ty = substs.type_at(0);
             match val_ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    let repr = adt::represent_type(ccx, val_ty);
-                    adt::trans_get_discr(bcx, &repr, llargs[0],
+                    adt::trans_get_discr(bcx, val_ty, llargs[0],
                                          Some(llret_ty), true)
                 }
                 _ => C_null(llret_ty)
@@ -629,13 +628,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         // destructors, and the contents are SIMD
                         // etc.
                         assert!(!bcx.fcx.type_needs_drop(arg_type));
-
-                        let repr = adt::represent_type(bcx.ccx(), arg_type);
-                        let repr_ptr = &repr;
                         let arg = adt::MaybeSizedValue::sized(llarg);
                         (0..contents.len())
                             .map(|i| {
-                                Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, arg, Disr(0), i))
+                                Load(bcx, adt::trans_field_ptr(bcx, arg_type, arg, Disr(0), i))
                             })
                             .collect()
                     }
