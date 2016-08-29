@@ -1883,6 +1883,10 @@ pub enum ItemKind {
     ///
     /// E.g. `struct Foo<A> { x: A }`
     Struct(VariantData, Generics),
+    /// A union definition (`union` or `pub union`).
+    ///
+    /// E.g. `union Foo<A, B> { x: A, y: B }`
+    Union(VariantData, Generics), // FIXME: not yet implemented
     /// A Trait declaration (`trait` or `pub trait`).
     ///
     /// E.g. `trait Foo { .. }` or `trait Foo<T> { .. }`
@@ -1919,6 +1923,7 @@ impl ItemKind {
             ItemKind::Ty(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
+            ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::Mac(..) |
             ItemKind::Impl(..) |

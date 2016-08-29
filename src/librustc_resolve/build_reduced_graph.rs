@@ -275,6 +275,8 @@ impl<'b> Resolver<'b> {
                 self.structs.insert(item_def_id, field_names);
             }
 
+            ItemKind::Union(..) => panic!("`union` is not yet implemented"),
+
             ItemKind::DefaultImpl(_, _) | ItemKind::Impl(..) => {}
 
             ItemKind::Trait(_, _, _, ref items) => {

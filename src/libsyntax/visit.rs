@@ -278,7 +278,8 @@ pub fn walk_item<V: Visitor>(visitor: &mut V, item: &Item) {
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_impl_item, impl_items);
         }
-        ItemKind::Struct(ref struct_definition, ref generics) => {
+        ItemKind::Struct(ref struct_definition, ref generics) |
+        ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_variant_data(struct_definition, item.ident,
                                      generics, item.id, item.span);
