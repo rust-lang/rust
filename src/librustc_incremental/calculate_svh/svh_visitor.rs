@@ -40,22 +40,22 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     // collect a deterministic hash of def-ids that we have seen
     def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
     hash_spans: bool,
-    codemap: CachedCodemapView<'tcx>,
+    codemap: CachingCodemapView<'tcx>,
 }
 
-struct CachedCodemapView<'tcx> {
+struct CachingCodemapView<'tcx> {
     codemap: &'tcx CodeMap,
     // Format: (line number, line-start, line_end, file)
     line_cache: [(usize, BytePos, BytePos, Rc<FileMap>); 4],
     eviction_index: usize,
 }
 
-impl<'tcx> CachedCodemapView<'tcx> {
-    fn new<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CachedCodemapView<'tcx> {
+impl<'tcx> CachingCodemapView<'tcx> {
+    fn new<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CachingCodemapView<'tcx> {
         let codemap = tcx.sess.codemap();
         let first_file = codemap.files.borrow()[0].clone();
 
-        CachedCodemapView {
+        CachingCodemapView {
             codemap: codemap,
             line_cache: [(0, BytePos(0), BytePos(0), first_file.clone()),
                          (0, BytePos(0), BytePos(0), first_file.clone()),
@@ -123,7 +123,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             tcx: tcx,
             def_path_hashes: def_path_hashes,
             hash_spans: hash_spans,
-            codemap: CachedCodemapView::new(tcx),
+            codemap: CachingCodemapView::new(tcx),
         }
     }
 
