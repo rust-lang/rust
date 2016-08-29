@@ -639,6 +639,25 @@ pub struct Iter<'a> {
     inner: Components<'a>,
 }
 
+#[stable(feature = "path_components_debug", since = "1.13.0")]
+impl<'a> fmt::Debug for Components<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        struct DebugHelper<'a>(&'a Path);
+
+        impl<'a> fmt::Debug for DebugHelper<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_list()
+                    .entries(self.0.components())
+                    .finish()
+            }
+        }
+
+        f.debug_tuple("Components")
+            .field(&DebugHelper(self.as_path()))
+            .finish()
+    }
+}
+
 impl<'a> Components<'a> {
     // how long is the prefix, if any?
     #[inline]
@@ -3482,5 +3501,26 @@ mod tests {
                 relative_from: Some("")
                 );
         }
+    }
+
+    #[test]
+    fn test_components_debug() {
+        let path = Path::new("/tmp");
+
+        let mut components = path.components();
+
+        let expected = "Components([RootDir, Normal(\"tmp\")])";
+        let actual = format!("{:?}", components);
+        assert_eq!(expected, actual);
+
+        let _ = components.next().unwrap();
+        let expected = "Components([Normal(\"tmp\")])";
+        let actual = format!("{:?}", components);
+        assert_eq!(expected, actual);
+
+        let _ = components.next().unwrap();
+        let expected = "Components([])";
+        let actual = format!("{:?}", components);
+        assert_eq!(expected, actual);
     }
 }
