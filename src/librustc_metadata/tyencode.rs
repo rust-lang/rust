@@ -27,13 +27,11 @@ use rustc::hir;
 
 use syntax::abi::Abi;
 use syntax::ast;
-use errors::Handler;
 
 use rbml::leb128;
 use encoder;
 
 pub struct ctxt<'a, 'tcx: 'a> {
-    pub diag: &'a Handler,
     // Def -> str Callback:
     pub ds: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String,
     // The type context.
@@ -42,12 +40,11 @@ pub struct ctxt<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> encoder::EncodeContext<'a, 'tcx> {
-    pub fn ty_str_ctxt<'b>(&'b self) -> ctxt<'b, 'tcx> {
+    pub fn ty_str_ctxt(&self) -> ctxt<'a, 'tcx> {
         ctxt {
-            diag: self.tcx.sess.diagnostic(),
             ds: encoder::def_to_string,
             tcx: self.tcx,
-            abbrevs: &self.type_abbrevs
+            abbrevs: self.type_abbrevs
         }
     }
 }

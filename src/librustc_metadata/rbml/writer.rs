@@ -21,8 +21,8 @@ use rustc_serialize as serialize;
 pub type EncodeResult = io::Result<()>;
 
 // rbml writing
-pub struct Encoder<'a> {
-    pub writer: &'a mut Cursor<Vec<u8>>,
+pub struct Encoder {
+    pub writer: Cursor<Vec<u8>>,
     size_positions: Vec<u64>,
     relax_limit: u64, // do not move encoded bytes before this position
 }
@@ -65,10 +65,10 @@ pub fn write_vuint<W: Write>(w: &mut W, n: usize) -> EncodeResult {
     Err(io::Error::new(io::ErrorKind::Other, &format!("isize too big: {}", n)[..]))
 }
 
-impl<'a> Encoder<'a> {
-    pub fn new(w: &'a mut Cursor<Vec<u8>>) -> Encoder<'a> {
+impl Encoder {
+    pub fn new() -> Encoder {
         Encoder {
-            writer: w,
+            writer: Cursor::new(vec![]),
             size_positions: vec![],
             relax_limit: 0,
         }
@@ -79,7 +79,7 @@ impl<'a> Encoder<'a> {
         assert!(tag_id >= NUM_IMPLICIT_TAGS);
 
         // Write the enum ID:
-        write_tag(self.writer, tag_id)?;
+        write_tag(&mut self.writer, tag_id)?;
 
         // Write a placeholder four-byte size.
         let cur_pos = self.writer.seek(SeekFrom::Current(0))?;
@@ -107,11 +107,11 @@ impl<'a> Encoder<'a> {
             }
 
             // overwrite the size and data and continue
-            write_vuint(self.writer, size)?;
+            write_vuint(&mut self.writer, size)?;
             self.writer.write_all(&buf[..size])?;
         } else {
             // overwrite the size with an overlong encoding and skip past the data
-            write_sized_vuint(self.writer, size, 4)?;
+            write_sized_vuint(&mut self.writer, size, 4)?;
             self.writer.seek(SeekFrom::Start(cur_pos))?;
         }
 
@@ -129,8 +129,8 @@ impl<'a> Encoder<'a> {
 
     pub fn wr_tagged_bytes(&mut self, tag_id: usize, b: &[u8]) -> EncodeResult {
         assert!(tag_id >= NUM_IMPLICIT_TAGS);
-        write_tag(self.writer, tag_id)?;
-        write_vuint(self.writer, b.len())?;
+        write_tag(&mut self.writer, tag_id)?;
+        write_vuint(&mut self.writer, b.len())?;
         self.writer.write_all(b)
     }
 
@@ -183,7 +183,7 @@ impl<'a> Encoder<'a> {
 
     // for auto-serialization
     fn wr_tagged_raw_bytes(&mut self, tag_id: usize, b: &[u8]) -> EncodeResult {
-        write_tag(self.writer, tag_id)?;
+        write_tag(&mut self.writer, tag_id)?;
         self.writer.write_all(b)
     }
 
@@ -243,7 +243,7 @@ impl<'a> Encoder<'a> {
     }
 }
 
-impl<'a> Encoder<'a> {
+impl Encoder {
     // used internally to emit things like the vector length and so on
     fn _emit_tagged_sub(&mut self, v: usize) -> EncodeResult {
         if v as u8 as usize == v {
@@ -262,7 +262,7 @@ impl<'a> Encoder<'a> {
         self.start_tag(EsOpaque as usize)?;
 
         {
-            let mut opaque_encoder = opaque::Encoder::new(self.writer);
+            let mut opaque_encoder = opaque::Encoder::new(&mut self.writer);
             f(&mut opaque_encoder)?;
         }
 
@@ -271,7 +271,7 @@ impl<'a> Encoder<'a> {
     }
 }
 
-impl<'a> serialize::Encoder for Encoder<'a> {
+impl<'a, 'tcx> serialize::Encoder for ::encoder::EncodeContext<'a, 'tcx> {
     type Error = io::Error;
 
     fn emit_nil(&mut self) -> EncodeResult {
@@ -355,7 +355,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.start_tag(EsEnum as usize)?;
         f(self)?;
@@ -363,14 +363,14 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_enum_variant<F>(&mut self, _: &str, v_id: usize, _: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self._emit_tagged_sub(v_id)?;
         f(self)
     }
 
     fn emit_enum_variant_arg<F>(&mut self, _: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         f(self)
     }
@@ -381,53 +381,53 @@ impl<'a> serialize::Encoder for Encoder<'a> {
                                    cnt: usize,
                                    f: F)
                                    -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.emit_enum_variant(v_name, v_id, cnt, f)
     }
 
     fn emit_enum_struct_variant_field<F>(&mut self, _: &str, idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.emit_enum_variant_arg(idx, f)
     }
 
     fn emit_struct<F>(&mut self, _: &str, _len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         f(self)
     }
 
     fn emit_struct_field<F>(&mut self, _name: &str, _: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         f(self)
     }
 
     fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.emit_seq(len, f)
     }
     fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.emit_seq_elt(idx, f)
     }
 
     fn emit_tuple_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.emit_seq(len, f)
     }
     fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.emit_seq_elt(idx, f)
     }
 
     fn emit_option<F>(&mut self, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.emit_enum("Option", f)
     }
@@ -435,14 +435,14 @@ impl<'a> serialize::Encoder for Encoder<'a> {
         self.emit_enum_variant("None", 0, 0, |_| Ok(()))
     }
     fn emit_option_some<F>(&mut self, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
 
         self.emit_enum_variant("Some", 1, 1, f)
     }
 
     fn emit_seq<F>(&mut self, len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         if len == 0 {
             // empty vector optimization
@@ -456,7 +456,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_seq_elt<F>(&mut self, _idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
 
         self.start_tag(EsVecElt as usize)?;
@@ -465,7 +465,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_map<F>(&mut self, len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         if len == 0 {
             // empty map optimization
@@ -479,7 +479,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_map_elt_key<F>(&mut self, _idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
 
         self.start_tag(EsMapKey as usize)?;
@@ -488,7 +488,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
+        where F: FnOnce(&mut Self) -> EncodeResult
     {
         self.start_tag(EsMapVal as usize)?;
         f(self)?;

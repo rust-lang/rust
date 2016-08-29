@@ -46,7 +46,6 @@ use std::io::SeekFrom;
 use std::io::prelude::*;
 
 use rbml::reader;
-use rbml::writer::Encoder;
 use rbml;
 use rustc_serialize::{Decodable, Decoder, DecoderHelpers};
 use rustc_serialize::{Encodable, EncoderHelpers};
@@ -67,9 +66,7 @@ trait tr {
 // ______________________________________________________________________
 // Top-level methods.
 
-pub fn encode_inlined_item(ecx: &e::EncodeContext,
-                           rbml_w: &mut Encoder,
-                           ii: InlinedItemRef) {
+pub fn encode_inlined_item(ecx: &mut e::EncodeContext, ii: InlinedItemRef) {
     let id = match ii {
         InlinedItemRef::Item(_, i) => i.id,
         InlinedItemRef::TraitItem(_, ti) => ti.id,
@@ -77,22 +74,24 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     };
     debug!("> Encoding inlined item: {} ({:?})",
            ecx.tcx.node_path_str(id),
-           rbml_w.writer.seek(SeekFrom::Current(0)));
+           ecx.writer.seek(SeekFrom::Current(0)));
 
     // Folding could be avoided with a smarter encoder.
     let (ii, expected_id_range) = simplify_ast(ii);
     let id_range = inlined_item_id_range(&ii);
     assert_eq!(expected_id_range, id_range);
 
-    rbml_w.start_tag(c::tag_ast as usize);
-    id_range.encode(rbml_w);
-    encode_ast(rbml_w, &ii);
-    encode_side_tables_for_ii(ecx, rbml_w, &ii);
-    rbml_w.end_tag();
+    ecx.start_tag(c::tag_ast as usize);
+    id_range.encode(ecx);
+    ecx.start_tag(c::tag_tree as usize);
+    ecx.emit_opaque(|this| ii.encode(this));
+    ecx.end_tag();
+    encode_side_tables_for_ii(ecx, &ii);
+    ecx.end_tag();
 
     debug!("< Encoded inlined fn: {} ({:?})",
            ecx.tcx.node_path_str(id),
-           rbml_w.writer.seek(SeekFrom::Current(0)));
+           ecx.writer.seek(SeekFrom::Current(0)));
 }
 
 impl<'a, 'b, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'tcx> {
@@ -234,12 +233,6 @@ impl tr for syntax_pos::Span {
 // appear within are disjoint from the node ids in our existing ASTs.
 // We also have to adjust the spans: for now we just insert a dummy span,
 // but eventually we should add entries to the local codemap as required.
-
-fn encode_ast(rbml_w: &mut Encoder, item: &InlinedItem) {
-    rbml_w.start_tag(c::tag_tree as usize);
-    rbml_w.emit_opaque(|this| item.encode(this));
-    rbml_w.end_tag();
-}
 
 struct NestedItemsDropper {
     id_range: IdRange
@@ -385,10 +378,6 @@ impl tr for Def {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &hir::Freevar) {
-    (*fv).encode(rbml_w).unwrap();
-}
-
 impl<'a> reader::Decoder<'a> {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
                           -> hir::Freevar {
@@ -409,26 +398,27 @@ impl tr for hir::Freevar {
 // ______________________________________________________________________
 // Encoding and decoding of MethodCallee
 
-fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
-                                  rbml_w: &mut Encoder,
-                                  autoderef: u32,
-                                  method: &ty::MethodCallee<'tcx>) {
-    use rustc_serialize::Encoder;
+impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
+    fn encode_method_callee(&mut self,
+                            autoderef: u32,
+                            method: &ty::MethodCallee<'tcx>) {
+        use rustc_serialize::Encoder;
 
-    rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
-        rbml_w.emit_struct_field("autoderef", 0, |rbml_w| {
-            autoderef.encode(rbml_w)
-        });
-        rbml_w.emit_struct_field("def_id", 1, |rbml_w| {
-            method.def_id.encode(rbml_w)
-        });
-        rbml_w.emit_struct_field("ty", 2, |rbml_w| {
-            Ok(rbml_w.emit_ty(ecx, method.ty))
-        });
-        rbml_w.emit_struct_field("substs", 3, |rbml_w| {
-            Ok(rbml_w.emit_substs(ecx, &method.substs))
-        })
-    }).unwrap();
+        self.emit_struct("MethodCallee", 4, |this| {
+            this.emit_struct_field("autoderef", 0, |this| {
+                autoderef.encode(this)
+            });
+            this.emit_struct_field("def_id", 1, |this| {
+                method.def_id.encode(this)
+            });
+            this.emit_struct_field("ty", 2, |this| {
+                Ok(this.emit_ty(method.ty))
+            });
+            this.emit_struct_field("substs", 3, |this| {
+                Ok(this.emit_substs(&method.substs))
+            })
+        }).unwrap();
+    }
 }
 
 impl<'a, 'tcx> reader::Decoder<'a> {
@@ -453,27 +443,25 @@ impl<'a, 'tcx> reader::Decoder<'a> {
     }
 }
 
-pub fn encode_cast_kind(ebml_w: &mut Encoder, kind: cast::CastKind) {
-    kind.encode(ebml_w).unwrap();
-}
-
 // ______________________________________________________________________
 // Encoding and decoding the side tables
 
-impl<'a, 'tcx> Encoder<'a> {
-    fn emit_region(&mut self, ecx: &e::EncodeContext, r: &'tcx ty::Region) {
+impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
+    fn emit_region(&mut self, r: &'tcx ty::Region) {
+        let cx = self.ty_str_ctxt();
         self.emit_opaque(|this| Ok(tyencode::enc_region(&mut this.cursor,
-                                                        &ecx.ty_str_ctxt(),
+                                                        &cx,
                                                         r)));
     }
 
-    fn emit_ty<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>, ty: Ty<'tcx>) {
+    fn emit_ty(&mut self, ty: Ty<'tcx>) {
+        let cx = self.ty_str_ctxt();
         self.emit_opaque(|this| Ok(tyencode::enc_ty(&mut this.cursor,
-                                                    &ecx.ty_str_ctxt(),
+                                                    &cx,
                                                     ty)));
     }
 
-    fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture) {
+    fn emit_upvar_capture(&mut self, capture: &ty::UpvarCapture<'tcx>) {
         use rustc_serialize::Encoder;
 
         self.emit_enum("UpvarCapture", |this| {
@@ -486,22 +474,21 @@ impl<'a, 'tcx> Encoder<'a> {
                         this.emit_enum_variant_arg(0,
                             |this| kind.encode(this));
                         this.emit_enum_variant_arg(1,
-                            |this| Ok(this.emit_region(ecx, region)))
+                            |this| Ok(this.emit_region(region)))
                     })
                 }
             }
         }).unwrap()
     }
 
-    fn emit_substs<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                       substs: &Substs<'tcx>) {
+    fn emit_substs(&mut self, substs: &Substs<'tcx>) {
+        let cx = self.ty_str_ctxt();
         self.emit_opaque(|this| Ok(tyencode::enc_substs(&mut this.cursor,
-                                                        &ecx.ty_str_ctxt(),
+                                                        &cx,
                                                         substs)));
     }
 
-    fn emit_auto_adjustment<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                                adj: &adjustment::AutoAdjustment<'tcx>) {
+    fn emit_auto_adjustment(&mut self, adj: &adjustment::AutoAdjustment<'tcx>) {
         use rustc_serialize::Encoder;
 
         self.emit_enum("AutoAdjustment", |this| {
@@ -525,21 +512,20 @@ impl<'a, 'tcx> Encoder<'a> {
                 adjustment::AdjustDerefRef(ref auto_deref_ref) => {
                     this.emit_enum_variant("AdjustDerefRef", 4, 2, |this| {
                         this.emit_enum_variant_arg(0,
-                            |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
+                            |this| Ok(this.emit_auto_deref_ref(auto_deref_ref)))
                     })
                 }
 
                 adjustment::AdjustNeverToAny(ref ty) => {
                     this.emit_enum_variant("AdjustNeverToAny", 5, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_ty(ecx, ty)))
+                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_ty(ty)))
                     })
                 }
             }
         });
     }
 
-    fn emit_autoref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                        autoref: &adjustment::AutoRef<'tcx>) {
+    fn emit_autoref(&mut self, autoref: &adjustment::AutoRef<'tcx>) {
         use rustc_serialize::Encoder;
 
         self.emit_enum("AutoRef", |this| {
@@ -547,7 +533,7 @@ impl<'a, 'tcx> Encoder<'a> {
                 &adjustment::AutoPtr(r, m) => {
                     this.emit_enum_variant("AutoPtr", 0, 2, |this| {
                         this.emit_enum_variant_arg(0,
-                            |this| Ok(this.emit_region(ecx, r)));
+                            |this| Ok(this.emit_region(r)));
                         this.emit_enum_variant_arg(1, |this| m.encode(this))
                     })
                 }
@@ -560,8 +546,7 @@ impl<'a, 'tcx> Encoder<'a> {
         });
     }
 
-    fn emit_auto_deref_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                               auto_deref_ref: &adjustment::AutoDerefRef<'tcx>) {
+    fn emit_auto_deref_ref(&mut self, auto_deref_ref: &adjustment::AutoDerefRef<'tcx>) {
         use rustc_serialize::Encoder;
 
         self.emit_struct("AutoDerefRef", 2, |this| {
@@ -571,7 +556,7 @@ impl<'a, 'tcx> Encoder<'a> {
                 this.emit_option(|this| {
                     match auto_deref_ref.autoref {
                         None => this.emit_option_none(),
-                        Some(ref a) => this.emit_option_some(|this| Ok(this.emit_autoref(ecx, a))),
+                        Some(ref a) => this.emit_option_some(|this| Ok(this.emit_autoref(a))),
                     }
                 })
             });
@@ -581,20 +566,18 @@ impl<'a, 'tcx> Encoder<'a> {
                     match auto_deref_ref.unsize {
                         None => this.emit_option_none(),
                         Some(target) => this.emit_option_some(|this| {
-                            Ok(this.emit_ty(ecx, target))
+                            Ok(this.emit_ty(target))
                         })
                     }
                 })
             })
         });
     }
-}
 
-impl<'a> Encoder<'a> {
     fn tag<F>(&mut self,
               tag_id: c::astencode_tag,
               f: F) where
-        F: FnOnce(&mut Encoder<'a>),
+        F: FnOnce(&mut Self),
     {
         self.start_tag(tag_id as usize);
         f(self);
@@ -606,68 +589,61 @@ impl<'a> Encoder<'a> {
     }
 }
 
-struct SideTableEncodingIdVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
-    ecx: &'a e::EncodeContext<'c, 'tcx>,
-    rbml_w: &'a mut Encoder<'b>,
+struct SideTableEncodingIdVisitor<'a, 'b:'a, 'tcx:'b> {
+    ecx: &'a mut e::EncodeContext<'b, 'tcx>,
 }
 
-impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for
-        SideTableEncodingIdVisitor<'a, 'b, 'c, 'tcx> {
+impl<'a, 'b, 'tcx, 'v> Visitor<'v> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
-        encode_side_tables_for_id(self.ecx, self.rbml_w, id)
+        encode_side_tables_for_id(self.ecx, id)
     }
 }
 
-fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
-                             rbml_w: &mut Encoder,
-                             ii: &InlinedItem) {
-    rbml_w.start_tag(c::tag_table as usize);
+fn encode_side_tables_for_ii(ecx: &mut e::EncodeContext, ii: &InlinedItem) {
+    ecx.start_tag(c::tag_table as usize);
     ii.visit(&mut SideTableEncodingIdVisitor {
-        ecx: ecx,
-        rbml_w: rbml_w
+        ecx: ecx
     });
-    rbml_w.end_tag();
+    ecx.end_tag();
 }
 
-fn encode_side_tables_for_id(ecx: &e::EncodeContext,
-                             rbml_w: &mut Encoder,
-                             id: ast::NodeId) {
+fn encode_side_tables_for_id(ecx: &mut e::EncodeContext, id: ast::NodeId) {
     let tcx = ecx.tcx;
 
     debug!("Encoding side tables for id {}", id);
 
     if let Some(def) = tcx.expect_def_or_none(id) {
-        rbml_w.tag(c::tag_table_def, |rbml_w| {
-            rbml_w.id(id);
-            def.encode(rbml_w).unwrap();
+        ecx.tag(c::tag_table_def, |ecx| {
+            ecx.id(id);
+            def.encode(ecx).unwrap();
         })
     }
 
     if let Some(ty) = tcx.node_types().get(&id) {
-        rbml_w.tag(c::tag_table_node_type, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_ty(ecx, *ty);
+        ecx.tag(c::tag_table_node_type, |ecx| {
+            ecx.id(id);
+            ecx.emit_ty(*ty);
         })
     }
 
     if let Some(item_substs) = tcx.tables.borrow().item_substs.get(&id) {
-        rbml_w.tag(c::tag_table_item_subst, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_substs(ecx, &item_substs.substs);
+        ecx.tag(c::tag_table_item_subst, |ecx| {
+            ecx.id(id);
+            ecx.emit_substs(&item_substs.substs);
         })
     }
 
     if let Some(fv) = tcx.freevars.borrow().get(&id) {
-        rbml_w.tag(c::tag_table_freevars, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_from_vec(fv, |rbml_w, fv_entry| {
-                Ok(encode_freevar_entry(rbml_w, fv_entry))
+        ecx.tag(c::tag_table_freevars, |ecx| {
+            ecx.id(id);
+            ecx.emit_from_vec(fv, |ecx, fv_entry| {
+                fv_entry.encode(ecx)
             });
         });
 
         for freevar in fv {
-            rbml_w.tag(c::tag_table_upvar_capture_map, |rbml_w| {
-                rbml_w.id(id);
+            ecx.tag(c::tag_table_upvar_capture_map, |ecx| {
+                ecx.id(id);
 
                 let var_id = freevar.def.var_id();
                 let upvar_id = ty::UpvarId {
@@ -680,17 +656,17 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                                        .get(&upvar_id)
                                        .unwrap()
                                        .clone();
-                var_id.encode(rbml_w);
-                rbml_w.emit_upvar_capture(ecx, &upvar_capture);
+                var_id.encode(ecx);
+                ecx.emit_upvar_capture(&upvar_capture);
             })
         }
     }
 
     let method_call = ty::MethodCall::expr(id);
     if let Some(method) = tcx.tables.borrow().method_map.get(&method_call) {
-        rbml_w.tag(c::tag_table_method_map, |rbml_w| {
-            rbml_w.id(id);
-            encode_method_callee(ecx, rbml_w, method_call.autoderef, method)
+        ecx.tag(c::tag_table_method_map, |ecx| {
+            ecx.id(id);
+            ecx.encode_method_callee(method_call.autoderef, method)
         })
     }
 
@@ -700,10 +676,9 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                 for autoderef in 0..adj.autoderefs {
                     let method_call = ty::MethodCall::autoderef(id, autoderef as u32);
                     if let Some(method) = tcx.tables.borrow().method_map.get(&method_call) {
-                        rbml_w.tag(c::tag_table_method_map, |rbml_w| {
-                            rbml_w.id(id);
-                            encode_method_callee(ecx, rbml_w,
-                                                 method_call.autoderef, method)
+                        ecx.tag(c::tag_table_method_map, |ecx| {
+                            ecx.id(id);
+                            ecx.encode_method_callee(method_call.autoderef, method)
                         })
                     }
                 }
@@ -711,23 +686,23 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             _ => {}
         }
 
-        rbml_w.tag(c::tag_table_adjustments, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_auto_adjustment(ecx, adjustment);
+        ecx.tag(c::tag_table_adjustments, |ecx| {
+            ecx.id(id);
+            ecx.emit_auto_adjustment(adjustment);
         })
     }
 
     if let Some(cast_kind) = tcx.cast_kinds.borrow().get(&id) {
-        rbml_w.tag(c::tag_table_cast_kinds, |rbml_w| {
-            rbml_w.id(id);
-            encode_cast_kind(rbml_w, *cast_kind)
+        ecx.tag(c::tag_table_cast_kinds, |ecx| {
+            ecx.id(id);
+            cast_kind.encode(ecx).unwrap()
         })
     }
 
     if let Some(qualif) = tcx.const_qualif_map.borrow().get(&id) {
-        rbml_w.tag(c::tag_table_const_qualif, |rbml_w| {
-            rbml_w.id(id);
-            qualif.encode(rbml_w).unwrap()
+        ecx.tag(c::tag_table_const_qualif, |ecx| {
+            ecx.id(id);
+            qualif.encode(ecx).unwrap()
         })
     }
 }
