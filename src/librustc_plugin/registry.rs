@@ -111,6 +111,8 @@ impl<'a> Registry<'a> {
             }
             MultiDecorator(ext) => MultiDecorator(ext),
             MultiModifier(ext) => MultiModifier(ext),
+            SyntaxExtension::ProcMacro(ext) => SyntaxExtension::ProcMacro(ext),
+            SyntaxExtension::AttrProcMacro(ext) => SyntaxExtension::AttrProcMacro(ext),
         }));
     }
 
