@@ -515,12 +515,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // defaults. This will lead to an ICE if we are not
                 // careful!
                 if default_needs_object_self(def) {
-                    span_err!(tcx.sess, span, E0393,
-                              "the type parameter `{}` must be explicitly specified \
-                               in an object type because its default value `{}` references \
-                               the type `Self`",
-                              def.name,
-                              default);
+                    struct_span_err!(tcx.sess, span, E0393,
+                                     "the type parameter `{}` must be explicitly specified",
+                                     def.name)
+                        .span_label(span, &format!("missing reference to `{}`", def.name))
+                        .note(&format!("because of the default `Self` reference, \
+                                        type parameters must be specified on object types"))
+                        .emit();
                     tcx.types.err
                 } else {
                     // This is a default type parameter.
