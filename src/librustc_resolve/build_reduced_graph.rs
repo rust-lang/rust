@@ -32,7 +32,7 @@ use syntax::ast::Name;
 use syntax::attr;
 use syntax::parse::token;
 
-use syntax::ast::{Block, Crate, DUMMY_NODE_ID};
+use syntax::ast::{Block, Crate};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -208,7 +208,7 @@ impl<'b> Resolver<'b> {
             ItemKind::Mod(..) => {
                 let parent_link = ModuleParentLink(parent, name);
                 let def = Def::Mod(self.definitions.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), item.id);
+                let module = self.new_module(parent_link, Some(def), Some(item.id));
                 module.no_implicit_prelude.set({
                     parent.no_implicit_prelude.get() ||
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
@@ -398,7 +398,7 @@ impl<'b> Resolver<'b> {
                 debug!("(building reduced graph for external crate) building module {} {:?}",
                        name, vis);
                 let parent_link = ModuleParentLink(parent, name);
-                let module = self.new_module(parent_link, Some(def), DUMMY_NODE_ID);
+                let module = self.new_module(parent_link, Some(def), None);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::Variant(_, variant_id) => {
@@ -440,7 +440,7 @@ impl<'b> Resolver<'b> {
                 }
 
                 let parent_link = ModuleParentLink(parent, name);
-                let module = self.new_module(parent_link, Some(def), DUMMY_NODE_ID);
+                let module = self.new_module(parent_link, Some(def), None);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::TyAlias(..) | Def::AssociatedTy(..) => {

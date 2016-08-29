@@ -54,7 +54,7 @@ use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
-use syntax::ast::{CRATE_NODE_ID, DUMMY_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
+use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -765,7 +765,7 @@ pub struct ModuleS<'a> {
     def: Option<Def>,
 
     // The node id of the closest normal module (`mod`) ancestor (including this module).
-    normal_ancestor_id: NodeId,
+    normal_ancestor_id: Option<NodeId>,
 
     // If the module is an extern crate, `def` is root of the external crate and `extern_crate_id`
     // is the NodeId of the local `extern crate` item (otherwise, `extern_crate_id` is None).
@@ -790,7 +790,8 @@ pub struct ModuleS<'a> {
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
-    fn new(parent_link: ParentLink<'a>, def: Option<Def>, normal_ancestor_id: NodeId) -> Self {
+    fn new(parent_link: ParentLink<'a>, def: Option<Def>, normal_ancestor_id: Option<NodeId>)
+           -> Self {
         ModuleS {
             parent_link: parent_link,
             def: def,
@@ -801,7 +802,7 @@ impl<'a> ModuleS<'a> {
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
-            populated: Cell::new(normal_ancestor_id != DUMMY_NODE_ID),
+            populated: Cell::new(normal_ancestor_id.is_some()),
         }
     }
 
@@ -1104,7 +1105,7 @@ impl<'a> ty::NodeIdTree for Resolver<'a> {
     fn is_descendant_of(&self, mut node: NodeId, ancestor: NodeId) -> bool {
         while node != ancestor {
             node = match self.module_map[&node].parent() {
-                Some(parent) => parent.normal_ancestor_id,
+                Some(parent) => parent.normal_ancestor_id.unwrap(),
                 None => return false,
             }
         }
@@ -1168,7 +1169,8 @@ impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session, make_glob_map: MakeGlobMap, arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
-        let graph_root = ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), CRATE_NODE_ID);
+        let graph_root =
+            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), Some(CRATE_NODE_ID));
         let graph_root = arenas.alloc_module(graph_root);
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
@@ -1247,14 +1249,17 @@ impl<'a> Resolver<'a> {
         self.report_errors();
     }
 
-    fn new_module(&self, parent_link: ParentLink<'a>, def: Option<Def>, normal_ancestor_id: NodeId)
+    fn new_module(&self,
+                  parent_link: ParentLink<'a>,
+                  def: Option<Def>,
+                  normal_ancestor_id: Option<NodeId>)
                   -> Module<'a> {
         self.arenas.alloc_module(ModuleS::new(parent_link, def, normal_ancestor_id))
     }
 
     fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def, local_node_id: NodeId)
                                -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), local_node_id);
+        let mut module = ModuleS::new(parent_link, Some(def), Some(local_node_id));
         module.extern_crate_id = Some(local_node_id);
         self.arenas.modules.alloc(module)
     }
@@ -1530,14 +1535,15 @@ impl<'a> Resolver<'a> {
             _ => return Success(NoPrefixFound),
         };
 
-        let mut containing_module = self.module_map[&self.current_module.normal_ancestor_id];
+        let mut containing_module =
+            self.module_map[&self.current_module.normal_ancestor_id.unwrap()];
 
         // Now loop through all the `super`s we find.
         while i < module_path.len() && "super" == module_path[i].as_str() {
             debug!("(resolving module prefix) resolving `super` at {}",
                    module_to_string(&containing_module));
             if let Some(parent) = containing_module.parent() {
-                containing_module = self.module_map[&parent.normal_ancestor_id];
+                containing_module = self.module_map[&parent.normal_ancestor_id.unwrap()];
                 i += 1;
             } else {
                 let msg = "There are too many initial `super`s.".into();
@@ -3260,7 +3266,7 @@ impl<'a> Resolver<'a> {
             ast::Visibility::Crate(_) => return ty::Visibility::Restricted(ast::CRATE_NODE_ID),
             ast::Visibility::Restricted { ref path, id } => (path, id),
             ast::Visibility::Inherited => {
-                return ty::Visibility::Restricted(self.current_module.normal_ancestor_id);
+                return ty::Visibility::Restricted(self.current_module.normal_ancestor_id.unwrap());
             }
         };
 
@@ -3269,7 +3275,7 @@ impl<'a> Resolver<'a> {
         let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, Some(path.span)) {
             Success(module) => {
                 path_resolution = PathResolution::new(module.def.unwrap());
-                ty::Visibility::Restricted(module.normal_ancestor_id)
+                ty::Visibility::Restricted(module.normal_ancestor_id.unwrap())
             }
             Indeterminate => unreachable!(),
             Failed(err) => {
@@ -3288,11 +3294,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_accessible(&self, vis: ty::Visibility) -> bool {
-        vis.is_accessible_from(self.current_module.normal_ancestor_id, self)
+        vis.is_accessible_from(self.current_module.normal_ancestor_id.unwrap(), self)
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
-        vis.is_accessible_from(module.normal_ancestor_id, self)
+        vis.is_accessible_from(module.normal_ancestor_id.unwrap(), self)
     }
 
     fn report_errors(&self) {
