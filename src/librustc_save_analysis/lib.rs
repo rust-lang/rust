@@ -727,13 +727,14 @@ impl Visitor for PathCollector {
 pub enum Format {
     Csv,
     Json,
+    JsonApi,
 }
 
 impl Format {
     fn extension(&self) -> &'static str {
         match *self {
             Format::Csv => ".csv",
-            Format::Json => ".json",
+            Format::Json | Format::JsonApi => ".json",
         }
     }
 }
@@ -803,6 +804,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
     match format {
         Format::Csv => dump!(CsvDumper::new(output)),
         Format::Json => dump!(JsonDumper::new(output)),
+        Format::JsonApi => /* TODO */ dump!(JsonDumper::new(output)),
     }
 }
 
