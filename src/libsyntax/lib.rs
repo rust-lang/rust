@@ -126,6 +126,7 @@ pub mod ext {
     pub mod base;
     pub mod build;
     pub mod expand;
+    pub mod placeholders;
     pub mod hygiene;
     pub mod proc_macro_shim;
     pub mod quote;
