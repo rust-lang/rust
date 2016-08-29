@@ -1976,7 +1976,10 @@ actual:\n\
         // runs.
         let incremental_dir = self.incremental_dir();
         if incremental_dir.exists() {
-            fs::remove_dir_all(&incremental_dir).unwrap();
+            // Canonicalizing the path will convert it to the //?/ format
+            // on Windows, which enables paths longer than 260 character
+            let canonicalized = incremental_dir.canonicalize().unwrap();
+            fs::remove_dir_all(canonicalized).unwrap();
         }
         fs::create_dir_all(&incremental_dir).unwrap();
 
