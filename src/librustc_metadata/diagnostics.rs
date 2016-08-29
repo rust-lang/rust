@@ -21,7 +21,7 @@ A link name was given with an empty name. Erroneous code example:
 The rust compiler cannot link to an external library if you don't give it its
 name. Example:
 
-```
+```ignore
 #[link(name = "some_lib")] extern {} // ok!
 ```
 "##,
@@ -72,7 +72,7 @@ A link was used without a name parameter. Erroneous code example:
 Please add the name parameter to allow the rust compiler to find the library
 you want. Example:
 
-```
+```ignore
 #[link(kind = "dylib", name = "some_lib")] extern {} // ok!
 ```
 "##,
@@ -121,7 +121,7 @@ macro_rules! get_pimientos {
 
 // In your crate:
 #[macro_use(get_tacos, get_pimientos)] // It imports `get_tacos` and
-extern crate some_crate;               // `get_pimientos` macros from some_crate.
+extern crate some_crate;               // `get_pimientos` macros from some_crate
 ```
 
 If you would like to import all exported macros, write `macro_use` with no
