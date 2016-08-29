@@ -32,7 +32,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File};
-use std::path::{PathBuf, Path};
+use std::path::{Component, PathBuf, Path};
 use std::process::Command;
 
 use build_helper::{run_silent, output};
@@ -477,12 +477,32 @@ impl Build {
     /// This will detect if any submodules are out of date an run the necessary
     /// commands to sync them all with upstream.
     fn update_submodules(&self) {
+        struct Submodule<'a> {
+            path: &'a Path,
+            state: State,
+        }
+
+        enum State {
+            // The submodule may have staged/unstaged changes
+            MaybeDirty,
+            // Or could be initialized but never updated
+            NotInitialized,
+            // The submodule, itself, has extra commits but those changes haven't been commited to
+            // the (outer) git repository
+            OutOfSync,
+        }
+
         if !self.config.submodules {
             return
         }
         if fs::metadata(self.src.join(".git")).is_err() {
             return
         }
+        let git = || {
+            let mut cmd = Command::new("git");
+            cmd.current_dir(&self.src);
+            return cmd
+        };
         let git_submodule = || {
             let mut cmd = Command::new("git");
             cmd.current_dir(&self.src).arg("submodule");
@@ -494,19 +514,67 @@ impl Build {
         //        of detecting whether we need to run all the submodule commands
         //        below.
         let out = output(git_submodule().arg("status"));
-        if !out.lines().any(|l| l.starts_with("+") || l.starts_with("-")) {
-            return
+        let mut submodules = vec![];
+        for line in out.lines() {
+            // NOTE `git submodule status` output looks like this:
+            //
+            // -5066b7dcab7e700844b0e2ba71b8af9dc627a59b src/liblibc
+            // +b37ef24aa82d2be3a3cc0fe89bf82292f4ca181c src/compiler-rt (remotes/origin/..)
+            //  e058ca661692a8d01f8cf9d35939dfe3105ce968 src/jemalloc (3.6.0-533-ge058ca6)
+            //
+            // The first character can be '-', '+' or ' ' and denotes the `State` of the submodule
+            // Right next to this character is the SHA-1 of the submodule HEAD
+            // And after that comes the path to the submodule
+            let path = Path::new(line[1..].split(' ').skip(1).next().unwrap());
+            let state = if line.starts_with('-') {
+                State::NotInitialized
+            } else if line.starts_with('*') {
+                State::OutOfSync
+            } else if line.starts_with(' ') {
+                State::MaybeDirty
+            } else {
+                panic!("unexpected git submodule state: {:?}", line.chars().next());
+            };
+
+            submodules.push(Submodule { path: path, state: state })
         }
 
         self.run(git_submodule().arg("sync"));
-        self.run(git_submodule().arg("init"));
-        self.run(git_submodule().arg("update"));
-        self.run(git_submodule().arg("update").arg("--recursive"));
-        self.run(git_submodule().arg("status").arg("--recursive"));
-        self.run(git_submodule().arg("foreach").arg("--recursive")
-                                .arg("git").arg("clean").arg("-fdx"));
-        self.run(git_submodule().arg("foreach").arg("--recursive")
-                                .arg("git").arg("checkout").arg("."));
+
+        for submodule in submodules {
+            // If using llvm-root then don't touch the llvm submodule.
+            if submodule.path.components().any(|c| c == Component::Normal("llvm".as_ref())) &&
+                self.config.target_config.get(&self.config.build)
+                    .and_then(|c| c.llvm_config.as_ref()).is_some()
+            {
+                continue
+            }
+
+            if submodule.path.components().any(|c| c == Component::Normal("jemalloc".as_ref())) &&
+                !self.config.use_jemalloc
+            {
+                continue
+            }
+
+            match submodule.state {
+                State::MaybeDirty => {
+                    // drop staged changes
+                    self.run(git().arg("-C").arg(submodule.path).args(&["reset", "--hard"]));
+                    // drops unstaged changes
+                    self.run(git().arg("-C").arg(submodule.path).args(&["clean", "-fdx"]));
+                },
+                State::NotInitialized => {
+                    self.run(git_submodule().arg("init").arg(submodule.path));
+                    self.run(git_submodule().arg("update").arg(submodule.path));
+                },
+                State::OutOfSync => {
+                    // drops submodule commits that weren't reported to the (outer) git repository
+                    self.run(git_submodule().arg("update").arg(submodule.path));
+                    self.run(git().arg("-C").arg(submodule.path).args(&["reset", "--hard"]));
+                    self.run(git().arg("-C").arg(submodule.path).args(&["clean", "-fdx"]));
+                },
+            }
+        }
     }
 
     /// Clear out `dir` if `input` is newer.
