@@ -13,6 +13,7 @@ use common;
 use decoder;
 use encoder;
 use loader;
+use rbml;
 
 use middle::cstore::{InlinedItem, CrateStore, CrateSource, ChildItem, ExternCrate, DefLike};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
@@ -707,15 +708,16 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                            mir_map: &MirMap<'tcx>,
                            krate: &hir::Crate) -> Vec<u8>
     {
+        let type_abbrevs = RefCell::new(FnvHashMap());
         let ecx = encoder::EncodeContext {
-            diag: tcx.sess.diagnostic(),
+            rbml_w: rbml::writer::Encoder::new(),
             tcx: tcx,
             reexports: reexports,
             link_meta: link_meta,
             cstore: self,
             reachable: reachable,
             mir_map: mir_map,
-            type_abbrevs: RefCell::new(FnvHashMap()),
+            type_abbrevs: &type_abbrevs,
         };
         encoder::encode_metadata(ecx, krate)
 

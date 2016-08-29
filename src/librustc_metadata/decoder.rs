@@ -812,10 +812,8 @@ pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
         };
         let mut decoder = reader::Decoder::new(mir_doc);
 
-        let mut mir = decoder.read_opaque(|opaque_decoder, _| {
-            tls::enter_decoding_context(&dcx, opaque_decoder, |_, opaque_decoder| {
-                Decodable::decode(opaque_decoder)
-            })
+        let mut mir = tls::enter_decoding_context(&dcx, |_| {
+            Decodable::decode(&mut decoder)
         }).unwrap();
 
         assert!(decoder.position() == mir_doc.end);
