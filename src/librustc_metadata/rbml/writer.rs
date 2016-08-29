@@ -495,28 +495,3 @@ impl<'a> serialize::Encoder for Encoder<'a> {
         self.end_tag()
     }
 }
-
-#[test]
-fn test_option_int() {
-    use rbml::reader;
-    use serialize::{Encodable, Decodable};
-    use std::io::Cursor;
-
-    fn test_v(v: Option<isize>) {
-        debug!("v == {:?}", v);
-        let mut wr = Cursor::new(Vec::new());
-        {
-            let mut rbml_w = Encoder::new(&mut wr);
-            let _ = v.encode(&mut rbml_w);
-        }
-        let rbml_doc = reader::Doc::new(wr.get_ref());
-        let mut deser = reader::Decoder::new(rbml_doc);
-        let v1 = Decodable::decode(&mut deser).unwrap();
-        debug!("v1 == {:?}", v1);
-        assert_eq!(v, v1);
-    }
-
-    test_v(Some(22));
-    test_v(None);
-    test_v(Some(3));
-}

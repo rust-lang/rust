@@ -81,21 +81,7 @@ pub trait Resolver {
 
     // We must keep the set of definitions up to date as we add nodes that weren't in the AST.
     // This should only return `None` during testing.
-    fn definitions(&mut self) -> Option<&mut Definitions>;
-}
-
-pub struct DummyResolver;
-impl Resolver for DummyResolver {
-    fn resolve_generated_global_path(&mut self, _path: &hir::Path, _is_value: bool) -> Def {
-        Def::Err
-    }
-    fn get_resolution(&mut self, _id: NodeId) -> Option<PathResolution> {
-        None
-    }
-    fn record_resolution(&mut self, _id: NodeId, _def: Def) {}
-    fn definitions(&mut self) -> Option<&mut Definitions> {
-        None
-    }
+    fn definitions(&mut self) -> &mut Definitions;
 }
 
 pub fn lower_crate(sess: &Session,
@@ -177,9 +163,9 @@ impl<'a> LoweringContext<'a> {
         where F: FnOnce(&mut LoweringContext) -> T
     {
         let old_def = self.parent_def;
-        self.parent_def = match self.resolver.definitions() {
-            Some(defs) => Some(defs.opt_def_index(parent_id).unwrap()),
-            None => old_def,
+        self.parent_def = {
+            let defs = self.resolver.definitions();
+            Some(defs.opt_def_index(parent_id).unwrap())
         };
 
         let result = f(self);
@@ -1719,9 +1705,10 @@ impl<'a> LoweringContext<'a> {
         let expr_path = hir::ExprPath(None, self.path_ident(span, id));
         let expr = self.expr(span, expr_path, ThinVec::new());
 
-        let def = self.resolver.definitions().map(|defs| {
+        let def = {
+            let defs = self.resolver.definitions();
             Def::Local(defs.local_def_id(binding), binding)
-        }).unwrap_or(Def::Err);
+        };
         self.resolver.record_resolution(expr.id, def);
 
         expr
@@ -1869,11 +1856,12 @@ impl<'a> LoweringContext<'a> {
         let pat = self.pat(span, pat_ident);
 
         let parent_def = self.parent_def;
-        let def = self.resolver.definitions().map(|defs| {
+        let def = {
+            let defs = self.resolver.definitions();
             let def_path_data = DefPathData::Binding(name.as_str());
             let def_index = defs.create_def_with_parent(parent_def, pat.id, def_path_data);
             Def::Local(DefId::local(def_index), pat.id)
-        }).unwrap_or(Def::Err);
+        };
         self.resolver.record_resolution(pat.id, def);
 
         pat
