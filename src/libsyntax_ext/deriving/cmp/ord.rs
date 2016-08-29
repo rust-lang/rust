@@ -32,6 +32,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
+        supports_unions: false,
         methods: vec![MethodDef {
                           name: "cmp",
                           generics: LifetimeBounds::empty(),

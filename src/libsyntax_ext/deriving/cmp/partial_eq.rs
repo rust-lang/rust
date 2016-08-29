@@ -97,6 +97,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
+        supports_unions: false,
         methods: methods,
         associated_types: Vec::new(),
     };

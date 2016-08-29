@@ -35,6 +35,7 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
+        supports_unions: false,
         methods: vec![MethodDef {
                           name: "fmt",
                           generics: LifetimeBounds::empty(),

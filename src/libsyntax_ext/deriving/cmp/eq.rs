@@ -50,6 +50,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
+        supports_unions: false,
         methods: vec![MethodDef {
                           name: "assert_receiver_is_total_eq",
                           generics: LifetimeBounds::empty(),
