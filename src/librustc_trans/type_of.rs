@@ -22,17 +22,6 @@ use type_::Type;
 
 use syntax::ast;
 
-// LLVM doesn't like objects that are too big. Issue #17913
-fn ensure_array_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                llet: Type,
-                                                size: machine::llsize,
-                                                scapegoat: Ty<'tcx>) {
-    let esz = machine::llsize_of_alloc(ccx, llet);
-    match esz.checked_mul(size) {
-        Some(n) if n < ccx.obj_size_bound() => {}
-        _ => { ccx.report_overbig_object(scapegoat) }
-    }
-}
 
 // A "sizing type" is an LLVM type, the size and alignment of which are
 // guaranteed to be equivalent to what you would get out of `type_of()`. It's
@@ -81,7 +70,6 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::TyArray(ty, size) => {
             let llty = sizing_type_of(cx, ty);
             let size = size as u64;
-            ensure_array_fits_in_address_space(cx, llty, size, t);
             Type::array(&llty, size)
         }
 
@@ -98,13 +86,11 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             }
             let llet = type_of(cx, e);
             let n = t.simd_size(cx.tcx()) as u64;
-            ensure_array_fits_in_address_space(cx, llet, n, t);
             Type::vector(&llet, n)
         }
 
         ty::TyTuple(..) | ty::TyAdt(..) | ty::TyClosure(..) => {
-            let repr = adt::represent_type(cx, t);
-            adt::sizing_type_of(cx, &repr, false)
+            adt::sizing_type_of(cx, t, false)
         }
 
         ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) |
@@ -242,8 +228,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyClosure(..) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache.
-          let repr = adt::represent_type(cx, t);
-          adt::incomplete_type_of(cx, &repr, "closure")
+          adt::incomplete_type_of(cx, t, "closure")
       }
 
       ty::TyBox(ty) |
@@ -266,11 +251,6 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
       ty::TyArray(ty, size) => {
           let size = size as u64;
-          // we must use `sizing_type_of` here as the type may
-          // not be fully initialized.
-          let szty = sizing_type_of(cx, ty);
-          ensure_array_fits_in_address_space(cx, szty, size, t);
-
           let llty = in_memory_type_of(cx, ty);
           Type::array(&llty, size)
       }
@@ -290,8 +270,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),
       ty::TyTuple(..) => {
-          let repr = adt::represent_type(cx, t);
-          adt::type_of(cx, &repr)
+          adt::type_of(cx, t)
       }
       ty::TyAdt(..) if t.is_simd() => {
           let e = t.simd_type(cx.tcx());
@@ -302,7 +281,6 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           }
           let llet = in_memory_type_of(cx, e);
           let n = t.simd_size(cx.tcx()) as u64;
-          ensure_array_fits_in_address_space(cx, llet, n, t);
           Type::vector(&llet, n)
       }
       ty::TyAdt(def, substs) => {
@@ -310,9 +288,8 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           // fill it in *after* placing it into the type cache. This
           // avoids creating more than one copy of the enum when one
           // of the enum's variants refers to the enum itself.
-          let repr = adt::represent_type(cx, t);
           let name = llvm_type_name(cx, def.did, substs);
-          adt::incomplete_type_of(cx, &repr, &name[..])
+          adt::incomplete_type_of(cx, t, &name[..])
       }
 
       ty::TyInfer(..) |
@@ -329,8 +306,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
     // If this was an enum or struct, fill in the type now.
     match t.sty {
         ty::TyAdt(..) | ty::TyClosure(..) if !t.is_simd() => {
-            let repr = adt::represent_type(cx, t);
-            adt::finish_type_of(cx, &repr, &mut llty);
+            adt::finish_type_of(cx, t, &mut llty);
         }
         _ => ()
     }
@@ -340,8 +316,8 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
 pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
                           -> machine::llalign {
-    let llty = sizing_type_of(cx, t);
-    machine::llalign_of_min(cx, llty)
+    let layout = cx.layout_of(t);
+    layout.align(&cx.tcx().data_layout).abi() as machine::llalign
 }
 
 fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,

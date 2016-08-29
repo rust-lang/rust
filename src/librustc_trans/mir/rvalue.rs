@@ -111,10 +111,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
-                        let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
                         let disr = Disr::from(adt_def.variants[variant_index].disr_val);
                         bcx.with_block(|bcx| {
-                            adt::trans_set_discr(bcx, &repr, dest.llval, Disr::from(disr));
+                            adt::trans_set_discr(bcx,
+                                dest.ty.to_ty(bcx.tcx()), dest.llval, Disr::from(disr));
                         });
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
@@ -122,8 +122,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             if !common::type_is_zero_size(bcx.ccx(), op.ty) {
                                 let val = adt::MaybeSizedValue::sized(dest.llval);
                                 let field_index = active_field_index.unwrap_or(i);
-                                let lldest_i = adt::trans_field_ptr_builder(&bcx, &repr, val,
-                                                                            disr, field_index);
+                                let lldest_i = adt::trans_field_ptr_builder(&bcx,
+                                    dest.ty.to_ty(bcx.tcx()),
+                                    val, disr, field_index);
                                 self.store_operand(&bcx, lldest_i, op);
                             }
                         }
@@ -270,17 +271,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let ll_t_in = type_of::immediate_type_of(bcx.ccx(), operand.ty);
                         let ll_t_out = type_of::immediate_type_of(bcx.ccx(), cast_ty);
                         let (llval, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {
-                            let repr = adt::represent_type(bcx.ccx(), operand.ty);
+                            let l = bcx.ccx().layout_of(operand.ty);
                             let discr = match operand.val {
                                 OperandValue::Immediate(llval) => llval,
                                 OperandValue::Ref(llptr) => {
                                     bcx.with_block(|bcx| {
-                                        adt::trans_get_discr(bcx, &repr, llptr, None, true)
+                                        adt::trans_get_discr(bcx, operand.ty, llptr, None, true)
                                     })
                                 }
                                 OperandValue::Pair(..) => bug!("Unexpected Pair operand")
                             };
-                            (discr, adt::is_discr_signed(&repr))
+                            (discr, adt::is_discr_signed(&l))
                         } else {
                             (operand.immediate(), operand.ty.is_signed())
                         };
