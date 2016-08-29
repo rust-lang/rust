@@ -9,8 +9,11 @@
 // except according to those terms.
 
 extern crate collections;
+//~^ NOTE previous import of `collections` here
 
-mod collections { //~ ERROR E0260
+mod collections {
+//~^ ERROR `collections` has already been imported in this module [E0260]
+//~| NOTE `collections` already imported
     pub trait MyTrait {
         fn do_something();
     }
