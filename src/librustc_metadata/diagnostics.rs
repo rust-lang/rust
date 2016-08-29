@@ -185,6 +185,49 @@ mod foo {
 }
 ```
 "##,
+
+E0469: r##"
+A macro listed for import was not found.
+
+Erroneous code example:
+
+```compile_fail,E0469
+#[macro_use(drink, be_merry)] // error: imported macro not found
+extern crate collections;
+
+fn main() {
+    // ...
+}
+```
+
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
+
+This could be caused by a typo. Did you misspell the macro's name?
+
+Double-check the names of the macros listed for import, and that the crate
+in question exports them.
+
+A working version would be:
+
+```ignore
+// In some_crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+
+#[macro_export]
+macro_rules! drink {
+    ...
+}
+
+// In your crate:
+#[macro_use(eat, drink)]
+extern crate some_crate; //ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -196,7 +239,6 @@ register_diagnostics! {
     E0462, // found staticlib `..` instead of rlib or dylib
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
-    E0469, // imported macro not found
     E0470, // reexported macro not found
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
