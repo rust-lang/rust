@@ -131,12 +131,19 @@ LLVMRustAddPass(LLVMPassManagerRef PM, LLVMPassRef rust_pass) {
 #define SUBTARGET_PPC
 #endif
 
+#ifdef LLVM_COMPONENT_SYSTEMZ
+#define SUBTARGET_SYSTEMZ SUBTARGET(SystemZ)
+#else
+#define SUBTARGET_SYSTEMZ
+#endif
+
 #define GEN_SUBTARGETS    \
         SUBTARGET_X86     \
         SUBTARGET_ARM     \
         SUBTARGET_AARCH64 \
         SUBTARGET_MIPS    \
-        SUBTARGET_PPC
+        SUBTARGET_PPC     \
+        SUBTARGET_SYSTEMZ
 
 #define SUBTARGET(x) namespace llvm {                \
     extern const SubtargetFeatureKV x##FeatureKV[];  \
