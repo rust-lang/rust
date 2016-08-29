@@ -58,9 +58,9 @@ use rustc_serialize::{Encodable, EncoderHelpers};
 #[cfg(test)] use rustc::hir::print as pprust;
 #[cfg(test)] use rustc::hir::lowering::{LoweringContext, DummyResolver};
 
-struct DecodeContext<'a, 'b, 'tcx: 'a> {
+struct DecodeContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cdata: &'b cstore::CrateMetadata,
+    cdata: &'a cstore::CrateMetadata,
     from_id_range: IdRange,
     to_id_range: IdRange,
     // Cache the last used filemap for translating spans as an optimization.
@@ -102,7 +102,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
            rbml_w.writer.seek(SeekFrom::Current(0)));
 }
 
-impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
+impl<'a, 'b, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'tcx> {
     fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
         if id == ast::DUMMY_NODE_ID {
             // Used by ast_map to map the NodeInlinedParent.
@@ -177,7 +177,7 @@ fn reserve_id_range(sess: &Session,
     IdRange { min: to_id_min, max: to_id_max }
 }
 
-impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
+impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     /// Translates an internal id, meaning a node id that is known to refer to some part of the
     /// item currently being inlined, such as a local variable or argument.  All naked node-ids
     /// that appear in types have this property, since if something might refer to an external item
@@ -462,8 +462,8 @@ impl tr for hir::Freevar {
 // Encoding and decoding of MethodCallee
 
 trait read_method_callee_helper<'tcx> {
-    fn read_method_callee<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                  -> (u32, ty::MethodCallee<'tcx>);
+    fn read_method_callee<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                              -> (u32, ty::MethodCallee<'tcx>);
 }
 
 fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
@@ -489,8 +489,8 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
-    fn read_method_callee<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                  -> (u32, ty::MethodCallee<'tcx>) {
+    fn read_method_callee<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                              -> (u32, ty::MethodCallee<'tcx>) {
 
         self.read_struct("MethodCallee", 4, |this| {
             let autoderef = this.read_struct_field("autoderef", 0,
@@ -821,31 +821,30 @@ impl<'a> doc_decoder_helpers for rbml::Doc<'a> {
 }
 
 trait rbml_decoder_decoder_helpers<'tcx> {
-    fn read_ty_encoded<'a, 'b, F, R>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>,
-                                     f: F) -> R
+    fn read_ty_encoded<'a, F, R>(&mut self, dcx: &DecodeContext<'a, 'tcx>, f: F) -> R
         where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x, 'tcx>) -> R;
 
-    fn read_region<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> &'tcx ty::Region;
-    fn read_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Ty<'tcx>;
-    fn read_tys<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Vec<Ty<'tcx>>;
-    fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                              -> ty::TraitRef<'tcx>;
-    fn read_poly_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                   -> ty::PolyTraitRef<'tcx>;
-    fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                              -> ty::Predicate<'tcx>;
-    fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                           -> &'tcx Substs<'tcx>;
-    fn read_upvar_capture<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                  -> ty::UpvarCapture<'tcx>;
-    fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                    -> adjustment::AutoAdjustment<'tcx>;
-    fn read_cast_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                 -> cast::CastKind;
-    fn read_auto_deref_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                   -> adjustment::AutoDerefRef<'tcx>;
-    fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                            -> adjustment::AutoRef<'tcx>;
+    fn read_region<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>) -> &'tcx ty::Region;
+    fn read_ty<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>) -> Ty<'tcx>;
+    fn read_tys<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>) -> Vec<Ty<'tcx>>;
+    fn read_trait_ref<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                          -> ty::TraitRef<'tcx>;
+    fn read_poly_trait_ref<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                               -> ty::PolyTraitRef<'tcx>;
+    fn read_predicate<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                          -> ty::Predicate<'tcx>;
+    fn read_substs<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                       -> &'tcx Substs<'tcx>;
+    fn read_upvar_capture<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                              -> ty::UpvarCapture<'tcx>;
+    fn read_auto_adjustment<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                                -> adjustment::AutoAdjustment<'tcx>;
+    fn read_cast_kind<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                          -> cast::CastKind;
+    fn read_auto_deref_ref<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                               -> adjustment::AutoDerefRef<'tcx>;
+    fn read_autoref<'a>(&mut self, dcx: &DecodeContext<'a, 'tcx>)
+                        -> adjustment::AutoRef<'tcx>;
 
     // Versions of the type reading functions that don't need the full
     // DecodeContext.
@@ -890,7 +889,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_ty_encoded<'b, 'c, F, R>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>, op: F) -> R
+    fn read_ty_encoded<'b, F, R>(&mut self, dcx: &DecodeContext<'b, 'tcx>, op: F) -> R
         where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x,'tcx>) -> R
     {
         return self.read_opaque(|_, doc| {
@@ -909,48 +908,47 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
             str
         }
     }
-    fn read_region<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> &'tcx ty::Region {
+    fn read_region<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>) -> &'tcx ty::Region {
         // Note: regions types embed local node ids.  In principle, we
         // should translate these node ids into the new decode
         // context.  However, we do not bother, because region types
         // are not used during trans. This also applies to read_ty.
         return self.read_ty_encoded(dcx, |decoder| decoder.parse_region());
     }
-    fn read_ty<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> Ty<'tcx> {
+    fn read_ty<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>) -> Ty<'tcx> {
         return self.read_ty_encoded(dcx, |decoder| decoder.parse_ty());
     }
 
-    fn read_tys<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                        -> Vec<Ty<'tcx>> {
+    fn read_tys<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>) -> Vec<Ty<'tcx>> {
         self.read_to_vec(|this| Ok(this.read_ty(dcx))).unwrap().into_iter().collect()
     }
 
-    fn read_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                              -> ty::TraitRef<'tcx> {
+    fn read_trait_ref<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                          -> ty::TraitRef<'tcx> {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref())
     }
 
-    fn read_poly_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                   -> ty::PolyTraitRef<'tcx> {
+    fn read_poly_trait_ref<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                               -> ty::PolyTraitRef<'tcx> {
         ty::Binder(self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref()))
     }
 
-    fn read_predicate<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                              -> ty::Predicate<'tcx>
+    fn read_predicate<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                          -> ty::Predicate<'tcx>
     {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_predicate())
     }
 
-    fn read_substs<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                           -> &'tcx Substs<'tcx> {
+    fn read_substs<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                       -> &'tcx Substs<'tcx> {
         self.read_opaque(|_, doc| {
             Ok(tydecode::TyDecoder::with_doc(dcx.tcx, dcx.cdata.cnum, doc,
                                              &mut |d| convert_def_id(dcx, d))
                .parse_substs())
         }).unwrap()
     }
-    fn read_upvar_capture<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                  -> ty::UpvarCapture<'tcx> {
+    fn read_upvar_capture<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                              -> ty::UpvarCapture<'tcx> {
         self.read_enum("UpvarCapture", |this| {
             let variants = ["ByValue", "ByRef"];
             this.read_enum_variant(&variants, |this, i| {
@@ -967,8 +965,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
             })
         }).unwrap()
     }
-    fn read_auto_adjustment<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                    -> adjustment::AutoAdjustment<'tcx> {
+    fn read_auto_adjustment<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                                -> adjustment::AutoAdjustment<'tcx> {
         self.read_enum("AutoAdjustment", |this| {
             let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer",
                             "AdjustMutToConstPointer", "AdjustDerefRef",
@@ -998,8 +996,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_auto_deref_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                   -> adjustment::AutoDerefRef<'tcx> {
+    fn read_auto_deref_ref<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                               -> adjustment::AutoDerefRef<'tcx> {
         self.read_struct("AutoDerefRef", 2, |this| {
             Ok(adjustment::AutoDerefRef {
                 autoderefs: this.read_struct_field("autoderefs", 0, |this| {
@@ -1027,8 +1025,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_autoref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                            -> adjustment::AutoRef<'tcx> {
+    fn read_autoref<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
+                        -> adjustment::AutoRef<'tcx> {
         self.read_enum("AutoRef", |this| {
             let variants = ["AutoPtr", "AutoUnsafe"];
             this.read_enum_variant(&variants, |this, i| {
@@ -1057,8 +1055,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_cast_kind<'b, 'c>(&mut self, _dcx: &DecodeContext<'b, 'c, 'tcx>)
-                              -> cast::CastKind
+    fn read_cast_kind<'b>(&mut self, _dcx: &DecodeContext<'b, 'tcx>)
+                          -> cast::CastKind
     {
         Decodable::decode(self).unwrap()
     }
