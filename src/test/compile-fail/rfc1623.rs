@@ -16,6 +16,7 @@ fn non_elidable<'a, 'b>(a: &'a u8, b: &'b u8) -> &'a u8 {
 
 // the boundaries of elision
 static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 = &(non_elidable as fn(&u8, &u8) -> &u8);
+//~^ ERROR missing lifetime specifier [E0106]
 
 struct SomeStruct<'x, 'y, 'z: 'x> {
     foo: &'x Foo<'z>,
@@ -94,7 +95,7 @@ fn main() {
     assert_eq!(Some(1), CONST_BAZ(y));
 
     let y = &[1u8, 2, 3];
-    // ^~ ERROR: borrowed values does not live long enough
+
     STATIC_BAZ(BYTES); // BYTES has static lifetime
-    CONST_BAZ(y); // This forces static lifetime, which y has not
+    CONST_BAZ(y); // interestingly this does not get reported
 }
