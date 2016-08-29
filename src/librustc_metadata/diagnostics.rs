@@ -128,6 +128,35 @@ If you would like to import all exported macros, write `macro_use` with no
 arguments.
 "##,
 
+E0467: r##"
+Macro reexport declarations were empty or malformed.
+
+Erroneous code examples:
+
+```compile_fail,E0467
+#[macro_reexport]                    // error: no macros listed for export
+extern crate macros_for_good;
+
+#[macro_reexport(fun_macro = "foo")] // error: not a macro identifier
+extern crate other_macros_for_good;
+```
+
+This is a syntax error at the level of attribute declarations.
+
+Currently, `macro_reexport` requires at least one macro name to be listed.
+Unlike `macro_use`, listing no names does not reexport all macros from the
+given crate.
+
+Decide which macros you would like to export and list them properly.
+
+These are proper reexport declarations:
+
+```ignore
+#[macro_reexport(some_macro, another_macro)]
+extern crate macros_for_good;
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -139,7 +168,6 @@ register_diagnostics! {
     E0462, // found staticlib `..` instead of rlib or dylib
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
-    E0467, // bad macro reexport
     E0468, // an `extern crate` loading macros must be at the crate root
     E0469, // imported macro not found
     E0470, // reexported macro not found
