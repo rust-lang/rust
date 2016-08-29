@@ -84,7 +84,7 @@ name                                                                            
 [items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)                     | allow   | blocks where an item comes after a statement
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                                     | warn    | for-looping over `_.next()` which is probably not intended
 [iter_nth](https://github.com/Manishearth/rust-clippy/wiki#iter_nth)                                                 | warn    | using `.iter().nth()` on a standard library type with O(1) element access
-[len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                         | warn    | traits and impls that have `.len()` but not `.is_empty()`
+[len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                         | warn    | traits or impls with a public `len` method but no corresponding `is_empty` method
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                                 | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
 [let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                                     | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                                     | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
