@@ -198,7 +198,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
     match try!(determine_operation(&matches)) {
         Operation::Help => {
-            print_usage(&opts, "");
+            print_usage(opts, "");
             Ok(Summary::new())
         }
         Operation::Version => {

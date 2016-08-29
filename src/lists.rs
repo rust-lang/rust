@@ -357,7 +357,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
 
             // Post-comment
             let next_start = match self.inner.peek() {
-                Some(ref next_item) => (self.get_lo)(next_item),
+                Some(next_item) => (self.get_lo)(next_item),
                 None => self.next_span_start,
             };
             let post_snippet = self.codemap
@@ -420,7 +420,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
 
             let post_snippet_trimmed = if post_snippet.starts_with(',') {
                 post_snippet[1..].trim_matches(white_space)
-            } else if post_snippet.ends_with(",") {
+            } else if post_snippet.ends_with(',') {
                 post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
             } else {
                 post_snippet

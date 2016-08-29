@@ -94,7 +94,7 @@ pub fn rewrite_comment(orig: &str,
     let mut result = opener.to_owned();
     for line in lines {
         if result == opener {
-            if line.len() == 0 {
+            if line.is_empty() {
                 continue;
             }
         } else {
@@ -107,7 +107,7 @@ pub fn rewrite_comment(orig: &str,
             let rewrite = rewrite_string(line, &fmt).unwrap_or(line.to_owned());
             result.push_str(&rewrite);
         } else {
-            if line.len() == 0 {
+            if line.is_empty() {
                 // Remove space if this is an empty comment or a doc comment.
                 result.pop();
             }
@@ -136,7 +136,7 @@ fn left_trim_comment_line(line: &str) -> &str {
     } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") ||
               line.starts_with("**") {
         &line[2..]
-    } else if line.starts_with("*") {
+    } else if line.starts_with('*') {
         &line[1..]
     } else {
         line
@@ -524,7 +524,7 @@ pub fn recover_comment_removed(new: String,
     if changed_comment_content(&snippet, &new) {
         // We missed some comments
         // Keep previous formatting if it satisfies the constrains
-        return wrap_str(snippet, context.config.max_width, width, offset);
+        wrap_str(snippet, context.config.max_width, width, offset)
     } else {
         Some(new)
     }

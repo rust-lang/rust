@@ -85,7 +85,7 @@ impl<'a> FmtVisitor<'a> {
 
         // Check if this block has braces.
         let snippet = self.snippet(b.span);
-        let has_braces = snippet.starts_with("{") || snippet.starts_with("unsafe");
+        let has_braces = snippet.starts_with('{') || snippet.starts_with("unsafe");
         let brace_compensation = if has_braces { BytePos(1) } else { BytePos(0) };
 
         self.last_pos = self.last_pos + brace_compensation;
@@ -93,7 +93,7 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.push_str("{");
 
         for stmt in &b.stmts {
-            self.visit_stmt(&stmt)
+            self.visit_stmt(stmt)
         }
 
         if let Some(ref e) = b.expr {
@@ -144,7 +144,7 @@ impl<'a> FmtVisitor<'a> {
                 defaultness: ast::Defaultness) {
         let indent = self.block_indent;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident, ref generics, unsafety, constness, abi, vis) => {
+            visit::FnKind::ItemFn(ident, generics, unsafety, constness, abi, vis) => {
                 self.rewrite_fn(indent,
                                 ident,
                                 fd,
@@ -155,9 +155,9 @@ impl<'a> FmtVisitor<'a> {
                                 abi,
                                 vis,
                                 codemap::mk_sp(s.lo, b.span.lo),
-                                &b)
+                                b)
             }
-            visit::FnKind::Method(ident, ref sig, vis) => {
+            visit::FnKind::Method(ident, sig, vis) => {
                 self.rewrite_fn(indent,
                                 ident,
                                 fd,
@@ -168,7 +168,7 @@ impl<'a> FmtVisitor<'a> {
                                 sig.abi,
                                 vis.unwrap_or(&ast::Visibility::Inherited),
                                 codemap::mk_sp(s.lo, b.span.lo),
-                                &b)
+                                b)
             }
             visit::FnKind::Closure => None,
         };
@@ -374,7 +374,7 @@ impl<'a> FmtVisitor<'a> {
             ast::TraitItemKind::Method(ref sig, Some(ref body)) => {
                 self.visit_fn(visit::FnKind::Method(ti.ident, sig, None),
                               &sig.decl,
-                              &body,
+                              body,
                               ti.span,
                               ti.id,
                               ast::Defaultness::Final);
@@ -516,7 +516,7 @@ impl<'a> FmtVisitor<'a> {
                 // `unwrap()` is safe here because we know `items_left`
                 // has elements from the loop condition
                 let (item, rest) = items_left.split_first().unwrap();
-                self.visit_item(&item);
+                self.visit_item(item);
                 items_left = rest;
             }
         }

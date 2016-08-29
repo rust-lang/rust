@@ -276,7 +276,7 @@ impl<'a> FmtVisitor<'a> {
                                  self.block_indent)
                         .map(|s| s + suffix)
                         .or_else(|| Some(self.snippet(e.span)))
-                } else if let Some(ref stmt) = block.stmts.first() {
+                } else if let Some(stmt) = block.stmts.first() {
                     stmt.rewrite(&self.get_context(),
                                  self.config.max_width - self.block_indent.width(),
                                  self.block_indent)
@@ -324,7 +324,7 @@ impl<'a> FmtVisitor<'a> {
         self.block_indent = self.block_indent.block_indent(self.config);
         let variant_list = self.format_variant_list(enum_def, body_start, span.hi - BytePos(1));
         match variant_list {
-            Some(ref body_str) => self.buffer.push_str(&body_str),
+            Some(ref body_str) => self.buffer.push_str(body_str),
             None => {
                 if contains_comment(&enum_snippet[brace_pos..]) {
                     self.format_missing_no_indent(span.hi - BytePos(1))
@@ -554,7 +554,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
             for item in items {
-                visitor.visit_impl_item(&item);
+                visitor.visit_impl_item(item);
             }
 
             visitor.format_missing(item.span.hi - BytePos(1));
@@ -564,7 +564,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
 
             result.push('\n');
             result.push_str(&inner_indent_str);
-            result.push_str(&trim_newlines(&visitor.buffer.to_string().trim()));
+            result.push_str(trim_newlines(visitor.buffer.to_string().trim()));
             result.push('\n');
             result.push_str(&outer_indent_str);
         }
@@ -581,7 +581,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
 }
 
 fn is_impl_single_line(context: &RewriteContext,
-                       items: &Vec<ImplItem>,
+                       items: &[ImplItem],
                        result: &str,
                        where_clause_str: &str,
                        item: &ast::Item)
@@ -713,7 +713,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
                 if !where_clause_str.is_empty() &&
-                   (trait_items.len() > 0 || result.contains('\n')) {
+                   (!trait_items.is_empty() || result.contains('\n')) {
                     result.push('\n');
                     result.push_str(&offset.to_string(context.config));
                 } else {
@@ -732,7 +732,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
             for item in trait_items {
-                visitor.visit_trait_item(&item);
+                visitor.visit_trait_item(item);
             }
 
             visitor.format_missing(item.span.hi - BytePos(1));
@@ -742,7 +742,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
             result.push('\n');
             result.push_str(&inner_indent_str);
-            result.push_str(&trim_newlines(&visitor.buffer.to_string().trim()));
+            result.push_str(trim_newlines(visitor.buffer.to_string().trim()));
             result.push('\n');
             result.push_str(&outer_indent_str);
         } else if result.contains('\n') {
@@ -876,7 +876,7 @@ fn format_tuple_struct(context: &RewriteContext,
     };
 
     let where_clause_str = match generics {
-        Some(ref generics) => {
+        Some(generics) => {
             let generics_str = try_opt!(rewrite_generics(context,
                                                          generics,
                                                          offset,
@@ -951,7 +951,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                           -> Option<String> {
     let mut result = String::new();
 
-    result.push_str(&format_visibility(&vis));
+    result.push_str(&format_visibility(vis));
     result.push_str("type ");
     result.push_str(&ident.to_string());
 
@@ -1069,7 +1069,7 @@ pub fn rewrite_static(prefix: &str,
                                      prefix.len() - 2,
                                      context.block_indent));
 
-    if let Some(ref expr) = expr_opt {
+    if let Some(expr) = expr_opt {
         let lhs = format!("{}{} =", prefix, ty_str);
         // 1 = ;
         let remaining_width = context.config.max_width - context.block_indent.width() - 1;
@@ -1090,7 +1090,7 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     let prefix = format!("type {}", ident);
 
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
-        let bounds: &[_] = &ty_param_bounds;
+        let bounds: &[_] = ty_param_bounds;
         let bound_str = try_opt!(bounds.iter()
             .map(|ty_bound| ty_bound.rewrite(context, context.config.max_width, indent))
             .intersperse(Some(" + ".to_string()))
@@ -1374,7 +1374,7 @@ fn rewrite_fn_base(context: &RewriteContext,
         FnArgLayoutStyle::Block => multi_line_arg_str,
         FnArgLayoutStyle::BlockAlways => true,
         _ => false,
-    } && fd.inputs.len() > 0;
+    } && !fd.inputs.is_empty();
 
     if put_args_in_block {
         arg_indent = indent.block_indent(context.config);
@@ -1410,7 +1410,7 @@ fn rewrite_fn_base(context: &RewriteContext,
 
                 let overlong_sig = sig_length > context.config.max_width;
 
-                result.contains("\n") || multi_line_ret_str || overlong_sig
+                result.contains('\n') || multi_line_ret_str || overlong_sig
             }
         };
         let ret_indent = if ret_should_indent {
@@ -1647,7 +1647,7 @@ fn compute_budgets_for_args(context: &RewriteContext,
                             newline_brace: bool)
                             -> Option<((usize, usize, Indent))> {
     // Try keeping everything on the same line.
-    if !result.contains("\n") {
+    if !result.contains('\n') {
         // 3 = `() `, space is before ret_string.
         let mut used_space = indent.width() + result.len() + ret_str_len + 3;
         if !newline_brace {
@@ -1710,8 +1710,8 @@ fn rewrite_generics(context: &RewriteContext,
     // FIXME: might need to insert a newline if the generics are really long.
 
     // Strings for the generics.
-    let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(&context, h_budget, offset));
-    let ty_strs = tys.iter().map(|ty_param| ty_param.rewrite(&context, h_budget, offset));
+    let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(context, h_budget, offset));
+    let ty_strs = tys.iter().map(|ty_param| ty_param.rewrite(context, h_budget, offset));
 
     // Extract comments between generics.
     let lt_spans = lifetimes.iter().map(|l| {
@@ -1743,7 +1743,7 @@ fn rewrite_trait_bounds(context: &RewriteContext,
                         indent: Indent,
                         width: usize)
                         -> Option<String> {
-    let bounds: &[_] = &type_param_bounds;
+    let bounds: &[_] = type_param_bounds;
 
     if bounds.is_empty() {
         return Some(String::new());
@@ -1801,7 +1801,7 @@ fn rewrite_where_clause(context: &RewriteContext,
                              terminator,
                              |pred| span_for_where_pred(pred).lo,
                              |pred| span_for_where_pred(pred).hi,
-                             |pred| pred.rewrite(&context, budget, offset),
+                             |pred| pred.rewrite(context, budget, offset),
                              span_start,
                              span_end);
     let item_vec = items.collect::<Vec<_>>();
@@ -1825,9 +1825,9 @@ fn rewrite_where_clause(context: &RewriteContext,
         // If the brace is on the next line we don't need to count it otherwise it needs two
         // characters " {"
         match brace_style {
-            BraceStyle::AlwaysNextLine => 0,
-            BraceStyle::PreferSameLine => 2,
+            BraceStyle::AlwaysNextLine |
             BraceStyle::SameLineWhere => 0,
+            BraceStyle::PreferSameLine => 2,
         }
     } else if terminator == "=" {
         2

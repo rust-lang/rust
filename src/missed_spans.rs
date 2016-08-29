@@ -118,7 +118,7 @@ impl<'a> FmtVisitor<'a> {
                 let last_char = big_snippet[..(offset + big_diff)]
                     .chars()
                     .rev()
-                    .skip_while(|rev_c| [' ', '\t'].contains(&rev_c))
+                    .skip_while(|rev_c| [' ', '\t'].contains(rev_c))
                     .next();
 
                 let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
@@ -174,19 +174,17 @@ impl<'a> FmtVisitor<'a> {
                     line_start = i + 1;
                     last_wspace = None;
                     rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
-                } else {
-                    if c.is_whitespace() {
-                        if last_wspace.is_none() {
-                            last_wspace = Some(i);
-                        }
-                    } else {
-                        rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
-                        last_wspace = None;
+                } else if c.is_whitespace() {
+                    if last_wspace.is_none() {
+                        last_wspace = Some(i);
                     }
+                } else {
+                    rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
+                    last_wspace = None;
                 }
             }
         }
 
-        process_last_snippet(self, &snippet[line_start..], &snippet);
+        process_last_snippet(self, &snippet[line_start..], snippet);
     }
 }
