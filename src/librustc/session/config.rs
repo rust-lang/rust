@@ -915,6 +915,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "the directory the MIR is dumped into"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
           "print some performance-related statistics"),
+    use_lld: bool = (false, parse_bool, [UNTRACKED], "use lld as linker"),
 }
 
 pub fn default_lib_output() -> CrateType {

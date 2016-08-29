@@ -31,3 +31,4 @@ rustdoc = { path = "../librustdoc" }
 
 [features]
 jemalloc = ["rustc_back/jemalloc"]
+lld = ["rustc_driver/lld"]
