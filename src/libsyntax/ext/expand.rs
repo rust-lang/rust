@@ -12,8 +12,9 @@ use ast::{Block, Crate, Ident, Mac_, PatKind};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use ast;
 use ext::hygiene::Mark;
+use ext::placeholders;
 use attr::{self, HasAttrs};
-use codemap::{dummy_spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
+use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use syntax_pos::{self, Span, ExpnId};
 use config::StripUnconfigured;
 use ext::base::*;
@@ -35,8 +36,8 @@ macro_rules! expansions {
             $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
             $(.$visit:ident)* $(lift .$visit_elt:ident)*;)*) => {
         #[derive(Copy, Clone)]
-        enum ExpansionKind { OptExpr, $( $kind, )*  }
-        enum Expansion { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
+        pub enum ExpansionKind { OptExpr, $( $kind, )*  }
+        pub enum Expansion { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
 
         impl ExpansionKind {
             fn name(self) -> &'static str {
@@ -55,20 +56,20 @@ macro_rules! expansions {
         }
 
         impl Expansion {
-            fn make_opt_expr(self) -> Option<P<ast::Expr>> {
+            pub fn make_opt_expr(self) -> Option<P<ast::Expr>> {
                 match self {
                     Expansion::OptExpr(expr) => expr,
                     _ => panic!("Expansion::make_* called on the wrong kind of expansion"),
                 }
             }
-            $( fn $make(self) -> $ty {
+            $( pub fn $make(self) -> $ty {
                 match self {
                     Expansion::$kind(ast) => ast,
                     _ => panic!("Expansion::make_* called on the wrong kind of expansion"),
                 }
             } )*
 
-            fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
+            pub fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
                 use self::Expansion::*;
                 match self {
                     OptExpr(expr) => OptExpr(expr.and_then(|expr| folder.fold_opt_expr(expr))),
@@ -434,9 +435,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 // If keep_macs is true, expands to a MacEager::items instead.
                 if self.keep_macs {
-                    Some(reconstruct_macro_rules(&def, &path))
+                    Some(placeholders::reconstructed_macro_rules(&def, &path))
                 } else {
-                    Some(macro_scope_placeholder())
+                    Some(placeholders::macro_scope_placeholder())
                 }
             }
 
@@ -648,37 +649,6 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
             _ => unreachable!(),
         }
     }
-}
-
-fn macro_scope_placeholder() -> Expansion {
-    Expansion::Items(SmallVector::one(P(ast::Item {
-        ident: keywords::Invalid.ident(),
-        attrs: Vec::new(),
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ItemKind::Mac(dummy_spanned(ast::Mac_ {
-            path: ast::Path { span: syntax_pos::DUMMY_SP, global: false, segments: Vec::new() },
-            tts: Vec::new(),
-        })),
-        vis: ast::Visibility::Inherited,
-        span: syntax_pos::DUMMY_SP,
-    })))
-}
-
-fn reconstruct_macro_rules(def: &ast::MacroDef, path: &ast::Path) -> Expansion {
-    Expansion::Items(SmallVector::one(P(ast::Item {
-        ident: def.ident,
-        attrs: def.attrs.clone(),
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ItemKind::Mac(ast::Mac {
-            span: def.span,
-            node: ast::Mac_ {
-                path: path.clone(),
-                tts: def.body.clone(),
-            }
-        }),
-        vis: ast::Visibility::Inherited,
-        span: def.span,
-    })))
 }
 
 pub struct ExpansionConfig<'feat> {
