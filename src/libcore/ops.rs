@@ -68,6 +68,26 @@
 //! ```
 //!
 //! See the documentation for each trait for an example implementation.
+//!
+//! This example shows the behavior of the various `Range*` structs.
+//!
+//! ```rust
+//! #![feature(inclusive_range_syntax)]
+//! fn main() {
+//!     let arr = [0, 1, 2, 3, 4];
+//!
+//!     assert_eq!(arr[ .. ], [0,1,2,3,4]); // RangeFull
+//!     assert_eq!(arr[ ..3], [0,1,2    ]); // RangeTo
+//!     assert_eq!(arr[1.. ], [  1,2,3,4]); // RangeFrom
+//!     assert_eq!(arr[1..3], [  1,2    ]); // Range
+//!
+//!     assert_eq!(arr[ ...3], [0,1,2,3 ]); // RangeToIncusive
+//!     assert_eq!(arr[1...3], [  1,2,3 ]); // RangeInclusive
+//! }
+//! ```
+//!
+//! Note: whitespace alignment is not idiomatic Rust. An exception is made in
+//! this case to facilitate comparison.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -967,25 +987,54 @@ bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Shl`. When `Foo << Foo` happens, it ends up
-/// calling `shl`, and therefore, `main` prints `Shifting left!`.
+/// An implementation of `Shl` that lifts the `<<` operation on integers to a
+/// `Scalar` struct.
 ///
 /// ```
 /// use std::ops::Shl;
 ///
-/// struct Foo;
+/// #[derive(PartialEq, Debug)]
+/// struct Scalar(usize);
 ///
-/// impl Shl<Foo> for Foo {
-///     type Output = Foo;
+/// impl Shl<Scalar> for Scalar {
+///     type Output = Self;
 ///
-///     fn shl(self, _rhs: Foo) -> Foo {
-///         println!("Shifting left!");
-///         self
+///     fn shl(self, Scalar(rhs): Self) -> Scalar {
+///         let Scalar(lhs) = self;
+///         Scalar(lhs << rhs)
+///     }
+/// }
+/// fn main() {
+///     assert_eq!(Scalar(4) << Scalar(2), Scalar(16));
+/// }
+/// ```
+///
+/// An implementation of `Shl` that spins a vector leftward by a given amount.
+///
+/// ```
+/// use std::ops::Shl;
+///
+/// #[derive(PartialEq, Debug)]
+/// struct SpinVector<T: Clone> {
+///     vec: Vec<T>,
+/// }
+///
+/// impl<T: Clone> Shl<usize> for SpinVector<T> {
+///     type Output = Self;
+///
+///     fn shl(self, rhs: usize) -> SpinVector<T> {
+///         // rotate the vector by `rhs` places
+///         let (a, b) = self.vec.split_at(rhs);
+///         let mut spun_vector: Vec<T> = vec![];
+///         spun_vector.extend_from_slice(b);
+///         spun_vector.extend_from_slice(a);
+///         SpinVector { vec: spun_vector }
 ///     }
 /// }
 ///
 /// fn main() {
-///     Foo << Foo;
+///     assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } << 2,
+///                SpinVector { vec: vec![2, 3, 4, 0, 1] });
 /// }
 /// ```
 #[lang = "shl"]
@@ -1039,25 +1088,54 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Shr`. When `Foo >> Foo` happens, it ends up
-/// calling `shr`, and therefore, `main` prints `Shifting right!`.
+/// An implementation of `Shr` that lifts the `>>` operation on integers to a
+/// `Scalar` struct.
 ///
 /// ```
 /// use std::ops::Shr;
 ///
-/// struct Foo;
+/// #[derive(PartialEq, Debug)]
+/// struct Scalar(usize);
 ///
-/// impl Shr<Foo> for Foo {
-///     type Output = Foo;
+/// impl Shr<Scalar> for Scalar {
+///     type Output = Self;
 ///
-///     fn shr(self, _rhs: Foo) -> Foo {
-///         println!("Shifting right!");
-///         self
+///     fn shr(self, Scalar(rhs): Self) -> Scalar {
+///         let Scalar(lhs) = self;
+///         Scalar(lhs >> rhs)
+///     }
+/// }
+/// fn main() {
+///     assert_eq!(Scalar(16) >> Scalar(2), Scalar(4));
+/// }
+/// ```
+///
+/// An implementation of `Shr` that spins a vector rightward by a given amount.
+///
+/// ```
+/// use std::ops::Shr;
+///
+/// #[derive(PartialEq, Debug)]
+/// struct SpinVector<T: Clone> {
+///     vec: Vec<T>,
+/// }
+///
+/// impl<T: Clone> Shr<usize> for SpinVector<T> {
+///     type Output = Self;
+///
+///     fn shr(self, rhs: usize) -> SpinVector<T> {
+///         // rotate the vector by `rhs` places
+///         let (a, b) = self.vec.split_at(self.vec.len() - rhs);
+///         let mut spun_vector: Vec<T> = vec![];
+///         spun_vector.extend_from_slice(b);
+///         spun_vector.extend_from_slice(a);
+///         SpinVector { vec: spun_vector }
 ///     }
 /// }
 ///
 /// fn main() {
-///     Foo >> Foo;
+///     assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } >> 2,
+///                SpinVector { vec: vec![3, 4, 0, 1, 2] });
 /// }
 /// ```
 #[lang = "shr"]
@@ -1736,11 +1814,12 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3];
-/// assert_eq!(arr[ .. ], [0,1,2,3]);  // RangeFull
-/// assert_eq!(arr[ ..3], [0,1,2  ]);
-/// assert_eq!(arr[1.. ], [  1,2,3]);
-/// assert_eq!(arr[1..3], [  1,2  ]);
+/// assert_eq!(arr[ .. ], [0, 1, 2, 3]);
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../#Examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
@@ -1765,12 +1844,13 @@ impl fmt::Debug for RangeFull {
 ///     assert_eq!(3+4+5, (3..6).sum());
 ///
 ///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);
-///     assert_eq!(arr[ ..3], [0,1,2  ]);
-///     assert_eq!(arr[1.. ], [  1,2,3]);
-///     assert_eq!(arr[1..3], [  1,2  ]);  // Range
+///     assert_eq!(arr[1..3], [1, 2]);
 /// }
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../#Examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
@@ -1828,12 +1908,13 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///     assert_eq!(2+3+4, (2..).take(3).sum());
 ///
 ///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);
-///     assert_eq!(arr[ ..3], [0,1,2  ]);
-///     assert_eq!(arr[1.. ], [  1,2,3]);  // RangeFrom
-///     assert_eq!(arr[1..3], [  1,2  ]);
+///     assert_eq!(arr[1.. ], [1, 2, 3]);
 /// }
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../#Examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
@@ -1878,12 +1959,13 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///     assert_eq!((..5), std::ops::RangeTo{ end: 5 });
 ///
 ///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);
-///     assert_eq!(arr[ ..3], [0,1,2  ]);  // RangeTo
-///     assert_eq!(arr[1.. ], [  1,2,3]);
-///     assert_eq!(arr[1..3], [  1,2  ]);
+///     assert_eq!(arr[ ..3], [0, 1, 2]);
 /// }
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../#Examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
@@ -1930,10 +2012,13 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 ///     assert_eq!(3+4+5, (3...5).sum());
 ///
 ///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ ...2], [0,1,2  ]);
-///     assert_eq!(arr[1...2], [  1,2  ]);  // RangeInclusive
+///     assert_eq!(arr[1...2], [1, 2]);
 /// }
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../#Examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub enum RangeInclusive<Idx> {
@@ -2017,10 +2102,13 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///     assert_eq!((...5), std::ops::RangeToInclusive{ end: 5 });
 ///
 ///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ ...2], [0,1,2  ]);  // RangeToInclusive
-///     assert_eq!(arr[1...2], [  1,2  ]);
+///     assert_eq!(arr[ ...2], [0, 1, 2]);
 /// }
 /// ```
+///
+/// See the [module examples] for the behavior of other range structs.
+///
+/// [module examples]: ../#Examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub struct RangeToInclusive<Idx> {
