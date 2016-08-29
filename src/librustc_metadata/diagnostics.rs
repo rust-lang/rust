@@ -211,7 +211,7 @@ in question exports them.
 A working version would be:
 
 ```ignore
-// In some_crate:
+// In some_crate crate:
 #[macro_export]
 macro_rules! eat {
     ...
@@ -228,6 +228,48 @@ extern crate some_crate; //ok!
 ```
 "##,
 
+E0470: r##"
+A macro listed for reexport was not found.
+
+Erroneous code example:
+
+```compile_fail,E0470
+#[macro_reexport(drink, be_merry)]
+extern crate collections;
+
+fn main() {
+    // ...
+}
+```
+
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
+
+This could be caused by a typo. Did you misspell the macro's name?
+
+Double-check the names of the macros listed for reexport, and that the crate
+in question exports them.
+
+A working version:
+
+```ignore
+// In some_crate crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+
+#[macro_export]
+macro_rules! drink {
+    ...
+}
+
+// In your_crate:
+#[macro_reexport(eat, drink)]
+extern crate some_crate;
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -239,7 +281,6 @@ register_diagnostics! {
     E0462, // found staticlib `..` instead of rlib or dylib
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
-    E0470, // reexported macro not found
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 }
