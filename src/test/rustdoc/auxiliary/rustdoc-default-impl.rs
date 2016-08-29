@@ -14,7 +14,7 @@
 pub mod bar {
     use std::marker;
 
-    pub trait Bar: 'static {}
+    pub trait Bar {}
 
     impl Bar for .. {}
 
