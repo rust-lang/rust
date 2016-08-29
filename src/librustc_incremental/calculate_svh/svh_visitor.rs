@@ -163,8 +163,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             _ => SawSpanExpnKind::SomeExpansion,
         };
 
-        expansion_kind.hash(self.st);
-
         SawSpan(&file1.name[..], line1, col1,
                 &file2.name[..], line2, col2,
                 expansion_kind).hash(self.st);
