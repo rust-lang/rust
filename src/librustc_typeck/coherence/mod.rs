@@ -348,9 +348,11 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                         .emit();
                 }
                 Err(CopyImplementationError::HasDestructor) => {
-                    span_err!(tcx.sess, span, E0184,
+                    struct_span_err!(tcx.sess, span, E0184,
                               "the trait `Copy` may not be implemented for this type; \
-                               the type has a destructor");
+                               the type has a destructor")
+                        .span_label(span, &format!("Copy not allowed on types with destructors"))
+                        .emit();
                 }
             }
         });
