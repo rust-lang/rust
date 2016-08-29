@@ -91,6 +91,43 @@ You need to link your code to the relevant crate in order to be able to use it
 well, and you link to them the same way.
 "##,
 
+E0466: r##"
+Macro import declarations were malformed.
+
+Erroneous code examples:
+
+```compile_fail,E0466
+#[macro_use(a_macro(another_macro))] // error: invalid import declaration
+extern crate some_crate;
+
+#[macro_use(i_want = "some_macros")] // error: invalid import declaration
+extern crate another_crate;
+```
+
+This is a syntax error at the level of attribute declarations. The proper
+syntax for macro imports is the following:
+
+```ignore
+// In some_crate:
+#[macro_export]
+macro_rules! get_tacos {
+    ...
+}
+
+#[macro_export]
+macro_rules! get_pimientos {
+    ...
+}
+
+// In your crate:
+#[macro_use(get_tacos, get_pimientos)] // It imports `get_tacos` and
+extern crate some_crate;               // `get_pimientos` macros from some_crate.
+```
+
+If you would like to import all exported macros, write `macro_use` with no
+arguments.
+"##,
+
 }
 
 register_diagnostics! {
@@ -102,7 +139,6 @@ register_diagnostics! {
     E0462, // found staticlib `..` instead of rlib or dylib
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
-    E0466, // bad macro import
     E0467, // bad macro reexport
     E0468, // an `extern crate` loading macros must be at the crate root
     E0469, // imported macro not found
