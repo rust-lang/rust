@@ -1151,8 +1151,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         self.def_map.insert(id, PathResolution::new(def));
     }
 
-    fn definitions(&mut self) -> Option<&mut Definitions> {
-        Some(&mut self.definitions)
+    fn definitions(&mut self) -> &mut Definitions {
+        &mut self.definitions
     }
 }
 
