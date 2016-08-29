@@ -228,6 +228,9 @@ pub struct TraitDef<'a> {
     /// Is it an `unsafe` trait?
     pub is_unsafe: bool,
 
+    /// Can this trait be derived for unions?
+    pub supports_unions: bool,
+
     pub methods: Vec<MethodDef<'a>>,
 
     pub associated_types: Vec<(ast::Ident, Ty<'a>)>,

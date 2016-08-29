@@ -80,6 +80,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
         additional_bounds: bounds,
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
+        supports_unions: false,
         methods: vec![MethodDef {
                           name: "clone",
                           generics: LifetimeBounds::empty(),
