@@ -22,8 +22,9 @@ use feature_gate::{self, Features};
 use fold;
 use fold::*;
 use parse::token::{intern, keywords};
+use parse::span_to_tts;
 use ptr::P;
-use tokenstream::TokenTree;
+use tokenstream::{TokenTree, TokenStream};
 use util::small_vector::SmallVector;
 use visit::Visitor;
 
@@ -308,6 +309,31 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 items.push(item);
                 kind.expect_from_annotatables(items)
             }
+            SyntaxExtension::AttrProcMacro(ref mac) => {
+                let attr_toks = TokenStream::from_tts(span_to_tts(&fld.cx.parse_sess,
+                                                                  attr.span));
+                let item_toks = TokenStream::from_tts(span_to_tts(&fld.cx.parse_sess,
+                                                                  item.span()));
+                let result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
+                let items = match item {
+                    Annotatable::Item(_) => result.make_items()
+                                                  .unwrap_or(SmallVector::zero())
+                                                  .into_iter()
+                                                  .map(|i| Annotatable::Item(i))
+                                                  .collect(),
+                    Annotatable::TraitItem(_) => result.make_trait_items()
+                                                       .unwrap_or(SmallVector::zero())
+                                                       .into_iter()
+                                                       .map(|i| Annotatable::TraitItem(P(i)))
+                                                       .collect(),
+                    Annotatable::ImplItem(_) => result.make_impl_items()
+                                                      .unwrap_or(SmallVector::zero())
+                                                      .into_iter()
+                                                      .map(|i| Annotatable::ImplItem(P(i)))
+                                                      .collect(),
+                };
+                kind.expect_from_annotatables(items)
+            }
             _ => unreachable!(),
         }
     }
@@ -377,10 +403,33 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.make_from(expander.expand(self.cx, span, ident, marked_tts, attrs))
             }
 
-            MultiDecorator(..) | MultiModifier(..) => {
+            MultiDecorator(..) | MultiModifier(..) | SyntaxExtension::AttrProcMacro(..) => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", extname));
                 return kind.dummy(span);
+            }
+
+            SyntaxExtension::ProcMacro(ref expandfun) => {
+                if ident.name != keywords::Invalid.name() {
+                    let msg =
+                        format!("macro {}! expects no ident argument, given '{}'", extname, ident);
+                    fld.cx.span_err(path.span, &msg);
+                    return None;
+                }
+
+                fld.cx.bt_push(ExpnInfo {
+                    call_site: call_site,
+                    callee: NameAndSpan {
+                        format: MacroBang(extname),
+                        // FIXME procedural macros do not have proper span info
+                        // yet, when they do, we should use it here.
+                        span: None,
+                        // FIXME probably want to follow macro_rules macros here.
+                        allow_internal_unstable: false,
+                    },
+                });
+
+                Some(expandfun.expand(fld.cx, call_site, TokenStream::from_tts(marked_tts)))
             }
         };
 

@@ -85,6 +85,12 @@ pub struct StringReader<'a> {
     /// The last character to be read
     pub curr: Option<char>,
     pub filemap: Rc<syntax_pos::FileMap>,
+    /// If Some, stop reading the source at this position (inclusive).
+    pub terminator: Option<BytePos>,
+    /// Whether to record new-lines in filemap. This is only necessary the first
+    /// time a filemap is lexed. If part of a filemap is being re-lexed, this
+    /// should be set to false.
+    pub save_new_lines: bool,
     // cached:
     pub peek_tok: token::Token,
     pub peek_span: Span,
@@ -96,7 +102,15 @@ pub struct StringReader<'a> {
 
 impl<'a> Reader for StringReader<'a> {
     fn is_eof(&self) -> bool {
-        self.curr.is_none()
+        if self.curr.is_none() {
+            return true;
+        }
+
+        match self.terminator {
+            Some(t) => self.pos > t,
+            None => false,
+        }
+
     }
     /// Return the next token. EFFECT: advances the string_reader.
     fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
@@ -164,6 +178,14 @@ impl<'a> StringReader<'a> {
     pub fn new_raw<'b>(span_diagnostic: &'b Handler,
                        filemap: Rc<syntax_pos::FileMap>)
                        -> StringReader<'b> {
+        let mut sr = StringReader::new_raw_internal(span_diagnostic, filemap);
+        sr.bump();
+        sr
+    }
+
+    fn new_raw_internal<'b>(span_diagnostic: &'b Handler,
+                            filemap: Rc<syntax_pos::FileMap>)
+                            -> StringReader<'b> {
         if filemap.src.is_none() {
             span_diagnostic.bug(&format!("Cannot lex filemap \
                                           without source: {}",
@@ -172,27 +194,49 @@ impl<'a> StringReader<'a> {
 
         let source_text = (*filemap.src.as_ref().unwrap()).clone();
 
-        let mut sr = StringReader {
+        StringReader {
             span_diagnostic: span_diagnostic,
             pos: filemap.start_pos,
             last_pos: filemap.start_pos,
             col: CharPos(0),
             curr: Some('\n'),
             filemap: filemap,
+            terminator: None,
+            save_new_lines: true,
             // dummy values; not read
             peek_tok: token::Eof,
             peek_span: syntax_pos::DUMMY_SP,
             source_text: source_text,
             fatal_errs: Vec::new(),
-        };
-        sr.bump();
-        sr
+        }
     }
 
     pub fn new<'b>(span_diagnostic: &'b Handler,
                    filemap: Rc<syntax_pos::FileMap>)
                    -> StringReader<'b> {
         let mut sr = StringReader::new_raw(span_diagnostic, filemap);
+        if let Err(_) = sr.advance_token() {
+            sr.emit_fatal_errors();
+            panic!(FatalError);
+        }
+        sr
+    }
+
+    pub fn from_span<'b>(span_diagnostic: &'b Handler,
+                         span: Span,
+                         codemap: &CodeMap)
+                         -> StringReader<'b> {
+        let start_pos = codemap.lookup_byte_offset(span.lo);
+        let last_pos = codemap.lookup_byte_offset(span.hi);
+        assert!(start_pos.fm.name == last_pos.fm.name, "Attempt to lex span which crosses files");
+        let mut sr = StringReader::new_raw_internal(span_diagnostic, start_pos.fm.clone());
+        sr.pos = span.lo;
+        sr.last_pos = span.lo;
+        sr.terminator = Some(span.hi);
+        sr.save_new_lines = false;
+
+        sr.bump();
+
         if let Err(_) = sr.advance_token() {
             sr.emit_fatal_errors();
             panic!(FatalError);
@@ -405,7 +449,9 @@ impl<'a> StringReader<'a> {
             self.curr = Some(ch);
             self.col = self.col + CharPos(1);
             if last_char == '\n' {
-                self.filemap.next_line(self.last_pos);
+                if self.save_new_lines {
+                    self.filemap.next_line(self.last_pos);
+                }
                 self.col = CharPos(0);
             }
 
