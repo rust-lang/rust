@@ -157,6 +157,34 @@ extern crate macros_for_good;
 ```
 "##,
 
+E0468: r##"
+A non-root module attempts to import macros from another crate.
+
+Example of erroneous code:
+
+```compile_fail,E0468
+mod foo {
+    #[macro_use(helpful_macro)] // error: must be at crate root to import
+    extern crate some_crate;    //        macros from another crate
+    helpful_macro!(...)
+}
+```
+
+Only `extern crate` imports at the crate root level are allowed to import
+macros.
+
+Either move the macro import to crate root or do without the foreign macros.
+This will work:
+
+```ignore
+#[macro_use(helpful_macro)]
+extern crate some_crate;
+
+mod foo {
+    helpful_macro!(...)
+}
+```
+"##,
 }
 
 register_diagnostics! {
@@ -168,7 +196,6 @@ register_diagnostics! {
     E0462, // found staticlib `..` instead of rlib or dylib
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
-    E0468, // an `extern crate` loading macros must be at the crate root
     E0469, // imported macro not found
     E0470, // reexported macro not found
     E0519, // local crate and dependency have same (crate-name, disambiguator)
