@@ -1251,7 +1251,10 @@ impl<'a> State<'a> {
                 try!(self.head(&visibility_qualified(&item.vis, "struct")));
                 try!(self.print_struct(&struct_def, generics, item.ident, item.span, true));
             }
-
+            ast::ItemKind::Union(ref struct_def, ref generics) => {
+                try!(self.head(&visibility_qualified(&item.vis, "union")));
+                try!(self.print_struct(&struct_def, generics, item.ident, item.span, true));
+            }
             ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
                 try!(self.head(""));
                 try!(self.print_visibility(&item.vis));

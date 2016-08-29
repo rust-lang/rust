@@ -180,6 +180,9 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
             ast::ItemKind::Struct(def, generics) => {
                 ast::ItemKind::Struct(fold_struct(self, def), generics)
             }
+            ast::ItemKind::Union(def, generics) => {
+                ast::ItemKind::Union(fold_struct(self, def), generics)
+            }
             ast::ItemKind::Enum(def, generics) => {
                 let variants = def.variants.into_iter().filter_map(|v| {
                     self.configure(v).map(|v| {
