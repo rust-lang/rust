@@ -300,7 +300,7 @@ endif
 # LLVM macros
 ######################################################################
 
-LLVM_OPTIONAL_COMPONENTS=x86 arm aarch64 mips powerpc pnacl
+LLVM_OPTIONAL_COMPONENTS=x86 arm aarch64 mips powerpc pnacl systemz
 LLVM_REQUIRED_COMPONENTS=ipo bitreader bitwriter linker asmparser mcjit \
                 interpreter instrumentation
 
