@@ -517,7 +517,7 @@ impl Build {
             // NOTE `git submodule status` output looks like this:
             //
             // -5066b7dcab7e700844b0e2ba71b8af9dc627a59b src/liblibc
-            // +b37ef24aa82d2be3a3cc0fe89bf82292f4ca181c src/compiler-rt (remotes/origin/rust-llvm-2016-07-18-1-gb37ef24)
+            // +b37ef24aa82d2be3a3cc0fe89bf82292f4ca181c src/compiler-rt (remotes/origin/..)
             //  e058ca661692a8d01f8cf9d35939dfe3105ce968 src/jemalloc (3.6.0-533-ge058ca6)
             //
             // The first character can be '-', '+' or ' ' and denotes the `State` of the submodule
