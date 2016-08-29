@@ -717,11 +717,16 @@ pub struct RegionParameterDef<'tcx> {
 
 impl<'tcx> RegionParameterDef<'tcx> {
     pub fn to_early_bound_region(&self) -> ty::Region {
-        ty::ReEarlyBound(ty::EarlyBoundRegion {
+        ty::ReEarlyBound(self.to_early_bound_region_data())
+    }
+
+    pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
+        ty::EarlyBoundRegion {
             index: self.index,
             name: self.name,
-        })
+        }
     }
+
     pub fn to_bound_region(&self) -> ty::BoundRegion {
         // this is an early bound region, so unaffected by #32330
         ty::BoundRegion::BrNamed(self.def_id, self.name, Issue32330::WontChange)
