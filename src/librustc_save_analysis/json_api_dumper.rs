@@ -14,7 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc_serialize::json::as_json;
 
 use external_data::*;
-use data::VariableKind;
+use data::{VariableKind, Visibility};
 use dump::Dump;
 
 pub struct JsonApiDumper<'b, W: Write + 'b> {
@@ -123,24 +123,30 @@ enum ImportKind {
 
 impl From<UseData> for Option<Import> {
     fn from(data: UseData) -> Option<Import> {
-        Some(Import {
-            kind: ImportKind::Use,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            value: String::new(),
-        })
+        match data.visibility {
+            Visibility::Public => Some(Import {
+                kind: ImportKind::Use,
+                id: From::from(data.id),
+                span: data.span,
+                name: data.name,
+                value: String::new(),
+            }),
+            _ => None,
+        }
     }
 }
 impl From<UseGlobData> for Option<Import> {
     fn from(data: UseGlobData) -> Option<Import> {
-        Some(Import {
-            kind: ImportKind::GlobUse,
-            id: From::from(data.id),
-            span: data.span,
-            name: "*".to_owned(),
-            value: data.names.join(", "),
-        })
+        match data.visibility {
+            Visibility::Public => Some(Import {
+                kind: ImportKind::GlobUse,
+                id: From::from(data.id),
+                span: data.span,
+                name: "*".to_owned(),
+                value: data.names.join(", "),
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -185,17 +191,20 @@ enum DefKind {
 
 impl From<EnumData> for Option<Def> {
     fn from(data: EnumData) -> Option<Def> {
-        Some(Def {
-            kind: DefKind::Enum,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            parent: None,
-            children: data.variants.into_iter().map(|id| From::from(id)).collect(),
-            decl_id: None,
-        })
+        match data.visibility {
+            Visibility::Public => Some(Def {
+                kind: DefKind::Enum,
+                id: From::from(data.id),
+                span: data.span,
+                name: data.name,
+                qualname: data.qualname,
+                value: data.value,
+                parent: None,
+                children: data.variants.into_iter().map(|id| From::from(id)).collect(),
+                decl_id: None,
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -231,7 +240,8 @@ impl From<StructVariantData> for Option<Def> {
 }
 impl From<StructData> for Option<Def> {
     fn from(data: StructData) -> Option<Def> {
-        Some(Def {
+        match data.visibility {
+            Visibility::Public => Some(Def {
             kind: DefKind::Struct,
             id: From::from(data.id),
             span: data.span,
@@ -241,52 +251,63 @@ impl From<StructData> for Option<Def> {
             parent: None,
             children: data.fields.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
-        })
+        }),
+            _ => None,
+        }
     }
 }
 impl From<TraitData> for Option<Def> {
     fn from(data: TraitData) -> Option<Def> {
-        Some(Def {
-            kind: DefKind::Trait,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            children: data.items.into_iter().map(|id| From::from(id)).collect(),
-            parent: None,
-            decl_id: None,
-        })
+        match data.visibility {
+            Visibility::Public => Some(Def {
+                kind: DefKind::Trait,
+                id: From::from(data.id),
+                span: data.span,
+                name: data.name,
+                qualname: data.qualname,
+                value: data.value,
+                children: data.items.into_iter().map(|id| From::from(id)).collect(),
+                parent: None,
+                decl_id: None,
+            }),
+            _ => None,
+        }
     }
 }
 impl From<FunctionData> for Option<Def> {
     fn from(data: FunctionData) -> Option<Def> {
-        Some(Def {
-            kind: DefKind::Function,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            children: vec![],
-            parent: None,
-            decl_id: None,
-        })
+        match data.visibility {
+            Visibility::Public => Some(Def {
+                kind: DefKind::Function,
+                id: From::from(data.id),
+                span: data.span,
+                name: data.name,
+                qualname: data.qualname,
+                value: data.value,
+                children: vec![],
+                parent: None,
+                decl_id: None,
+            }),
+            _ => None,
+        }
     }
 }
 impl From<MethodData> for Option<Def> {
     fn from(data: MethodData) -> Option<Def> {
-        Some(Def {
-            kind: DefKind::Method,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            children: vec![],
-            parent: None,
-            decl_id: data.decl_id.map(|id| From::from(id)),
-        })
+        match data.visibility {
+            Visibility::Public => Some(Def {
+                kind: DefKind::Method,
+                id: From::from(data.id),
+                span: data.span,
+                name: data.name,
+                qualname: data.qualname,
+                value: data.value,
+                children: vec![],
+                parent: None,
+                decl_id: data.decl_id.map(|id| From::from(id)),
+            }),
+            _ => None,
+        }
     }
 }
 impl From<MacroData> for Option<Def> {
@@ -306,51 +327,60 @@ impl From<MacroData> for Option<Def> {
 }
 impl From<ModData> for Option<Def> {
     fn from(data:ModData) -> Option<Def> {
-        Some(Def {
-            kind: DefKind::Mod,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.filename,
-            children: data.items.into_iter().map(|id| From::from(id)).collect(),
-            parent: None,
-            decl_id: None,
-        })
+        match data.visibility {
+            Visibility::Public => Some(Def {
+                kind: DefKind::Mod,
+                id: From::from(data.id),
+                span: data.span,
+                name: data.name,
+                qualname: data.qualname,
+                value: data.filename,
+                children: data.items.into_iter().map(|id| From::from(id)).collect(),
+                parent: None,
+                decl_id: None,
+            }),
+            _ => None,
+        }
     }
 }
 impl From<TypeDefData> for Option<Def> {
     fn from(data: TypeDefData) -> Option<Def> {
-        Some(Def {
-            kind: DefKind::Type,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            children: vec![],
-            parent: None,
-            decl_id: None,
-        })
+        match data.visibility {
+            Visibility::Public => Some(Def {
+                kind: DefKind::Type,
+                id: From::from(data.id),
+                span: data.span,
+                name: data.name,
+                qualname: data.qualname,
+                value: data.value,
+                children: vec![],
+                parent: None,
+                decl_id: None,
+            }),
+            _ => None,
+        }
     }
 }
 impl From<VariableData> for Option<Def> {
     fn from(data: VariableData) -> Option<Def> {
-        Some(Def {
-            kind: match data.kind {
-                VariableKind::Static => DefKind::Static,
-                VariableKind::Const => DefKind::Const,
-                VariableKind::Local => { return None }
-                VariableKind::Field => DefKind::Field,
-            },
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            children: vec![],
-            parent: None,
-            decl_id: None,
-        })
+        match data.visibility {
+            Visibility::Public => Some(Def {
+                kind: match data.kind {
+                    VariableKind::Static => DefKind::Static,
+                    VariableKind::Const => DefKind::Const,
+                    VariableKind::Local => { return None }
+                    VariableKind::Field => DefKind::Field,
+                },
+                id: From::from(data.id),
+                span: data.span,
+                name: data.name,
+                qualname: data.qualname,
+                value: data.value,
+                children: vec![],
+                parent: None,
+                decl_id: None,
+            }),
+            _ => None,
+        }
     }
 }

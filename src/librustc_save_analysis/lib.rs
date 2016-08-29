@@ -140,6 +140,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
                     value: make_signature(decl, generics),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -164,6 +165,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                     value: value,
                     type_value: ty_to_string(&typ),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Const(ref typ, ref expr) => {
@@ -179,6 +181,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
@@ -197,6 +200,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                     filename: filename,
                     items: m.items.iter().map(|i| i.id).collect(),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Enum(ref def, _) => {
@@ -217,6 +221,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     scope: self.enclosing_scope(item.id),
                     variants: def.variants.iter().map(|v| v.node.data.id()).collect(),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Impl(_, _, _, ref trait_ref, ref typ, _) => {
@@ -281,6 +286,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 scope: scope,
                 value: "".to_owned(),
                 type_value: typ,
+                visibility: From::from(&field.vis),
             })
         } else {
             None
@@ -293,7 +299,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                            name: ast::Name, span: Span) -> Option<FunctionData> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let qualname = match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
+        let (qualname, vis) = match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
             Some(impl_id) => match self.tcx.map.get_if_local(impl_id) {
                 Some(NodeItem(item)) => {
                     match item.node {
@@ -306,7 +312,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 result.push_str(&self.tcx.item_path_str(def_id));
                             }
                             result.push_str(">");
-                            result
+                            (result, From::from(&item.vis))
                         }
                         _ => {
                             span_bug!(span,
@@ -327,8 +333,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             None => match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                 Some(def_id) => {
                     match self.tcx.map.get_if_local(def_id) {
-                        Some(NodeItem(_)) => {
-                            format!("::{}", self.tcx.item_path_str(def_id))
+                        Some(NodeItem(item)) => {
+                            (format!("::{}", self.tcx.item_path_str(def_id)), From::from(&item.vis))
                         }
                         r => {
                             span_bug!(span,
@@ -369,6 +375,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             scope: self.enclosing_scope(id),
             // FIXME you get better data here by using the visitor.
             value: String::new(),
+            visibility: vis,
         })
     }
 
