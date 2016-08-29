@@ -45,7 +45,7 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
 
 struct CachingCodemapView<'tcx> {
     codemap: &'tcx CodeMap,
-    // Format: (line number, line-start, line_end, file)
+    // Format: (line number, line-start, line-end, file)
     line_cache: [(usize, BytePos, BytePos, Rc<FileMap>); 4],
     eviction_index: usize,
 }
@@ -100,7 +100,7 @@ impl<'tcx> CachingCodemapView<'tcx> {
         let line_index = file.lookup_line(pos).unwrap();
         let (line_start, line_end) = file.line_bounds(line_index);
 
-        // Just overwrite some cache entry. If we got this for, all of them
+        // Just overwrite some cache entry. If we got this far, all of them
         // point to the wrong file.
         self.line_cache[self.eviction_index] = (line_index + 1,
                                                 line_start,
@@ -131,11 +131,11 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         self.def_path_hashes.hash(def_id)
     }
 
-    // Hash a span in a stable way. If we would just hash the spans BytePos
-    // fields that would be similar hashing pointers since those or just offsets
-    // into the CodeMap. Instead, we hash the (file name, line, column) triple,
-    // which stays the same even if the containing FileMap has moved within the
-    // CodeMap.
+    // Hash a span in a stable way. We can't directly hash the span's BytePos
+    // fields (that would be similar to hashing pointers, since those are just
+    // offsets into the CodeMap). Instead, we hash the (file name, line, column)
+    // triple, which stays the same even if the containing FileMap has moved
+    // within the CodeMap.
     // Also note that we are hashing byte offsets for the column, not unicode
     // codepoint offsets. For the purpose of the hash that's sufficient.
     fn hash_span(&mut self, span: Span) {
@@ -462,7 +462,6 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
     fn visit_generics(&mut self, g: &'tcx Generics) {
         debug!("visit_generics: st={:?}", self.st);
         SawGenerics.hash(self.st);
-        // FIXME: nested stuff
         visit::walk_generics(self, g)
     }
 
@@ -605,7 +604,8 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
             SawMacroDef.hash(self.st);
             hash_attrs!(self, &macro_def.attrs);
             visit::walk_macro_def(self, macro_def)
-            // FIXME: We should hash the body of the macro too.
+            // FIXME(mw): We should hash the body of the macro too but we don't
+            //            have a stable way of doing so yet.
         }
     }
 }
