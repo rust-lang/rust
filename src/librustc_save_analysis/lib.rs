@@ -30,6 +30,7 @@ extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
 
 mod csv_dumper;
+mod json_api_dumper;
 mod json_dumper;
 mod data;
 mod dump;
@@ -57,6 +58,7 @@ use syntax::codemap::MacroAttribute;
 use syntax_pos::*;
 
 pub use self::csv_dumper::CsvDumper;
+pub use self::json_api_dumper::JsonApiDumper;
 pub use self::json_dumper::JsonDumper;
 pub use self::data::*;
 pub use self::dump::Dump;
@@ -804,7 +806,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
     match format {
         Format::Csv => dump!(CsvDumper::new(output)),
         Format::Json => dump!(JsonDumper::new(output)),
-        Format::JsonApi => /* TODO */ dump!(JsonDumper::new(output)),
+        Format::JsonApi => dump!(JsonApiDumper::new(output)),
     }
 }
 
