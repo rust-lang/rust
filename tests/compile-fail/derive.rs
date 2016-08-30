@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![feature(untagged_unions)]
+//FIXME:unions: #![feature(untagged_unions)]
 
 #![deny(warnings)]
 #![allow(dead_code)]
@@ -47,6 +47,7 @@ impl Clone for Qux {
     fn clone(&self) -> Self { Qux }
 }
 
+/* FIXME:unions
 // looks like unions don't support deriving Clone for now
 #[derive(Copy)]
 union Union {
@@ -60,6 +61,7 @@ impl Clone for Union {
         }
     }
 }
+*/
 
 // See #666
 #[derive(Copy)]

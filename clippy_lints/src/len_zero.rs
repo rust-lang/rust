@@ -209,8 +209,8 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
         }
         ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, |id| has_is_empty_impl(cx, &id)),
         ty::TyEnum(id, _) |
-        ty::TyStruct(id, _) |
-        ty::TyUnion(id, _) => has_is_empty_impl(cx, &id.did),
+        ty::TyStruct(id, _) /*FIXME:unions: |
+        ty::TyUnion(id, _)*/ => has_is_empty_impl(cx, &id.did),
         ty::TyArray(..) | ty::TyStr => true,
         _ => false,
     }

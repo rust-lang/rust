@@ -123,7 +123,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemStruct(..) => "a struct",
             hir::ItemTrait(..) => "a trait",
             hir::ItemTy(..) => "a type alias",
-            hir::ItemUnion(..) => "a union",
+            //FIXME:unions: hir::ItemUnion(..) => "a union",
             hir::ItemDefaultImpl(..) |
             hir::ItemExternCrate(..) |
             hir::ItemForeignMod(..) |

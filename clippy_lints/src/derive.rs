@@ -141,7 +141,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
         }
 
         match ty.sty {
-            TypeVariants::TyUnion(..) => return,
+            //FIXME:unions: TypeVariants::TyUnion(..) => return,
 
             // Some types are not Clone by default but could be cloned “by hand” if necessary
             TypeVariants::TyEnum(def, substs) |
