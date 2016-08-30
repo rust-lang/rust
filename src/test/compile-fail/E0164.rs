@@ -13,6 +13,7 @@ enum Foo { B { i: u32 } }
 fn bar(foo: Foo) -> u32 {
     match foo {
         Foo::B(i) => i, //~ ERROR E0164
+                        //~| NOTE not a tuple variant or struct
     }
 }
 
