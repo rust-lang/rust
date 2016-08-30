@@ -848,7 +848,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate"),
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
-        "write syntax and type analysis (in JSON format) information, \
+        "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
     save_analysis_csv: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in CSV format) information, in addition to normal output"),
