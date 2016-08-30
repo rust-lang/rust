@@ -8,7 +8,7 @@ gist_it() {
 }
 
 build() {
-    $CARGO build --tartet $TARGET
+    $CARGO build --target $TARGET
     $CARGO build --target $TARGET --release
 }
 
