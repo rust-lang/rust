@@ -489,14 +489,17 @@ fn expand_trait_item(ti: ast::TraitItem, fld: &mut MacroExpander)
 }
 
 pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
-    let t = match t.node.clone() {
+    let t = match t.node {
+        ast::TyKind::Mac(_) => t.unwrap(),
+        _ => return fold::noop_fold_ty(t, fld),
+    };
+
+    match t.node {
         ast::TyKind::Mac(mac) => {
             expand_mac_invoc(mac, None, Vec::new(), t.span, fld)
         }
-        _ => t
-    };
-
-    fold::noop_fold_ty(t, fld)
+        _ => unreachable!(),
+    }
 }
 
 /// A tree-folder that performs macro expansion
