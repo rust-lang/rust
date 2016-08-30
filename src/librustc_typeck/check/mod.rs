@@ -903,14 +903,18 @@ fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let mut err = struct_span_err!(
         tcx.sess, impl_item.span, E0520,
-        "item `{}` is provided by an `impl` that specializes \
-         another, but the item in the parent `impl` is not \
-         marked `default` and so it cannot be specialized.",
+        "`{}` specializes an item from a parent `impl`, but \
+         neither that item nor the `impl` are marked `default`",
         impl_item.name);
+    err.span_label(impl_item.span, &format!("cannot specialize default item `{}`",
+                                            impl_item.name));
 
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {
-            err.span_note(span, "parent implementation is here:");
+            err.span_label(span, &"parent `impl` is here");
+            err.note(&format!("to specialize, either the parent `impl` or `{}` \
+                               in the parent `impl` must be marked `default`",
+                              impl_item.name));
         }
         Err(cname) => {
             err.note(&format!("parent implementation is in crate `{}`", cname));
