@@ -4427,14 +4427,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // use inference variables instead of the provided types.
             *segment = None;
         } else if !(can_omit && types.len() == 0) && types.len() < required_len {
-            let qualifier =
-                if type_defs.len() != required_len { "at least " } else { "" };
-            span_err!(self.tcx.sess, span, E0089,
-                      "too few type parameters provided: \
-                       expected {}{}, found {}",
-                      qualifier,
-                      count(required_len),
-                      count(types.len()));
+            let adjust = |len| if len > 1 { "parameters" } else { "parameter" };
+            let required_param_str = adjust(required_len);
+            let actual_param_str = adjust(types.len());
+            struct_span_err!(self.tcx.sess, span, E0089,
+                             "too few type parameters provided: \
+                              expected {} {}, found {} {}",
+                             count(required_len),
+                             required_param_str,
+                             count(types.len()),
+                             actual_param_str)
+                .span_label(span, &format!("expected {} type {}", required_len, required_param_str))
+                .emit();
         }
 
         if !bindings.is_empty() {
