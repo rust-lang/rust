@@ -1,60 +1,49 @@
 case $TRAVIS_OS_NAME in
     linux)
-        export HOST=x86_64-unknown-linux-gnu
-        export NM=nm
-        export OBJDUMP=objdump
+        HOST=x86_64-unknown-linux-gnu
+        NM=nm
+        OBJDUMP=objdump
+        LINUX=y
         ;;
     osx)
-        export HOST=x86_64-apple-darwin
-        export NM=gnm
-        export OBJDUMP=gobjdump
+        HOST=x86_64-apple-darwin
+        NM=gnm
+        OBJDUMP=gobjdump
+        OSX=y
         ;;
 esac
 
-case $TARGET in
-    aarch64-unknown-linux-gnu)
-        export PREFIX=aarch64-linux-gnu-
-        export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
-        ;;
-    arm*-unknown-linux-gnueabi)
-        export PREFIX=arm-linux-gnueabi-
-        export QEMU_LD_PREFIX=/usr/arm-linux-gnueabi
-        ;;
-    arm-unknown-linux-gnueabihf)
-        export PREFIX=arm-linux-gnueabihf-
-        export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
-        ;;
-    armv7-unknown-linux-gnueabihf)
-        export PREFIX=arm-linux-gnueabihf-
-        export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
-        ;;
-    mips-unknown-linux-gnu)
-        export PREFIX=mips-linux-gnu-
-        export QEMU_LD_PREFIX=/usr/mips-linux-gnu
-        ;;
-    mipsel-unknown-linux-gnu)
-        export PREFIX=mipsel-linux-gnu-
-        export QEMU_LD_PREFIX=/usr/mipsel-linux-gnu
-        ;;
-    powerpc-unknown-linux-gnu)
-        export PREFIX=powerpc-linux-gnu-
-        export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
-        ;;
-    powerpc64-unknown-linux-gnu)
-        export PREFIX=powerpc64-linux-gnu-
-        export QEMU_LD_PREFIX=/usr/powerpc64-linux-gnu
-        ;;
-    powerpc64le-unknown-linux-gnu)
-        export PREFIX=powerpc64le-linux-gnu-
-        export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
-        # QEMU crashes, even running the simplest cross compiled C program:
-        # `int main() { return 0; }`
-        export RUN_TESTS=n
-        ;;
-    thumbv*-none-eabi)
-        export CARGO=xargo
-        export PREFIX=arm-none-eabi-
-        # Bare metal targets. No `std` or `test` crates for these targets.
-        export RUN_TESTS=n
-        ;;
-esac
+# NOTE For rustup
+export PATH="$HOME/.cargo/bin:$PATH"
+
+CARGO=cargo
+RUN_TESTS=y
+
+# NOTE For the host and its 32-bit variants we don't need prefixed tools or QEMU
+if [[ $TARGET != $HOST && ! $TARGET =~ ^i.86- ]]; then
+    GCC_TRIPLE=${TARGET//unknown-/}
+
+    case $TARGET in
+        armv7-unknown-linux-gnueabihf)
+            GCC_TRIPLE=arm-linux-gnueabihf
+            ;;
+        powerpc64le-unknown-linux-gnu)
+            # QEMU crashes even when executing the simplest cross compiled C program:
+            # `int main() { return 0; }`
+            RUN_TESTS=n
+            ;;
+        thumbv*-none-eabi)
+            CARGO=xargo
+            GCC_TRIPLE=arm-none-eabi
+            # Bare metal targets. No `std` or `test` crates for these targets.
+            RUN_TESTS=n
+            ;;
+    esac
+
+    if [[ $RUN_TESTS == y ]]; then
+        # NOTE(export) so this can reach the processes that `cargo test` spawns
+        export QEMU_LD_PREFIX=/usr/$GCC_TRIPLE
+    fi
+
+    PREFIX=$GCC_TRIPLE-
+fi
