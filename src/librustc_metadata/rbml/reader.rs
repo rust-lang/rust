@@ -595,11 +595,9 @@ impl<'doc> Decoder<'doc> {
     }
 
     // variable-length unsigned integer with different tags.
-    // `first_tag` should be a tag for u8 or i8.
-    // `last_tag` should be the largest allowed integer tag with the matching signedness.
+    // `last_tag` should be the largest allowed unsigned integer tag.
     // all tags between them should be valid, in the order of u8, u16, u32 and u64.
-    fn _next_int(&mut self,
-                 first_tag: EbmlEncoderTag,
+    fn next_uint(&mut self,
                  last_tag: EbmlEncoderTag)
                  -> DecodeResult<u64> {
         if self.pos >= self.parent.end {
@@ -607,8 +605,8 @@ impl<'doc> Decoder<'doc> {
         }
 
         let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(self.parent.data, self.pos)?;
-        let r = if first_tag as usize <= r_tag && r_tag <= last_tag as usize {
-            match r_tag - first_tag as usize {
+        let r = if EsU8 as usize <= r_tag && r_tag <= last_tag as usize {
+            match r_tag - EsU8 as usize {
                 0 => doc_as_u8(r_doc) as u64,
                 1 => doc_as_u16(r_doc) as u64,
                 2 => doc_as_u32(r_doc) as u64,
@@ -616,9 +614,8 @@ impl<'doc> Decoder<'doc> {
                 _ => unreachable!(),
             }
         } else {
-            return Err(Expected(format!("expected EBML doc with tag {:?} through {:?} but \
+            return Err(Expected(format!("expected EBML doc with tag EsU8 through {:?} but \
                                          found tag {:?}",
-                                        first_tag,
                                         last_tag,
                                         r_tag)));
         };
@@ -629,7 +626,43 @@ impl<'doc> Decoder<'doc> {
                                         self.parent.end)));
         }
         self.pos = r_doc.end;
-        debug!("_next_int({:?}, {:?}) result={:?}", first_tag, last_tag, r);
+        debug!("next_uint({:?}) result={:?}", last_tag, r);
+        Ok(r)
+    }
+
+    // variable-length signed integer with different tags.
+    // `last_tag` should be the largest allowed signed integer tag.
+    // all tags between them should be valid, in the order of i8, i16, i32 and i64.
+    fn next_int(&mut self,
+                last_tag: EbmlEncoderTag)
+                -> DecodeResult<i64> {
+        if self.pos >= self.parent.end {
+            return Err(Expected(format!("no more documents in current node!")));
+        }
+
+        let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(self.parent.data, self.pos)?;
+        let r = if EsI8 as usize <= r_tag && r_tag <= last_tag as usize {
+            match r_tag - EsI8 as usize {
+                0 => doc_as_i8(r_doc) as i64,
+                1 => doc_as_i16(r_doc) as i64,
+                2 => doc_as_i32(r_doc) as i64,
+                3 => doc_as_i64(r_doc),
+                _ => unreachable!(),
+            }
+        } else {
+            return Err(Expected(format!("expected EBML doc with tag EsI8 through {:?} but \
+                                         found tag {:?}",
+                                        last_tag,
+                                        r_tag)));
+        };
+        if r_doc.end > self.parent.end {
+            return Err(Expected(format!("invalid EBML, child extends to {:#x}, parent to \
+                                         {:#x}",
+                                        r_doc.end,
+                                        self.parent.end)));
+        }
+        self.pos = r_doc.end;
+        debug!("next_int({:?}) result={:?}", last_tag, r);
         Ok(r)
     }
 
@@ -662,19 +695,19 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
     }
 
     fn read_u64(&mut self) -> DecodeResult<u64> {
-        self._next_int(EsU8, EsU64)
+        self.next_uint(EsU64)
     }
     fn read_u32(&mut self) -> DecodeResult<u32> {
-        Ok(self._next_int(EsU8, EsU32)? as u32)
+        Ok(self.next_uint(EsU32)? as u32)
     }
     fn read_u16(&mut self) -> DecodeResult<u16> {
-        Ok(self._next_int(EsU8, EsU16)? as u16)
+        Ok(self.next_uint(EsU16)? as u16)
     }
     fn read_u8(&mut self) -> DecodeResult<u8> {
         Ok(doc_as_u8(self.next_doc(EsU8)?))
     }
     fn read_usize(&mut self) -> DecodeResult<usize> {
-        let v = self._next_int(EsU8, EsU64)?;
+        let v = self.read_u64()?;
         if v > (::std::usize::MAX as u64) {
             Err(IntTooBig(v as usize))
         } else {
@@ -683,19 +716,19 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
     }
 
     fn read_i64(&mut self) -> DecodeResult<i64> {
-        Ok(self._next_int(EsI8, EsI64)? as i64)
+        Ok(self.next_int(EsI64)? as i64)
     }
     fn read_i32(&mut self) -> DecodeResult<i32> {
-        Ok(self._next_int(EsI8, EsI32)? as i32)
+        Ok(self.next_int(EsI32)? as i32)
     }
     fn read_i16(&mut self) -> DecodeResult<i16> {
-        Ok(self._next_int(EsI8, EsI16)? as i16)
+        Ok(self.next_int(EsI16)? as i16)
     }
     fn read_i8(&mut self) -> DecodeResult<i8> {
         Ok(doc_as_u8(self.next_doc(EsI8)?) as i8)
     }
     fn read_isize(&mut self) -> DecodeResult<isize> {
-        let v = self._next_int(EsI8, EsI64)? as i64;
+        let v = self.next_int(EsI64)? as i64;
         if v > (isize::MAX as i64) || v < (isize::MIN as i64) {
             debug!("FIXME \\#6122: Removing this makes this function miscompile");
             Err(IntTooBig(v as usize))
