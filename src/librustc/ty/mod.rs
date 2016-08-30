@@ -21,7 +21,7 @@ pub use self::fold::TypeFoldable;
 use dep_graph::{self, DepNode};
 use hir::map as ast_map;
 use middle;
-use middle::cstore::{self, LOCAL_CRATE};
+use middle::cstore::LOCAL_CRATE;
 use hir::def::{Def, PathResolution, ExportMap};
 use hir::def_id::DefId;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -34,7 +34,7 @@ use util::common::MemoizationMap;
 use util::nodemap::NodeSet;
 use util::nodemap::FnvHashMap;
 
-use serialize::{self, Encodable, Encoder, Decodable, Decoder};
+use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::hash::{Hash, Hasher};
@@ -1487,17 +1487,7 @@ impl<'tcx> Encodable for AdtDef<'tcx> {
     }
 }
 
-impl<'tcx> Decodable for AdtDef<'tcx> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<AdtDef<'tcx>, D::Error> {
-        let def_id: DefId = Decodable::decode(d)?;
-
-        cstore::tls::with_decoding_context(|dcx| {
-            let def_id = dcx.translate_def_id(def_id);
-            Ok(dcx.tcx().lookup_adt_def(def_id))
-        })
-    }
-}
-
+impl<'tcx> serialize::UseSpecializedDecodable for AdtDef<'tcx> {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }

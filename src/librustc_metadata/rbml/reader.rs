@@ -555,20 +555,6 @@ impl<'doc> Decoder<'doc> {
         Ok(r_doc)
     }
 
-    fn push_doc<T, F>(&mut self, exp_tag: EbmlEncoderTag, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
-    {
-        let d = self.next_doc(exp_tag)?;
-        let old_parent = self.parent;
-        let old_pos = self.pos;
-        self.parent = d;
-        self.pos = d.start;
-        let r = f(self)?;
-        self.parent = old_parent;
-        self.pos = old_pos;
-        Ok(r)
-    }
-
     fn _next_sub(&mut self) -> DecodeResult<usize> {
         // empty vector/map optimization
         if self.parent.is_empty() {
@@ -670,14 +656,6 @@ impl<'doc> Decoder<'doc> {
         Ok(r)
     }
 
-    pub fn read_opaque<R, F>(&mut self, op: F) -> DecodeResult<R>
-        where F: FnOnce(&mut opaque::Decoder, Doc) -> DecodeResult<R>
-    {
-        let doc = self.next_doc(EsOpaque)?;
-        let result = op(&mut doc.opaque(), doc)?;
-        Ok(result)
-    }
-
     pub fn position(&self) -> usize {
         self.pos
     }
@@ -687,7 +665,30 @@ impl<'doc> Decoder<'doc> {
     }
 }
 
-impl<'doc> serialize::Decoder for Decoder<'doc> {
+impl<'doc, 'tcx> ::decoder::DecodeContext<'doc, 'tcx> {
+    pub fn read_opaque<R, F>(&mut self, op: F) -> DecodeResult<R>
+        where F: FnOnce(&mut Self, Doc) -> DecodeResult<R>
+    {
+        let doc = self.next_doc(EsOpaque)?;
+        op(self, doc)
+    }
+
+    fn push_doc<T, F>(&mut self, exp_tag: EbmlEncoderTag, f: F) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
+    {
+        let d = self.next_doc(exp_tag)?;
+        let old_parent = self.parent;
+        let old_pos = self.pos;
+        self.parent = d;
+        self.pos = d.start;
+        let r = f(self)?;
+        self.parent = old_parent;
+        self.pos = old_pos;
+        Ok(r)
+    }
+}
+
+impl<'doc, 'tcx> serialize::Decoder for ::decoder::DecodeContext<'doc, 'tcx> {
     type Error = Error;
     fn read_nil(&mut self) -> DecodeResult<()> {
         Ok(())
@@ -757,7 +758,7 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
 
     // Compound types:
     fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_enum({})", name);
 
@@ -775,7 +776,7 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
     }
 
     fn read_enum_variant<T, F>(&mut self, _: &[&str], mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Decoder<'doc>, usize) -> DecodeResult<T>
+        where F: FnMut(&mut Self, usize) -> DecodeResult<T>
     {
         debug!("read_enum_variant()");
         let idx = self._next_sub()?;
@@ -785,14 +786,14 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
     }
 
     fn read_enum_variant_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_enum_variant_arg(idx={})", idx);
         f(self)
     }
 
     fn read_enum_struct_variant<T, F>(&mut self, _: &[&str], mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Decoder<'doc>, usize) -> DecodeResult<T>
+        where F: FnMut(&mut Self, usize) -> DecodeResult<T>
     {
         debug!("read_enum_struct_variant()");
         let idx = self._next_sub()?;
@@ -806,28 +807,28 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
                                             idx: usize,
                                             f: F)
                                             -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_enum_struct_variant_arg(name={}, idx={})", name, idx);
         f(self)
     }
 
     fn read_struct<T, F>(&mut self, name: &str, _: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_struct(name={})", name);
         f(self)
     }
 
     fn read_struct_field<T, F>(&mut self, name: &str, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_struct_field(name={}, idx={})", name, idx);
         f(self)
     }
 
     fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_tuple()");
         self.read_seq(move |d, len| {
@@ -843,28 +844,28 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
     }
 
     fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_tuple_arg(idx={})", idx);
         self.read_seq_elt(idx, f)
     }
 
     fn read_tuple_struct<T, F>(&mut self, name: &str, len: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_tuple_struct(name={})", name);
         self.read_tuple(len, f)
     }
 
     fn read_tuple_struct_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_tuple_struct_arg(idx={})", idx);
         self.read_tuple_arg(idx, f)
     }
 
     fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Decoder<'doc>, bool) -> DecodeResult<T>
+        where F: FnMut(&mut Self, bool) -> DecodeResult<T>
     {
         debug!("read_option()");
         self.read_enum("Option", move |this| {
@@ -879,7 +880,7 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
     }
 
     fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>, usize) -> DecodeResult<T>
+        where F: FnOnce(&mut Self, usize) -> DecodeResult<T>
     {
         debug!("read_seq()");
         self.push_doc(EsVec, move |d| {
@@ -890,14 +891,14 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
     }
 
     fn read_seq_elt<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_seq_elt(idx={})", idx);
         self.push_doc(EsVecElt, f)
     }
 
     fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>, usize) -> DecodeResult<T>
+        where F: FnOnce(&mut Self, usize) -> DecodeResult<T>
     {
         debug!("read_map()");
         self.push_doc(EsMap, move |d| {
@@ -908,14 +909,14 @@ impl<'doc> serialize::Decoder for Decoder<'doc> {
     }
 
     fn read_map_elt_key<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_map_elt_key(idx={})", idx);
         self.push_doc(EsMapKey, f)
     }
 
     fn read_map_elt_val<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>
+        where F: FnOnce(&mut Self) -> DecodeResult<T>
     {
         debug!("read_map_elt_val(idx={})", idx);
         self.push_doc(EsMapVal, f)

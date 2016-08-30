@@ -10,8 +10,6 @@
 
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
-pub use self::astencode_tag::*;
-
 // RBML enum definitions and utils shared by the encoder and decoder
 //
 // 0x00..0x1f: reserved for RBML generic type tags
@@ -97,33 +95,30 @@ pub const tag_items_data_item_reexport_def_id: usize = 0x47;
 pub const tag_items_data_item_reexport_name: usize = 0x48;
 
 // used to encode crate_ctxt side tables
-enum_from_u32! {
-    #[derive(Copy, Clone, PartialEq)]
-    #[repr(usize)]
-    pub enum astencode_tag { // Reserves 0x50 -- 0x6f
-        tag_ast = 0x50,
+pub const tag_ast: usize = 0x50;
 
-        tag_tree = 0x51,
+pub const tag_tree: usize = 0x51;
 
-        tag_mir = 0x52,
+pub const tag_mir: usize = 0x52;
 
-        tag_table = 0x53,
-        // GAP 0x54, 0x55
-        tag_table_def = 0x56,
-        tag_table_node_type = 0x57,
-        tag_table_item_subst = 0x58,
-        tag_table_freevars = 0x59,
-        // GAP 0x5a, 0x5b, 0x5c, 0x5d, 0x5e
-        tag_table_method_map = 0x5f,
-        // GAP 0x60
-        tag_table_adjustments = 0x61,
-        // GAP 0x62, 0x63, 0x64, 0x65
-        tag_table_upvar_capture_map = 0x66,
-        // GAP 0x67, 0x68
-        tag_table_const_qualif = 0x69,
-        tag_table_cast_kinds = 0x6a,
-    }
-}
+pub const tag_table: usize = 0x53;
+
+pub const tag_id_range: usize = 0x54;
+
+// GAP 0x55
+pub const tag_table_def: usize = 0x56;
+pub const tag_table_node_type: usize = 0x57;
+pub const tag_table_item_subst: usize = 0x58;
+pub const tag_table_freevars: usize = 0x59;
+// GAP 0x5a, 0x5b, 0x5c, 0x5d, 0x5e
+pub const tag_table_method_map: usize = 0x5f;
+// GAP 0x60
+pub const tag_table_adjustments: usize = 0x61;
+// GAP 0x62, 0x63, 0x64, 0x65
+pub const tag_table_upvar_capture_map: usize = 0x66;
+// GAP 0x67, 0x68
+pub const tag_table_const_qualif: usize = 0x69;
+pub const tag_table_cast_kinds: usize = 0x6a;
 
 pub const tag_item_trait_item_sort: usize = 0x70;
 
