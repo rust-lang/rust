@@ -39,7 +39,7 @@ use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast::{BinOpKind, UnOp};
 use ast;
-use codemap::{self, CodeMap, Spanned, spanned};
+use codemap::{self, CodeMap, Spanned, spanned, respan};
 use syntax_pos::{self, Span, BytePos, mk_sp};
 use errors::{self, DiagnosticBuilder};
 use ext::tt::macro_parser;
@@ -725,8 +725,8 @@ impl<'a> Parser<'a> {
                 let gt_str = Parser::token_to_string(&token::Gt);
                 let this_token_str = self.this_token_to_string();
                 Err(self.fatal(&format!("expected `{}`, found `{}`",
-                                   gt_str,
-                                   this_token_str)))
+                                        gt_str,
+                                        this_token_str)))
             }
         }
     }
@@ -4293,6 +4293,7 @@ impl<'a> Parser<'a> {
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     pub fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
         maybe_whole!(self, NtGenerics);
+        let span_lo = self.span.lo;
 
         if self.eat(&token::Lt) {
             let lifetime_defs = self.parse_lifetime_defs()?;
@@ -4315,7 +4316,8 @@ impl<'a> Parser<'a> {
                 where_clause: WhereClause {
                     id: ast::DUMMY_NODE_ID,
                     predicates: Vec::new(),
-                }
+                },
+                span: mk_sp(span_lo, self.last_span.hi),
             })
         } else {
             Ok(ast::Generics::default())
@@ -4768,7 +4770,7 @@ impl<'a> Parser<'a> {
     /// Parse an item-position function declaration.
     fn parse_item_fn(&mut self,
                      unsafety: Unsafety,
-                     constness: Constness,
+                     constness: Spanned<Constness>,
                      abi: abi::Abi)
                      -> PResult<'a, ItemInfo> {
         let (ident, mut generics) = self.parse_fn_header()?;
@@ -4794,18 +4796,21 @@ impl<'a> Parser<'a> {
     /// - `extern fn`
     /// - etc
     pub fn parse_fn_front_matter(&mut self)
-                                 -> PResult<'a, (ast::Constness, ast::Unsafety, abi::Abi)> {
+                                 -> PResult<'a, (Spanned<ast::Constness>,
+                                                ast::Unsafety,
+                                                abi::Abi)> {
         let is_const_fn = self.eat_keyword(keywords::Const);
+        let const_span = self.last_span;
         let unsafety = self.parse_unsafety()?;
         let (constness, unsafety, abi) = if is_const_fn {
-            (Constness::Const, unsafety, Abi::Rust)
+            (respan(const_span, Constness::Const), unsafety, Abi::Rust)
         } else {
             let abi = if self.eat_keyword(keywords::Extern) {
                 self.parse_opt_abi()?.unwrap_or(Abi::C)
             } else {
                 Abi::Rust
             };
-            (Constness::NotConst, unsafety, abi)
+            (respan(self.last_span, Constness::NotConst), unsafety, abi)
         };
         self.expect_keyword(keywords::Fn)?;
         Ok((constness, unsafety, abi))
@@ -5704,9 +5709,12 @@ impl<'a> Parser<'a> {
 
             if self.eat_keyword(keywords::Fn) {
                 // EXTERN FUNCTION ITEM
+                let fn_span = self.last_span;
                 let abi = opt_abi.unwrap_or(Abi::C);
                 let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(Unsafety::Normal, Constness::NotConst, abi)?;
+                    self.parse_item_fn(Unsafety::Normal,
+                                       respan(fn_span, Constness::NotConst),
+                                       abi)?;
                 let last_span = self.last_span;
                 let item = self.mk_item(lo,
                                         last_span.hi,
@@ -5740,6 +5748,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
         if self.eat_keyword(keywords::Const) {
+            let const_span = self.last_span;
             if self.check_keyword(keywords::Fn)
                 || (self.check_keyword(keywords::Unsafe)
                     && self.look_ahead(1, |t| t.is_keyword(keywords::Fn))) {
@@ -5751,7 +5760,9 @@ impl<'a> Parser<'a> {
                 };
                 self.bump();
                 let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(unsafety, Constness::Const, Abi::Rust)?;
+                    self.parse_item_fn(unsafety,
+                                       respan(const_span, Constness::Const),
+                                       Abi::Rust)?;
                 let last_span = self.last_span;
                 let item = self.mk_item(lo,
                                         last_span.hi,
@@ -5815,8 +5826,11 @@ impl<'a> Parser<'a> {
         if self.check_keyword(keywords::Fn) {
             // FUNCTION ITEM
             self.bump();
+            let fn_span = self.last_span;
             let (ident, item_, extra_attrs) =
-                self.parse_item_fn(Unsafety::Normal, Constness::NotConst, Abi::Rust)?;
+                self.parse_item_fn(Unsafety::Normal,
+                                   respan(fn_span, Constness::NotConst),
+                                   Abi::Rust)?;
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,
@@ -5836,8 +5850,11 @@ impl<'a> Parser<'a> {
                 Abi::Rust
             };
             self.expect_keyword(keywords::Fn)?;
+            let fn_span = self.last_span;
             let (ident, item_, extra_attrs) =
-                self.parse_item_fn(Unsafety::Unsafe, Constness::NotConst, abi)?;
+                self.parse_item_fn(Unsafety::Unsafe,
+                                   respan(fn_span, Constness::NotConst),
+                                   abi)?;
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,
@@ -6038,13 +6055,16 @@ impl<'a> Parser<'a> {
                                  &token::CloseDelim(token::Brace),
                                  SeqSep::trailing_allowed(token::Comma), |this| {
             let lo = this.span.lo;
-            let node = if this.eat_keyword(keywords::SelfValue) {
-                let rename = this.parse_rename()?;
-                ast::PathListItemKind::Mod { id: ast::DUMMY_NODE_ID, rename: rename }
+            let ident = if this.eat_keyword(keywords::SelfValue) {
+                keywords::SelfValue.ident()
             } else {
-                let ident = this.parse_ident()?;
-                let rename = this.parse_rename()?;
-                ast::PathListItemKind::Ident { name: ident, rename: rename, id: ast::DUMMY_NODE_ID }
+                this.parse_ident()?
+            };
+            let rename = this.parse_rename()?;
+            let node = ast::PathListItem_ {
+                name: ident,
+                rename: rename,
+                id: ast::DUMMY_NODE_ID
             };
             let hi = this.last_span.hi;
             Ok(spanned(lo, hi, node))

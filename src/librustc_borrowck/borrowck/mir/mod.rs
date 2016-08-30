@@ -11,7 +11,6 @@
 use borrowck::BorrowckCtxt;
 
 use syntax::ast::{self, MetaItem};
-use syntax::attr::AttrMetaMethods;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -43,8 +42,9 @@ fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<P<MetaItem
         if attr.check_name("rustc_mir") {
             let items = attr.meta_item_list();
             for item in items.iter().flat_map(|l| l.iter()) {
-                if item.check_name(name) {
-                    return Some(item.clone())
+                match item.meta_item() {
+                    Some(mi) if mi.check_name(name) => return Some(mi.clone()),
+                    _ => continue
                 }
             }
         }
@@ -126,8 +126,6 @@ fn do_dataflow<'a, 'tcx, BD>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              bd: BD) -> DataflowResults<BD>
     where BD: BitDenotation<Idx=MovePathIndex, Ctxt=MoveDataParamEnv<'tcx>> + DataflowOperator
 {
-    use syntax::attr::AttrMetaMethods;
-
     let name_found = |sess: &Session, attrs: &[ast::Attribute], name| -> Option<String> {
         if let Some(item) = has_rustc_mir_with(attrs, name) {
             if let Some(s) = item.value_str() {

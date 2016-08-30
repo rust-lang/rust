@@ -3422,13 +3422,6 @@ containing the unsized type is the last and only unsized type field in the
 struct.
 "##,
 
-E0379: r##"
-Trait methods cannot be declared `const` by design. For more information, see
-[RFC 911].
-
-[RFC 911]: https://github.com/rust-lang/rfcs/pull/911
-"##,
-
 E0380: r##"
 Default impls are only allowed for traits with no methods or associated items.
 For more information see the [opt-in builtin traits RFC](https://github.com/rust

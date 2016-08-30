@@ -140,7 +140,6 @@ pub fn run(input: &str,
 
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
 fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
-    use syntax::attr::AttrMetaMethods;
     use syntax::print::pprust;
 
     let mut opts = TestOptions {
@@ -162,7 +161,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
         if attr.check_name("attr") {
             if let Some(l) = attr.meta_item_list() {
                 for item in l {
-                    opts.attrs.push(pprust::meta_item_to_string(item));
+                    opts.attrs.push(pprust::meta_list_item_to_string(item));
                 }
             }
         }

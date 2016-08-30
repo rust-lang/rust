@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(start)]
+#![feature(attr_literals)]
 
-#[start]
-fn f< T >() {} //~ ERROR E0132
-             //~| NOTE start function cannot have type parameters
+// repr currently doesn't support literals
+#[repr("C")] //~ ERROR E0565
+struct A {  }
 
-fn main() {
-}
+fn main() {  }

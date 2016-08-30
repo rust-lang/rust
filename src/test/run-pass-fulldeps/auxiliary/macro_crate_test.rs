@@ -17,8 +17,10 @@ extern crate rustc;
 extern crate rustc_plugin;
 extern crate syntax_pos;
 
-use syntax::ast::{self, Item, MetaItem, ImplItem, TraitItem, ItemKind};
+use syntax::ast::{self, Item, MetaItem, ItemKind};
+use syntax::codemap::DUMMY_SP;
 use syntax::ext::base::*;
+use syntax::ext::quote::rt::ToTokens;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
 use syntax::tokenstream::TokenTree;
@@ -41,10 +43,13 @@ pub fn plugin_registrar(reg: &mut Registry) {
         token::intern("duplicate"),
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         MultiDecorator(Box::new(expand_duplicate)));
+    reg.register_syntax_extension(
+        token::intern("caller"),
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        MultiDecorator(Box::new(expand_caller)));
 }
 
-fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
-                   -> Box<MacResult+'static> {
+fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'static> {
     if !tts.is_empty() {
         cx.span_fatal(sp, "make_a_1 takes no arguments");
     }
@@ -52,19 +57,18 @@ fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
 }
 
 // See Issue #15750
-fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
-                   -> Box<MacResult+'static> {
+fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree]) -> Box<MacResult + 'static> {
     // Parse an expression and emit it unchanged.
-    let mut parser = parse::new_parser_from_tts(cx.parse_sess(),
-        cx.cfg(), tts.to_vec());
+    let mut parser = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), tts.to_vec());
     let expr = parser.parse_expr().unwrap();
     MacEager::expr(quote_expr!(&mut *cx, $expr))
 }
 
 fn expand_into_foo_multi(cx: &mut ExtCtxt,
-                         sp: Span,
-                         attr: &MetaItem,
-                         it: Annotatable) -> Vec<Annotatable> {
+                         _sp: Span,
+                         _attr: &MetaItem,
+                         it: Annotatable)
+                         -> Vec<Annotatable> {
     match it {
         Annotatable::Item(it) => vec![
             Annotatable::Item(P(Item {
@@ -74,7 +78,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
             Annotatable::Item(quote_item!(cx, enum Foo3 { Bar }).unwrap()),
             Annotatable::Item(quote_item!(cx, #[cfg(any())] fn foo2() {}).unwrap()),
         ],
-        Annotatable::ImplItem(it) => vec![
+        Annotatable::ImplItem(_it) => vec![
             quote_item!(cx, impl X { fn foo(&self) -> i32 { 42 } }).unwrap().and_then(|i| {
                 match i.node {
                     ItemKind::Impl(_, _, _, _, _, mut items) => {
@@ -84,7 +88,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 }
             })
         ],
-        Annotatable::TraitItem(it) => vec![
+        Annotatable::TraitItem(_it) => vec![
             quote_item!(cx, trait X { fn foo(&self) -> i32 { 0 } }).unwrap().and_then(|i| {
                 match i.node {
                     ItemKind::Trait(_, _, _, mut items) => {
@@ -99,15 +103,14 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
 
 // Create a duplicate of the annotatable, based on the MetaItem
 fn expand_duplicate(cx: &mut ExtCtxt,
-                    sp: Span,
+                    _sp: Span,
                     mi: &MetaItem,
                     it: &Annotatable,
-                    push: &mut FnMut(Annotatable))
-{
+                    push: &mut FnMut(Annotatable)) {
     let copy_name = match mi.node {
         ast::MetaItemKind::List(_, ref xs) => {
-            if let ast::MetaItemKind::Word(ref w) = xs[0].node {
-                token::str_to_ident(&w)
+            if let Some(word) = xs[0].word() {
+                token::str_to_ident(&word.name())
             } else {
                 cx.span_err(mi.span, "Expected word");
                 return;
@@ -139,6 +142,71 @@ fn expand_duplicate(cx: &mut ExtCtxt,
             new_it.ident = copy_name;
             push(Annotatable::TraitItem(P(new_it)));
         }
+    }
+}
+
+pub fn token_separate<T: ToTokens>(ecx: &ExtCtxt, things: &[T],
+                                   token: token::Token) -> Vec<TokenTree> {
+    let mut output: Vec<TokenTree> = vec![];
+    for (i, thing) in things.iter().enumerate() {
+        output.extend(thing.to_tokens(ecx));
+        if i < things.len() - 1 {
+            output.push(TokenTree::Token(DUMMY_SP, token.clone()));
+        }
+    }
+
+    output
+}
+
+fn expand_caller(cx: &mut ExtCtxt,
+                 sp: Span,
+                 mi: &MetaItem,
+                 it: &Annotatable,
+                 push: &mut FnMut(Annotatable)) {
+    let (orig_fn_name, ret_type) = match *it {
+        Annotatable::Item(ref item) => match item.node {
+            ItemKind::Fn(ref decl, _, _, _, _, _) => {
+                (item.ident, &decl.output)
+            }
+            _ => cx.span_fatal(item.span, "Only functions with return types can be annotated.")
+        },
+        _ => cx.span_fatal(sp, "Only functions can be annotated.")
+    };
+
+    let (caller_name, arguments) = if let Some(list) = mi.meta_item_list() {
+        if list.len() < 2 {
+            cx.span_fatal(mi.span(), "Need a function name and at least one parameter.");
+        }
+
+        let fn_name = match list[0].name() {
+            Some(name) => token::str_to_ident(&name),
+            None => cx.span_fatal(list[0].span(), "First parameter must be an ident.")
+        };
+
+        (fn_name, &list[1..])
+    } else {
+        cx.span_fatal(mi.span, "Expected list.");
+    };
+
+    let literals: Vec<ast::Lit> = arguments.iter().map(|arg| {
+        if let Some(lit) = arg.literal() {
+            lit.clone()
+        } else {
+            cx.span_fatal(arg.span(), "Expected literal.");
+        }
+    }).collect();
+
+    let arguments = token_separate(cx, literals.as_slice(), token::Comma);
+    if let ast::FunctionRetTy::Ty(ref rt) = *ret_type {
+        push(Annotatable::Item(quote_item!(cx,
+                                           fn $caller_name() -> $rt {
+                                               $orig_fn_name($arguments)
+                                           }).unwrap()))
+    } else {
+        push(Annotatable::Item(quote_item!(cx,
+                                           fn $caller_name() {
+                                               $orig_fn_name($arguments)
+                                           }).unwrap()))
     }
 }
 

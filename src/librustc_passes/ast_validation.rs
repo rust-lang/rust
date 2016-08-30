@@ -20,6 +20,7 @@ use rustc::lint;
 use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::codemap::Spanned;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -67,6 +68,18 @@ impl<'a> AstValidator<'a> {
                 PatKind::Ident(..) => report_err(arg.pat.span, true),
                 _ => report_err(arg.pat.span, false),
             }
+        }
+    }
+
+    fn check_trait_fn_not_const(&self, constness: Spanned<Constness>) {
+        match constness.node {
+            Constness::Const => {
+                struct_span_err!(self.session, constness.span, E0379,
+                                 "trait fns cannot be declared const")
+                    .span_label(constness.span, &format!("trait fns cannot be const"))
+                    .emit();
+            }
+            _ => {}
         }
     }
 }
@@ -146,6 +159,9 @@ impl<'a> Visitor for AstValidator<'a> {
                 self.invalid_visibility(&item.vis, item.span, None);
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, impl_item.span, None);
+                    if let ImplItemKind::Method(ref sig, _) = impl_item.node {
+                        self.check_trait_fn_not_const(sig.constness);
+                    }
                 }
             }
             ItemKind::Impl(_, _, _, None, _, _) => {
@@ -166,6 +182,13 @@ impl<'a> Visitor for AstValidator<'a> {
                 for variant in &def.variants {
                     for field in variant.node.data.fields() {
                         self.invalid_visibility(&field.vis, field.span, None);
+                    }
+                }
+            }
+            ItemKind::Trait(_, _, _, ref trait_items) => {
+                for trait_item in trait_items {
+                    if let TraitItemKind::Method(ref sig, _) = trait_item.node {
+                        self.check_trait_fn_not_const(sig.constness);
                     }
                 }
             }

@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(start)]
+#![feature(attr_literals)]
 
-#[start]
-fn f< T >() {} //~ ERROR E0132
-             //~| NOTE start function cannot have type parameters
+// deprecated doesn't currently support literals
+#[deprecated("since")] //~ ERROR E0565
+fn f() {  }
 
-fn main() {
-}
+fn main() {  }

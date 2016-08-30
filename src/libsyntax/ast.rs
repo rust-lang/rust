@@ -336,7 +336,7 @@ pub struct TyParam {
     pub id: NodeId,
     pub bounds: TyParamBounds,
     pub default: Option<P<Ty>>,
-    pub span: Span
+    pub span: Span,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -346,6 +346,7 @@ pub struct Generics {
     pub lifetimes: Vec<LifetimeDef>,
     pub ty_params: P<[TyParam]>,
     pub where_clause: WhereClause,
+    pub span: Span,
 }
 
 impl Generics {
@@ -368,7 +369,8 @@ impl Default for Generics {
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
                 predicates: Vec::new(),
-            }
+            },
+            span: DUMMY_SP,
         }
     }
 }
@@ -439,6 +441,22 @@ pub struct Crate {
     pub exported_macros: Vec<MacroDef>,
 }
 
+/// A spanned compile-time attribute list item.
+pub type NestedMetaItem = Spanned<NestedMetaItemKind>;
+
+/// Possible values inside of compile-time attribute lists.
+///
+/// E.g. the '..' in `#[name(..)]`.
+#[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug, PartialEq)]
+pub enum NestedMetaItemKind {
+    /// A full MetaItem, for recursive meta items.
+    MetaItem(P<MetaItem>),
+    /// A literal.
+    ///
+    /// E.g. "foo", 64, true
+    Literal(Lit),
+}
+
 /// A spanned compile-time attribute item.
 ///
 /// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
@@ -456,7 +474,7 @@ pub enum MetaItemKind {
     /// List meta item.
     ///
     /// E.g. `derive(..)` as in `#[derive(..)]`
-    List(InternedString, Vec<P<MetaItem>>),
+    List(InternedString, Vec<NestedMetaItem>),
     /// Name value meta item.
     ///
     /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
@@ -472,19 +490,21 @@ impl PartialEq for MetaItemKind {
                 Word(ref no) => (*ns) == (*no),
                 _ => false
             },
+            List(ref ns, ref miss) => match *other {
+                List(ref no, ref miso) => {
+                    ns == no &&
+                        miss.iter().all(|mi| {
+                            miso.iter().any(|x| x.node == mi.node)
+                        })
+                }
+                _ => false
+            },
             NameValue(ref ns, ref vs) => match *other {
                 NameValue(ref no, ref vo) => {
                     (*ns) == (*no) && vs.node == vo.node
                 }
                 _ => false
             },
-            List(ref ns, ref miss) => match *other {
-                List(ref no, ref miso) => {
-                    ns == no &&
-                        miss.iter().all(|mi| miso.iter().any(|x| x.node == mi.node))
-                }
-                _ => false
-            }
         }
     }
 }
@@ -1105,6 +1125,30 @@ impl LitKind {
             _ => false,
         }
     }
+
+    /// Returns true if this literal has no suffix. Note: this will return true
+    /// for literals with prefixes such as raw strings and byte strings.
+    pub fn is_unsuffixed(&self) -> bool {
+        match *self {
+            // unsuffixed variants
+            LitKind::Str(..) => true,
+            LitKind::ByteStr(..) => true,
+            LitKind::Byte(..) => true,
+            LitKind::Char(..) => true,
+            LitKind::Int(_, LitIntType::Unsuffixed) => true,
+            LitKind::FloatUnsuffixed(..) => true,
+            LitKind::Bool(..) => true,
+            // suffixed variants
+            LitKind::Int(_, LitIntType::Signed(..)) => false,
+            LitKind::Int(_, LitIntType::Unsigned(..)) => false,
+            LitKind::Float(..) => false,
+        }
+    }
+
+    /// Returns true if this literal has a suffix.
+    pub fn is_suffixed(&self) -> bool {
+        !self.is_unsuffixed()
+    }
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -1120,7 +1164,7 @@ pub struct MutTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MethodSig {
     pub unsafety: Unsafety,
-    pub constness: Constness,
+    pub constness: Spanned<Constness>,
     pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
@@ -1624,42 +1668,14 @@ pub struct Variant_ {
 pub type Variant = Spanned<Variant_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum PathListItemKind {
-    Ident {
-        name: Ident,
-        /// renamed in list, e.g. `use foo::{bar as baz};`
-        rename: Option<Ident>,
-        id: NodeId
-    },
-    Mod {
-        /// renamed in list, e.g. `use foo::{self as baz};`
-        rename: Option<Ident>,
-        id: NodeId
-    }
+pub struct PathListItem_ {
+    pub name: Ident,
+    /// renamed in list, e.g. `use foo::{bar as baz};`
+    pub rename: Option<Ident>,
+    pub id: NodeId,
 }
 
-impl PathListItemKind {
-    pub fn id(&self) -> NodeId {
-        match *self {
-            PathListItemKind::Ident { id, .. } | PathListItemKind::Mod { id, .. } => id
-        }
-    }
-
-    pub fn name(&self) -> Option<Ident> {
-        match *self {
-            PathListItemKind::Ident { name, .. } => Some(name),
-            PathListItemKind::Mod { .. } => None,
-        }
-    }
-
-    pub fn rename(&self) -> Option<Ident> {
-        match *self {
-            PathListItemKind::Ident { rename, .. } | PathListItemKind::Mod { rename, .. } => rename
-        }
-    }
-}
-
-pub type PathListItem = Spanned<PathListItemKind>;
+pub type PathListItem = Spanned<PathListItem_>;
 
 pub type ViewPath = Spanned<ViewPath_>;
 
@@ -1846,7 +1862,7 @@ pub enum ItemKind {
     /// A function declaration (`fn` or `pub fn`).
     ///
     /// E.g. `fn foo(bar: usize) -> usize { .. }`
-    Fn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Block>),
+    Fn(P<FnDecl>, Unsafety, Spanned<Constness>, Abi, Generics, P<Block>),
     /// A module declaration (`mod` or `pub mod`).
     ///
     /// E.g. `mod foo;` or `mod foo { .. }`
@@ -1867,6 +1883,10 @@ pub enum ItemKind {
     ///
     /// E.g. `struct Foo<A> { x: A }`
     Struct(VariantData, Generics),
+    /// A union definition (`union` or `pub union`).
+    ///
+    /// E.g. `union Foo<A, B> { x: A, y: B }`
+    Union(VariantData, Generics), // FIXME: not yet implemented
     /// A Trait declaration (`trait` or `pub trait`).
     ///
     /// E.g. `trait Foo { .. }` or `trait Foo<T> { .. }`
@@ -1903,6 +1923,7 @@ impl ItemKind {
             ItemKind::Ty(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
+            ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::Mac(..) |
             ItemKind::Impl(..) |

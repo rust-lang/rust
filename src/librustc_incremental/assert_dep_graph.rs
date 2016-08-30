@@ -56,7 +56,6 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
 
@@ -116,14 +115,18 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
         for attr in self.tcx.get_attrs(def_id).iter() {
             if attr.check_name(IF_THIS_CHANGED) {
                 let mut id = None;
-                for meta_item in attr.meta_item_list().unwrap_or_default() {
-                    if meta_item.is_word() && id.is_none() {
-                        id = Some(meta_item.name().clone());
-                    } else {
-                        // FIXME better-encapsulate meta_item (don't directly access `node`)
-                        span_bug!(meta_item.span(), "unexpected meta-item {:?}", meta_item.node)
+                for list_item in attr.meta_item_list().unwrap_or_default() {
+                    match list_item.word() {
+                        Some(word) if id.is_none() => {
+                            id = Some(word.name().clone())
+                        },
+                        _ => {
+                            // FIXME better-encapsulate meta_item (don't directly access `node`)
+                            span_bug!(list_item.span(), "unexpected list-item {:?}", list_item.node)
+                        }
                     }
                 }
+
                 let id = id.unwrap_or(InternedString::new(ID));
                 self.if_this_changed.entry(id)
                                     .or_insert(FnvHashSet())
@@ -131,16 +134,21 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
             } else if attr.check_name(THEN_THIS_WOULD_NEED) {
                 let mut dep_node_interned = None;
                 let mut id = None;
-                for meta_item in attr.meta_item_list().unwrap_or_default() {
-                    if meta_item.is_word() && dep_node_interned.is_none() {
-                        dep_node_interned = Some(meta_item.name().clone());
-                    } else if meta_item.is_word() && id.is_none() {
-                        id = Some(meta_item.name().clone());
-                    } else {
-                        // FIXME better-encapsulate meta_item (don't directly access `node`)
-                        span_bug!(meta_item.span(), "unexpected meta-item {:?}", meta_item.node)
+                for list_item in attr.meta_item_list().unwrap_or_default() {
+                    match list_item.word() {
+                        Some(word) if dep_node_interned.is_none() => {
+                            dep_node_interned = Some(word.name().clone());
+                        },
+                        Some(word) if id.is_none() => {
+                            id = Some(word.name().clone())
+                        },
+                        _ => {
+                            // FIXME better-encapsulate meta_item (don't directly access `node`)
+                            span_bug!(list_item.span(), "unexpected meta-item {:?}", list_item.node)
+                        }
                     }
                 }
+
                 let dep_node = match dep_node_interned {
                     Some(ref n) => {
                         match DepNode::from_label_string(&n[..], def_id) {

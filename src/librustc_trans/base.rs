@@ -92,7 +92,6 @@ use std::rc::Rc;
 use std::str;
 use std::i32;
 use syntax_pos::{Span, DUMMY_SP};
-use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use rustc::hir;
 use syntax::ast;

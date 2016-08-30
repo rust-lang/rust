@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// rustc-env:RUST_NEW_ERROR_FORMAT
 
-// Issue #623 - non-string meta items are not serialized correctly;
-// for now just forbid them
+#![feature(const_fn)]
 
-#[foo = 1] //~ ERROR: non-string literals are not allowed in meta-items
+trait Foo {
+    fn f() -> u32;
+    const fn g();
+}
+
+impl Foo for u32 {
+    const fn f() -> u32 { 22 }
+    fn g() {}
+}
+
 fn main() { }

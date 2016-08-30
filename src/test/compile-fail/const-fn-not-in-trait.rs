@@ -14,8 +14,12 @@
 #![feature(const_fn)]
 
 trait Foo {
-    const fn f() -> u32; //~ ERROR trait fns cannot be declared const
-    const fn g() -> u32 { 0 } //~ ERROR trait fns cannot be declared const
+    const fn f() -> u32;
+    //~^ ERROR trait fns cannot be declared const
+    //~| NOTE trait fns cannot be const
+    const fn g() -> u32 { 0 }
+    //~^ ERROR trait fns cannot be declared const
+    //~| NOTE trait fns cannot be const
 }
 
 fn main() { }

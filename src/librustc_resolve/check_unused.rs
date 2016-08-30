@@ -101,7 +101,7 @@ impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
 
                     ViewPathList(_, ref list) => {
                         for i in list {
-                            self.check_import(i.node.id(), i.span);
+                            self.check_import(i.node.id, i.span);
                         }
                     }
                     ViewPathGlob(_) => {

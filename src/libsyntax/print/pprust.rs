@@ -16,7 +16,6 @@ use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use util::parser::AssocOp;
 use attr;
-use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
 use errors;
@@ -120,7 +119,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let prelude_import_meta = attr::mk_word_item(InternedString::new("prelude_import"));
+        let prelude_import_meta = attr::mk_list_word_item(InternedString::new("prelude_import"));
         let list = attr::mk_list_item(InternedString::new("feature"),
                                       vec![prelude_import_meta]);
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), list);
@@ -404,6 +403,10 @@ pub fn block_to_string(blk: &ast::Block) -> String {
         try!(s.ibox(0));
         s.print_block(blk)
     })
+}
+
+pub fn meta_list_item_to_string(li: &ast::NestedMetaItem) -> String {
+    to_string(|s| s.print_meta_list_item(li))
 }
 
 pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
@@ -764,6 +767,17 @@ pub trait PrintState<'a> {
         }
     }
 
+    fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) -> io::Result<()> {
+        match item.node {
+            ast::NestedMetaItemKind::MetaItem(ref mi) => {
+                self.print_meta_item(mi)
+            },
+            ast::NestedMetaItemKind::Literal(ref lit) => {
+                self.print_literal(lit)
+            }
+        }
+    }
+
     fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
         try!(self.ibox(INDENT_UNIT));
         match item.node {
@@ -780,7 +794,7 @@ pub trait PrintState<'a> {
                 try!(self.popen());
                 try!(self.commasep(Consistent,
                               &items[..],
-                              |s, i| s.print_meta_item(&i)));
+                              |s, i| s.print_meta_list_item(&i)));
                 try!(self.pclose());
             }
         }
@@ -1001,6 +1015,7 @@ impl<'a> State<'a> {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
                     },
+                    span: syntax_pos::DUMMY_SP,
                 };
                 try!(self.print_ty_fn(f.abi,
                                  f.unsafety,
@@ -1184,7 +1199,7 @@ impl<'a> State<'a> {
                 try!(self.print_fn(
                     decl,
                     unsafety,
-                    constness,
+                    constness.node,
                     abi,
                     Some(item.ident),
                     typarams,
@@ -1236,7 +1251,10 @@ impl<'a> State<'a> {
                 try!(self.head(&visibility_qualified(&item.vis, "struct")));
                 try!(self.print_struct(&struct_def, generics, item.ident, item.span, true));
             }
-
+            ast::ItemKind::Union(ref struct_def, ref generics) => {
+                try!(self.head(&visibility_qualified(&item.vis, "union")));
+                try!(self.print_struct(&struct_def, generics, item.ident, item.span, true));
+            }
             ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
                 try!(self.head(""));
                 try!(self.print_visibility(&item.vis));
@@ -1518,7 +1536,7 @@ impl<'a> State<'a> {
                             -> io::Result<()> {
         self.print_fn(&m.decl,
                       m.unsafety,
-                      m.constness,
+                      m.constness.node,
                       m.abi,
                       Some(ident),
                       &m.generics,
@@ -2878,26 +2896,13 @@ impl<'a> State<'a> {
                     try!(word(&mut self.s, "::{"));
                 }
                 try!(self.commasep(Inconsistent, &idents[..], |s, w| {
-                    match w.node {
-                        ast::PathListItemKind::Ident { name, rename, .. } => {
-                            try!(s.print_ident(name));
-                            if let Some(ident) = rename {
-                                try!(space(&mut s.s));
-                                try!(s.word_space("as"));
-                                try!(s.print_ident(ident));
-                            }
-                            Ok(())
-                        },
-                        ast::PathListItemKind::Mod { rename, .. } => {
-                            try!(word(&mut s.s, "self"));
-                            if let Some(ident) = rename {
-                                try!(space(&mut s.s));
-                                try!(s.word_space("as"));
-                                try!(s.print_ident(ident));
-                            }
-                            Ok(())
-                        }
+                    try!(s.print_ident(w.node.name));
+                    if let Some(ident) = w.node.rename {
+                        try!(space(&mut s.s));
+                        try!(s.word_space("as"));
+                        try!(s.print_ident(ident));
                     }
+                    Ok(())
                 }));
                 word(&mut self.s, "}")
             }
@@ -2982,6 +2987,7 @@ impl<'a> State<'a> {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),
             },
+            span: syntax_pos::DUMMY_SP,
         };
         try!(self.print_fn(decl,
                       unsafety,

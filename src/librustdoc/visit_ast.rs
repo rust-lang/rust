@@ -16,7 +16,6 @@ use std::mem;
 use syntax::abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax_pos::Span;
 
 use rustc::hir::map as hir_map;
@@ -189,7 +188,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             hir::ViewPathList(p, paths) => {
                 let mine = paths.into_iter().filter(|path| {
-                    !self.maybe_inline_local(path.node.id(), path.node.rename(),
+                    !self.maybe_inline_local(path.node.id, path.node.rename,
                                              false, om, please_inline)
                 }).collect::<hir::HirVec<hir::PathListItem>>();
 
@@ -333,8 +332,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let node = if item.vis == hir::Public {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
-                            Some(list) if &item.name()[..] == "doc" => {
-                                list.iter().any(|i| &i.name()[..] == "inline")
+                            Some(list) if item.check_name("doc") => {
+                                list.iter().any(|i| i.check_name("inline"))
                             }
                             _ => false,
                         }

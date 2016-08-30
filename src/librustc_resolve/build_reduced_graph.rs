@@ -32,9 +32,9 @@ use syntax::parse::token;
 
 use syntax::ast::{Block, Crate};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
-use syntax::ast::{Mutability, PathListItemKind};
-use syntax::ast::{StmtKind, TraitItemKind};
+use syntax::ast::{Mutability, StmtKind, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::parse::token::keywords;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -130,9 +130,10 @@ impl<'b> Resolver<'b> {
                     ViewPathList(_, ref source_items) => {
                         // Make sure there's at most one `mod` import in the list.
                         let mod_spans = source_items.iter().filter_map(|item| {
-                            match item.node {
-                                PathListItemKind::Mod { .. } => Some(item.span),
-                                _ => None,
+                            if item.node.name.name == keywords::SelfValue.name() {
+                                Some(item.span)
+                            } else {
+                                None
                             }
                         }).collect::<Vec<Span>>();
 
@@ -147,10 +148,12 @@ impl<'b> Resolver<'b> {
                         }
 
                         for source_item in source_items {
-                            let (module_path, name, rename) = match source_item.node {
-                                PathListItemKind::Ident { name, rename, .. } =>
-                                    (module_path.clone(), name.name, rename.unwrap_or(name).name),
-                                PathListItemKind::Mod { rename, .. } => {
+                            let node = source_item.node;
+                            let (module_path, name, rename) = {
+                                if node.name.name != keywords::SelfValue.name() {
+                                    let rename = node.rename.unwrap_or(node.name).name;
+                                    (module_path.clone(), node.name.name, rename)
+                                } else {
                                     let name = match module_path.last() {
                                         Some(name) => *name,
                                         None => {
@@ -164,12 +167,12 @@ impl<'b> Resolver<'b> {
                                         }
                                     };
                                     let module_path = module_path.split_last().unwrap().1;
-                                    let rename = rename.map(|i| i.name).unwrap_or(name);
+                                    let rename = node.rename.map(|i| i.name).unwrap_or(name);
                                     (module_path.to_vec(), name, rename)
                                 }
                             };
                             let subclass = ImportDirectiveSubclass::single(rename, name);
-                            let (span, id) = (source_item.span, source_item.node.id());
+                            let (span, id) = (source_item.span, source_item.node.id);
                             self.add_import_directive(module_path, subclass, span, id, vis);
                         }
                     }
@@ -271,6 +274,8 @@ impl<'b> Resolver<'b> {
                 let item_def_id = self.definitions.local_def_id(item.id);
                 self.structs.insert(item_def_id, field_names);
             }
+
+            ItemKind::Union(..) => panic!("`union` is not yet implemented"),
 
             ItemKind::DefaultImpl(_, _) | ItemKind::Impl(..) => {}
 

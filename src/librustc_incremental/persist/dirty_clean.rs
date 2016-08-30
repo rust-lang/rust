@@ -31,8 +31,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::Visitor;
 use rustc_data_structures::fnv::FnvHashSet;
-use syntax::ast::{self, Attribute, MetaItem};
-use syntax::attr::AttrMetaMethods;
+use syntax::ast::{self, Attribute, NestedMetaItem};
 use syntax::parse::token::InternedString;
 use rustc::ty::TyCtxt;
 
@@ -71,13 +70,17 @@ pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
-    fn expect_associated_value(&self, item: &MetaItem) -> InternedString {
+    fn expect_associated_value(&self, item: &NestedMetaItem) -> InternedString {
         if let Some(value) = item.value_str() {
             value
         } else {
-            self.tcx.sess.span_fatal(
-                item.span,
-                &format!("associated value expected for `{}`", item.name()));
+            let msg = if let Some(name) = item.name() {
+                format!("associated value expected for `{}`", name)
+            } else {
+                "expected an associated value".to_string()
+            };
+
+            self.tcx.sess.span_fatal(item.span, &msg);
         }
     }
 

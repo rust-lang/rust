@@ -18,8 +18,9 @@ use lint::{LintPass, EarlyLintPass, LateLintPass};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::ast;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
+use syntax::parse::token::keywords;
 use syntax::ptr::P;
 use syntax_pos::Span;
 
@@ -234,10 +235,13 @@ impl LintPass for UnusedAttributes {
 
 impl LateLintPass for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
+        debug!("checking attribute: {:?}", attr);
+
         // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty, _) in KNOWN_ATTRIBUTES {
             match ty {
                 AttributeType::Whitelisted if attr.check_name(name) => {
+                    debug!("{:?} is Whitelisted", name);
                     break;
                 },
                 _ => ()
@@ -247,11 +251,13 @@ impl LateLintPass for UnusedAttributes {
         let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
         for &(ref name, ty) in plugin_attributes.iter() {
             if ty == AttributeType::Whitelisted && attr.check_name(&name) {
+                debug!("{:?} (plugin attr) is whitelisted with ty {:?}", name, ty);
                 break;
             }
         }
 
         if !attr::is_used(attr) {
+            debug!("Emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
             let known_crate = KNOWN_ATTRIBUTES.iter().find(|&&(name, ty, _)| {
@@ -275,6 +281,8 @@ impl LateLintPass for UnusedAttributes {
                 };
                 cx.span_lint(UNUSED_ATTRIBUTES, attr.span, msg);
             }
+        } else {
+            debug!("Attr was used: {:?}", attr);
         }
     }
 }
@@ -392,13 +400,9 @@ impl LateLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         if let hir::ItemUse(ref view_path) = item.node {
             if let hir::ViewPathList(_, ref items) = view_path.node {
-                if items.len() == 1 {
-                    if let hir::PathListIdent {ref name, ..} = items[0].node {
-                        let m = format!("braces around {} is unnecessary",
-                                        name);
-                        cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
-                                     &m[..]);
-                    }
+                if items.len() == 1 && items[0].node.name != keywords::SelfValue.name() {
+                    let msg = format!("braces around {} is unnecessary", items[0].node.name);
+                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
                 }
             }
         }

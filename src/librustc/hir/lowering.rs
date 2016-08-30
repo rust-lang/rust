@@ -218,16 +218,10 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_path_list_item(&mut self, path_list_ident: &PathListItem) -> hir::PathListItem {
         Spanned {
-            node: match path_list_ident.node {
-                PathListItemKind::Ident { id, name, rename } => hir::PathListIdent {
-                    id: id,
-                    name: name.name,
-                    rename: rename.map(|x| x.name),
-                },
-                PathListItemKind::Mod { id, rename } => hir::PathListMod {
-                    id: id,
-                    rename: rename.map(|x| x.name),
-                },
+            node: hir::PathListItem_ {
+                id: path_list_ident.node.id,
+                name: path_list_ident.node.name.name,
+                rename: path_list_ident.node.rename.map(|rename| rename.name),
             },
             span: path_list_ident.span,
         }
@@ -466,6 +460,7 @@ impl<'a> LoweringContext<'a> {
             ty_params: self.lower_ty_params(&g.ty_params),
             lifetimes: self.lower_lifetime_defs(&g.lifetimes),
             where_clause: self.lower_where_clause(&g.where_clause),
+            span: g.span,
         }
     }
 
@@ -643,6 +638,7 @@ impl<'a> LoweringContext<'a> {
                 let struct_def = self.lower_variant_data(struct_def);
                 hir::ItemStruct(struct_def, self.lower_generics(generics))
             }
+            ItemKind::Union(..) => panic!("`union` is not yet implemented"),
             ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
                 hir::ItemDefaultImpl(self.lower_unsafety(unsafety),
                                      self.lower_trait_ref(trait_ref))
@@ -809,8 +805,8 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_constness(&mut self, c: Constness) -> hir::Constness {
-        match c {
+    fn lower_constness(&mut self, c: Spanned<Constness>) -> hir::Constness {
+        match c.node {
             Constness::Const => hir::Constness::Const,
             Constness::NotConst => hir::Constness::NotConst,
         }

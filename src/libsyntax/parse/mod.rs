@@ -674,11 +674,11 @@ pub fn integer_lit(s: &str,
 mod tests {
     use super::*;
     use std::rc::Rc;
-    use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
+    use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
     use codemap::Spanned;
     use ast::{self, PatKind};
     use abi::Abi;
-    use attr::{first_attr_value_str_by_name, AttrMetaMethods};
+    use attr::first_attr_value_str_by_name;
     use parse;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
@@ -937,7 +937,10 @@ mod tests {
                                 variadic: false
                             }),
                                     ast::Unsafety::Normal,
-                                    ast::Constness::NotConst,
+                                    Spanned {
+                                        span: sp(0,2),
+                                        node: ast::Constness::NotConst,
+                                    },
                                     Abi::Rust,
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),
@@ -945,7 +948,8 @@ mod tests {
                                         where_clause: ast::WhereClause {
                                             id: ast::DUMMY_NODE_ID,
                                             predicates: Vec::new(),
-                                        }
+                                        },
+                                        span: syntax_pos::DUMMY_SP,
                                     },
                                     P(ast::Block {
                                         stmts: vec!(ast::Stmt {

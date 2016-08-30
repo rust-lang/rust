@@ -17,7 +17,7 @@ extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::ast::{self, Item, MetaItem, ImplItem, TraitItem, ItemKind};
+use syntax::ast::{self, Item, MetaItem, ItemKind};
 use syntax::ext::base::*;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
@@ -62,8 +62,8 @@ fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
 }
 
 fn expand_into_foo_multi(cx: &mut ExtCtxt,
-                         sp: Span,
-                         attr: &MetaItem,
+                         _sp: Span,
+                         _attr: &MetaItem,
                          it: Annotatable) -> Annotatable {
     match it {
         Annotatable::Item(it) => {
@@ -72,7 +72,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 ..(*quote_item!(cx, enum Foo2 { Bar2, Baz2 }).unwrap()).clone()
             }))
         }
-        Annotatable::ImplItem(it) => {
+        Annotatable::ImplItem(_) => {
             quote_item!(cx, impl X { fn foo(&self) -> i32 { 42 } }).unwrap().and_then(|i| {
                 match i.node {
                     ItemKind::Impl(_, _, _, _, _, mut items) => {
@@ -82,7 +82,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 }
             })
         }
-        Annotatable::TraitItem(it) => {
+        Annotatable::TraitItem(_) => {
             quote_item!(cx, trait X { fn foo(&self) -> i32 { 0 } }).unwrap().and_then(|i| {
                 match i.node {
                     ItemKind::Trait(_, _, _, mut items) => {
@@ -97,15 +97,15 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
 
 // Create a duplicate of the annotatable, based on the MetaItem
 fn expand_duplicate(cx: &mut ExtCtxt,
-                    sp: Span,
+                    _sp: Span,
                     mi: &MetaItem,
                     it: &Annotatable,
                     push: &mut FnMut(Annotatable))
 {
     let copy_name = match mi.node {
         ast::MetaItemKind::List(_, ref xs) => {
-            if let ast::MetaItemKind::Word(ref w) = xs[0].node {
-                token::str_to_ident(&w)
+            if let Some(word) = xs[0].word() {
+                token::str_to_ident(&word.name())
             } else {
                 cx.span_err(mi.span, "Expected word");
                 return;

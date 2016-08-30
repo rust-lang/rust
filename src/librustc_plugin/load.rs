@@ -20,8 +20,6 @@ use std::env;
 use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax::ptr::P;
-use syntax::attr::AttrMetaMethods;
 use syntax_pos::{Span, COMMAND_LINE_SP};
 
 /// Pointer to a registrar function.
@@ -30,7 +28,7 @@ pub type PluginRegistrarFun =
 
 pub struct PluginRegistrar {
     pub fun: PluginRegistrarFun,
-    pub args: Vec<P<ast::MetaItem>>,
+    pub args: Vec<ast::NestedMetaItem>,
 }
 
 struct PluginLoader<'a> {
@@ -69,13 +67,14 @@ pub fn load_plugins(sess: &Session,
             };
 
             for plugin in plugins {
-                if plugin.value_str().is_some() {
-                    call_malformed_plugin_attribute(sess, attr.span);
-                    continue;
+                // plugins must have a name and can't be key = value
+                match plugin.name() {
+                    Some(ref name) if !plugin.is_value_str() => {
+                        let args = plugin.meta_item_list().map(ToOwned::to_owned);
+                        loader.load_plugin(plugin.span, name, args.unwrap_or_default());
+                    },
+                    _ => call_malformed_plugin_attribute(sess, attr.span),
                 }
-
-                let args = plugin.meta_item_list().map(ToOwned::to_owned).unwrap_or_default();
-                loader.load_plugin(plugin.span, &plugin.name(), args);
             }
         }
     }
@@ -102,7 +101,7 @@ impl<'a> PluginLoader<'a> {
         }
     }
 
-    fn load_plugin(&mut self, span: Span, name: &str, args: Vec<P<ast::MetaItem>>) {
+    fn load_plugin(&mut self, span: Span, name: &str, args: Vec<ast::NestedMetaItem>) {
         let registrar = self.reader.find_plugin_registrar(span, name);
 
         if let Some((lib, svh, index)) = registrar {

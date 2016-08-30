@@ -112,7 +112,6 @@ use std::ops::Deref;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token::{self, InternedString, keywords};
@@ -835,13 +834,9 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
                     check_const(ccx, &expr, trait_item.id)
                 }
                 hir::MethodTraitItem(ref sig, Some(ref body)) => {
-                    check_trait_fn_not_const(ccx, trait_item.span, sig.constness);
-
                     check_bare_fn(ccx, &sig.decl, body, trait_item.id);
                 }
-                hir::MethodTraitItem(ref sig, None) => {
-                    check_trait_fn_not_const(ccx, trait_item.span, sig.constness);
-                }
+                hir::MethodTraitItem(_, None) |
                 hir::ConstTraitItem(_, None) |
                 hir::TypeTraitItem(..) => {
                     // Nothing to do.
@@ -850,22 +845,6 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         }
       }
       _ => {/* nothing to do */ }
-    }
-}
-
-fn check_trait_fn_not_const<'a,'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                     span: Span,
-                                     constness: hir::Constness)
-{
-    match constness {
-        hir::Constness::NotConst => {
-            // good
-        }
-        hir::Constness::Const => {
-            struct_span_err!(ccx.tcx.sess, span, E0379, "trait fns cannot be declared const")
-                .span_label(span, &format!("trait fns cannot be const"))
-                .emit()
-        }
     }
 }
 
@@ -1026,9 +1005,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                          err.emit()
                     }
                 }
-                hir::ImplItemKind::Method(ref sig, ref body) => {
-                    check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
-
+                hir::ImplItemKind::Method(_, ref body) => {
                     let impl_method = match ty_impl_item {
                         ty::MethodTraitItem(ref mti) => mti,
                         _ => span_bug!(impl_item.span, "non-method impl-item for method")
