@@ -27,6 +27,13 @@ impl Condvar {
     /// first used with any of the functions below.
     pub const fn new() -> Condvar { Condvar(imp::Condvar::new()) }
 
+    /// Prepares the condition variable for use.
+    ///
+    /// This should be called once the condition variable is at a stable memory
+    /// address.
+    #[inline]
+    pub unsafe fn init(&mut self) { self.0.init() }
+
     /// Signals one waiter on this condition variable to wake up.
     #[inline]
     pub unsafe fn notify_one(&self) { self.0.notify_one() }
