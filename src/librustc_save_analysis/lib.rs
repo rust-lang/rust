@@ -141,6 +141,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                     value: make_signature(decl, generics),
                     visibility: From::from(&item.vis),
+                    parent: None,
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -163,6 +164,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
+                    parent: None,
                     value: value,
                     type_value: ty_to_string(&typ),
                     visibility: From::from(&item.vis),
@@ -179,6 +181,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
+                    parent: None,
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
                     visibility: From::from(&item.vis),
@@ -284,6 +287,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 qualname: qualname,
                 span: sub_span.unwrap(),
                 scope: scope,
+                parent: Some(scope),
                 value: "".to_owned(),
                 type_value: typ,
                 visibility: From::from(&field.vis),
@@ -366,6 +370,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
         filter!(self.span_utils, sub_span, span, None);
+        let parent_scope = self.enclosing_scope(id);
         Some(FunctionData {
             id: id,
             name: name.to_string(),
@@ -376,6 +381,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             // FIXME you get better data here by using the visitor.
             value: String::new(),
             visibility: vis,
+            parent: Some(parent_scope),
         })
     }
 

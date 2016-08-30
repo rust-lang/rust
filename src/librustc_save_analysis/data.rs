@@ -166,6 +166,7 @@ pub struct FunctionData {
     pub scope: NodeId,
     pub value: String,
     pub visibility: Visibility,
+    pub parent: Option<NodeId>,
 }
 
 /// Data about a function call.
@@ -292,7 +293,8 @@ pub struct StructVariantData {
     pub qualname: String,
     pub type_value: String,
     pub value: String,
-    pub scope: NodeId
+    pub scope: NodeId,
+    pub parent: Option<NodeId>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -315,7 +317,8 @@ pub struct TupleVariantData {
     pub qualname: String,
     pub type_value: String,
     pub value: String,
-    pub scope: NodeId
+    pub scope: NodeId,
+    pub parent: Option<NodeId>,
 }
 
 /// Data for a typedef.
@@ -327,6 +330,7 @@ pub struct TypeDefData {
     pub qualname: String,
     pub value: String,
     pub visibility: Visibility,
+    pub parent: Option<NodeId>,
 }
 
 /// Data for a reference to a type or trait.
@@ -366,6 +370,7 @@ pub struct VariableData {
     pub qualname: String,
     pub span: Span,
     pub scope: NodeId,
+    pub parent: Option<NodeId>,
     pub value: String,
     pub type_value: String,
     pub visibility: Visibility,
