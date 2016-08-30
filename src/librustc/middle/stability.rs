@@ -27,7 +27,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
-use syntax::attr::{self, Stability, Deprecation, AttrMetaMethods};
+use syntax::attr::{self, Stability, Deprecation};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use hir;
@@ -631,7 +631,7 @@ pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<DeprecationEntry>)) {
-    match tcx.expect_def(item.node.id()) {
+    match tcx.expect_def(item.node.id) {
         Def::PrimTy(..) => {}
         def => {
             maybe_do_stability_check(tcx, def.def_id(), item.span, cb);

@@ -32,6 +32,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
+        supports_unions: false,
         methods: vec![MethodDef {
                           name: "cmp",
                           generics: LifetimeBounds::empty(),
@@ -104,7 +105,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
         };
 
         let eq_arm = cx.arm(span,
-                            vec![cx.pat_enum(span, equals_path.clone(), vec![])],
+                            vec![cx.pat_path(span, equals_path.clone())],
                             old);
         let neq_arm = cx.arm(span,
                              vec![cx.pat_ident(span, test_id)],

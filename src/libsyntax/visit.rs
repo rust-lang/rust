@@ -31,7 +31,7 @@ use codemap::Spanned;
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Ident, &'a Generics, Unsafety, Constness, Abi, &'a Visibility),
+    ItemFn(Ident, &'a Generics, Unsafety, Spanned<Constness>, Abi, &'a Visibility),
 
     /// fn foo(&self)
     Method(Ident, &'a MethodSig, Option<&'a Visibility>),
@@ -278,7 +278,8 @@ pub fn walk_item<V: Visitor>(visitor: &mut V, item: &Item) {
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_impl_item, impl_items);
         }
-        ItemKind::Struct(ref struct_definition, ref generics) => {
+        ItemKind::Struct(ref struct_definition, ref generics) |
+        ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_variant_data(struct_definition, item.ident,
                                      generics, item.id, item.span);
@@ -367,8 +368,8 @@ pub fn walk_path<V: Visitor>(visitor: &mut V, path: &Path) {
 }
 
 pub fn walk_path_list_item<V: Visitor>(visitor: &mut V, _prefix: &Path, item: &PathListItem) {
-    walk_opt_ident(visitor, item.span, item.node.name());
-    walk_opt_ident(visitor, item.span, item.node.rename());
+    visitor.visit_ident(item.span, item.node.name);
+    walk_opt_ident(visitor, item.span, item.node.rename);
 }
 
 pub fn walk_path_segment<V: Visitor>(visitor: &mut V, path_span: Span, segment: &PathSegment) {

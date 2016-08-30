@@ -30,7 +30,7 @@ use syntax::tokenstream;
 use rustc_plugin::Registry;
 
 struct Expander {
-    args: Vec<P<ast::MetaItem>>,
+    args: Vec<ast::NestedMetaItem>,
 }
 
 impl TTMacroExpander for Expander {
@@ -38,7 +38,7 @@ impl TTMacroExpander for Expander {
                    ecx: &'cx mut ExtCtxt,
                    sp: Span,
                    _: &[tokenstream::TokenTree]) -> Box<MacResult+'cx> {
-        let args = self.args.iter().map(|i| pprust::meta_item_to_string(&*i))
+        let args = self.args.iter().map(|i| pprust::meta_list_item_to_string(i))
             .collect::<Vec<_>>().join(", ");
         let interned = token::intern_and_get_ident(&args[..]);
         MacEager::expr(ecx.expr_str(sp, interned))

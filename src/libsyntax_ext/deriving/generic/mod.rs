@@ -194,10 +194,9 @@ use std::vec;
 use syntax::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind, VariantData};
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{self, respan};
+use syntax::codemap::{self, dummy_spanned, respan};
 use syntax::util::move_map::MoveMap;
 use syntax::parse::token::{InternedString, keywords};
 use syntax::ptr::P;
@@ -228,6 +227,9 @@ pub struct TraitDef<'a> {
 
     /// Is it an `unsafe` trait?
     pub is_unsafe: bool,
+
+    /// Can this trait be derived for unions?
+    pub supports_unions: bool,
 
     pub methods: Vec<MethodDef<'a>>,
 
@@ -294,8 +296,8 @@ pub struct FieldInfo<'a> {
 
 /// Fields for a static method
 pub enum StaticFields {
-    /// Tuple structs/enum variants like this.
-    Unnamed(Vec<Span>),
+    /// Tuple and unit structs/enum variants like this.
+    Unnamed(Vec<Span>, bool /*is tuple*/),
     /// Normal structs/struct variants.
     Named(Vec<(Ident, Span)>),
 }
@@ -488,7 +490,7 @@ impl<'a> TraitDef<'a> {
             }
         });
 
-        let Generics { mut lifetimes, ty_params, mut where_clause } = self.generics
+        let Generics { mut lifetimes, ty_params, mut where_clause, span } = self.generics
             .to_generics(cx, self.span, type_ident, generics);
         let mut ty_params = ty_params.into_vec();
 
@@ -590,6 +592,7 @@ impl<'a> TraitDef<'a> {
             lifetimes: lifetimes,
             ty_params: P::from_vec(ty_params),
             where_clause: where_clause,
+            span: span,
         };
 
         // Create the reference to the trait.
@@ -623,7 +626,7 @@ impl<'a> TraitDef<'a> {
         let unused_qual = cx.attribute(self.span,
                                        cx.meta_list(self.span,
                                                     InternedString::new("allow"),
-                                                    vec![cx.meta_word(self.span,
+                                                    vec![cx.meta_list_item_word(self.span,
                                            InternedString::new("unused_qualifications"))]));
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
@@ -901,7 +904,8 @@ impl<'a> MethodDef<'a> {
                                                 generics: fn_generics,
                                                 abi: abi,
                                                 unsafety: unsafety,
-                                                constness: ast::Constness::NotConst,
+                                                constness:
+                                                    dummy_spanned(ast::Constness::NotConst),
                                                 decl: fn_decl,
                                             },
                                             body_block),
@@ -1470,7 +1474,7 @@ impl<'a> TraitDef<'a> {
             (_, false) => Named(named_idents),
             // empty structs
             _ if struct_def.is_struct() => Named(named_idents),
-            _ => Unnamed(just_spans),
+            _ => Unnamed(just_spans, struct_def.is_tuple()),
         }
     }
 
@@ -1510,26 +1514,32 @@ impl<'a> TraitDef<'a> {
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl);
-        let pattern = if struct_def.is_struct() {
-            let field_pats = subpats.into_iter()
-                .zip(&ident_exprs)
-                .map(|(pat, &(sp, ident, _, _))| {
-                    if ident.is_none() {
-                        cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
-                    }
-                    codemap::Spanned {
-                        span: pat.span,
-                        node: ast::FieldPat {
-                            ident: ident.unwrap(),
-                            pat: pat,
-                            is_shorthand: false,
-                        },
-                    }
-                })
-                .collect();
-            cx.pat_struct(self.span, struct_path, field_pats)
-        } else {
-            cx.pat_enum(self.span, struct_path, subpats)
+        let pattern = match *struct_def {
+            VariantData::Struct(..) => {
+                let field_pats = subpats.into_iter()
+                    .zip(&ident_exprs)
+                    .map(|(pat, &(sp, ident, _, _))| {
+                        if ident.is_none() {
+                            cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
+                        }
+                        codemap::Spanned {
+                            span: pat.span,
+                            node: ast::FieldPat {
+                                ident: ident.unwrap(),
+                                pat: pat,
+                                is_shorthand: false,
+                            },
+                        }
+                    })
+                    .collect();
+                cx.pat_struct(self.span, struct_path, field_pats)
+            }
+            VariantData::Tuple(..) => {
+                cx.pat_tuple_struct(self.span, struct_path, subpats)
+            }
+            VariantData::Unit(..) => {
+                cx.pat_path(self.span, struct_path)
+            }
         };
 
         (pattern, ident_exprs)

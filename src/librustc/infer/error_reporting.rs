@@ -1030,7 +1030,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                     = node_inner.expect("expect item fn");
         let rebuilder = Rebuilder::new(self.tcx, fn_decl, generics, same_regions, &life_giver);
         let (fn_decl, generics) = rebuilder.rebuild();
-        self.give_expl_lifetime_param(err, &fn_decl, unsafety, constness, name, &generics, span);
+        self.give_expl_lifetime_param(
+            err, &fn_decl, unsafety, constness, name, &generics, span);
     }
 
     pub fn issue_32330_warnings(&self, span: Span, issue32330s: &[ty::Issue32330]) {
@@ -1297,6 +1298,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
             lifetimes: lifetimes.into(),
             ty_params: ty_params,
             where_clause: where_clause,
+            span: generics.span,
         }
     }
 

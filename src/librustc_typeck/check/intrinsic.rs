@@ -52,7 +52,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let i_n_tps = i_ty.generics.types.len();
     if i_n_tps != n_tps {
         let span = match it.node {
-            hir::ForeignItemFn(_, ref generics) => generics.span().unwrap_or(it.span),
+            hir::ForeignItemFn(_, ref generics) => generics.span,
             hir::ForeignItemStatic(_, _) => it.span
         };
 

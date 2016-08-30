@@ -444,12 +444,12 @@ pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     }
 }
 
-pub fn walk_path_list_item<'v, V: Visitor<'v>>(visitor: &mut V,
-                                               _prefix: &'v Path,
-                                               item: &'v PathListItem) {
-    visitor.visit_id(item.node.id());
-    walk_opt_name(visitor, item.span, item.node.name());
-    walk_opt_name(visitor, item.span, item.node.rename());
+pub fn walk_path_list_item<'v, V>(visitor: &mut V, _prefix: &'v Path, item: &'v PathListItem)
+    where V: Visitor<'v>,
+{
+    visitor.visit_id(item.node.id);
+    visitor.visit_name(item.span, item.node.name);
+    walk_opt_name(visitor, item.span, item.node.rename);
 }
 
 pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,

@@ -13,7 +13,6 @@ use ast::{MacStmtStyle, Stmt, StmtKind, ItemKind};
 use ast;
 use ext::hygiene::Mark;
 use attr::{self, HasAttrs};
-use attr::AttrMetaMethods;
 use codemap::{dummy_spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use syntax_pos::{self, Span, ExpnId};
 use config::StripUnconfigured;

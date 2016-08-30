@@ -19,7 +19,6 @@ use rustc::util::nodemap::{FnvHashSet, FnvHashMap};
 use syntax::parse::token;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::ext;
 use syntax_pos::Span;
 
@@ -64,8 +63,8 @@ impl<'a> ext::base::MacroLoader for MacroLoader<'a> {
                     }
                     if let (Some(sel), Some(names)) = (import.as_mut(), names) {
                         for attr in names {
-                            if attr.is_word() {
-                                sel.insert(attr.name().clone(), attr.span());
+                            if let Some(word) = attr.word() {
+                                sel.insert(word.name().clone(), attr.span());
                             } else {
                                 span_err!(self.sess, attr.span(), E0466, "bad macro import");
                             }
@@ -82,8 +81,8 @@ impl<'a> ext::base::MacroLoader for MacroLoader<'a> {
                     };
 
                     for attr in names {
-                        if attr.is_word() {
-                            reexport.insert(attr.name().clone(), attr.span());
+                        if let Some(word) = attr.word() {
+                            reexport.insert(word.name().clone(), attr.span());
                         } else {
                             call_bad_macro_reexport(self.sess, attr.span());
                         }

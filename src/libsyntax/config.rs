@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use attr::{AttrMetaMethods, HasAttrs};
+use attr::HasAttrs;
 use feature_gate::{emit_feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
 use fold::Folder;
 use {fold, attr};
@@ -52,6 +52,7 @@ impl<'a> StripUnconfigured<'a> {
                 return None;
             }
         };
+
         let (cfg, mi) = match (attr_list.len(), attr_list.get(0), attr_list.get(1)) {
             (2, Some(cfg), Some(mi)) => (cfg, mi),
             _ => {
@@ -61,15 +62,24 @@ impl<'a> StripUnconfigured<'a> {
             }
         };
 
-        if attr::cfg_matches(self.config, &cfg, self.sess, self.features) {
-            self.process_cfg_attr(respan(mi.span, ast::Attribute_ {
-                id: attr::mk_attr_id(),
-                style: attr.node.style,
-                value: mi.clone(),
-                is_sugared_doc: false,
-            }))
-        } else {
-            None
+        use attr::cfg_matches;
+        match (cfg.meta_item(), mi.meta_item()) {
+            (Some(cfg), Some(mi)) =>
+                if cfg_matches(self.config, &cfg, self.sess, self.features) {
+                    self.process_cfg_attr(respan(mi.span, ast::Attribute_ {
+                        id: attr::mk_attr_id(),
+                        style: attr.node.style,
+                        value: mi.clone(),
+                        is_sugared_doc: false,
+                    }))
+                } else {
+                    None
+                },
+            _ => {
+                let msg = "unexpected literal(s) in `#[cfg_attr(<cfg pattern>, <attr>)]`";
+                self.sess.span_diagnostic.span_err(attr.span, msg);
+                None
+            }
         }
     }
 
@@ -91,7 +101,12 @@ impl<'a> StripUnconfigured<'a> {
                 return true;
             }
 
-            attr::cfg_matches(self.config, &mis[0], self.sess, self.features)
+            if !mis[0].is_meta_item() {
+                self.sess.span_diagnostic.span_err(mis[0].span, "unexpected literal");
+                return true;
+            }
+
+            attr::cfg_matches(self.config, mis[0].meta_item().unwrap(), self.sess, self.features)
         })
     }
 
@@ -164,6 +179,9 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
         let item = match item {
             ast::ItemKind::Struct(def, generics) => {
                 ast::ItemKind::Struct(fold_struct(self, def), generics)
+            }
+            ast::ItemKind::Union(def, generics) => {
+                ast::ItemKind::Union(fold_struct(self, def), generics)
             }
             ast::ItemKind::Enum(def, generics) => {
                 let variants = def.variants.into_iter().filter_map(|v| {

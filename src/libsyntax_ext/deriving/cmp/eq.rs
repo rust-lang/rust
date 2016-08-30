@@ -40,7 +40,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
     }
 
     let inline = cx.meta_word(span, InternedString::new("inline"));
-    let hidden = cx.meta_word(span, InternedString::new("hidden"));
+    let hidden = cx.meta_list_item_word(span, InternedString::new("hidden"));
     let doc = cx.meta_list(span, InternedString::new("doc"), vec![hidden]);
     let attrs = vec![cx.attribute(span, inline), cx.attribute(span, doc)];
     let trait_def = TraitDef {
@@ -50,6 +50,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
+        supports_unions: false,
         methods: vec![MethodDef {
                           name: "assert_receiver_is_total_eq",
                           generics: LifetimeBounds::empty(),

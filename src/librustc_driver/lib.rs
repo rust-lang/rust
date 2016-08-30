@@ -95,7 +95,6 @@ use std::thread;
 use rustc::session::early_error;
 
 use syntax::{ast, json};
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
@@ -655,17 +654,19 @@ impl RustcDefaultCalls {
                         if !allow_unstable_cfg && GatedCfg::gate(&*cfg).is_some() {
                             continue;
                         }
+
                         if cfg.is_word() {
                             println!("{}", cfg.name());
-                        } else if cfg.is_value_str() {
-                            if let Some(s) = cfg.value_str() {
-                                println!("{}=\"{}\"", cfg.name(), s);
-                            }
+                        } else if let Some(s) = cfg.value_str() {
+                            println!("{}=\"{}\"", cfg.name(), s);
                         } else if cfg.is_meta_item_list() {
                             // Right now there are not and should not be any
                             // MetaItemKind::List items in the configuration returned by
                             // `build_configuration`.
-                            panic!("MetaItemKind::List encountered in default cfg")
+                            panic!("Found an unexpected list in cfg attribute '{}'!", cfg.name())
+                        } else {
+                            // There also shouldn't be literals.
+                            panic!("Found an unexpected literal in cfg attribute '{}'!", cfg.name())
                         }
                     }
                 }

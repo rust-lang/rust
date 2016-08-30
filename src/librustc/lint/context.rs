@@ -38,7 +38,7 @@ use util::nodemap::FnvHashMap;
 use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax_pos::Span;
@@ -372,12 +372,10 @@ pub fn gather_attr(attr: &ast::Attribute)
         return out;
     };
 
-    for meta in metas {
-        out.push(if meta.is_word() {
-            Ok((meta.name().clone(), level, meta.span))
-        } else {
-            Err(meta.span)
-        });
+    for li in metas {
+        out.push(li.word().map_or(Err(li.span), |word| {
+            Ok((word.name().clone(), level, word.span))
+        }));
     }
 
     out

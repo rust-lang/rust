@@ -17,7 +17,6 @@
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 
 use common::SharedCrateContext;
 use monomorphize::Instance;

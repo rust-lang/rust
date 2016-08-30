@@ -26,11 +26,9 @@ use self::AttributeType::*;
 use self::AttributeGate::*;
 
 use abi::Abi;
-use ast::{NodeId, PatKind};
-use ast;
+use ast::{self, NodeId, PatKind};
 use attr;
-use attr::AttrMetaMethods;
-use codemap::CodeMap;
+use codemap::{CodeMap, Spanned};
 use syntax_pos::Span;
 use errors::Handler;
 use visit::{self, FnKind, Visitor};
@@ -280,7 +278,10 @@ declare_features! (
     (active, relaxed_adts, "1.12.0", Some(35626)),
 
     // The `!` type
-    (active, never_type, "1.13.0", Some(35121))
+    (active, never_type, "1.13.0", Some(35121)),
+
+    // Allows all literals in attribute lists and values of key-value pairs.
+    (active, attr_literals, "1.13.0", Some(34981))
 );
 
 declare_features! (
@@ -830,10 +831,33 @@ impl<'a> PostExpansionVisitor<'a> {
     }
 }
 
+fn contains_novel_literal(item: &ast::MetaItem) -> bool {
+    use ast::MetaItemKind::*;
+    use ast::NestedMetaItemKind::*;
+
+    match item.node {
+        Word(..) => false,
+        NameValue(_, ref lit) => !lit.node.is_str(),
+        List(_, ref list) => list.iter().any(|li| {
+            match li.node {
+                MetaItem(ref mi) => contains_novel_literal(&**mi),
+                Literal(_) => true,
+            }
+        }),
+    }
+}
+
 impl<'a> Visitor for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if !self.context.cm.span_allows_unstable(attr.span) {
+            // check for gated attributes
             self.context.check_attribute(attr, false);
+        }
+
+        if contains_novel_literal(&*(attr.node.value)) {
+            gate_feature_post!(&self, attr_literals, attr.span,
+                               "non-string literals in attributes, or string \
+                               literals in top-level positions, are experimental");
         }
     }
 
@@ -894,7 +918,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 for attr in &i.attrs {
                     if attr.name() == "repr" {
                         for item in attr.meta_item_list().unwrap_or(&[]) {
-                            if item.name() == "simd" {
+                            if item.check_name("simd") {
                                 gate_feature_post!(&self, repr_simd, i.span,
                                                    "SIMD types are experimental \
                                                     and possibly buggy");
@@ -1046,7 +1070,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 _node_id: NodeId) {
         // check for const fn declarations
         match fn_kind {
-            FnKind::ItemFn(_, _, _, ast::Constness::Const, _, _) => {
+            FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _) => {
                 gate_feature_post!(&self, const_fn, span, "const fn is unstable");
             }
             _ => {
@@ -1078,7 +1102,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                 if block.is_none() {
                     self.check_abi(sig.abi, ti.span);
                 }
-                if sig.constness == ast::Constness::Const {
+                if sig.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
                 }
             }
@@ -1105,7 +1129,7 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                                   "associated constants are experimental")
             }
             ast::ImplItemKind::Method(ref sig, _) => {
-                if sig.constness == ast::Constness::Const {
+                if sig.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ii.span, "const fn is unstable");
                 }
             }
@@ -1154,13 +1178,14 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
             }
             Some(list) => {
                 for mi in list {
-                    let name = if mi.is_word() {
-                                   mi.name()
-                               } else {
-                                   span_err!(span_handler, mi.span, E0556,
-                                             "malformed feature, expected just one word");
-                                   continue
-                               };
+                    let name = if let Some(word) = mi.word() {
+                        word.name()
+                    } else {
+                        span_err!(span_handler, mi.span, E0556,
+                                  "malformed feature, expected just one word");
+                        continue
+                    };
+
                     if let Some(&(_, _, _, setter)) = ACTIVE_FEATURES.iter()
                         .find(|& &(n, _, _, _)| name == n) {
                         *(setter(&mut features)) = true;

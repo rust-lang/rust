@@ -26,10 +26,10 @@ pub use self::Visibility::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Spanned;
-use syntax::parse::token::{self, InternedString, keywords};
+use syntax::parse::token::keywords;
 use syntax::ptr::P;
+use syntax::print::pprust as syntax_pprust;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc_trans::back::link;
@@ -501,11 +501,24 @@ impl Attributes for [Attribute] {
     }
 }
 
+/// This is a flattened version of the AST's Attribute + MetaItem.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub enum Attribute {
     Word(String),
     List(String, Vec<Attribute>),
-    NameValue(String, String)
+    NameValue(String, String),
+    Literal(String),
+}
+
+impl Clean<Attribute> for ast::NestedMetaItem {
+    fn clean(&self, cx: &DocContext) -> Attribute {
+        if let Some(mi) = self.meta_item() {
+            mi.clean(cx)
+        } else { // must be a literal
+            let lit = self.literal().unwrap();
+            Literal(syntax_pprust::lit_to_string(lit))
+        }
+    }
 }
 
 impl Clean<Attribute> for ast::MetaItem {
@@ -525,50 +538,6 @@ impl Clean<Attribute> for ast::Attribute {
     fn clean(&self, cx: &DocContext) -> Attribute {
         self.with_desugared_doc(|a| a.meta().clean(cx))
     }
-}
-
-// This is a rough approximation that gets us what we want.
-impl attr::AttrMetaMethods for Attribute {
-    fn name(&self) -> InternedString {
-        match *self {
-            Word(ref n) | List(ref n, _) | NameValue(ref n, _) => {
-                token::intern_and_get_ident(n)
-            }
-        }
-    }
-
-    fn value_str(&self) -> Option<InternedString> {
-        match *self {
-            NameValue(_, ref v) => {
-                Some(token::intern_and_get_ident(v))
-            }
-            _ => None,
-        }
-    }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
-
-    fn is_word(&self) -> bool {
-      match *self {
-        Word(_) => true,
-        _ => false,
-      }
-    }
-
-    fn is_value_str(&self) -> bool {
-      match *self {
-        NameValue(..) => true,
-        _ => false,
-      }
-    }
-
-    fn is_meta_item_list(&self) -> bool {
-      match *self {
-        List(..) => true,
-        _ => false,
-      }
-    }
-
-    fn span(&self) -> syntax_pos::Span { unimplemented!() }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
@@ -2534,8 +2503,8 @@ impl Clean<Vec<Item>> for doctree::Import {
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let denied = self.vis != hir::Public || self.attrs.iter().any(|a| {
             &a.name()[..] == "doc" && match a.meta_item_list() {
-                Some(l) => attr::contains_name(l, "no_inline") ||
-                           attr::contains_name(l, "hidden"),
+                Some(l) => attr::list_contains_name(l, "no_inline") ||
+                           attr::list_contains_name(l, "hidden"),
                 None => false,
             }
         });
@@ -2551,7 +2520,7 @@ impl Clean<Vec<Item>> for doctree::Import {
                 let remaining = if !denied {
                     let mut remaining = vec![];
                     for path in list {
-                        match inline::try_inline(cx, path.node.id(), path.node.rename()) {
+                        match inline::try_inline(cx, path.node.id, path.node.rename) {
                             Some(items) => {
                                 ret.extend(items);
                             }
@@ -2619,17 +2588,10 @@ pub struct ViewListIdent {
 
 impl Clean<ViewListIdent> for hir::PathListItem {
     fn clean(&self, cx: &DocContext) -> ViewListIdent {
-        match self.node {
-            hir::PathListIdent { id, name, rename } => ViewListIdent {
-                name: name.clean(cx),
-                rename: rename.map(|r| r.clean(cx)),
-                source: resolve_def(cx, id)
-            },
-            hir::PathListMod { id, rename } => ViewListIdent {
-                name: "self".to_string(),
-                rename: rename.map(|r| r.clean(cx)),
-                source: resolve_def(cx, id)
-            }
+        ViewListIdent {
+            name: self.node.name.clean(cx),
+            rename: self.node.rename.map(|r| r.clean(cx)),
+            source: resolve_def(cx, self.node.id)
         }
     }
 }

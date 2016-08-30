@@ -176,6 +176,13 @@ fn some_func() {
 ```
 "##,
 
+E0379: r##"
+Trait methods cannot be declared `const` by design. For more information, see
+[RFC 911].
+
+[RFC 911]: https://github.com/rust-lang/rfcs/pull/911
+"##,
+
 E0449: r##"
 A visibility qualifier was used when it was unnecessary. Erroneous code
 examples:

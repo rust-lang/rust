@@ -41,7 +41,7 @@ use std::io::{Cursor, SeekFrom};
 use std::rc::Rc;
 use std::u32;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
-use syntax::attr::{self,AttrMetaMethods,AttributeMethods};
+use syntax::attr;
 use errors::Handler;
 use syntax;
 use syntax_pos::BytePos;
@@ -1417,40 +1417,11 @@ fn encode_item_index(rbml_w: &mut Encoder, index: IndexData) {
     rbml_w.end_tag();
 }
 
-fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
-    if mi.is_word() {
-        let name = mi.name();
-        rbml_w.start_tag(tag_meta_item_word);
-        rbml_w.wr_tagged_str(tag_meta_item_name, &name);
-        rbml_w.end_tag();
-    } else if mi.is_value_str() {
-        let name = mi.name();
-        /* FIXME (#623): support other literal kinds */
-        let value = mi.value_str().unwrap();
-        rbml_w.start_tag(tag_meta_item_name_value);
-        rbml_w.wr_tagged_str(tag_meta_item_name, &name);
-        rbml_w.wr_tagged_str(tag_meta_item_value, &value);
-        rbml_w.end_tag();
-    } else { // it must be a list
-        let name = mi.name();
-        let items = mi.meta_item_list().unwrap();
-        rbml_w.start_tag(tag_meta_item_list);
-        rbml_w.wr_tagged_str(tag_meta_item_name, &name);
-        for inner_item in items {
-            encode_meta_item(rbml_w, &inner_item);
-        }
-        rbml_w.end_tag();
-    }
-}
-
 fn encode_attributes(rbml_w: &mut Encoder, attrs: &[ast::Attribute]) {
     rbml_w.start_tag(tag_attributes);
-    for attr in attrs {
-        rbml_w.start_tag(tag_attribute);
-        rbml_w.wr_tagged_u8(tag_attribute_is_sugared_doc, attr.node.is_sugared_doc as u8);
-        encode_meta_item(rbml_w, attr.meta());
-        rbml_w.end_tag();
-    }
+    rbml_w.emit_opaque(|opaque_encoder| {
+        attrs.encode(opaque_encoder)
+    }).unwrap();
     rbml_w.end_tag();
 }
 

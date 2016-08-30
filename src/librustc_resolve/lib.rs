@@ -1618,6 +1618,7 @@ impl<'a> Resolver<'a> {
             ItemKind::Enum(_, ref generics) |
             ItemKind::Ty(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
+            ItemKind::Union(_, ref generics) |
             ItemKind::Fn(_, _, _, _, ref generics, _) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind),
                                              |this| visit::walk_item(this, item));

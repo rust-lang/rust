@@ -62,6 +62,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
+        supports_unions: false,
         methods: vec![MethodDef {
                           name: "decode",
                           generics: LifetimeBounds {
@@ -110,7 +111,7 @@ fn decodable_substructure(cx: &mut ExtCtxt,
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
             let nfields = match *summary {
-                Unnamed(ref fields) => fields.len(),
+                Unnamed(ref fields, _) => fields.len(),
                 Named(ref fields) => fields.len(),
             };
             let read_struct_field = cx.ident_of("read_struct_field");
@@ -193,9 +194,9 @@ fn decode_static_fields<F>(cx: &mut ExtCtxt,
     where F: FnMut(&mut ExtCtxt, Span, InternedString, usize) -> P<Expr>
 {
     match *fields {
-        Unnamed(ref fields) => {
+        Unnamed(ref fields, is_tuple) => {
             let path_expr = cx.expr_path(outer_pat_path);
-            if fields.is_empty() {
+            if !is_tuple {
                 path_expr
             } else {
                 let fields = fields.iter()

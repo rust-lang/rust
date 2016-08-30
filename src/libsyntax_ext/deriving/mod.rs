@@ -11,7 +11,6 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
 use syntax::ast::{self, MetaItem};
-use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxEnv};
 use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
 use syntax::ext::build::AstBuilder;
@@ -98,8 +97,8 @@ fn expand_derive(cx: &mut ExtCtxt,
             let mut eq_span = None;
 
             for titem in traits.iter().rev() {
-                let tname = if titem.is_word() {
-                    titem.name()
+                let tname = if let Some(word) = titem.word() {
+                    word.name()
                 } else {
                     cx.span_err(titem.span, "malformed `derive` entry");
                     continue;

@@ -43,7 +43,7 @@ use std::rc::Rc;
 use std::slice;
 use std::vec::IntoIter;
 use syntax::ast::{self, CrateNum, Name, NodeId};
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::parse::token::InternedString;
 use syntax_pos::{DUMMY_SP, Span};
 

@@ -11,7 +11,6 @@
 use session::Session;
 
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -52,18 +51,22 @@ impl<'a> CheckAttrVisitor<'a> {
                 return;
             }
         };
+
         for word in words {
-            let word: &str = &word.name();
-            let message = match word {
+            let name = match word.name() {
+                Some(word) => word,
+                None => continue,
+            };
+
+            let message = match &*name {
                 "C" => {
                     if target != Target::Struct && target != Target::Enum {
-                            "attribute should be applied to struct or enum"
+                        "attribute should be applied to struct or enum"
                     } else {
                         continue
                     }
                 }
-                "packed" |
-                "simd" => {
+                "packed" | "simd" => {
                     if target != Target::Struct {
                         "attribute should be applied to struct"
                     } else {
@@ -74,13 +77,14 @@ impl<'a> CheckAttrVisitor<'a> {
                 "i32" | "u32" | "i64" | "u64" |
                 "isize" | "usize" => {
                     if target != Target::Enum {
-                            "attribute should be applied to enum"
+                        "attribute should be applied to enum"
                     } else {
                         continue
                     }
                 }
                 _ => continue,
             };
+
             span_err!(self.sess, attr.span, E0517, "{}", message);
         }
     }
