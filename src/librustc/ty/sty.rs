@@ -10,7 +10,6 @@
 
 //! This module contains TypeVariants and its major components
 
-use middle::cstore;
 use hir::def_id::DefId;
 use middle::region;
 use ty::subst::Substs;
@@ -25,7 +24,7 @@ use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::parse::token::{keywords, InternedString};
 
-use serialize::{Decodable, Decoder, Encodable, Encoder};
+use serialize;
 
 use hir;
 
@@ -253,7 +252,7 @@ pub enum TypeVariants<'tcx> {
 /// closure C wind up influencing the decisions we ought to make for
 /// closure C (which would then require fixed point iteration to
 /// handle). Plus it fixes an ICE. :P
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function.
     /// These are separated out because trans wants to pass them around
@@ -266,23 +265,7 @@ pub struct ClosureSubsts<'tcx> {
     pub upvar_tys: &'tcx [Ty<'tcx>]
 }
 
-impl<'tcx> Encodable for ClosureSubsts<'tcx> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        (self.func_substs, self.upvar_tys).encode(s)
-    }
-}
-
-impl<'tcx> Decodable for ClosureSubsts<'tcx> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<ClosureSubsts<'tcx>, D::Error> {
-        let (func_substs, upvar_tys) = Decodable::decode(d)?;
-        cstore::tls::with_decoding_context(|dcx| {
-            Ok(ClosureSubsts {
-                func_substs: func_substs,
-                upvar_tys: dcx.tcx().mk_type_list(upvar_tys)
-            })
-        })
-    }
-}
+impl<'tcx> serialize::UseSpecializedDecodable for ClosureSubsts<'tcx> {}
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TraitObject<'tcx> {
@@ -663,14 +646,7 @@ pub enum Region {
     ReErased,
 }
 
-impl<'tcx> Decodable for &'tcx Region {
-    fn decode<D: Decoder>(d: &mut D) -> Result<&'tcx Region, D::Error> {
-        let r = Decodable::decode(d)?;
-        cstore::tls::with_decoding_context(|dcx| {
-            Ok(dcx.tcx().mk_region(r))
-        })
-    }
-}
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Region {}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {

@@ -61,9 +61,6 @@ pub mod rbml {
 
 pub use rustc::middle;
 
-#[macro_use]
-mod macros;
-
 pub mod diagnostics;
 
 pub mod astencode;
@@ -80,6 +77,5 @@ pub mod cstore;
 pub mod index;
 pub mod loader;
 pub mod macro_import;
-pub mod tls_context;
 
 __build_diagnostic_array! { librustc_metadata, DIAGNOSTICS }

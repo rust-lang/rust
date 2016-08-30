@@ -13,7 +13,6 @@
 #![allow(unused_must_use)]
 
 use rustc::hir::map as ast_map;
-use rustc::session::Session;
 
 use rustc::hir;
 use rustc::hir::fold;
@@ -23,9 +22,9 @@ use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange};
 use common as c;
 use cstore;
 use decoder;
-use encoder as e;
-use tydecode;
-use tyencode;
+
+use decoder::DecodeContext;
+use encoder::EncodeContext;
 
 use middle::cstore::{InlinedItem, InlinedItemRef};
 use rustc::ty::adjustment;
@@ -33,15 +32,12 @@ use rustc::ty::cast;
 use middle::const_qualif::ConstQualif;
 use rustc::hir::def::{self, Def};
 use rustc::hir::def_id::DefId;
-use middle::region;
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos;
 
-use std::cell::Cell;
 use std::io::SeekFrom;
 use std::io::prelude::*;
 
@@ -50,15 +46,6 @@ use rbml;
 use rustc_serialize::{Decodable, Decoder, DecoderHelpers};
 use rustc_serialize::{Encodable, EncoderHelpers};
 
-struct DecodeContext<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cdata: &'a cstore::CrateMetadata,
-    from_id_range: IdRange,
-    to_id_range: IdRange,
-    // Cache the last used filemap for translating spans as an optimization.
-    last_filemap_index: Cell<usize>,
-}
-
 trait tr {
     fn tr(&self, dcx: &DecodeContext) -> Self;
 }
@@ -66,7 +53,7 @@ trait tr {
 // ______________________________________________________________________
 // Top-level methods.
 
-pub fn encode_inlined_item(ecx: &mut e::EncodeContext, ii: InlinedItemRef) {
+pub fn encode_inlined_item(ecx: &mut EncodeContext, ii: InlinedItemRef) {
     let id = match ii {
         InlinedItemRef::Item(_, i) => i.id,
         InlinedItemRef::TraitItem(_, ti) => ti.id,
@@ -81,11 +68,16 @@ pub fn encode_inlined_item(ecx: &mut e::EncodeContext, ii: InlinedItemRef) {
     let id_range = inlined_item_id_range(&ii);
     assert_eq!(expected_id_range, id_range);
 
-    ecx.start_tag(c::tag_ast as usize);
-    id_range.encode(ecx);
-    ecx.start_tag(c::tag_tree as usize);
-    ecx.emit_opaque(|this| ii.encode(this));
+    ecx.start_tag(c::tag_ast);
+
+    ecx.start_tag(c::tag_id_range);
+    id_range.encode(&mut ecx.opaque());
     ecx.end_tag();
+
+    ecx.start_tag(c::tag_tree);
+    ii.encode(ecx);
+    ecx.end_tag();
+
     encode_side_tables_for_ii(ecx, &ii);
     ecx.end_tag();
 
@@ -121,53 +113,33 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::CrateMetadata,
                                      orig_did: DefId)
                                      -> &'tcx InlinedItem {
     debug!("> Decoding inlined fn: {:?}", tcx.item_path_str(orig_did));
-    let mut ast_dsr = reader::Decoder::new(ast_doc);
-    let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
-    let to_id_range = reserve_id_range(&tcx.sess, from_id_range);
-    let dcx = &DecodeContext {
-        cdata: cdata,
-        tcx: tcx,
-        from_id_range: from_id_range,
-        to_id_range: to_id_range,
-        last_filemap_index: Cell::new(0)
-    };
-    let ii = ast_map::map_decoded_item(&dcx.tcx.map,
+    let id_range_doc = ast_doc.get(c::tag_id_range);
+    let from_id_range = IdRange::decode(&mut id_range_doc.opaque()).unwrap();
+    let mut dcx = DecodeContext::new(tcx, cdata, from_id_range,
+                                     ast_doc.get(c::tag_tree));
+    let ii = InlinedItem::decode(&mut dcx).unwrap();
+
+    let ii = ast_map::map_decoded_item(&tcx.map,
                                        parent_def_path,
                                        parent_did,
-                                       decode_ast(ast_doc),
-                                       dcx);
-    let name = match *ii {
-        InlinedItem::Item(_, ref i) => i.name,
-        InlinedItem::TraitItem(_, ref ti) => ti.name,
-        InlinedItem::ImplItem(_, ref ii) => ii.name
+                                       ii,
+                                       &dcx);
+
+    let item_node_id = match ii {
+        &InlinedItem::Item(_, ref i) => i.id,
+        &InlinedItem::TraitItem(_, ref ti) => ti.id,
+        &InlinedItem::ImplItem(_, ref ii) => ii.id
     };
-    debug!("Fn named: {}", name);
-    debug!("< Decoded inlined fn: {}::{}",
-            tcx.item_path_str(parent_did),
-            name);
-    region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
-    decode_side_tables(dcx, ast_doc);
-    copy_item_types(dcx, ii, orig_did);
-    if let InlinedItem::Item(_, ref i) = *ii {
-        debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-               ::rustc::hir::print::item_to_string(&i));
-    }
+    let inlined_did = tcx.map.local_def_id(item_node_id);
+    tcx.register_item_type(inlined_did, tcx.lookup_item_type(orig_did));
+
+    decode_side_tables(&mut dcx, ast_doc);
 
     ii
 }
 
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
-
-fn reserve_id_range(sess: &Session,
-                    from_id_range: IdRange) -> IdRange {
-    // Handle the case of an empty range:
-    if from_id_range.empty() { return from_id_range; }
-    let cnt = from_id_range.max - from_id_range.min;
-    let to_id_min = sess.reserve_node_ids(cnt);
-    let to_id_max = to_id_min + cnt;
-    IdRange { min: to_id_min, max: to_id_max }
-}
 
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     /// Translates an internal id, meaning a node id that is known to refer to some part of the
@@ -312,19 +284,8 @@ fn simplify_ast(ii: InlinedItemRef) -> (InlinedItem, IdRange) {
     (ii, fld.id_range)
 }
 
-fn decode_ast(item_doc: rbml::Doc) -> InlinedItem {
-    let chi_doc = item_doc.get(c::tag_tree as usize);
-    let mut rbml_r = reader::Decoder::new(chi_doc);
-    rbml_r.read_opaque(|decoder, _| Decodable::decode(decoder)).unwrap()
-}
-
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
-
-fn decode_def(dcx: &DecodeContext, dsr: &mut reader::Decoder) -> Def {
-    let def: Def = Decodable::decode(dsr).unwrap();
-    def.tr(dcx)
-}
 
 impl tr for Def {
     fn tr(&self, dcx: &DecodeContext) -> Def {
@@ -378,11 +339,9 @@ impl tr for Def {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-impl<'a> reader::Decoder<'a> {
-    fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> hir::Freevar {
-        let fv: hir::Freevar = Decodable::decode(self).unwrap();
-        fv.tr(dcx)
+impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
+    fn read_freevar_entry(&mut self) -> hir::Freevar {
+        hir::Freevar::decode(self).unwrap().tr(self)
     }
 }
 
@@ -398,7 +357,7 @@ impl tr for hir::Freevar {
 // ______________________________________________________________________
 // Encoding and decoding of MethodCallee
 
-impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_method_callee(&mut self,
                             autoderef: u32,
                             method: &ty::MethodCallee<'tcx>) {
@@ -412,31 +371,29 @@ impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
                 method.def_id.encode(this)
             });
             this.emit_struct_field("ty", 2, |this| {
-                Ok(this.emit_ty(method.ty))
+                method.ty.encode(this)
             });
             this.emit_struct_field("substs", 3, |this| {
-                Ok(this.emit_substs(&method.substs))
+                method.substs.encode(this)
             })
         }).unwrap();
     }
 }
 
-impl<'a, 'tcx> reader::Decoder<'a> {
-    fn read_method_callee<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
-                              -> (u32, ty::MethodCallee<'tcx>) {
-
+impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
+    fn read_method_callee(&mut self)  -> (u32, ty::MethodCallee<'tcx>) {
         self.read_struct("MethodCallee", 4, |this| {
             let autoderef = this.read_struct_field("autoderef", 0,
                                                    Decodable::decode).unwrap();
             Ok((autoderef, ty::MethodCallee {
                 def_id: this.read_struct_field("def_id", 1, |this| {
-                    DefId::decode(this).map(|d| d.tr(dcx))
+                    DefId::decode(this).map(|d| d.tr(this))
                 }).unwrap(),
                 ty: this.read_struct_field("ty", 2, |this| {
-                    Ok(this.read_ty(dcx))
+                    Ty::decode(this)
                 }).unwrap(),
                 substs: this.read_struct_field("substs", 3, |this| {
-                    Ok(this.read_substs(dcx))
+                    Decodable::decode(this)
                 }).unwrap()
             }))
         }).unwrap()
@@ -446,21 +403,7 @@ impl<'a, 'tcx> reader::Decoder<'a> {
 // ______________________________________________________________________
 // Encoding and decoding the side tables
 
-impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
-    fn emit_region(&mut self, r: &'tcx ty::Region) {
-        let cx = self.ty_str_ctxt();
-        self.emit_opaque(|this| Ok(tyencode::enc_region(&mut this.cursor,
-                                                        &cx,
-                                                        r)));
-    }
-
-    fn emit_ty(&mut self, ty: Ty<'tcx>) {
-        let cx = self.ty_str_ctxt();
-        self.emit_opaque(|this| Ok(tyencode::enc_ty(&mut this.cursor,
-                                                    &cx,
-                                                    ty)));
-    }
-
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn emit_upvar_capture(&mut self, capture: &ty::UpvarCapture<'tcx>) {
         use rustc_serialize::Encoder;
 
@@ -471,21 +414,12 @@ impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
                 }
                 ty::UpvarCapture::ByRef(ty::UpvarBorrow { kind, region }) => {
                     this.emit_enum_variant("ByRef", 2, 0, |this| {
-                        this.emit_enum_variant_arg(0,
-                            |this| kind.encode(this));
-                        this.emit_enum_variant_arg(1,
-                            |this| Ok(this.emit_region(region)))
+                        this.emit_enum_variant_arg(0, |this| kind.encode(this));
+                        this.emit_enum_variant_arg(1, |this| region.encode(this))
                     })
                 }
             }
         }).unwrap()
-    }
-
-    fn emit_substs(&mut self, substs: &Substs<'tcx>) {
-        let cx = self.ty_str_ctxt();
-        self.emit_opaque(|this| Ok(tyencode::enc_substs(&mut this.cursor,
-                                                        &cx,
-                                                        substs)));
     }
 
     fn emit_auto_adjustment(&mut self, adj: &adjustment::AutoAdjustment<'tcx>) {
@@ -518,7 +452,7 @@ impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
 
                 adjustment::AdjustNeverToAny(ref ty) => {
                     this.emit_enum_variant("AdjustNeverToAny", 5, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_ty(ty)))
+                        this.emit_enum_variant_arg(0, |this| ty.encode(this))
                     })
                 }
             }
@@ -532,8 +466,7 @@ impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
             match autoref {
                 &adjustment::AutoPtr(r, m) => {
                     this.emit_enum_variant("AutoPtr", 0, 2, |this| {
-                        this.emit_enum_variant_arg(0,
-                            |this| Ok(this.emit_region(r)));
+                        this.emit_enum_variant_arg(0, |this| r.encode(this));
                         this.emit_enum_variant_arg(1, |this| m.encode(this))
                     })
                 }
@@ -562,24 +495,17 @@ impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
             });
 
             this.emit_struct_field("unsize", 2, |this| {
-                this.emit_option(|this| {
-                    match auto_deref_ref.unsize {
-                        None => this.emit_option_none(),
-                        Some(target) => this.emit_option_some(|this| {
-                            Ok(this.emit_ty(target))
-                        })
-                    }
-                })
+                auto_deref_ref.unsize.encode(this)
             })
         });
     }
 
     fn tag<F>(&mut self,
-              tag_id: c::astencode_tag,
+              tag_id: usize,
               f: F) where
         F: FnOnce(&mut Self),
     {
-        self.start_tag(tag_id as usize);
+        self.start_tag(tag_id);
         f(self);
         self.end_tag();
     }
@@ -590,7 +516,7 @@ impl<'a, 'tcx> e::EncodeContext<'a, 'tcx> {
 }
 
 struct SideTableEncodingIdVisitor<'a, 'b:'a, 'tcx:'b> {
-    ecx: &'a mut e::EncodeContext<'b, 'tcx>,
+    ecx: &'a mut EncodeContext<'b, 'tcx>,
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
@@ -599,15 +525,15 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> 
     }
 }
 
-fn encode_side_tables_for_ii(ecx: &mut e::EncodeContext, ii: &InlinedItem) {
-    ecx.start_tag(c::tag_table as usize);
+fn encode_side_tables_for_ii(ecx: &mut EncodeContext, ii: &InlinedItem) {
+    ecx.start_tag(c::tag_table);
     ii.visit(&mut SideTableEncodingIdVisitor {
         ecx: ecx
     });
     ecx.end_tag();
 }
 
-fn encode_side_tables_for_id(ecx: &mut e::EncodeContext, id: ast::NodeId) {
+fn encode_side_tables_for_id(ecx: &mut EncodeContext, id: ast::NodeId) {
     let tcx = ecx.tcx;
 
     debug!("Encoding side tables for id {}", id);
@@ -622,14 +548,14 @@ fn encode_side_tables_for_id(ecx: &mut e::EncodeContext, id: ast::NodeId) {
     if let Some(ty) = tcx.node_types().get(&id) {
         ecx.tag(c::tag_table_node_type, |ecx| {
             ecx.id(id);
-            ecx.emit_ty(*ty);
+            ty.encode(ecx);
         })
     }
 
     if let Some(item_substs) = tcx.tables.borrow().item_substs.get(&id) {
         ecx.tag(c::tag_table_item_subst, |ecx| {
             ecx.id(id);
-            ecx.emit_substs(&item_substs.substs);
+            item_substs.substs.encode(ecx);
         })
     }
 
@@ -707,47 +633,8 @@ fn encode_side_tables_for_id(ecx: &mut e::EncodeContext, id: ast::NodeId) {
     }
 }
 
-impl<'a, 'tcx> reader::Decoder<'a> {
-    fn read_ty_encoded<'b, F, R>(&mut self, dcx: &DecodeContext<'b, 'tcx>, op: F) -> R
-        where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x,'tcx>) -> R
-    {
-        return self.read_opaque(|_, doc| {
-            debug!("read_ty_encoded({})", type_string(doc));
-            Ok(op(
-                &mut tydecode::TyDecoder::with_doc(
-                    dcx.tcx, dcx.cdata.cnum, doc,
-                    &mut |d| convert_def_id(dcx, d))))
-        }).unwrap();
-
-        fn type_string(doc: rbml::Doc) -> String {
-            let mut str = String::new();
-            for i in doc.start..doc.end {
-                str.push(doc.data[i] as char);
-            }
-            str
-        }
-    }
-    fn read_region<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>) -> &'tcx ty::Region {
-        // Note: regions types embed local node ids.  In principle, we
-        // should translate these node ids into the new decode
-        // context.  However, we do not bother, because region types
-        // are not used during trans. This also applies to read_ty.
-        return self.read_ty_encoded(dcx, |decoder| decoder.parse_region());
-    }
-    fn read_ty<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>) -> Ty<'tcx> {
-        return self.read_ty_encoded(dcx, |decoder| decoder.parse_ty());
-    }
-
-    fn read_substs<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
-                       -> &'tcx Substs<'tcx> {
-        self.read_opaque(|_, doc| {
-            Ok(tydecode::TyDecoder::with_doc(dcx.tcx, dcx.cdata.cnum, doc,
-                                             &mut |d| convert_def_id(dcx, d))
-               .parse_substs())
-        }).unwrap()
-    }
-    fn read_upvar_capture<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
-                              -> ty::UpvarCapture<'tcx> {
+impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
+    fn read_upvar_capture(&mut self) -> ty::UpvarCapture<'tcx> {
         self.read_enum("UpvarCapture", |this| {
             let variants = ["ByValue", "ByRef"];
             this.read_enum_variant(&variants, |this, i| {
@@ -757,15 +644,14 @@ impl<'a, 'tcx> reader::Decoder<'a> {
                         kind: this.read_enum_variant_arg(0,
                                   |this| Decodable::decode(this)).unwrap(),
                         region: this.read_enum_variant_arg(1,
-                                    |this| Ok(this.read_region(dcx))).unwrap()
+                                    |this| Decodable::decode(this)).unwrap()
                     }),
                     _ => bug!("bad enum variant for ty::UpvarCapture")
                 })
             })
         }).unwrap()
     }
-    fn read_auto_adjustment<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
-                                -> adjustment::AutoAdjustment<'tcx> {
+    fn read_auto_adjustment(&mut self) -> adjustment::AutoAdjustment<'tcx> {
         self.read_enum("AutoAdjustment", |this| {
             let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer",
                             "AdjustMutToConstPointer", "AdjustDerefRef",
@@ -778,13 +664,13 @@ impl<'a, 'tcx> reader::Decoder<'a> {
                     4 => {
                         let auto_deref_ref: adjustment::AutoDerefRef =
                             this.read_enum_variant_arg(0,
-                                |this| Ok(this.read_auto_deref_ref(dcx))).unwrap();
+                                |this| Ok(this.read_auto_deref_ref())).unwrap();
 
                         adjustment::AdjustDerefRef(auto_deref_ref)
                     }
                     5 => {
                         let ty: Ty<'tcx> = this.read_enum_variant_arg(0, |this| {
-                            Ok(this.read_ty(dcx))
+                            Ty::decode(this)
                         }).unwrap();
 
                         adjustment::AdjustNeverToAny(ty)
@@ -795,8 +681,7 @@ impl<'a, 'tcx> reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_auto_deref_ref<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
-                               -> adjustment::AutoDerefRef<'tcx> {
+    fn read_auto_deref_ref(&mut self) -> adjustment::AutoDerefRef<'tcx> {
         self.read_struct("AutoDerefRef", 2, |this| {
             Ok(adjustment::AutoDerefRef {
                 autoderefs: this.read_struct_field("autoderefs", 0, |this| {
@@ -805,27 +690,20 @@ impl<'a, 'tcx> reader::Decoder<'a> {
                 autoref: this.read_struct_field("autoref", 1, |this| {
                     this.read_option(|this, b| {
                         if b {
-                            Ok(Some(this.read_autoref(dcx)))
+                            Ok(Some(this.read_autoref()))
                         } else {
                             Ok(None)
                         }
                     })
                 }).unwrap(),
                 unsize: this.read_struct_field("unsize", 2, |this| {
-                    this.read_option(|this, b| {
-                        if b {
-                            Ok(Some(this.read_ty(dcx)))
-                        } else {
-                            Ok(None)
-                        }
-                    })
+                    Decodable::decode(this)
                 }).unwrap(),
             })
         }).unwrap()
     }
 
-    fn read_autoref<'b>(&mut self, dcx: &DecodeContext<'b, 'tcx>)
-                        -> adjustment::AutoRef<'tcx> {
+    fn read_autoref(&mut self) -> adjustment::AutoRef<'tcx> {
         self.read_enum("AutoRef", |this| {
             let variants = ["AutoPtr", "AutoUnsafe"];
             this.read_enum_variant(&variants, |this, i| {
@@ -833,7 +711,7 @@ impl<'a, 'tcx> reader::Decoder<'a> {
                     0 => {
                         let r: &'tcx ty::Region =
                             this.read_enum_variant_arg(0, |this| {
-                                Ok(this.read_region(dcx))
+                                Decodable::decode(this)
                             }).unwrap();
                         let m: hir::Mutability =
                             this.read_enum_variant_arg(1, |this| {
@@ -853,183 +731,77 @@ impl<'a, 'tcx> reader::Decoder<'a> {
             })
         }).unwrap()
     }
-
-    fn read_cast_kind<'b>(&mut self, _dcx: &DecodeContext<'b, 'tcx>)
-                          -> cast::CastKind
-    {
-        Decodable::decode(self).unwrap()
-    }
 }
 
-// Converts a def-id that appears in a type.  The correct
-// translation will depend on what kind of def-id this is.
-// This is a subtle point: type definitions are not
-// inlined into the current crate, so if the def-id names
-// a nominal type or type alias, then it should be
-// translated to refer to the source crate.
-//
-// However, *type parameters* are cloned along with the function
-// they are attached to.  So we should translate those def-ids
-// to refer to the new, cloned copy of the type parameter.
-// We only see references to free type parameters in the body of
-// an inlined function. In such cases, we need the def-id to
-// be a local id so that the TypeContents code is able to lookup
-// the relevant info in the ty_param_defs table.
-//
-// *Region parameters*, unfortunately, are another kettle of fish.
-// In such cases, def_id's can appear in types to distinguish
-// shadowed bound regions and so forth. It doesn't actually
-// matter so much what we do to these, since regions are erased
-// at trans time, but it's good to keep them consistent just in
-// case. We translate them with `tr_def_id()` which will map
-// the crate numbers back to the original source crate.
-//
-// Scopes will end up as being totally bogus. This can actually
-// be fixed though.
-//
-// Unboxed closures are cloned along with the function being
-// inlined, and all side tables use interned node IDs, so we
-// translate their def IDs accordingly.
-//
-// It'd be really nice to refactor the type repr to not include
-// def-ids so that all these distinctions were unnecessary.
-fn convert_def_id(dcx: &DecodeContext,
-                  did: DefId)
-                  -> DefId {
-    let r = dcx.tr_def_id(did);
-    debug!("convert_def_id(did={:?})={:?}", did, r);
-    return r;
-}
+fn decode_side_tables<'a, 'tcx>(dcx: &mut DecodeContext<'a, 'tcx>,
+                                ast_doc: rbml::Doc<'a>) {
+    for (tag, entry_doc) in reader::docs(ast_doc.get(c::tag_table)) {
+        dcx.rbml_r = reader::Decoder::new(entry_doc);
 
-fn decode_side_tables(dcx: &DecodeContext,
-                      ast_doc: rbml::Doc) {
-    let tbl_doc = ast_doc.get(c::tag_table as usize);
-    for (tag, entry_doc) in reader::docs(tbl_doc) {
-        let mut entry_dsr = reader::Decoder::new(entry_doc);
-        let id0: ast::NodeId = Decodable::decode(&mut entry_dsr).unwrap();
+        let id0: ast::NodeId = Decodable::decode(dcx).unwrap();
         let id = dcx.tr_id(id0);
 
         debug!(">> Side table document with tag 0x{:x} \
                 found for id {} (orig {})",
                tag, id, id0);
-        let tag = tag as u32;
-        let decoded_tag: Option<c::astencode_tag> = c::astencode_tag::from_u32(tag);
-        match decoded_tag {
-            None => {
-                bug!("unknown tag found in side tables: {:x}", tag);
-            }
-            Some(value) => {
-                let val_dsr = &mut entry_dsr;
 
-                match value {
-                    c::tag_table_def => {
-                        let def = decode_def(dcx, val_dsr);
-                        dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution::new(def));
-                    }
-                    c::tag_table_node_type => {
-                        let ty = val_dsr.read_ty(dcx);
-                        debug!("inserting ty for node {}: {:?}",
-                               id,  ty);
-                        dcx.tcx.node_type_insert(id, ty);
-                    }
-                    c::tag_table_item_subst => {
-                        let item_substs = ty::ItemSubsts {
-                            substs: val_dsr.read_substs(dcx)
-                        };
-                        dcx.tcx.tables.borrow_mut().item_substs.insert(
-                            id, item_substs);
-                    }
-                    c::tag_table_freevars => {
-                        let fv_info = val_dsr.read_to_vec(|val_dsr| {
-                            Ok(val_dsr.read_freevar_entry(dcx))
-                        }).unwrap().into_iter().collect();
-                        dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
-                    }
-                    c::tag_table_upvar_capture_map => {
-                        let var_id: ast::NodeId = Decodable::decode(val_dsr).unwrap();
-                        let upvar_id = ty::UpvarId {
-                            var_id: dcx.tr_id(var_id),
-                            closure_expr_id: id
-                        };
-                        let ub = val_dsr.read_upvar_capture(dcx);
-                        dcx.tcx.tables.borrow_mut().upvar_capture_map.insert(upvar_id, ub);
-                    }
-                    c::tag_table_method_map => {
-                        let (autoderef, method) = val_dsr.read_method_callee(dcx);
-                        let method_call = ty::MethodCall {
-                            expr_id: id,
-                            autoderef: autoderef
-                        };
-                        dcx.tcx.tables.borrow_mut().method_map.insert(method_call, method);
-                    }
-                    c::tag_table_adjustments => {
-                        let adj =
-                            val_dsr.read_auto_adjustment(dcx);
-                        dcx.tcx.tables.borrow_mut().adjustments.insert(id, adj);
-                    }
-                    c::tag_table_cast_kinds => {
-                        let cast_kind =
-                            val_dsr.read_cast_kind(dcx);
-                        dcx.tcx.cast_kinds.borrow_mut().insert(id, cast_kind);
-                    }
-                    c::tag_table_const_qualif => {
-                        let qualif: ConstQualif = Decodable::decode(val_dsr).unwrap();
-                        dcx.tcx.const_qualif_map.borrow_mut().insert(id, qualif);
-                    }
-                    _ => {
-                        bug!("unknown tag found in side tables: {:x}", tag);
-                    }
-                }
+        match tag {
+            c::tag_table_def => {
+                let def = Def::decode(dcx).unwrap().tr(dcx);
+                dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution::new(def));
+            }
+            c::tag_table_node_type => {
+                let ty = Ty::decode(dcx).unwrap();
+                dcx.tcx.node_type_insert(id, ty);
+            }
+            c::tag_table_item_subst => {
+                let item_substs = ty::ItemSubsts {
+                    substs: Decodable::decode(dcx).unwrap()
+                };
+                dcx.tcx.tables.borrow_mut().item_substs.insert(
+                    id, item_substs);
+            }
+            c::tag_table_freevars => {
+                let fv_info = dcx.read_to_vec(|dcx| {
+                    Ok(dcx.read_freevar_entry())
+                }).unwrap().into_iter().collect();
+                dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
+            }
+            c::tag_table_upvar_capture_map => {
+                let var_id = ast::NodeId::decode(dcx).unwrap();
+                let upvar_id = ty::UpvarId {
+                    var_id: dcx.tr_id(var_id),
+                    closure_expr_id: id
+                };
+                let ub = dcx.read_upvar_capture();
+                dcx.tcx.tables.borrow_mut().upvar_capture_map.insert(upvar_id, ub);
+            }
+            c::tag_table_method_map => {
+                let (autoderef, method) = dcx.read_method_callee();
+                let method_call = ty::MethodCall {
+                    expr_id: id,
+                    autoderef: autoderef
+                };
+                dcx.tcx.tables.borrow_mut().method_map.insert(method_call, method);
+            }
+            c::tag_table_adjustments => {
+                let adj = dcx.read_auto_adjustment();
+                dcx.tcx.tables.borrow_mut().adjustments.insert(id, adj);
+            }
+            c::tag_table_cast_kinds => {
+                let cast_kind = cast::CastKind::decode(dcx).unwrap();
+                dcx.tcx.cast_kinds.borrow_mut().insert(id, cast_kind);
+            }
+            c::tag_table_const_qualif => {
+                let qualif = ConstQualif::decode(dcx).unwrap();
+                dcx.tcx.const_qualif_map.borrow_mut().insert(id, qualif);
+            }
+            _ => {
+                bug!("unknown tag found in side tables: {:x}", tag);
             }
         }
 
         debug!(">< Side table doc loaded");
-    }
-}
-
-// copy the tcache entries from the original item to the new
-// inlined item
-fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
-    fn copy_item_type(dcx: &DecodeContext,
-                      inlined_id: ast::NodeId,
-                      remote_did: DefId) {
-        let inlined_did = dcx.tcx.map.local_def_id(inlined_id);
-        dcx.tcx.register_item_type(inlined_did,
-                                   dcx.tcx.lookup_item_type(remote_did));
-
-    }
-    // copy the entry for the item itself
-    let item_node_id = match ii {
-        &InlinedItem::Item(_, ref i) => i.id,
-        &InlinedItem::TraitItem(_, ref ti) => ti.id,
-        &InlinedItem::ImplItem(_, ref ii) => ii.id
-    };
-    copy_item_type(dcx, item_node_id, orig_did);
-
-    // copy the entries of inner items
-    if let &InlinedItem::Item(_, ref item) = ii {
-        match item.node {
-            hir::ItemEnum(ref def, _) => {
-                let orig_def = dcx.tcx.lookup_adt_def(orig_did);
-                for (i_variant, orig_variant) in
-                    def.variants.iter().zip(orig_def.variants.iter())
-                {
-                    debug!("astencode: copying variant {:?} => {:?}",
-                           orig_variant.did, i_variant.node.data.id());
-                    copy_item_type(dcx, i_variant.node.data.id(), orig_variant.did);
-                }
-            }
-            hir::ItemStruct(ref def, _) => {
-                if !def.is_struct() {
-                    let ctor_did = dcx.tcx.lookup_adt_def(orig_did)
-                        .struct_variant().did;
-                    debug!("astencode: copying ctor {:?} => {:?}", ctor_did,
-                           def.id());
-                    copy_item_type(dcx, def.id(), ctor_did);
-                }
-            }
-            _ => {}
-        }
     }
 }
 

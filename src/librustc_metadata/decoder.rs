@@ -20,7 +20,6 @@ use common::*;
 use def_key;
 use encoder::def_to_u64;
 use index;
-use tls_context;
 use tydecode::TyDecoder;
 
 use rustc::hir::def_id::CRATE_DEF_INDEX;
@@ -29,15 +28,17 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::DefKey;
 use rustc::util::nodemap::FnvHashMap;
 use rustc::hir;
+use rustc::hir::intravisit::IdRange;
 use rustc::session::config::PanicStrategy;
 
 use middle::cstore::{InlinedItem, LinkagePreference};
-use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
+use middle::cstore::{DefLike, DlDef, DlField, DlImpl};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use rustc::ty::{ImplContainer, TraitContainer};
 use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, VariantKind};
+use rustc::ty::subst::Substs;
 
 use rustc_const_math::ConstInt;
 
@@ -47,18 +48,119 @@ use rustc::mir::repr::Location;
 
 use std::cell::Cell;
 use std::io;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::str;
 
 use rbml::reader;
 use rbml;
-use rustc_serialize::Decodable;
+use rustc_serialize::{Decodable, Decoder, SpecializedDecoder};
 use syntax::attr;
 use syntax::parse::token;
 use syntax::ast;
 use syntax::codemap;
 use syntax::print::pprust;
 use syntax_pos::{self, Span, BytePos, NO_EXPANSION};
+
+pub struct DecodeContext<'a, 'tcx: 'a> {
+    pub rbml_r: rbml::reader::Decoder<'a>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub cdata: &'a cstore::CrateMetadata,
+    pub from_id_range: IdRange,
+    pub to_id_range: IdRange,
+    // Cache the last used filemap for translating spans as an optimization.
+    pub last_filemap_index: Cell<usize>,
+}
+
+impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               cdata: &'a cstore::CrateMetadata,
+               from_id_range: IdRange,
+               doc: rbml::Doc<'a>)
+               -> DecodeContext<'a, 'tcx> {
+        // Handle the case of an empty range:
+        let to_id_range = if from_id_range.empty() {
+            from_id_range
+        } else {
+            let cnt = from_id_range.max - from_id_range.min;
+            let to_id_min = tcx.sess.reserve_node_ids(cnt);
+            let to_id_max = to_id_min + cnt;
+            IdRange { min: to_id_min, max: to_id_max }
+        };
+
+        DecodeContext {
+            rbml_r: reader::Decoder::new(doc),
+            cdata: cdata,
+            tcx: tcx,
+            from_id_range: from_id_range,
+            to_id_range: to_id_range,
+            last_filemap_index: Cell::new(0)
+        }
+    }
+
+    fn read_ty_encoded<F, R>(&mut self, op: F) -> R
+        where F: for<'x> FnOnce(&mut TyDecoder<'x,'tcx>) -> R
+    {
+        self.read_opaque(|this, doc| {
+            Ok(op(&mut TyDecoder::with_doc(
+                this.tcx, this.cdata.cnum, doc,
+                &mut |d| this.tr_def_id(d))))
+        }).unwrap()
+    }
+}
+
+impl<'a, 'tcx> Deref for DecodeContext<'a, 'tcx> {
+    type Target = rbml::reader::Decoder<'a>;
+    fn deref(&self) -> &Self::Target {
+        &self.rbml_r
+    }
+}
+
+impl<'a, 'tcx> DerefMut for DecodeContext<'a, 'tcx> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.rbml_r
+    }
+}
+
+// FIXME(#36588) These impls are horribly unsound as they allow
+// the caller to pick any lifetime for 'tcx, including 'static,
+// by using the unspecialized proxies to them.
+
+impl<'a, 'tcx> SpecializedDecoder<Ty<'tcx>> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<Ty<'tcx>, Self::Error> {
+        Ok(self.read_ty_encoded(|d| d.parse_ty()))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
+        Ok(self.read_ty_encoded(|d| d.parse_substs()))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Region> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<&'tcx ty::Region, Self::Error> {
+        let r = ty::Region::decode(self)?;
+        Ok(self.tcx.mk_region(r))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<ty::ClosureSubsts<'tcx>> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<ty::ClosureSubsts<'tcx>, Self::Error> {
+        Ok(ty::ClosureSubsts {
+            func_substs: Decodable::decode(this)?,
+            upvar_tys: this.tcx.mk_type_list(Decodable::decode(this)?)
+        })
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<ty::AdtDef<'tcx>> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<ty::AdtDef<'tcx>, Self::Error> {
+        let def_id = DefId::decode(self)?;
+        let def_id = translate_def_id(self.cdata, def_id);
+        Ok(self.tcx.lookup_adt_def(def_id))
+    }
+}
 
 pub type Cmd<'a> = &'a CrateMetadata;
 
@@ -796,17 +898,13 @@ pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
     let item_doc = cdata.lookup_item(id);
 
     return reader::maybe_get_doc(item_doc, tag_mir as usize).map(|mir_doc| {
-        let dcx = tls_context::DecodingContext {
-            crate_metadata: cdata,
-            tcx: tcx,
-        };
-        let mut decoder = reader::Decoder::new(mir_doc);
+        let mut dcx = DecodeContext::new(tcx, cdata,
+                                         IdRange { min: 0, max: 0 },
+                                         mir_doc);
 
-        let mut mir = tls::enter_decoding_context(&dcx, |_| {
-            Decodable::decode(&mut decoder)
-        }).unwrap();
+        let mut mir = Decodable::decode(&mut dcx).unwrap();
 
-        assert!(decoder.position() == mir_doc.end);
+        assert!(dcx.rbml_r.position() == mir_doc.end);
 
         let mut def_id_and_span_translator = MirDefIdAndSpanTranslator {
             crate_metadata: cdata,

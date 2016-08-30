@@ -35,7 +35,7 @@ use rustc::mir::mir_map::MirMap;
 use rustc::session::config::{self, PanicStrategy, CrateTypeRustcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
-use rustc_serialize::{Encodable, SpecializedEncoder, SpecializedDecoder};
+use rustc_serialize::{Encodable, SpecializedEncoder};
 use std::cell::RefCell;
 use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
@@ -93,30 +93,6 @@ impl<'a, 'tcx> SpecializedEncoder<&'tcx Substs<'tcx>> for EncodeContext<'a, 'tcx
         let cx = self.ty_str_ctxt();
         self.emit_opaque(|opaque_encoder| {
             Ok(tyencode::enc_substs(opaque_encoder.cursor, &cx, substs))
-        })
-    }
-}
-
-/// FIXME(#31844) This is horribly unsound as it allows the
-/// caller to pick any lifetime for 'tcx, including 'static.
-impl<'a, 'tcx> SpecializedDecoder<Ty<'tcx>> for ::rbml::reader::Decoder<'a> {
-    fn specialized_decode(&mut self) -> Result<Ty<'tcx>, Self::Error> {
-        self.read_opaque(|opaque_decoder, _| {
-            ::middle::cstore::tls::with_decoding_context(|dcx| {
-                Ok(dcx.decode_ty(opaque_decoder))
-            })
-        })
-    }
-}
-
-/// FIXME(#31844) This is horribly unsound as it allows the
-/// caller to pick any lifetime for 'tcx, including 'static.
-impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for ::rbml::reader::Decoder<'a> {
-    fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
-        self.read_opaque(|opaque_decoder, _| {
-            ::middle::cstore::tls::with_decoding_context(|dcx| {
-                Ok(dcx.decode_substs(opaque_decoder))
-            })
         })
     }
 }
