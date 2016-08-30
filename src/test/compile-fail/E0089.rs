@@ -11,5 +11,7 @@
 fn foo<T, U>() {}
 
 fn main() {
-    foo::<f64>(); //~ ERROR E0089
+    foo::<f64>();
+//~^ ERROR E0089
+//~| NOTE expected 2 type parameters
 }

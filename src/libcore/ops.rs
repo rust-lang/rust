@@ -21,6 +21,11 @@
 //! custom operators are required, you should look toward macros or compiler
 //! plugins to extend Rust's syntax.
 //!
+//! Note that the `&&` and `||` operators short-circuit, i.e. they only
+//! evaluate their second operand if it contributes to the result. Since this
+//! behavior is not enforceable by traits, `&&` and `||` are not supported as
+//! overloadable operators.
+//!
 //! Many of the operators take their operands by value. In non-generic
 //! contexts involving built-in types, this is usually not a problem.
 //! However, using these operators in generic code, requires some
@@ -68,6 +73,73 @@
 //! ```
 //!
 //! See the documentation for each trait for an example implementation.
+//!
+//! The [`Fn`], [`FnMut`], and [`FnOnce`] traits are implemented by types that can be
+//! invoked like functions. Note that `Fn` takes `&self`, `FnMut` takes `&mut
+//! self` and `FnOnce` takes `self`. These correspond to the three kinds of
+//! methods that can be invoked on an instance: call-by-reference,
+//! call-by-mutable-reference, and call-by-value. The most common use of these
+//! traits is to act as bounds to higher-level functions that take functions or
+//! closures as arguments.
+//!
+//! [`Fn`]: trait.Fn.html
+//! [`FnMut`]: trait.FnMut.html
+//! [`FnOnce`]: trait.FnOnce.html
+//!
+//! Taking a `Fn` as a parameter:
+//!
+//! ```rust
+//! fn call_with_one<F>(func: F) -> usize
+//!     where F: Fn(usize) -> usize
+//! {
+//!     func(1)
+//! }
+//!
+//! let double = |x| x * 2;
+//! assert_eq!(call_with_one(double), 2);
+//! ```
+//!
+//! Taking a `FnMut` as a parameter:
+//!
+//! ```rust
+//! fn do_twice<F>(mut func: F)
+//!     where F: FnMut()
+//! {
+//!     func();
+//!     func();
+//! }
+//!
+//! let mut x: usize = 1;
+//! {
+//!     let add_two_to_x = || x += 2;
+//!     do_twice(add_two_to_x);
+//! }
+//!
+//! assert_eq!(x, 5);
+//! ```
+//!
+//! Taking a `FnOnce` as a parameter:
+//!
+//! ```rust
+//! fn consume_with_relish<F>(func: F)
+//!     where F: FnOnce() -> String
+//! {
+//!     // `func` consumes its captured variables, so it cannot be run more
+//!     // than once
+//!     println!("Consumed: {}", func());
+//!
+//!     println!("Delicious!");
+//!
+//!     // Attempting to invoke `func()` again will throw a `use of moved
+//!     // value` error for `func`
+//! }
+//!
+//! let x = String::from("x");
+//! let consume_and_return_x = move || x;
+//! consume_with_relish(consume_and_return_x);
+//!
+//! // `consume_and_return_x` can no longer be invoked at this point
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -793,41 +865,56 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// # Examples
 ///
+/// In this example, the `&` operator is lifted to a trivial `Scalar` type.
+///
+/// ```
+/// use std::ops::BitAnd;
+///
+/// #[derive(Debug, PartialEq)]
+/// struct Scalar(bool);
+///
+/// impl BitAnd for Scalar {
+///     type Output = Self;
+///
+///     // rhs is the "right-hand side" of the expression `a & b`
+///     fn bitand(self, rhs: Self) -> Self {
+///         Scalar(self.0 & rhs.0)
+///     }
+/// }
+///
+/// fn main() {
+///     assert_eq!(Scalar(true) & Scalar(true), Scalar(true));
+///     assert_eq!(Scalar(true) & Scalar(false), Scalar(false));
+///     assert_eq!(Scalar(false) & Scalar(true), Scalar(false));
+///     assert_eq!(Scalar(false) & Scalar(false), Scalar(false));
+/// }
+/// ```
+///
 /// In this example, the `BitAnd` trait is implemented for a `BooleanVector`
 /// struct.
 ///
 /// ```
 /// use std::ops::BitAnd;
 ///
-/// #[derive(Debug)]
-/// struct BooleanVector {
-///     value: Vec<bool>,
-/// };
+/// #[derive(Debug, PartialEq)]
+/// struct BooleanVector(Vec<bool>);
 ///
 /// impl BitAnd for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitand(self, rhs: Self) -> Self {
-///         BooleanVector {
-///             value: self.value
-///                 .iter()
-///                 .zip(rhs.value.iter())
-///                 .map(|(x, y)| *x && *y)
-///                 .collect(),
-///         }
+///     fn bitand(self, BooleanVector(rhs): Self) -> Self {
+///         let BooleanVector(lhs) = self;
+///         assert_eq!(lhs.len(), rhs.len());
+///         BooleanVector(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x && *y).collect())
 ///     }
 /// }
 ///
-/// impl PartialEq for BooleanVector {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.value == other.value
-///     }
+/// fn main() {
+///     let bv1 = BooleanVector(vec![true, true, false, false]);
+///     let bv2 = BooleanVector(vec![true, false, true, false]);
+///     let expected = BooleanVector(vec![true, false, false, false]);
+///     assert_eq!(bv1 & bv2, expected);
 /// }
-///
-/// let bv1 = BooleanVector { value: vec![true, true, false, false] };
-/// let bv2 = BooleanVector { value: vec![true, false, true, false] };
-/// let expected = BooleanVector { value: vec![true, false, false, false] };
-/// assert_eq!(bv1 & bv2, expected);
 /// ```
 #[lang = "bitand"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -967,25 +1054,54 @@ bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Shl`. When `Foo << Foo` happens, it ends up
-/// calling `shl`, and therefore, `main` prints `Shifting left!`.
+/// An implementation of `Shl` that lifts the `<<` operation on integers to a
+/// `Scalar` struct.
 ///
 /// ```
 /// use std::ops::Shl;
 ///
-/// struct Foo;
+/// #[derive(PartialEq, Debug)]
+/// struct Scalar(usize);
 ///
-/// impl Shl<Foo> for Foo {
-///     type Output = Foo;
+/// impl Shl<Scalar> for Scalar {
+///     type Output = Self;
 ///
-///     fn shl(self, _rhs: Foo) -> Foo {
-///         println!("Shifting left!");
-///         self
+///     fn shl(self, Scalar(rhs): Self) -> Scalar {
+///         let Scalar(lhs) = self;
+///         Scalar(lhs << rhs)
+///     }
+/// }
+/// fn main() {
+///     assert_eq!(Scalar(4) << Scalar(2), Scalar(16));
+/// }
+/// ```
+///
+/// An implementation of `Shl` that spins a vector leftward by a given amount.
+///
+/// ```
+/// use std::ops::Shl;
+///
+/// #[derive(PartialEq, Debug)]
+/// struct SpinVector<T: Clone> {
+///     vec: Vec<T>,
+/// }
+///
+/// impl<T: Clone> Shl<usize> for SpinVector<T> {
+///     type Output = Self;
+///
+///     fn shl(self, rhs: usize) -> SpinVector<T> {
+///         // rotate the vector by `rhs` places
+///         let (a, b) = self.vec.split_at(rhs);
+///         let mut spun_vector: Vec<T> = vec![];
+///         spun_vector.extend_from_slice(b);
+///         spun_vector.extend_from_slice(a);
+///         SpinVector { vec: spun_vector }
 ///     }
 /// }
 ///
 /// fn main() {
-///     Foo << Foo;
+///     assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } << 2,
+///                SpinVector { vec: vec![2, 3, 4, 0, 1] });
 /// }
 /// ```
 #[lang = "shl"]
@@ -1039,25 +1155,54 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Shr`. When `Foo >> Foo` happens, it ends up
-/// calling `shr`, and therefore, `main` prints `Shifting right!`.
+/// An implementation of `Shr` that lifts the `>>` operation on integers to a
+/// `Scalar` struct.
 ///
 /// ```
 /// use std::ops::Shr;
 ///
-/// struct Foo;
+/// #[derive(PartialEq, Debug)]
+/// struct Scalar(usize);
 ///
-/// impl Shr<Foo> for Foo {
-///     type Output = Foo;
+/// impl Shr<Scalar> for Scalar {
+///     type Output = Self;
 ///
-///     fn shr(self, _rhs: Foo) -> Foo {
-///         println!("Shifting right!");
-///         self
+///     fn shr(self, Scalar(rhs): Self) -> Scalar {
+///         let Scalar(lhs) = self;
+///         Scalar(lhs >> rhs)
+///     }
+/// }
+/// fn main() {
+///     assert_eq!(Scalar(16) >> Scalar(2), Scalar(4));
+/// }
+/// ```
+///
+/// An implementation of `Shr` that spins a vector rightward by a given amount.
+///
+/// ```
+/// use std::ops::Shr;
+///
+/// #[derive(PartialEq, Debug)]
+/// struct SpinVector<T: Clone> {
+///     vec: Vec<T>,
+/// }
+///
+/// impl<T: Clone> Shr<usize> for SpinVector<T> {
+///     type Output = Self;
+///
+///     fn shr(self, rhs: usize) -> SpinVector<T> {
+///         // rotate the vector by `rhs` places
+///         let (a, b) = self.vec.split_at(self.vec.len() - rhs);
+///         let mut spun_vector: Vec<T> = vec![];
+///         spun_vector.extend_from_slice(b);
+///         spun_vector.extend_from_slice(a);
+///         SpinVector { vec: spun_vector }
 ///     }
 /// }
 ///
 /// fn main() {
-///     Foo >> Foo;
+///     assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } >> 2,
+///                SpinVector { vec: vec![3, 4, 0, 1, 2] });
 /// }
 /// ```
 #[lang = "shr"]
@@ -1873,16 +2018,32 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///
 /// It cannot serve as an iterator because it doesn't have a starting point.
 ///
-/// ```
-/// fn main() {
-///     assert_eq!((..5), std::ops::RangeTo{ end: 5 });
+/// # Examples
 ///
-///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);
-///     assert_eq!(arr[ ..3], [0,1,2  ]);  // RangeTo
-///     assert_eq!(arr[1.. ], [  1,2,3]);
-///     assert_eq!(arr[1..3], [  1,2  ]);
+/// The `..{integer}` syntax is a `RangeTo`:
+///
+/// ```
+/// assert_eq!((..5), std::ops::RangeTo{ end: 5 });
+/// ```
+///
+/// It does not have an `IntoIterator` implementation, so you can't use it in a
+/// `for` loop directly. This won't compile:
+///
+/// ```ignore
+/// for i in ..5 {
+///     // ...
 /// }
+/// ```
+///
+/// When used as a slicing index, `RangeTo` produces a slice of all array
+/// elements before the index indicated by `end`.
+///
+/// ```
+/// let arr = [0, 1, 2, 3];
+/// assert_eq!(arr[ .. ], [0,1,2,3]);
+/// assert_eq!(arr[ ..3], [0,1,2  ]);  // RangeTo
+/// assert_eq!(arr[1.. ], [  1,2,3]);
+/// assert_eq!(arr[1..3], [  1,2  ]);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2011,15 +2172,30 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///
 /// # Examples
 ///
+/// The `...{integer}` syntax is a `RangeToInclusive`:
+///
 /// ```
 /// #![feature(inclusive_range,inclusive_range_syntax)]
-/// fn main() {
-///     assert_eq!((...5), std::ops::RangeToInclusive{ end: 5 });
+/// assert_eq!((...5), std::ops::RangeToInclusive{ end: 5 });
+/// ```
 ///
-///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ ...2], [0,1,2  ]);  // RangeToInclusive
-///     assert_eq!(arr[1...2], [  1,2  ]);
+/// It does not have an `IntoIterator` implementation, so you can't use it in a
+/// `for` loop directly. This won't compile:
+///
+/// ```ignore
+/// for i in ...5 {
+///     // ...
 /// }
+/// ```
+///
+/// When used as a slicing index, `RangeToInclusive` produces a slice of all
+/// array elements up to and including the index indicated by `end`.
+///
+/// ```
+/// #![feature(inclusive_range_syntax)]
+/// let arr = [0, 1, 2, 3];
+/// assert_eq!(arr[ ...2], [0,1,2  ]);  // RangeToInclusive
+/// assert_eq!(arr[1...2], [  1,2  ]);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
@@ -2169,6 +2345,35 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 }
 
 /// A version of the call operator that takes an immutable receiver.
+///
+/// # Examples
+///
+/// Closures automatically implement this trait, which allows them to be
+/// invoked. Note, however, that `Fn` takes an immutable reference to any
+/// captured variables. To take a mutable capture, implement [`FnMut`], and to
+/// consume the capture, implement [`FnOnce`].
+///
+/// [`FnMut`]: trait.FnMut.html
+/// [`FnOnce`]: trait.FnOnce.html
+///
+/// ```
+/// let square = |x| x * x;
+/// assert_eq!(square(5), 25);
+/// ```
+///
+/// Closures can also be passed to higher-level functions through a `Fn`
+/// parameter (or a `FnMut` or `FnOnce` parameter, which are supertraits of
+/// `Fn`).
+///
+/// ```
+/// fn call_with_one<F>(func: F) -> usize
+///     where F: Fn(usize) -> usize {
+///     func(1)
+/// }
+///
+/// let double = |x| x * 2;
+/// assert_eq!(call_with_one(double), 2);
+/// ```
 #[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
@@ -2180,6 +2385,40 @@ pub trait Fn<Args> : FnMut<Args> {
 }
 
 /// A version of the call operator that takes a mutable receiver.
+///
+/// # Examples
+///
+/// Closures that mutably capture variables automatically implement this trait,
+/// which allows them to be invoked.
+///
+/// ```
+/// let mut x = 5;
+/// {
+///     let mut square_x = || x *= x;
+///     square_x();
+/// }
+/// assert_eq!(x, 25);
+/// ```
+///
+/// Closures can also be passed to higher-level functions through a `FnMut`
+/// parameter (or a `FnOnce` parameter, which is a supertrait of `FnMut`).
+///
+/// ```
+/// fn do_twice<F>(mut func: F)
+///     where F: FnMut()
+/// {
+///     func();
+///     func();
+/// }
+///
+/// let mut x: usize = 1;
+/// {
+///     let add_two_to_x = || x += 2;
+///     do_twice(add_two_to_x);
+/// }
+///
+/// assert_eq!(x, 5);
+/// ```
 #[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
@@ -2191,6 +2430,41 @@ pub trait FnMut<Args> : FnOnce<Args> {
 }
 
 /// A version of the call operator that takes a by-value receiver.
+///
+/// # Examples
+///
+/// By-value closures automatically implement this trait, which allows them to
+/// be invoked.
+///
+/// ```
+/// let x = 5;
+/// let square_x = move || x * x;
+/// assert_eq!(square_x(), 25);
+/// ```
+///
+/// By-value Closures can also be passed to higher-level functions through a
+/// `FnOnce` parameter.
+///
+/// ```
+/// fn consume_with_relish<F>(func: F)
+///     where F: FnOnce() -> String
+/// {
+///     // `func` consumes its captured variables, so it cannot be run more
+///     // than once
+///     println!("Consumed: {}", func());
+///
+///     println!("Delicious!");
+///
+///     // Attempting to invoke `func()` again will throw a `use of moved
+///     // value` error for `func`
+/// }
+///
+/// let x = String::from("x");
+/// let consume_and_return_x = move || x;
+/// consume_with_relish(consume_and_return_x);
+///
+/// // `consume_and_return_x` can no longer be invoked at this point
+/// ```
 #[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]

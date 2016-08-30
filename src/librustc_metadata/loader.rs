@@ -342,9 +342,11 @@ impl<'a> Context<'a> {
                              "found crate `{}` compiled by an incompatible version of rustc{}",
                              self.ident, add)
         } else {
-            struct_span_err!(self.sess, self.span, E0463,
-                             "can't find crate for `{}`{}",
-                             self.ident, add)
+            let mut err = struct_span_err!(self.sess, self.span, E0463,
+                                           "can't find crate for `{}`{}",
+                                           self.ident, add);
+            err.span_label(self.span, &format!("can't find crate"));
+            err
         };
 
         if !self.rejected_via_triple.is_empty() {

@@ -54,7 +54,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_uint(&mut self, v: usize) -> EncodeResult {
+    fn emit_usize(&mut self, v: usize) -> EncodeResult {
         write_uleb128!(self, v)
     }
 
@@ -75,7 +75,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_int(&mut self, v: isize) -> EncodeResult {
+    fn emit_isize(&mut self, v: isize) -> EncodeResult {
         write_sleb128!(self, v)
     }
 
@@ -120,7 +120,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_str(&mut self, v: &str) -> EncodeResult {
-        self.emit_uint(v.len())?;
+        self.emit_usize(v.len())?;
         let _ = self.cursor.write_all(v.as_bytes());
         Ok(())
     }
@@ -139,7 +139,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
                             -> EncodeResult
         where F: FnOnce(&mut Self) -> EncodeResult
     {
-        self.emit_uint(v_id)?;
+        self.emit_usize(v_id)?;
         f(self)
     }
 
@@ -221,7 +221,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     fn emit_seq<F>(&mut self, len: usize, f: F) -> EncodeResult
         where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
     {
-        self.emit_uint(len)?;
+        self.emit_usize(len)?;
         f(self)
     }
 
@@ -234,7 +234,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     fn emit_map<F>(&mut self, len: usize, f: F) -> EncodeResult
         where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
     {
-        self.emit_uint(len)?;
+        self.emit_usize(len)?;
         f(self)
     }
 
@@ -329,7 +329,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
         Ok(value)
     }
 
-    fn read_uint(&mut self) -> Result<usize, Self::Error> {
+    fn read_usize(&mut self) -> Result<usize, Self::Error> {
         read_uleb128!(self, usize)
     }
 
@@ -351,7 +351,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
         unsafe { Ok(::std::mem::transmute(as_u8)) }
     }
 
-    fn read_int(&mut self) -> Result<isize, Self::Error> {
+    fn read_isize(&mut self) -> Result<isize, Self::Error> {
         read_sleb128!(self, isize)
     }
 
@@ -376,7 +376,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 
     fn read_str(&mut self) -> Result<String, Self::Error> {
-        let len = self.read_uint()?;
+        let len = self.read_usize()?;
         let s = ::std::str::from_utf8(&self.data[self.position..self.position + len]).unwrap();
         self.position += len;
         Ok(s.to_string())
@@ -391,7 +391,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     fn read_enum_variant<T, F>(&mut self, _: &[&str], mut f: F) -> Result<T, Self::Error>
         where F: FnMut(&mut Decoder<'a>, usize) -> Result<T, Self::Error>
     {
-        let disr = self.read_uint()?;
+        let disr = self.read_usize()?;
         f(self, disr)
     }
 
@@ -404,7 +404,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     fn read_enum_struct_variant<T, F>(&mut self, _: &[&str], mut f: F) -> Result<T, Self::Error>
         where F: FnMut(&mut Decoder<'a>, usize) -> Result<T, Self::Error>
     {
-        let disr = self.read_uint()?;
+        let disr = self.read_usize()?;
         f(self, disr)
     }
 
@@ -483,7 +483,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     fn read_seq<T, F>(&mut self, f: F) -> Result<T, Self::Error>
         where F: FnOnce(&mut Decoder<'a>, usize) -> Result<T, Self::Error>
     {
-        let len = self.read_uint()?;
+        let len = self.read_usize()?;
         f(self, len)
     }
 
@@ -496,7 +496,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     fn read_map<T, F>(&mut self, f: F) -> Result<T, Self::Error>
         where F: FnOnce(&mut Decoder<'a>, usize) -> Result<T, Self::Error>
     {
-        let len = self.read_uint()?;
+        let len = self.read_usize()?;
         f(self, len)
     }
 

@@ -324,7 +324,10 @@ fn check_arms(cx: &MatchCheckCtxt,
                             let &(ref first_arm_pats, _) = &arms[0];
                             let first_pat = &first_arm_pats[0];
                             let span = first_pat.span;
-                            span_err!(cx.tcx.sess, span, E0165, "irrefutable while-let pattern");
+                            struct_span_err!(cx.tcx.sess, span, E0165,
+                                             "irrefutable while-let pattern")
+                                .span_label(span, &format!("irrefutable pattern"))
+                                .emit();
                         },
 
                         hir::MatchSource::ForLoopDesugar => {

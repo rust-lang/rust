@@ -631,7 +631,9 @@ fn error_392<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, span: Span, param_name: ast::N
 }
 
 fn error_194(tcx: TyCtxt, span: Span, name: ast::Name) {
-    span_err!(tcx.sess, span, E0194,
+    struct_span_err!(tcx.sess, span, E0194,
               "type parameter `{}` shadows another type parameter of the same name",
-              name);
+              name)
+        .span_label(span, &format!("`{}` shadows another type parameter", name))
+        .emit();
 }
