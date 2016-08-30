@@ -30,9 +30,15 @@ use std::hash::{Hash, SipHasher};
 use super::def_path_hash::DefPathHashes;
 use super::caching_codemap_view::CachingCodemapView;
 
-const IGNORED_ATTRIBUTES: &'static [&'static str] = &["cfg",
-                                                      "rustc_clean",
-                                                      "rustc_dirty"];
+const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
+    "cfg",
+    ::ATTR_IF_THIS_CHANGED,
+    ::ATTR_THEN_THIS_WOULD_NEED,
+    ::ATTR_DIRTY,
+    ::ATTR_CLEAN,
+    ::ATTR_DIRTY_METADATA,
+    ::ATTR_CLEAN_METADATA
+];
 
 pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     pub tcx: TyCtxt<'hash, 'tcx, 'tcx>,

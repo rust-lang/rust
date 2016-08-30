@@ -59,9 +59,7 @@ use std::io::Write;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
-
-const IF_THIS_CHANGED: &'static str = "rustc_if_this_changed";
-const THEN_THIS_WOULD_NEED: &'static str = "rustc_then_this_would_need";
+use {ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};
 
 pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
@@ -91,7 +89,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         assert!(tcx.sess.opts.debugging_opts.query_dep_graph,
                 "cannot use the `#[{}]` or `#[{}]` annotations \
                  without supplying `-Z query-dep-graph`",
-                IF_THIS_CHANGED, THEN_THIS_WOULD_NEED);
+                ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED);
     }
 
     // Check paths.
@@ -125,7 +123,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
     fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
         let def_id = self.tcx.map.local_def_id(node_id);
         for attr in attrs {
-            if attr.check_name(IF_THIS_CHANGED) {
+            if attr.check_name(ATTR_IF_THIS_CHANGED) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     None => DepNode::Hir(def_id),
@@ -141,7 +139,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                     }
                 };
                 self.if_this_changed.push((attr.span, def_id, dep_node));
-            } else if attr.check_name(THEN_THIS_WOULD_NEED) {
+            } else if attr.check_name(ATTR_THEN_THIS_WOULD_NEED) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     Some(ref n) => {
