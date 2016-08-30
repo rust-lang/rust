@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{Block, Crate, Ident, Mac_, PatKind};
-use ast::{MacStmtStyle, Stmt, StmtKind, ItemKind};
+use ast::{MacStmtStyle, StmtKind, ItemKind};
 use ast;
 use ext::hygiene::Mark;
 use attr::{self, HasAttrs};
@@ -141,15 +141,6 @@ enum InvocationKind {
         attr: ast::Attribute,
         item: Annotatable,
     },
-}
-
-pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
-    if let ast::ExprKind::Mac(mac) = expr.node {
-        let invoc = fld.new_bang_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::Expr);
-        expand_invoc(invoc, fld).make_expr()
-    } else {
-        P(noop_fold_expr(expr, fld))
-    }
 }
 
 fn expand_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
@@ -345,191 +336,6 @@ fn expand_bang_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
     fully_expanded
 }
 
-// does this attribute list contain "macro_use" ?
-fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool {
-    for attr in attrs {
-        let mut is_use = attr.check_name("macro_use");
-        if attr.check_name("macro_escape") {
-            let mut err =
-                fld.cx.struct_span_warn(attr.span,
-                                        "macro_escape is a deprecated synonym for macro_use");
-            is_use = true;
-            if let ast::AttrStyle::Inner = attr.node.style {
-                err.help("consider an outer attribute, \
-                          #[macro_use] mod ...").emit();
-            } else {
-                err.emit();
-            }
-        };
-
-        if is_use {
-            if !attr.is_word() {
-              fld.cx.span_err(attr.span, "arguments to macro_use are not allowed here");
-            }
-            return true;
-        }
-    }
-    false
-}
-
-/// Expand a stmt
-fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
-    let (mac, style, attrs) = match stmt.node {
-        StmtKind::Mac(mac) => mac.unwrap(),
-        _ => return noop_fold_stmt(stmt, fld)
-    };
-
-    let invoc = fld.new_bang_invoc(mac, attrs.into(), stmt.span, ExpansionKind::Stmts);
-    let mut fully_expanded = expand_invoc(invoc, fld).make_stmts();
-
-    // If this is a macro invocation with a semicolon, then apply that
-    // semicolon to the final statement produced by expansion.
-    if style == MacStmtStyle::Semicolon {
-        if let Some(stmt) = fully_expanded.pop() {
-            fully_expanded.push(stmt.add_trailing_semicolon());
-        }
-    }
-
-    fully_expanded
-}
-
-fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
-    match p.node {
-        PatKind::Mac(_) => {}
-        _ => return noop_fold_pat(p, fld)
-    }
-    p.and_then(|p| match p.node {
-        PatKind::Mac(mac) => {
-            let invoc = fld.new_bang_invoc(mac, Vec::new(), p.span, ExpansionKind::Pat);
-            expand_invoc(invoc, fld).make_pat()
-        }
-        _ => unreachable!(),
-    })
-}
-
-fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> Expansion {
-    match a {
-        Annotatable::Item(it) => Expansion::Items(expand_item(it, fld)),
-        Annotatable::TraitItem(it) => Expansion::TraitItems(expand_trait_item(it.unwrap(), fld)),
-        Annotatable::ImplItem(ii) => Expansion::ImplItems(expand_impl_item(ii.unwrap(), fld)),
-    }
-}
-
-fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> Expansion {
-    let mut attr = None;
-    item = item.map_attrs(|mut attrs| {
-        for i in 0..attrs.len() {
-            if let Some(extension) = fld.cx.syntax_env.find(intern(&attrs[i].name())) {
-                match *extension {
-                    MultiModifier(..) | MultiDecorator(..) => {
-                        attr = Some(attrs.remove(i));
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        attrs
-    });
-
-    if let Some(attr) = attr {
-        let kind = match item {
-            Annotatable::Item(_) => ExpansionKind::Items,
-            Annotatable::ImplItem(_) => ExpansionKind::ImplItems,
-            Annotatable::TraitItem(_) => ExpansionKind::TraitItems,
-        };
-        let invoc = fld.new_invoc(kind, InvocationKind::Attr { attr: attr, item: item });
-        expand_invoc(invoc, fld)
-    } else {
-        expand_multi_modified(item, fld)
-    }
-}
-
-fn expand_item(item: P<ast::Item>, fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
-    match item.node {
-        ast::ItemKind::Mac(..) => {
-            if match item.node {
-                ItemKind::Mac(ref mac) => mac.node.path.segments.is_empty(),
-                _ => unreachable!(),
-            } {
-                return SmallVector::one(item);
-            }
-            item.and_then(|item| match item.node {
-                ItemKind::Mac(mac) => {
-                    let invoc =
-                        fld.new_invoc(ExpansionKind::Items, InvocationKind::Bang {
-                            mac: mac, attrs: item.attrs, ident: Some(item.ident), span: item.span,
-                        });
-                    expand_invoc(invoc, fld).make_items()
-                }
-                _ => unreachable!(),
-            })
-        }
-        ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
-            fld.cx.mod_push(item.ident);
-            let macro_use = contains_macro_use(fld, &item.attrs);
-
-            let directory = fld.cx.directory.clone();
-            if item.span.contains(inner) {
-                fld.cx.directory.push(&*{
-                    ::attr::first_attr_value_str_by_name(&item.attrs, "path")
-                        .unwrap_or(item.ident.name.as_str())
-                });
-            } else {
-                fld.cx.directory = match inner {
-                    syntax_pos::DUMMY_SP => PathBuf::new(),
-                    _ => PathBuf::from(fld.cx.parse_sess.codemap().span_to_filename(inner)),
-                };
-                fld.cx.directory.pop();
-            }
-
-            let result = fld.with_exts_frame(macro_use, |fld| noop_fold_item(item, fld));
-            fld.cx.directory = directory;
-
-            fld.cx.mod_pop();
-            result
-        },
-        _ => noop_fold_item(item, fld),
-    }
-}
-
-fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
-                 -> SmallVector<ast::ImplItem> {
-    match ii.node {
-        ast::ImplItemKind::Macro(mac) => {
-            let invoc = fld.new_bang_invoc(mac, ii.attrs, ii.span, ExpansionKind::ImplItems);
-            expand_invoc(invoc, fld).make_impl_items()
-        }
-        _ => fold::noop_fold_impl_item(ii, fld)
-    }
-}
-
-fn expand_trait_item(ti: ast::TraitItem, fld: &mut MacroExpander)
-                     -> SmallVector<ast::TraitItem> {
-    match ti.node {
-        ast::TraitItemKind::Macro(mac) => {
-            let invoc = fld.new_bang_invoc(mac, ti.attrs, ti.span, ExpansionKind::TraitItems);
-            expand_invoc(invoc, fld).make_trait_items()
-        }
-        _ => fold::noop_fold_trait_item(ti, fld)
-    }
-}
-
-pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
-    let t = match t.node {
-        ast::TyKind::Mac(_) => t.unwrap(),
-        _ => return fold::noop_fold_ty(t, fld),
-    };
-
-    match t.node {
-        ast::TyKind::Mac(mac) => {
-            let invoc = fld.new_bang_invoc(mac, Vec::new(), t.span, ExpansionKind::Ty);
-            expand_invoc(invoc, fld).make_ty()
-        }
-        _ => unreachable!(),
-    }
-}
-
 /// A tree-folder that performs macro expansion
 pub struct MacroExpander<'a, 'b:'a> {
     pub cx: &'a mut ExtCtxt<'b>,
@@ -612,6 +418,56 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })
     }
 
+    fn new_attr_invoc(&self, attr: ast::Attribute, item: Annotatable, kind: ExpansionKind)
+                      -> Invocation {
+        self.new_invoc(kind, InvocationKind::Attr { attr: attr, item: item })
+    }
+
+    // If `item` is an attr invocation, remove and return the macro attribute.
+    fn classify_item<T: HasAttrs>(&self, mut item: T) -> (T, Option<ast::Attribute>) {
+        let mut attr = None;
+        item = item.map_attrs(|mut attrs| {
+            for i in 0..attrs.len() {
+                if let Some(extension) = self.cx.syntax_env.find(intern(&attrs[i].name())) {
+                    match *extension {
+                        MultiModifier(..) | MultiDecorator(..) => {
+                            attr = Some(attrs.remove(i));
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            attrs
+        });
+        (item, attr)
+    }
+
+    // does this attribute list contain "macro_use" ?
+    fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
+        for attr in attrs {
+            let mut is_use = attr.check_name("macro_use");
+            if attr.check_name("macro_escape") {
+                let msg = "macro_escape is a deprecated synonym for macro_use";
+                let mut err = self.cx.struct_span_warn(attr.span, msg);
+                is_use = true;
+                if let ast::AttrStyle::Inner = attr.node.style {
+                    err.help("consider an outer attribute, #[macro_use] mod ...").emit();
+                } else {
+                    err.emit();
+                }
+            };
+
+            if is_use {
+                if !attr.is_word() {
+                    self.cx.span_err(attr.span, "arguments to macro_use are not allowed here");
+                }
+                return true;
+            }
+        }
+        false
+    }
+
     fn with_exts_frame<T, F: FnOnce(&mut Self) -> T>(&mut self, macros_escape: bool, f: F) -> T {
         self.cx.syntax_env.push_frame();
         self.cx.syntax_env.info().macros_escape = macros_escape;
@@ -630,30 +486,59 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        expr.and_then(|expr| expand_expr(expr, self))
+        let expr = expr.unwrap();
+        if let ast::ExprKind::Mac(mac) = expr.node {
+            let invoc = self.new_bang_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::Expr);
+            expand_invoc(invoc, self).make_expr()
+        } else {
+            P(noop_fold_expr(expr, self))
+        }
     }
 
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        expr.and_then(|expr| match expr.node {
-            ast::ExprKind::Mac(mac) => {
-                let invoc =
-                    self.new_bang_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::OptExpr);
-                expand_invoc(invoc, self).make_opt_expr()
-            }
-            _ => Some(expand_expr(expr, self)),
-        })
+        let expr = expr.unwrap();
+        if let ast::ExprKind::Mac(mac) = expr.node {
+            let invoc =
+                self.new_bang_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::OptExpr);
+            expand_invoc(invoc, self).make_opt_expr()
+        } else {
+            Some(P(noop_fold_expr(expr, self)))
+        }
     }
 
     fn fold_pat(&mut self, pat: P<ast::Pat>) -> P<ast::Pat> {
-        expand_pat(pat, self)
-    }
+        match pat.node {
+            PatKind::Mac(_) => {}
+            _ => return noop_fold_pat(pat, self)
+        }
 
-    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        expand_annotatable(Annotatable::Item(item), self).make_items()
+        pat.and_then(|pat| match pat.node {
+            PatKind::Mac(mac) => {
+                let invoc = self.new_bang_invoc(mac, Vec::new(), pat.span, ExpansionKind::Pat);
+                expand_invoc(invoc, self).make_pat()
+            }
+            _ => unreachable!(),
+        })
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
-        expand_stmt(stmt, self)
+        let (mac, style, attrs) = match stmt.node {
+            StmtKind::Mac(mac) => mac.unwrap(),
+            _ => return noop_fold_stmt(stmt, self)
+        };
+
+        let invoc = self.new_bang_invoc(mac, attrs.into(), stmt.span, ExpansionKind::Stmts);
+        let mut fully_expanded = expand_invoc(invoc, self).make_stmts();
+
+        // If this is a macro invocation with a semicolon, then apply that
+        // semicolon to the final statement produced by expansion.
+        if style == MacStmtStyle::Semicolon {
+            if let Some(stmt) = fully_expanded.pop() {
+                fully_expanded.push(stmt.add_trailing_semicolon());
+            }
+        }
+
+        fully_expanded
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
@@ -663,16 +548,111 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         result
     }
 
-    fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
-        expand_annotatable(Annotatable::TraitItem(P(i)), self).make_trait_items()
+    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+        let (item, attr) = self.classify_item(item);
+        if let Some(attr) = attr {
+            let invoc = self.new_attr_invoc(attr, Annotatable::Item(item), ExpansionKind::Items);
+            return expand_invoc(invoc, self).make_items();
+        }
+
+        match item.node {
+            ast::ItemKind::Mac(..) => {
+                if match item.node {
+                    ItemKind::Mac(ref mac) => mac.node.path.segments.is_empty(),
+                    _ => unreachable!(),
+                } {
+                    return SmallVector::one(item);
+                }
+
+                item.and_then(|item| match item.node {
+                    ItemKind::Mac(mac) => {
+                        let invoc = self.new_invoc(ExpansionKind::Items, InvocationKind::Bang {
+                            mac: mac,
+                            attrs: item.attrs,
+                            ident: Some(item.ident),
+                            span: item.span,
+                        });
+                        expand_invoc(invoc, self).make_items()
+                    }
+                    _ => unreachable!(),
+                })
+            }
+            ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
+                self.cx.mod_push(item.ident);
+                let macro_use = self.contains_macro_use(&item.attrs);
+
+                let directory = self.cx.directory.clone();
+                if item.span.contains(inner) {
+                    self.cx.directory.push(&*{
+                        ::attr::first_attr_value_str_by_name(&item.attrs, "path")
+                            .unwrap_or(item.ident.name.as_str())
+                    });
+                } else {
+                    self.cx.directory = match inner {
+                        syntax_pos::DUMMY_SP => PathBuf::new(),
+                        _ => PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner)),
+                    };
+                    self.cx.directory.pop();
+                }
+                let result = self.with_exts_frame(macro_use, |this| noop_fold_item(item, this));
+                self.cx.directory = directory;
+
+                self.cx.mod_pop();
+                result
+            },
+            _ => noop_fold_item(item, self),
+        }
     }
 
-    fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
-        expand_annotatable(Annotatable::ImplItem(P(i)), self).make_impl_items()
+    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+        let (item, attr) = self.classify_item(item);
+        if let Some(attr) = attr {
+            let item = Annotatable::TraitItem(P(item));
+            let invoc = self.new_attr_invoc(attr, item, ExpansionKind::TraitItems);
+            return expand_invoc(invoc, self).make_trait_items();
+        }
+
+        match item.node {
+            ast::TraitItemKind::Macro(mac) => {
+                let ast::TraitItem { attrs, span, .. } = item;
+                let invoc = self.new_bang_invoc(mac, attrs, span, ExpansionKind::TraitItems);
+                expand_invoc(invoc, self).make_trait_items()
+            }
+            _ => fold::noop_fold_trait_item(item, self),
+        }
+    }
+
+    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+        let (item, attr) = self.classify_item(item);
+        if let Some(attr) = attr {
+            let item = Annotatable::ImplItem(P(item));
+            let invoc = self.new_attr_invoc(attr, item, ExpansionKind::ImplItems);
+            return expand_invoc(invoc, self).make_impl_items();
+        }
+
+        match item.node {
+            ast::ImplItemKind::Macro(mac) => {
+                let ast::ImplItem { attrs, span, .. } = item;
+                let invoc = self.new_bang_invoc(mac, attrs, span, ExpansionKind::ImplItems);
+                expand_invoc(invoc, self).make_impl_items()
+            }
+            _ => fold::noop_fold_impl_item(item, self)
+        }
     }
 
     fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
-        expand_type(ty, self)
+        let ty = match ty.node {
+            ast::TyKind::Mac(_) => ty.unwrap(),
+            _ => return fold::noop_fold_ty(ty, self),
+        };
+
+        match ty.node {
+            ast::TyKind::Mac(mac) => {
+                let invoc = self.new_bang_invoc(mac, Vec::new(), ty.span, ExpansionKind::Ty);
+                expand_invoc(invoc, self).make_ty()
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
