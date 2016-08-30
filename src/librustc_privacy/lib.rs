@@ -384,8 +384,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     fn check_field(&mut self, span: Span, def: ty::AdtDef<'tcx>, field: ty::FieldDef<'tcx>) {
         if def.adt_kind() == ty::AdtKind::Struct &&
            !field.vis.is_accessible_from(self.curitem, &self.tcx.map) {
-            span_err!(self.tcx.sess, span, E0451, "field `{}` of struct `{}` is private",
-                      field.name, self.tcx.item_path_str(def.did));
+            struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of struct `{}` is private",
+                      field.name, self.tcx.item_path_str(def.did))
+                .span_label(span, &format!("field `{}` is private", field.name))
+                .emit();
         }
     }
 
@@ -425,14 +427,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 let method = self.tcx.tables.borrow().method_map[&method_call];
                 self.check_method(expr.span, method.def_id);
             }
-            hir::ExprStruct(..) => {
+            hir::ExprStruct(_, ref fields, _) => {
                 let adt = self.tcx.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(self.tcx.expect_def(expr.id));
                 // RFC 736: ensure all unmentioned fields are visible.
                 // Rather than computing the set of unmentioned fields
                 // (i.e. `all_fields - fields`), just check them all.
-                for field in &variant.fields {
-                    self.check_field(expr.span, adt, field);
+                for field in variant.fields.iter() {
+                    let span = if let Some(f) = fields.iter().find(|f| f.name.node == field.name) {
+                        f.span
+                    } else {
+                        expr.span
+                    };
+                    self.check_field(span, adt, field);
                 }
             }
             hir::ExprPath(..) => {
@@ -491,7 +498,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 let adt = self.tcx.pat_ty(pattern).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(self.tcx.expect_def(pattern.id));
                 for field in fields {
-                    self.check_field(pattern.span, adt, variant.field_named(field.node.name));
+                    self.check_field(field.span, adt, variant.field_named(field.node.name));
                 }
             }
             PatKind::TupleStruct(_, ref fields, ddpos) => {
