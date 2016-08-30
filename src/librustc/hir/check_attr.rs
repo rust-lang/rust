@@ -62,8 +62,7 @@ impl<'a> CheckAttrVisitor<'a> {
                 None => continue,
             };
 
-            let word: &str = &word.name();
-            let (message, label) = match word {
+            let (message, label) = match &*name {
                 "C" => {
                     conflicting_reprs += 1;
                     if target != Target::Struct &&
@@ -80,7 +79,8 @@ impl<'a> CheckAttrVisitor<'a> {
                     // can be used to modify another repr hint
                     if target != Target::Struct &&
                             target != Target::Union {
-                        "attribute should be applied to struct or union"
+                                ("attribute should be applied to struct or union",
+                                 "a struct or union")
                     } else {
                         continue
                     }
