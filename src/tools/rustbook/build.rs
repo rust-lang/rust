@@ -61,9 +61,9 @@ fn write_toc(book: &Book, current_page: &BookItem, out: &mut Write) -> io::Resul
                  section,
                  item.title)?;
         if !item.children.is_empty() {
-            writeln!(out, "<ul class='section'>")?;
+            writeln!(out, "<ol class='section'>")?;
             let _ = walk_items(&item.children[..], section, current_page, out);
-            writeln!(out, "</ul>")?;
+            writeln!(out, "</ol>")?;
         }
         writeln!(out, "</li>")?;
 
@@ -71,9 +71,9 @@ fn write_toc(book: &Book, current_page: &BookItem, out: &mut Write) -> io::Resul
     }
 
     writeln!(out, "<div id='toc' class='mobile-hidden'>")?;
-    writeln!(out, "<ul class='chapter'>")?;
+    writeln!(out, "<ol class='chapter'>")?;
     walk_items(&book.chapters[..], "", &current_page, out)?;
-    writeln!(out, "</ul>")?;
+    writeln!(out, "</ol>")?;
     writeln!(out, "</div>")?;
 
     Ok(())
