@@ -56,18 +56,21 @@ impl<'a> CheckAttrVisitor<'a> {
 
         let mut conflicting_reprs = 0;
         for word in words {
+
             let name = match word.name() {
                 Some(word) => word,
                 None => continue,
             };
 
-            let message = match &*name {
+            let word: &str = &word.name();
+            let (message, label) = match word {
                 "C" => {
                     conflicting_reprs += 1;
                     if target != Target::Struct &&
                             target != Target::Union &&
                             target != Target::Enum {
-                        "attribute should be applied to struct, enum or union"
+                                ("attribute should be applied to struct, enum or union",
+                                 "a struct, enum or union")
                     } else {
                         continue
                     }
@@ -85,7 +88,8 @@ impl<'a> CheckAttrVisitor<'a> {
                 "simd" => {
                     conflicting_reprs += 1;
                     if target != Target::Struct {
-                        "attribute should be applied to struct"
+                        ("attribute should be applied to struct",
+                         "a struct")
                     } else {
                         continue
                     }
@@ -95,15 +99,17 @@ impl<'a> CheckAttrVisitor<'a> {
                 "isize" | "usize" => {
                     conflicting_reprs += 1;
                     if target != Target::Enum {
-                        "attribute should be applied to enum"
+                        ("attribute should be applied to enum",
+                         "an enum")
                     } else {
                         continue
                     }
                 }
                 _ => continue,
             };
-
-            span_err!(self.sess, attr.span, E0517, "{}", message);
+            struct_span_err!(self.sess, attr.span, E0517, "{}", message)
+                .span_label(attr.span, &format!("requires {}", label))
+                .emit();
         }
         if conflicting_reprs > 1 {
             span_warn!(self.sess, attr.span, E0566,
