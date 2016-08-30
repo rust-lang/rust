@@ -16,7 +16,7 @@ use middle::region::{CodeExtent};
 use rustc::infer::TypeOrigin;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::nodemap::FnvHashSet;
+use rustc::util::nodemap::{FnvHashSet, FnvHashMap};
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -519,11 +519,26 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
 fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, generics: &ty::Generics) {
     let parent = tcx.lookup_generics(generics.parent.unwrap());
-    let impl_params: FnvHashSet<_> = parent.types.iter().map(|tp| tp.name).collect();
+    let impl_params: FnvHashMap<_, _> = parent.types
+                                        .iter()
+                                        .map(|tp| (tp.name, tp.def_id))
+                                        .collect();
 
     for method_param in &generics.types {
-        if impl_params.contains(&method_param.name) {
-            error_194(tcx, span, method_param.name);
+        if impl_params.contains_key(&method_param.name) {
+            // Tighten up the span to focus on only the shadowing type
+            let shadow_node_id = tcx.map.as_local_node_id(method_param.def_id).unwrap();
+            let type_span = match tcx.map.opt_span(shadow_node_id) {
+                Some(osp) => osp,
+                None => span
+            };
+
+            // The expectation here is that the original trait declaration is
+            // local so it should be okay to just unwrap everything.
+            let trait_def_id = impl_params.get(&method_param.name).unwrap();
+            let trait_node_id = tcx.map.as_local_node_id(*trait_def_id).unwrap();
+            let trait_decl_span = tcx.map.opt_span(trait_node_id).unwrap();
+            error_194(tcx, type_span, trait_decl_span, method_param.name);
         }
     }
 }
@@ -630,10 +645,11 @@ fn error_392<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, span: Span, param_name: ast::N
     err
 }
 
-fn error_194(tcx: TyCtxt, span: Span, name: ast::Name) {
+fn error_194(tcx: TyCtxt, span: Span, trait_decl_span: Span, name: ast::Name) {
     struct_span_err!(tcx.sess, span, E0194,
               "type parameter `{}` shadows another type parameter of the same name",
               name)
-        .span_label(span, &format!("`{}` shadows another type parameter", name))
+        .span_label(span, &format!("shadows another type parameter"))
+        .span_label(trait_decl_span, &format!("first `{}` declared here", name))
         .emit();
 }
