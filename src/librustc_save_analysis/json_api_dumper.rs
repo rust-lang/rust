@@ -17,6 +17,13 @@ use external_data::*;
 use data::{VariableKind, Visibility};
 use dump::Dump;
 
+// A dumper to dump a restricted set of JSON information, designed for use with
+// libraries distributed without their source. Clients are likely to use type
+// information here, and (for example) generate Rustdoc URLs, but don't need
+// information for navigating the source of the crate.
+// Relative to the regular JSON save-analysis info, this form is filtered to
+// remove non-visible items, but includes some extra info for items (e.g., the
+// parent field for finding the struct to which a field belongs).
 pub struct JsonApiDumper<'b, W: Write + 'b> {
     output: &'b mut W,
     result: Analysis,
@@ -217,7 +224,7 @@ impl From<TupleVariantData> for Option<Def> {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
-            parent: None,
+            parent: data.parent.map(|id| From::from(id)),
             children: vec![],
             decl_id: None,
         })
@@ -232,7 +239,7 @@ impl From<StructVariantData> for Option<Def> {
             name: data.name,
             qualname: data.qualname,
             value: data.value,
-            parent: None,
+            parent: data.parent.map(|id| From::from(id)),
             children: vec![],
             decl_id: None,
         })
@@ -285,7 +292,7 @@ impl From<FunctionData> for Option<Def> {
                 qualname: data.qualname,
                 value: data.value,
                 children: vec![],
-                parent: None,
+                parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
             }),
             _ => None,
@@ -303,7 +310,7 @@ impl From<MethodData> for Option<Def> {
                 qualname: data.qualname,
                 value: data.value,
                 children: vec![],
-                parent: None,
+                parent: data.parent.map(|id| From::from(id)),
                 decl_id: data.decl_id.map(|id| From::from(id)),
             }),
             _ => None,
@@ -354,7 +361,7 @@ impl From<TypeDefData> for Option<Def> {
                 qualname: data.qualname,
                 value: data.value,
                 children: vec![],
-                parent: None,
+                parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
             }),
             _ => None,
@@ -377,7 +384,7 @@ impl From<VariableData> for Option<Def> {
                 qualname: data.qualname,
                 value: data.value,
                 children: vec![],
-                parent: None,
+                parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
             }),
             _ => None,

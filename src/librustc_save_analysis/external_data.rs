@@ -169,6 +169,7 @@ pub struct FunctionData {
     pub scope: DefId,
     pub value: String,
     pub visibility: Visibility,
+    pub parent: Option<DefId>,
 }
 
 impl Lower for data::FunctionData {
@@ -184,6 +185,7 @@ impl Lower for data::FunctionData {
             scope: make_def_id(self.scope, &tcx.map),
             value: self.value,
             visibility: self.visibility,
+            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
         }
     }
 }
@@ -328,6 +330,7 @@ pub struct MethodData {
     pub value: String,
     pub decl_id: Option<DefId>,
     pub visibility: Visibility,
+    pub parent: Option<DefId>
 }
 
 impl Lower for data::MethodData {
@@ -343,6 +346,7 @@ impl Lower for data::MethodData {
             value: self.value,
             decl_id: self.decl_id,
             visibility: self.visibility,
+            parent: Some(make_def_id(self.scope, &tcx.map)),
         }
     }
 }
@@ -438,7 +442,8 @@ pub struct StructVariantData {
     pub qualname: String,
     pub type_value: String,
     pub value: String,
-    pub scope: DefId
+    pub scope: DefId,
+    pub parent: Option<DefId>,
 }
 
 impl Lower for data::StructVariantData {
@@ -453,6 +458,7 @@ impl Lower for data::StructVariantData {
             type_value: self.type_value,
             value: self.value,
             scope: make_def_id(self.scope, &tcx.map),
+            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
         }
     }
 }
@@ -495,6 +501,7 @@ pub struct TupleVariantData {
     pub type_value: String,
     pub value: String,
     pub scope: DefId,
+    pub parent: Option<DefId>,
 }
 
 impl Lower for data::TupleVariantData {
@@ -509,6 +516,7 @@ impl Lower for data::TupleVariantData {
             type_value: self.type_value,
             value: self.value,
             scope: make_def_id(self.scope, &tcx.map),
+            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
         }
     }
 }
@@ -522,6 +530,7 @@ pub struct TypeDefData {
     pub qualname: String,
     pub value: String,
     pub visibility: Visibility,
+    pub parent: Option<DefId>,
 }
 
 impl Lower for data::TypeDefData {
@@ -535,6 +544,7 @@ impl Lower for data::TypeDefData {
             qualname: self.qualname,
             value: self.value,
             visibility: self.visibility,
+            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
         }
     }
 }
@@ -620,6 +630,7 @@ pub struct VariableData {
     pub scope: DefId,
     pub value: String,
     pub type_value: String,
+    pub parent: Option<DefId>,
     pub visibility: Visibility,
 }
 
@@ -636,6 +647,7 @@ impl Lower for data::VariableData {
             scope: make_def_id(self.scope, &tcx.map),
             value: self.value,
             type_value: self.type_value,
+            parent: self.parent.map(|id| make_def_id(id, &tcx.map)),
             visibility: self.visibility,
         }
     }
