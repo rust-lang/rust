@@ -174,7 +174,9 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
 
     fn hash_discriminant<T>(&mut self, v: &T) {
         unsafe {
-            ::std::intrinsics::discriminant_value(&v).hash(self.st);
+            let disr = ::std::intrinsics::discriminant_value(v);
+            debug!("hash_discriminant: disr={}, st={:?}", disr, self.st);
+            disr.hash(self.st);
         }
     }
 }
@@ -536,7 +538,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
     fn visit_vis(&mut self, v: &'tcx Visibility) {
         debug!("visit_vis: st={:?}", self.st);
         SawVis.hash(self.st);
-        self.hash_discriminant(&v);
+        self.hash_discriminant(v);
         visit::walk_vis(self, v)
     }
 
