@@ -241,9 +241,7 @@ impl Encoder {
         }
         pos
     }
-}
 
-impl Encoder {
     // used internally to emit things like the vector length and so on
     fn _emit_tagged_sub(&mut self, v: usize) -> EncodeResult {
         if v as u8 as usize == v {
@@ -256,16 +254,15 @@ impl Encoder {
         }
     }
 
+    pub fn opaque(&mut self) -> opaque::Encoder {
+        opaque::Encoder::new(&mut self.writer)
+    }
+
     pub fn emit_opaque<F>(&mut self, f: F) -> EncodeResult
         where F: FnOnce(&mut opaque::Encoder) -> EncodeResult
     {
         self.start_tag(EsOpaque as usize)?;
-
-        {
-            let mut opaque_encoder = opaque::Encoder::new(&mut self.writer);
-            f(&mut opaque_encoder)?;
-        }
-
+        f(&mut self.opaque())?;
         self.mark_stable_position();
         self.end_tag()
     }

@@ -132,7 +132,7 @@ fn encode_def_id(ecx: &mut EncodeContext, id: DefId) {
 fn encode_def_key(ecx: &mut EncodeContext, key: DefKey) {
     let simple_key = def_key::simplify_def_key(key);
     ecx.start_tag(tag_def_key);
-    simple_key.encode(ecx);
+    simple_key.encode(&mut ecx.opaque());
     ecx.end_tag();
 }
 
@@ -171,7 +171,7 @@ pub fn def_to_string(_tcx: TyCtxt, did: DefId) -> String {
 fn encode_item_variances(ecx: &mut EncodeContext, id: NodeId) {
     let v = ecx.tcx.item_variances(ecx.tcx.map.local_def_id(id));
     ecx.start_tag(tag_item_variances);
-    v.encode(ecx);
+    v.encode(&mut ecx.opaque());
     ecx.end_tag();
 }
 
@@ -786,7 +786,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                                                     attr));
         }
         self.start_tag(tag_items_data_item_repr);
-        repr_attrs.encode(self.ecx);
+        repr_attrs.encode(&mut self.opaque());
         self.end_tag();
     }
 
@@ -821,7 +821,7 @@ fn encode_inherent_implementations(ecx: &mut EncodeContext,
 fn encode_stability(ecx: &mut EncodeContext, stab_opt: Option<&attr::Stability>) {
     stab_opt.map(|stab| {
         ecx.start_tag(tag_items_data_item_stability);
-        stab.encode(ecx).unwrap();
+        stab.encode(&mut ecx.opaque()).unwrap();
         ecx.end_tag();
     });
 }
@@ -829,7 +829,7 @@ fn encode_stability(ecx: &mut EncodeContext, stab_opt: Option<&attr::Stability>)
 fn encode_deprecation(ecx: &mut EncodeContext, depr_opt: Option<attr::Deprecation>) {
     depr_opt.map(|depr| {
         ecx.start_tag(tag_items_data_item_deprecation);
-        depr.encode(ecx).unwrap();
+        depr.encode(&mut ecx.opaque()).unwrap();
         ecx.end_tag();
     });
 }
@@ -1068,7 +1068,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 {
                     Some(&kind) => {
                         self.start_tag(tag_impl_coerce_unsized_kind);
-                        kind.encode(self.ecx);
+                        kind.encode(&mut self.opaque());
                         self.end_tag();
                     }
                     None => {}
@@ -1386,7 +1386,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         self.end_tag();
 
         self.start_tag(tag_items_closure_kind);
-        tcx.closure_kind(def_id).encode(self.ecx).unwrap();
+        tcx.closure_kind(def_id).encode(&mut self.opaque()).unwrap();
         self.end_tag();
 
         assert!(self.mir_map.map.contains_key(&def_id));
@@ -1428,9 +1428,7 @@ fn encode_item_index(ecx: &mut EncodeContext, index: IndexData) {
 
 fn encode_attributes(ecx: &mut EncodeContext, attrs: &[ast::Attribute]) {
     ecx.start_tag(tag_attributes);
-    ecx.emit_opaque(|opaque_encoder| {
-        attrs.encode(opaque_encoder)
-    }).unwrap();
+    attrs.encode(&mut ecx.opaque()).unwrap();
     ecx.end_tag();
 }
 
@@ -1565,9 +1563,7 @@ fn encode_codemap(ecx: &mut EncodeContext) {
         }
 
         ecx.start_tag(tag_codemap_filemap);
-        ecx.emit_opaque(|opaque_encoder| {
-            filemap.encode(opaque_encoder)
-        }).unwrap();
+        filemap.encode(&mut ecx.opaque()).unwrap();
         ecx.end_tag();
     }
 
