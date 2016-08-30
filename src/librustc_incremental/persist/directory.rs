@@ -178,7 +178,6 @@ impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
         &self.directory.paths[id.index as usize]
     }
 
-
     pub fn map(&mut self, node: &DepNode<DefId>) -> DepNode<DefPathIndex> {
         node.map_def(|&def_id| Some(self.add(def_id))).unwrap()
     }
