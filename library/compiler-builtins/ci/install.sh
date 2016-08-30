@@ -3,7 +3,7 @@ set -ex
 . $(dirname $0)/env.sh
 
 install_qemu() {
-    if [[ $TRAVIS_OS_NAME = "linux" ]]; then
+    if [[ $QEMU_LD_PREFIX ]]; then
         apt-get update
         apt-get install -y --no-install-recommends \
                 binfmt-support qemu-user-static
@@ -15,13 +15,13 @@ install_gist() {
 }
 
 install_binutils() {
-    if [[ $TRAVIS_OS_NAME == "osx" ]]; then
+    if [[ $OSX ]]; then
         brew install binutils
     fi
 }
 
 install_rust() {
-    if [[ $TRAVIS_OS_NAME == "osx" ]]; then
+    if [[ $OSX ]]; then
         curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain=nightly
     else
         rustup default nightly
@@ -33,20 +33,20 @@ install_rust() {
 }
 
 add_rustup_target() {
-    if [[ $TARGET != $HOST && ${CARGO:-cargo} == "cargo" ]]; then
+    if [[ $TARGET != $HOST && $CARGO == cargo ]]; then
         rustup target add $TARGET
     fi
 }
 
 install_xargo() {
-    if [[ $CARGO == "xargo" ]]; then
+    if [[ $CARGO == xargo ]]; then
         curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | \
             bash -s -- --from japaric/xargo --at /root/.cargo/bin
     fi
 }
 
 main() {
-    if [[ $TRAVIS_OS_NAME == "osx" || ${IN_DOCKER_CONTAINER:-n} == "y" ]]; then
+    if [[ $OSX || ${IN_DOCKER_CONTAINER:-n} == y ]]; then
         install_qemu
         install_gist
         install_binutils

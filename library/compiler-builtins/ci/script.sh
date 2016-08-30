@@ -8,8 +8,8 @@ gist_it() {
 }
 
 build() {
-    ${CARGO:-cargo} build --target $TARGET
-    ${CARGO:-cargo} build --target $TARGET --release
+    $CARGO build --tartet $TARGET
+    $CARGO build --target $TARGET --release
 }
 
 inspect() {
@@ -20,7 +20,7 @@ inspect() {
     set -e
 
     # Check presence of weak symbols
-    if [[ $TRAVIS_OS_NAME = "linux" ]]; then
+    if [[ $LINUX ]]; then
         local symbols=( memcmp memcpy memmove memset )
         for symbol in "${symbols[@]}"; do
             $PREFIX$NM target/**/debug/deps/librlibc*.rlib | grep -q "W $symbol"
@@ -34,14 +34,14 @@ run_tests() {
         export RUST_TEST_THREADS=1
     fi
 
-    if [[ ${RUN_TESTS:-y} == "y" ]]; then
+    if [[ $RUN_TESTS == y ]]; then
         cargo test --target $TARGET
         cargo test --target $TARGET --release
     fi
 }
 
 main() {
-    if [[ $TRAVIS_OS_NAME == "linux" && ${IN_DOCKER_CONTAINER:-n} == "n" ]]; then
+    if [[ $LINUX && ${IN_DOCKER_CONTAINER:-n} == n ]]; then
         local tag=2016-08-24
 
         docker run \
@@ -53,9 +53,7 @@ main() {
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
                -v $(pwd):/mnt \
                japaric/rustc-builtins:$tag \
-               sh -c 'set -ex;
-                      cd /mnt;
-                      export PATH="$PATH:/root/.cargo/bin";
+               sh -c 'cd /mnt;
                       bash ci/install.sh;
                       bash ci/script.sh'
     else
