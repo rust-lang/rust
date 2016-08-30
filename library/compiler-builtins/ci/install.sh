@@ -11,7 +11,9 @@ install_qemu() {
 }
 
 install_gist() {
-    gem install gist -v 4.5.0
+    if [[ $OSX ]]; then
+        gem install gist -v 4.5.0
+    fi
 }
 
 install_binutils() {
@@ -38,13 +40,6 @@ add_rustup_target() {
     fi
 }
 
-install_xargo() {
-    if [[ $CARGO == xargo ]]; then
-        curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | \
-            bash -s -- --from japaric/xargo --at /root/.cargo/bin --vers 0.1.5
-    fi
-}
-
 main() {
     if [[ $OSX || ${IN_DOCKER_CONTAINER:-n} == y ]]; then
         install_qemu
@@ -52,7 +47,6 @@ main() {
         install_binutils
         install_rust
         add_rustup_target
-        install_xargo
     fi
 }
 
