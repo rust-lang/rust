@@ -68,6 +68,73 @@
 //! ```
 //!
 //! See the documentation for each trait for an example implementation.
+//!
+//! The [`Fn`], [`FnMut`], and [`FnOnce`] traits are implemented by types that can be
+//! invoked like functions. Note that `Fn` takes `&self`, `FnMut` takes `&mut
+//! self` and `FnOnce` takes `self`. These correspond to the three kinds of
+//! methods that can be invoked on an instance: call-by-reference,
+//! call-by-mutable-reference, and call-by-value. The most common use of these
+//! traits is to act as bounds to higher-level functions that take functions or
+//! closures as arguments.
+//!
+//! [`Fn`]: trait.Fn.html
+//! [`FnMut`]: trait.FnMut.html
+//! [`FnOnce`]: trait.FnOnce.html
+//!
+//! Taking a `Fn` as a parameter:
+//!
+//! ```rust
+//! fn call_with_one<F>(func: F) -> usize
+//!     where F: Fn(usize) -> usize
+//! {
+//!     func(1)
+//! }
+//!
+//! let double = |x| x * 2;
+//! assert_eq!(call_with_one(double), 2);
+//! ```
+//!
+//! Taking a `FnMut` as a parameter:
+//!
+//! ```rust
+//! fn do_twice<F>(mut func: F)
+//!     where F: FnMut()
+//! {
+//!     func();
+//!     func();
+//! }
+//!
+//! let mut x: usize = 1;
+//! {
+//!     let add_two_to_x = || x += 2;
+//!     do_twice(add_two_to_x);
+//! }
+//!
+//! assert_eq!(x, 5);
+//! ```
+//!
+//! Taking a `FnOnce` as a parameter:
+//!
+//! ```rust
+//! fn consume_with_relish<F>(func: F)
+//!     where F: FnOnce() -> String
+//! {
+//!     // `func` consumes its captured variables, so it cannot be run more
+//!     // than once
+//!     println!("Consumed: {}", func());
+//!
+//!     println!("Delicious!");
+//!
+//!     // Attempting to invoke `func()` again will throw a `use of moved
+//!     // value` error for `func`
+//! }
+//!
+//! let x = String::from("x");
+//! let consume_and_return_x = move || x;
+//! consume_with_relish(consume_and_return_x);
+//!
+//! // `consume_and_return_x` can no longer be invoked at this point
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -2200,6 +2267,35 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 }
 
 /// A version of the call operator that takes an immutable receiver.
+///
+/// # Examples
+///
+/// Closures automatically implement this trait, which allows them to be
+/// invoked. Note, however, that `Fn` takes an immutable reference to any
+/// captured variables. To take a mutable capture, implement [`FnMut`], and to
+/// consume the capture, implement [`FnOnce`].
+///
+/// [`FnMut`]: trait.FnMut.html
+/// [`FnOnce`]: trait.FnOnce.html
+///
+/// ```
+/// let square = |x| x * x;
+/// assert_eq!(square(5), 25);
+/// ```
+///
+/// Closures can also be passed to higher-level functions through a `Fn`
+/// parameter (or a `FnMut` or `FnOnce` parameter, which are supertraits of
+/// `Fn`).
+///
+/// ```
+/// fn call_with_one<F>(func: F) -> usize
+///     where F: Fn(usize) -> usize {
+///     func(1)
+/// }
+///
+/// let double = |x| x * 2;
+/// assert_eq!(call_with_one(double), 2);
+/// ```
 #[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
@@ -2211,6 +2307,40 @@ pub trait Fn<Args> : FnMut<Args> {
 }
 
 /// A version of the call operator that takes a mutable receiver.
+///
+/// # Examples
+///
+/// Closures that mutably capture variables automatically implement this trait,
+/// which allows them to be invoked.
+///
+/// ```
+/// let mut x = 5;
+/// {
+///     let mut square_x = || x *= x;
+///     square_x();
+/// }
+/// assert_eq!(x, 25);
+/// ```
+///
+/// Closures can also be passed to higher-level functions through a `FnMut`
+/// parameter (or a `FnOnce` parameter, which is a supertrait of `FnMut`).
+///
+/// ```
+/// fn do_twice<F>(mut func: F)
+///     where F: FnMut()
+/// {
+///     func();
+///     func();
+/// }
+///
+/// let mut x: usize = 1;
+/// {
+///     let add_two_to_x = || x += 2;
+///     do_twice(add_two_to_x);
+/// }
+///
+/// assert_eq!(x, 5);
+/// ```
 #[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
@@ -2222,6 +2352,41 @@ pub trait FnMut<Args> : FnOnce<Args> {
 }
 
 /// A version of the call operator that takes a by-value receiver.
+///
+/// # Examples
+///
+/// By-value closures automatically implement this trait, which allows them to
+/// be invoked.
+///
+/// ```
+/// let x = 5;
+/// let square_x = move || x * x;
+/// assert_eq!(square_x(), 25);
+/// ```
+///
+/// By-value Closures can also be passed to higher-level functions through a
+/// `FnOnce` parameter.
+///
+/// ```
+/// fn consume_with_relish<F>(func: F)
+///     where F: FnOnce() -> String
+/// {
+///     // `func` consumes its captured variables, so it cannot be run more
+///     // than once
+///     println!("Consumed: {}", func());
+///
+///     println!("Delicious!");
+///
+///     // Attempting to invoke `func()` again will throw a `use of moved
+///     // value` error for `func`
+/// }
+///
+/// let x = String::from("x");
+/// let consume_and_return_x = move || x;
+/// consume_with_relish(consume_and_return_x);
+///
+/// // `consume_and_return_x` can no longer be invoked at this point
+/// ```
 #[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
