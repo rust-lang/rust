@@ -158,6 +158,10 @@ impl<'doc> Doc<'doc> {
     pub fn to_string(&self) -> String {
         self.as_str().to_string()
     }
+
+    pub fn opaque(&self) -> opaque::Decoder<'doc> {
+        opaque::Decoder::new(self.data, self.start)
+    }
 }
 
 pub struct TaggedDoc<'a> {
@@ -670,12 +674,7 @@ impl<'doc> Decoder<'doc> {
         where F: FnOnce(&mut opaque::Decoder, Doc) -> DecodeResult<R>
     {
         let doc = self.next_doc(EsOpaque)?;
-
-        let result = {
-            let mut opaque_decoder = opaque::Decoder::new(doc.data, doc.start);
-            op(&mut opaque_decoder, doc)?
-        };
-
+        let result = op(&mut doc.opaque(), doc)?;
         Ok(result)
     }
 

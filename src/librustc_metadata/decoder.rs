@@ -553,16 +553,14 @@ pub fn get_type<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
 pub fn get_stability(cdata: Cmd, id: DefIndex) -> Option<attr::Stability> {
     let item = cdata.lookup_item(id);
     reader::maybe_get_doc(item, tag_items_data_item_stability).map(|doc| {
-        let mut decoder = reader::Decoder::new(doc);
-        Decodable::decode(&mut decoder).unwrap()
+        Decodable::decode(&mut doc.opaque()).unwrap()
     })
 }
 
 pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
     let item = cdata.lookup_item(id);
     reader::maybe_get_doc(item, tag_items_data_item_deprecation).map(|doc| {
-        let mut decoder = reader::Decoder::new(doc);
-        Decodable::decode(&mut decoder).unwrap()
+        Decodable::decode(&mut doc.opaque()).unwrap()
     })
 }
 
@@ -579,19 +577,12 @@ pub fn get_parent_impl(cdata: Cmd, id: DefIndex) -> Option<DefId> {
 
 pub fn get_repr_attrs(cdata: Cmd, id: DefIndex) -> Vec<attr::ReprAttr> {
     let item = cdata.lookup_item(id);
-    match reader::maybe_get_doc(item, tag_items_data_item_repr).map(|doc| {
-        let mut decoder = reader::Decoder::new(doc);
-        Decodable::decode(&mut decoder).unwrap()
-    }) {
-        Some(attrs) => attrs,
-        None => Vec::new(),
-    }
+    reader::maybe_get_doc(item, tag_items_data_item_repr).map_or(vec![], |doc| {
+        Decodable::decode(&mut doc.opaque()).unwrap()
+    })
 }
 
-pub fn get_impl_polarity<'tcx>(cdata: Cmd,
-                               id: DefIndex)
-                               -> Option<hir::ImplPolarity>
-{
+pub fn get_impl_polarity(cdata: Cmd, id: DefIndex) -> Option<hir::ImplPolarity> {
     let item_doc = cdata.lookup_item(id);
     let fam = item_family(item_doc);
     match fam {
@@ -602,15 +593,14 @@ pub fn get_impl_polarity<'tcx>(cdata: Cmd,
     }
 }
 
-pub fn get_custom_coerce_unsized_kind<'tcx>(
+pub fn get_custom_coerce_unsized_kind(
     cdata: Cmd,
     id: DefIndex)
     -> Option<ty::adjustment::CustomCoerceUnsized>
 {
     let item_doc = cdata.lookup_item(id);
     reader::maybe_get_doc(item_doc, tag_impl_coerce_unsized_kind).map(|kind_doc| {
-        let mut decoder = reader::Decoder::new(kind_doc);
-        Decodable::decode(&mut decoder).unwrap()
+        Decodable::decode(&mut kind_doc.opaque()).unwrap()
     })
 }
 
@@ -989,8 +979,7 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: DefIndex)
 pub fn get_item_variances(cdata: Cmd, id: DefIndex) -> Vec<ty::Variance> {
     let item_doc = cdata.lookup_item(id);
     let variance_doc = reader::get_doc(item_doc, tag_item_variances);
-    let mut decoder = reader::Decoder::new(variance_doc);
-    Decodable::decode(&mut decoder).unwrap()
+    Decodable::decode(&mut variance_doc.opaque()).unwrap()
 }
 
 pub fn get_provided_trait_methods<'a, 'tcx>(cdata: Cmd,
@@ -1109,10 +1098,7 @@ pub fn get_struct_field_names(cdata: Cmd, id: DefIndex) -> Vec<ast::Name> {
 
 fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
     reader::maybe_get_doc(md, tag_attributes).map_or(vec![], |attrs_doc| {
-        let mut decoder = reader::Decoder::new(attrs_doc);
-        let mut attrs: Vec<ast::Attribute> = decoder.read_opaque(|opaque_decoder, _| {
-            Decodable::decode(opaque_decoder)
-        }).unwrap();
+        let mut attrs = Vec::<ast::Attribute>::decode(&mut attrs_doc.opaque()).unwrap();
 
         // Need new unique IDs: old thread-local IDs won't map to new threads.
         for attr in attrs.iter_mut() {
@@ -1575,18 +1561,14 @@ pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<syntax_pos::FileMap> {
     let cm_doc = reader::get_doc(crate_doc, tag_codemap);
 
     reader::tagged_docs(cm_doc, tag_codemap_filemap).map(|filemap_doc| {
-        let mut decoder = reader::Decoder::new(filemap_doc);
-        decoder.read_opaque(|opaque_decoder, _| {
-            Decodable::decode(opaque_decoder)
-        }).unwrap()
+        Decodable::decode(&mut filemap_doc.opaque()).unwrap()
     }).collect()
 }
 
 pub fn closure_kind(cdata: Cmd, closure_id: DefIndex) -> ty::ClosureKind {
     let closure_doc = cdata.lookup_item(closure_id);
     let closure_kind_doc = reader::get_doc(closure_doc, tag_items_closure_kind);
-    let mut decoder = reader::Decoder::new(closure_kind_doc);
-    ty::ClosureKind::decode(&mut decoder).unwrap()
+    ty::ClosureKind::decode(&mut closure_kind_doc.opaque()).unwrap()
 }
 
 pub fn closure_ty<'a, 'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -1606,8 +1588,7 @@ pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
 fn item_def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
     match reader::maybe_get_doc(item_doc, tag_def_key) {
         Some(def_key_doc) => {
-            let mut decoder = reader::Decoder::new(def_key_doc);
-            let simple_key = def_key::DefKey::decode(&mut decoder).unwrap();
+            let simple_key = def_key::DefKey::decode(&mut def_key_doc.opaque()).unwrap();
             let name = reader::maybe_get_doc(item_doc, tag_paths_data_name).map(|name| {
                 token::intern(name.as_str()).as_str()
             });
