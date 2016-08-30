@@ -11,15 +11,9 @@
 // Test that the sysv64 ABI cannot be used when abi-sysv64 feature
 // gate is not used.
 
-// ignore-android
-// ignore-arm
-// ignore-aarch64
-
-#[cfg(target_arch = "x86_64")]
 extern "sysv64" fn foo() {}
 //~^ ERROR sysv64 ABI is experimental and subject to change
 
-#[cfg(target_arch = "x86_64")]
 fn main() {
     foo();
 }
