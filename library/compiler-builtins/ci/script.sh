@@ -42,8 +42,7 @@ run_tests() {
 
 main() {
     if [[ $LINUX && ${IN_DOCKER_CONTAINER:-n} == n ]]; then
-        local tag=2016-08-24
-
+        # NOTE The Dockerfile of this image is in the docker branch of this repository
         docker run \
                --privileged \
                -e IN_DOCKER_CONTAINER=y \
@@ -52,7 +51,7 @@ main() {
                -e TRAVIS_COMMIT=$TRAVIS_COMMIT \
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
                -v $(pwd):/mnt \
-               japaric/rustc-builtins:$tag \
+               japaric/rustc-builtins \
                sh -c 'cd /mnt;
                       bash ci/install.sh;
                       bash ci/script.sh'
