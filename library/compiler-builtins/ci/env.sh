@@ -40,6 +40,8 @@ if [[ $TARGET != $HOST && ! $TARGET =~ ^i.86- ]]; then
             ;;
     esac
 
+    export CARGO_TARGET_$(echo $TARGET | tr a-z- A-Z_)_LINKER=$GCC_TRIPLE-gcc
+
     if [[ $RUN_TESTS == y ]]; then
         # NOTE(export) so this can reach the processes that `cargo test` spawns
         export QEMU_LD_PREFIX=/usr/$GCC_TRIPLE
