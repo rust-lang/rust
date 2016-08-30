@@ -22,6 +22,7 @@ trait TraversesWorld {
         let direction = str_to_direction(directionStr);
         let maybe_room = room.direction_to_room.get(&direction);
         //~^ ERROR cannot infer an appropriate lifetime for autoref due to conflicting requirements
+        //~| NOTE cannot infer an appropriate lifetime
         match maybe_room {
             Some(entry) => Ok(entry),
             _ => Err("Direction does not exist in room.")

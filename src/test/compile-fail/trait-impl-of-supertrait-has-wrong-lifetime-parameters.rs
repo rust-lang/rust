@@ -31,7 +31,15 @@ impl<'a,'b> T1<'b> for S<'a, 'b> {
     }
 }
 
-impl<'a,'b> T2<'a, 'b> for S<'a, 'b> { //~ ERROR cannot infer an appropriate lifetime
+impl<'a,'b> T2<'a, 'b> for S<'a, 'b> {
+    //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting
+    //~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting
+    //~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting
+    //~| NOTE cannot infer an appropriate lifetime
+    //~| NOTE first, the lifetime cannot outlive the lifetime 'b as defined on the impl
+    //~| NOTE ...so that trait type parameters matches those specified on the impl
+    //~| NOTE but, the lifetime must be valid for the lifetime 'a as defined on the impl
+    //~| NOTE ...so that trait type parameters matches those specified on the impl
     fn y(&self) -> &'b isize {
         self.b
     }

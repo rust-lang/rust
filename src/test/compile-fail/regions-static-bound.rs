@@ -13,12 +13,30 @@ fn static_id<'a,'b>(t: &'a ()) -> &'static ()
 fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'b, 'b: 'static { t }
 fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
+    //~^ NOTE ...but the borrowed content is only valid for the lifetime 'a
     t //~ ERROR E0312
+    //~^ NOTE ...the reference is valid for the static lifetime...
 }
 
 fn error(u: &(), v: &()) {
-    static_id(&u); //~ ERROR cannot infer an appropriate lifetime
-    static_id_indirect(&v); //~ ERROR cannot infer an appropriate lifetime
+    //~^ NOTE first, the lifetime cannot outlive the anonymous lifetime #1 defined on the block
+    //~| NOTE first, the lifetime cannot outlive the anonymous lifetime #2 defined on the block
+    static_id(&u);
+    //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter
+    //~| ERROR cannot infer an appropriate lifetime for lifetime parameter
+    //~| NOTE cannot infer an appropriate lifetime
+    //~| NOTE ...so that reference does not outlive borrowed content
+    //~| NOTE ...so that the declared lifetime parameter bounds are satisfied
+    //~| NOTE but, the lifetime must be valid for the static lifetime...
+    //~| NOTE but, the lifetime must be valid for the static lifetime...
+    static_id_indirect(&v);
+    //~^ ERROR cannot infer an appropriate lifetime
+    //~| ERROR cannot infer an appropriate lifetime
+    //~| NOTE cannot infer an appropriate lifetime
+    //~| NOTE ...so that reference does not outlive borrowed content
+    //~| NOTE ...so that the declared lifetime parameter bounds are satisfied
+    //~| NOTE but, the lifetime must be valid for the static lifetime
+    //~| NOTE but, the lifetime must be valid for the static lifetime
 }
 
 fn main() {}

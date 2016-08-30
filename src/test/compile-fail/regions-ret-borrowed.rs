@@ -20,8 +20,15 @@ fn with<R, F>(f: F) -> R where F: FnOnce(&isize) -> R {
 }
 
 fn return_it<'a>() -> &'a isize {
+    //~^ NOTE but, the lifetime must be valid for the lifetime 'a as defined on the block
     with(|o| o)
-        //~^ ERROR cannot infer
+        //~^ ERROR cannot infer an appropriate lifetime due to conflicting requirements
+        //~| ERROR cannot infer an appropriate lifetime due to conflicting requirements
+        //~| ERROR cannot infer an appropriate lifetime due to conflicting requirements
+        //~| NOTE cannot infer an appropriate lifetime
+        //~| NOTE first, the lifetime cannot outlive the anonymous lifetime #1 defined on the block
+        //~| NOTE ...so that expression is assignable (expected &isize, found &isize)
+        //~| NOTE ...so that reference does not outlive borrowed content
 }
 
 fn main() {

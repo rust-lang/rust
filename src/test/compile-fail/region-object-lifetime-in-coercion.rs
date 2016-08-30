@@ -17,26 +17,48 @@ impl<'a> Foo for &'a [u8] {}
 // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 
 fn a(v: &[u8]) -> Box<Foo + 'static> {
+    //~^ first, the lifetime cannot outlive the anonymous lifetime #1 defined on the block
     let x: Box<Foo + 'static> = Box::new(v);
     //~^ ERROR cannot infer an appropriate lifetime due to conflicting
+    //~| ERROR cannot infer an appropriate lifetime due to conflicting
+    //~| NOTE cannot infer an appropriate lifetime
+    //~| NOTE ...so that expression is assignable (expected &[u8], found &[u8])
+    //~| NOTE ...so that the type `&[u8]` will meet its required lifetime bounds
+    //~| NOTE but, the lifetime must be valid for the static lifetime...
+    //~| NOTE but, the lifetime must be valid for the static lifetime...
     x
 }
 
 fn b(v: &[u8]) -> Box<Foo + 'static> {
+    //~^ first, the lifetime cannot outlive the anonymous lifetime #1 defined on the block
     Box::new(v)
         //~^ ERROR cannot infer an appropriate lifetime due to conflicting
+        //~| ERROR cannot infer an appropriate lifetime due to conflicting
+        //~| NOTE cannot infer an appropriate lifetime
+        //~| NOTE ...so that expression is assignable (expected &[u8], found &[u8])
+        //~| NOTE ...so that the type `&[u8]` will meet its required lifetime bounds
+        //~| NOTE but, the lifetime must be valid for the static lifetime...
+        //~| NOTE but, the lifetime must be valid for the static lifetime...
 }
 
 fn c(v: &[u8]) -> Box<Foo> {
+    //~^ first, the lifetime cannot outlive the anonymous lifetime #1 defined on the block
     // same as previous case due to RFC 599
 
     Box::new(v)
         //~^ ERROR cannot infer an appropriate lifetime due to conflicting
+        //~| ERROR cannot infer an appropriate lifetime due to conflicting
+        //~| NOTE cannot infer an appropriate lifetime
+        //~| NOTE ...so that expression is assignable (expected &[u8], found &[u8])
+        //~| NOTE ...so that the type `&[u8]` will meet its required lifetime bounds
+        //~| NOTE but, the lifetime must be valid for the static lifetime...
+        //~| NOTE but, the lifetime must be valid for the static lifetime...
 }
 
 fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
     Box::new(v)
         //~^ ERROR cannot infer an appropriate lifetime due to conflicting
+        //~| NOTE cannot infer an appropriate lifetime
 }
 
 fn e<'a:'b,'b>(v: &'a [u8]) -> Box<Foo+'b> {
