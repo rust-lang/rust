@@ -71,6 +71,12 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// does not use atomics, making it both thread-unsafe as well as significantly
 /// faster when updating the reference count.
 ///
+/// Note: the inherent methods defined on `Arc<T>` are all associated functions,
+/// which means that you have to call them as e.g.  `Arc::get_mut(&value)`
+/// instead of `value.get_mut()`.  This is so that there are no conflicts with
+/// methods on the inner type `T`, which are what you want to call in the
+/// majority of cases.
+///
 /// # Examples
 ///
 /// In this example, a large vector of data will be shared by several threads. First we
