@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #[derive(Copy)] //~ ERROR E0184
+                //~| NOTE Copy not allowed on types with destructors
+                //~| NOTE in this expansion of #[derive(Copy)]
 struct Foo;
 
 impl Drop for Foo {

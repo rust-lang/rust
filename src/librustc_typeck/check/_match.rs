@@ -574,7 +574,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.sess.add_lint(lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
                                   pat.id, pat.span, msg);
             } else {
-                span_err!(tcx.sess, pat.span, E0164, "{}", msg);
+                struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
+                    .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
                 on_error();
             }
         };
