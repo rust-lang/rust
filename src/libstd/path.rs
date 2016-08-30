@@ -837,6 +837,25 @@ impl<'a> AsRef<OsStr> for Components<'a> {
     }
 }
 
+#[stable(feature = "path_iter_debug", since = "1.13.0")]
+impl<'a> fmt::Debug for Iter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        struct DebugHelper<'a>(&'a Path);
+
+        impl<'a> fmt::Debug for DebugHelper<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_list()
+                    .entries(self.0.iter())
+                    .finish()
+            }
+        }
+
+        f.debug_tuple("Iter")
+            .field(&DebugHelper(self.as_path()))
+            .finish()
+    }
+}
+
 impl<'a> Iter<'a> {
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -3521,6 +3540,28 @@ mod tests {
         let _ = components.next().unwrap();
         let expected = "Components([])";
         let actual = format!("{:?}", components);
+        assert_eq!(expected, actual);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_iter_debug() {
+        let path = Path::new("/tmp");
+
+        let mut iter = path.iter();
+
+        let expected = "Iter([\"/\", \"tmp\"])";
+        let actual = format!("{:?}", iter);
+        assert_eq!(expected, actual);
+
+        let _ = iter.next().unwrap();
+        let expected = "Iter([\"tmp\"])";
+        let actual = format!("{:?}", iter);
+        assert_eq!(expected, actual);
+
+        let _ = iter.next().unwrap();
+        let expected = "Iter([])";
+        let actual = format!("{:?}", iter);
         assert_eq!(expected, actual);
     }
 }
