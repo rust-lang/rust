@@ -1873,16 +1873,32 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///
 /// It cannot serve as an iterator because it doesn't have a starting point.
 ///
-/// ```
-/// fn main() {
-///     assert_eq!((..5), std::ops::RangeTo{ end: 5 });
+/// # Examples
 ///
-///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ .. ], [0,1,2,3]);
-///     assert_eq!(arr[ ..3], [0,1,2  ]);  // RangeTo
-///     assert_eq!(arr[1.. ], [  1,2,3]);
-///     assert_eq!(arr[1..3], [  1,2  ]);
+/// The `..{integer}` syntax is a `RangeTo`:
+///
+/// ```
+/// assert_eq!((..5), std::ops::RangeTo{ end: 5 });
+/// ```
+///
+/// It does not have an `IntoIterator` implementation, so you can't use it in a
+/// `for` loop directly. This won't compile:
+///
+/// ```ignore
+/// for i in ..5 {
+///     // ...
 /// }
+/// ```
+///
+/// When used as a slicing index, `RangeTo` produces a slice of all array
+/// elements before the index indicated by `end`.
+///
+/// ```
+/// let arr = [0, 1, 2, 3];
+/// assert_eq!(arr[ .. ], [0,1,2,3]);
+/// assert_eq!(arr[ ..3], [0,1,2  ]);  // RangeTo
+/// assert_eq!(arr[1.. ], [  1,2,3]);
+/// assert_eq!(arr[1..3], [  1,2  ]);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2011,15 +2027,30 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///
 /// # Examples
 ///
+/// The `...{integer}` syntax is a `RangeToInclusive`:
+///
 /// ```
 /// #![feature(inclusive_range,inclusive_range_syntax)]
-/// fn main() {
-///     assert_eq!((...5), std::ops::RangeToInclusive{ end: 5 });
+/// assert_eq!((...5), std::ops::RangeToInclusive{ end: 5 });
+/// ```
 ///
-///     let arr = [0, 1, 2, 3];
-///     assert_eq!(arr[ ...2], [0,1,2  ]);  // RangeToInclusive
-///     assert_eq!(arr[1...2], [  1,2  ]);
+/// It does not have an `IntoIterator` implementation, so you can't use it in a
+/// `for` loop directly. This won't compile:
+///
+/// ```ignore
+/// for i in ...5 {
+///     // ...
 /// }
+/// ```
+///
+/// When used as a slicing index, `RangeToInclusive` produces a slice of all
+/// array elements up to and including the index indicated by `end`.
+///
+/// ```
+/// #![feature(inclusive_range_syntax)]
+/// let arr = [0, 1, 2, 3];
+/// assert_eq!(arr[ ...2], [0,1,2  ]);  // RangeToInclusive
+/// assert_eq!(arr[1...2], [  1,2  ]);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
