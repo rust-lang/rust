@@ -117,14 +117,12 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// moves the value out of `src` without preventing further usage of `src`. If
 /// `T` is not [`Copy`], then care must be taken to ensure that the value at
 /// `src` is not used before the data is overwritten again (e.g. with
-/// [`write`], [`zero_memory`], or [`copy_memory`]). Note that `*src = foo`
+/// [`write`]). Note that `*src = foo`
 /// counts as a use because it will attempt to drop the value previously at
 /// `*src`.
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`write`]: fn.write.html
-/// [`zero_memory`]: fn.zero_memory.html
-/// [`copy_memory`]: fn.copy_memory.html
 ///
 /// # Examples
 ///
@@ -215,14 +213,12 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// moves the value out of `src` without preventing further usage of `src`. If
 /// `T` is not [`Copy`], then care must be taken to ensure that the value at
 /// `src` is not used before the data is overwritten again (e.g. with
-/// [`write`], [`zero_memory`], or [`copy_memory`]). Note that `*src = foo`
+/// [`write`]). Note that `*src = foo`
 /// counts as a use because it will attempt to drop the value previously at
 /// `*src`.
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`write`]: fn.write.html
-/// [`zero_memory`]: fn.zero_memory.html
-/// [`copy_memory`]: fn.copy_memory.html
 ///
 /// # Examples
 ///
