@@ -11,7 +11,7 @@ install_qemu() {
 }
 
 install_gist() {
-    gem install gist
+    gem install gist -v 4.5.0
 }
 
 install_binutils() {
@@ -41,7 +41,7 @@ add_rustup_target() {
 install_xargo() {
     if [[ $CARGO == xargo ]]; then
         curl -sf "https://raw.githubusercontent.com/japaric/rust-everywhere/master/install.sh" | \
-            bash -s -- --from japaric/xargo --at /root/.cargo/bin
+            bash -s -- --from japaric/xargo --at /root/.cargo/bin --vers 0.1.5
     fi
 }
 
