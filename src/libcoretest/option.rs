@@ -254,6 +254,8 @@ fn test_cloned() {
     let val = 1;
     let val_ref = &val;
     let opt_none: Option<&'static u32> = None;
+    let mut opt_mut = Some(val);
+    let opt_box: Option<Box<u32>> = Some(Box::new(val));
     let opt_ref = Some(&val);
     let opt_ref_ref = Some(&val_ref);
 
@@ -269,4 +271,10 @@ fn test_cloned() {
     assert_eq!(opt_ref_ref.clone(), Some(&val_ref));
     assert_eq!(opt_ref_ref.clone().cloned(), Some(&val));
     assert_eq!(opt_ref_ref.cloned().cloned(), Some(1));
+
+    // Mutable ref works
+    assert_eq!(opt_mut.as_mut().cloned(), Some(1));
+
+    // Deep Deref works
+    assert_eq!(opt_box.cloned(), Some(1));
 }
