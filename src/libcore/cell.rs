@@ -119,25 +119,54 @@
 //! `Cell<T>`.
 //!
 //! ```
+//! #![feature(core_intrinsics)]
+//! #![feature(shared)]
 //! use std::cell::Cell;
+//! use std::ptr::Shared;
+//! use std::intrinsics::abort;
+//! use std::intrinsics::assume;
 //!
-//! struct Rc<T> {
-//!     ptr: *mut RcBox<T>
+//! struct Rc<T: ?Sized> {
+//!     ptr: Shared<RcBox<T>>
 //! }
 //!
-//! struct RcBox<T> {
-//! # #[allow(dead_code)]
+//! struct RcBox<T: ?Sized> {
+//!     strong: Cell<usize>,
+//!     refcount: Cell<usize>,
 //!     value: T,
-//!     refcount: Cell<usize>
 //! }
 //!
-//! impl<T> Clone for Rc<T> {
+//! impl<T: ?Sized> Clone for Rc<T> {
 //!     fn clone(&self) -> Rc<T> {
-//!         unsafe {
-//!             (*self.ptr).refcount.set((*self.ptr).refcount.get() + 1);
-//!             Rc { ptr: self.ptr }
-//!         }
+//!         self.inc_strong();
+//!         Rc { ptr: self.ptr }
 //!     }
+//! }
+//!
+//! trait RcBoxPtr<T: ?Sized> {
+//!
+//!     fn inner(&self) -> &RcBox<T>;
+//!
+//!     fn strong(&self) -> usize {
+//!         self.inner().strong.get()
+//!     }
+//!
+//!     fn inc_strong(&self) {
+//!         self.inner()
+//!             .strong
+//!             .set(self.strong()
+//!                      .checked_add(1)
+//!                      .unwrap_or_else(|| unsafe { abort() }));
+//!     }
+//! }
+//!
+//! impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
+//!    fn inner(&self) -> &RcBox<T> {
+//!        unsafe {
+//!            assume(!(*(&self.ptr as *const _ as *const *const ())).is_null());
+//!            &(**self.ptr)
+//!        }
+//!    }
 //! }
 //! ```
 //!
