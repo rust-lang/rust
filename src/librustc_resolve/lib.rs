@@ -57,6 +57,7 @@ use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
@@ -945,13 +946,14 @@ impl PrimitiveTypeTable {
         table.intern("i16", TyInt(IntTy::I16));
         table.intern("i32", TyInt(IntTy::I32));
         table.intern("i64", TyInt(IntTy::I64));
+        table.intern("i128", TyInt(IntTy::I128));
         table.intern("str", TyStr);
         table.intern("usize", TyUint(UintTy::Us));
         table.intern("u8", TyUint(UintTy::U8));
         table.intern("u16", TyUint(UintTy::U16));
         table.intern("u32", TyUint(UintTy::U32));
         table.intern("u64", TyUint(UintTy::U64));
-
+        table.intern("u128", TyUint(UintTy::U128));
         table
     }
 
@@ -2455,11 +2457,20 @@ impl<'a> Resolver<'a> {
         let resolve_identifier_with_fallback = |this: &mut Self, record_used| {
             let def = this.resolve_identifier(last_ident, namespace, record_used);
             match def {
-                None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS =>
-                    this.primitive_type_table
-                        .primitive_types
-                        .get(&last_ident.name)
-                        .map_or(def, |prim_ty| Some(LocalDef::from_def(Def::PrimTy(*prim_ty)))),
+                None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS => {
+                    let prim = this.primitive_type_table.primitive_types.get(&last_ident.name);
+                    match prim {
+                        Some(&TyUint(UintTy::U128)) | Some(&TyInt(IntTy::I128)) => {
+                            if !this.session.features.borrow().i128_type {
+                                emit_feature_err(&this.session.parse_sess.span_diagnostic,
+                                                 "i128_type", span, GateIssue::Language,
+                                                 "128-bit type is unstable");
+                            }
+                        }
+                        _ => {}
+                    }
+                    prim.map_or(def, |prim_ty| Some(LocalDef::from_def(Def::PrimTy(*prim_ty))))
+                }
                 _ => def
             }
         };

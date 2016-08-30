@@ -53,6 +53,7 @@ extern crate rustc_platform_intrinsics as intrinsics;
 extern crate serialize;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
+extern crate rustc_i128;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

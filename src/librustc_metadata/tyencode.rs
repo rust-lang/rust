@@ -29,6 +29,7 @@ use syntax::abi::Abi;
 use syntax::ast;
 use errors::Handler;
 
+use rustc_i128::u128;
 use rbml::leb128;
 use encoder;
 
@@ -79,7 +80,8 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
                 ast::IntTy::I8 => write!(w, "MB"),
                 ast::IntTy::I16 => write!(w, "MW"),
                 ast::IntTy::I32 => write!(w, "ML"),
-                ast::IntTy::I64 => write!(w, "MD")
+                ast::IntTy::I64 => write!(w, "MD"),
+                ast::IntTy::I128 => write!(w, "MQ"),
             };
         }
         ty::TyUint(t) => {
@@ -88,7 +90,8 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
                 ast::UintTy::U8 => write!(w, "Mb"),
                 ast::UintTy::U16 => write!(w, "Mw"),
                 ast::UintTy::U32 => write!(w, "Ml"),
-                ast::UintTy::U64 => write!(w, "Md")
+                ast::UintTy::U64 => write!(w, "Md"),
+                ast::UintTy::U128 => write!(w, "Mq"),
             };
         }
         ty::TyFloat(t) => {
@@ -203,7 +206,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         let start_position = abbrev.position() as usize;
         let bytes_written = leb128::write_unsigned_leb128(abbrev.get_mut(),
                                                           start_position,
-                                                          pos);
+                                                          pos as u128);
         abbrev.set_position((start_position + bytes_written) as u64);
     }
 

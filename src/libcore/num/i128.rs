@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    println!("{}", 18446744073709551616u64);  //~ error: int literal is too large
-}
+//! The 128-bit signed integer type.
+//!
+//! *[See also the `i128` primitive type](../../std/primitive.i128.html).*
+
+#![unstable(feature = "i128", issue="35118")]
+
+int_module! { i128 }

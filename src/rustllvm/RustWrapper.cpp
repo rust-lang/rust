@@ -1232,3 +1232,21 @@ extern "C" void LLVMRustUnsetComdat(LLVMValueRef V) {
     GlobalObject *GV = unwrap<GlobalObject>(V);
     GV->setComdat(nullptr);
 }
+
+
+// Returns true if both high and low were successfully set. Fails in case constant wasn’t any of
+// the common sizes (1, 8, 16, 32, 64, 128 bits)
+extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *high, uint64_t *low)
+{
+    auto C = unwrap<llvm::ConstantInt>(CV);
+    if (C->getBitWidth() > 128) { return false; }
+    APInt AP;
+    if (sext) {
+        AP = C->getValue().sextOrSelf(128);
+    } else {
+        AP = C->getValue().zextOrSelf(128);
+    }
+    *low = AP.getLoBits(64).getZExtValue();
+    *high = AP.getHiBits(64).getZExtValue();
+    return true;
+}

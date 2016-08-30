@@ -53,6 +53,8 @@ use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax_pos::{DUMMY_SP, Span};
 
+use rustc_i128::u128;
+
 pub use context::{CrateContext, SharedCrateContext};
 
 /// Is the type's representation size known at compile time?
@@ -740,6 +742,16 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     }
 }
 
+pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
+    if ::std::mem::size_of::<u128>() == 16 {
+        unsafe {
+            llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, &u as *const u128 as *const u64)
+        }
+    } else {
+        C_integral(t, u as u64, false)
+    }
+}
+
 pub fn C_floating_f64(f: f64, t: Type) -> ValueRef {
     unsafe {
         llvm::LLVMConstReal(t.to_ref(), f)
@@ -903,20 +915,34 @@ fn is_const_integral(v: ValueRef) -> bool {
     }
 }
 
-pub fn const_to_opt_int(v: ValueRef) -> Option<i64> {
+
+#[cfg(stage0)]
+pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
     unsafe {
         if is_const_integral(v) {
-            Some(llvm::LLVMConstIntGetSExtValue(v))
+            if !sign_ext {
+                Some(llvm::LLVMConstIntGetZExtValue(v))
+            } else {
+                Some(llvm::LLVMConstIntGetSExtValue(v) as u64)
+            }
         } else {
             None
         }
     }
 }
 
-pub fn const_to_opt_uint(v: ValueRef) -> Option<u64> {
+#[cfg(not(stage0))]
+pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
     unsafe {
         if is_const_integral(v) {
-            Some(llvm::LLVMConstIntGetZExtValue(v))
+            let (mut lo, mut hi) = (0u64, 0u64);
+            let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
+                                                       &mut hi as *mut u64, &mut lo as *mut u64);
+            if success {
+                Some(((hi as u128) << 64) | (lo as u128))
+            } else {
+                None
+            }
         } else {
             None
         }

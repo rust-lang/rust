@@ -760,12 +760,14 @@ fn find_repr_type_name(diagnostic: &Handler, type_attrs: &[ast::Attribute]) -> &
                 attr::ReprInt(_, attr::SignedInt(ast::IntTy::I16)) => "i16",
                 attr::ReprInt(_, attr::SignedInt(ast::IntTy::I32)) => "i32",
                 attr::ReprInt(_, attr::SignedInt(ast::IntTy::I64)) => "i64",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I128)) => "i128",
 
                 attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::Us)) => "usize",
                 attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U8)) => "u8",
                 attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U16)) => "u16",
                 attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U32)) => "u32",
                 attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U64)) => "u64",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U128)) => "u128",
             }
         }
     }
