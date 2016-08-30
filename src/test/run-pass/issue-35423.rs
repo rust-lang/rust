@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Irrefutable(i32);
-
-fn main() {
-    let irr = Irrefutable(0);
-    while let Irrefutable(x) = irr { //~ ERROR E0165
-                                     //~| irrefutable pattern
-        // ...
+fn main () {
+    let x = 4;
+    match x {
+        ref r if *r < 0 => println!("got negative num {} < 0", r),
+        e @ 1 ... 100 => println!("got number within range [1,100] {}", e),
+        _ => println!("no"),
     }
 }
