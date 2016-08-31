@@ -17,18 +17,17 @@ use self::SawExprComponent::*;
 use self::SawAbiComponent::*;
 use syntax::ast::{self, Name, NodeId, Attribute};
 use syntax::parse::token;
-use syntax::codemap::CodeMap;
-use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, FileMap};
+use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
 use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::def::{Def, PathResolution};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
-use std::rc::Rc;
 use std::hash::{Hash, SipHasher};
 
 use super::def_path_hash::DefPathHashes;
+use super::caching_codemap_view::CachingCodemapView;
 
 const IGNORED_ATTRIBUTES: &'static [&'static str] = &["cfg",
                                                       "rustc_clean",
@@ -40,92 +39,14 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     // collect a deterministic hash of def-ids that we have seen
     def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
     hash_spans: bool,
-    codemap: CachingCodemapView<'tcx>,
-}
-
-#[derive(Clone)]
-struct CacheEntry {
-    time_stamp: usize,
-    line_number: usize,
-    line_start: BytePos,
-    line_end: BytePos,
-    file: Rc<FileMap>,
-}
-
-struct CachingCodemapView<'tcx> {
-    codemap: &'tcx CodeMap,
-    line_cache: [CacheEntry; 3],
-    time_stamp: usize,
-}
-
-impl<'tcx> CachingCodemapView<'tcx> {
-    fn new<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CachingCodemapView<'tcx> {
-        let codemap = tcx.sess.codemap();
-        let first_file = codemap.files.borrow()[0].clone();
-        let entry = CacheEntry {
-            time_stamp: 0,
-            line_number: 0,
-            line_start: BytePos(0),
-            line_end: BytePos(0),
-            file: first_file,
-        };
-
-        CachingCodemapView {
-            codemap: codemap,
-            line_cache: [entry.clone(), entry.clone(), entry.clone()],
-            time_stamp: 0,
-        }
-    }
-
-    fn byte_pos_to_line_and_col(&mut self,
-                                pos: BytePos)
-                                -> (Rc<FileMap>, usize, BytePos) {
-        self.time_stamp += 1;
-
-        // Check if the position is in one of the cached lines
-        for cache_entry in self.line_cache.iter_mut() {
-            if pos >= cache_entry.line_start && pos < cache_entry.line_end {
-                cache_entry.time_stamp = self.time_stamp;
-                return (cache_entry.file.clone(),
-                        cache_entry.line_number,
-                        pos - cache_entry.line_start);
-            }
-        }
-
-        // No cache hit ...
-        let mut oldest = 0;
-        for index in 1 .. self.line_cache.len() {
-            if self.line_cache[index].time_stamp < self.line_cache[oldest].time_stamp {
-                oldest = index;
-            }
-        }
-
-        let cache_entry = &mut self.line_cache[oldest];
-
-        // If the entry doesn't point to the correct file, fix it up
-        if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
-            let file_index = self.codemap.lookup_filemap_idx(pos);
-            cache_entry.file = self.codemap.files.borrow()[file_index].clone();
-        }
-
-        let line_index = cache_entry.file.lookup_line(pos).unwrap();
-        let line_bounds = cache_entry.file.line_bounds(line_index);
-
-        cache_entry.line_number = line_index + 1;
-        cache_entry.line_start = line_bounds.0;
-        cache_entry.line_end = line_bounds.1;
-        cache_entry.time_stamp = self.time_stamp;
-
-        return (cache_entry.file.clone(),
-                cache_entry.line_number,
-                pos - cache_entry.line_start);
-    }
+    codemap: &'a mut CachingCodemapView<'tcx>,
 }
 
 impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
     pub fn new(st: &'a mut SipHasher,
                tcx: TyCtxt<'hash, 'tcx, 'tcx>,
                def_path_hashes: &'a mut DefPathHashes<'hash, 'tcx>,
+               codemap: &'a mut CachingCodemapView<'tcx>,
                hash_spans: bool)
                -> Self {
         StrictVersionHashVisitor {
@@ -133,7 +54,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             tcx: tcx,
             def_path_hashes: def_path_hashes,
             hash_spans: hash_spans,
-            codemap: CachingCodemapView::new(tcx),
+            codemap: codemap,
         }
     }
 
@@ -178,7 +99,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                 expansion_kind).hash(self.st);
 
         if expansion_kind == SawSpanExpnKind::SomeExpansion {
-            self.hash_span(self.codemap.codemap.source_callsite(span));
+            let call_site = self.codemap.codemap().source_callsite(span);
+            self.hash_span(call_site);
         }
     }
 

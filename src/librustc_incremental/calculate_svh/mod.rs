@@ -40,9 +40,11 @@ use rustc::session::config::DebugInfoLevel::NoDebugInfo;
 
 use self::def_path_hash::DefPathHashes;
 use self::svh_visitor::StrictVersionHashVisitor;
+use self::caching_codemap_view::CachingCodemapView;
 
 mod def_path_hash;
 mod svh_visitor;
+mod caching_codemap_view;
 
 pub type IncrementalHashesMap = FnvHashMap<DepNode<DefId>, u64>;
 
@@ -55,7 +57,8 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         tcx: tcx,
         hashes: FnvHashMap(),
         def_path_hashes: DefPathHashes::new(tcx),
-        hash_spans: hash_spans
+        codemap: CachingCodemapView::new(tcx),
+        hash_spans: hash_spans,
     };
     record_time(&tcx.sess.perf_stats.incr_comp_hashes_time, || {
         visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX),
@@ -69,6 +72,7 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 struct HashItemsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_path_hashes: DefPathHashes<'a, 'tcx>,
+    codemap: CachingCodemapView<'tcx>,
     hashes: IncrementalHashesMap,
     hash_spans: bool,
 }
@@ -92,6 +96,7 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
         walk_op(&mut StrictVersionHashVisitor::new(&mut state,
                                                    self.tcx,
                                                    &mut self.def_path_hashes,
+                                                   &mut self.codemap,
                                                    self.hash_spans));
         let item_hash = state.finish();
         self.hashes.insert(DepNode::Hir(def_id), item_hash);
@@ -132,6 +137,7 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
             let mut visitor = StrictVersionHashVisitor::new(&mut crate_state,
                                                             self.tcx,
                                                             &mut self.def_path_hashes,
+                                                            &mut self.codemap,
                                                             self.hash_spans);
             visitor.hash_attributes(&krate.attrs);
         }
