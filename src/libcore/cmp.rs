@@ -383,7 +383,7 @@ impl PartialOrd for Ordering {
 /// }
 /// ```
 ///
-/// You may also find it useful to use `partial_cmp()` on your type`s fields. Here
+/// You may also find it useful to use `partial_cmp()` on your type's fields. Here
 /// is an example of `Person` types who have a floating-point `height` field that
 /// is the only field to be used for sorting:
 ///

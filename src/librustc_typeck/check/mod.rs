@@ -903,14 +903,18 @@ fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let mut err = struct_span_err!(
         tcx.sess, impl_item.span, E0520,
-        "item `{}` is provided by an `impl` that specializes \
-         another, but the item in the parent `impl` is not \
-         marked `default` and so it cannot be specialized.",
+        "`{}` specializes an item from a parent `impl`, but \
+         neither that item nor the `impl` are marked `default`",
         impl_item.name);
+    err.span_label(impl_item.span, &format!("cannot specialize default item `{}`",
+                                            impl_item.name));
 
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {
-            err.span_note(span, "parent implementation is here:");
+            err.span_label(span, &"parent `impl` is here");
+            err.note(&format!("to specialize, either the parent `impl` or `{}` \
+                               in the parent `impl` must be marked `default`",
+                              impl_item.name));
         }
         Err(cname) => {
             err.note(&format!("parent implementation is in crate `{}`", cname));
@@ -1204,7 +1208,9 @@ pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, id: ast::Node
             }
             let e = fields[0].ty(tcx, substs);
             if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
-                span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous");
+                struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
+                                .span_label(sp, &format!("SIMD elements must have the same type"))
+                                .emit();
                 return;
             }
             match e.sty {

@@ -263,14 +263,12 @@ impl<A: Step> ops::RangeFrom<A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(step_by)]
-    ///
-    /// for i in (0u8..).step_by(2).take(10) {
-    ///     println!("{}", i);
+    /// #![feature(step_by)]
+    /// fn main() {
+    ///     let result: Vec<_> = (0..).step_by(2).take(5).collect();
+    ///     assert_eq!(result, vec![0, 2, 4, 6, 8]);
     /// }
     /// ```
-    ///
-    /// This prints the first ten even natural integers (0 to 18).
     #[unstable(feature = "step_by", reason = "recent addition",
                issue = "27741")]
     pub fn step_by(self, by: A) -> StepBy<A, Self> {
@@ -291,8 +289,10 @@ impl<A: Step> ops::Range<A> {
     ///
     /// ```
     /// #![feature(step_by)]
-    /// let result: Vec<_> = (0..10).step_by(2).collect();
-    /// assert_eq!(result, vec![0, 2, 4, 6, 8]);
+    /// fn main() {
+    ///     let result: Vec<_> = (0..10).step_by(2).collect();
+    ///     assert_eq!(result, vec![0, 2, 4, 6, 8]);
+    /// }
     /// ```
     #[unstable(feature = "step_by", reason = "recent addition",
                issue = "27741")]
@@ -315,20 +315,8 @@ impl<A: Step> ops::RangeInclusive<A> {
     /// ```
     /// #![feature(step_by, inclusive_range_syntax)]
     ///
-    /// for i in (0...10).step_by(2) {
-    ///     println!("{}", i);
-    /// }
-    /// ```
-    ///
-    /// This prints:
-    ///
-    /// ```text
-    /// 0
-    /// 2
-    /// 4
-    /// 6
-    /// 8
-    /// 10
+    /// let result: Vec<_> = (0...10).step_by(2).collect();
+    /// assert_eq!(result, vec![0, 2, 4, 6, 8, 10]);
     /// ```
     #[unstable(feature = "step_by", reason = "recent addition",
                issue = "27741")]
