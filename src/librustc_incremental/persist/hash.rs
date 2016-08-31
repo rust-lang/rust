@@ -15,6 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_data_structures::flock;
 use rustc_serialize::Decodable;
 use std::io::{ErrorKind, Read};
 use std::fs::File;
@@ -22,7 +23,7 @@ use syntax::ast;
 
 use IncrementalHashesMap;
 use super::data::*;
-use super::util::*;
+use super::fs::*;
 
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -128,19 +129,43 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         debug!("load_data: svh={}", svh);
         assert!(old.is_none(), "loaded data for crate {:?} twice", cnum);
 
-        if let Some(path) = metadata_hash_path(self.tcx, cnum) {
-            debug!("load_data: path={:?}", path);
+        if let Some(session_dir) = find_metadata_hashes_for(self.tcx, cnum) {
+            debug!("load_data: session_dir={:?}", session_dir);
+
+            // Lock the directory we'll be reading  the hashes from.
+            let lock_file_path = lock_file_path(&session_dir);
+            let _lock = match flock::Lock::new(&lock_file_path,
+                                               false,   // don't wait
+                                               false,   // don't create the lock-file
+                                               false) { // shared lock
+                Ok(lock) => lock,
+                Err(err) => {
+                    debug!("Could not acquire lock on `{}` while trying to \
+                            load metadata hashes: {}",
+                            lock_file_path.display(),
+                            err);
+
+                    // Could not acquire the lock. The directory is probably in
+                    // in the process of being deleted. It's OK to just exit
+                    // here. It's the same scenario as if the file had not
+                    // existed in the first place.
+                    return
+                }
+            };
+
+            let hashes_file_path = metadata_hash_import_path(&session_dir);
+
             let mut data = vec![];
             match
-                File::open(&path)
-                .and_then(|mut file| file.read_to_end(&mut data))
+                File::open(&hashes_file_path)
+                     .and_then(|mut file| file.read_to_end(&mut data))
             {
                 Ok(_) => {
-                    match self.load_from_data(cnum, &data) {
+                    match self.load_from_data(cnum, &data, svh) {
                         Ok(()) => { }
                         Err(err) => {
                             bug!("decoding error in dep-graph from `{}`: {}",
-                                 path.display(), err);
+                                 &hashes_file_path.display(), err);
                         }
                     }
                 }
@@ -152,7 +177,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                         _ => {
                             self.tcx.sess.err(
                                 &format!("could not load dep information from `{}`: {}",
-                                         path.display(), err));
+                                         hashes_file_path.display(), err));
                             return;
                         }
                     }
@@ -161,11 +186,22 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    fn load_from_data(&mut self, cnum: ast::CrateNum, data: &[u8]) -> Result<(), Error> {
+    fn load_from_data(&mut self,
+                      cnum: ast::CrateNum,
+                      data: &[u8],
+                      expected_svh: Svh) -> Result<(), Error> {
         debug!("load_from_data(cnum={})", cnum);
 
         // Load up the hashes for the def-ids from this crate.
         let mut decoder = Decoder::new(data, 0);
+        let svh_in_hashes_file = try!(Svh::decode(&mut decoder));
+
+        if svh_in_hashes_file != expected_svh {
+            // We should not be able to get here. If we do, then
+            // `fs::find_metadata_hashes_for()` has messed up.
+            bug!("mismatch between SVH in crate and SVH in incr. comp. hashes")
+        }
+
         let serialized_hashes = try!(SerializedMetadataHashes::decode(&mut decoder));
         for serialized_hash in serialized_hashes.hashes {
             // the hashes are stored with just a def-index, which is

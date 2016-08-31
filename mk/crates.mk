@@ -112,7 +112,7 @@ DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml \
 	      rustc_const_math syntax_pos rustc_errors
 DEPS_rustc_back := std syntax flate log libc
 DEPS_rustc_borrowck := rustc log graphviz syntax syntax_pos rustc_errors rustc_mir
-DEPS_rustc_data_structures := std log serialize
+DEPS_rustc_data_structures := std log serialize libc
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
                      rustc_trans rustc_privacy rustc_lint rustc_plugin \
@@ -137,9 +137,8 @@ DEPS_rustc_save_analysis := rustc log syntax syntax_pos serialize
 DEPS_rustc_typeck := rustc syntax syntax_pos rustc_platform_intrinsics rustc_const_math \
                      rustc_const_eval rustc_errors
 
-DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
-                test rustc_lint rustc_const_eval syntax_pos
-
+DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts test \
+                rustc_lint rustc_const_eval syntax_pos rustc_data_structures
 
 TOOL_DEPS_compiletest := test getopts log serialize
 TOOL_DEPS_rustdoc := rustdoc

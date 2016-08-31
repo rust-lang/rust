@@ -1976,7 +1976,10 @@ actual:\n\
         // runs.
         let incremental_dir = self.incremental_dir();
         if incremental_dir.exists() {
-            fs::remove_dir_all(&incremental_dir).unwrap();
+            // Canonicalizing the path will convert it to the //?/ format
+            // on Windows, which enables paths longer than 260 character
+            let canonicalized = incremental_dir.canonicalize().unwrap();
+            fs::remove_dir_all(canonicalized).unwrap();
         }
         fs::create_dir_all(&incremental_dir).unwrap();
 
@@ -2041,7 +2044,7 @@ actual:\n\
 
     /// Directory where incremental work products are stored.
     fn incremental_dir(&self) -> PathBuf {
-        self.output_base_name().with_extension("incremental")
+        self.output_base_name().with_extension("inc")
     }
 
     fn run_rmake_test(&self) {
