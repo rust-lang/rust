@@ -732,7 +732,13 @@ impl Level {
     pub fn color(self) -> term::color::Color {
         match self {
             Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
-            Warning => term::color::YELLOW,
+            Warning => {
+                if cfg!(windows) {
+                    term::color::BRIGHT_YELLOW
+                } else {
+                    term::color::YELLOW
+                }
+            },
             Note => term::color::BRIGHT_GREEN,
             Help => term::color::BRIGHT_CYAN,
             Cancelled => unreachable!(),
