@@ -136,6 +136,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (Some(llfn), _) => {
             Call(bcx, llfn, &llargs, call_debug_location)
         }
+        (_, "likely") => {
+            let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
+            Call(bcx, expect, &[llargs[0], C_bool(ccx, true)], call_debug_location)
+        }
+        (_, "unlikely") => {
+            let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
+            Call(bcx, expect, &[llargs[0], C_bool(ccx, false)], call_debug_location)
+        }
         (_, "try") => {
             bcx = try_intrinsic(bcx, llargs[0], llargs[1], llargs[2], llresult,
                                 call_debug_location);

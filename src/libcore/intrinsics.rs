@@ -194,6 +194,20 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     pub fn assume(b: bool);
 
+    #[cfg(not(stage0))]
+    /// Hints to the compiler that branch condition is likely to be true.
+    /// Returns the value passed to it.
+    ///
+    /// Any use other than with `if` statements will probably not have an effect.
+    pub fn likely(b: bool) -> bool;
+
+    #[cfg(not(stage0))]
+    /// Hints to the compiler that branch condition is likely to be false.
+    /// Returns the value passed to it.
+    ///
+    /// Any use other than with `if` statements will probably not have an effect.
+    pub fn unlikely(b: bool) -> bool;
+
     /// Executes a breakpoint trap, for inspection by a debugger.
     pub fn breakpoint();
 
