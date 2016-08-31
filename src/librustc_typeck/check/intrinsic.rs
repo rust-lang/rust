@@ -285,6 +285,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
 
             "assume" => (0, vec![tcx.types.bool], tcx.mk_nil()),
+            "likely" => (0, vec![tcx.types.bool], tcx.types.bool),
+            "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
             "discriminant_value" => (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
