@@ -729,13 +729,15 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
 
     match def {
-        Def::Local(_, node_id) => {
+        Def::Local(def_id) => {
+            let node_id = cx.tcx.map.as_local_node_id(def_id).unwrap();
             ExprKind::VarRef {
                 id: node_id,
             }
         }
 
-        Def::Upvar(_, id_var, index, closure_expr_id) => {
+        Def::Upvar(def_id, index, closure_expr_id) => {
+            let id_var = cx.tcx.map.as_local_node_id(def_id).unwrap();
             debug!("convert_var(upvar({:?}, {:?}, {:?}))", id_var, index, closure_expr_id);
             let var_ty = cx.tcx.node_id_to_type(id_var);
 
@@ -974,7 +976,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let id_var = freevar.def.var_id();
+    let id_var = cx.tcx.map.as_local_node_id(freevar.def.def_id()).unwrap();
     let upvar_id = ty::UpvarId {
         var_id: id_var,
         closure_expr_id: closure_expr.id,

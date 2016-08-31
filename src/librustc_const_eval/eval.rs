@@ -824,7 +824,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Def::Struct(..) => {
                   ConstVal::Struct(e.id)
               }
-              Def::Local(_, id) => {
+              Def::Local(def_id) => {
+                  let id = tcx.map.as_local_node_id(def_id).unwrap();
                   debug!("Def::Local({:?}): {:?}", id, fn_args);
                   if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
                       val.clone()

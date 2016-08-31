@@ -1959,7 +1959,8 @@ impl<'a> Resolver<'a> {
                 // Resolve the self type.
                 this.visit_ty(self_type);
 
-                this.with_self_rib(Def::SelfTy(trait_id, Some(item_id)), |this| {
+                let item_def_id = this.definitions.local_def_id(item_id);
+                this.with_self_rib(Def::SelfTy(trait_id, Some(item_def_id)), |this| {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
                             this.resolve_visibility(&impl_item.vis);
@@ -2243,7 +2244,7 @@ impl<'a> Resolver<'a> {
         // must not add it if it's in the bindings map
         // because that breaks the assumptions later
         // passes make about or-patterns.)
-        let mut def = Def::Local(self.definitions.local_def_id(pat_id), pat_id);
+        let mut def = Def::Local(self.definitions.local_def_id(pat_id));
         match bindings.get(&ident.node).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
@@ -2559,7 +2560,7 @@ impl<'a> Resolver<'a> {
             Def::Upvar(..) => {
                 span_bug!(span, "unexpected {:?} in bindings", def)
             }
-            Def::Local(_, node_id) => {
+            Def::Local(def_id) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) => {
@@ -2567,13 +2568,13 @@ impl<'a> Resolver<'a> {
                         }
                         ClosureRibKind(function_id) => {
                             let prev_def = def;
-                            let node_def_id = self.definitions.local_def_id(node_id);
+                            let node_id = self.definitions.as_local_node_id(def_id).unwrap();
 
                             let seen = self.freevars_seen
                                            .entry(function_id)
                                            .or_insert_with(|| NodeMap());
                             if let Some(&index) = seen.get(&node_id) {
-                                def = Def::Upvar(node_def_id, node_id, index, function_id);
+                                def = Def::Upvar(def_id, index, function_id);
                                 continue;
                             }
                             let vec = self.freevars
@@ -2585,7 +2586,7 @@ impl<'a> Resolver<'a> {
                                 span: span,
                             });
 
-                            def = Def::Upvar(node_def_id, node_id, depth, function_id);
+                            def = Def::Upvar(def_id, depth, function_id);
                             seen.insert(node_id, depth);
                         }
                         ItemRibKind | MethodRibKind(_) => {

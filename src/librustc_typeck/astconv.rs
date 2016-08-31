@@ -1284,23 +1284,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&ty.sty, ty_path_def) {
-            (_, Def::SelfTy(Some(trait_did), Some(impl_id))) => {
-                // For Def::SelfTy() values inlined from another crate, the
-                // impl_id will be DUMMY_NODE_ID, which would cause problems
-                // here. But we should never run into an impl from another crate
-                // in this pass.
-                assert!(impl_id != ast::DUMMY_NODE_ID);
-
+            (_, Def::SelfTy(Some(_), Some(impl_def_id))) => {
                 // `Self` in an impl of a trait - we have a concrete self type and a
                 // trait reference.
-                let trait_ref = tcx.impl_trait_ref(tcx.map.local_def_id(impl_id)).unwrap();
+                let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_ref = if let Some(free_substs) = self.get_free_substs() {
                     trait_ref.subst(tcx, free_substs)
                 } else {
                     trait_ref
                 };
 
-                if self.ensure_super_predicates(span, trait_did).is_err() {
+                if self.ensure_super_predicates(span, trait_ref.def_id).is_err() {
                     return (tcx.types.err, Def::Err);
                 }
 
@@ -1504,16 +1498,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     tcx.types.err
                 }
             }
-            Def::SelfTy(_, Some(impl_id)) => {
+            Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).
 
-                // For Def::SelfTy() values inlined from another crate, the
-                // impl_id will be DUMMY_NODE_ID, which would cause problems
-                // here. But we should never run into an impl from another crate
-                // in this pass.
-                assert!(impl_id != ast::DUMMY_NODE_ID);
-
                 tcx.prohibit_type_params(base_segments);
+                let impl_id = tcx.map.as_local_node_id(def_id).unwrap();
                 let ty = tcx.node_id_to_type(impl_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)

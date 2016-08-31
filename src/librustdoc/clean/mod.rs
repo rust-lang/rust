@@ -2790,11 +2790,8 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Static(i, _) => (i, TypeStatic),
         Def::Variant(i, _) => (i, TypeEnum),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeTrait),
-        Def::SelfTy(_, Some(impl_id)) => {
-            // For Def::SelfTy() values inlined from another crate, the
-            // impl_id will be DUMMY_NODE_ID, which would cause problems.
-            // But we should never run into an impl from another crate here.
-            return cx.map.local_def_id(impl_id)
+        Def::SelfTy(_, Some(impl_def_id)) => {
+            return impl_def_id
         }
         _ => return def.def_id()
     };

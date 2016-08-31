@@ -167,7 +167,8 @@ fn encode_side_tables_for_id(ecx: &mut EncodeContext, id: ast::NodeId) {
             ecx.tag(c::tag_table_upvar_capture_map, |ecx| {
                 ecx.id(id);
 
-                let var_id = freevar.def.var_id();
+                let def_id = freevar.def.def_id();
+                let var_id = tcx.map.as_local_node_id(def_id).unwrap();
                 let upvar_id = ty::UpvarId {
                     var_id: var_id,
                     closure_expr_id: id

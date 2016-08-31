@@ -549,7 +549,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
               }))
           }
 
-          Def::Upvar(_, var_id, _, fn_node_id) => {
+          Def::Upvar(def_id, _, fn_node_id) => {
+              let var_id = self.tcx().map.as_local_node_id(def_id).unwrap();
               let ty = self.node_ty(fn_node_id)?;
               match ty.sty {
                   ty::TyClosure(closure_id, _) => {
@@ -585,7 +586,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
               }
           }
 
-          Def::Local(_, vid) => {
+          Def::Local(def_id) => {
+            let vid = self.tcx().map.as_local_node_id(def_id).unwrap();
             Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,

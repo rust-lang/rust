@@ -1697,7 +1697,7 @@ impl<'a> LoweringContext<'a> {
 
         let def = {
             let defs = self.resolver.definitions();
-            Def::Local(defs.local_def_id(binding), binding)
+            Def::Local(defs.local_def_id(binding))
         };
         self.resolver.record_resolution(expr.id, def);
 
@@ -1850,7 +1850,7 @@ impl<'a> LoweringContext<'a> {
             let defs = self.resolver.definitions();
             let def_path_data = DefPathData::Binding(name.as_str());
             let def_index = defs.create_def_with_parent(parent_def, pat.id, def_path_data);
-            Def::Local(DefId::local(def_index), pat.id)
+            Def::Local(DefId::local(def_index))
         };
         self.resolver.record_resolution(pat.id, def);
 

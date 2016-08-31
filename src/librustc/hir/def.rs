@@ -16,14 +16,13 @@ use hir;
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
     Fn(DefId),
-    SelfTy(Option<DefId> /* trait */, Option<ast::NodeId> /* impl */),
+    SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     Mod(DefId),
     ForeignMod(DefId),
     Static(DefId, bool /* is_mutbl */),
     Const(DefId),
     AssociatedConst(DefId),
-    Local(DefId, // def id of variable
-             ast::NodeId), // node id of variable
+    Local(DefId),
     Variant(DefId /* enum */, DefId /* variant */),
     Enum(DefId),
     TyAlias(DefId),
@@ -32,7 +31,6 @@ pub enum Def {
     PrimTy(hir::PrimTy),
     TyParam(DefId),
     Upvar(DefId,        // def id of closed over local
-             ast::NodeId,  // node id of closed over local
              usize,        // index in the freevars list of the closure
              ast::NodeId), // expr node that creates the closure
 
@@ -101,30 +99,13 @@ pub struct Export {
 }
 
 impl Def {
-    pub fn var_id(&self) -> ast::NodeId {
-        match *self {
-            Def::Local(_, id) |
-            Def::Upvar(_, id, ..) => {
-                id
-            }
-
-            Def::Fn(..) | Def::Mod(..) | Def::ForeignMod(..) | Def::Static(..) |
-            Def::Variant(..) | Def::Enum(..) | Def::TyAlias(..) | Def::AssociatedTy(..) |
-            Def::TyParam(..) | Def::Struct(..) | Def::Union(..) | Def::Trait(..) |
-            Def::Method(..) | Def::Const(..) | Def::AssociatedConst(..) |
-            Def::PrimTy(..) | Def::Label(..) | Def::SelfTy(..) | Def::Err => {
-                bug!("attempted .var_id() on invalid {:?}", self)
-            }
-        }
-    }
-
     pub fn def_id(&self) -> DefId {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::ForeignMod(id) | Def::Static(id, _) |
             Def::Variant(_, id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(_, id) |
             Def::TyParam(id) | Def::Struct(id) | Def::Union(id) | Def::Trait(id) |
             Def::Method(id) | Def::Const(id) | Def::AssociatedConst(id) |
-            Def::Local(id, _) | Def::Upvar(id, ..) => {
+            Def::Local(id) | Def::Upvar(id, ..) => {
                 id
             }
 
