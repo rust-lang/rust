@@ -1028,11 +1028,16 @@ impl<'a> cmp::Ord for Components<'a> {
 // Basic types and traits
 ////////////////////////////////////////////////////////////////////////////////
 
-/// An owned, mutable path (akin to `String`).
+/// An owned, mutable path (akin to [`String`]).
 ///
-/// This type provides methods like `push` and `set_extension` that mutate the
-/// path in place. It also implements `Deref` to `Path`, meaning that all
-/// methods on `Path` slices are available on `PathBuf` values as well.
+/// This type provides methods like [`push`] and [`set_extension`] that mutate
+/// the path in place. It also implements [`Deref`] to [`Path`], meaning that
+/// all methods on [`Path`] slices are available on `PathBuf` values as well.
+///
+/// [`String`]: ../string/struct.String.html
+/// [`Path`]: struct.Path.html
+/// [`push`]: struct.PathBuf.html#method.push
+/// [`set_extension`]: struct.PathBuf.html#method.set_extension
 ///
 /// More details about the overall approach can be found in
 /// the module documentation.
@@ -1059,12 +1064,31 @@ impl PathBuf {
     }
 
     /// Allocates an empty `PathBuf`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    ///
+    /// let path = PathBuf::new();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
     }
 
-    /// Coerces to a `Path` slice.
+    /// Coerces to a [`Path`] slice.
+    ///
+    /// [`Path`]: struct.Path.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let p = PathBuf::from("/test");
+    /// assert_eq!(Path::new("/test"), p.as_path());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &Path {
         self
@@ -1129,10 +1153,26 @@ impl PathBuf {
         self.inner.push(path);
     }
 
-    /// Truncate `self` to `self.parent()`.
+    /// Truncate `self` to [`self.parent()`].
     ///
-    /// Returns false and does nothing if `self.file_name()` is `None`.
+    /// Returns false and does nothing if [`self.file_name()`] is `None`.
     /// Otherwise, returns `true`.
+    ///
+    /// [`self.parent()`]: struct.PathBuf.html#method.parent
+    /// [`self.file_name()`]: struct.PathBuf.html#method.file_name
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut p = PathBuf::from("/test/test.rs");
+    ///
+    /// p.pop();
+    /// assert_eq!(Path::new("/test"), p.as_path());
+    /// p.pop();
+    /// assert_eq!(Path::new("/"), p.as_path());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> bool {
         match self.parent().map(|p| p.as_u8_slice().len()) {
@@ -1144,10 +1184,12 @@ impl PathBuf {
         }
     }
 
-    /// Updates `self.file_name()` to `file_name`.
+    /// Updates [`self.file_name()`] to `file_name`.
     ///
-    /// If `self.file_name()` was `None`, this is equivalent to pushing
+    /// If [`self.file_name()`] was `None`, this is equivalent to pushing
     /// `file_name`.
+    ///
+    /// [`self.file_name()`]: struct.PathBuf.html#method.file_name
     ///
     /// # Examples
     ///
@@ -1175,12 +1217,29 @@ impl PathBuf {
         self.push(file_name);
     }
 
-    /// Updates `self.extension()` to `extension`.
+    /// Updates [`self.extension()`] to `extension`.
     ///
-    /// If `self.file_name()` is `None`, does nothing and returns `false`.
+    /// If [`self.file_name()`] is `None`, does nothing and returns `false`.
     ///
-    /// Otherwise, returns `true`; if `self.extension()` is `None`, the extension
-    /// is added; otherwise it is replaced.
+    /// Otherwise, returns `true`; if [`self.extension()`] is `None`, the
+    /// extension is added; otherwise it is replaced.
+    ///
+    /// [`self.file_name()`]: struct.PathBuf.html#method.file_name
+    /// [`self.extension()`]: struct.PathBuf.html#method.extension
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut p = PathBuf::from("/feel/the");
+    ///
+    /// p.set_extension("force");
+    /// assert_eq!(Path::new("/feel/the.force"), p.as_path());
+    ///
+    /// p.set_extension("dark_side");
+    /// assert_eq!(Path::new("/feel/the.dark_side"), p.as_path());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_extension<S: AsRef<OsStr>>(&mut self, extension: S) -> bool {
         self._set_extension(extension.as_ref())
@@ -1205,7 +1264,18 @@ impl PathBuf {
         true
     }
 
-    /// Consumes the `PathBuf`, yielding its internal `OsString` storage.
+    /// Consumes the `PathBuf`, yielding its internal [`OsString`] storage.
+    ///
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    ///
+    /// let p = PathBuf::from("/the/head");
+    /// let os_str = p.into_os_string();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_os_string(self) -> OsString {
         self.inner
@@ -1343,7 +1413,7 @@ impl Into<OsString> for PathBuf {
     }
 }
 
-/// A slice of a path (akin to `str`).
+/// A slice of a path (akin to [`str`]).
 ///
 /// This type supports a number of operations for inspecting a path, including
 /// breaking the path into its components (separated by `/` or `\`, depending on
@@ -1352,7 +1422,10 @@ impl Into<OsString> for PathBuf {
 /// the module documentation.
 ///
 /// This is an *unsized* type, meaning that it must always be used behind a
-/// pointer like `&` or `Box`.
+/// pointer like `&` or [`Box`].
+///
+/// [`str`]: ../primitive.str.html
+/// [`Box`]: ../boxed/struct.Box.html
 ///
 /// # Examples
 ///
@@ -1414,7 +1487,9 @@ impl Path {
         unsafe { mem::transmute(s.as_ref()) }
     }
 
-    /// Yields the underlying `OsStr` slice.
+    /// Yields the underlying [`OsStr`] slice.
+    ///
+    /// [`OsStr`]: ../ffi/struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -1429,9 +1504,11 @@ impl Path {
         &self.inner
     }
 
-    /// Yields a `&str` slice if the `Path` is valid unicode.
+    /// Yields a [`&str`] slice if the `Path` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
+    ///
+    /// [`&str`]: ../primitive.str.html
     ///
     /// # Examples
     ///
@@ -1446,9 +1523,11 @@ impl Path {
         self.inner.to_str()
     }
 
-    /// Converts a `Path` to a `Cow<str>`.
+    /// Converts a `Path` to a [`Cow<str>`].
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    ///
+    /// [`Cow<str>`]: ../borrow/enum.Cow.html
     ///
     /// # Examples
     ///
@@ -1463,7 +1542,9 @@ impl Path {
         self.inner.to_string_lossy()
     }
 
-    /// Converts a `Path` to an owned `PathBuf`.
+    /// Converts a `Path` to an owned [`PathBuf`].
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
     ///
     /// # Examples
     ///
@@ -1611,6 +1692,18 @@ impl Path {
     ///
     /// If `base` is not a prefix of `self` (i.e. `starts_with`
     /// returns `false`), returns `Err`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("/test/haha/foo.txt");
+    ///
+    /// assert_eq!(path.strip_prefix("/test"), Ok(Path::new("haha/foo.txt")));
+    /// assert_eq!(path.strip_prefix("test").is_ok(), false);
+    /// assert_eq!(path.strip_prefix("/haha").is_ok(), false);
+    /// ```
     #[stable(since = "1.7.0", feature = "path_strip_prefix")]
     pub fn strip_prefix<'a, P: ?Sized>(&'a self, base: &'a P)
                                        -> Result<&'a Path, StripPrefixError>
@@ -1672,7 +1765,9 @@ impl Path {
         iter_after(self.components().rev(), child.components().rev()).is_some()
     }
 
-    /// Extracts the stem (non-extension) portion of `self.file_name()`.
+    /// Extracts the stem (non-extension) portion of [`self.file_name()`].
+    ///
+    /// [`self.file_name()`]: struct.Path.html#method.file_name
     ///
     /// The stem is:
     ///
@@ -1695,7 +1790,9 @@ impl Path {
         self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.or(after))
     }
 
-    /// Extracts the extension of `self.file_name()`, if possible.
+    /// Extracts the extension of [`self.file_name()`], if possible.
+    ///
+    /// [`self.file_name()`]: struct.Path.html#method.file_name
     ///
     /// The extension is:
     ///
@@ -1718,9 +1815,12 @@ impl Path {
         self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.and(after))
     }
 
-    /// Creates an owned `PathBuf` with `path` adjoined to `self`.
+    /// Creates an owned [`PathBuf`] with `path` adjoined to `self`.
     ///
-    /// See `PathBuf::push` for more details on what it means to adjoin a path.
+    /// See [`PathBuf::push`] for more details on what it means to adjoin a path.
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::push`]: struct.PathBuf.html#method.push
     ///
     /// # Examples
     ///
@@ -1740,9 +1840,12 @@ impl Path {
         buf
     }
 
-    /// Creates an owned `PathBuf` like `self` but with the given file name.
+    /// Creates an owned [`PathBuf`] like `self` but with the given file name.
     ///
-    /// See `PathBuf::set_file_name` for more details.
+    /// See [`PathBuf::set_file_name`] for more details.
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::set_file_name`]: struct.PathBuf.html#method.set_file_name
     ///
     /// # Examples
     ///
@@ -1763,9 +1866,12 @@ impl Path {
         buf
     }
 
-    /// Creates an owned `PathBuf` like `self` but with the given extension.
+    /// Creates an owned [`PathBuf`] like `self` but with the given extension.
     ///
-    /// See `PathBuf::set_extension` for more details.
+    /// See [`PathBuf::set_extension`] for more details.
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::set_extension`]: struct.PathBuf.html#method.set_extension
     ///
     /// # Examples
     ///
@@ -1813,7 +1919,9 @@ impl Path {
         }
     }
 
-    /// Produce an iterator over the path's components viewed as `OsStr` slices.
+    /// Produce an iterator over the path's components viewed as [`OsStr`] slices.
+    ///
+    /// [`OsStr`]: ../ffi/struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -1832,8 +1940,10 @@ impl Path {
         Iter { inner: self.components() }
     }
 
-    /// Returns an object that implements `Display` for safely printing paths
+    /// Returns an object that implements [`Display`] for safely printing paths
     /// that may contain non-Unicode data.
+    ///
+    /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
     ///
@@ -1896,11 +2006,13 @@ impl Path {
 
     /// Returns an iterator over the entries within a directory.
     ///
-    /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
-    /// be encountered after an iterator is initially constructed.
+    /// The iterator will yield instances of [`io::Result`]`<`[`DirEntry`]`>`. New
+    /// errors may be encountered after an iterator is initially constructed.
     ///
     /// This is an alias to [`fs::read_dir`].
     ///
+    /// [`io::Result`]: ../io/type.Result.html
+    /// [`DirEntry`]: ../fs/struct.DirEntry.html
     /// [`fs::read_dir`]: ../fs/fn.read_dir.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
