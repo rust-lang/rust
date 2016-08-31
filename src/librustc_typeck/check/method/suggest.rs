@@ -242,6 +242,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             MethodError::Ambiguity(sources) => {
                 let mut err = struct_span_err!(self.sess(), span, E0034,
                                                "multiple applicable items in scope");
+                err.span_label(span, &format!("multiple `{}` found", item_name));
 
                 report_candidates(&mut err, sources);
                 err.emit();
