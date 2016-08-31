@@ -1270,7 +1270,42 @@ trait Foo {}
 
 impl Foo for i32 {}
 ```
-"##
+"##,
+
+E0530: r##"
+A binding shadowed something it shouldn't.
+
+Erroneous code example:
+
+```compile_fail,E0530
+static TEST: i32 = 0;
+
+let r: (i32, i32) = (0, 0);
+match r {
+    TEST => {} // error: match bindings cannot shadow statics
+}
+```
+
+To fix this error, just change the binding's name in order to avoid shadowing
+one of the following:
+
+* struct name
+* struct/enum variant
+* static
+* const
+* associated const
+
+Fixed example:
+
+```
+static TEST: i32 = 0;
+
+let r: (i32, i32) = (0, 0);
+match r {
+    something => {} // ok!
+}
+```
+"##,
 
 }
 
@@ -1289,7 +1324,6 @@ register_diagnostics! {
 //  E0419, merged into 531
 //  E0420, merged into 532
 //  E0421, merged into 531
-    E0530, // X bindings cannot shadow Ys
     E0531, // unresolved pattern path kind `name`
     E0532, // expected pattern path kind, found another pattern path kind
 //  E0427, merged into 530

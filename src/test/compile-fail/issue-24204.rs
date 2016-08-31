@@ -8,27 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(specialization)]
+#![allow(dead_code)]
 
-trait SpaceLlama {
-    fn fly(&self);
+trait MultiDispatch<T> {
+    type O;
 }
 
-impl<T> SpaceLlama for T {
-    default fn fly(&self) {}
+trait Trait: Sized {
+    type A: MultiDispatch<Self::B, O = Self>;
+    type B;
+
+    fn new<U>(u: U) -> <Self::A as MultiDispatch<U>>::O where Self::A : MultiDispatch<U>;
 }
 
-impl<T: Clone> SpaceLlama for T {
-//~^ NOTE parent `impl` is here
-    fn fly(&self) {}
-}
+fn test<T: Trait<B=i32>>(b: i32) -> T where T::A: MultiDispatch<i32> { T::new(b) }
+//~^ ERROR type mismatch resolving
 
-impl SpaceLlama for i32 {
-    default fn fly(&self) {}
-    //~^ ERROR E0520
-    //~| NOTE cannot specialize default item `fly`
-    //~| NOTE either the parent `impl` or `fly` in the parent `impl` must be marked `default`
-}
-
-fn main() {
-}
+fn main() {}
