@@ -8,27 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(specialization)]
+#![feature(drop_types_in_const)]
 
-trait SpaceLlama {
-    fn fly(&self);
+struct A(i32);
+
+impl Drop for A {
+    fn drop(&mut self) {}
 }
 
-impl<T> SpaceLlama for T {
-    default fn fly(&self) {}
-}
-
-impl<T: Clone> SpaceLlama for T {
-//~^ NOTE parent `impl` is here
-    fn fly(&self) {}
-}
-
-impl SpaceLlama for i32 {
-    default fn fly(&self) {}
-    //~^ ERROR E0520
-    //~| NOTE cannot specialize default item `fly`
-    //~| NOTE either the parent `impl` or `fly` in the parent `impl` must be marked `default`
-}
+static FOO: A = A(123);
 
 fn main() {
+    println!("{}", &FOO.0);
 }
