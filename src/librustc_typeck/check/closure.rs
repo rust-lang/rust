@@ -74,6 +74,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let fn_sig = self.tcx.liberate_late_bound_regions(
             self.tcx.region_maps.call_site_extent(expr.id, body.id), &fn_ty.sig);
+        let fn_sig =
+            (**self).normalize_associated_types_in(body.span, body.id, &fn_sig);
 
         check_fn(self, hir::Unsafety::Normal, expr.id, &fn_sig, decl, expr.id, &body);
 
