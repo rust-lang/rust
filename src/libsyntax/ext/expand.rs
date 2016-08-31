@@ -28,6 +28,8 @@ use visit;
 use visit::Visitor;
 use std_inject;
 
+use std::path::PathBuf;
+
 // A trait for AST nodes and AST node lists into which macro invocations may expand.
 trait MacroGenerable: Sized {
     // Expand the given MacResult using its appropriate `make_*` method.
@@ -566,7 +568,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     fn fold_crate(&mut self, c: Crate) -> Crate {
-        self.cx.filename = Some(self.cx.parse_sess.codemap().span_to_filename(c.span));
+        let mut directory = PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(c.span));
+        directory.pop();
+        self.cx.directory = directory;
         noop_fold_crate(c, self)
     }
 
@@ -591,18 +595,22 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         let result;
         if let ast::ItemKind::Mod(ast::Mod { inner, .. }) = item.node {
             if item.span.contains(inner) {
-                self.push_mod_path(item.ident, &item.attrs);
+                let directory = self.cx.directory.clone();
+                self.cx.directory.push(&*{
+                    ::attr::first_attr_value_str_by_name(&item.attrs, "path")
+                        .unwrap_or(item.ident.name.as_str())
+                });
                 result = expand_item(item, self);
-                self.pop_mod_path();
+                self.cx.directory = directory;
             } else {
-                let filename = if inner != syntax_pos::DUMMY_SP {
-                    Some(self.cx.parse_sess.codemap().span_to_filename(inner))
-                } else { None };
-                let orig_filename = replace(&mut self.cx.filename, filename);
-                let orig_mod_path_stack = replace(&mut self.cx.mod_path_stack, Vec::new());
+                let mut directory = match inner {
+                    syntax_pos::DUMMY_SP => PathBuf::new(),
+                    _ => PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner)),
+                };
+                directory.pop();
+                let directory = replace(&mut self.cx.directory, directory);
                 result = expand_item(item, self);
-                self.cx.filename = orig_filename;
-                self.cx.mod_path_stack = orig_mod_path_stack;
+                self.cx.directory = directory;
             }
         } else {
             result = expand_item(item, self);
@@ -633,21 +641,6 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
         expand_type(ty, self)
-    }
-}
-
-impl<'a, 'b> MacroExpander<'a, 'b> {
-    fn push_mod_path(&mut self, id: Ident, attrs: &[ast::Attribute]) {
-        let default_path = id.name.as_str();
-        let file_path = match ::attr::first_attr_value_str_by_name(attrs, "path") {
-            Some(d) => d,
-            None => default_path,
-        };
-        self.cx.mod_path_stack.push(file_path)
-    }
-
-    fn pop_mod_path(&mut self) {
-        self.cx.mod_path_stack.pop().unwrap();
     }
 }
 
