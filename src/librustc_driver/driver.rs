@@ -88,7 +88,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans, crate_name) = {
+    let (outputs, trans) = {
         let krate = match phase_1_parse_input(sess, cfg, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -213,11 +213,11 @@ pub fn compile_input(sess: &Session,
             // Discard interned strings as they are no longer required.
             token::clear_ident_interner();
 
-            Ok((outputs, trans, crate_name.clone()))
+            Ok((outputs, trans))
         })??
     };
 
-    let phase5_result = phase_5_run_llvm_passes(sess, &crate_name, &trans, &outputs);
+    let phase5_result = phase_5_run_llvm_passes(sess, &trans, &outputs);
 
     controller_entry_point!(after_llvm,
                             sess,
@@ -228,6 +228,10 @@ pub fn compile_input(sess: &Session,
     write::cleanup_llvm(&trans);
 
     phase_6_link_output(sess, &trans, &outputs);
+
+    // Now that we won't touch anything in the incremental compilation directory
+    // any more, we can finalize it (which involves renaming it)
+    rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
 
     controller_entry_point!(compilation_done,
                             sess,
@@ -1026,19 +1030,19 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     time(time_passes,
          "assert dep graph",
-         move || rustc_incremental::assert_dep_graph(tcx));
+         || rustc_incremental::assert_dep_graph(tcx));
 
     time(time_passes,
          "serialize dep graph",
-         move || rustc_incremental::save_dep_graph(tcx, &incremental_hashes_map));
-
+         || rustc_incremental::save_dep_graph(tcx,
+                                              &incremental_hashes_map,
+                                              translation.link.crate_hash));
     translation
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
-                               crate_name: &str,
                                trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) -> CompileResult {
     if sess.opts.cg.no_integrated_as {
@@ -1061,7 +1065,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 
     time(sess.time_passes(),
          "serialize work products",
-         move || rustc_incremental::save_work_products(sess, crate_name));
+         move || rustc_incremental::save_work_products(sess));
 
     if sess.err_count() > 0 {
         Err(sess.err_count())

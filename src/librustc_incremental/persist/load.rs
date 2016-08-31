@@ -27,7 +27,7 @@ use super::data::*;
 use super::directory::*;
 use super::dirty_clean;
 use super::hash::*;
-use super::util::*;
+use super::fs::*;
 
 pub type DirtyNodes = FnvHashSet<DepNode<DefPathIndex>>;
 
@@ -45,19 +45,37 @@ pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
+    match prepare_session_directory(tcx) {
+        Ok(true) => {
+            // We successfully allocated a session directory and there is
+            // something in it to load, so continue
+        }
+        Ok(false) => {
+            // We successfully allocated a session directory, but there is no
+            // dep-graph data in it to load (because this is the first
+            // compilation session with this incr. comp. dir.)
+            return
+        }
+        Err(()) => {
+            // Something went wrong while trying to allocate the session
+            // directory. Don't try to use it any further.
+            return
+        }
+    }
+
     let _ignore = tcx.dep_graph.in_ignore();
     load_dep_graph_if_exists(tcx, incremental_hashes_map);
 }
 
 fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       incremental_hashes_map: &IncrementalHashesMap) {
-    let dep_graph_path = dep_graph_path(tcx).unwrap();
+    let dep_graph_path = dep_graph_path(tcx.sess);
     let dep_graph_data = match load_data(tcx.sess, &dep_graph_path) {
         Some(p) => p,
         None => return // no file
     };
 
-    let work_products_path = tcx_work_products_path(tcx).unwrap();
+    let work_products_path = work_products_path(tcx.sess);
     let work_products_data = match load_data(tcx.sess, &work_products_path) {
         Some(p) => p,
         None => return // no file
@@ -258,7 +276,7 @@ fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    .saved_files
                    .iter()
                    .all(|&(_, ref file_name)| {
-                       let path = in_incr_comp_dir(tcx.sess, &file_name).unwrap();
+                       let path = in_incr_comp_dir_sess(tcx.sess, &file_name);
                        path.exists()
                    });
             if all_files_exist {
@@ -276,7 +294,7 @@ fn delete_dirty_work_product(tcx: TyCtxt,
                              swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
     for &(_, ref file_name) in &swp.work_product.saved_files {
-        let path = in_incr_comp_dir(tcx.sess, file_name).unwrap();
+        let path = in_incr_comp_dir_sess(tcx.sess, file_name);
         match fs::remove_file(&path) {
             Ok(()) => { }
             Err(err) => {
