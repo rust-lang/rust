@@ -43,72 +43,82 @@ pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     codemap: CachingCodemapView<'tcx>,
 }
 
+#[derive(Clone)]
+struct CacheEntry {
+    time_stamp: usize,
+    line_number: usize,
+    line_start: BytePos,
+    line_end: BytePos,
+    file: Rc<FileMap>,
+}
+
 struct CachingCodemapView<'tcx> {
     codemap: &'tcx CodeMap,
-    // Format: (line number, line-start, line-end, file)
-    line_cache: [(usize, BytePos, BytePos, Rc<FileMap>); 4],
-    eviction_index: usize,
+    line_cache: [CacheEntry; 3],
+    time_stamp: usize,
 }
 
 impl<'tcx> CachingCodemapView<'tcx> {
     fn new<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CachingCodemapView<'tcx> {
         let codemap = tcx.sess.codemap();
         let first_file = codemap.files.borrow()[0].clone();
+        let entry = CacheEntry {
+            time_stamp: 0,
+            line_number: 0,
+            line_start: BytePos(0),
+            line_end: BytePos(0),
+            file: first_file,
+        };
 
         CachingCodemapView {
             codemap: codemap,
-            line_cache: [(0, BytePos(0), BytePos(0), first_file.clone()),
-                         (0, BytePos(0), BytePos(0), first_file.clone()),
-                         (0, BytePos(0), BytePos(0), first_file.clone()),
-                         (0, BytePos(0), BytePos(0), first_file.clone())],
-            eviction_index: 0,
+            line_cache: [entry.clone(), entry.clone(), entry.clone()],
+            time_stamp: 0,
         }
     }
 
     fn byte_pos_to_line_and_col(&mut self,
                                 pos: BytePos)
                                 -> (Rc<FileMap>, usize, BytePos) {
+        self.time_stamp += 1;
+
         // Check if the position is in one of the cached lines
-        for &(line, start, end, ref file) in self.line_cache.iter() {
-            if pos >= start && pos < end {
-                return (file.clone(), line, pos - start);
-            }
-        }
-
-        // Check whether we have a cached line in the correct file, so we can
-        // overwrite it without having to look up the file again.
-        for &mut (ref mut line,
-                  ref mut start,
-                  ref mut end,
-                  ref file) in self.line_cache.iter_mut() {
-            if pos >= file.start_pos && pos < file.end_pos {
-                let line_index = file.lookup_line(pos).unwrap();
-                let (line_start, line_end) = file.line_bounds(line_index);
-
-                // Update the cache entry in place
-                *line = line_index + 1;
-                *start = line_start;
-                *end = line_end;
-
-                return (file.clone(), line_index + 1, pos - line_start);
+        for cache_entry in self.line_cache.iter_mut() {
+            if pos >= cache_entry.line_start && pos < cache_entry.line_end {
+                cache_entry.time_stamp = self.time_stamp;
+                return (cache_entry.file.clone(),
+                        cache_entry.line_number,
+                        pos - cache_entry.line_start);
             }
         }
 
         // No cache hit ...
-        let file_index = self.codemap.lookup_filemap_idx(pos);
-        let file = self.codemap.files.borrow()[file_index].clone();
-        let line_index = file.lookup_line(pos).unwrap();
-        let (line_start, line_end) = file.line_bounds(line_index);
+        let mut oldest = 0;
+        for index in 1 .. self.line_cache.len() {
+            if self.line_cache[index].time_stamp < self.line_cache[oldest].time_stamp {
+                oldest = index;
+            }
+        }
 
-        // Just overwrite some cache entry. If we got this far, all of them
-        // point to the wrong file.
-        self.line_cache[self.eviction_index] = (line_index + 1,
-                                                line_start,
-                                                line_end,
-                                                file.clone());
-        self.eviction_index = (self.eviction_index + 1) % self.line_cache.len();
+        let cache_entry = &mut self.line_cache[oldest];
 
-        return (file, line_index + 1, pos - line_start);
+        // If the entry doesn't point to the correct file, fix it up
+        if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
+            let file_index = self.codemap.lookup_filemap_idx(pos);
+            cache_entry.file = self.codemap.files.borrow()[file_index].clone();
+        }
+
+        let line_index = cache_entry.file.lookup_line(pos).unwrap();
+        let line_bounds = cache_entry.file.line_bounds(line_index);
+
+        cache_entry.line_number = line_index + 1;
+        cache_entry.line_start = line_bounds.0;
+        cache_entry.line_end = line_bounds.1;
+        cache_entry.time_stamp = self.time_stamp;
+
+        return (cache_entry.file.clone(),
+                cache_entry.line_number,
+                pos - cache_entry.line_start);
     }
 }
 
