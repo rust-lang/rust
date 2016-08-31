@@ -347,15 +347,19 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                     return;
                 }
             }
-            hir::ItemDefaultImpl(..) => {
+            hir::ItemDefaultImpl(_, ref item_trait_ref) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: default trait impl {}",
                        self.tcx.map.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 if trait_ref.def_id.krate != LOCAL_CRATE {
-                    span_err!(self.tcx.sess, item.span, E0318,
+                    struct_span_err!(self.tcx.sess, item_trait_ref.path.span, E0318,
                               "cannot create default implementations for traits outside the \
-                               crate they're defined in; define a new trait instead");
+                               crate they're defined in; define a new trait instead")
+                        .span_label(item_trait_ref.path.span,
+                                    &format!("`{}` trait not defined in this crate",
+                                             item_trait_ref.path))
+                        .emit();
                     return;
                 }
             }
