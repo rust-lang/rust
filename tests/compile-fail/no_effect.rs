@@ -4,6 +4,7 @@
 #![deny(no_effect, unnecessary_operation)]
 #![allow(dead_code)]
 #![allow(path_statements)]
+//FIXME:unions #![feature(untagged_unions)]
 
 struct Unit;
 struct Tuple(i32);
@@ -14,6 +15,13 @@ enum Enum {
     Tuple(i32),
     Struct { field: i32 },
 }
+
+/*FIXME:unions:
+union Union {
+    a: u8,
+    b: f64,
+}
+*/
 
 fn get_number() -> i32 { 0 }
 fn get_struct() -> Struct { Struct { field: 0 } }
@@ -30,6 +38,7 @@ fn main() {
     Tuple(0); //~ERROR statement with no effect
     Struct { field: 0 }; //~ERROR statement with no effect
     Struct { ..s }; //~ERROR statement with no effect
+    //FIXME:unions: Union { a: 0 }; // /**FIXME*~***/ ERROR statement with no effect
     Enum::Tuple(0); //~ERROR statement with no effect
     Enum::Struct { field: 0 }; //~ERROR statement with no effect
     5 + 6; //~ERROR statement with no effect

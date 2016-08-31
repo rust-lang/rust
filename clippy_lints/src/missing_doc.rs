@@ -21,7 +21,7 @@ use rustc::hir;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::codemap::Span;
 use utils::in_macro;
 
@@ -99,7 +99,7 @@ impl LateLintPass for MissingDoc {
         let doc_hidden = self.doc_hidden() || attrs.iter().any(|attr| {
             attr.check_name("doc") && match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::contains_name(&l[..], "hidden"),
+                Some(l) => attr::list_contains_name(&l[..], "hidden"),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);
@@ -123,6 +123,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemStruct(..) => "a struct",
             hir::ItemTrait(..) => "a trait",
             hir::ItemTy(..) => "a type alias",
+            //FIXME:unions: hir::ItemUnion(..) => "a union",
             hir::ItemDefaultImpl(..) |
             hir::ItemExternCrate(..) |
             hir::ItemForeignMod(..) |

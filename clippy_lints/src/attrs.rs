@@ -4,7 +4,7 @@ use reexport::*;
 use rustc::lint::*;
 use rustc::hir::*;
 use semver::Version;
-use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind};
+use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
 use utils::{in_macro, match_path, span_lint, span_lint_and_then, snippet_opt};
 use utils::paths;
@@ -89,11 +89,13 @@ impl LateLintPass for AttrPass {
                 return;
             }
             for item in items {
-                if let MetaItemKind::NameValue(ref name, ref lit) = item.node {
-                    if name == &"since" {
-                        check_semver(cx, item.span, lit);
-                    }
-                }
+                if_let_chain! {[
+                    let NestedMetaItemKind::MetaItem(ref mi) = item.node,
+                    let MetaItemKind::NameValue(ref name, ref lit) = mi.node,
+                    name == &"since",
+                ], {
+                    check_semver(cx, item.span, lit);
+                }}
             }
         }
     }
@@ -111,11 +113,9 @@ impl LateLintPass for AttrPass {
                             "allow" | "warn" | "deny" | "forbid" => {
                                 // whitelist `unused_imports`
                                 for lint in lint_list {
-                                    if let MetaItemKind::Word(ref word) = lint.node {
-                                        if word == "unused_imports" {
-                                            if let ItemUse(_) = item.node {
-                                                return;
-                                            }
+                                    if is_word(lint, "unused_imports") {
+                                        if let ItemUse(_) = item.node {
+                                            return;
                                         }
                                     }
                                 }
@@ -214,10 +214,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
             if values.len() != 1 || inline != &"inline" {
                 continue;
             }
-            if let MetaItemKind::Word(ref always) = values[0].node {
-                if always != &"always" {
-                    continue;
-                }
+            if is_word(&values[0], "always") {
                 span_lint(cx,
                           INLINE_ALWAYS,
                           attr.span,
@@ -238,4 +235,14 @@ fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
               DEPRECATED_SEMVER,
               span,
               "the since field must contain a semver-compliant version");
+}
+
+fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
+    if let NestedMetaItemKind::MetaItem(ref mi) = nmi.node {
+        if let MetaItemKind::Word(ref word) = mi.node {
+            return word == expected;
+        }
+    }
+
+    false
 }

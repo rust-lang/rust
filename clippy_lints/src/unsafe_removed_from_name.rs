@@ -51,8 +51,8 @@ impl LateLintPass for UnsafeNameRemoval {
                 ViewPath_::ViewPathList(_, ref path_list_items) => {
                     for path_list_item in path_list_items.iter() {
                         let plid = path_list_item.node;
-                        if let (Some(name), Some(rename)) = (plid.name(), plid.rename()) {
-                            unsafe_to_safe_check(name, rename, cx, &item.span);
+                        if let Some(rename) = plid.rename {
+                            unsafe_to_safe_check(plid.name, rename, cx, &item.span);
                         };
                     }
                 }

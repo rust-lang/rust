@@ -1,9 +1,10 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+//FIXME:unions: #![feature(untagged_unions)]
+
 #![deny(warnings)]
 #![allow(dead_code)]
-#![allow(unused_variables)] // Temporary fix for rustc false positive. To be removed.
 
 use std::hash::{Hash, Hasher};
 
@@ -45,6 +46,22 @@ impl Clone for Qux {
 //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
     fn clone(&self) -> Self { Qux }
 }
+
+/* FIXME:unions
+// looks like unions don't support deriving Clone for now
+#[derive(Copy)]
+union Union {
+    a: u8,
+}
+
+impl Clone for Union {
+    fn clone(&self) -> Self {
+        Union {
+            a: 42,
+        }
+    }
+}
+*/
 
 // See #666
 #[derive(Copy)]
