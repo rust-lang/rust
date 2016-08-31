@@ -13,6 +13,8 @@
 trait A<T=Self> {}
 
 fn f(a: &A) {}
-//~^ ERROR the type parameter `T` must be explicitly specified in an object type because its default value `Self` references the type `Self`
+//~^ ERROR E0393
+//~| NOTE missing reference to `T`
+//~| NOTE because of the default `Self` reference, type parameters must be specified on object types
 
 fn main() {}
