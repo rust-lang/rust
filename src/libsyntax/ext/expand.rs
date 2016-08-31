@@ -719,8 +719,9 @@ pub fn expand_crate_with_expander(expander: &mut MacroExpander,
     }
 
     let items = SmallVector::many(c.module.items);
-    expander.load_macros(&items);
-    c.module.items = items.into();
+    let configured = items.fold_with(&mut expander.strip_unconfigured());
+    expander.load_macros(&configured);
+    c.module.items = configured.into();
 
     let err_count = expander.cx.parse_sess.span_diagnostic.err_count();
     let mut ret = expander.fold_crate(c);
