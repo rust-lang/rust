@@ -285,7 +285,7 @@ declare_features! (
 
     // Allows the sysV64 ABI to be specified on all platforms
     // instead of just the platforms on which it is the C ABI
-    (active, abi_sysv64, "1.13.0", None)
+    (active, abi_sysv64, "1.13.0", Some(36167))
 );
 
 declare_features! (
