@@ -30,6 +30,7 @@ use fold::Folder;
 use feature_gate;
 
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::rc::Rc;
 use tokenstream;
 
@@ -602,8 +603,7 @@ pub struct ExtCtxt<'a> {
     pub derive_modes: HashMap<InternedString, Box<MultiItemModifier>>,
     pub recursion_count: usize,
 
-    pub filename: Option<String>,
-    pub mod_path_stack: Vec<InternedString>,
+    pub directory: PathBuf,
     pub in_block: bool,
 }
 
@@ -626,8 +626,7 @@ impl<'a> ExtCtxt<'a> {
             derive_modes: HashMap::new(),
             recursion_count: 0,
 
-            filename: None,
-            mod_path_stack: Vec::new(),
+            directory: PathBuf::new(),
             in_block: false,
         }
     }
