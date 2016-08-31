@@ -528,7 +528,7 @@ impl Build {
             let path = Path::new(line[1..].split(' ').skip(1).next().unwrap());
             let state = if line.starts_with('-') {
                 State::NotInitialized
-            } else if line.starts_with('*') {
+            } else if line.starts_with('+') {
                 State::OutOfSync
             } else if line.starts_with(' ') {
                 State::MaybeDirty
