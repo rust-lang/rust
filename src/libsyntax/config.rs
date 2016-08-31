@@ -10,7 +10,6 @@
 
 use attr::HasAttrs;
 use feature_gate::{emit_feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features, GateIssue};
-use fold::Folder;
 use {fold, attr};
 use ast;
 use codemap::{Spanned, respan};
@@ -25,6 +24,40 @@ pub struct StripUnconfigured<'a> {
     pub should_test: bool,
     pub sess: &'a ParseSess,
     pub features: Option<&'a Features>,
+}
+
+// `cfg_attr`-process the crate's attributes and compute the crate's features.
+pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool)
+                -> (ast::Crate, Features) {
+    let features;
+    {
+        let mut strip_unconfigured = StripUnconfigured {
+            config: &krate.config.clone(),
+            should_test: should_test,
+            sess: sess,
+            features: None,
+        };
+
+        let unconfigured_attrs = krate.attrs.clone();
+        let err_count = sess.span_diagnostic.err_count();
+        if let Some(attrs) = strip_unconfigured.configure(krate.attrs) {
+            krate.attrs = attrs;
+        } else { // the entire crate is unconfigured
+            krate.attrs = Vec::new();
+            krate.module.items = Vec::new();
+            return (krate, Features::new());
+        }
+
+        features = get_features(&sess.span_diagnostic, &krate.attrs);
+
+        // Avoid reconfiguring malformed `cfg_attr`s
+        if err_count == sess.span_diagnostic.err_count() {
+            strip_unconfigured.features = Some(&features);
+            strip_unconfigured.configure(unconfigured_attrs);
+        }
+    }
+
+    (krate, features)
 }
 
 impl<'a> StripUnconfigured<'a> {
@@ -123,34 +156,6 @@ impl<'a> StripUnconfigured<'a> {
             }
         }
     }
-}
-
-// Support conditional compilation by transforming the AST, stripping out
-// any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(mut krate: ast::Crate, sess: &ParseSess, should_test: bool)
-                                -> (ast::Crate, Features) {
-    let features;
-    {
-        let mut strip_unconfigured = StripUnconfigured {
-            config: &krate.config.clone(),
-            should_test: should_test,
-            sess: sess,
-            features: None,
-        };
-
-        let err_count = sess.span_diagnostic.err_count();
-        let krate_attrs = strip_unconfigured.configure(krate.attrs.clone()).unwrap_or_default();
-        features = get_features(&sess.span_diagnostic, &krate_attrs);
-        if err_count < sess.span_diagnostic.err_count() {
-            krate.attrs = krate_attrs.clone(); // Avoid reconfiguring malformed `cfg_attr`s
-        }
-
-        strip_unconfigured.features = Some(&features);
-        krate = strip_unconfigured.fold_crate(krate);
-        krate.attrs = krate_attrs;
-    }
-
-    (krate, features)
 }
 
 impl<'a> fold::Folder for StripUnconfigured<'a> {
