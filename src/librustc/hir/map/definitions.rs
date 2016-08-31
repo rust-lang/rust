@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::cstore::LOCAL_CRATE;
-use hir::def_id::{DefId, DefIndex};
+use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map::def_collector::DefCollector;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::fmt::Write;
@@ -70,7 +69,7 @@ pub struct DefPath {
     pub data: Vec<DisambiguatedDefPathData>,
 
     /// what krate root is this path relative to?
-    pub krate: ast::CrateNum,
+    pub krate: CrateNum,
 }
 
 impl DefPath {
@@ -78,7 +77,7 @@ impl DefPath {
         self.krate == LOCAL_CRATE
     }
 
-    pub fn make<FN>(start_krate: ast::CrateNum,
+    pub fn make<FN>(start_krate: CrateNum,
                     start_index: DefIndex,
                     mut get_key: FN) -> DefPath
         where FN: FnMut(DefIndex) -> DefKey

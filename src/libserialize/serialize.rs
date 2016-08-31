@@ -594,50 +594,6 @@ impl<T:Decodable+Send+Sync> Decodable for Arc<T> {
 }
 
 // ___________________________________________________________________________
-// Helper routines
-
-pub trait EncoderHelpers: Encoder {
-    fn emit_from_vec<T, F>(&mut self, v: &[T], f: F)
-                           -> Result<(), Self::Error>
-        where F: FnMut(&mut Self, &T) -> Result<(), Self::Error>;
-}
-
-impl<S:Encoder> EncoderHelpers for S {
-    fn emit_from_vec<T, F>(&mut self, v: &[T], mut f: F) -> Result<(), S::Error> where
-        F: FnMut(&mut S, &T) -> Result<(), S::Error>,
-    {
-        self.emit_seq(v.len(), |this| {
-            for (i, e) in v.iter().enumerate() {
-                this.emit_seq_elt(i, |this| {
-                    f(this, e)
-                })?;
-            }
-            Ok(())
-        })
-    }
-}
-
-pub trait DecoderHelpers: Decoder {
-    fn read_to_vec<T, F>(&mut self, f: F)
-                         -> Result<Vec<T>, Self::Error> where
-        F: FnMut(&mut Self) -> Result<T, Self::Error>;
-}
-
-impl<D: Decoder> DecoderHelpers for D {
-    fn read_to_vec<T, F>(&mut self, mut f: F) -> Result<Vec<T>, D::Error> where F:
-        FnMut(&mut D) -> Result<T, D::Error>,
-    {
-        self.read_seq(|this, len| {
-            let mut v = Vec::with_capacity(len);
-            for i in 0..len {
-                v.push(this.read_seq_elt(i, |this| f(this))?);
-            }
-            Ok(v)
-        })
-    }
-}
-
-// ___________________________________________________________________________
 // Specialization-based interface for multi-dispatch Encodable/Decodable.
 
 /// Implement this trait on your `{Encodable,Decodable}::Error` types

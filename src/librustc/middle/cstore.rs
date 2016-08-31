@@ -23,7 +23,7 @@
 // probably get a better home if someone can find one.
 
 use hir::def::{self, Def};
-use hir::def_id::{DefId, DefIndex};
+use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::DefKey;
 use hir::svh::Svh;
@@ -64,7 +64,7 @@ pub struct LinkMeta {
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
-    pub cnum: ast::CrateNum,
+    pub cnum: CrateNum,
 }
 
 #[derive(Copy, Debug, PartialEq, Clone)]
@@ -101,16 +101,12 @@ pub enum InlinedItem {
 }
 
 /// A borrowed version of `hir::InlinedItem`.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, Hash, Debug)]
 pub enum InlinedItemRef<'a> {
     Item(DefId, &'a hir::Item),
     TraitItem(DefId, &'a hir::TraitItem),
     ImplItem(DefId, &'a hir::ImplItem)
 }
-
-/// Item definitions in the currently-compiled crate would have the CrateNum
-/// LOCAL_CRATE in their DefId.
-pub const LOCAL_CRATE: ast::CrateNum = 0;
 
 #[derive(Copy, Clone)]
 pub struct ChildItem {
@@ -203,35 +199,35 @@ pub trait CrateStore<'tcx> {
     fn is_typedef(&self, did: DefId) -> bool;
 
     // crate metadata
-    fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
-                                    -> Vec<(ast::CrateNum, LinkagePreference)>;
-    fn lang_items(&self, cnum: ast::CrateNum) -> Vec<(DefIndex, usize)>;
-    fn missing_lang_items(&self, cnum: ast::CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_staged_api(&self, cnum: ast::CrateNum) -> bool;
-    fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
-    fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
-    fn is_panic_runtime(&self, cnum: ast::CrateNum) -> bool;
-    fn is_compiler_builtins(&self, cnum: ast::CrateNum) -> bool;
-    fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy;
-    fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate>;
-    fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
+    fn dylib_dependency_formats(&self, cnum: CrateNum)
+                                    -> Vec<(CrateNum, LinkagePreference)>;
+    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
+    fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
+    fn is_staged_api(&self, cnum: CrateNum) -> bool;
+    fn is_explicitly_linked(&self, cnum: CrateNum) -> bool;
+    fn is_allocator(&self, cnum: CrateNum) -> bool;
+    fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
+    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
+    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
+    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
+    fn crate_attrs(&self, cnum: CrateNum) -> Vec<ast::Attribute>;
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
-    fn crate_name(&self, cnum: ast::CrateNum) -> InternedString;
+    fn crate_name(&self, cnum: CrateNum) -> InternedString;
     /// The name of the crate as it is stored in the crate's metadata.
-    fn original_crate_name(&self, cnum: ast::CrateNum) -> InternedString;
-    fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
-    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString;
-    fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
+    fn original_crate_name(&self, cnum: CrateNum) -> InternedString;
+    fn crate_hash(&self, cnum: CrateNum) -> Svh;
+    fn crate_disambiguator(&self, cnum: CrateNum) -> InternedString;
+    fn crate_struct_field_attrs(&self, cnum: CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>;
-    fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
-    fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>;
-    fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>;
-    fn is_no_builtins(&self, cnum: ast::CrateNum) -> bool;
+    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
+    fn native_libraries(&self, cnum: CrateNum) -> Vec<(NativeLibraryKind, String)>;
+    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>;
+    fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
     // resolve
     fn def_index_for_def_key(&self,
-                             cnum: ast::CrateNum,
+                             cnum: CrateNum,
                              def: DefKey)
                              -> Option<DefIndex>;
     fn def_key(&self, def: DefId) -> hir_map::DefKey;
@@ -241,7 +237,7 @@ pub trait CrateStore<'tcx> {
     fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<ChildItem>;
-    fn crate_top_level_items(&self, cnum: ast::CrateNum) -> Vec<ChildItem>;
+    fn crate_top_level_items(&self, cnum: CrateNum) -> Vec<ChildItem>;
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -255,7 +251,7 @@ pub trait CrateStore<'tcx> {
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
-    fn crates(&self) -> Vec<ast::CrateNum>;
+    fn crates(&self) -> Vec<CrateNum>;
     fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)>;
     fn used_link_args(&self) -> Vec<String>;
 
@@ -267,9 +263,9 @@ pub trait CrateStore<'tcx> {
                        ty: Ty<'tcx>,
                        def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String)
                        -> Vec<u8>;
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>;
-    fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource;
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>;
+    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>;
+    fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
+    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            reexports: &def::ExportMap,
                            link_meta: &LinkMeta,
@@ -360,7 +356,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn trait_item_def_ids(&self, def: DefId)
                           -> Vec<ty::ImplOrTraitItemId> { bug!("trait_item_def_ids") }
     fn def_index_for_def_key(&self,
-                             cnum: ast::CrateNum,
+                             cnum: CrateNum,
                              def: DefKey)
                              -> Option<DefIndex> {
         None
@@ -396,40 +392,40 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_typedef(&self, did: DefId) -> bool { bug!("is_typedef") }
 
     // crate metadata
-    fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
-                                    -> Vec<(ast::CrateNum, LinkagePreference)>
+    fn dylib_dependency_formats(&self, cnum: CrateNum)
+                                    -> Vec<(CrateNum, LinkagePreference)>
         { bug!("dylib_dependency_formats") }
-    fn lang_items(&self, cnum: ast::CrateNum) -> Vec<(DefIndex, usize)>
+    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
         { bug!("lang_items") }
-    fn missing_lang_items(&self, cnum: ast::CrateNum) -> Vec<lang_items::LangItem>
+    fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
         { bug!("missing_lang_items") }
-    fn is_staged_api(&self, cnum: ast::CrateNum) -> bool { bug!("is_staged_api") }
-    fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool { bug!("is_explicitly_linked") }
-    fn is_allocator(&self, cnum: ast::CrateNum) -> bool { bug!("is_allocator") }
-    fn is_panic_runtime(&self, cnum: ast::CrateNum) -> bool { bug!("is_panic_runtime") }
-    fn is_compiler_builtins(&self, cnum: ast::CrateNum) -> bool { bug!("is_compiler_builtins") }
-    fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy {
+    fn is_staged_api(&self, cnum: CrateNum) -> bool { bug!("is_staged_api") }
+    fn is_explicitly_linked(&self, cnum: CrateNum) -> bool { bug!("is_explicitly_linked") }
+    fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
+    fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
+    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
+    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         bug!("panic_strategy")
     }
-    fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
-    fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
+    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
+    fn crate_attrs(&self, cnum: CrateNum) -> Vec<ast::Attribute>
         { bug!("crate_attrs") }
-    fn crate_name(&self, cnum: ast::CrateNum) -> InternedString { bug!("crate_name") }
-    fn original_crate_name(&self, cnum: ast::CrateNum) -> InternedString {
+    fn crate_name(&self, cnum: CrateNum) -> InternedString { bug!("crate_name") }
+    fn original_crate_name(&self, cnum: CrateNum) -> InternedString {
         bug!("original_crate_name")
     }
-    fn crate_hash(&self, cnum: ast::CrateNum) -> Svh { bug!("crate_hash") }
-    fn crate_disambiguator(&self, cnum: ast::CrateNum)
+    fn crate_hash(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
+    fn crate_disambiguator(&self, cnum: CrateNum)
                            -> InternedString { bug!("crate_disambiguator") }
-    fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
+    fn crate_struct_field_attrs(&self, cnum: CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>
         { bug!("crate_struct_field_attrs") }
-    fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>
+    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
         { bug!("plugin_registrar_fn") }
-    fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>
+    fn native_libraries(&self, cnum: CrateNum) -> Vec<(NativeLibraryKind, String)>
         { bug!("native_libraries") }
-    fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId> { bug!("reachable_ids") }
-    fn is_no_builtins(&self, cnum: ast::CrateNum) -> bool { bug!("is_no_builtins") }
+    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId> { bug!("reachable_ids") }
+    fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve
     fn def_key(&self, def: DefId) -> hir_map::DefKey { bug!("def_key") }
@@ -443,7 +439,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { bug!("tuple_struct_definition_if_ctor") }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
     fn item_children(&self, did: DefId) -> Vec<ChildItem> { bug!("item_children") }
-    fn crate_top_level_items(&self, cnum: ast::CrateNum) -> Vec<ChildItem>
+    fn crate_top_level_items(&self, cnum: CrateNum) -> Vec<ChildItem>
         { bug!("crate_top_level_items") }
 
     // misc. metadata
@@ -466,7 +462,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
-    fn crates(&self) -> Vec<ast::CrateNum> { vec![] }
+    fn crates(&self) -> Vec<CrateNum> { vec![] }
     fn used_libraries(&self) -> Vec<(String, NativeLibraryKind)> { vec![] }
     fn used_link_args(&self) -> Vec<String> { vec![] }
 
@@ -480,10 +476,10 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                        -> Vec<u8> {
         bug!("encode_type")
     }
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>
+    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>
         { vec![] }
-    fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource { bug!("used_crate_source") }
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum> { None }
+    fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
+    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
     fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            reexports: &def::ExportMap,
                            link_meta: &LinkMeta,

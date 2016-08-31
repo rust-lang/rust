@@ -13,10 +13,9 @@
 use dep_graph::{DepGraph, DepTrackingMap};
 use session::Session;
 use middle;
-use middle::cstore::LOCAL_CRATE;
 use hir::TraitMap;
 use hir::def::DefMap;
-use hir::def_id::{DefId, DefIndex};
+use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map as ast_map;
 use hir::map::{DefKey, DefPath, DefPathData, DisambiguatedDefPathData};
 use middle::free_region::FreeRegionMap;
@@ -512,7 +511,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn crate_name(self, cnum: ast::CrateNum) -> token::InternedString {
+    pub fn crate_name(self, cnum: CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
             self.crate_name.clone()
         } else {
@@ -520,7 +519,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn crate_disambiguator(self, cnum: ast::CrateNum) -> token::InternedString {
+    pub fn crate_disambiguator(self, cnum: CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
             self.sess.local_crate_disambiguator()
         } else {
@@ -533,7 +532,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// relative to `krate`.
     ///
     /// Returns `None` if there is no `DefIndex` with that key.
-    pub fn def_index_for_def_key(self, krate: ast::CrateNum, key: DefKey)
+    pub fn def_index_for_def_key(self, krate: CrateNum, key: DefKey)
                                  -> Option<DefIndex> {
         if krate == LOCAL_CRATE {
             self.map.def_index_for_def_key(key)

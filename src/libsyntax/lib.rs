@@ -33,6 +33,7 @@
 #![feature(unicode)]
 #![feature(question_mark)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(specialization)]
 
 extern crate serialize;
 extern crate term;

@@ -21,9 +21,8 @@ pub use self::fold::TypeFoldable;
 use dep_graph::{self, DepNode};
 use hir::map as ast_map;
 use middle;
-use middle::cstore::LOCAL_CRATE;
 use hir::def::{Def, PathResolution, ExportMap};
-use hir::def_id::DefId;
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
 use traits;
@@ -42,7 +41,7 @@ use std::iter;
 use std::rc::Rc;
 use std::slice;
 use std::vec::IntoIter;
-use syntax::ast::{self, CrateNum, Name, NodeId};
+use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token::InternedString;
 use syntax_pos::{DUMMY_SP, Span};
@@ -425,7 +424,7 @@ pub enum Variance {
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, RustcDecodable, RustcEncodable)]
 pub struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: DefId,
@@ -627,7 +626,7 @@ pub enum BorrowKind {
 
 /// Information describing the capture of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`.
-#[derive(PartialEq, Clone, Debug, Copy)]
+#[derive(PartialEq, Clone, Debug, Copy, RustcEncodable, RustcDecodable)]
 pub enum UpvarCapture<'tcx> {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
@@ -638,7 +637,7 @@ pub enum UpvarCapture<'tcx> {
     ByRef(UpvarBorrow<'tcx>),
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, RustcEncodable, RustcDecodable)]
 pub struct UpvarBorrow<'tcx> {
     /// The kind of borrow: by-ref upvars have access to shared
     /// immutable borrows, which are not part of the normal language
@@ -1940,7 +1939,7 @@ impl<'a, 'gcx, 'tcx, 'container> FieldDefData<'tcx, 'container> {
 
 /// Records the substitutions used to translate the polytype for an
 /// item into the monotype of an item reference.
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct ItemSubsts<'tcx> {
     pub substs: &'tcx Substs<'tcx>,
 }

@@ -242,11 +242,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
                 let expansion = expansion.fold_with(&mut placeholder_expander);
-                placeholder_expander.add(mark, expansion);
+                placeholder_expander.add(ast::NodeId::from_u32(mark), expansion);
             }
         }
 
-        placeholder_expander.remove(0)
+        placeholder_expander.remove(ast::NodeId::from_u32(0))
     }
 
     fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
@@ -424,7 +424,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             expansion_kind: expansion_kind,
             expansion_data: ExpansionData { mark: mark, ..self.cx.current_expansion.clone() },
         });
-        placeholder(expansion_kind, mark.as_u32())
+        placeholder(expansion_kind, ast::NodeId::from_u32(mark.as_u32()))
     }
 
     fn collect_bang(

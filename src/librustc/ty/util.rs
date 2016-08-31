@@ -240,7 +240,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn enum_repr_type(self, opt_hint: Option<&attr::ReprAttr>) -> attr::IntType {
         match opt_hint {
             // Feed in the given type
-            Some(&attr::ReprInt(_, int_t)) => int_t,
+            Some(&attr::ReprInt(int_t)) => int_t,
             // ... but provide sensible default if none provided
             //
             // NB. Historically `fn enum_variants` generate i64 here, while

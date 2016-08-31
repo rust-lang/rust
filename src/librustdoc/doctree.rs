@@ -21,6 +21,7 @@ use syntax::ptr::P;
 use syntax_pos::{self, Span};
 
 use rustc::hir;
+use rustc::hir::def_id::CrateNum;
 
 pub struct Module {
     pub name: Option<Name>,
@@ -53,7 +54,7 @@ impl Module {
     pub fn new(name: Option<Name>) -> Module {
         Module {
             name       : name,
-            id: 0,
+            id: ast::CRATE_NODE_ID,
             vis: hir::Inherited,
             stab: None,
             depr: None,
@@ -245,7 +246,7 @@ pub struct Macro {
 
 pub struct ExternCrate {
     pub name: Name,
-    pub cnum: ast::CrateNum,
+    pub cnum: CrateNum,
     pub path: Option<String>,
     pub vis: hir::Visibility,
     pub attrs: hir::HirVec<ast::Attribute>,

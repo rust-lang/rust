@@ -16,7 +16,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use decoder;
 use loader::{self, CratePaths};
 
-use rustc::hir::def_id::DefIndex;
+use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
 use rustc::dep_graph::{DepGraph, DepNode};
 use rustc::session::{config, Session};
@@ -52,7 +52,7 @@ struct LocalCrateReader<'a> {
 pub struct CrateReader<'a> {
     sess: &'a Session,
     cstore: &'a CStore,
-    next_crate_num: ast::CrateNum,
+    next_crate_num: CrateNum,
     foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
     local_crate_name: String,
     local_crate_config: ast::CrateConfig,
@@ -152,7 +152,7 @@ impl PMDSource {
 }
 
 enum LoadResult {
-    Previous(ast::CrateNum),
+    Previous(CrateNum),
     Loaded(loader::Library),
 }
 
@@ -208,7 +208,7 @@ impl<'a> CrateReader<'a> {
     }
 
     fn existing_match(&self, name: &str, hash: Option<&Svh>, kind: PathKind)
-                      -> Option<ast::CrateNum> {
+                      -> Option<CrateNum> {
         let mut ret = None;
         self.cstore.iter_crate_data(|cnum, data| {
             if data.name != name { return }
@@ -295,14 +295,14 @@ impl<'a> CrateReader<'a> {
                       span: Span,
                       lib: loader::Library,
                       explicitly_linked: bool)
-                      -> (ast::CrateNum, Rc<cstore::CrateMetadata>,
+                      -> (CrateNum, Rc<cstore::CrateMetadata>,
                           cstore::CrateSource) {
         info!("register crate `extern crate {} as {}`", name, ident);
         self.verify_no_symbol_conflicts(span, &lib.metadata);
 
         // Claim this crate number and cache it
         let cnum = self.next_crate_num;
-        self.next_crate_num += 1;
+        self.next_crate_num = CrateNum::from_u32(cnum.as_u32() + 1);
 
         // Stash paths for top-most crate locally if necessary.
         let crate_paths = if root.is_none() {
@@ -370,7 +370,7 @@ impl<'a> CrateReader<'a> {
                      span: Span,
                      kind: PathKind,
                      explicitly_linked: bool)
-                     -> (ast::CrateNum, Rc<cstore::CrateMetadata>, cstore::CrateSource) {
+                     -> (CrateNum, Rc<cstore::CrateMetadata>, cstore::CrateSource) {
         info!("resolving crate `extern crate {} as {}`", name, ident);
         let result = match self.existing_match(name, hash, kind) {
             Some(cnum) => LoadResult::Previous(cnum),
@@ -447,9 +447,9 @@ impl<'a> CrateReader<'a> {
     }
 
     fn update_extern_crate(&mut self,
-                           cnum: ast::CrateNum,
+                           cnum: CrateNum,
                            mut extern_crate: ExternCrate,
-                           visited: &mut FnvHashSet<(ast::CrateNum, bool)>)
+                           visited: &mut FnvHashSet<(CrateNum, bool)>)
     {
         if !visited.insert((cnum, extern_crate.direct)) { return }
 
@@ -482,7 +482,7 @@ impl<'a> CrateReader<'a> {
     fn resolve_crate_deps(&mut self,
                           root: &Option<CratePaths>,
                           cdata: &[u8],
-                          krate: ast::CrateNum,
+                          krate: CrateNum,
                           span: Span)
                           -> cstore::CrateNumMap {
         debug!("resolving deps of external crate");
@@ -500,11 +500,13 @@ impl<'a> CrateReader<'a> {
             (dep.cnum, local_cnum)
         }).collect();
 
-        let max_cnum = map.values().cloned().max().unwrap_or(0);
+        let max_cnum = map.values().cloned().max().map(|cnum| cnum.as_u32()).unwrap_or(0);
 
         // we map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
-        (0..max_cnum+1).map(|cnum| map.get(&cnum).cloned().unwrap_or(krate)).collect()
+        (0..max_cnum+1).map(|cnum| {
+            map.get(&CrateNum::from_u32(cnum)).cloned().unwrap_or(krate)
+        }).collect()
     }
 
     fn read_extension_crate(&mut self, span: Span, info: &CrateInfo) -> ExtensionCrate {
@@ -875,7 +877,7 @@ impl<'a> CrateReader<'a> {
     }
 
     fn inject_dependency_if(&self,
-                            krate: ast::CrateNum,
+                            krate: CrateNum,
                             what: &str,
                             needs_dep: &Fn(&cstore::CrateMetadata) -> bool) {
         // don't perform this validation if the session has errors, as one of
@@ -1113,7 +1115,7 @@ pub fn read_local_crates(sess: & Session,
 /// function. When an item from an external crate is later inlined into this
 /// crate, this correspondence information is used to translate the span
 /// information of the inlined item so that it refers the correct positions in
-/// the local codemap (see `astencode::DecodeContext::tr_span()`).
+/// the local codemap (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
 ///
 /// The import algorithm in the function below will reuse FileMaps already
 /// existing in the local codemap. For example, even if the FileMap of some

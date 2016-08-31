@@ -61,7 +61,7 @@ use syntax_pos::Span;
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
-    sess: Option<&'a Session>,
+    sess: &'a Session,
     // As we walk the AST we must keep track of the current 'parent' def id (in
     // the form of a DefIndex) so that if we create a new node which introduces
     // a definition, then we can properly create the def id.
@@ -101,22 +101,13 @@ pub fn lower_crate(sess: &Session,
         } else {
             Some("std")
         },
-        sess: Some(sess),
+        sess: sess,
         parent_def: None,
         resolver: resolver,
     }.lower_crate(krate)
 }
 
 impl<'a> LoweringContext<'a> {
-    pub fn testing_context(resolver: &'a mut Resolver) -> Self {
-        LoweringContext {
-            crate_root: None,
-            sess: None,
-            parent_def: None,
-            resolver: resolver,
-        }
-    }
-
     fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
             items: BTreeMap<NodeId, hir::Item>,
@@ -147,12 +138,11 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn next_id(&self) -> NodeId {
-        self.sess.map(Session::next_node_id).unwrap_or(0)
+        self.sess.next_node_id()
     }
 
     fn diagnostic(&self) -> &errors::Handler {
-        self.sess.map(Session::diagnostic)
-                 .unwrap_or_else(|| panic!("this lowerer cannot emit diagnostics"))
+        self.sess.diagnostic()
     }
 
     fn str_to_ident(&self, s: &'static str) -> Name {

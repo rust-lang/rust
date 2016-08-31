@@ -23,7 +23,7 @@ use index::{self, IndexData};
 
 use middle::cstore::{InlinedItemRef, LinkMeta};
 use rustc::hir::def;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use rustc::dep_graph::DepNode;
 use rustc::traits::specialization_graph;
@@ -42,7 +42,7 @@ use std::io::{Cursor, SeekFrom};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::u32;
-use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
+use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID};
 use syntax::attr;
 use syntax;
 use syntax_pos::BytePos;
@@ -136,8 +136,7 @@ fn encode_family(ecx: &mut EncodeContext, c: char) {
 }
 
 pub fn def_to_u64(did: DefId) -> u64 {
-    assert!(did.index.as_u32() < u32::MAX);
-    (did.krate as u64) << 32 | (did.index.as_usize() as u64)
+    (did.krate.as_u32() as u64) << 32 | (did.index.as_u32() as u64)
 }
 
 pub fn def_to_string(_tcx: TyCtxt, did: DefId) -> String {
@@ -1457,7 +1456,7 @@ fn encode_crate_deps(ecx: &mut EncodeContext, cstore: &cstore::CStore) {
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
         for &(n, _) in &deps {
-            assert_eq!(n, expected_cnum);
+            assert_eq!(n, CrateNum::new(expected_cnum));
             expected_cnum += 1;
         }
 

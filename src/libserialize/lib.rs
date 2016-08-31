@@ -45,8 +45,7 @@ Core encoding and decoding interfaces.
 extern crate rustc_unicode;
 extern crate collections;
 
-pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
-                          DecoderHelpers, EncoderHelpers};
+pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};
 
 pub use self::serialize::{SpecializationError, SpecializedEncoder, SpecializedDecoder};
 pub use self::serialize::{UseSpecializedEncodable, UseSpecializedDecodable};
