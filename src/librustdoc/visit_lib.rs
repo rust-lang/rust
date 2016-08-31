@@ -11,9 +11,8 @@
 use rustc::middle::cstore::{CrateStore, ChildItem, DefLike};
 use rustc::middle::privacy::{AccessLevels, AccessLevel};
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty::Visibility;
-use syntax::ast;
 
 use std::cell::RefMut;
 
@@ -42,7 +41,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    pub fn visit_lib(&mut self, cnum: ast::CrateNum) {
+    pub fn visit_lib(&mut self, cnum: CrateNum) {
         let did = DefId { krate: cnum, index: CRATE_DEF_INDEX };
         self.update(did, Some(AccessLevel::Public));
         self.visit_mod(did);

@@ -101,8 +101,8 @@ use common::{CrateContext, SharedCrateContext, gensym_name};
 use monomorphize::Instance;
 use util::sha2::{Digest, Sha256};
 
-use rustc::middle::{cstore, weak_lang_items};
-use rustc::hir::def_id::DefId;
+use rustc::middle::weak_lang_items;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map as hir_map;
 use rustc::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
@@ -298,7 +298,7 @@ pub fn exported_name_from_type_and_prefix<'a, 'tcx>(scx: &SharedCrateContext<'a,
                                                     -> String {
     let empty_def_path = DefPath {
         data: vec![],
-        krate: cstore::LOCAL_CRATE,
+        krate: LOCAL_CRATE,
     };
     let hash = get_symbol_hash(scx, &empty_def_path, t, None);
     let path = [token::intern_and_get_ident(prefix)];
@@ -315,7 +315,7 @@ pub fn internal_name_from_type_and_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>
                 gensym_name(suffix).as_str()];
     let def_path = DefPath {
         data: vec![],
-        krate: cstore::LOCAL_CRATE,
+        krate: LOCAL_CRATE,
     };
     let hash = get_symbol_hash(ccx.shared(), &def_path, t, None);
     mangle(path.iter().cloned(), Some(&hash[..]))

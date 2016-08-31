@@ -881,8 +881,8 @@ pub struct IdRange {
 impl IdRange {
     pub fn max() -> IdRange {
         IdRange {
-            min: u32::MAX,
-            max: u32::MIN,
+            min: NodeId::from_u32(u32::MAX),
+            max: NodeId::from_u32(u32::MIN),
         }
     }
 
@@ -896,7 +896,7 @@ impl IdRange {
 
     pub fn add(&mut self, id: NodeId) {
         self.min = cmp::min(self.min, id);
-        self.max = cmp::max(self.max, id + 1);
+        self.max = cmp::max(self.max, NodeId::from_u32(id.as_u32() + 1));
     }
 
 }

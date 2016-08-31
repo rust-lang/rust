@@ -18,7 +18,7 @@
 
 use rustc::hir;
 
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 use middle::region;
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
@@ -38,7 +38,7 @@ pub type DefIdConvert<'a> = &'a mut FnMut(DefId) -> DefId;
 
 pub struct TyDecoder<'a, 'tcx: 'a> {
     data: &'a [u8],
-    krate: ast::CrateNum,
+    krate: CrateNum,
     pos: usize,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     conv_def_id: DefIdConvert<'a>,
@@ -46,7 +46,7 @@ pub struct TyDecoder<'a, 'tcx: 'a> {
 
 impl<'a,'tcx> TyDecoder<'a,'tcx> {
     pub fn with_doc(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    crate_num: ast::CrateNum,
+                    crate_num: CrateNum,
                     doc: rbml::Doc<'a>,
                     conv: DefIdConvert<'a>)
                     -> TyDecoder<'a,'tcx> {
@@ -54,7 +54,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     pub fn new(data: &'a [u8],
-               crate_num: ast::CrateNum,
+               crate_num: CrateNum,
                pos: usize,
                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                conv: DefIdConvert<'a>)
@@ -258,9 +258,9 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             // May still be worth fixing though.
             'C' => {
                 assert_eq!(self.next(), '[');
-                let fn_id = self.parse_uint() as ast::NodeId;
+                let fn_id = ast::NodeId::new(self.parse_uint());
                 assert_eq!(self.next(), '|');
-                let body_id = self.parse_uint() as ast::NodeId;
+                let body_id = ast::NodeId::new(self.parse_uint());
                 assert_eq!(self.next(), ']');
                 region::CodeExtentData::CallSiteScope {
                     fn_id: fn_id, body_id: body_id
@@ -269,25 +269,25 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             // This creates scopes with the wrong NodeId. (See note above.)
             'P' => {
                 assert_eq!(self.next(), '[');
-                let fn_id = self.parse_uint() as ast::NodeId;
+                let fn_id = ast::NodeId::new(self.parse_uint());
                 assert_eq!(self.next(), '|');
-                let body_id = self.parse_uint() as ast::NodeId;
+                let body_id = ast::NodeId::new(self.parse_uint());
                 assert_eq!(self.next(), ']');
                 region::CodeExtentData::ParameterScope {
                     fn_id: fn_id, body_id: body_id
                 }
             }
             'M' => {
-                let node_id = self.parse_uint() as ast::NodeId;
+                let node_id = ast::NodeId::new(self.parse_uint());
                 region::CodeExtentData::Misc(node_id)
             }
             'D' => {
-                let node_id = self.parse_uint() as ast::NodeId;
+                let node_id = ast::NodeId::new(self.parse_uint());
                 region::CodeExtentData::DestructionScope(node_id)
             }
             'B' => {
                 assert_eq!(self.next(), '[');
-                let node_id = self.parse_uint() as ast::NodeId;
+                let node_id = ast::NodeId::new(self.parse_uint());
                 assert_eq!(self.next(), '|');
                 let first_stmt_index = self.parse_u32();
                 assert_eq!(self.next(), ']');
@@ -726,7 +726,7 @@ fn parse_defid(buf: &[u8]) -> DefId {
     let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| {
         s.parse::<usize>().ok()
     }) {
-        Some(cn) => cn as ast::CrateNum,
+        Some(cn) => CrateNum::new(cn),
         None => bug!("internal error: parse_defid: crate number expected, found {:?}",
                        crate_part)
     };

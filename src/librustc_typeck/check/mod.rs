@@ -83,9 +83,8 @@ use self::TupleArgumentsFlag::*;
 use astconv::{AstConv, ast_region_to_region, PathParamMode};
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
-use middle::cstore::LOCAL_CRATE;
 use hir::def::{Def, PathResolution};
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
 use rustc::ty::subst::{Subst, Substs};
@@ -1450,7 +1449,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             writeback_errors: Cell::new(false),
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_ty: rty,
-            ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal, 0)),
+            ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
+                                                     ast::CRATE_NODE_ID)),
             inh: inh,
         }
     }
@@ -2117,7 +2117,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             .unwrap_or(type_variable::Default {
                                 ty: self.next_ty_var(),
                                 origin_span: syntax_pos::DUMMY_SP,
-                                def_id: self.tcx.map.local_def_id(0) // what do I put here?
+                                // what do I put here?
+                                def_id: self.tcx.map.local_def_id(ast::CRATE_NODE_ID)
                             });
 
                     // This is to ensure that we elimnate any non-determinism from the error

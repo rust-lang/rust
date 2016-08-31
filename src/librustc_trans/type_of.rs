@@ -356,7 +356,7 @@ fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         format!("{}<{}>", base, strings.join(", "))
     };
 
-    if did.krate == 0 {
+    if did.is_local() {
         tstr
     } else {
         format!("{}.{}", did.krate, tstr)

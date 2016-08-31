@@ -20,7 +20,7 @@ use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use rustc::hir::def;
 use middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt, VariantKind};
-use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
@@ -303,14 +303,14 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_typedef(&cdata, did.index)
     }
 
-    fn dylib_dependency_formats(&self, cnum: ast::CrateNum)
-                                -> Vec<(ast::CrateNum, LinkagePreference)>
+    fn dylib_dependency_formats(&self, cnum: CrateNum)
+                                -> Vec<(CrateNum, LinkagePreference)>
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_dylib_dependency_formats(&cdata)
     }
 
-    fn lang_items(&self, cnum: ast::CrateNum) -> Vec<(DefIndex, usize)>
+    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
     {
         let mut result = vec![];
         let crate_data = self.get_crate_data(cnum);
@@ -320,80 +320,80 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn missing_lang_items(&self, cnum: ast::CrateNum)
+    fn missing_lang_items(&self, cnum: CrateNum)
                           -> Vec<lang_items::LangItem>
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_missing_lang_items(&cdata)
     }
 
-    fn is_staged_api(&self, cnum: ast::CrateNum) -> bool
+    fn is_staged_api(&self, cnum: CrateNum) -> bool
     {
         self.get_crate_data(cnum).staged_api
     }
 
-    fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool
+    fn is_explicitly_linked(&self, cnum: CrateNum) -> bool
     {
         self.get_crate_data(cnum).explicitly_linked.get()
     }
 
-    fn is_allocator(&self, cnum: ast::CrateNum) -> bool
+    fn is_allocator(&self, cnum: CrateNum) -> bool
     {
         self.get_crate_data(cnum).is_allocator()
     }
 
-    fn is_panic_runtime(&self, cnum: ast::CrateNum) -> bool
+    fn is_panic_runtime(&self, cnum: CrateNum) -> bool
     {
         self.get_crate_data(cnum).is_panic_runtime()
     }
 
-    fn is_compiler_builtins(&self, cnum: ast::CrateNum) -> bool {
+    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool {
         self.get_crate_data(cnum).is_compiler_builtins()
     }
 
-    fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy {
+    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         self.get_crate_data(cnum).panic_strategy()
     }
 
-    fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
+    fn crate_attrs(&self, cnum: CrateNum) -> Vec<ast::Attribute>
     {
         decoder::get_crate_attributes(self.get_crate_data(cnum).data())
     }
 
-    fn crate_name(&self, cnum: ast::CrateNum) -> token::InternedString
+    fn crate_name(&self, cnum: CrateNum) -> token::InternedString
     {
         token::intern_and_get_ident(&self.get_crate_data(cnum).name[..])
     }
 
-    fn original_crate_name(&self, cnum: ast::CrateNum) -> token::InternedString
+    fn original_crate_name(&self, cnum: CrateNum) -> token::InternedString
     {
         token::intern_and_get_ident(&self.get_crate_data(cnum).name())
     }
 
-    fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate>
+    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>
     {
         self.get_crate_data(cnum).extern_crate.get()
     }
 
-    fn crate_hash(&self, cnum: ast::CrateNum) -> Svh
+    fn crate_hash(&self, cnum: CrateNum) -> Svh
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_crate_hash(cdata.data())
     }
 
-    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> token::InternedString
+    fn crate_disambiguator(&self, cnum: CrateNum) -> token::InternedString
     {
         let cdata = self.get_crate_data(cnum);
         token::intern_and_get_ident(decoder::get_crate_disambiguator(cdata.data()))
     }
 
-    fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
+    fn crate_struct_field_attrs(&self, cnum: CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>
     {
         decoder::get_struct_field_attrs(&self.get_crate_data(cnum))
     }
 
-    fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>
+    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_plugin_registrar_fn(cdata.data()).map(|index| DefId {
@@ -402,24 +402,24 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         })
     }
 
-    fn native_libraries(&self, cnum: ast::CrateNum) -> Vec<(NativeLibraryKind, String)>
+    fn native_libraries(&self, cnum: CrateNum) -> Vec<(NativeLibraryKind, String)>
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_native_libraries(&cdata)
     }
 
-    fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>
+    fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_reachable_ids(&cdata)
     }
 
-    fn is_no_builtins(&self, cnum: ast::CrateNum) -> bool {
+    fn is_no_builtins(&self, cnum: CrateNum) -> bool {
         attr::contains_name(&self.crate_attrs(cnum), "no_builtins")
     }
 
     fn def_index_for_def_key(&self,
-                             cnum: ast::CrateNum,
+                             cnum: CrateNum,
                              def: DefKey)
                              -> Option<DefIndex> {
         let cdata = self.get_crate_data(cnum);
@@ -488,7 +488,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn crate_top_level_items(&self, cnum: ast::CrateNum) -> Vec<ChildItem>
+    fn crate_top_level_items(&self, cnum: CrateNum) -> Vec<ChildItem>
     {
         let mut result = vec![];
         let crate_data = self.get_crate_data(cnum);
@@ -651,7 +651,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_item_mir_available(&cdata, def.index)
     }
 
-    fn crates(&self) -> Vec<ast::CrateNum>
+    fn crates(&self) -> Vec<CrateNum>
     {
         let mut result = vec![];
         self.iter_crate_data(|cnum, _| result.push(cnum));
@@ -686,17 +686,17 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         encoder::encoded_ty(tcx, ty, def_id_to_string)
     }
 
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>
+    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>
     {
         self.do_get_used_crates(prefer)
     }
 
-    fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource
+    fn used_crate_source(&self, cnum: CrateNum) -> CrateSource
     {
         self.opt_used_crate_source(cnum).unwrap()
     }
 
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>
+    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>
     {
         self.do_extern_mod_stmt_cnum(emod_id)
     }
@@ -738,7 +738,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         use rustc::middle::cstore::ChildItem;
         use std::collections::vec_deque::VecDeque;
         use std::collections::hash_map::Entry;
-        for cnum in 1 .. self.next_crate_num() {
+        for cnum in (1 .. self.next_crate_num().as_usize()).map(CrateNum::new) {
             let cdata = self.get_crate_data(cnum);
 
             match cdata.extern_crate.get() {

@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use hir::map::DefPathData;
-use middle::cstore::LOCAL_CRATE;
-use hir::def_id::{DefId, CRATE_DEF_INDEX};
+use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::parse::token;
@@ -67,7 +66,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns the "path" to a particular crate. This can proceed in
     /// various ways, depending on the `root_mode` of the `buffer`.
     /// (See `RootMode` enum for more details.)
-    pub fn push_krate_path<T>(self, buffer: &mut T, cnum: ast::CrateNum)
+    pub fn push_krate_path<T>(self, buffer: &mut T, cnum: CrateNum)
         where T: ItemPathBuffer
     {
         match *buffer.root_mode() {

@@ -571,7 +571,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, body_id: 0, code: MiscObligation }
+        ObligationCause { span: DUMMY_SP, body_id: ast::CRATE_NODE_ID, code: MiscObligation }
     }
 }
 

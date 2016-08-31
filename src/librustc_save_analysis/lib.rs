@@ -52,7 +52,7 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use syntax::ast::{self, NodeId, PatKind, Attribute};
+use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token::{self, keywords, InternedString};
 use syntax::visit::{self, Visitor};
@@ -120,7 +120,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             };
             result.push(CrateData {
                 name: (&self.tcx.sess.cstore.crate_name(n)[..]).to_owned(),
-                number: n,
+                number: n.as_u32(),
                 span: span,
             });
         }
@@ -676,7 +676,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     #[inline]
     pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
-        self.tcx.map.get_enclosing_scope(id).unwrap_or(0)
+        self.tcx.map.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
     }
 }
 

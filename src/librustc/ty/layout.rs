@@ -367,7 +367,7 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    pub fn repr_discr(tcx: TyCtxt, hint: attr::ReprAttr, min: i64, max: i64)
+    pub fn repr_discr(tcx: TyCtxt, ty: Ty, hint: attr::ReprAttr, min: i64, max: i64)
                       -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
@@ -377,11 +377,12 @@ impl Integer {
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
         let at_least = match hint {
-            attr::ReprInt(span, ity) => {
+            attr::ReprInt(ity) => {
                 let discr = Integer::from_attr(&tcx.data_layout, ity);
                 let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
                 if discr < fit {
-                    span_bug!(span, "representation hint insufficient for discriminant range")
+                    bug!("Integer::repr_discr: `#[repr]` hint too small for \
+                          discriminant range of enum `{}", ty)
                 }
                 return (discr, ity.is_signed());
             }
@@ -397,10 +398,10 @@ impl Integer {
             }
             attr::ReprAny => I8,
             attr::ReprPacked => {
-                bug!("Integer::repr_discr: found #[repr(packed)] on an enum");
+                bug!("Integer::repr_discr: found #[repr(packed)] on enum `{}", ty);
             }
             attr::ReprSimd => {
-                bug!("Integer::repr_discr: found #[repr(simd)] on an enum");
+                bug!("Integer::repr_discr: found #[repr(simd)] on enum `{}", ty);
             }
         };
 
@@ -962,7 +963,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         if x > max { max = x; }
                     }
 
-                    let (discr, signed) = Integer::repr_discr(tcx, hint, min, max);
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, hint, min, max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -1052,7 +1053,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // The general case.
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, hint, 0, discr_max);
+                let (min_ity, _) = Integer::repr_discr(tcx, ty, hint, 0, discr_max);
 
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);

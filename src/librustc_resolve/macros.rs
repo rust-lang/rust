@@ -135,7 +135,7 @@ struct ExpansionVisitor<'b, 'a: 'b> {
 
 impl<'a, 'b> ExpansionVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) {
-        assert_eq!(id, self.resolver.expansion_data.len() as u32);
+        assert_eq!(id.as_u32(), self.resolver.expansion_data.len() as u32);
         self.resolver.expansion_data.push(ExpansionData {
             module: self.current_module.clone(),
         });

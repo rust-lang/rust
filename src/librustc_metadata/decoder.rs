@@ -34,7 +34,7 @@ use rustc::session::config::PanicStrategy;
 use middle::cstore::{InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl};
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use middle::lang_items;
 use rustc::ty::{ImplContainer, TraitContainer};
 use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, VariantKind};
@@ -42,11 +42,8 @@ use rustc::ty::subst::Substs;
 
 use rustc_const_math::ConstInt;
 
-use rustc::mir;
-use rustc::mir::visit::MutVisitor;
-use rustc::mir::repr::Location;
+use rustc::mir::repr::Mir;
 
-use std::cell::Cell;
 use std::io;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
@@ -54,11 +51,10 @@ use std::str;
 
 use rbml::reader;
 use rbml;
-use rustc_serialize::{Decodable, Decoder, SpecializedDecoder};
+use rustc_serialize::{Decodable, SpecializedDecoder};
 use syntax::attr;
 use syntax::parse::token;
-use syntax::ast;
-use syntax::codemap;
+use syntax::ast::{self, NodeId};
 use syntax::print::pprust;
 use syntax_pos::{self, Span, BytePos, NO_EXPANSION};
 
@@ -66,10 +62,10 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     pub rbml_r: rbml::reader::Decoder<'a>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub cdata: &'a cstore::CrateMetadata,
-    pub from_id_range: IdRange,
-    pub to_id_range: IdRange,
+    from_id_range: IdRange,
+    to_id_range: IdRange,
     // Cache the last used filemap for translating spans as an optimization.
-    pub last_filemap_index: Cell<usize>,
+    last_filemap_index: usize,
 }
 
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
@@ -82,9 +78,9 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         let to_id_range = if from_id_range.empty() {
             from_id_range
         } else {
-            let cnt = from_id_range.max - from_id_range.min;
+            let cnt = from_id_range.max.as_usize() - from_id_range.min.as_usize();
             let to_id_min = tcx.sess.reserve_node_ids(cnt);
-            let to_id_max = to_id_min + cnt;
+            let to_id_max = NodeId::new(to_id_min.as_usize() + cnt);
             IdRange { min: to_id_min, max: to_id_max }
         };
 
@@ -94,7 +90,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
             tcx: tcx,
             from_id_range: from_id_range,
             to_id_range: to_id_range,
-            last_filemap_index: Cell::new(0)
+            last_filemap_index: 0
         }
     }
 
@@ -104,7 +100,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.read_opaque(|this, doc| {
             Ok(op(&mut TyDecoder::with_doc(
                 this.tcx, this.cdata.cnum, doc,
-                &mut |d| this.tr_def_id(d))))
+                &mut |d| translate_def_id(&this.cdata, d))))
         }).unwrap()
     }
 }
@@ -119,6 +115,93 @@ impl<'a, 'tcx> Deref for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> DerefMut for DecodeContext<'a, 'tcx> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.rbml_r
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<NodeId> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<NodeId, Self::Error> {
+        let id = u32::decode(self)?;
+
+        // from_id_range should be non-empty
+        assert!(!self.from_id_range.empty());
+        // Make sure that translating the NodeId will actually yield a
+        // meaningful result
+        if !self.from_id_range.contains(NodeId::from_u32(id)) {
+            bug!("NodeId::decode: {} out of DecodeContext range ({:?} -> {:?})",
+                 id, self.from_id_range, self.to_id_range);
+        }
+
+        // Use wrapping arithmetic because otherwise it introduces control flow.
+        // Maybe we should just have the control flow? -- aatch
+        Ok(NodeId::from_u32(id.wrapping_sub(self.from_id_range.min.as_u32())
+                              .wrapping_add(self.to_id_range.min.as_u32())))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<CrateNum> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<CrateNum, Self::Error> {
+        let cnum = CrateNum::from_u32(u32::decode(self)?);
+        if cnum == LOCAL_CRATE {
+            Ok(self.cdata.cnum)
+        } else {
+            Ok(self.cdata.cnum_map.borrow()[cnum])
+        }
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
+        let lo = BytePos::decode(self)?;
+        let hi = BytePos::decode(self)?;
+
+        let (lo, hi) = if lo > hi {
+            // Currently macro expansion sometimes produces invalid Span values
+            // where lo > hi. In order not to crash the compiler when trying to
+            // translate these values, let's transform them into something we
+            // can handle (and which will produce useful debug locations at
+            // least some of the time).
+            // This workaround is only necessary as long as macro expansion is
+            // not fixed. FIXME(#23480)
+            (lo, lo)
+        } else {
+            (lo, hi)
+        };
+
+        let imported_filemaps = self.cdata.imported_filemaps(&self.tcx.sess.codemap());
+        let filemap = {
+            // Optimize for the case that most spans within a translated item
+            // originate from the same filemap.
+            let last_filemap = &imported_filemaps[self.last_filemap_index];
+
+            if lo >= last_filemap.original_start_pos &&
+            lo <= last_filemap.original_end_pos &&
+            hi >= last_filemap.original_start_pos &&
+            hi <= last_filemap.original_end_pos {
+                last_filemap
+            } else {
+                let mut a = 0;
+                let mut b = imported_filemaps.len();
+
+                while b - a > 1 {
+                    let m = (a + b) / 2;
+                    if imported_filemaps[m].original_start_pos > lo {
+                        b = m;
+                    } else {
+                        a = m;
+                    }
+                }
+
+                self.last_filemap_index = a;
+                &imported_filemaps[a]
+            }
+        };
+
+        let lo = (lo - filemap.original_start_pos) +
+                  filemap.translated_filemap.start_pos;
+        let hi = (hi - filemap.original_start_pos) +
+                  filemap.translated_filemap.start_pos;
+
+        Ok(syntax_pos::mk_sp(lo, hi))
     }
 }
 
@@ -148,8 +231,8 @@ impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Region> for DecodeContext<'a, 'tcx> 
 impl<'a, 'tcx> SpecializedDecoder<ty::ClosureSubsts<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<ty::ClosureSubsts<'tcx>, Self::Error> {
         Ok(ty::ClosureSubsts {
-            func_substs: Decodable::decode(this)?,
-            upvar_tys: this.tcx.mk_type_list(Decodable::decode(this)?)
+            func_substs: Decodable::decode(self)?,
+            upvar_tys: self.tcx.mk_type_list(Decodable::decode(self)?)
         })
     }
 }
@@ -157,7 +240,6 @@ impl<'a, 'tcx> SpecializedDecoder<ty::ClosureSubsts<'tcx>> for DecodeContext<'a,
 impl<'a, 'tcx> SpecializedDecoder<ty::AdtDef<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<ty::AdtDef<'tcx>, Self::Error> {
         let def_id = DefId::decode(self)?;
-        let def_id = translate_def_id(self.cdata, def_id);
         Ok(self.tcx.lookup_adt_def(def_id))
     }
 }
@@ -318,8 +400,10 @@ fn item_sort(item: rbml::Doc) -> Option<char> {
 
 fn untranslated_def_id(d: rbml::Doc) -> DefId {
     let id = reader::doc_as_u64(d);
-    let index = DefIndex::new((id & 0xFFFF_FFFF) as usize);
-    DefId { krate: (id >> 32) as u32, index: index }
+    DefId {
+        krate: CrateNum::from_u32((id >> 32) as u32),
+        index: DefIndex::from_u32((id & 0xFFFF_FFFF) as u32)
+    }
 }
 
 fn translated_def_id(cdata: Cmd, d: rbml::Doc) -> DefId {
@@ -744,7 +828,7 @@ fn each_child_of_item_or_crate<F, G>(cdata: Cmd,
                                      mut get_crate_data: G,
                                      mut callback: F) where
     F: FnMut(DefLike, ast::Name, ty::Visibility),
-    G: FnMut(ast::CrateNum) -> Rc<CrateMetadata>,
+    G: FnMut(CrateNum) -> Rc<CrateMetadata>,
 {
     // Iterate over all children.
     for child_info_doc in reader::tagged_docs(item_doc, tag_mod_child) {
@@ -806,7 +890,7 @@ fn each_child_of_item_or_crate<F, G>(cdata: Cmd,
 /// Iterates over each child of the given item.
 pub fn each_child_of_item<F, G>(cdata: Cmd, id: DefIndex, get_crate_data: G, callback: F)
     where F: FnMut(DefLike, ast::Name, ty::Visibility),
-          G: FnMut(ast::CrateNum) -> Rc<CrateMetadata>,
+          G: FnMut(CrateNum) -> Rc<CrateMetadata>,
 {
     // Find the item.
     let item_doc = match cdata.get_item(id) {
@@ -820,7 +904,7 @@ pub fn each_child_of_item<F, G>(cdata: Cmd, id: DefIndex, get_crate_data: G, cal
 /// Iterates over all the top-level crate items.
 pub fn each_top_level_item_of_crate<F, G>(cdata: Cmd, get_crate_data: G, callback: F)
     where F: FnMut(DefLike, ast::Name, ty::Visibility),
-          G: FnMut(ast::CrateNum) -> Rc<CrateMetadata>,
+          G: FnMut(CrateNum) -> Rc<CrateMetadata>,
 {
     each_child_of_item(cdata, CRATE_DEF_INDEX, get_crate_data, callback)
 }
@@ -894,52 +978,14 @@ pub fn is_item_mir_available<'tcx>(cdata: Cmd, id: DefIndex) -> bool {
 pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     id: DefIndex)
-                                    -> Option<mir::repr::Mir<'tcx>> {
+                                    -> Option<Mir<'tcx>> {
     let item_doc = cdata.lookup_item(id);
 
-    return reader::maybe_get_doc(item_doc, tag_mir as usize).map(|mir_doc| {
-        let mut dcx = DecodeContext::new(tcx, cdata,
-                                         IdRange { min: 0, max: 0 },
-                                         mir_doc);
-
-        let mut mir = Decodable::decode(&mut dcx).unwrap();
-
-        assert!(dcx.rbml_r.position() == mir_doc.end);
-
-        let mut def_id_and_span_translator = MirDefIdAndSpanTranslator {
-            crate_metadata: cdata,
-            codemap: tcx.sess.codemap(),
-            last_filemap_index_hint: Cell::new(0),
-        };
-
-        def_id_and_span_translator.visit_mir(&mut mir);
-        for promoted in &mut mir.promoted {
-            def_id_and_span_translator.visit_mir(promoted);
-        }
-
-        mir
-    });
-
-    struct MirDefIdAndSpanTranslator<'cdata, 'codemap> {
-        crate_metadata: Cmd<'cdata>,
-        codemap: &'codemap codemap::CodeMap,
-        last_filemap_index_hint: Cell<usize>
-    }
-
-    impl<'v, 'cdata, 'codemap> mir::visit::MutVisitor<'v>
-        for MirDefIdAndSpanTranslator<'cdata, 'codemap>
-    {
-        fn visit_def_id(&mut self, def_id: &mut DefId, _: Location) {
-            *def_id = translate_def_id(self.crate_metadata, *def_id);
-        }
-
-        fn visit_span(&mut self, span: &mut Span) {
-            *span = translate_span(self.crate_metadata,
-                                   self.codemap,
-                                   &self.last_filemap_index_hint,
-                                   *span);
-        }
-    }
+    reader::maybe_get_doc(item_doc, tag_mir).map(|mir_doc| {
+        let id_range = IdRange { min: NodeId::new(0), max: NodeId::new(0) };
+        let mut dcx = DecodeContext::new(tcx, cdata, id_range, mir_doc);
+        Decodable::decode(&mut dcx).unwrap()
+    })
 }
 
 fn get_explicit_self<'a, 'tcx>(item: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -1225,7 +1271,7 @@ pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
 
 #[derive(Clone)]
 pub struct CrateDep {
-    pub cnum: ast::CrateNum,
+    pub cnum: CrateNum,
     pub name: String,
     pub hash: Svh,
     pub explicitly_linked: bool,
@@ -1246,7 +1292,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
         let doc = reader::get_doc(depdoc, tag_crate_dep_explicitly_linked);
         let explicitly_linked = reader::doc_as_u8(doc) != 0;
         CrateDep {
-            cnum: crate_num as u32 + 1,
+            cnum: CrateNum::new(crate_num + 1),
             name: name,
             hash: hash,
             explicitly_linked: explicitly_linked,
@@ -1333,64 +1379,6 @@ fn reverse_translate_def_id(cdata: Cmd, did: DefId) -> Option<DefId> {
     }
 
     None
-}
-
-/// Translates a `Span` from an extern crate to the corresponding `Span`
-/// within the local crate's codemap.
-pub fn translate_span(cdata: Cmd,
-                      codemap: &codemap::CodeMap,
-                      last_filemap_index_hint: &Cell<usize>,
-                      span: syntax_pos::Span)
-                      -> syntax_pos::Span {
-    let span = if span.lo > span.hi {
-        // Currently macro expansion sometimes produces invalid Span values
-        // where lo > hi. In order not to crash the compiler when trying to
-        // translate these values, let's transform them into something we
-        // can handle (and which will produce useful debug locations at
-        // least some of the time).
-        // This workaround is only necessary as long as macro expansion is
-        // not fixed. FIXME(#23480)
-        syntax_pos::mk_sp(span.lo, span.lo)
-    } else {
-        span
-    };
-
-    let imported_filemaps = cdata.imported_filemaps(&codemap);
-    let filemap = {
-        // Optimize for the case that most spans within a translated item
-        // originate from the same filemap.
-        let last_filemap_index = last_filemap_index_hint.get();
-        let last_filemap = &imported_filemaps[last_filemap_index];
-
-        if span.lo >= last_filemap.original_start_pos &&
-           span.lo <= last_filemap.original_end_pos &&
-           span.hi >= last_filemap.original_start_pos &&
-           span.hi <= last_filemap.original_end_pos {
-            last_filemap
-        } else {
-            let mut a = 0;
-            let mut b = imported_filemaps.len();
-
-            while b - a > 1 {
-                let m = (a + b) / 2;
-                if imported_filemaps[m].original_start_pos > span.lo {
-                    b = m;
-                } else {
-                    a = m;
-                }
-            }
-
-            last_filemap_index_hint.set(a);
-            &imported_filemaps[a]
-        }
-    };
-
-    let lo = (span.lo - filemap.original_start_pos) +
-              filemap.translated_filemap.start_pos;
-    let hi = (span.hi - filemap.original_start_pos) +
-              filemap.translated_filemap.start_pos;
-
-    syntax_pos::mk_sp(lo, hi)
 }
 
 pub fn each_inherent_implementation_for_type<F>(cdata: Cmd,
@@ -1491,7 +1479,7 @@ pub fn get_macro_span(doc: rbml::Doc) -> Span {
 }
 
 pub fn get_dylib_dependency_formats(cdata: Cmd)
-    -> Vec<(ast::CrateNum, LinkagePreference)>
+    -> Vec<(CrateNum, LinkagePreference)>
 {
     let formats = reader::get_doc(rbml::Doc::new(cdata.data()),
                                   tag_dylib_dependency_formats);
@@ -1503,7 +1491,7 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
         let mut split = spec.split(':');
         let cnum = split.next().unwrap();
         let link = split.next().unwrap();
-        let cnum: ast::CrateNum = cnum.parse().unwrap();
+        let cnum = CrateNum::new(cnum.parse().unwrap());
         let cnum = cdata.cnum_map.borrow()[cnum];
         result.push((cnum, if link == "d" {
             LinkagePreference::RequireDynamic

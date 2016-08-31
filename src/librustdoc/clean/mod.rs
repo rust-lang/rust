@@ -37,7 +37,7 @@ use rustc::middle::cstore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime::DefRegion::*;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{self, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::fold::Folder;
 use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
@@ -116,7 +116,7 @@ pub struct Crate {
     pub name: String,
     pub src: PathBuf,
     pub module: Option<Item>,
-    pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
+    pub externs: Vec<(def_id::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
     pub access_levels: Arc<AccessLevels<DefId>>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
@@ -124,7 +124,7 @@ pub struct Crate {
     pub external_traits: FnvHashMap<DefId, Trait>,
 }
 
-struct CrateNum(ast::CrateNum);
+struct CrateNum(def_id::CrateNum);
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
@@ -1159,7 +1159,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
                 values: sig.0.inputs.iter().map(|t| {
                     Argument {
                         type_: t.clean(cx),
-                        id: 0,
+                        id: ast::CRATE_NODE_ID,
                         name: names.next().unwrap_or("".to_string()),
                     }
                 }).collect(),
@@ -1808,7 +1808,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     type_params: Vec::new(),
                     where_predicates: Vec::new()
                 },
-                decl: (cx.map.local_def_id(0), &fty.sig).clean(cx),
+                decl: (cx.map.local_def_id(ast::CRATE_NODE_ID), &fty.sig).clean(cx),
                 abi: fty.abi,
             }),
             ty::TyAdt(def, substs) => {
@@ -2590,7 +2590,7 @@ impl Clean<Vec<Item>> for doctree::Import {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.map.local_def_id(0),
+            def_id: cx.map.local_def_id(ast::CRATE_NODE_ID),
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,

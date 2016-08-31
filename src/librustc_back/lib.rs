@@ -46,7 +46,6 @@ extern crate serialize;
 #[macro_use] extern crate log;
 
 pub mod tempdir;
-pub mod rpath;
 pub mod sha2;
 pub mod target;
 pub mod slice;

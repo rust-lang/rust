@@ -460,7 +460,7 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
         _ => bug!()
     };
     P(hir::Expr {
-        id: 0,
+        id: DUMMY_NODE_ID,
         node: hir::ExprLit(P(Spanned { node: node, span: DUMMY_SP })),
         span: DUMMY_SP,
         attrs: ast::ThinVec::new(),
@@ -625,7 +625,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
     };
 
     P(hir::Pat {
-        id: 0,
+        id: DUMMY_NODE_ID,
         node: pat,
         span: DUMMY_SP
     })

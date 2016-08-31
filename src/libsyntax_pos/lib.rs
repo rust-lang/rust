@@ -28,6 +28,7 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(question_mark)]
+#![feature(specialization)]
 
 use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
@@ -151,21 +152,7 @@ impl Encodable for Span {
     }
 }
 
-impl Decodable for Span {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
-        d.read_struct("Span", 2, |d| {
-            let lo = d.read_struct_field("lo", 0, |d| {
-                BytePos::decode(d)
-            })?;
-
-            let hi = d.read_struct_field("hi", 1, |d| {
-                BytePos::decode(d)
-            })?;
-
-            Ok(mk_sp(lo, hi))
-        })
-    }
-}
+impl serialize::UseSpecializedDecodable for Span {}
 
 fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "Span {{ lo: {:?}, hi: {:?}, expn_id: {:?} }}",

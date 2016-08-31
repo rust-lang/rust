@@ -22,7 +22,7 @@ use index;
 use loader;
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::hir::def_id::{CrateNum, DefIndex, DefId};
 use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::ExternCrate;
@@ -47,7 +47,7 @@ pub use middle::cstore::{CrateSource, LinkMeta};
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-pub type CrateNumMap = IndexVec<ast::CrateNum, ast::CrateNum>;
+pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
 pub enum MetadataBlob {
     MetadataVec(Bytes),
@@ -75,7 +75,7 @@ pub struct CrateMetadata {
 
     pub data: MetadataBlob,
     pub cnum_map: RefCell<CrateNumMap>,
-    pub cnum: ast::CrateNum,
+    pub cnum: CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
     pub staged_api: bool,
 
@@ -105,9 +105,9 @@ pub struct CachedInlinedItem {
 
 pub struct CStore {
     pub dep_graph: DepGraph,
-    metas: RefCell<FnvHashMap<ast::CrateNum, Rc<CrateMetadata>>>,
+    metas: RefCell<FnvHashMap<CrateNum, Rc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
-    extern_mod_crate_map: RefCell<NodeMap<ast::CrateNum>>,
+    extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
     used_crate_sources: RefCell<Vec<CrateSource>>,
     used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
     used_link_args: RefCell<Vec<String>>,
@@ -135,25 +135,25 @@ impl CStore {
         }
     }
 
-    pub fn next_crate_num(&self) -> ast::CrateNum {
-        self.metas.borrow().len() as ast::CrateNum + 1
+    pub fn next_crate_num(&self) -> CrateNum {
+        CrateNum::new(self.metas.borrow().len() + 1)
     }
 
-    pub fn get_crate_data(&self, cnum: ast::CrateNum) -> Rc<CrateMetadata> {
+    pub fn get_crate_data(&self, cnum: CrateNum) -> Rc<CrateMetadata> {
         self.metas.borrow().get(&cnum).unwrap().clone()
     }
 
-    pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> Svh {
+    pub fn get_crate_hash(&self, cnum: CrateNum) -> Svh {
         let cdata = self.get_crate_data(cnum);
         decoder::get_crate_hash(cdata.data())
     }
 
-    pub fn set_crate_data(&self, cnum: ast::CrateNum, data: Rc<CrateMetadata>) {
+    pub fn set_crate_data(&self, cnum: CrateNum, data: Rc<CrateMetadata>) {
         self.metas.borrow_mut().insert(cnum, data);
     }
 
     pub fn iter_crate_data<I>(&self, mut i: I) where
-        I: FnMut(ast::CrateNum, &Rc<CrateMetadata>),
+        I: FnMut(CrateNum, &Rc<CrateMetadata>),
     {
         for (&k, v) in self.metas.borrow().iter() {
             i(k, v);
@@ -162,7 +162,7 @@ impl CStore {
 
     /// Like `iter_crate_data`, but passes source paths (if available) as well.
     pub fn iter_crate_data_origins<I>(&self, mut i: I) where
-        I: FnMut(ast::CrateNum, &CrateMetadata, Option<CrateSource>),
+        I: FnMut(CrateNum, &CrateMetadata, Option<CrateSource>),
     {
         for (&k, v) in self.metas.borrow().iter() {
             let origin = self.opt_used_crate_source(k);
@@ -178,7 +178,7 @@ impl CStore {
         }
     }
 
-    pub fn opt_used_crate_source(&self, cnum: ast::CrateNum)
+    pub fn opt_used_crate_source(&self, cnum: CrateNum)
                                  -> Option<CrateSource> {
         self.used_crate_sources.borrow_mut()
             .iter().find(|source| source.cnum == cnum).cloned()
@@ -193,7 +193,7 @@ impl CStore {
         self.statically_included_foreign_items.borrow_mut().clear();
     }
 
-    pub fn crate_dependencies_in_rpo(&self, krate: ast::CrateNum) -> Vec<ast::CrateNum>
+    pub fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum>
     {
         let mut ordering = Vec::new();
         self.push_dependencies_in_postorder(&mut ordering, krate);
@@ -202,8 +202,8 @@ impl CStore {
     }
 
     pub fn push_dependencies_in_postorder(&self,
-                                          ordering: &mut Vec<ast::CrateNum>,
-                                          krate: ast::CrateNum)
+                                          ordering: &mut Vec<CrateNum>,
+                                          krate: CrateNum)
     {
         if ordering.contains(&krate) { return }
 
@@ -227,7 +227,7 @@ impl CStore {
     // topological sort of all crates putting the leaves at the right-most
     // positions.
     pub fn do_get_used_crates(&self, prefer: LinkagePreference)
-                              -> Vec<(ast::CrateNum, Option<PathBuf>)> {
+                              -> Vec<(CrateNum, Option<PathBuf>)> {
         let mut ordering = Vec::new();
         for (&num, _) in self.metas.borrow().iter() {
             self.push_dependencies_in_postorder(&mut ordering, num);
@@ -272,7 +272,7 @@ impl CStore {
 
     pub fn add_extern_mod_stmt_cnum(&self,
                                     emod_id: ast::NodeId,
-                                    cnum: ast::CrateNum) {
+                                    cnum: CrateNum) {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
@@ -284,7 +284,7 @@ impl CStore {
         self.statically_included_foreign_items.borrow().contains(&id)
     }
 
-    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>
+    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>
     {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
