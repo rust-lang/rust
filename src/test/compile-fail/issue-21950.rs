@@ -15,6 +15,9 @@ use std::ops::Add;
 fn main() {
     let x = &10 as
             &Add;
-            //~^ ERROR the type parameter `RHS` must be explicitly specified in an object type because its default value `Self` references the type `Self`
-            //~| ERROR the value of the associated type `Output` (from the trait `std::ops::Add`) must be specified
+            //~^ ERROR E0393
+            //~| NOTE missing reference to `RHS`
+            //~| NOTE because of the default `Self` reference, type parameters must be specified on object types
+            //~| ERROR E0191
+            //~| NOTE missing associated type `Output` value
 }
