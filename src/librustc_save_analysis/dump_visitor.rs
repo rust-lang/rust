@@ -1456,7 +1456,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         // process collected paths
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
             match self.tcx.expect_def(id) {
-                Def::Local(_, id) => {
+                Def::Local(def_id) => {
+                    let id = self.tcx.map.as_local_node_id(def_id).unwrap();
                     let mut value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
                     } else {

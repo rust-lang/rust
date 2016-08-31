@@ -4188,7 +4188,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tcx.prohibit_type_params(&segments[..segments.len() - poly_segments]);
 
         match def {
-            Def::Local(_, nid) | Def::Upvar(_, nid, ..) => {
+            Def::Local(def_id) | Def::Upvar(def_id, ..) => {
+                let nid = self.tcx.map.as_local_node_id(def_id).unwrap();
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(node_id, ty);

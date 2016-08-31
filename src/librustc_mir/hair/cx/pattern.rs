@@ -158,7 +158,8 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
             }
 
             PatKind::Binding(bm, ref ident, ref sub) => {
-                let id = self.cx.tcx.expect_def(pat.id).var_id();
+                let def_id = self.cx.tcx.expect_def(pat.id).def_id();
+                let id = self.cx.tcx.map.as_local_node_id(def_id).unwrap();
                 let var_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let region = match var_ty.sty {
                     ty::TyRef(r, _) => Some(r),
