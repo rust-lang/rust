@@ -324,3 +324,20 @@ def extract_length_and_ptr_from_slice(slice_val):
 
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
     return (length, data_ptr)
+
+UNQUALIFIED_TYPE_MARKERS = frozenset(["(", "[", "&", "*"])
+
+def extract_type_name(qualified_type_name):
+    '''Extracts the type name from a fully qualified path'''
+    if qualified_type_name[0] in UNQUALIFIED_TYPE_MARKERS:
+        return qualified_type_name
+
+    end_of_search = qualified_type_name.find("<")
+    if end_of_search < 0:
+        end_of_search = len(qualified_type_name)
+
+    index = qualified_type_name.rfind("::", 0, end_of_search)
+    if index < 0:
+        return qualified_type_name
+    else:
+        return qualified_type_name[index + 2:]
