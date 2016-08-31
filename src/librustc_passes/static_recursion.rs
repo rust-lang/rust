@@ -126,7 +126,7 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
             idstack: Vec::new(),
         }
     }
-    fn with_item_id_pushed<F>(&mut self, id: ast::NodeId, f: F)
+    fn with_item_id_pushed<F>(&mut self, id: ast::NodeId, f: F, span: Span)
         where F: Fn(&mut Self)
     {
         if self.idstack.iter().any(|&x| x == id) {
@@ -150,7 +150,9 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
                                      "recursive static");
                 }
             } else {
-                span_err!(self.sess, *self.root_span, E0265, "recursive constant");
+                struct_span_err!(self.sess, span, E0265, "recursive constant")
+                    .span_label(span, &format!("recursion not allowed in constant"))
+                    .emit();
             }
             return;
         }
@@ -203,7 +205,7 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
 
 impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
     fn visit_item(&mut self, it: &'ast hir::Item) {
-        self.with_item_id_pushed(it.id, |v| intravisit::walk_item(v, it));
+        self.with_item_id_pushed(it.id, |v| intravisit::walk_item(v, it), it.span);
     }
 
     fn visit_enum_def(&mut self,
@@ -233,16 +235,16 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
         // If `maybe_expr` is `None`, that's because no discriminant is
         // specified that affects this variant. Thus, no risk of recursion.
         if let Some(expr) = maybe_expr {
-            self.with_item_id_pushed(expr.id, |v| intravisit::walk_expr(v, expr));
+            self.with_item_id_pushed(expr.id, |v| intravisit::walk_expr(v, expr), expr.span);
         }
     }
 
     fn visit_trait_item(&mut self, ti: &'ast hir::TraitItem) {
-        self.with_item_id_pushed(ti.id, |v| intravisit::walk_trait_item(v, ti));
+        self.with_item_id_pushed(ti.id, |v| intravisit::walk_trait_item(v, ti), ti.span);
     }
 
     fn visit_impl_item(&mut self, ii: &'ast hir::ImplItem) {
-        self.with_item_id_pushed(ii.id, |v| intravisit::walk_impl_item(v, ii));
+        self.with_item_id_pushed(ii.id, |v| intravisit::walk_impl_item(v, ii), ii.span);
     }
 
     fn visit_expr(&mut self, e: &'ast hir::Expr) {
