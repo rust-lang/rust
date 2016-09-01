@@ -1129,8 +1129,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             tcx.astconv_object_safety_violations(principal.def_id());
         if !object_safety_violations.is_empty() {
             tcx.report_object_safety_error(
-                span, principal.def_id(), None, object_safety_violations)
-                .unwrap().emit();
+                span, principal.def_id(), object_safety_violations)
+                .emit();
             return tcx.types.err;
         }
 

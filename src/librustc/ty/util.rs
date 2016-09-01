@@ -318,7 +318,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match predicate {
                     ty::Predicate::Projection(..) |
                     ty::Predicate::Trait(..) |
-                    ty::Predicate::Rfc1592(..) |
                     ty::Predicate::Equate(..) |
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |

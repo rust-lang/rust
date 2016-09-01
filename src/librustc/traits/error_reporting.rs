@@ -36,27 +36,23 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
 use std::fmt;
-use syntax::ast;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TraitErrorKey<'tcx> {
     span: Span,
-    warning_node_id: Option<ast::NodeId>,
     predicate: ty::Predicate<'tcx>
 }
 
 impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
     fn from_error(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                  e: &FulfillmentError<'tcx>,
-                  warning_node_id: Option<ast::NodeId>) -> Self {
+                  e: &FulfillmentError<'tcx>) -> Self {
         let predicate =
             infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
         TraitErrorKey {
             span: e.obligation.cause.span,
-            predicate: infcx.tcx.erase_regions(&predicate),
-            warning_node_id: warning_node_id
+            predicate: infcx.tcx.erase_regions(&predicate)
         }
     }
 }
@@ -64,22 +60,13 @@ impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_fulfillment_errors(&self, errors: &Vec<FulfillmentError<'tcx>>) {
         for error in errors {
-            self.report_fulfillment_error(error, None);
-        }
-    }
-
-    pub fn report_fulfillment_errors_as_warnings(&self,
-                                                 errors: &Vec<FulfillmentError<'tcx>>,
-                                                 node_id: ast::NodeId) {
-        for error in errors {
-            self.report_fulfillment_error(error, Some(node_id));
+            self.report_fulfillment_error(error);
         }
     }
 
     fn report_fulfillment_error(&self,
-                                error: &FulfillmentError<'tcx>,
-                                warning_node_id: Option<ast::NodeId>) {
-        let error_key = TraitErrorKey::from_error(self, error, warning_node_id);
+                                error: &FulfillmentError<'tcx>) {
+        let error_key = TraitErrorKey::from_error(self, error);
         debug!("report_fulfillment_errors({:?}) - key={:?}",
                error, error_key);
         if !self.reported_trait_errors.borrow_mut().insert(error_key) {
@@ -88,10 +75,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
         match error.code {
             FulfillmentErrorCode::CodeSelectionError(ref e) => {
-                self.report_selection_error(&error.obligation, e, warning_node_id);
+                self.report_selection_error(&error.obligation, e);
             }
             FulfillmentErrorCode::CodeProjectionError(ref e) => {
-                self.report_projection_error(&error.obligation, e, warning_node_id);
+                self.report_projection_error(&error.obligation, e);
             }
             FulfillmentErrorCode::CodeAmbiguity => {
                 self.maybe_report_ambiguity(&error.obligation);
@@ -101,8 +88,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn report_projection_error(&self,
                                obligation: &PredicateObligation<'tcx>,
-                               error: &MismatchedProjectionTypes<'tcx>,
-                               warning_node_id: Option<ast::NodeId>)
+                               error: &MismatchedProjectionTypes<'tcx>)
     {
         let predicate =
             self.resolve_type_vars_if_possible(&obligation.predicate);
@@ -110,16 +96,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if predicate.references_error() {
             return
         }
-        if let Some(warning_node_id) = warning_node_id {
-            self.tcx.sess.add_lint(
-                ::lint::builtin::UNSIZED_IN_TUPLE,
-                warning_node_id,
-                obligation.cause.span,
-                format!("type mismatch resolving `{}`: {}",
-                        predicate,
-                        error.err));
-            return
-        }
+
         self.probe(|_| {
             let origin = TypeOrigin::Misc(obligation.cause.span);
             let err_buf;
@@ -442,8 +419,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn report_selection_error(&self,
                                   obligation: &PredicateObligation<'tcx>,
-                                  error: &SelectionError<'tcx>,
-                                  warning_node_id: Option<ast::NodeId>)
+                                  error: &SelectionError<'tcx>)
     {
         let span = obligation.cause.span;
         let mut err = match *error {
@@ -465,16 +441,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 return;
                             } else {
                                 let trait_ref = trait_predicate.to_poly_trait_ref();
-
-                                if let Some(warning_node_id) = warning_node_id {
-                                    self.tcx.sess.add_lint(
-                                        ::lint::builtin::UNSIZED_IN_TUPLE,
-                                        warning_node_id,
-                                        obligation.cause.span,
-                                        format!("the trait bound `{}` is not satisfied",
-                                                trait_ref.to_predicate()));
-                                    return;
-                                }
 
                                 let mut err = struct_span_err!(self.tcx.sess, span, E0277,
                                     "the trait bound `{}` is not satisfied",
@@ -541,15 +507,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                         ty::Predicate::ObjectSafe(trait_def_id) => {
                             let violations = self.tcx.object_safety_violations(trait_def_id);
-                            let err = self.tcx.report_object_safety_error(span,
-                                                                          trait_def_id,
-                                                                          warning_node_id,
-                                                                          violations);
-                            if let Some(err) = err {
-                                err
-                            } else {
-                                return;
-                            }
+                            self.tcx.report_object_safety_error(span,
+                                                                trait_def_id,
+                                                                violations)
                         }
 
                         ty::Predicate::ClosureKind(closure_def_id, kind) => {
@@ -577,13 +537,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // (which may fail).
                             span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                         }
-
-                        ty::Predicate::Rfc1592(ref data) => {
-                            span_bug!(
-                                obligation.cause.span,
-                                "RFC1592 predicate not satisfied for {:?}",
-                                data);
-                        }
                     }
                 }
             }
@@ -605,14 +558,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             TraitNotObjectSafe(did) => {
                 let violations = self.tcx.object_safety_violations(did);
-                let err = self.tcx.report_object_safety_error(span, did,
-                                                              warning_node_id,
-                                                              violations);
-                if let Some(err) = err {
-                    err
-                } else {
-                    return;
-                }
+                self.tcx.report_object_safety_error(span, did,
+                                                    violations)
             }
         };
         self.note_obligation_cause(&mut err, obligation);
@@ -640,24 +587,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn report_object_safety_error(self,
                                       span: Span,
                                       trait_def_id: DefId,
-                                      warning_node_id: Option<ast::NodeId>,
                                       violations: Vec<ObjectSafetyViolation>)
-                                      -> Option<DiagnosticBuilder<'tcx>>
+                                      -> DiagnosticBuilder<'tcx>
     {
-        let mut err = match warning_node_id {
-            Some(_) => None,
-            None => {
-                let trait_str = self.item_path_str(trait_def_id);
-                let mut db = struct_span_err!(
-                            self.sess, span, E0038,
-                            "the trait `{}` cannot be made into an object",
-                            trait_str);
-                db.span_label(span,
-                              &format!("the trait `{}` cannot be made \
-                              into an object", trait_str));
-                Some(db)
-            }
-        };
+        let trait_str = self.item_path_str(trait_def_id);
+        let mut err = struct_span_err!(
+            self.sess, span, E0038,
+            "the trait `{}` cannot be made into an object",
+            trait_str);
+        err.span_label(span, &format!(
+            "the trait `{}` cannot be made into an object", trait_str
+        ));
 
         let mut reported_violations = FnvHashSet();
         for violation in violations {
@@ -697,19 +637,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     &buf
                 }
             };
-            match (warning_node_id, &mut err) {
-                (Some(node_id), &mut None) => {
-                    self.sess.add_lint(
-                        ::lint::builtin::OBJECT_UNSAFE_FRAGMENT,
-                        node_id,
-                        span,
-                        note.to_string());
-                }
-                (None, &mut Some(ref mut err)) => {
-                    err.note(note);
-                }
-                _ => unreachable!()
-            }
+            err.note(note);
         }
         err
     }
