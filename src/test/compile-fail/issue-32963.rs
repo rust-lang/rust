@@ -17,4 +17,5 @@ fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
 fn main() {
     size_of_copy::<Misc+Copy>();
     //~^ ERROR `Misc + Copy: std::marker::Copy` is not satisfied
+    //~| ERROR the trait `std::marker::Copy` cannot be made into an object
 }

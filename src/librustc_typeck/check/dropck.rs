@@ -111,10 +111,6 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
             return Err(());
         }
 
-    if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
-        infcx.report_fulfillment_errors_as_warnings(errors, drop_impl_node_id);
-    }
-
         let free_regions = FreeRegionMap::new();
         infcx.resolve_regions_and_report_errors(&free_regions, drop_impl_node_id);
         Ok(())

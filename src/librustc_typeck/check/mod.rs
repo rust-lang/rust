@@ -505,10 +505,6 @@ pub fn check_item_bodies(ccx: &CrateCtxt) -> CompileResult {
                 if let Err(errors) = fulfillment_cx.select_all_or_error(&infcx) {
                     infcx.report_fulfillment_errors(&errors);
                 }
-
-                if let Err(errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
-                    infcx.report_fulfillment_errors_as_warnings(&errors, item_id);
-                }
             });
         }
     })
@@ -2244,10 +2240,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match fulfillment_cx.select_all_or_error(self) {
             Ok(()) => { }
             Err(errors) => { self.report_fulfillment_errors(&errors); }
-        }
-
-        if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(self) {
-            self.report_fulfillment_errors_as_warnings(errors, self.body_id);
         }
     }
 

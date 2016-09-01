@@ -94,9 +94,6 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         }
         ty::Predicate::ClosureKind(..) => {
         }
-        ty::Predicate::Rfc1592(ref data) => {
-            bug!("RFC1592 predicate `{:?}` in predicate_obligations", data);
-        }
     }
 
     wf.normalize()
@@ -158,7 +155,6 @@ pub fn implied_bounds<'a, 'gcx, 'tcx>(
                 assert!(!obligation.has_escaping_regions());
                 match obligation.predicate {
                     ty::Predicate::Trait(..) |
-                    ty::Predicate::Rfc1592(..) |
                     ty::Predicate::Equate(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::ClosureKind(..) |
@@ -282,21 +278,14 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>,
-                     rfc1592: bool) {
+    fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
         if !subty.has_escaping_regions() {
             let cause = self.cause(cause);
             match self.infcx.tcx.trait_ref_for_builtin_bound(ty::BoundSized, subty) {
                 Ok(trait_ref) => {
-                    let predicate = trait_ref.to_predicate();
-                    let predicate = if rfc1592 {
-                        ty::Predicate::Rfc1592(box predicate)
-                    } else {
-                        predicate
-                    };
                     self.out.push(
                         traits::Obligation::new(cause,
-                                                predicate));
+                                                trait_ref.to_predicate()));
                 }
                 Err(ErrorReported) => { }
             }
@@ -326,13 +315,13 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
                 ty::TySlice(subty) |
                 ty::TyArray(subty, _) => {
-                    self.require_sized(subty, traits::SliceOrArrayElem, false);
+                    self.require_sized(subty, traits::SliceOrArrayElem);
                 }
 
                 ty::TyTuple(ref tys) => {
                     if let Some((_last, rest)) = tys.split_last() {
                         for elem in rest {
-                            self.require_sized(elem, traits::TupleElem, true);
+                            self.require_sized(elem, traits::TupleElem);
                         }
                     }
                 }
@@ -401,22 +390,15 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
                     let cause = self.cause(traits::MiscObligation);
 
-                    // FIXME(#33243): remove RFC1592
-                    self.out.push(traits::Obligation::new(
-                        cause.clone(),
-                        ty::Predicate::ObjectSafe(data.principal.def_id())
-                    ));
                     let component_traits =
                         data.builtin_bounds.iter().flat_map(|bound| {
                             tcx.lang_items.from_builtin_kind(bound).ok()
-                        });
-//                        .chain(Some(data.principal.def_id()));
+                        })
+                        .chain(Some(data.principal.def_id()));
                     self.out.extend(
                         component_traits.map(|did| { traits::Obligation::new(
                             cause.clone(),
-                            ty::Predicate::Rfc1592(
-                                box ty::Predicate::ObjectSafe(did)
-                            )
+                            ty::Predicate::ObjectSafe(did)
                         )})
                     );
                 }

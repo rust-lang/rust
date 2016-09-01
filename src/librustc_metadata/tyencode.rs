@@ -479,9 +479,6 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
                                p: &ty::Predicate<'tcx>)
 {
     match *p {
-        ty::Predicate::Rfc1592(..) => {
-            bug!("RFC1592 predicate in metadata `{:?}`", p);
-        }
         ty::Predicate::Trait(ref trait_ref) => {
             write!(w, "t");
             enc_trait_ref(w, cx, trait_ref.0.trait_ref);
