@@ -220,22 +220,8 @@ fn enc_mt<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T, F>(w: &mut Cursor<Vec<u8>>, t: Option<T>, enc_f: F) where
-    F: FnOnce(&mut Cursor<Vec<u8>>, T),
-{
-    match t {
-        None => {
-            write!(w, "n");
-        }
-        Some(v) => {
-            write!(w, "s");
-            enc_f(w, v);
-        }
-    }
-}
-
-pub fn enc_substs<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
-                            substs: &Substs<'tcx>) {
+fn enc_substs<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
+                        substs: &Substs<'tcx>) {
     write!(w, "[");
     for &k in substs.params() {
         if let Some(ty) = k.as_type() {
@@ -251,32 +237,7 @@ pub fn enc_substs<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
     write!(w, "]");
 }
 
-pub fn enc_generics<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
-                              generics: &ty::Generics<'tcx>) {
-    enc_opt(w, generics.parent, |w, def_id| {
-        write!(w, "{}|", (cx.ds)(cx.tcx, def_id));
-    });
-    write!(w, "{}|{}[",
-           generics.parent_regions,
-           generics.parent_types);
-
-    for r in &generics.regions {
-        enc_region_param_def(w, cx, r)
-    }
-    write!(w, "|");
-    for t in &generics.types {
-        enc_type_param_def(w, cx, t);
-    }
-    write!(w, "]");
-
-    if generics.has_self {
-        write!(w, "S");
-    } else {
-        write!(w, "N");
-    }
-}
-
-pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: &ty::Region) {
+fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: &ty::Region) {
     match *r {
         ty::ReLateBound(id, br) => {
             write!(w, "b[{}|", id.depth);
@@ -355,8 +316,8 @@ fn enc_bound_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, br: ty::BoundRegion) {
     }
 }
 
-pub fn enc_trait_ref<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
-                               s: ty::TraitRef<'tcx>) {
+fn enc_trait_ref<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
+                           s: ty::TraitRef<'tcx>) {
     write!(w, "{}|", (cx.ds)(cx.tcx, s.def_id));
     enc_substs(w, cx, s.substs);
 }
@@ -380,18 +341,11 @@ fn enc_abi(w: &mut Cursor<Vec<u8>>, abi: Abi) {
     write!(w, "]");
 }
 
-pub fn enc_bare_fn_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
-                                ft: &ty::BareFnTy<'tcx>) {
+fn enc_bare_fn_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
+                            ft: &ty::BareFnTy<'tcx>) {
     enc_unsafety(w, ft.unsafety);
     enc_abi(w, ft.abi);
     enc_fn_sig(w, cx, &ft.sig);
-}
-
-pub fn enc_closure_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
-                                ft: &ty::ClosureTy<'tcx>) {
-    enc_unsafety(w, ft.unsafety);
-    enc_fn_sig(w, cx, &ft.sig);
-    enc_abi(w, ft.abi);
 }
 
 fn enc_fn_sig<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
@@ -420,92 +374,6 @@ fn enc_builtin_bounds(w: &mut Cursor<Vec<u8>>, _cx: &ctxt, bs: &ty::BuiltinBound
     }
 
     write!(w, ".");
-}
-
-fn enc_type_param_def<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
-                                v: &ty::TypeParameterDef<'tcx>) {
-    write!(w, "{}:{}|{}|{}|",
-           v.name, (cx.ds)(cx.tcx, v.def_id),
-           v.index, (cx.ds)(cx.tcx, v.default_def_id));
-    enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
-    enc_object_lifetime_default(w, cx, v.object_lifetime_default);
-}
-
-fn enc_region_param_def(w: &mut Cursor<Vec<u8>>, cx: &ctxt,
-                        v: &ty::RegionParameterDef) {
-    write!(w, "{}:{}|{}|",
-           v.name, (cx.ds)(cx.tcx, v.def_id), v.index);
-    for &r in &v.bounds {
-        write!(w, "R");
-        enc_region(w, cx, r);
-    }
-    write!(w, ".");
-}
-
-fn enc_object_lifetime_default<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
-                                         cx: &ctxt<'a, 'tcx>,
-                                         default: ty::ObjectLifetimeDefault)
-{
-    match default {
-        ty::ObjectLifetimeDefault::Ambiguous => {
-            write!(w, "a");
-        }
-        ty::ObjectLifetimeDefault::BaseDefault => {
-            write!(w, "b");
-        }
-        ty::ObjectLifetimeDefault::Specific(r) => {
-            write!(w, "s");
-            enc_region(w, cx, r);
-        }
-    }
-}
-
-pub fn enc_predicate<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
-                               cx: &ctxt<'a, 'tcx>,
-                               p: &ty::Predicate<'tcx>)
-{
-    match *p {
-        ty::Predicate::Trait(ref trait_ref) => {
-            write!(w, "t");
-            enc_trait_ref(w, cx, trait_ref.0.trait_ref);
-        }
-        ty::Predicate::Equate(ty::Binder(ty::EquatePredicate(a, b))) => {
-            write!(w, "e");
-            enc_ty(w, cx, a);
-            enc_ty(w, cx, b);
-        }
-        ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(a, b))) => {
-            write!(w, "r");
-            enc_region(w, cx, a);
-            enc_region(w, cx, b);
-        }
-        ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(a, b))) => {
-            write!(w, "o");
-            enc_ty(w, cx, a);
-            enc_region(w, cx, b);
-        }
-        ty::Predicate::Projection(ty::Binder(ref data)) => {
-            write!(w, "p");
-            enc_trait_ref(w, cx, data.projection_ty.trait_ref);
-            write!(w, "{}|", data.projection_ty.item_name);
-            enc_ty(w, cx, data.ty);
-        }
-        ty::Predicate::WellFormed(data) => {
-            write!(w, "w");
-            enc_ty(w, cx, data);
-        }
-        ty::Predicate::ObjectSafe(trait_def_id) => {
-            write!(w, "O{}|", (cx.ds)(cx.tcx, trait_def_id));
-        }
-        ty::Predicate::ClosureKind(closure_def_id, kind) => {
-            let kind_char = match kind {
-                ty::ClosureKind::Fn => 'f',
-                ty::ClosureKind::FnMut => 'm',
-                ty::ClosureKind::FnOnce => 'o',
-            };
-            write!(w, "c{}|{}|", (cx.ds)(cx.tcx, closure_def_id), kind_char);
-        }
-    }
 }
 
 fn enc_existential_projection<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,

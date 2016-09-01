@@ -668,7 +668,7 @@ pub enum IntVarValue {
 /// from `T:'a` annotations appearing in the type definition.  If
 /// this is `None`, then the default is inherited from the
 /// surrounding context. See RFC #599 for details.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum ObjectLifetimeDefault<'tcx> {
     /// Require an explicit annotation. Occurs when multiple
     /// `T:'a` constraints are found.
@@ -681,7 +681,7 @@ pub enum ObjectLifetimeDefault<'tcx> {
     Specific(&'tcx Region),
 }
 
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct TypeParameterDef<'tcx> {
     pub name: Name,
     pub def_id: DefId,
@@ -691,7 +691,7 @@ pub struct TypeParameterDef<'tcx> {
     pub object_lifetime_default: ObjectLifetimeDefault<'tcx>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct RegionParameterDef<'tcx> {
     pub name: Name,
     pub def_id: DefId,
@@ -719,7 +719,7 @@ impl<'tcx> RegionParameterDef<'tcx> {
 
 /// Information about the formal type/lifetime parameters associated
 /// with an item or method. Analogous to hir::Generics.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Generics<'tcx> {
     pub parent: Option<DefId>,
     pub parent_regions: u32,
@@ -786,7 +786,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo : Bar<A,B,C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -910,7 +910,7 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>
 }
@@ -967,11 +967,11 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct EquatePredicate<'tcx>(pub Ty<'tcx>, pub Ty<'tcx>); // `0 == 1`
 pub type PolyEquatePredicate<'tcx> = ty::Binder<EquatePredicate<'tcx>>;
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = PolyOutlivesPredicate<&'tcx ty::Region,
@@ -990,7 +990,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, &'tcx
 /// equality between arbitrary types. Processing an instance of Form
 /// #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub ty: Ty<'tcx>,

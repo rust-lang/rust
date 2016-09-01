@@ -94,16 +94,6 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     pub fn cdata(&self) -> &'a cstore::CrateMetadata {
         self.cdata.expect("missing CrateMetadata in DecodeContext")
     }
-
-    fn read_ty_encoded<F, R>(&mut self, op: F) -> R
-        where F: for<'x> FnOnce(&mut TyDecoder<'x,'tcx>) -> R
-    {
-        let pos = self.opaque.position();
-        let doc = rbml::Doc::at(self.opaque.data, pos);
-        self.opaque.advance(doc.end - pos);
-        op(&mut TyDecoder::with_doc(self.tcx(), self.cdata().cnum, doc,
-                                    &mut |d| translate_def_id(self.cdata(), d)))
-    }
 }
 
 macro_rules! decoder_methods {
@@ -243,13 +233,19 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedDecoder<Ty<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Ty<'tcx>, Self::Error> {
-        Ok(self.read_ty_encoded(|d| d.parse_ty()))
+        let pos = self.opaque.position();
+        let doc = rbml::Doc::at(self.opaque.data, pos);
+        self.opaque.advance(doc.end - pos);
+        Ok(TyDecoder::with_doc(self.tcx(), self.cdata().cnum, doc,
+                               &mut |d| translate_def_id(self.cdata(), d))
+            .parse_ty())
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
-        Ok(self.read_ty_encoded(|d| d.parse_substs()))
+        let substs = Substs::decode(self)?;
+        Ok(self.tcx().mk_substs(substs))
     }
 }
 
@@ -469,26 +465,25 @@ fn variant_disr_val(d: rbml::Doc) -> u64 {
 }
 
 fn doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd) -> Ty<'tcx> {
-    let tp = reader::get_doc(doc, tag_items_data_item_type);
-    TyDecoder::with_doc(tcx, cdata.cnum, tp,
-                        &mut |did| translate_def_id(cdata, did))
-        .parse_ty()
+    maybe_doc_type(doc, tcx, cdata).expect("missing tag_items_data_item_type")
 }
 
 fn maybe_doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd)
                             -> Option<Ty<'tcx>> {
     reader::maybe_get_doc(doc, tag_items_data_item_type).map(|tp| {
-        TyDecoder::with_doc(tcx, cdata.cnum, tp,
-                            &mut |did| translate_def_id(cdata, did))
-            .parse_ty()
+        let mut dcx = tp.decoder();
+        dcx.tcx = Some(tcx);
+        dcx.cdata = Some(cdata);
+        Decodable::decode(&mut dcx).unwrap()
     })
 }
 
 fn doc_trait_ref<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd)
                            -> ty::TraitRef<'tcx> {
-    TyDecoder::with_doc(tcx, cdata.cnum, doc,
-                        &mut |did| translate_def_id(cdata, did))
-        .parse_trait_ref()
+    let mut dcx = doc.decoder();
+    dcx.tcx = Some(tcx);
+    dcx.cdata = Some(cdata);
+    Decodable::decode(&mut dcx).unwrap()
 }
 
 fn item_trait_ref<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd)
@@ -1628,10 +1623,10 @@ fn doc_generics<'a, 'tcx>(base_doc: rbml::Doc,
                           cdata: Cmd)
                           -> &'tcx ty::Generics<'tcx>
 {
-    let doc = reader::get_doc(base_doc, tag_item_generics);
-    TyDecoder::with_doc(tcx, cdata.cnum, doc,
-                        &mut |did| translate_def_id(cdata, did))
-        .parse_generics()
+    let mut dcx = reader::get_doc(base_doc, tag_item_generics).decoder();
+    dcx.tcx = Some(tcx);
+    dcx.cdata = Some(cdata);
+    tcx.alloc_generics(Decodable::decode(&mut dcx).unwrap())
 }
 
 fn doc_predicate<'a, 'tcx>(cdata: Cmd,
@@ -1641,10 +1636,14 @@ fn doc_predicate<'a, 'tcx>(cdata: Cmd,
 {
     let predicate_pos = cdata.xref_index.lookup(
         cdata.data(), reader::doc_as_u32(doc)).unwrap() as usize;
-    TyDecoder::new(
-        cdata.data(), cdata.cnum, predicate_pos, tcx,
-        &mut |did| translate_def_id(cdata, did)
-    ).parse_predicate()
+    let mut dcx = rbml::Doc {
+        data: cdata.data(),
+        start: predicate_pos,
+        end: cdata.data().len(),
+    }.decoder();
+    dcx.tcx = Some(tcx);
+    dcx.cdata = Some(cdata);
+    Decodable::decode(&mut dcx).unwrap()
 }
 
 fn doc_predicates<'a, 'tcx>(base_doc: rbml::Doc,
@@ -1694,8 +1693,10 @@ pub fn closure_ty<'a, 'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: TyCtxt<'a, 't
                             -> ty::ClosureTy<'tcx> {
     let closure_doc = cdata.lookup_item(closure_id);
     let closure_ty_doc = reader::get_doc(closure_doc, tag_items_closure_ty);
-    TyDecoder::with_doc(tcx, cdata.cnum, closure_ty_doc, &mut |did| translate_def_id(cdata, did))
-        .parse_closure_ty()
+    let mut dcx = closure_ty_doc.decoder();
+    dcx.tcx = Some(tcx);
+    dcx.cdata = Some(cdata);
+    Decodable::decode(&mut dcx).unwrap()
 }
 
 pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {

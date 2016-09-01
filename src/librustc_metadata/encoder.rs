@@ -28,7 +28,6 @@ use middle::dependency_format::Linkage;
 use rustc::dep_graph::DepNode;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::Substs;
 
 use rustc::hir::svh::Svh;
 use rustc::mir::mir_map::MirMap;
@@ -126,17 +125,6 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<&'tcx Substs<'tcx>> for EncodeContext<'a, 'tcx> {
-    fn specialized_encode(&mut self, substs: &&'tcx Substs<'tcx>) -> Result<(), Self::Error> {
-        let cx = self.ty_str_ctxt();
-
-        self.start_tag(tag_opaque)?;
-        tyencode::enc_substs(&mut self.rbml_w.opaque.cursor, &cx, substs);
-        self.mark_stable_position();
-        self.end_tag()
-    }
-}
-
 fn encode_name(ecx: &mut EncodeContext, name: Name) {
     ecx.wr_tagged_str(tag_paths_data_name, &name.as_str());
 }
@@ -163,10 +151,8 @@ fn encode_def_id_and_key(ecx: &mut EncodeContext, def_id: DefId) {
 fn encode_trait_ref<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
                               trait_ref: ty::TraitRef<'tcx>,
                               tag: usize) {
-    let cx = ecx.ty_str_ctxt();
     ecx.start_tag(tag);
-    tyencode::enc_trait_ref(&mut ecx.opaque.cursor, &cx, trait_ref);
-    ecx.mark_stable_position();
+    trait_ref.encode(ecx).unwrap();
     ecx.end_tag();
 }
 
@@ -211,19 +197,10 @@ fn encode_variant_id(ecx: &mut EncodeContext, vid: DefId) {
     ecx.wr_tagged_u64(tag_mod_child, id);
 }
 
-fn write_closure_type<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
-                                closure_type: &ty::ClosureTy<'tcx>) {
-    let cx = ecx.ty_str_ctxt();
-    tyencode::enc_closure_ty(&mut ecx.opaque.cursor, &cx, closure_type);
-    ecx.mark_stable_position();
-}
-
 impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
     fn encode_type(&mut self, typ: Ty<'tcx>) {
-        let cx = self.ty_str_ctxt();
         self.start_tag(tag_items_data_item_type);
-        tyencode::enc_ty(&mut self.opaque.cursor, &cx, typ);
-        self.mark_stable_position();
+        typ.encode(self.ecx).unwrap();
         self.end_tag();
     }
 
@@ -519,10 +496,8 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                        generics: &ty::Generics<'tcx>,
                        predicates: &ty::GenericPredicates<'tcx>)
     {
-        let cx = self.ty_str_ctxt();
         self.start_tag(tag_item_generics);
-        tyencode::enc_generics(&mut self.opaque.cursor, &cx, generics);
-        self.mark_stable_position();
+        generics.encode(self.ecx).unwrap();
         self.end_tag();
         self.encode_predicates(predicates, tag_item_predicates);
     }
@@ -859,7 +834,6 @@ fn encode_xrefs<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
                           xrefs: FnvHashMap<XRef<'tcx>, u32>)
 {
     let mut xref_positions = vec![0; xrefs.len()];
-    let cx = ecx.ty_str_ctxt();
 
     // Encode XRefs sorted by their ID
     let mut sorted_xrefs: Vec<_> = xrefs.into_iter().collect();
@@ -869,9 +843,7 @@ fn encode_xrefs<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
     for (xref, id) in sorted_xrefs.into_iter() {
         xref_positions[id as usize] = ecx.mark_stable_position() as u32;
         match xref {
-            XRef::Predicate(p) => {
-                tyencode::enc_predicate(&mut ecx.opaque.cursor, &cx, &p)
-            }
+            XRef::Predicate(p) => p.encode(ecx).unwrap()
         }
     }
     ecx.mark_stable_position();
@@ -1396,8 +1368,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         encode_name(self, syntax::parse::token::intern("<closure>"));
 
         self.start_tag(tag_items_closure_ty);
-        write_closure_type(self,
-                           &tcx.tables.borrow().closure_tys[&def_id]);
+        tcx.tables.borrow().closure_tys[&def_id].encode(self.ecx).unwrap();
         self.end_tag();
 
         self.start_tag(tag_items_closure_kind);
