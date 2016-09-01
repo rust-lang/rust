@@ -14,6 +14,7 @@ use rustc_driver::{driver, target_features, abort_on_err};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::hir::def_id::{CrateNum, DefId};
+use rustc::hir::def::Def;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::map as hir_map;
@@ -23,12 +24,13 @@ use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
-use syntax::codemap;
+use syntax::{ast, codemap};
 use syntax::feature_gate::UnstableFeatures;
 use errors;
 use errors::emitter::ColorConfig;
 
 use std::cell::{RefCell, Cell};
+use std::mem;
 use std::rc::Rc;
 
 use visit_ast::RustdocVisitor;
@@ -63,6 +65,14 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
     pub external_traits: RefCell<FnvHashMap<DefId, clean::Trait>>,
+
+    // The current set of type and lifetime substitutions,
+    // for expanding type aliases at the HIR level:
+
+    /// Table type parameter definition -> substituted type
+    pub ty_substs: RefCell<FnvHashMap<Def, clean::Type>>,
+    /// Table node id of lifetime parameter definition -> substituted lifetime
+    pub lt_substs: RefCell<FnvHashMap<ast::NodeId, clean::Lifetime>>,
 }
 
 impl<'b, 'tcx> DocContext<'b, 'tcx> {
@@ -83,6 +93,22 @@ impl<'b, 'tcx> DocContext<'b, 'tcx> {
     pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         let tcx_opt = self.tcx_opt();
         tcx_opt.expect("tcx not present")
+    }
+
+    /// Call the closure with the given parameters set as
+    /// the substitutions for a type alias' RHS.
+    pub fn enter_alias<F, R>(&self,
+                             ty_substs: FnvHashMap<Def, clean::Type>,
+                             lt_substs: FnvHashMap<ast::NodeId, clean::Lifetime>,
+                             f: F) -> R
+    where F: FnOnce() -> R {
+        let (old_tys, old_lts) =
+            (mem::replace(&mut *self.ty_substs.borrow_mut(), ty_substs),
+             mem::replace(&mut *self.lt_substs.borrow_mut(), lt_substs));
+        let r = f();
+        *self.ty_substs.borrow_mut() = old_tys;
+        *self.lt_substs.borrow_mut() = old_lts;
+        r
     }
 }
 
@@ -179,12 +205,14 @@ pub fn run_core(search_paths: SearchPaths,
             map: &tcx.map,
             maybe_typed: Typed(tcx),
             input: input,
-            populated_crate_impls: RefCell::new(FnvHashSet()),
+            populated_crate_impls: Default::default(),
             deref_trait_did: Cell::new(None),
             deref_mut_trait_did: Cell::new(None),
             access_levels: RefCell::new(access_levels),
-            external_traits: RefCell::new(FnvHashMap()),
-            renderinfo: RefCell::new(Default::default()),
+            external_traits: Default::default(),
+            renderinfo: Default::default(),
+            ty_substs: Default::default(),
+            lt_substs: Default::default(),
         };
         debug!("crate: {:?}", ctxt.map.krate());
 
