@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that we do some basic error correcton in the tokeniser (and don't spew
+// too many bogus errors).
+
 fn main() {
-    loop {
-        true
-        //~^ ERROR mismatched types
-        //~| NOTE: consider adding a semicolon here
-        //~| NOTE: expected (), found bool
-        //~| NOTE: expected type `()`
-        //~| NOTE:    found type `bool`
-    }
+    return 1;
+    //~^ mismatched types
+    //~| expected type `()`
+    //~| found type `{integer}`
 }

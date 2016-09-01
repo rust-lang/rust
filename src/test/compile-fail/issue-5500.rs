@@ -11,7 +11,7 @@
 fn main() {
     &panic!()
     //~^ ERROR mismatched types
-    //~| expected type `()`
-    //~| found type `&_`
-    //~| expected (), found reference
+    //~| NOTE expected (), found reference
+    //~| NOTE expected type `()`
+    //~| NOTE    found type `&_`
 }

@@ -10,9 +10,10 @@
 
 
 use check::FnCtxt;
-use rustc::ty::Ty;
-use rustc::infer::{InferOk};
+use rustc::infer::InferOk;
 use rustc::traits::ObligationCause;
+use rustc::ty::Ty;
+use errors;
 
 use syntax::ast;
 use syntax_pos::{self, Span};
@@ -66,8 +67,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Checks that the type of `expr` can be coerced to `expected`.
-    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+    pub fn demand_coerce_diag(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>)
+        -> Option<errors::DiagnosticBuilder<'tcx>>
+    {
         let expected = self.resolve_type_vars_with_obligations(expected);
         if let Err(e) = self.try_coerce(expr, checked_ty, expected) {
             let cause = self.misc(expr.span);
@@ -84,7 +86,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    might fulfill your needs:\n{}",
                                   self.get_best_match(&suggestions).join("\n")));
             };
-            err.emit();
+            Some(err)
+        } else {
+            None
         }
     }
 
@@ -130,6 +134,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             _ => false,
+        }
+    }
+
+    // Checks that the type of `expr` can be coerced to `expected`.
+    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+        if let Some(mut err) = self.demand_coerce_diag(expr, checked_ty, expected) {
+            err.emit();
         }
     }
 }
