@@ -2,7 +2,11 @@
 All notable changes to this project will be documented in this file.
 
 ## 0.0.88 — ??
-* The following lints are not new but were missing from the [`clippy`] and [`clippy_pedantic`] groups: [`filter_next`], [`for_loop_over_option`], [`for_loop_over_result`], [`match_overlapping_arm`].
+* The following lints are not new but were only usable through the `clippy`
+  lint groups: [`filter_next`], [`for_loop_over_option`],
+  [`for_loop_over_result`] and [`match_overlapping_arm`]. You should now be
+  able to `#[allow/deny]` them individually and they are available directly
+  through [`cargo clippy`].
 
 ## 0.0.87 — 2016-08-31
 * Rustup to *rustc 1.13.0-nightly (eac41469d 2016-08-30)*
