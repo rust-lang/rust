@@ -248,9 +248,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         } else if let Some(rest) = size.checked_sub(min_len) {
                             (inner_ty, tcx.mk_array(inner_ty, rest))
                         } else {
-                            span_err!(tcx.sess, pat.span, E0528,
-                                      "pattern requires at least {} elements but array has {}",
-                                      min_len, size);
+                            struct_span_err!(tcx.sess, pat.span, E0528,
+                                    "pattern requires at least {} elements but array has {}",
+                                    min_len, size)
+                                .span_label(pat.span,
+                                    &format!("pattern cannot match array of {} elements", size))
+                                .emit();
                             (inner_ty, tcx.types.err)
                         }
                     }
