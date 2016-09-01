@@ -100,6 +100,28 @@ fn test_replace() {
 }
 
 #[test]
+fn test_replace_with() {
+    let mut x = Some("test".to_string());
+    replace_with(&mut x, |_| None);
+    assert!(x.is_none());
+}
+
+#[test]
+fn test_replace_with_2() {
+    let mut x = Box::new(21);
+    replace_with(&mut x, |x| Box::new(x + 5));
+    assert_eq!(*x, 26);
+}
+
+#[test]
+fn test_replace_with_3() {
+    let is_called = Cell::new(false);
+    let mut x = 2;
+    replace_with(&mut x, |_| is_called.set(true));
+    assert!(is_called.get());
+}
+
+#[test]
 fn test_transmute_copy() {
     assert_eq!(1, unsafe { transmute_copy(&1) });
 }
