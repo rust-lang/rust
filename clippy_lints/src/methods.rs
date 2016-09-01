@@ -461,6 +461,7 @@ impl LintPass for Pass {
                     SINGLE_CHAR_PATTERN,
                     SEARCH_IS_SOME,
                     TEMPORARY_CSTRING_AS_PTR,
+                    FILTER_NEXT,
                     FILTER_MAP,
                     ITER_NTH)
     }

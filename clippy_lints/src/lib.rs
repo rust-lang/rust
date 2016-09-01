@@ -172,6 +172,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
 
     reg.register_late_lint_pass(box serde::Serde);
     reg.register_early_lint_pass(box utils::internal_lints::Clippy);
+    reg.register_late_lint_pass(box utils::internal_lints::LintWithoutLintPass::default());
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box booleans::NonminimalBool);
     reg.register_early_lint_pass(box module_inception::Pass);
@@ -295,6 +296,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::INVALID_UPCAST_COMPARISONS,
         unicode::NON_ASCII_LITERAL,
         unicode::UNICODE_NOT_NFC,
+    ]);
+
+    reg.register_lint_group("clippy_internal", vec![
+        utils::internal_lints::CLIPPY_LINTS_INTERNAL,
+        utils::internal_lints::LINT_WITHOUT_LINT_PASS,
     ]);
 
     reg.register_lint_group("clippy", vec![

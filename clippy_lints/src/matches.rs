@@ -125,7 +125,7 @@ pub struct MatchPass;
 
 impl LintPass for MatchPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SINGLE_MATCH, MATCH_REF_PATS, MATCH_BOOL, SINGLE_MATCH_ELSE)
+        lint_array!(SINGLE_MATCH, MATCH_REF_PATS, MATCH_BOOL, SINGLE_MATCH_ELSE, MATCH_OVERLAPPING_ARM)
     }
 }
 

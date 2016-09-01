@@ -276,6 +276,8 @@ impl LintPass for Pass {
         lint_array!(NEEDLESS_RANGE_LOOP,
                     EXPLICIT_ITER_LOOP,
                     ITER_NEXT_LOOP,
+                    FOR_LOOP_OVER_RESULT,
+                    FOR_LOOP_OVER_OPTION,
                     WHILE_LET_LOOP,
                     UNUSED_COLLECT,
                     REVERSE_RANGE_LOOP,
