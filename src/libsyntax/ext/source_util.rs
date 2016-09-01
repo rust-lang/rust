@@ -74,11 +74,9 @@ pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTre
 pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
                   -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "module_path!");
-    let string = cx.mod_path()
-                   .iter()
-                   .map(|x| x.to_string())
-                   .collect::<Vec<String>>()
-                   .join("::");
+    let paths = cx.syntax_env.paths();
+    let string = paths.mod_path.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("::");
+
     base::MacEager::expr(cx.expr_str(
             sp,
             token::intern_and_get_ident(&string[..])))

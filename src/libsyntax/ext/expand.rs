@@ -26,9 +26,9 @@ use tokenstream::TokenTree;
 use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
-use std_inject;
 
 use std::path::PathBuf;
+use std::rc::Rc;
 
 macro_rules! expansions {
     ($($kind:ident: $ty:ty, $kind_name:expr, .$make:ident,
@@ -467,24 +467,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
         false
     }
-
-    fn with_exts_frame<T, F: FnOnce(&mut Self) -> T>(&mut self, macros_escape: bool, f: F) -> T {
-        self.cx.syntax_env.push_frame();
-        self.cx.syntax_env.info().macros_escape = macros_escape;
-        let result = f(self);
-        self.cx.syntax_env.pop_frame();
-        result
-    }
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
-    fn fold_crate(&mut self, c: Crate) -> Crate {
-        let mut directory = PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(c.span));
-        directory.pop();
-        self.cx.directory = directory;
-        noop_fold_crate(c, self)
-    }
-
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
         let expr = expr.unwrap();
         if let ast::ExprKind::Mac(mac) = expr.node {
@@ -542,9 +527,12 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
-        let was_in_block = ::std::mem::replace(&mut self.cx.in_block, true);
-        let result = self.with_exts_frame(false, |this| noop_fold_block(block, this));
-        self.cx.in_block = was_in_block;
+        let paths = self.cx.syntax_env.paths();
+        let module = self.cx.syntax_env.add_module(false, true, paths);
+        let orig_module = self.cx.syntax_env.set_current_module(module);
+
+        let result = noop_fold_block(block, self);
+        self.cx.syntax_env.set_current_module(orig_module);
         result
     }
 
@@ -578,26 +566,27 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
                 })
             }
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
-                self.cx.mod_push(item.ident);
-                let macro_use = self.contains_macro_use(&item.attrs);
-
-                let directory = self.cx.directory.clone();
+                let mut paths = (*self.cx.syntax_env.paths()).clone();
+                paths.mod_path.push(item.ident);
                 if item.span.contains(inner) {
-                    self.cx.directory.push(&*{
+                    paths.directory.push(&*{
                         ::attr::first_attr_value_str_by_name(&item.attrs, "path")
                             .unwrap_or(item.ident.name.as_str())
                     });
                 } else {
-                    self.cx.directory = match inner {
+                    paths.directory = match inner {
                         syntax_pos::DUMMY_SP => PathBuf::new(),
                         _ => PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner)),
                     };
-                    self.cx.directory.pop();
+                    paths.directory.pop();
                 }
-                let result = self.with_exts_frame(macro_use, |this| noop_fold_item(item, this));
-                self.cx.directory = directory;
 
-                self.cx.mod_pop();
+                let macro_use = self.contains_macro_use(&item.attrs);
+                let in_block = self.cx.syntax_env.in_block();
+                let module = self.cx.syntax_env.add_module(macro_use, in_block, Rc::new(paths));
+                let module = self.cx.syntax_env.set_current_module(module);
+                let result = noop_fold_item(item, self);
+                self.cx.syntax_env.set_current_module(module);
                 result
             },
             _ => noop_fold_item(item, self),
@@ -744,19 +733,7 @@ pub fn expand_crate(cx: &mut ExtCtxt,
 pub fn expand_crate_with_expander(expander: &mut MacroExpander,
                                   user_exts: Vec<NamedSyntaxExtension>,
                                   mut c: Crate) -> Crate {
-    if std_inject::no_core(&c) {
-        expander.cx.crate_root = None;
-    } else if std_inject::no_std(&c) {
-        expander.cx.crate_root = Some("core");
-    } else {
-        expander.cx.crate_root = Some("std");
-    }
-
-    // User extensions must be added before expander.load_macros is called,
-    // so that macros from external crates shadow user defined extensions.
-    for (name, extension) in user_exts {
-        expander.cx.syntax_env.insert(name, extension);
-    }
+    expander.cx.initialize(user_exts, &c);
 
     let items = Expansion::Items(SmallVector::many(c.module.items));
     let configured = items.fold_with(&mut expander.strip_unconfigured());
@@ -765,12 +742,11 @@ pub fn expand_crate_with_expander(expander: &mut MacroExpander,
 
     let err_count = expander.cx.parse_sess.span_diagnostic.err_count();
     let mut ret = expander.fold_crate(c);
-    ret.exported_macros = expander.cx.exported_macros.clone();
-
     if expander.cx.parse_sess.span_diagnostic.err_count() > err_count {
         expander.cx.parse_sess.span_diagnostic.abort_if_errors();
     }
 
+    ret.exported_macros = expander.cx.exported_macros.clone();
     ret
 }
 
