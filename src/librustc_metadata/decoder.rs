@@ -48,6 +48,7 @@ use std::io;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::str;
+use std::u32;
 
 use rbml::reader;
 use rbml;
@@ -59,39 +60,39 @@ use syntax::print::pprust;
 use syntax_pos::{self, Span, BytePos, NO_EXPANSION};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
-    pub rbml_r: rbml::reader::Decoder<'a>,
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub cdata: &'a cstore::CrateMetadata,
-    from_id_range: IdRange,
-    to_id_range: IdRange,
+    rbml_r: rbml::reader::Decoder<'a>,
+    pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
+    pub cdata: Option<&'a cstore::CrateMetadata>,
+    pub from_id_range: IdRange,
+    pub to_id_range: IdRange,
     // Cache the last used filemap for translating spans as an optimization.
     last_filemap_index: usize,
 }
 
-impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               cdata: &'a cstore::CrateMetadata,
-               from_id_range: IdRange,
-               doc: rbml::Doc<'a>)
-               -> DecodeContext<'a, 'tcx> {
-        // Handle the case of an empty range:
-        let to_id_range = if from_id_range.empty() {
-            from_id_range
-        } else {
-            let cnt = from_id_range.max.as_usize() - from_id_range.min.as_usize();
-            let to_id_min = tcx.sess.reserve_node_ids(cnt);
-            let to_id_max = NodeId::new(to_id_min.as_usize() + cnt);
-            IdRange { min: to_id_min, max: to_id_max }
+impl<'doc> rbml::Doc<'doc> {
+    pub fn decoder<'tcx>(self) -> DecodeContext<'doc, 'tcx> {
+        let id_range = IdRange {
+            min: NodeId::from_u32(u32::MIN),
+            max: NodeId::from_u32(u32::MAX)
         };
-
         DecodeContext {
-            rbml_r: reader::Decoder::new(doc),
-            cdata: cdata,
-            tcx: tcx,
-            from_id_range: from_id_range,
-            to_id_range: to_id_range,
+            rbml_r: reader::Decoder::new(self),
+            cdata: None,
+            tcx: None,
+            from_id_range: id_range,
+            to_id_range: id_range,
             last_filemap_index: 0
         }
+    }
+}
+
+impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.tcx.expect("missing TyCtxt in DecodeContext")
+    }
+
+    pub fn cdata(&self) -> &'a cstore::CrateMetadata {
+        self.cdata.expect("missing CrateMetadata in DecodeContext")
     }
 
     fn read_ty_encoded<F, R>(&mut self, op: F) -> R
@@ -99,8 +100,8 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     {
         self.read_opaque(|this, doc| {
             Ok(op(&mut TyDecoder::with_doc(
-                this.tcx, this.cdata.cnum, doc,
-                &mut |d| translate_def_id(&this.cdata, d))))
+                this.tcx(), this.cdata().cnum, doc,
+                &mut |d| translate_def_id(this.cdata(), d))))
         }).unwrap()
     }
 }
@@ -142,9 +143,9 @@ impl<'a, 'tcx> SpecializedDecoder<CrateNum> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<CrateNum, Self::Error> {
         let cnum = CrateNum::from_u32(u32::decode(self)?);
         if cnum == LOCAL_CRATE {
-            Ok(self.cdata.cnum)
+            Ok(self.cdata().cnum)
         } else {
-            Ok(self.cdata.cnum_map.borrow()[cnum])
+            Ok(self.cdata().cnum_map.borrow()[cnum])
         }
     }
 }
@@ -153,6 +154,12 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
         let lo = BytePos::decode(self)?;
         let hi = BytePos::decode(self)?;
+
+        let tcx = if let Some(tcx) = self.tcx {
+            tcx
+        } else {
+            return Ok(syntax_pos::mk_sp(lo, hi));
+        };
 
         let (lo, hi) = if lo > hi {
             // Currently macro expansion sometimes produces invalid Span values
@@ -167,7 +174,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             (lo, hi)
         };
 
-        let imported_filemaps = self.cdata.imported_filemaps(&self.tcx.sess.codemap());
+        let imported_filemaps = self.cdata().imported_filemaps(&tcx.sess.codemap());
         let filemap = {
             // Optimize for the case that most spans within a translated item
             // originate from the same filemap.
@@ -224,7 +231,7 @@ impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for DecodeContext<'a, 'tcx
 impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Region> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx ty::Region, Self::Error> {
         let r = ty::Region::decode(self)?;
-        Ok(self.tcx.mk_region(r))
+        Ok(self.tcx().mk_region(r))
     }
 }
 
@@ -232,7 +239,7 @@ impl<'a, 'tcx> SpecializedDecoder<ty::ClosureSubsts<'tcx>> for DecodeContext<'a,
     fn specialized_decode(&mut self) -> Result<ty::ClosureSubsts<'tcx>, Self::Error> {
         Ok(ty::ClosureSubsts {
             func_substs: Decodable::decode(self)?,
-            upvar_tys: self.tcx.mk_type_list(Decodable::decode(self)?)
+            upvar_tys: self.tcx().mk_type_list(Decodable::decode(self)?)
         })
     }
 }
@@ -240,7 +247,7 @@ impl<'a, 'tcx> SpecializedDecoder<ty::ClosureSubsts<'tcx>> for DecodeContext<'a,
 impl<'a, 'tcx> SpecializedDecoder<ty::AdtDef<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<ty::AdtDef<'tcx>, Self::Error> {
         let def_id = DefId::decode(self)?;
-        Ok(self.tcx.lookup_adt_def(def_id))
+        Ok(self.tcx().lookup_adt_def(def_id))
     }
 }
 
@@ -739,14 +746,14 @@ pub fn get_type<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
 pub fn get_stability(cdata: Cmd, id: DefIndex) -> Option<attr::Stability> {
     let item = cdata.lookup_item(id);
     reader::maybe_get_doc(item, tag_items_data_item_stability).map(|doc| {
-        Decodable::decode(&mut doc.opaque()).unwrap()
+        Decodable::decode(&mut doc.decoder()).unwrap()
     })
 }
 
 pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
     let item = cdata.lookup_item(id);
     reader::maybe_get_doc(item, tag_items_data_item_deprecation).map(|doc| {
-        Decodable::decode(&mut doc.opaque()).unwrap()
+        Decodable::decode(&mut doc.decoder()).unwrap()
     })
 }
 
@@ -764,7 +771,7 @@ pub fn get_parent_impl(cdata: Cmd, id: DefIndex) -> Option<DefId> {
 pub fn get_repr_attrs(cdata: Cmd, id: DefIndex) -> Vec<attr::ReprAttr> {
     let item = cdata.lookup_item(id);
     reader::maybe_get_doc(item, tag_items_data_item_repr).map_or(vec![], |doc| {
-        Decodable::decode(&mut doc.opaque()).unwrap()
+        Decodable::decode(&mut doc.decoder()).unwrap()
     })
 }
 
@@ -786,7 +793,7 @@ pub fn get_custom_coerce_unsized_kind(
 {
     let item_doc = cdata.lookup_item(id);
     reader::maybe_get_doc(item_doc, tag_impl_coerce_unsized_kind).map(|kind_doc| {
-        Decodable::decode(&mut kind_doc.opaque()).unwrap()
+        Decodable::decode(&mut kind_doc.decoder()).unwrap()
     })
 }
 
@@ -982,8 +989,9 @@ pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
     let item_doc = cdata.lookup_item(id);
 
     reader::maybe_get_doc(item_doc, tag_mir).map(|mir_doc| {
-        let id_range = IdRange { min: NodeId::new(0), max: NodeId::new(0) };
-        let mut dcx = DecodeContext::new(tcx, cdata, id_range, mir_doc);
+        let mut dcx = mir_doc.decoder();
+        dcx.tcx = Some(tcx);
+        dcx.cdata = Some(cdata);
         Decodable::decode(&mut dcx).unwrap()
     })
 }
@@ -1123,7 +1131,7 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: DefIndex)
 pub fn get_item_variances(cdata: Cmd, id: DefIndex) -> Vec<ty::Variance> {
     let item_doc = cdata.lookup_item(id);
     let variance_doc = reader::get_doc(item_doc, tag_item_variances);
-    Decodable::decode(&mut variance_doc.opaque()).unwrap()
+    Decodable::decode(&mut variance_doc.decoder()).unwrap()
 }
 
 pub fn get_provided_trait_methods<'a, 'tcx>(cdata: Cmd,
@@ -1242,7 +1250,7 @@ pub fn get_struct_field_names(cdata: Cmd, id: DefIndex) -> Vec<ast::Name> {
 
 fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
     reader::maybe_get_doc(md, tag_attributes).map_or(vec![], |attrs_doc| {
-        let mut attrs = Vec::<ast::Attribute>::decode(&mut attrs_doc.opaque()).unwrap();
+        let mut attrs = Vec::<ast::Attribute>::decode(&mut attrs_doc.decoder()).unwrap();
 
         // Need new unique IDs: old thread-local IDs won't map to new threads.
         for attr in attrs.iter_mut() {
@@ -1647,14 +1655,14 @@ pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<syntax_pos::FileMap> {
     let cm_doc = reader::get_doc(crate_doc, tag_codemap);
 
     reader::tagged_docs(cm_doc, tag_codemap_filemap).map(|filemap_doc| {
-        Decodable::decode(&mut filemap_doc.opaque()).unwrap()
+        Decodable::decode(&mut filemap_doc.decoder()).unwrap()
     }).collect()
 }
 
 pub fn closure_kind(cdata: Cmd, closure_id: DefIndex) -> ty::ClosureKind {
     let closure_doc = cdata.lookup_item(closure_id);
     let closure_kind_doc = reader::get_doc(closure_doc, tag_items_closure_kind);
-    ty::ClosureKind::decode(&mut closure_kind_doc.opaque()).unwrap()
+    ty::ClosureKind::decode(&mut closure_kind_doc.decoder()).unwrap()
 }
 
 pub fn closure_ty<'a, 'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -1674,7 +1682,7 @@ pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
 fn item_def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
     match reader::maybe_get_doc(item_doc, tag_def_key) {
         Some(def_key_doc) => {
-            let simple_key = def_key::DefKey::decode(&mut def_key_doc.opaque()).unwrap();
+            let simple_key = def_key::DefKey::decode(&mut def_key_doc.decoder()).unwrap();
             let name = reader::maybe_get_doc(item_doc, tag_paths_data_name).map(|name| {
                 token::intern(name.as_str()).as_str()
             });

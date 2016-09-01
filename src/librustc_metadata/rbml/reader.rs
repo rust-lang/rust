@@ -123,7 +123,6 @@ use std::str;
 
 use rustc_serialize as serialize;
 
-use rbml::opaque;
 use rbml::Error;
 use rbml::Error::*;
 
@@ -157,10 +156,6 @@ impl<'doc> Doc<'doc> {
 
     pub fn to_string(&self) -> String {
         self.as_str().to_string()
-    }
-
-    pub fn opaque(&self) -> opaque::Decoder<'doc> {
-        opaque::Decoder::new(self.data, self.start)
     }
 }
 

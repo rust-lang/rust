@@ -97,28 +97,11 @@ pub const tag_items_data_item_reexport_name: usize = 0x48;
 // used to encode crate_ctxt side tables
 pub const tag_ast: usize = 0x50;
 
-pub const tag_tree: usize = 0x51;
+// GAP 0x51
 
 pub const tag_mir: usize = 0x52;
 
-pub const tag_table: usize = 0x53;
-
-pub const tag_id_range: usize = 0x54;
-
-// GAP 0x55
-pub const tag_table_def: usize = 0x56;
-pub const tag_table_node_type: usize = 0x57;
-pub const tag_table_item_subst: usize = 0x58;
-pub const tag_table_freevars: usize = 0x59;
-// GAP 0x5a, 0x5b, 0x5c, 0x5d, 0x5e
-pub const tag_table_method_map: usize = 0x5f;
-// GAP 0x60
-pub const tag_table_adjustments: usize = 0x61;
-// GAP 0x62, 0x63, 0x64, 0x65
-pub const tag_table_upvar_capture_map: usize = 0x66;
-// GAP 0x67, 0x68
-pub const tag_table_const_qualif: usize = 0x69;
-pub const tag_table_cast_kinds: usize = 0x6a;
+// GAP 0x53...0x6a
 
 pub const tag_item_trait_item_sort: usize = 0x70;
 
