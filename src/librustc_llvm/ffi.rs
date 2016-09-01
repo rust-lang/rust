@@ -47,12 +47,7 @@ pub enum CallConv {
     X86_VectorCall = 80
 }
 
-/// LLVMLinkage
-///
-/// This enum omits the obsolete (and no-op) linkage types DLLImportLinkage,
-/// DLLExportLinkage, GhostLinkage and LinkOnceODRAutoHideLinkage.
-/// LinkerPrivateLinkage and LinkerPrivateWeakLinkage are not included either;
-/// they've been removed in upstream LLVM commit r203866.
+/// LLVMRustLinkage
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[repr(C)]
 pub enum Linkage {
@@ -60,13 +55,13 @@ pub enum Linkage {
     AvailableExternallyLinkage = 1,
     LinkOnceAnyLinkage = 2,
     LinkOnceODRLinkage = 3,
-    WeakAnyLinkage = 5,
-    WeakODRLinkage = 6,
-    AppendingLinkage = 7,
-    InternalLinkage = 8,
-    PrivateLinkage = 9,
-    ExternalWeakLinkage = 12,
-    CommonLinkage = 14,
+    WeakAnyLinkage = 4,
+    WeakODRLinkage = 5,
+    AppendingLinkage = 6,
+    InternalLinkage = 7,
+    PrivateLinkage = 8,
+    ExternalWeakLinkage = 9,
+    CommonLinkage = 10,
 }
 
 /// LLVMDiagnosticSeverity
@@ -253,8 +248,7 @@ pub enum FileType {
     ObjectFile,
 }
 
-/// Enum pinned in LLVMContext, used in
-/// LLVMSetMetadata so ABI-stable.
+/// LLVMMetadataType
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum MetadataType {
@@ -821,8 +815,8 @@ extern {
     /* Operations on global variables, functions, and aliases (globals) */
     pub fn LLVMGetGlobalParent(Global: ValueRef) -> ModuleRef;
     pub fn LLVMIsDeclaration(Global: ValueRef) -> Bool;
-    pub fn LLVMGetLinkage(Global: ValueRef) -> c_uint;
-    pub fn LLVMSetLinkage(Global: ValueRef, Link: Linkage);
+    pub fn LLVMRustGetLinkage(Global: ValueRef) -> Linkage;
+    pub fn LLVMRustSetLinkage(Global: ValueRef, RustLinkage: Linkage);
     pub fn LLVMGetSection(Global: ValueRef) -> *const c_char;
     pub fn LLVMSetSection(Global: ValueRef, Section: *const c_char);
     pub fn LLVMGetVisibility(Global: ValueRef) -> c_uint;
