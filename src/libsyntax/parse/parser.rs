@@ -1757,6 +1757,17 @@ impl<'a> Parser<'a> {
             // First, parse an identifier.
             let identifier = self.parse_path_segment_ident()?;
 
+            if self.check(&token::ModSep) && self.look_ahead(1, |t| *t == token::Lt) {
+                self.bump();
+                let prev_span = self.prev_span;
+
+                let mut err = self.diagnostic().struct_span_err(prev_span,
+                    "unexpected token: `::`");
+                err.help(
+                    "use `<...>` instead of `::<...>` if you meant to specify type arguments");
+                err.emit();
+            }
+
             // Parse types, optionally.
             let parameters = if self.eat_lt() {
                 let (lifetimes, types, bindings) = self.parse_generic_values_after_lt()?;
