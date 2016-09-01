@@ -35,9 +35,9 @@
 // ignore-android
 // ignore-arm
 // ignore-aarch64
-// ignore-msvc
+// ignore-windows
 
-// note: msvc is ignored as rust_test_helpers does not have the sysv64 abi on msvc
+// note: windows is ignored as rust_test_helpers does not have the sysv64 abi on windows
 
 #![feature(abi_sysv64)]
 #[allow(dead_code)]
