@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.88 — ??
+* The following lints are not new but were missing from the [`clippy`] and [`clippy_pedantic`] groups: [`filter_next`], [`for_loop_over_option`], [`for_loop_over_result`], [`match_overlapping_arm`].
+
 ## 0.0.87 — 2016-08-31
 * Rustup to *rustc 1.13.0-nightly (eac41469d 2016-08-30)*
 * New lints: [`builtin_type_shadow`]
