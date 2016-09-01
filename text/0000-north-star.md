@@ -14,10 +14,9 @@ Rust's roadmap will be established in year-long cycles, where we identify up
 front - together, as a project - the most critical problems facing the language
 and its ecosystem, along with the story we want to be able to tell the world
 about Rust. Work toward solving those problems, our short-term goals, will be
-decided in quarter-long cycles by individual teams. For the purposes of
-reporting the project roadmap, goals will be assigned to quarterly milestones,
-and where these goals result in stable features the Rust version in which they
-become stable will be estimated as well.
+decided by the individual teams, as they see fit, and regularly re-triaged. For
+the purposes of reporting the project roadmap, goals will be assigned to release
+cycle milestones.
 
 At the end of the year we will deliver a public facing retrospective, describing
 the goals we achieved and how to use the new features in detail. It will
@@ -115,12 +114,12 @@ the way we work today.
 
 Rust's roadmap will be established in year-long cycles, where we identify up
 front the most critical problems facing the project, formulated as _problem
-statements_. Work toward solving those problems, _goals_, will be planned in
-quarter-long cycles by individual teams. For the purposes of reporting the
-project roadmap, goals will be assigned to _quarterly milestones_, and where
-these goals result in stable features the Rust version in which they become
-stable will be estimated as well. Along the way, teams will be expected to
-maintain _tracking issues_ that communicate progress toward the project's goals.
+statements_. Work toward solving those problems, _goals_, will be planned as
+part of the release cycles by individual teams. For the purposes of reporting
+the project roadmap, goals will be assigned to _release cycle milestones_, which
+represent the primary work performed each release cycle. Along the way, teams
+will be expected to maintain _tracking issues_ that communicate progress toward
+the project's goals.
 
 At the end of the year we will deliver a public facing retrospective, which is
 intended as a 'rallying point'. Its primary purposes are to create anticipation
@@ -156,20 +155,25 @@ Key terminology used in this RFC:
   celebrating those who contribute to achieving the project's goals and
   resolving it's problems.
 
-- _quarterly milestone_ - All goals have estimates for completion, placed on
-  quarterly milestones. Each quarter that a goal remains incomplete it must be
-  re-triaged and re-estimated by the responsible team.
+- _release cycle milestone_ - All goals have estimates for completion, placed on
+  milestones that correspond to the 6 week release cycle. These milestones are
+  timed to corrspond to a release cycle, but don't represent a specific
+  release. That is, work toward the current nightly, the current beta, or even
+  that doesn't directly impact a specific release, all goes into the release
+  cycle milestone corresponding to the time period in which the work is
+  completed.
 
-## The big planning cycle (problem statements and the north star RFC)
+## Problem statements and the north star RFC
 
-The big cycle spans one year. At the beginning of the cycle we identify areas of
-Rust that need the most improvement, and at the end of the cycle is a 'rallying
-point' where we deliver to the world the results of our efforts. We choose
-year-long cycles because a year is enough time to accomplish relatively large
-goals; and because having the rallying point occur at the same time every year
-makes it easy to know when to anticipate big news from the project. Being
-calendar-based avoids the temptation to slip or produce feature-based releases,
-instead providing a fixed point of accountability for shipping.
+The full planning cycle spans one year. At the beginning of the cycle we
+identify areas of Rust that need the most improvement, and at the end of the
+cycle is a 'rallying point' where we deliver to the world the results of our
+efforts. We choose year-long cycles because a year is enough time to accomplish
+relatively large goals; and because having the rallying point occur at the same
+time every year makes it easy to know when to anticipate big news from the
+project. Being calendar-based avoids the temptation to slip or produce
+feature-based releases, instead providing a fixed point of accountability for
+shipping.
 
 This planning effort is _problem-oriented_. Focusing on "how" may seem like an
 obvious thing to do, but in practice it's very easy to become enamored of
@@ -234,45 +238,63 @@ the rust-lang/rust issue tracker and tagged `R-problem-statement`. In the OP of
 each metabug the teams are responsible for maintaining a list of their goals,
 linking to tracking issues.
 
-## The little planning cycle (goals and tracking progress)
+Like other RFCs, the north star RFC is not immutable, and if new motivations
+arise during the year, it may be amended, even to the extent of adding
+additional problem statements; though it is not appropriate for the project
+to continually rehash the RFC.
 
-The little cycle is where the solutions take shape and are carried out. They
-last one quarter - 3 months - and are the responsibility of individual teams.
+## Goal setting and tracking progress
 
-Each cycle the teams will have one week to update their set of _goals_. This
-includes both creating new goals and reviewing and revising existing goals. A
-goal describes a task that contributes to solving the year's problems. It may or
-may not involve a concrete deliverable, and it may be in turn subdivided into
-further goals.
+During the regular 6-week release cycles is where the solutions take shape and
+are carried out. Each cycle teams are expected to set concrete _goals_ that work
+toward solving the project's stated problems; and to review and revise their
+previous goals. The exact forum and mechanism for doing this evaluation and
+goal-setting is left to the individual teams, and to future experimentation,
+but the end result is that each release cycle each team will document their
+goals and progress in a standard format.
 
-The social process of the quarterly planning cycle is less strict, but it
-should be conducted in a way that allows open feedback. It is suggested that
-teams present their quarterly plan on internals.rust-lang.org at the beginning
-of the week, solicit feedback, then finalize them at the end of the week.
-
-All goals have estimated completion dates. There is no limit on the duration of
-a single goal, but they are encouraged to be scoped to less than a quarter year
-of work. Goals that are expected to take more than a quarter _must_ be
-subdivided into smaller goals of less than a quarter, each with their own
-estimates. These estimates are used to place goals onto quarterly milestones.
-
-Not all the work items done by teams in a quarter should be considered a goal
-nor should they be. Goals only need to be granular enough to demonstrate
-consistent progress toward solving the project's problems. Work that
-contributes toward quarterly goals should still be tracked as sub-tasks of
-those goals, but only needs to be filed on the issue tracker and not reported
-directly as goals on the roadmap.
+A goal describes a task that contributes to solving the year's problems. It may
+or may not involve a concrete deliverable, and it may be in turn subdivided into
+further goals. Not all the work items done by teams in a quarter should be
+considered a goal. Goals only need to be granular enough to demonstrate
+consistent progress toward solving the project's problems. Work that contributes
+toward quarterly goals should still be tracked as sub-tasks of those goals, but
+only needs to be filed on the issue tracker and not reported directly as goals
+on the roadmap.
 
 For each goal the teams will create an issue on the issue tracker tagged with
 `R-goal`. Each goal must be described in a single sentence summary with an
 end-result or deliverable that is as crisply stated as possible. Goals with
 sub-goals and sub-tasks must list them in the OP in a standard format.
 
-During each planning period all goals must be triaged and updated for the
-following information:
+During each cycle all `R-goal` and `R-unstable` issues assigned to each team
+must be triaged and updated for the following information:
 
 - The set of sub-goals and sub-tasks and their status
-- The estimated date of completion
+- The release cycle milestone
+
+Goals that will be likely completed in this cycle or the next should be assigned
+to the appropriate milestone. Some goals may be expected to be completed in
+the distant future, and these do not need to be assigned a milestone.
+
+The release cycle milestone corresponds to a six week period of time and
+contains the work done during that time. It does not correspend to a specific
+release, nor do the goals assigned to it need to result in a stable feature
+landing in any specific release.
+
+Release cycle milestones serve multiple purposes, not just tracking of the goals
+defined in this RFC: `R-goal` tracking, tracking of stabilization of
+`R-unstable` and `R-RFC-approved` features, tracking of critical bug fixes.
+
+Though the release cycle milestones are time-oriented and are not strictly tied
+to a single upcoming release, from the set of assigned `R-unstable` issues one
+can derive the new features landing in upcoming releases.
+
+During the last week of every release cycle each team will write a brief
+report summarizing their goal progress for the cycle. Some project member
+will compile all the team reports and post them to internals.rust-lang.org.
+In addition to providing visibility into progress, these will be sources
+to draw from for the subsequent release announcements.
 
 ## The retrospective (rallying point)
 
@@ -302,21 +324,6 @@ better next year?
 Since the retrospective must be a high-quality document, and cover a lot of
 material, it is expected to require significant planning, editing and revision.
 The details of how this will work are to be determined.
-
-## Release estimation
-
-The teams are responsible for estimating only the _timeframe_ in which they
-complete their work, but possibly the single most important piece of information
-desired by users is to know _in what release_ any given feature will become
-available.
-
-To reduce process burden on team members we will not require them to make that
-estimate themselves; the teams will work purely in terms of quarterly
-milestones. Instead, we will have a separate process to map the goals and time
-estimates into release estimates for individual features - a process that is
-likely automatable.
-
-The precise mechanics are to be determined.
 
 ## Presenting the roadmap
 
