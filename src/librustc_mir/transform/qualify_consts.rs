@@ -1019,10 +1019,6 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
                     if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
                         infcx.report_fulfillment_errors(&err);
                     }
-
-                    if let Err(errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
-                        infcx.report_fulfillment_errors_as_warnings(&errors, id);
-                    }
                 });
             }
         }

@@ -187,18 +187,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub UNSIZED_IN_TUPLE,
-    Warn,
-    "unsized types in the interior of a tuple were erroneously allowed"
-}
-
-declare_lint! {
-    pub OBJECT_UNSAFE_FRAGMENT,
-    Warn,
-    "object-unsafe non-principal fragments in object types were erroneously allowed"
-}
-
-declare_lint! {
     pub LIFETIME_UNDERSCORE,
     Warn,
     "lifetimes or labels named `'_` were erroneously allowed"
@@ -239,8 +227,6 @@ impl LintPass for HardwiredLints {
             OVERLAPPING_INHERENT_IMPLS,
             RENAMED_AND_REMOVED_LINTS,
             SUPER_OR_SELF_IN_GLOBAL_PATH,
-            UNSIZED_IN_TUPLE,
-            OBJECT_UNSAFE_FRAGMENT,
             HR_LIFETIME_IN_ASSOC_TYPE,
             LIFETIME_UNDERSCORE
         )

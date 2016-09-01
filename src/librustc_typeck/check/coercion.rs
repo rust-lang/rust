@@ -484,7 +484,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
                 // Object safety violations or miscellaneous.
                 Err(err) => {
-                    self.report_selection_error(&obligation, &err, None);
+                    self.report_selection_error(&obligation, &err);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
