@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: i32) {
-    //~^ NOTE: possibly return type
-    |y| x + y
-    //~^ ERROR: mismatched types
-    //~| ERROR: mismatched types
-    //~| NOTE: possibly missing `;` here?
-    //~| NOTE: expected (), found closure
-    //~| NOTE: expected type `()`
-    //~| NOTE: expected type `()`
-    //~| NOTE:    found type
-    //~| NOTE:    found type
-}
-
+// Test that we do some basic error correcton in the tokeniser (and don't spew
+// too many bogus errors).
 
 fn main() {
-    let x = foo(5)(2);
-    //~^ ERROR: expected function, found `()`
+    1
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| NOTE: possibly missing `;` here?
+    //~| NOTE: expected (), found integral variable
+    //~| NOTE: expected type `()`
+    //~| NOTE: expected type `()`
+    //~| NOTE:    found type `{integer}`
+    //~| NOTE:    found type `{integer}`
 }

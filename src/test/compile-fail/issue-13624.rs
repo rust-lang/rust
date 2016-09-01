@@ -15,10 +15,14 @@ mod a {
 
   pub fn get_enum_struct_variant() -> () {
     Enum::EnumStructVariant { x: 1, y: 2, z: 3 }
-    //~^ ERROR mismatched types
-    //~| expected type `()`
-    //~| found type `a::Enum`
-    //~| expected (), found enum `a::Enum`
+    //~^ ERROR: mismatched types
+    //~| ERROR: mismatched types
+    //~| NOTE: possibly missing `;` here?
+    //~| NOTE: expected (), found enum `a::Enum`
+    //~| NOTE: expected type `()`
+    //~| NOTE: expected type `()`
+    //~| NOTE:    found type `a::Enum`
+    //~| NOTE:    found type `a::Enum`
   }
 }
 
@@ -30,10 +34,10 @@ mod b {
       let enum_struct_variant = ::a::get_enum_struct_variant();
       match enum_struct_variant {
         a::Enum::EnumStructVariant { x, y, z } => {
-        //~^ ERROR mismatched types
-        //~| expected type `()`
-        //~| found type `a::Enum`
-        //~| expected (), found enum `a::Enum`
+        //~^ ERROR: mismatched types
+        //~| NOTE: expected (), found enum `a::Enum`
+        //~| NOTE: expected type `()`
+        //~| NOTE:    found type `a::Enum`
         }
       }
     }

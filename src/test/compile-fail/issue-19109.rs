@@ -11,11 +11,16 @@
 trait Trait { }
 
 fn function(t: &mut Trait) {
+    //~^ NOTE: possibly return type `*mut Trait` missing in this fn?
     t as *mut Trait
- //~^ ERROR: mismatched types
- //~| NOTE: expected type `()`
- //~| NOTE:    found type `*mut Trait`
- //~| NOTE: expected (), found *-ptr
+    //~^ ERROR: mismatched types
+    //~| ERROR: mismatched types
+    //~| NOTE: possibly missing `;` here?
+    //~| NOTE: expected (), found *-ptr
+    //~| NOTE: expected type `()`
+    //~| NOTE: expected type `()`
+    //~| NOTE:    found type `*mut Trait`
+    //~| NOTE:    found type `*mut Trait`
 }
 
 fn main() { }

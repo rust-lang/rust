@@ -10,6 +10,14 @@
 
 fn main() {
     loop {
-        true //~  ERROR mismatched types
+        true
+        //~^ ERROR mismatched types
+        //~| ERROR mismatched types
+        //~| NOTE: possibly missing `;` here?
+        //~| NOTE: expected (), found bool
+        //~| NOTE: expected type `()`
+        //~| NOTE: expected type `()`
+        //~| NOTE:    found type `bool`
+        //~| NOTE:    found type `bool`
     }
 }

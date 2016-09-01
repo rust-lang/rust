@@ -28,14 +28,26 @@ fn generic<T>() -> <T as Foo>::Assoc {
     // `T` could be some downstream crate type that specializes (or,
     // for that matter, `u8`).
 
-    () //~ ERROR mismatched types
+    ()
+    //~^ ERROR mismatched types
+    //~| NOTE: expected associated type, found ()
+    //~| NOTE: expected type `<T as Foo>::Assoc`
+    //~| NOTE:    found type `()`
 }
 
 fn monomorphic() -> () {
     // Even though we know that `()` is not specialized in a
     // downstream crate, typeck refuses to project here.
 
-    generic::<()>() //~ ERROR mismatched types
+    generic::<()>()
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| NOTE: possibly missing `;` here?
+    //~| NOTE: expected (), found associated type
+    //~| NOTE: expected type `()`
+    //~| NOTE: expected type `()`
+    //~| NOTE:    found type
+    //~| NOTE:    found type
 }
 
 fn main() {
