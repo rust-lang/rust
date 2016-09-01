@@ -1640,7 +1640,7 @@ impl str {
         // result or extend with the lower case version if an upper case
         // character is found.
         for (i, ch) in self.char_indices() {
-            if ch.is_uppercase() {
+            if !ch.is_lowercase() {
                 if let Some(offset) = left.take() {
                     s.push_str(&self[offset..i]);
                 }
@@ -1726,7 +1726,7 @@ impl str {
         // result or extend with the upper case version if a lower case
         // character is found.
         for (i, ch) in self.char_indices() {
-            if ch.is_lowercase() {
+            if !ch.is_uppercase() {
                 if let Some(offset) = left.take() {
                     s.push_str(&self[offset..i]);
                 }
