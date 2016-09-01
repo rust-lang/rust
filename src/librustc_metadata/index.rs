@@ -73,15 +73,15 @@ impl IndexData {
         }
     }
 
-    pub fn record(&mut self, def_id: DefId, position: u64) {
+    pub fn record(&mut self, def_id: DefId, position: usize) {
         assert!(def_id.is_local());
         self.record_index(def_id.index, position);
     }
 
-    pub fn record_index(&mut self, item: DefIndex, position: u64) {
+    pub fn record_index(&mut self, item: DefIndex, position: usize) {
         let item = item.as_usize();
 
-        assert!(position < (u32::MAX as u64));
+        assert!(position < (u32::MAX as usize));
         let position = position as u32;
 
         assert!(self.positions[item] == u32::MAX,

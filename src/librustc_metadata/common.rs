@@ -10,12 +10,9 @@
 
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
-// RBML enum definitions and utils shared by the encoder and decoder
-//
-// 0x00..0x1f: reserved for RBML generic type tags
-// 0x20..0xef: free for use, preferred for frequent tags
-// 0xf0..0xff: internally used by RBML to encode 0x100..0xfff in two bytes
-// 0x100..0xfff: free for use, preferred for infrequent tags
+pub const tag_opaque: usize = 0x00;
+
+// GAP 0x01...0x19
 
 pub const tag_items: usize = 0x100; // top-level only
 

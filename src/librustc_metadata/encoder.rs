@@ -35,9 +35,10 @@ use rustc::mir::mir_map::MirMap;
 use rustc::session::config::{self, PanicStrategy, CrateTypeRustcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
-use rustc_serialize::{Encodable, SpecializedEncoder};
+use rustc_serialize::{Encodable, SpecializedEncoder, opaque};
+use rustc_serialize as serialize;
 use std::io::prelude::*;
-use std::io::SeekFrom;
+use std::io::Cursor;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::u32;
@@ -55,7 +56,7 @@ use rustc::hir::map::DefKey;
 use super::index_builder::{FromId, IndexBuilder, ItemContentBuilder, Untracked, XRef};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
-    pub rbml_w: rbml::writer::Encoder,
+    pub rbml_w: rbml::writer::Encoder<'a>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub reexports: &'a def::ExportMap,
     pub link_meta: &'a LinkMeta,
@@ -66,7 +67,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Deref for EncodeContext<'a, 'tcx> {
-    type Target = rbml::writer::Encoder;
+    type Target = rbml::writer::Encoder<'a>;
     fn deref(&self) -> &Self::Target {
         &self.rbml_w
     }
@@ -78,21 +79,61 @@ impl<'a, 'tcx> DerefMut for EncodeContext<'a, 'tcx> {
     }
 }
 
+macro_rules! encoder_methods {
+    ($($name:ident($ty:ty);)*) => {
+        $(fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
+            self.opaque.$name(value)
+        })*
+    }
+}
+
+impl<'a, 'tcx> serialize::Encoder for ::encoder::EncodeContext<'a, 'tcx> {
+    type Error = <opaque::Encoder<'a> as serialize::Encoder>::Error;
+
+    fn emit_nil(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    encoder_methods! {
+        emit_usize(usize);
+        emit_u64(u64);
+        emit_u32(u32);
+        emit_u16(u16);
+        emit_u8(u8);
+
+        emit_isize(isize);
+        emit_i64(i64);
+        emit_i32(i32);
+        emit_i16(i16);
+        emit_i8(i8);
+
+        emit_bool(bool);
+        emit_f64(f64);
+        emit_f32(f32);
+        emit_char(char);
+        emit_str(&str);
+    }
+}
+
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
         let cx = self.ty_str_ctxt();
-        self.emit_opaque(|opaque_encoder| {
-            Ok(tyencode::enc_ty(opaque_encoder.cursor, &cx, ty))
-        })
+
+        self.start_tag(tag_opaque)?;
+        tyencode::enc_ty(&mut self.rbml_w.opaque.cursor, &cx, ty);
+        self.mark_stable_position();
+        self.end_tag()
     }
 }
 
 impl<'a, 'tcx> SpecializedEncoder<&'tcx Substs<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, substs: &&'tcx Substs<'tcx>) -> Result<(), Self::Error> {
         let cx = self.ty_str_ctxt();
-        self.emit_opaque(|opaque_encoder| {
-            Ok(tyencode::enc_substs(opaque_encoder.cursor, &cx, substs))
-        })
+
+        self.start_tag(tag_opaque)?;
+        tyencode::enc_substs(&mut self.rbml_w.opaque.cursor, &cx, substs);
+        self.mark_stable_position();
+        self.end_tag()
     }
 }
 
@@ -124,7 +165,7 @@ fn encode_trait_ref<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
                               tag: usize) {
     let cx = ecx.ty_str_ctxt();
     ecx.start_tag(tag);
-    tyencode::enc_trait_ref(&mut ecx.writer, &cx, trait_ref);
+    tyencode::enc_trait_ref(&mut ecx.opaque.cursor, &cx, trait_ref);
     ecx.mark_stable_position();
     ecx.end_tag();
 }
@@ -173,7 +214,7 @@ fn encode_variant_id(ecx: &mut EncodeContext, vid: DefId) {
 fn write_closure_type<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
                                 closure_type: &ty::ClosureTy<'tcx>) {
     let cx = ecx.ty_str_ctxt();
-    tyencode::enc_closure_ty(&mut ecx.writer, &cx, closure_type);
+    tyencode::enc_closure_ty(&mut ecx.opaque.cursor, &cx, closure_type);
     ecx.mark_stable_position();
 }
 
@@ -181,7 +222,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
     fn encode_type(&mut self, typ: Ty<'tcx>) {
         let cx = self.ty_str_ctxt();
         self.start_tag(tag_items_data_item_type);
-        tyencode::enc_ty(&mut self.writer, &cx, typ);
+        tyencode::enc_ty(&mut self.opaque.cursor, &cx, typ);
         self.mark_stable_position();
         self.end_tag();
     }
@@ -480,7 +521,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
     {
         let cx = self.ty_str_ctxt();
         self.start_tag(tag_item_generics);
-        tyencode::enc_generics(&mut self.writer, &cx, generics);
+        tyencode::enc_generics(&mut self.opaque.cursor, &cx, generics);
         self.mark_stable_position();
         self.end_tag();
         self.encode_predicates(predicates, tag_item_predicates);
@@ -829,7 +870,7 @@ fn encode_xrefs<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
         xref_positions[id as usize] = ecx.mark_stable_position() as u32;
         match xref {
             XRef::Predicate(p) => {
-                tyencode::enc_predicate(&mut ecx.writer, &cx, &p)
+                tyencode::enc_predicate(&mut ecx.opaque.cursor, &cx, &p)
             }
         }
     }
@@ -837,7 +878,7 @@ fn encode_xrefs<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
     ecx.end_tag();
 
     ecx.start_tag(tag_xref_index);
-    index::write_dense_index(xref_positions, &mut ecx.writer);
+    index::write_dense_index(xref_positions, &mut ecx.opaque.cursor);
     ecx.end_tag();
 }
 
@@ -1396,7 +1437,7 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>)
 
 fn encode_item_index(ecx: &mut EncodeContext, index: IndexData) {
     ecx.start_tag(tag_index);
-    index.write_index(&mut ecx.writer);
+    index.write_index(&mut ecx.opaque.cursor);
     ecx.end_tag();
 }
 
@@ -1710,15 +1751,33 @@ fn encode_panic_strategy(ecx: &mut EncodeContext) {
     }
 }
 
-pub fn encode_metadata(mut ecx: EncodeContext, krate: &hir::Crate) -> Vec<u8> {
-    encode_metadata_inner(&mut ecx, krate);
+pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 cstore: &cstore::CStore,
+                                 reexports: &def::ExportMap,
+                                 link_meta: &LinkMeta,
+                                 reachable: &NodeSet,
+                                 mir_map: &MirMap<'tcx>) -> Vec<u8> {
+    let mut cursor = Cursor::new(vec![]);
+    cursor.write_all(&[0, 0, 0, 0]).unwrap();
+    cursor.write_all(metadata_encoding_version).unwrap();
+    // Will be filed with the length after encoding the crate.
+    cursor.write_all(&[0, 0, 0, 0]).unwrap();
+
+    encode_metadata_inner(&mut EncodeContext {
+        rbml_w: rbml::writer::Encoder::new(&mut cursor),
+        tcx: tcx,
+        reexports: reexports,
+        link_meta: link_meta,
+        cstore: cstore,
+        reachable: reachable,
+        mir_map: mir_map,
+        type_abbrevs: &Default::default(),
+    });
 
     // RBML compacts the encoded bytes whenever appropriate,
     // so there are some garbages left after the end of the data.
-    let metalen = ecx.rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() as usize;
-    let mut v = ecx.rbml_w.writer.into_inner();
-    v.truncate(metalen);
-    assert_eq!(v.len(), metalen);
+    let meta_len = cursor.position() as usize;
+    cursor.get_mut().truncate(meta_len);
 
     // And here we run into yet another obscure archive bug: in which metadata
     // loaded from archives may have trailing garbage bytes. Awhile back one of
@@ -1744,55 +1803,17 @@ pub fn encode_metadata(mut ecx: EncodeContext, krate: &hir::Crate) -> Vec<u8> {
     // this metadata, there are 4 zero bytes at the start, which are
     // treated as a length of 0 by old compilers.
 
-    let len = v.len();
-    let mut result = vec![];
-    result.push(0);
-    result.push(0);
-    result.push(0);
-    result.push(0);
-    result.extend(metadata_encoding_version.iter().cloned());
-    result.push((len >> 24) as u8);
-    result.push((len >> 16) as u8);
-    result.push((len >>  8) as u8);
-    result.push((len >>  0) as u8);
-    result.extend(v);
+    let meta_start = 8 + ::common::metadata_encoding_version.len();
+    let len = meta_len - meta_start;
+    let mut result = cursor.into_inner();
+    result[meta_start - 4] = (len >> 24) as u8;
+    result[meta_start - 3] = (len >> 16) as u8;
+    result[meta_start - 2] = (len >>  8) as u8;
+    result[meta_start - 1] = (len >>  0) as u8;
     result
 }
 
-fn encode_metadata_inner(ecx: &mut EncodeContext, krate: &hir::Crate) {
-    struct Stats {
-        attr_bytes: u64,
-        dep_bytes: u64,
-        lang_item_bytes: u64,
-        native_lib_bytes: u64,
-        plugin_registrar_fn_bytes: u64,
-        codemap_bytes: u64,
-        macro_defs_bytes: u64,
-        impl_bytes: u64,
-        reachable_bytes: u64,
-        item_bytes: u64,
-        index_bytes: u64,
-        xref_bytes: u64,
-        zero_bytes: u64,
-        total_bytes: u64,
-    }
-    let mut stats = Stats {
-        attr_bytes: 0,
-        dep_bytes: 0,
-        lang_item_bytes: 0,
-        native_lib_bytes: 0,
-        plugin_registrar_fn_bytes: 0,
-        codemap_bytes: 0,
-        macro_defs_bytes: 0,
-        impl_bytes: 0,
-        reachable_bytes: 0,
-        item_bytes: 0,
-        index_bytes: 0,
-        xref_bytes: 0,
-        zero_bytes: 0,
-        total_bytes: 0,
-    };
-
+fn encode_metadata_inner(ecx: &mut EncodeContext) {
     encode_rustc_version(ecx);
 
     let tcx = ecx.tcx;
@@ -1804,89 +1825,92 @@ fn encode_metadata_inner(ecx: &mut EncodeContext, krate: &hir::Crate) {
     encode_dylib_dependency_formats(ecx);
     encode_panic_strategy(ecx);
 
-    let mut i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
-    encode_attributes(ecx, &krate.attrs);
-    stats.attr_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let krate = tcx.map.krate();
 
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    let mut i = ecx.position();
+    encode_attributes(ecx, &krate.attrs);
+    let attr_bytes = ecx.position() - i;
+
+    i = ecx.position();
     encode_crate_deps(ecx, ecx.cstore);
-    stats.dep_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let dep_bytes = ecx.position() - i;
 
     // Encode the language items.
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_lang_items(ecx);
-    stats.lang_item_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let lang_item_bytes = ecx.position() - i;
 
     // Encode the native libraries used
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_native_libraries(ecx);
-    stats.native_lib_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let native_lib_bytes = ecx.position() - i;
 
     // Encode the plugin registrar function
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_plugin_registrar_fn(ecx);
-    stats.plugin_registrar_fn_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let plugin_registrar_fn_bytes = ecx.position() - i;
 
     // Encode codemap
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_codemap(ecx);
-    stats.codemap_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let codemap_bytes = ecx.position() - i;
 
     // Encode macro definitions
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_macro_defs(ecx, krate);
-    stats.macro_defs_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let macro_defs_bytes = ecx.position() - i;
 
     // Encode the def IDs of impls, for coherence checking.
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_impls(ecx, krate);
-    stats.impl_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let impl_bytes = ecx.position() - i;
 
     // Encode reachability info.
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_reachable(ecx);
-    stats.reachable_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let reachable_bytes = ecx.position() - i;
 
     // Encode and index the items.
     ecx.start_tag(tag_items);
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     let (items, xrefs) = encode_info_for_items(ecx);
-    stats.item_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let item_bytes = ecx.position() - i;
     ecx.end_tag();
 
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_item_index(ecx, items);
-    stats.index_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let index_bytes = ecx.position() - i;
 
-    i = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    i = ecx.position();
     encode_xrefs(ecx, xrefs);
-    stats.xref_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    let xref_bytes = ecx.position() - i;
 
     encode_struct_field_attrs(ecx, krate);
 
-    stats.total_bytes = ecx.writer.seek(SeekFrom::Current(0)).unwrap();
+    let total_bytes = ecx.position();
 
     if ecx.tcx.sess.meta_stats() {
-        for e in ecx.writer.get_ref() {
+        let mut zero_bytes = 0;
+        for e in ecx.opaque.cursor.get_ref() {
             if *e == 0 {
-                stats.zero_bytes += 1;
+                zero_bytes += 1;
             }
         }
 
         println!("metadata stats:");
-        println!("       attribute bytes: {}", stats.attr_bytes);
-        println!("             dep bytes: {}", stats.dep_bytes);
-        println!("       lang item bytes: {}", stats.lang_item_bytes);
-        println!("          native bytes: {}", stats.native_lib_bytes);
-        println!("plugin registrar bytes: {}", stats.plugin_registrar_fn_bytes);
-        println!("         codemap bytes: {}", stats.codemap_bytes);
-        println!("       macro def bytes: {}", stats.macro_defs_bytes);
-        println!("            impl bytes: {}", stats.impl_bytes);
-        println!("       reachable bytes: {}", stats.reachable_bytes);
-        println!("            item bytes: {}", stats.item_bytes);
-        println!("           index bytes: {}", stats.index_bytes);
-        println!("            xref bytes: {}", stats.xref_bytes);
-        println!("            zero bytes: {}", stats.zero_bytes);
-        println!("           total bytes: {}", stats.total_bytes);
+        println!("       attribute bytes: {}", attr_bytes);
+        println!("             dep bytes: {}", dep_bytes);
+        println!("       lang item bytes: {}", lang_item_bytes);
+        println!("          native bytes: {}", native_lib_bytes);
+        println!("plugin registrar bytes: {}", plugin_registrar_fn_bytes);
+        println!("         codemap bytes: {}", codemap_bytes);
+        println!("       macro def bytes: {}", macro_defs_bytes);
+        println!("            impl bytes: {}", impl_bytes);
+        println!("       reachable bytes: {}", reachable_bytes);
+        println!("            item bytes: {}", item_bytes);
+        println!("           index bytes: {}", index_bytes);
+        println!("            xref bytes: {}", xref_bytes);
+        println!("            zero bytes: {}", zero_bytes);
+        println!("           total bytes: {}", total_bytes);
     }
 }

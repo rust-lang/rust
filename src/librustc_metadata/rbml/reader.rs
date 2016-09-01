@@ -45,86 +45,12 @@
 //! **Data** can be either binary bytes or zero or more nested RBML documents.
 //! Nested documents cannot overflow, and should be entirely contained
 //! within a parent document.
-//!
-//! # Predefined Tags
-//!
-//! Most RBML tags are defined by the application.
-//! (For the rust object metadata, see also `rustc::metadata::common`.)
-//! RBML itself does define a set of predefined tags however,
-//! intended for the auto-serialization implementation.
-//!
-//! Predefined tags with an implicit length:
-//!
-//! - `U8`  (`00`): 1-byte unsigned integer.
-//! - `U16` (`01`): 2-byte big endian unsigned integer.
-//! - `U32` (`02`): 4-byte big endian unsigned integer.
-//! - `U64` (`03`): 8-byte big endian unsigned integer.
-//!   Any of `U*` tags can be used to encode primitive unsigned integer types,
-//!   as long as it is no greater than the actual size.
-//!   For example, `u8` can only be represented via the `U8` tag.
-//!
-//! - `I8`  (`04`): 1-byte signed integer.
-//! - `I16` (`05`): 2-byte big endian signed integer.
-//! - `I32` (`06`): 4-byte big endian signed integer.
-//! - `I64` (`07`): 8-byte big endian signed integer.
-//!   Similar to `U*` tags. Always uses two's complement encoding.
-//!
-//! - `Bool` (`08`): 1-byte boolean value, `00` for false and `01` for true.
-//!
-//! - `Char` (`09`): 4-byte big endian Unicode scalar value.
-//!   Surrogate pairs or out-of-bound values are invalid.
-//!
-//! - `F32` (`0a`): 4-byte big endian unsigned integer representing
-//!   IEEE 754 binary32 floating-point format.
-//! - `F64` (`0b`): 8-byte big endian unsigned integer representing
-//!   IEEE 754 binary64 floating-point format.
-//!
-//! - `Sub8`  (`0c`): 1-byte unsigned integer for supplementary information.
-//! - `Sub32` (`0d`): 4-byte unsigned integer for supplementary information.
-//!   Those two tags normally occur as the first subdocument of certain tags,
-//!   namely `Enum`, `Vec` and `Map`, to provide a variant or size information.
-//!   They can be used interchangeably.
-//!
-//! Predefined tags with an explicit length:
-//!
-//! - `Str` (`10`): A UTF-8-encoded string.
-//!
-//! - `Enum` (`11`): An enum.
-//!   The first subdocument should be `Sub*` tags with a variant ID.
-//!   Subsequent subdocuments, if any, encode variant arguments.
-//!
-//! - `Vec` (`12`): A vector (sequence).
-//! - `VecElt` (`13`): A vector element.
-//!   The first subdocument should be `Sub*` tags with the number of elements.
-//!   Subsequent subdocuments should be `VecElt` tag per each element.
-//!
-//! - `Map` (`14`): A map (associated array).
-//! - `MapKey` (`15`): A key part of the map entry.
-//! - `MapVal` (`16`): A value part of the map entry.
-//!   The first subdocument should be `Sub*` tags with the number of entries.
-//!   Subsequent subdocuments should be an alternating sequence of
-//!   `MapKey` and `MapVal` tags per each entry.
-//!
-//! - `Opaque` (`17`): An opaque, custom-format tag.
-//!   Used to wrap ordinary custom tags or data in the auto-serialized context.
-//!   Rustc typically uses this to encode type information.
-//!
-//! First 0x20 tags are reserved by RBML; custom tags start at 0x20.
 
 #[cfg(test)]
 use test::Bencher;
 
-pub use self::EbmlEncoderTag::*;
-
-use std::char;
-use std::isize;
-use std::mem::transmute;
+use std::fmt;
 use std::str;
-
-use rustc_serialize as serialize;
-
-use rbml::Error;
-use rbml::Error::*;
 
 #[derive(Clone, Copy)]
 pub struct Doc<'a> {
@@ -139,6 +65,17 @@ impl<'doc> Doc<'doc> {
             data: data,
             start: 0,
             end: data.len(),
+        }
+    }
+
+    pub fn at(data: &'doc [u8], start: usize) -> Doc<'doc> {
+        let elt_tag = tag_at(data, start).unwrap();
+        let elt_size = tag_len_at(data, elt_tag.next).unwrap();
+        let end = elt_size.next + elt_size.val;
+        Doc {
+            data: data,
+            start: elt_size.next,
+            end: end,
         }
     }
 
@@ -159,53 +96,18 @@ impl<'doc> Doc<'doc> {
     }
 }
 
-pub struct TaggedDoc<'a> {
-    tag: usize,
-    pub doc: Doc<'a>,
+#[derive(Debug)]
+pub enum Error {
+    IntTooBig(usize),
+    InvalidTag(usize)
 }
 
-pub type DecodeResult<T> = Result<T, Error>;
-
-#[derive(Copy, Clone, Debug)]
-pub enum EbmlEncoderTag {
-    // tags 00..1f are reserved for auto-serialization.
-    // first NUM_IMPLICIT_TAGS tags are implicitly sized and lengths are not encoded.
-    EsU8 = 0x00, // + 1 byte
-    EsU16 = 0x01, // + 2 bytes
-    EsU32 = 0x02, // + 4 bytes
-    EsU64 = 0x03, // + 8 bytes
-    EsI8 = 0x04, // + 1 byte
-    EsI16 = 0x05, // + 2 bytes
-    EsI32 = 0x06, // + 4 bytes
-    EsI64 = 0x07, // + 8 bytes
-    EsBool = 0x08, // + 1 byte
-    EsChar = 0x09, // + 4 bytes
-    EsF32 = 0x0a, // + 4 bytes
-    EsF64 = 0x0b, // + 8 bytes
-    EsSub8 = 0x0c, // + 1 byte
-    EsSub32 = 0x0d, // + 4 bytes
-    // 0x0e and 0x0f are reserved
-    EsStr = 0x10,
-    EsEnum = 0x11, // encodes the variant id as the first EsSub*
-    EsVec = 0x12, // encodes the # of elements as the first EsSub*
-    EsVecElt = 0x13,
-    EsMap = 0x14, // encodes the # of pairs as the first EsSub*
-    EsMapKey = 0x15,
-    EsMapVal = 0x16,
-    EsOpaque = 0x17,
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // FIXME: this should be a more useful display form
+        fmt::Debug::fmt(self, f)
+    }
 }
-
-pub const NUM_IMPLICIT_TAGS: usize = 0x0e;
-
-#[cfg_attr(rustfmt, rustfmt_skip)]
-static TAG_IMPLICIT_LEN: [i8; NUM_IMPLICIT_TAGS] = [
-    1, 2, 4, 8, // EsU*
-    1, 2, 4, 8, // ESI*
-    1, // EsBool
-    4, // EsChar
-    4, 8, // EsF*
-    1, 4, // EsSub*
-];
 
 // rbml reading
 
@@ -227,7 +129,7 @@ pub struct Res {
     pub next: usize,
 }
 
-pub fn tag_at(data: &[u8], start: usize) -> DecodeResult<Res> {
+pub fn tag_at(data: &[u8], start: usize) -> Result<Res, Error> {
     let v = data[start] as usize;
     if v < 0xf0 {
         Ok(Res {
@@ -241,12 +143,12 @@ pub fn tag_at(data: &[u8], start: usize) -> DecodeResult<Res> {
         })
     } else {
         // every tag starting with byte 0xf0 is an overlong form, which is prohibited.
-        Err(InvalidTag(v))
+        Err(Error::InvalidTag(v))
     }
 }
 
 #[inline(never)]
-fn vuint_at_slow(data: &[u8], start: usize) -> DecodeResult<Res> {
+fn vuint_at_slow(data: &[u8], start: usize) -> Result<Res, Error> {
     let a = data[start];
     if a & 0x80 != 0 {
         return Ok(Res {
@@ -275,10 +177,10 @@ fn vuint_at_slow(data: &[u8], start: usize) -> DecodeResult<Res> {
             next: start + 4,
         });
     }
-    Err(IntTooBig(a as usize))
+    Err(Error::IntTooBig(a as usize))
 }
 
-pub fn vuint_at(data: &[u8], start: usize) -> DecodeResult<Res> {
+pub fn vuint_at(data: &[u8], start: usize) -> Result<Res, Error> {
     if data.len() - start < 4 {
         return vuint_at_slow(data, start);
     }
@@ -332,36 +234,15 @@ pub fn vuint_at(data: &[u8], start: usize) -> DecodeResult<Res> {
     }
 }
 
-pub fn tag_len_at(data: &[u8], tag: Res) -> DecodeResult<Res> {
-    if tag.val < NUM_IMPLICIT_TAGS && TAG_IMPLICIT_LEN[tag.val] >= 0 {
-        Ok(Res {
-            val: TAG_IMPLICIT_LEN[tag.val] as usize,
-            next: tag.next,
-        })
-    } else {
-        vuint_at(data, tag.next)
-    }
-}
-
-pub fn doc_at<'a>(data: &'a [u8], start: usize) -> DecodeResult<TaggedDoc<'a>> {
-    let elt_tag = tag_at(data, start)?;
-    let elt_size = tag_len_at(data, elt_tag)?;
-    let end = elt_size.next + elt_size.val;
-    Ok(TaggedDoc {
-        tag: elt_tag.val,
-        doc: Doc {
-            data: data,
-            start: elt_size.next,
-            end: end,
-        },
-    })
+pub fn tag_len_at(data: &[u8], next: usize) -> Result<Res, Error> {
+    vuint_at(data, next)
 }
 
 pub fn maybe_get_doc<'a>(d: Doc<'a>, tg: usize) -> Option<Doc<'a>> {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = try_or!(tag_at(d.data, pos), None);
-        let elt_size = try_or!(tag_len_at(d.data, elt_tag), None);
+        let elt_size = try_or!(tag_len_at(d.data, elt_tag.next), None);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
             return Some(Doc {
@@ -378,8 +259,7 @@ pub fn get_doc<'a>(d: Doc<'a>, tg: usize) -> Doc<'a> {
     match maybe_get_doc(d, tg) {
         Some(d) => d,
         None => {
-            error!("failed to find block with tag {:?}", tg);
-            panic!();
+            bug!("failed to find block with tag {:?}", tg);
         }
     }
 }
@@ -404,7 +284,7 @@ impl<'a> Iterator for DocsIterator<'a> {
             self.d.start = self.d.end;
             None
         });
-        let elt_size = try_or!(tag_len_at(self.d.data, elt_tag), {
+        let elt_size = try_or!(tag_len_at(self.d.data, elt_tag.next), {
             self.d.start = self.d.end;
             None
         });
@@ -507,419 +387,6 @@ pub fn doc_as_i32(d: Doc) -> i32 {
 #[inline]
 pub fn doc_as_i64(d: Doc) -> i64 {
     doc_as_u64(d) as i64
-}
-
-pub struct Decoder<'a> {
-    parent: Doc<'a>,
-    pos: usize,
-}
-
-impl<'doc> Decoder<'doc> {
-    pub fn new(d: Doc<'doc>) -> Decoder<'doc> {
-        Decoder {
-            parent: d,
-            pos: d.start,
-        }
-    }
-
-    fn next_doc(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<Doc<'doc>> {
-        debug!(". next_doc(exp_tag={:?})", exp_tag);
-        if self.pos >= self.parent.end {
-            return Err(Expected(format!("no more documents in current node!")));
-        }
-        let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(self.parent.data, self.pos)?;
-        debug!("self.parent={:?}-{:?} self.pos={:?} r_tag={:?} r_doc={:?}-{:?}",
-               self.parent.start,
-               self.parent.end,
-               self.pos,
-               r_tag,
-               r_doc.start,
-               r_doc.end);
-        if r_tag != (exp_tag as usize) {
-            return Err(Expected(format!("expected EBML doc with tag {:?} but found tag {:?}",
-                                        exp_tag,
-                                        r_tag)));
-        }
-        if r_doc.end > self.parent.end {
-            return Err(Expected(format!("invalid EBML, child extends to {:#x}, parent to \
-                                         {:#x}",
-                                        r_doc.end,
-                                        self.parent.end)));
-        }
-        self.pos = r_doc.end;
-        Ok(r_doc)
-    }
-
-    fn _next_sub(&mut self) -> DecodeResult<usize> {
-        // empty vector/map optimization
-        if self.parent.is_empty() {
-            return Ok(0);
-        }
-
-        let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(self.parent.data, self.pos)?;
-        let r = if r_tag == (EsSub8 as usize) {
-            doc_as_u8(r_doc) as usize
-        } else if r_tag == (EsSub32 as usize) {
-            doc_as_u32(r_doc) as usize
-        } else {
-            return Err(Expected(format!("expected EBML doc with tag {:?} or {:?} but found \
-                                         tag {:?}",
-                                        EsSub8,
-                                        EsSub32,
-                                        r_tag)));
-        };
-        if r_doc.end > self.parent.end {
-            return Err(Expected(format!("invalid EBML, child extends to {:#x}, parent to \
-                                         {:#x}",
-                                        r_doc.end,
-                                        self.parent.end)));
-        }
-        self.pos = r_doc.end;
-        debug!("_next_sub result={:?}", r);
-        Ok(r)
-    }
-
-    // variable-length unsigned integer with different tags.
-    // `last_tag` should be the largest allowed unsigned integer tag.
-    // all tags between them should be valid, in the order of u8, u16, u32 and u64.
-    fn next_uint(&mut self,
-                 last_tag: EbmlEncoderTag)
-                 -> DecodeResult<u64> {
-        if self.pos >= self.parent.end {
-            return Err(Expected(format!("no more documents in current node!")));
-        }
-
-        let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(self.parent.data, self.pos)?;
-        let r = if EsU8 as usize <= r_tag && r_tag <= last_tag as usize {
-            match r_tag - EsU8 as usize {
-                0 => doc_as_u8(r_doc) as u64,
-                1 => doc_as_u16(r_doc) as u64,
-                2 => doc_as_u32(r_doc) as u64,
-                3 => doc_as_u64(r_doc),
-                _ => unreachable!(),
-            }
-        } else {
-            return Err(Expected(format!("expected EBML doc with tag EsU8 through {:?} but \
-                                         found tag {:?}",
-                                        last_tag,
-                                        r_tag)));
-        };
-        if r_doc.end > self.parent.end {
-            return Err(Expected(format!("invalid EBML, child extends to {:#x}, parent to \
-                                         {:#x}",
-                                        r_doc.end,
-                                        self.parent.end)));
-        }
-        self.pos = r_doc.end;
-        debug!("next_uint({:?}) result={:?}", last_tag, r);
-        Ok(r)
-    }
-
-    // variable-length signed integer with different tags.
-    // `last_tag` should be the largest allowed signed integer tag.
-    // all tags between them should be valid, in the order of i8, i16, i32 and i64.
-    fn next_int(&mut self,
-                last_tag: EbmlEncoderTag)
-                -> DecodeResult<i64> {
-        if self.pos >= self.parent.end {
-            return Err(Expected(format!("no more documents in current node!")));
-        }
-
-        let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(self.parent.data, self.pos)?;
-        let r = if EsI8 as usize <= r_tag && r_tag <= last_tag as usize {
-            match r_tag - EsI8 as usize {
-                0 => doc_as_i8(r_doc) as i64,
-                1 => doc_as_i16(r_doc) as i64,
-                2 => doc_as_i32(r_doc) as i64,
-                3 => doc_as_i64(r_doc),
-                _ => unreachable!(),
-            }
-        } else {
-            return Err(Expected(format!("expected EBML doc with tag EsI8 through {:?} but \
-                                         found tag {:?}",
-                                        last_tag,
-                                        r_tag)));
-        };
-        if r_doc.end > self.parent.end {
-            return Err(Expected(format!("invalid EBML, child extends to {:#x}, parent to \
-                                         {:#x}",
-                                        r_doc.end,
-                                        self.parent.end)));
-        }
-        self.pos = r_doc.end;
-        debug!("next_int({:?}) result={:?}", last_tag, r);
-        Ok(r)
-    }
-
-    pub fn position(&self) -> usize {
-        self.pos
-    }
-
-    pub fn advance(&mut self, bytes: usize) {
-        self.pos += bytes;
-    }
-}
-
-impl<'doc, 'tcx> ::decoder::DecodeContext<'doc, 'tcx> {
-    pub fn read_opaque<R, F>(&mut self, op: F) -> DecodeResult<R>
-        where F: FnOnce(&mut Self, Doc) -> DecodeResult<R>
-    {
-        let doc = self.next_doc(EsOpaque)?;
-        op(self, doc)
-    }
-
-    fn push_doc<T, F>(&mut self, exp_tag: EbmlEncoderTag, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        let d = self.next_doc(exp_tag)?;
-        let old_parent = self.parent;
-        let old_pos = self.pos;
-        self.parent = d;
-        self.pos = d.start;
-        let r = f(self)?;
-        self.parent = old_parent;
-        self.pos = old_pos;
-        Ok(r)
-    }
-}
-
-impl<'doc, 'tcx> serialize::Decoder for ::decoder::DecodeContext<'doc, 'tcx> {
-    type Error = Error;
-    fn read_nil(&mut self) -> DecodeResult<()> {
-        Ok(())
-    }
-
-    fn read_u64(&mut self) -> DecodeResult<u64> {
-        self.next_uint(EsU64)
-    }
-    fn read_u32(&mut self) -> DecodeResult<u32> {
-        Ok(self.next_uint(EsU32)? as u32)
-    }
-    fn read_u16(&mut self) -> DecodeResult<u16> {
-        Ok(self.next_uint(EsU16)? as u16)
-    }
-    fn read_u8(&mut self) -> DecodeResult<u8> {
-        Ok(doc_as_u8(self.next_doc(EsU8)?))
-    }
-    fn read_usize(&mut self) -> DecodeResult<usize> {
-        let v = self.read_u64()?;
-        if v > (::std::usize::MAX as u64) {
-            Err(IntTooBig(v as usize))
-        } else {
-            Ok(v as usize)
-        }
-    }
-
-    fn read_i64(&mut self) -> DecodeResult<i64> {
-        Ok(self.next_int(EsI64)? as i64)
-    }
-    fn read_i32(&mut self) -> DecodeResult<i32> {
-        Ok(self.next_int(EsI32)? as i32)
-    }
-    fn read_i16(&mut self) -> DecodeResult<i16> {
-        Ok(self.next_int(EsI16)? as i16)
-    }
-    fn read_i8(&mut self) -> DecodeResult<i8> {
-        Ok(doc_as_u8(self.next_doc(EsI8)?) as i8)
-    }
-    fn read_isize(&mut self) -> DecodeResult<isize> {
-        let v = self.next_int(EsI64)? as i64;
-        if v > (isize::MAX as i64) || v < (isize::MIN as i64) {
-            debug!("FIXME \\#6122: Removing this makes this function miscompile");
-            Err(IntTooBig(v as usize))
-        } else {
-            Ok(v as isize)
-        }
-    }
-
-    fn read_bool(&mut self) -> DecodeResult<bool> {
-        Ok(doc_as_u8(self.next_doc(EsBool)?) != 0)
-    }
-
-    fn read_f64(&mut self) -> DecodeResult<f64> {
-        let bits = doc_as_u64(self.next_doc(EsF64)?);
-        Ok(unsafe { transmute(bits) })
-    }
-    fn read_f32(&mut self) -> DecodeResult<f32> {
-        let bits = doc_as_u32(self.next_doc(EsF32)?);
-        Ok(unsafe { transmute(bits) })
-    }
-    fn read_char(&mut self) -> DecodeResult<char> {
-        Ok(char::from_u32(doc_as_u32(self.next_doc(EsChar)?)).unwrap())
-    }
-    fn read_str(&mut self) -> DecodeResult<String> {
-        Ok(self.next_doc(EsStr)?.to_string())
-    }
-
-    // Compound types:
-    fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_enum({})", name);
-
-        let doc = self.next_doc(EsEnum)?;
-
-        let (old_parent, old_pos) = (self.parent, self.pos);
-        self.parent = doc;
-        self.pos = self.parent.start;
-
-        let result = f(self)?;
-
-        self.parent = old_parent;
-        self.pos = old_pos;
-        Ok(result)
-    }
-
-    fn read_enum_variant<T, F>(&mut self, _: &[&str], mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Self, usize) -> DecodeResult<T>
-    {
-        debug!("read_enum_variant()");
-        let idx = self._next_sub()?;
-        debug!("  idx={}", idx);
-
-        f(self, idx)
-    }
-
-    fn read_enum_variant_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_enum_variant_arg(idx={})", idx);
-        f(self)
-    }
-
-    fn read_enum_struct_variant<T, F>(&mut self, _: &[&str], mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Self, usize) -> DecodeResult<T>
-    {
-        debug!("read_enum_struct_variant()");
-        let idx = self._next_sub()?;
-        debug!("  idx={}", idx);
-
-        f(self, idx)
-    }
-
-    fn read_enum_struct_variant_field<T, F>(&mut self,
-                                            name: &str,
-                                            idx: usize,
-                                            f: F)
-                                            -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_enum_struct_variant_arg(name={}, idx={})", name, idx);
-        f(self)
-    }
-
-    fn read_struct<T, F>(&mut self, name: &str, _: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_struct(name={})", name);
-        f(self)
-    }
-
-    fn read_struct_field<T, F>(&mut self, name: &str, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_struct_field(name={}, idx={})", name, idx);
-        f(self)
-    }
-
-    fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_tuple()");
-        self.read_seq(move |d, len| {
-            if len == tuple_len {
-                f(d)
-            } else {
-                Err(Expected(format!("Expected tuple of length `{}`, found tuple of length \
-                                      `{}`",
-                                     tuple_len,
-                                     len)))
-            }
-        })
-    }
-
-    fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_tuple_arg(idx={})", idx);
-        self.read_seq_elt(idx, f)
-    }
-
-    fn read_tuple_struct<T, F>(&mut self, name: &str, len: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_tuple_struct(name={})", name);
-        self.read_tuple(len, f)
-    }
-
-    fn read_tuple_struct_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_tuple_struct_arg(idx={})", idx);
-        self.read_tuple_arg(idx, f)
-    }
-
-    fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Self, bool) -> DecodeResult<T>
-    {
-        debug!("read_option()");
-        self.read_enum("Option", move |this| {
-            this.read_enum_variant(&["None", "Some"], move |this, idx| {
-                match idx {
-                    0 => f(this, false),
-                    1 => f(this, true),
-                    _ => Err(Expected(format!("Expected None or Some"))),
-                }
-            })
-        })
-    }
-
-    fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self, usize) -> DecodeResult<T>
-    {
-        debug!("read_seq()");
-        self.push_doc(EsVec, move |d| {
-            let len = d._next_sub()?;
-            debug!("  len={}", len);
-            f(d, len)
-        })
-    }
-
-    fn read_seq_elt<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_seq_elt(idx={})", idx);
-        self.push_doc(EsVecElt, f)
-    }
-
-    fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self, usize) -> DecodeResult<T>
-    {
-        debug!("read_map()");
-        self.push_doc(EsMap, move |d| {
-            let len = d._next_sub()?;
-            debug!("  len={}", len);
-            f(d, len)
-        })
-    }
-
-    fn read_map_elt_key<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_map_elt_key(idx={})", idx);
-        self.push_doc(EsMapKey, f)
-    }
-
-    fn read_map_elt_val<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-        where F: FnOnce(&mut Self) -> DecodeResult<T>
-    {
-        debug!("read_map_elt_val(idx={})", idx);
-        self.push_doc(EsMapVal, f)
-    }
-
-    fn error(&mut self, err: &str) -> Error {
-        ApplicationError(err.to_string())
-    }
 }
 
 #[test]

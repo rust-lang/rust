@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rbml::Error;
-use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::svh::Svh;
@@ -17,6 +15,7 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::flock;
 use rustc_serialize::Decodable;
+use rustc_serialize::opaque::Decoder;
 use std::io::{ErrorKind, Read};
 use std::fs::File;
 
@@ -188,7 +187,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
     fn load_from_data(&mut self,
                       cnum: CrateNum,
                       data: &[u8],
-                      expected_svh: Svh) -> Result<(), Error> {
+                      expected_svh: Svh) -> Result<(), String> {
         debug!("load_from_data(cnum={})", cnum);
 
         // Load up the hashes for the def-ids from this crate.

@@ -11,7 +11,6 @@
 
 #![feature(rustc_private)]
 
-extern crate rbml;
 extern crate serialize;
 
 use std::io::Cursor;
@@ -21,8 +20,7 @@ use std::slice;
 
 use serialize::{Encodable, Encoder};
 use serialize::json;
-
-use rbml::writer;
+use serialize::opaque;
 
 #[derive(Encodable)]
 struct Foo {
@@ -44,7 +42,7 @@ fn encode_json<T: Encodable>(val: &T, wr: &mut Cursor<Vec<u8>>) {
     write!(wr, "{}", json::as_json(val));
 }
 fn encode_rbml<T: Encodable>(val: &T, wr: &mut Cursor<Vec<u8>>) {
-    let mut encoder = writer::Encoder::new(wr);
+    let mut encoder = opaque::Encoder::new(wr);
     val.encode(&mut encoder);
 }
 

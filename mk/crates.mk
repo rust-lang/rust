@@ -61,7 +61,7 @@ RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_
                 rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
                 rustc_const_eval rustc_const_math rustc_incremental rustc_macro
 HOST_CRATES := syntax syntax_ext proc_macro syntax_pos $(RUSTC_CRATES) rustdoc fmt_macros \
-		flate arena graphviz rbml log serialize
+		flate arena graphviz log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
 DEPS_core :=
@@ -96,7 +96,6 @@ DEPS_getopts := std
 DEPS_graphviz := std
 DEPS_log := std
 DEPS_num := std
-DEPS_rbml := std log serialize
 DEPS_serialize := std log
 DEPS_term := std
 DEPS_test := std getopts term native:rust_test_helpers
@@ -110,7 +109,7 @@ DEPS_rustc_const_math := std syntax log serialize
 DEPS_rustc_const_eval := rustc_const_math rustc syntax log serialize \
 			     rustc_back graphviz syntax_pos
 
-DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml \
+DEPS_rustc := syntax fmt_macros flate arena serialize getopts \
               log graphviz rustc_llvm rustc_back rustc_data_structures\
 	      rustc_const_math syntax_pos rustc_errors
 DEPS_rustc_back := std syntax flate log libc
@@ -126,7 +125,7 @@ DEPS_rustc_errors := log libc serialize syntax_pos
 DEPS_rustc_lint := rustc log syntax syntax_pos rustc_const_eval
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
 DEPS_rustc_macro := std syntax
-DEPS_rustc_metadata := rustc syntax syntax_pos rustc_errors rbml rustc_const_math \
+DEPS_rustc_metadata := rustc syntax syntax_pos rustc_errors rustc_const_math \
 			rustc_macro syntax_ext
 DEPS_rustc_passes := syntax syntax_pos rustc core rustc_const_eval rustc_errors
 DEPS_rustc_mir := rustc syntax syntax_pos rustc_const_math rustc_const_eval rustc_bitflags
@@ -137,7 +136,7 @@ DEPS_rustc_privacy := rustc log syntax syntax_pos
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
                     log syntax serialize rustc_llvm rustc_platform_intrinsics \
                     rustc_const_math rustc_const_eval rustc_incremental rustc_errors syntax_pos
-DEPS_rustc_incremental := rbml rustc syntax_pos serialize rustc_data_structures
+DEPS_rustc_incremental := rustc syntax_pos serialize rustc_data_structures
 DEPS_rustc_save_analysis := rustc log syntax syntax_pos serialize
 DEPS_rustc_typeck := rustc syntax syntax_pos rustc_platform_intrinsics rustc_const_math \
                      rustc_const_eval rustc_errors

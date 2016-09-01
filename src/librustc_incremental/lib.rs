@@ -27,7 +27,6 @@
 #![feature(core_intrinsics)]
 
 extern crate graphviz;
-extern crate rbml;
 #[macro_use] extern crate rustc;
 extern crate rustc_data_structures;
 extern crate serialize as rustc_serialize;

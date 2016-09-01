@@ -28,7 +28,7 @@ use rustc::hir;
 use syntax::abi::Abi;
 use syntax::ast;
 
-use rbml::leb128;
+use rustc_serialize::leb128;
 use encoder;
 
 pub struct ctxt<'a, 'tcx: 'a> {
@@ -186,9 +186,10 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
     abbrev.write_all(b"#");
     {
         let start_position = abbrev.position() as usize;
+        let meta_start = 8 + ::common::metadata_encoding_version.len() as u64;
         let bytes_written = leb128::write_unsigned_leb128(abbrev.get_mut(),
                                                           start_position,
-                                                          pos);
+                                                          pos - meta_start);
         abbrev.set_position((start_position + bytes_written) as u64);
     }
 

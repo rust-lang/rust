@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rbml::opaque::Encoder;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
@@ -16,6 +15,7 @@ use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_serialize::Encodable as RustcEncodable;
+use rustc_serialize::opaque::Encoder;
 use std::hash::{Hash, Hasher, SipHasher};
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
