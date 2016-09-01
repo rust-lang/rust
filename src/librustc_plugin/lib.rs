@@ -27,7 +27,7 @@
 //!
 //! extern crate rustc;
 //!
-//! use rustc::plugin::Registry;
+//! use rustc_plugin::Registry;
 //!
 //! #[plugin_registrar]
 //! pub fn plugin_registrar(reg: &mut Registry) {

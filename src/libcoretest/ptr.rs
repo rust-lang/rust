@@ -173,12 +173,16 @@ fn test_unsized_unique() {
 }
 
 #[test]
-fn test_variadic_fnptr() {
+#[allow(warnings)]
+// Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
+// ABI, or even point to an actual executable code, because the function itself is never invoked.
+#[no_mangle]
+pub fn test_variadic_fnptr() {
     use core::hash::{Hash, SipHasher};
-    extern "C" {
-        fn printf(_: *const u8, ...);
+    extern {
+        fn test_variadic_fnptr(_: u64, ...) -> f64;
     }
-    let p: unsafe extern "C" fn(*const u8, ...) = printf;
+    let p: unsafe extern fn(u64, ...) -> f64 = test_variadic_fnptr;
     let q = p.clone();
     assert_eq!(p, q);
     assert!(!(p < q));

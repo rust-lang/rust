@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
+extern {
+    static error_message_count: u32;
+}
 
-trait A<T=Self> {}
-
-fn f(a: &A) {}
-//~^ ERROR E0393
-//~| NOTE missing reference to `T`
-//~| NOTE because of the default `Self` reference, type parameters must be specified on object types
+pub static BAZ: u32 = *&error_message_count;
+//~^ ERROR cannot refer to other statics by value
 
 fn main() {}

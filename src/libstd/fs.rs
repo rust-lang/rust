@@ -1510,8 +1510,11 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// Returns an iterator over the entries within a directory.
 ///
-/// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
-/// be encountered after an iterator is initially constructed.
+/// The iterator will yield instances of [`io::Result`]`<`[`DirEntry`]`>`.
+/// New errors may be encountered after an iterator is initially constructed.
+///
+/// [`io::Result`]: ../io/type.Result.html
+/// [`DirEntry`]: struct.DirEntry.html
 ///
 /// # Platform-specific behavior
 ///

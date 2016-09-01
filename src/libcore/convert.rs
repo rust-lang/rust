@@ -42,17 +42,23 @@
 
 /// A cheap, reference-to-reference conversion.
 ///
-/// `AsRef` is very similar to, but different than, `Borrow`. See
+/// `AsRef` is very similar to, but different than, [`Borrow`]. See
 /// [the book][book] for more.
 ///
 /// [book]: ../../book/borrow-and-asref.html
+/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
-/// returns an `Option<T>` or a `Result<T, E>`.
+/// returns an [`Option<T>`] or a [`Result<T, E>`].
+///
+/// [`Option<T>`]: ../../std/option/enum.Option.html
+/// [`Result<T, E>`]: ../../std/result/enum.Result.html
 ///
 /// # Examples
 ///
-/// Both `String` and `&str` implement `AsRef<str>`:
+/// Both [`String`] and `&str` implement `AsRef<str>`:
+///
+/// [`String`]: ../../std/string/struct.String.html
 ///
 /// ```
 /// fn is_hello<T: AsRef<str>>(s: T) {
@@ -81,7 +87,10 @@ pub trait AsRef<T: ?Sized> {
 /// A cheap, mutable reference-to-mutable reference conversion.
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
-/// returns an `Option<T>` or a `Result<T, E>`.
+/// returns an [`Option<T>`] or a [`Result<T, E>`].
+///
+/// [`Option<T>`]: ../../std/option/enum.Option.html
+/// [`Result<T, E>`]: ../../std/result/enum.Result.html
 ///
 /// # Generic Impls
 ///
@@ -97,16 +106,16 @@ pub trait AsMut<T: ?Sized> {
 
 /// A conversion that consumes `self`, which may or may not be expensive.
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use `TryInto` or a dedicated
-/// method which returns an `Option<T>` or a `Result<T, E>`.
+/// **Note: this trait must not fail**. If the conversion can fail, use [`TryInto`] or a dedicated
+/// method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
 /// Library authors should not directly implement this trait, but should prefer implementing
-/// the `From` trait, which offers greater flexibility and provides an equivalent `Into`
+/// the [`From`][From] trait, which offers greater flexibility and provides an equivalent `Into`
 /// implementation for free, thanks to a blanket implementation in the standard library.
 ///
 /// # Examples
 ///
-/// `String` implements `Into<Vec<u8>>`:
+/// [`String`] implements `Into<Vec<u8>>`:
 ///
 /// ```
 /// fn is_hello<T: Into<Vec<u8>>>(s: T) {
@@ -120,9 +129,15 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// # Generic Impls
 ///
-/// - `From<T> for U` implies `Into<U> for T`
-/// - `into()` is reflexive, which means that `Into<T> for T` is implemented
+/// - `[From<T>][From] for U` implies `Into<U> for T`
+/// - [`into()`] is reflexive, which means that `Into<T> for T` is implemented
 ///
+/// [`TryInto`]: trait.TryInto.html
+/// [`Option<T>`]: ../../std/option/enum.Option.html
+/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`String`]: ../../std/string/struct.String.html
+/// [From]: trait.From.html
+/// [`into()`]: trait.Into.html#tymethod.into
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
@@ -132,12 +147,12 @@ pub trait Into<T>: Sized {
 
 /// Construct `Self` via a conversion.
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use `TryFrom` or a dedicated
-/// method which returns an `Option<T>` or a `Result<T, E>`.
+/// **Note: this trait must not fail**. If the conversion can fail, use [`TryFrom`] or a dedicated
+/// method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
 /// # Examples
 ///
-/// `String` implements `From<&str>`:
+/// [`String`] implements `From<&str>`:
 ///
 /// ```
 /// let string = "hello".to_string();
@@ -147,9 +162,15 @@ pub trait Into<T>: Sized {
 /// ```
 /// # Generic impls
 ///
-/// - `From<T> for U` implies `Into<U> for T`
-/// - `from()` is reflexive, which means that `From<T> for T` is implemented
+/// - `From<T> for U` implies `[Into<U>] for T`
+/// - [`from()`] is reflexive, which means that `From<T> for T` is implemented
 ///
+/// [`TryFrom`]: trait.TryFrom.html
+/// [`Option<T>`]: ../../std/option/enum.Option.html
+/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`String`]: ../../std/string/struct.String.html
+/// [Into<U>]: trait.Into.html
+/// [`from()`]: trait.From.html#tymethod.from
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T>: Sized {
     /// Performs the conversion.
@@ -160,8 +181,10 @@ pub trait From<T>: Sized {
 /// An attempted conversion that consumes `self`, which may or may not be expensive.
 ///
 /// Library authors should not directly implement this trait, but should prefer implementing
-/// the `TryFrom` trait, which offers greater flexibility and provides an equivalent `TryInto`
+/// the [`TryFrom`] trait, which offers greater flexibility and provides an equivalent `TryInto`
 /// implementation for free, thanks to a blanket implementation in the standard library.
+///
+/// [`TryFrom`]: trait.TryFrom.html
 #[unstable(feature = "try_from", issue = "33417")]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
