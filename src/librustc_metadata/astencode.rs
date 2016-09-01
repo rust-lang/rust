@@ -217,7 +217,7 @@ fn encode_side_tables_for_id(ecx: &mut EncodeContext, id: ast::NodeId) {
 }
 
 fn decode_side_tables(dcx: &mut DecodeContext, ast_doc: rbml::Doc) {
-    while dcx.position() < ast_doc.end {
+    while dcx.opaque.position() < ast_doc.end {
         let table = Decodable::decode(dcx).unwrap();
         let id = Decodable::decode(dcx).unwrap();
         debug!("decode_side_tables: entry for id={}, table={:?}", id, table);

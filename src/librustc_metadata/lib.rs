@@ -51,9 +51,6 @@ extern crate rustc_const_math;
 extern crate test;
 
 pub mod rbml {
-    pub extern crate rbml as rbml_crate;
-    pub use self::rbml_crate::{Error, leb128, opaque};
-
     pub mod writer;
     pub mod reader;
     pub use self::reader::Doc;

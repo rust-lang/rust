@@ -265,8 +265,7 @@ pub trait CrateStore<'tcx> {
                            reexports: &def::ExportMap,
                            link_meta: &LinkMeta,
                            reachable: &NodeSet,
-                           mir_map: &MirMap<'tcx>,
-                           krate: &hir::Crate) -> Vec<u8>;
+                           mir_map: &MirMap<'tcx>) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -472,8 +471,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                            reexports: &def::ExportMap,
                            link_meta: &LinkMeta,
                            reachable: &NodeSet,
-                           mir_map: &MirMap<'tcx>,
-                           krate: &hir::Crate) -> Vec<u8> { vec![] }
+                           mir_map: &MirMap<'tcx>) -> Vec<u8> { vec![] }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 

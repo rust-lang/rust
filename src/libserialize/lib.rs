@@ -56,6 +56,9 @@ mod collection_impls;
 pub mod hex;
 pub mod json;
 
+pub mod opaque;
+pub mod leb128;
+
 mod rustc_serialize {
     pub use serialize::*;
 }

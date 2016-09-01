@@ -24,7 +24,7 @@ use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use rbml;
-use rbml::leb128;
+use rustc_serialize::leb128;
 use std::str;
 use syntax::abi;
 use syntax::ast;

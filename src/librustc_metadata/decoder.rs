@@ -45,14 +45,14 @@ use rustc_const_math::ConstInt;
 use rustc::mir::repr::Mir;
 
 use std::io;
-use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::str;
 use std::u32;
 
 use rbml::reader;
 use rbml;
-use rustc_serialize::{Decodable, SpecializedDecoder};
+use rustc_serialize::{Decodable, SpecializedDecoder, opaque};
+use rustc_serialize as serialize;
 use syntax::attr;
 use syntax::parse::token;
 use syntax::ast::{self, NodeId};
@@ -60,7 +60,7 @@ use syntax::print::pprust;
 use syntax_pos::{self, Span, BytePos, NO_EXPANSION};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
-    rbml_r: rbml::reader::Decoder<'a>,
+    pub opaque: opaque::Decoder<'a>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
     pub cdata: Option<&'a cstore::CrateMetadata>,
     pub from_id_range: IdRange,
@@ -76,7 +76,7 @@ impl<'doc> rbml::Doc<'doc> {
             max: NodeId::from_u32(u32::MAX)
         };
         DecodeContext {
-            rbml_r: reader::Decoder::new(self),
+            opaque: opaque::Decoder::new(self.data, self.start),
             cdata: None,
             tcx: None,
             from_id_range: id_range,
@@ -98,24 +98,49 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     fn read_ty_encoded<F, R>(&mut self, op: F) -> R
         where F: for<'x> FnOnce(&mut TyDecoder<'x,'tcx>) -> R
     {
-        self.read_opaque(|this, doc| {
-            Ok(op(&mut TyDecoder::with_doc(
-                this.tcx(), this.cdata().cnum, doc,
-                &mut |d| translate_def_id(this.cdata(), d))))
-        }).unwrap()
+        let pos = self.opaque.position();
+        let doc = rbml::Doc::at(self.opaque.data, pos);
+        self.opaque.advance(doc.end - pos);
+        op(&mut TyDecoder::with_doc(self.tcx(), self.cdata().cnum, doc,
+                                    &mut |d| translate_def_id(self.cdata(), d)))
     }
 }
 
-impl<'a, 'tcx> Deref for DecodeContext<'a, 'tcx> {
-    type Target = rbml::reader::Decoder<'a>;
-    fn deref(&self) -> &Self::Target {
-        &self.rbml_r
+macro_rules! decoder_methods {
+    ($($name:ident -> $ty:ty;)*) => {
+        $(fn $name(&mut self) -> Result<$ty, Self::Error> {
+            self.opaque.$name()
+        })*
     }
 }
 
-impl<'a, 'tcx> DerefMut for DecodeContext<'a, 'tcx> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.rbml_r
+impl<'doc, 'tcx> serialize::Decoder for ::decoder::DecodeContext<'doc, 'tcx> {
+    type Error = <opaque::Decoder<'doc> as serialize::Decoder>::Error;
+
+    decoder_methods! {
+        read_nil -> ();
+
+        read_u64 -> u64;
+        read_u32 -> u32;
+        read_u16 -> u16;
+        read_u8 -> u8;
+        read_usize -> usize;
+
+        read_i64 -> i64;
+        read_i32 -> i32;
+        read_i16 -> i16;
+        read_i8 -> i8;
+        read_isize -> isize;
+
+        read_bool -> bool;
+        read_f64 -> f64;
+        read_f32 -> f32;
+        read_char -> char;
+        read_str -> String;
+    }
+
+    fn error(&mut self, err: &str) -> Self::Error {
+        self.opaque.error(err)
     }
 }
 
@@ -256,7 +281,7 @@ pub type Cmd<'a> = &'a CrateMetadata;
 impl CrateMetadata {
     fn get_item(&self, item_id: DefIndex) -> Option<rbml::Doc> {
         self.index.lookup_item(self.data(), item_id).map(|pos| {
-            reader::doc_at(self.data(), pos as usize).unwrap().doc
+            rbml::Doc::at(self.data(), pos as usize)
         })
     }
 

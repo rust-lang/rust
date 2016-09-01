@@ -13,7 +13,6 @@ use common;
 use decoder;
 use encoder;
 use loader;
-use rbml;
 
 use middle::cstore::{InlinedItem, CrateStore, CrateSource, ChildItem, ExternCrate, DefLike};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
@@ -30,7 +29,6 @@ use rustc::mir::mir_map::MirMap;
 use rustc::util::nodemap::{FnvHashMap, NodeSet, DefIdMap};
 use rustc::session::config::PanicStrategy;
 
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::path::PathBuf;
 use syntax::ast;
@@ -697,22 +695,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                            reexports: &def::ExportMap,
                            link_meta: &LinkMeta,
                            reachable: &NodeSet,
-                           mir_map: &MirMap<'tcx>,
-                           krate: &hir::Crate) -> Vec<u8>
+                           mir_map: &MirMap<'tcx>) -> Vec<u8>
     {
-        let type_abbrevs = RefCell::new(FnvHashMap());
-        let ecx = encoder::EncodeContext {
-            rbml_w: rbml::writer::Encoder::new(),
-            tcx: tcx,
-            reexports: reexports,
-            link_meta: link_meta,
-            cstore: self,
-            reachable: reachable,
-            mir_map: mir_map,
-            type_abbrevs: &type_abbrevs,
-        };
-        encoder::encode_metadata(ecx, krate)
-
+        encoder::encode_metadata(tcx, self, reexports, link_meta, reachable, mir_map)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]

@@ -28,10 +28,9 @@
 //! incremental compilation purposes.
 //!
 //! The `IndexBuilder` facilitates both of these. It is created
-//! with an RBML encoder isntance (`rbml_w`) along with an
-//! `EncodingContext` (`ecx`), which it encapsulates. It has one main
-//! method, `record()`. You invoke `record` like so to create a new
-//! `data_item` element in the list:
+//! with an `EncodingContext` (`ecx`), which it encapsulates.
+//! It has one main method, `record()`. You invoke `record`
+//! like so to create a new `data_item` element in the list:
 //!
 //! ```
 //! index.record(some_def_id, callback_fn, data)
@@ -43,9 +42,9 @@
 //! returns, the `common::data_item` tag will be closed.
 //!
 //! The `ItemContentBuilder` is another type that just offers access
-//! to the `ecx` and `rbml_w` that were given in, as well as
-//! maintaining a list of `xref` instances, which are used to extract
-//! common data so it is not re-serialized.
+//! to the `ecx` that was given in, as well as maintaining a list of
+//! `xref` instances, which are used to extract common data so it is
+//! not re-serialized.
 //!
 //! `ItemContentBuilder` is a distinct type which does not offer the
 //! `record` method, so that we can ensure that `common::data_item` elements
