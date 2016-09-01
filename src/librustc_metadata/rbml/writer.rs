@@ -254,15 +254,11 @@ impl Encoder {
         }
     }
 
-    pub fn opaque(&mut self) -> opaque::Encoder {
-        opaque::Encoder::new(&mut self.writer)
-    }
-
     pub fn emit_opaque<F>(&mut self, f: F) -> EncodeResult
         where F: FnOnce(&mut opaque::Encoder) -> EncodeResult
     {
         self.start_tag(EsOpaque as usize)?;
-        f(&mut self.opaque())?;
+        f(&mut opaque::Encoder::new(&mut self.writer))?;
         self.mark_stable_position();
         self.end_tag()
     }
