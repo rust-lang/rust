@@ -28,7 +28,7 @@ use base;
 use base::*;
 use build::*;
 use closure;
-use common::{self, Block, Result, CrateContext, FunctionContext};
+use common::{self, Block, Result, CrateContext, FunctionContext, SharedCrateContext};
 use consts;
 use debuginfo::DebugLoc;
 use declare;
@@ -37,7 +37,7 @@ use monomorphize::{self, Instance};
 use trans_item::TransItem;
 use type_of;
 use Disr;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::hir;
 
 use syntax_pos::DUMMY_SP;
@@ -97,7 +97,7 @@ impl<'tcx> Callee<'tcx> {
             return Callee::trait_method(ccx, trait_id, def_id, substs);
         }
 
-        let fn_ty = def_ty(tcx, def_id, substs);
+        let fn_ty = def_ty(ccx.shared(), def_id, substs);
         if let ty::TyFnDef(_, _, f) = fn_ty.sty {
             if f.abi == Abi::RustIntrinsic || f.abi == Abi::PlatformIntrinsic {
                 return Callee {
@@ -155,20 +155,20 @@ impl<'tcx> Callee<'tcx> {
                                                          vtable_closure.substs,
                                                          trait_closure_kind);
 
-                let method_ty = def_ty(tcx, def_id, substs);
+                let method_ty = def_ty(ccx.shared(), def_id, substs);
                 Callee::ptr(llfn, method_ty)
             }
             traits::VtableFnPointer(vtable_fn_pointer) => {
                 let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
                 let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, vtable_fn_pointer.fn_ty);
 
-                let method_ty = def_ty(tcx, def_id, substs);
+                let method_ty = def_ty(ccx.shared(), def_id, substs);
                 Callee::ptr(llfn, method_ty)
             }
             traits::VtableObject(ref data) => {
                 Callee {
                     data: Virtual(tcx.get_vtable_index_of_object_method(data, def_id)),
-                    ty: def_ty(tcx, def_id, substs)
+                    ty: def_ty(ccx.shared(), def_id, substs)
                 }
             }
             vtable => {
@@ -244,12 +244,12 @@ impl<'tcx> Callee<'tcx> {
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
-fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                     def_id: DefId,
                     substs: &'tcx Substs<'tcx>)
                     -> Ty<'tcx> {
-    let ty = tcx.lookup_item_type(def_id).ty;
-    monomorphize::apply_param_substs(tcx, substs, &ty)
+    let ty = shared.tcx().lookup_item_type(def_id).ty;
+    monomorphize::apply_param_substs(shared, substs, &ty)
 }
 
 /// Translates an adapter that implements the `Fn` trait for a fn
@@ -407,7 +407,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let substs = tcx.normalize_associated_type(&substs);
     let instance = Instance::new(def_id, substs);
     let item_ty = ccx.tcx().lookup_item_type(def_id).ty;
-    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), substs, &item_ty);
+    let fn_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &item_ty);
 
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         return (llfn, fn_ty);

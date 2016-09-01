@@ -176,7 +176,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         let item_ty = ccx.tcx().lookup_item_type(instance.def).ty;
         let item_ty = ccx.tcx().erase_regions(&item_ty);
-        let mono_ty = monomorphize::apply_param_substs(ccx.tcx(), instance.substs, &item_ty);
+        let mono_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &item_ty);
 
         let attrs = ccx.tcx().get_attrs(instance.def);
         let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);

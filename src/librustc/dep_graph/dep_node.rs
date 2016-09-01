@@ -132,7 +132,7 @@ pub enum DepNode<D: Clone + Debug> {
     // which would yield an overly conservative dep-graph.
     TraitItems(D),
     ReprHints(D),
-    TraitSelect(D, Vec<D>),
+    TraitSelect(Vec<D>),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -237,10 +237,9 @@ impl<D: Clone + Debug> DepNode<D> {
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
-            TraitSelect(ref d, ref type_ds) => {
-                let d = try_opt!(op(d));
+            TraitSelect(ref type_ds) => {
                 let type_ds = try_opt!(type_ds.iter().map(|d| op(d)).collect());
-                Some(TraitSelect(d, type_ds))
+                Some(TraitSelect(type_ds))
             }
         }
     }

@@ -117,6 +117,7 @@
 //! inlining, even when they are not marked #[inline].
 
 use collector::InliningMap;
+use context::SharedCrateContext;
 use llvm;
 use monomorphize;
 use rustc::dep_graph::{DepNode, WorkProductId};
@@ -250,7 +251,7 @@ impl<'tcx> CodegenUnit<'tcx> {
 // Anything we can't find a proper codegen unit for goes into this.
 const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
-pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                               trans_items: I,
                               strategy: PartitioningStrategy,
                               inlining_map: &InliningMap<'tcx>,
@@ -258,6 +259,8 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
+    let tcx = scx.tcx();
+
     if let PartitioningStrategy::FixedUnitCount(1) = strategy {
         // If there is only a single codegen-unit, we can use a very simple
         // scheme and don't have to bother with doing much analysis.
@@ -267,7 +270,7 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // In the first step, we place all regular translation items into their
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
-    let mut initial_partitioning = place_root_translation_items(tcx,
+    let mut initial_partitioning = place_root_translation_items(scx,
                                                                 trans_items,
                                                                 reachable);
 
@@ -306,12 +309,13 @@ struct PreInliningPartitioning<'tcx> {
 
 struct PostInliningPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
 
-fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                                              trans_items: I,
                                              _reachable: &NodeSet)
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
+    let tcx = scx.tcx();
     let mut roots = FnvHashSet();
     let mut codegen_units = FnvHashMap();
 
@@ -319,7 +323,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let is_root = !trans_item.is_instantiated_only_on_demand();
 
         if is_root {
-            let characteristic_def_id = characteristic_def_id_of_trans_item(tcx, trans_item);
+            let characteristic_def_id = characteristic_def_id_of_trans_item(scx, trans_item);
             let is_volatile = trans_item.is_generic_fn();
 
             let codegen_unit_name = match characteristic_def_id {
@@ -477,9 +481,10 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
     }
 }
 
-fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                                  trans_item: TransItem<'tcx>)
                                                  -> Option<DefId> {
+    let tcx = scx.tcx();
     match trans_item {
         TransItem::Fn(instance) => {
             // If this is a method, we want to put it into the same module as
@@ -497,7 +502,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // self-type is:
                 let impl_self_ty = tcx.lookup_item_type(impl_def_id).ty;
                 let impl_self_ty = tcx.erase_regions(&impl_self_ty);
-                let impl_self_ty = monomorphize::apply_param_substs(tcx,
+                let impl_self_ty = monomorphize::apply_param_substs(scx,
                                                                     instance.substs,
                                                                     &impl_self_ty);
 

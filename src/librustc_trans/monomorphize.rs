@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use common::*;
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
+use rustc::ty::fold::{TypeFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
-use common::*;
 use rustc::util::ppaux;
-
+use rustc::util::common::MemoizationMap;
 use std::fmt;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -42,14 +43,17 @@ impl<'tcx> Instance<'tcx> {
 
 /// Monomorphizes a type from the AST by first applying the in-scope
 /// substitutions and then normalizing any associated types.
-pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn apply_param_substs<'a, 'tcx, T>(scx: &SharedCrateContext<'a, 'tcx>,
                                        param_substs: &Substs<'tcx>,
                                        value: &T)
                                        -> T
     where T: TransNormalize<'tcx>
 {
+    let tcx = scx.tcx();
+    debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
     let substituted = value.subst(tcx, param_substs);
-    tcx.normalize_associated_type(&substituted)
+    let substituted = scx.tcx().erase_regions(&substituted);
+    AssociatedTypeNormalizer::new(scx).fold(&substituted)
 }
 
 
@@ -60,4 +64,41 @@ pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           -> Ty<'tcx>
 {
     tcx.normalize_associated_type(&f.ty(tcx, param_substs))
+}
+
+struct AssociatedTypeNormalizer<'a, 'b: 'a, 'gcx: 'b> {
+    shared: &'a SharedCrateContext<'b, 'gcx>,
+}
+
+impl<'a, 'b, 'gcx> AssociatedTypeNormalizer<'a, 'b, 'gcx> {
+    fn new(shared: &'a SharedCrateContext<'b, 'gcx>) -> Self {
+        AssociatedTypeNormalizer {
+            shared: shared,
+        }
+    }
+
+    fn fold<T:TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
+        if !value.has_projection_types() {
+            value.clone()
+        } else {
+            value.fold_with(self)
+        }
+    }
+}
+
+impl<'a, 'b, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'b, 'gcx> {
+    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'gcx> {
+        self.shared.tcx()
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
+        if !ty.has_projection_types() {
+            ty
+        } else {
+            self.shared.project_cache().memoize(ty, || {
+                debug!("AssociatedTypeNormalizer: ty={:?}", ty);
+                self.shared.tcx().normalize_associated_type(&ty)
+            })
+        }
+    }
 }
