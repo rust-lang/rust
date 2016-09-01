@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[export_name] //~ ERROR E0558
+#[export_name]
+//~^ ERROR E0558
+//~| NOTE did you mean #[export_name="*"]?
+
 pub fn something() {}
 
 fn main() {}
