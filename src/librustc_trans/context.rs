@@ -996,7 +996,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn layout_of(&self, ty: Ty<'tcx>) -> &'tcx ty::layout::Layout {
-        self.tcx().normalizing_infer_ctxt(traits::Reveal::All).enter(|infcx| {
+        self.tcx().infer_ctxt(None, None, traits::Reveal::All).enter(|infcx| {
             ty.layout(&infcx).unwrap_or_else(|e| {
                 bug!("failed to get layout for `{}`: {}", ty, e);
             })

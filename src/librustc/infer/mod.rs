@@ -468,17 +468,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
         }
     }
 
-    pub fn normalizing_infer_ctxt(self, projection_mode: Reveal)
-                                  -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
-        InferCtxtBuilder {
-            global_tcx: self,
-            arenas: ty::CtxtArenas::new(),
-            tables: None,
-            param_env: None,
-            projection_mode: projection_mode,
-        }
-    }
-
     /// Fake InferCtxt with the global tcx. Used by pre-MIR borrowck
     /// for MemCategorizationContext/ExprUseVisitor.
     /// If any inference functionality is used, ICEs will occur.
