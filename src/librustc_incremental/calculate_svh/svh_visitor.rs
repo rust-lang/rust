@@ -15,7 +15,7 @@
 
 use self::SawExprComponent::*;
 use self::SawAbiComponent::*;
-use syntax::ast::{self, Name, NodeId, Attribute};
+use syntax::ast::{self, Name, NodeId};
 use syntax::parse::token;
 use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
 use rustc::hir;
@@ -24,6 +24,7 @@ use rustc::hir::def::{Def, PathResolution};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
+use rustc_data_structures::fnv;
 use std::hash::{Hash, SipHasher};
 
 use super::def_path_hash::DefPathHashes;
@@ -526,7 +527,7 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         visit::walk_assoc_type_binding(self, type_binding)
     }
 
-    fn visit_attribute(&mut self, _: &Attribute) {
+    fn visit_attribute(&mut self, _: &ast::Attribute) {
         // We explicitly do not use this method, since doing that would
         // implicitly impose an order on the attributes being hashed, while we
         // explicitly don't want their order to matter
@@ -658,28 +659,34 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                 s.hash(self.st);
                 // Sort subitems so the hash does not depend on their order
                 let indices = self.indices_sorted_by(&items, |p| {
-                    meta_item_sort_key(&*p)
+                    (p.name(), fnv::hash(&p.literal().map(|i| &i.node)))
                 });
                 items.len().hash(self.st);
                 for (index, &item_index) in indices.iter().enumerate() {
                     index.hash(self.st);
-                    self.hash_meta_item(&items[item_index]);
+                    let nested_meta_item: &ast::NestedMetaItemKind = &items[item_index].node;
+                    self.hash_discriminant(nested_meta_item);
+                    match *nested_meta_item {
+                        ast::NestedMetaItemKind::MetaItem(ref meta_item) => {
+                            self.hash_meta_item(meta_item);
+                        }
+                        ast::NestedMetaItemKind::Literal(ref lit) => {
+                            lit.node.hash(self.st);
+                        }
+                    }
                 }
             }
         }
     }
 
-    pub fn hash_attributes(&mut self, attributes: &[Attribute]) {
+    pub fn hash_attributes(&mut self, attributes: &[ast::Attribute]) {
         debug!("hash_attributes: st={:?}", self.st);
-        let indices = self.indices_sorted_by(attributes, |attr| {
-            meta_item_sort_key(&attr.node.value)
-        });
+        let indices = self.indices_sorted_by(attributes, |attr| attr.name());
 
         for i in indices {
             let attr = &attributes[i].node;
-
             if !attr.is_sugared_doc &&
-               !IGNORED_ATTRIBUTES.contains(&&*meta_item_sort_key(&attr.value)) {
+               !IGNORED_ATTRIBUTES.contains(&&*attr.value.name()) {
                 SawAttribute(attr.style).hash(self.st);
                 self.hash_meta_item(&*attr.value);
             }
@@ -694,13 +701,5 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         indices.extend(0 .. items.len());
         indices.sort_by_key(|index| get_key(&items[*index]));
         indices
-    }
-}
-
-fn meta_item_sort_key(item: &ast::MetaItem) -> token::InternedString {
-    match item.node {
-        ast::MetaItemKind::Word(ref s) |
-        ast::MetaItemKind::NameValue(ref s, _) |
-        ast::MetaItemKind::List(ref s, _) => s.clone()
     }
 }
