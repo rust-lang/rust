@@ -281,7 +281,11 @@ declare_features! (
     (active, never_type, "1.13.0", Some(35121)),
 
     // Allows all literals in attribute lists and values of key-value pairs.
-    (active, attr_literals, "1.13.0", Some(34981))
+    (active, attr_literals, "1.13.0", Some(34981)),
+
+    // Allows the sysV64 ABI to be specified on all platforms
+    // instead of just the platforms on which it is the C ABI
+    (active, abi_sysv64, "1.13.0", Some(36167))
 );
 
 declare_features! (
@@ -811,21 +815,26 @@ macro_rules! gate_feature_post {
 impl<'a> PostExpansionVisitor<'a> {
     fn check_abi(&self, abi: Abi, span: Span) {
         match abi {
-            Abi::RustIntrinsic =>
+            Abi::RustIntrinsic => {
                 gate_feature_post!(&self, intrinsics, span,
-                                   "intrinsics are subject to change"),
+                                   "intrinsics are subject to change");
+            },
             Abi::PlatformIntrinsic => {
                 gate_feature_post!(&self, platform_intrinsics, span,
-                                   "platform intrinsics are experimental and possibly buggy")
+                                   "platform intrinsics are experimental and possibly buggy");
             },
             Abi::Vectorcall => {
                 gate_feature_post!(&self, abi_vectorcall, span,
-                                   "vectorcall is experimental and subject to change")
-            }
+                                   "vectorcall is experimental and subject to change");
+            },
             Abi::RustCall => {
                 gate_feature_post!(&self, unboxed_closures, span,
                                    "rust-call ABI is subject to change");
-            }
+            },
+            Abi::SysV64 => {
+                gate_feature_post!(&self, abi_sysv64, span,
+                                   "sysv64 ABI is experimental and subject to change");
+            },
             _ => {}
         }
     }

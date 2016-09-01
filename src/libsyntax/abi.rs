@@ -39,6 +39,7 @@ pub enum Abi {
     Vectorcall,
     Aapcs,
     Win64,
+    SysV64,
 
     // Multiplatform ABIs second
     Rust,
@@ -86,6 +87,7 @@ const AbiDatas: &'static [AbiData] = &[
     AbiData {abi: Abi::Vectorcall, name: "vectorcall"},
     AbiData {abi: Abi::Aapcs, name: "aapcs" },
     AbiData {abi: Abi::Win64, name: "win64" },
+    AbiData {abi: Abi::SysV64, name: "sysv64" },
 
     // Cross-platform ABIs
     //

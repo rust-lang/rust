@@ -269,6 +269,7 @@ impl FnType {
             Vectorcall => llvm::X86_VectorCall,
             C => llvm::CCallConv,
             Win64 => llvm::X86_64_Win64,
+            SysV64 => llvm::X86_64_SysV,
 
             // These API constants ought to be more specific...
             Cdecl => llvm::CCallConv,
@@ -483,7 +484,9 @@ impl FnType {
 
         match &ccx.sess().target.target.arch[..] {
             "x86" => cabi_x86::compute_abi_info(ccx, self),
-            "x86_64" => if ccx.sess().target.target.options.is_like_windows {
+            "x86_64" => if abi == Abi::SysV64 {
+                cabi_x86_64::compute_abi_info(ccx, self);
+            } else if abi == Abi::Win64 || ccx.sess().target.target.options.is_like_windows {
                 cabi_x86_win64::compute_abi_info(ccx, self);
             } else {
                 cabi_x86_64::compute_abi_info(ccx, self);

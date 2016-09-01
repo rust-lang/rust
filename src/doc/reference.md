@@ -1677,6 +1677,7 @@ There are also some platform-specific ABI strings:
 * `extern "cdecl"` -- The default for x86\_32 C code.
 * `extern "stdcall"` -- The default for the Win32 API on x86\_32.
 * `extern "win64"` -- The default for C code on x86\_64 Windows.
+* `extern "sysv64"` -- The default for C code on non-Windows x86\_64.
 * `extern "aapcs"` -- The default for ARM.
 * `extern "fastcall"` -- The `fastcall` ABI -- corresponds to MSVC's
   `__fastcall` and GCC and clang's `__attribute__((fastcall))`
@@ -2484,6 +2485,9 @@ The currently implemented features of the reference compiler are:
                              (e.g. `extern "vectorcall" func fn_();`)
 
 * - `dotdot_in_tuple_patterns` - Allows `..` in tuple (struct) patterns.
+
+* - `abi_sysv64` - Allows the usage of the system V AMD64 calling convention
+                             (e.g. `extern "sysv64" func fn_();`)
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled
