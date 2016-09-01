@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ## 0.0.87 — 2016-08-31
 * Rustup to *rustc 1.13.0-nightly (eac41469d 2016-08-30)*
 * New lints: [`builtin_type_shadow`]
-* Fix FP in [`zero_prefixed_literal`] and `0b`/`Oo`
+* Fix FP in [`zero_prefixed_literal`] and `0b`/`0o`
 
 ## 0.0.86 — 2016-08-28
 * Rustup to *rustc 1.13.0-nightly (a23064af5 2016-08-27)*
