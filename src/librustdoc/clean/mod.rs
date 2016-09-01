@@ -38,7 +38,6 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime::DefRegion::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{self, DefId, DefIndex, CRATE_DEF_INDEX};
-use rustc::hir::fold::Folder;
 use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
@@ -774,7 +773,20 @@ impl Lifetime {
 }
 
 impl Clean<Lifetime> for hir::Lifetime {
-    fn clean(&self, _: &DocContext) -> Lifetime {
+    fn clean(&self, cx: &DocContext) -> Lifetime {
+        if let Some(tcx) = cx.tcx_opt() {
+            let def = tcx.named_region_map.defs.get(&self.id).cloned();
+            match def {
+                Some(DefEarlyBoundRegion(_, node_id)) |
+                Some(DefLateBoundRegion(_, node_id)) |
+                Some(DefFreeRegion(_, node_id)) => {
+                    if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
+                        return lt;
+                    }
+                }
+                _ => {}
+            }
+        }
         Lifetime(self.name.to_string())
     }
 }
@@ -1629,42 +1641,6 @@ impl From<ast::FloatTy> for PrimitiveType {
     }
 }
 
-// Poor man's type parameter substitution at HIR level.
-// Used to replace private type aliases in public signatures with their aliased types.
-struct SubstAlias<'a, 'tcx: 'a> {
-    tcx: &'a ty::TyCtxt<'a, 'tcx, 'tcx>,
-    // Table type parameter definition -> substituted type
-    ty_substs: FnvHashMap<Def, hir::Ty>,
-    // Table node id of lifetime parameter definition -> substituted lifetime
-    lt_substs: FnvHashMap<ast::NodeId, hir::Lifetime>,
-}
-
-impl<'a, 'tcx: 'a, 'b: 'tcx> Folder for SubstAlias<'a, 'tcx> {
-    fn fold_ty(&mut self, ty: P<hir::Ty>) -> P<hir::Ty> {
-        if let hir::TyPath(..) = ty.node {
-            let def = self.tcx.expect_def(ty.id);
-            if let Some(new_ty) = self.ty_substs.get(&def).cloned() {
-                return P(new_ty);
-            }
-        }
-        hir::fold::noop_fold_ty(ty, self)
-    }
-    fn fold_lifetime(&mut self, lt: hir::Lifetime) -> hir::Lifetime {
-        let def = self.tcx.named_region_map.defs.get(&lt.id).cloned();
-        match def {
-            Some(DefEarlyBoundRegion(_, node_id)) |
-            Some(DefLateBoundRegion(_, node_id)) |
-            Some(DefFreeRegion(_, node_id)) => {
-                if let Some(lt) = self.lt_substs.get(&node_id).cloned() {
-                    return lt;
-                }
-            }
-            _ => {}
-        }
-        hir::fold::noop_fold_lifetime(lt, self)
-    }
-}
-
 impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         use rustc::hir::*;
@@ -1696,43 +1672,47 @@ impl Clean<Type> for hir::Ty {
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(None, ref path) => {
-                if let Some(tcx) = cx.tcx_opt() {
-                    // Substitute private type aliases
-                    let def = tcx.expect_def(self.id);
+                let tcx_and_def = cx.tcx_opt().map(|tcx| (tcx, tcx.expect_def(self.id)));
+                if let Some((_, def)) = tcx_and_def {
+                    if let Some(new_ty) = cx.ty_substs.borrow().get(&def).cloned() {
+                        return new_ty;
+                    }
+                }
+
+                let tcx_and_alias = tcx_and_def.and_then(|(tcx, def)| {
                     if let Def::TyAlias(def_id) = def {
-                        if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+                        // Substitute private type aliases
+                        tcx.map.as_local_node_id(def_id).and_then(|node_id| {
                             if !cx.access_levels.borrow().is_exported(def_id) {
-                                let item = tcx.map.expect_item(node_id);
-                                if let hir::ItemTy(ref ty, ref generics) = item.node {
-                                    let provided_params = &path.segments.last().unwrap().parameters;
-                                    let mut ty_substs = FnvHashMap();
-                                    let mut lt_substs = FnvHashMap();
-                                    for (i, ty_param) in generics.ty_params.iter().enumerate() {
-                                        let ty_param_def = tcx.expect_def(ty_param.id);
-                                        if let Some(ty) = provided_params.types().get(i).cloned()
-                                                                                        .cloned() {
-                                            ty_substs.insert(ty_param_def, ty.unwrap());
-                                        } else if let Some(default) = ty_param.default.clone() {
-                                            ty_substs.insert(ty_param_def, default.unwrap());
-                                        }
-                                    }
-                                    for (i, lt_param) in generics.lifetimes.iter().enumerate() {
-                                        if let Some(lt) = provided_params.lifetimes().get(i)
-                                                                                     .cloned()
-                                                                                     .cloned() {
-                                            lt_substs.insert(lt_param.lifetime.id, lt);
-                                        }
-                                    }
-                                    let mut subst_alias = SubstAlias {
-                                        tcx: &tcx,
-                                        ty_substs: ty_substs,
-                                        lt_substs: lt_substs
-                                    };
-                                    return subst_alias.fold_ty(ty.clone()).clean(cx);
-                                }
+                                Some((tcx, &tcx.map.expect_item(node_id).node))
+                            } else {
+                                None
                             }
+                        })
+                    } else {
+                        None
+                    }
+                });
+                if let Some((tcx, &hir::ItemTy(ref ty, ref generics))) = tcx_and_alias {
+                    let provided_params = &path.segments.last().unwrap().parameters;
+                    let mut ty_substs = FnvHashMap();
+                    let mut lt_substs = FnvHashMap();
+                    for (i, ty_param) in generics.ty_params.iter().enumerate() {
+                        let ty_param_def = tcx.expect_def(ty_param.id);
+                        if let Some(ty) = provided_params.types().get(i).cloned()
+                                                                        .cloned() {
+                            ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
+                        } else if let Some(default) = ty_param.default.clone() {
+                            ty_substs.insert(ty_param_def, default.unwrap().clean(cx));
                         }
                     }
+                    for (i, lt_param) in generics.lifetimes.iter().enumerate() {
+                        if let Some(lt) = provided_params.lifetimes().get(i).cloned()
+                                                                            .cloned() {
+                            lt_substs.insert(lt_param.lifetime.id, lt.clean(cx));
+                        }
+                    }
+                    return cx.enter_alias(ty_substs, lt_substs, || ty.clean(cx));
                 }
                 resolve_type(cx, path.clean(cx), self.id)
             }

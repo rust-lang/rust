@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::{RefCell, Cell};
+use std::cell::Cell;
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -28,7 +28,6 @@ use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType,
                              OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
@@ -107,12 +106,14 @@ pub fn run(input: &str,
         map: &map,
         maybe_typed: core::NotTyped(&sess),
         input: input,
-        external_traits: RefCell::new(FnvHashMap()),
-        populated_crate_impls: RefCell::new(FnvHashSet()),
+        external_traits: Default::default(),
+        populated_crate_impls: Default::default(),
         deref_trait_did: Cell::new(None),
         deref_mut_trait_did: Cell::new(None),
         access_levels: Default::default(),
         renderinfo: Default::default(),
+        ty_substs: Default::default(),
+        lt_substs: Default::default(),
     };
 
     let mut v = RustdocVisitor::new(&ctx);

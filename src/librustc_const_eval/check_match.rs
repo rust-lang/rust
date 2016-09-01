@@ -40,11 +40,10 @@ use rustc_back::slice;
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
 use syntax::codemap::Spanned;
 use syntax_pos::{Span, DUMMY_SP};
-use rustc::hir::fold::{Folder, noop_fold_pat};
 use rustc::hir::print::pat_to_string;
 use syntax::ptr::P;
+use syntax::util::move_map::MoveMap;
 use rustc::util::common::ErrorReported;
-use rustc::util::nodemap::FnvHashMap;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
@@ -182,7 +181,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 }
             }
 
-            let mut static_inliner = StaticInliner::new(cx.tcx, None);
+            let mut static_inliner = StaticInliner::new(cx.tcx);
             let inlined_arms = arms.iter().map(|arm| {
                 (arm.pats.iter().map(|pat| {
                     static_inliner.fold_pat((*pat).clone())
@@ -467,53 +466,30 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
     })
 }
 
-pub struct StaticInliner<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub failed: bool,
-    pub renaming_map: Option<&'a mut FnvHashMap<(NodeId, Span), NodeId>>,
+struct StaticInliner<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    failed: bool
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-                   renaming_map: Option<&'b mut FnvHashMap<(NodeId, Span), NodeId>>)
-                   -> StaticInliner<'b, 'tcx> {
+    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> StaticInliner<'b, 'tcx> {
         StaticInliner {
             tcx: tcx,
-            failed: false,
-            renaming_map: renaming_map
+            failed: false
         }
     }
 }
 
-struct RenamingRecorder<'map> {
-    substituted_node_id: NodeId,
-    origin_span: Span,
-    renaming_map: &'map mut FnvHashMap<(NodeId, Span), NodeId>
-}
-
-impl<'v, 'map> Visitor<'v> for RenamingRecorder<'map> {
-    fn visit_id(&mut self, node_id: NodeId) {
-        let key = (node_id, self.origin_span);
-        self.renaming_map.insert(key, self.substituted_node_id);
-    }
-}
-
-impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
+impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
-        return match pat.node {
+        match pat.node {
             PatKind::Path(..) => {
                 match self.tcx.expect_def(pat.id) {
                     Def::AssociatedConst(did) | Def::Const(did) => {
                         let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
                         if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
                             match const_expr_to_pat(self.tcx, const_expr, pat.id, pat.span) {
-                                Ok(new_pat) => {
-                                    if let Some(ref mut map) = self.renaming_map {
-                                        // Record any renamings we do here
-                                        record_renamings(const_expr, &pat, map);
-                                    }
-                                    new_pat
-                                }
+                                Ok(new_pat) => return new_pat,
                                 Err(def_id) => {
                                     self.failed = true;
                                     self.tcx.sess.span_err(
@@ -521,33 +497,62 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                                         &format!("constants of the type `{}` \
                                                   cannot be used in patterns",
                                                  self.tcx.item_path_str(def_id)));
-                                    pat
                                 }
                             }
                         } else {
                             self.failed = true;
                             span_err!(self.tcx.sess, pat.span, E0158,
                                 "statics cannot be referenced in patterns");
-                            pat
                         }
                     }
-                    _ => noop_fold_pat(pat, self)
+                    _ => {}
                 }
             }
-            _ => noop_fold_pat(pat, self)
-        };
-
-        fn record_renamings(const_expr: &hir::Expr,
-                            substituted_pat: &hir::Pat,
-                            renaming_map: &mut FnvHashMap<(NodeId, Span), NodeId>) {
-            let mut renaming_recorder = RenamingRecorder {
-                substituted_node_id: substituted_pat.id,
-                origin_span: substituted_pat.span,
-                renaming_map: renaming_map,
-            };
-
-            renaming_recorder.visit_expr(const_expr);
+            _ => {}
         }
+
+        pat.map(|Pat { id, node, span }| {
+            let node = match node {
+                PatKind::Binding(binding_mode, pth1, sub) => {
+                    PatKind::Binding(binding_mode, pth1, sub.map(|x| self.fold_pat(x)))
+                }
+                PatKind::TupleStruct(pth, pats, ddpos) => {
+                    PatKind::TupleStruct(pth, pats.move_map(|x| self.fold_pat(x)), ddpos)
+                }
+                PatKind::Struct(pth, fields, etc) => {
+                    let fs = fields.move_map(|f| {
+                        Spanned {
+                            span: f.span,
+                            node: hir::FieldPat {
+                                name: f.node.name,
+                                pat: self.fold_pat(f.node.pat),
+                                is_shorthand: f.node.is_shorthand,
+                            },
+                        }
+                    });
+                    PatKind::Struct(pth, fs, etc)
+                }
+                PatKind::Tuple(elts, ddpos) => {
+                    PatKind::Tuple(elts.move_map(|x| self.fold_pat(x)), ddpos)
+                }
+                PatKind::Box(inner) => PatKind::Box(self.fold_pat(inner)),
+                PatKind::Ref(inner, mutbl) => PatKind::Ref(self.fold_pat(inner), mutbl),
+                PatKind::Vec(before, slice, after) => {
+                    PatKind::Vec(before.move_map(|x| self.fold_pat(x)),
+                                 slice.map(|x| self.fold_pat(x)),
+                                 after.move_map(|x| self.fold_pat(x)))
+                }
+                PatKind::Wild |
+                PatKind::Lit(_) |
+                PatKind::Range(..) |
+                PatKind::Path(..) => node
+            };
+            Pat {
+                id: id,
+                node: node,
+                span: span
+            }
+        })
     }
 }
 
@@ -1047,7 +1052,7 @@ pub fn specialize<'a, 'b, 'tcx>(
 fn check_local(cx: &mut MatchCheckCtxt, loc: &hir::Local) {
     intravisit::walk_local(cx, loc);
 
-    let pat = StaticInliner::new(cx.tcx, None).fold_pat(loc.pat.clone());
+    let pat = StaticInliner::new(cx.tcx).fold_pat(loc.pat.clone());
     check_irrefutable(cx, &pat, false);
 
     // Check legality of move bindings and `@` patterns.
