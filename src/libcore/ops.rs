@@ -1564,24 +1564,66 @@ rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `BitAndAssign`. When `Foo &= Foo` happens, it ends up
-/// calling `bitand_assign`, and therefore, `main` prints `Bitwise And-ing!`.
+/// In this example, the `&=` operator is lifted to a trivial `Scalar` type.
 ///
 /// ```
 /// use std::ops::BitAndAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// struct Scalar(bool);
 ///
-/// impl BitAndAssign for Foo {
-///     fn bitand_assign(&mut self, _rhs: Foo) {
-///         println!("Bitwise And-ing!");
+/// impl BitAndAssign for Scalar {
+///     // rhs is the "right-hand side" of the expression `a &= b`
+///     fn bitand_assign(&mut self, rhs: Self) {
+///         *self = Scalar(self.0 & rhs.0)
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
 /// fn main() {
-///     let mut foo = Foo;
-///     foo &= Foo;
+///     let mut scalar = Scalar(true);
+///     scalar &= Scalar(true);
+///     assert_eq!(scalar, Scalar(true));
+///
+///     let mut scalar = Scalar(true);
+///     scalar &= Scalar(false);
+///     assert_eq!(scalar, Scalar(false));
+///
+///     let mut scalar = Scalar(false);
+///     scalar &= Scalar(true);
+///     assert_eq!(scalar, Scalar(false));
+///
+///     let mut scalar = Scalar(false);
+///     scalar &= Scalar(false);
+///     assert_eq!(scalar, Scalar(false));
+/// }
+/// ```
+///
+/// In this example, the `BitAndAssign` trait is implemented for a
+/// `BooleanVector` struct.
+///
+/// ```
+/// use std::ops::BitAndAssign;
+///
+/// #[derive(Debug, PartialEq)]
+/// struct BooleanVector(Vec<bool>);
+///
+/// impl BitAndAssign for BooleanVector {
+///     // rhs is the "right-hand side" of the expression `a &= b`
+///     fn bitand_assign(&mut self, rhs: Self) {
+///         assert_eq!(self.0.len(), rhs.0.len());
+///         *self = BooleanVector(self.0
+///                                   .iter()
+///                                   .zip(rhs.0.iter())
+///                                   .map(|(x, y)| *x && *y)
+///                                   .collect());
+///     }
+/// }
+///
+/// fn main() {
+///     let mut bv = BooleanVector(vec![true, true, false, false]);
+///     bv &= BooleanVector(vec![true, false, true, false]);
+///     let expected = BooleanVector(vec![true, false, false, false]);
+///     assert_eq!(bv, expected);
 /// }
 /// ```
 #[lang = "bitand_assign"]

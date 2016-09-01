@@ -10,7 +10,10 @@
 
 trait A<T=Self> {}
 
-fn together_we_will_rule_the_galaxy(son: &A) {} //~ ERROR E0393
+fn together_we_will_rule_the_galaxy(son: &A) {}
+//~^ ERROR E0393
+//~| NOTE missing reference to `T`
+//~| NOTE because of the default `Self` reference, type parameters must be specified on object types
 
 fn main() {
 }

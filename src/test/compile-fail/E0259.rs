@@ -9,6 +9,10 @@
 // except according to those terms.
 
 extern crate collections;
-extern crate libc as collections; //~ ERROR E0259
+//~^ NOTE previous import of `collections` here
+
+extern crate libc as collections;
+//~^ ERROR E0259
+//~| NOTE `collections` was already imported
 
 fn main() {}
