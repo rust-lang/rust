@@ -102,9 +102,10 @@ use monomorphize::Instance;
 use util::sha2::{Digest, Sha256};
 
 use rustc::middle::weak_lang_items;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir::map as hir_map;
-use rustc::ty::{Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::fold::TypeVisitor;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::subst::Substs;
 use rustc::hir::map::definitions::{DefPath, DefPathData};
@@ -114,9 +115,18 @@ use syntax::attr;
 use syntax::parse::token::{self, InternedString};
 use serialize::hex::ToHex;
 
-pub fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> String {
-    let def_path = tcx.def_path(def_id);
-    def_path.to_string(tcx)
+use std::hash::Hasher;
+
+struct Sha256Hasher<'a>(&'a mut Sha256);
+
+impl<'a> Hasher for Sha256Hasher<'a> {
+    fn write(&mut self, msg: &[u8]) {
+        self.0.input(msg)
+    }
+
+    fn finish(&self) -> u64 {
+        bug!("Sha256Hasher::finish should not be called");
+    }
 }
 
 fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
@@ -132,48 +142,43 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
                              // values for generic type parameters,
                              // if any.
-                             substs: Option<&Substs<'tcx>>)
+                             substs: Option<&'tcx Substs<'tcx>>)
                              -> String {
     debug!("get_symbol_hash(def_path={:?}, parameters={:?})",
            def_path, substs);
 
     let tcx = scx.tcx();
 
-    return record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
-        let mut hash_state = scx.symbol_hasher().borrow_mut();
-
+    let mut hash_state = scx.symbol_hasher().borrow_mut();
+    record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
         hash_state.reset();
 
+        let mut hasher = ty::util::TypeIdHasher::new(tcx, Sha256Hasher(&mut hash_state));
         // the main symbol name is not necessarily unique; hash in the
         // compiler's internal def-path, guaranteeing each symbol has a
         // truly unique path
-        hash_state.input_str(&def_path.to_string(tcx));
+        hasher.hash(def_path.to_string(tcx));
 
         // Include the main item-type. Note that, in this case, the
         // assertions about `needs_subst` may not hold, but this item-type
         // ought to be the same for every reference anyway.
         assert!(!item_type.has_erasable_regions());
-        let encoded_item_type = tcx.sess.cstore.encode_type(tcx, item_type, def_id_to_string);
-        hash_state.input(&encoded_item_type[..]);
+        hasher.visit_ty(item_type);
 
         // also include any type parameters (for generic items)
         if let Some(substs) = substs {
-            for t in substs.types() {
-                assert!(!t.has_erasable_regions());
-                assert!(!t.needs_subst());
-                let encoded_type = tcx.sess.cstore.encode_type(tcx, t, def_id_to_string);
-                hash_state.input(&encoded_type[..]);
-            }
+            assert!(!substs.has_erasable_regions());
+            assert!(!substs.needs_subst());
+            substs.visit_with(&mut hasher);
         }
-
-        format!("h{}", truncated_hash_result(&mut *hash_state))
     });
-
     fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
         let output = symbol_hasher.result_bytes();
         // 64 bits should be enough to avoid collisions.
         output[.. 8].to_hex()
     }
+
+    format!("h{}", truncated_hash_result(&mut hash_state))
 }
 
 impl<'a, 'tcx> Instance<'tcx> {

@@ -258,11 +258,6 @@ pub trait CrateStore<'tcx> {
     // utility functions
     fn metadata_filename(&self) -> &str;
     fn metadata_section_name(&self, target: &Target) -> &str;
-    fn encode_type<'a>(&self,
-                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       ty: Ty<'tcx>,
-                       def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String)
-                       -> Vec<u8>;
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>;
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
@@ -469,13 +464,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // utility functions
     fn metadata_filename(&self) -> &str { bug!("metadata_filename") }
     fn metadata_section_name(&self, target: &Target) -> &str { bug!("metadata_section_name") }
-    fn encode_type<'a>(&self,
-                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       ty: Ty<'tcx>,
-                       def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String)
-                       -> Vec<u8> {
-        bug!("encode_type")
-    }
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, Option<PathBuf>)>
         { vec![] }
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }

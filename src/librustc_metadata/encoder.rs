@@ -36,9 +36,8 @@ use rustc::session::config::{self, PanicStrategy, CrateTypeRustcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, SpecializedEncoder};
-use std::cell::RefCell;
 use std::io::prelude::*;
-use std::io::{Cursor, SeekFrom};
+use std::io::SeekFrom;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::u32;
@@ -1890,18 +1889,4 @@ fn encode_metadata_inner(ecx: &mut EncodeContext, krate: &hir::Crate) {
         println!("            zero bytes: {}", stats.zero_bytes);
         println!("           total bytes: {}", stats.total_bytes);
     }
-}
-
-// Get the encoded string for a type
-pub fn encoded_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            t: Ty<'tcx>,
-                            def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String)
-                            -> Vec<u8> {
-    let mut wr = Cursor::new(Vec::new());
-    tyencode::enc_ty(&mut wr, &tyencode::ctxt {
-        ds: def_id_to_string,
-        tcx: tcx,
-        abbrevs: &RefCell::new(FnvHashMap())
-    }, t);
-    wr.into_inner()
 }
