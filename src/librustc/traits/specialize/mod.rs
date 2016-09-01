@@ -147,7 +147,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              .unwrap()
                              .subst(tcx, &penv.free_substs);
 
-    let result = tcx.normalizing_infer_ctxt(Reveal::ExactMatch).enter(|mut infcx| {
+    let result = tcx.infer_ctxt(None, None, Reveal::ExactMatch).enter(|mut infcx| {
         // Normalize the trait reference, adding any obligations
         // that arise into the impl1 assumptions.
         let Normalized { value: impl1_trait_ref, obligations: normalization_obligations } = {
