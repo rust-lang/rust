@@ -352,12 +352,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = TypeIdHasher {
-            tcx: self,
-            state: SipHasher::new()
-        };
+        let mut hasher = TypeIdHasher::new(self, SipHasher::new());
         hasher.visit_ty(ty);
-        hasher.state.finish()
+        hasher.finish()
     }
 
     /// Returns true if this ADT is a dtorck type.
@@ -391,14 +388,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, H> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    state: SipHasher
+    state: H
 }
 
-impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
-    fn hash<T: Hash>(&mut self, x: T) {
+impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, state: H) -> Self {
+        TypeIdHasher {
+            tcx: tcx,
+            state: state
+        }
+    }
+
+    pub fn hash<T: Hash>(&mut self, x: T) {
         x.hash(&mut self.state);
+    }
+
+    pub fn finish(self) -> u64 {
+        self.state.finish()
     }
 
     fn hash_discriminant_u8<T>(&mut self, x: &T) {
@@ -419,7 +427,7 @@ impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, H> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         // Distinguish between the Ty variants uniformly.
         self.hash_discriminant_u8(&ty.sty);
