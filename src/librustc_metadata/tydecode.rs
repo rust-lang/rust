@@ -21,7 +21,7 @@ use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 use middle::region;
 use rustc::ty::subst::{Kind, Substs};
-use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use rbml;
 use rustc_serialize::leb128;
@@ -109,12 +109,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         value as usize
     }
 
-    fn parse_name(&mut self, last: char) -> ast::Name {
-        fn is_last(b: char, c: char) -> bool { return c == b; }
-        let bytes = self.scan(|a| is_last(last, a));
-        token::intern(str::from_utf8(bytes).unwrap())
-    }
-
     fn parse_size(&mut self) -> Option<usize> {
         assert_eq!(self.next(), '/');
 
@@ -128,7 +122,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    pub fn parse_substs(&mut self) -> &'tcx Substs<'tcx> {
+    fn parse_substs(&mut self) -> &'tcx Substs<'tcx> {
         let mut params = vec![];
         assert_eq!(self.next(), '[');
         while self.peek() != ']' {
@@ -142,34 +136,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         assert_eq!(self.next(), ']');
 
         Substs::new(self.tcx, params)
-    }
-
-    pub fn parse_generics(&mut self) -> &'tcx ty::Generics<'tcx> {
-        let parent = self.parse_opt(|this| this.parse_def());
-        let parent_regions = self.parse_u32();
-        assert_eq!(self.next(), '|');
-        let parent_types = self.parse_u32();
-
-        let mut regions = vec![];
-        let mut types = vec![];
-        assert_eq!(self.next(), '[');
-        while self.peek() != '|' {
-            regions.push(self.parse_region_param_def());
-        }
-        assert_eq!(self.next(), '|');
-        while self.peek() != ']' {
-            types.push(self.parse_type_param_def());
-        }
-        assert_eq!(self.next(), ']');
-
-        self.tcx.alloc_generics(ty::Generics {
-            parent: parent,
-            parent_regions: parent_regions,
-            parent_types: parent_types,
-            regions: regions,
-            types: types,
-            has_self: self.next() == 'S'
-        })
     }
 
     fn parse_bound_region(&mut self) -> ty::BoundRegion {
@@ -207,7 +173,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    pub fn parse_region(&mut self) -> &'tcx ty::Region {
+    fn parse_region(&mut self) -> &'tcx ty::Region {
         self.tcx.mk_region(match self.next() {
             'b' => {
                 assert_eq!(self.next(), '[');
@@ -300,16 +266,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         })
     }
 
-    fn parse_opt<T, F>(&mut self, f: F) -> Option<T>
-        where F: FnOnce(&mut TyDecoder<'a, 'tcx>) -> T,
-    {
-        match self.next() {
-            'n' => None,
-            's' => Some(f(self)),
-            _ => bug!("parse_opt: bad input")
-        }
-    }
-
     fn parse_str(&mut self, term: char) -> String {
         let mut result = String::new();
         while self.peek() != term {
@@ -321,14 +277,14 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         result
     }
 
-    pub fn parse_trait_ref(&mut self) -> ty::TraitRef<'tcx> {
+    fn parse_trait_ref(&mut self) -> ty::TraitRef<'tcx> {
         ty::TraitRef {
             def_id: self.parse_def(),
             substs: self.parse_substs()
         }
     }
 
-    pub fn parse_existential_trait_ref(&mut self) -> ty::ExistentialTraitRef<'tcx> {
+    fn parse_existential_trait_ref(&mut self) -> ty::ExistentialTraitRef<'tcx> {
         ty::ExistentialTraitRef {
             def_id: self.parse_def(),
             substs: self.parse_substs()
@@ -538,18 +494,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         abi::lookup(&abi_str[..]).expect(abi_str)
     }
 
-    pub fn parse_closure_ty(&mut self) -> ty::ClosureTy<'tcx> {
-        let unsafety = parse_unsafety(self.next());
-        let sig = self.parse_sig();
-        let abi = self.parse_abi_set();
-        ty::ClosureTy {
-            unsafety: unsafety,
-            sig: sig,
-            abi: abi,
-        }
-    }
-
-    pub fn parse_bare_fn_ty(&mut self) -> &'tcx ty::BareFnTy<'tcx> {
+    fn parse_bare_fn_ty(&mut self) -> &'tcx ty::BareFnTy<'tcx> {
         let unsafety = parse_unsafety(self.next());
         let abi = self.parse_abi_set();
         let sig = self.parse_sig();
@@ -578,108 +523,11 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                               variadic: variadic})
     }
 
-    pub fn parse_predicate(&mut self) -> ty::Predicate<'tcx> {
-        match self.next() {
-            't' => ty::Binder(self.parse_trait_ref()).to_predicate(),
-            'e' => ty::Binder(ty::EquatePredicate(self.parse_ty(),
-                                                  self.parse_ty())).to_predicate(),
-            'r' => ty::Binder(ty::OutlivesPredicate(self.parse_region(),
-                                                    self.parse_region())).to_predicate(),
-            'o' => ty::Binder(ty::OutlivesPredicate(self.parse_ty(),
-                                                    self.parse_region())).to_predicate(),
-            'p' => ty::Binder(self.parse_projection_predicate()).to_predicate(),
-            'w' => ty::Predicate::WellFormed(self.parse_ty()),
-            'O' => {
-                let def_id = self.parse_def();
-                assert_eq!(self.next(), '|');
-                ty::Predicate::ObjectSafe(def_id)
-            }
-            'c' => {
-                let def_id = self.parse_def();
-                assert_eq!(self.next(), '|');
-                let kind = match self.next() {
-                    'f' => ty::ClosureKind::Fn,
-                    'm' => ty::ClosureKind::FnMut,
-                    'o' => ty::ClosureKind::FnOnce,
-                    c => bug!("Encountered invalid character in metadata: {}", c)
-                };
-                assert_eq!(self.next(), '|');
-                ty::Predicate::ClosureKind(def_id, kind)
-            }
-            c => bug!("Encountered invalid character in metadata: {}", c)
-        }
-    }
-
-    fn parse_projection_predicate(&mut self) -> ty::ProjectionPredicate<'tcx> {
-        ty::ProjectionPredicate {
-            projection_ty: ty::ProjectionTy {
-                trait_ref: self.parse_trait_ref(),
-                item_name: token::intern(&self.parse_str('|')),
-            },
-            ty: self.parse_ty(),
-        }
-    }
-
     fn parse_existential_projection(&mut self) -> ty::ExistentialProjection<'tcx> {
         ty::ExistentialProjection {
             trait_ref: self.parse_existential_trait_ref(),
             item_name: token::intern(&self.parse_str('|')),
             ty: self.parse_ty(),
-        }
-    }
-
-    fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
-        let name = self.parse_name(':');
-        let def_id = self.parse_def();
-        let index = self.parse_u32();
-        assert_eq!(self.next(), '|');
-        let default_def_id = self.parse_def();
-        let default = self.parse_opt(|this| this.parse_ty());
-        let object_lifetime_default = self.parse_object_lifetime_default();
-
-        ty::TypeParameterDef {
-            name: name,
-            def_id: def_id,
-            index: index,
-            default_def_id: default_def_id,
-            default: default,
-            object_lifetime_default: object_lifetime_default,
-        }
-    }
-
-    fn parse_region_param_def(&mut self) -> ty::RegionParameterDef<'tcx> {
-        let name = self.parse_name(':');
-        let def_id = self.parse_def();
-        let index = self.parse_u32();
-        assert_eq!(self.next(), '|');
-        let mut bounds = vec![];
-        loop {
-            match self.next() {
-                'R' => bounds.push(self.parse_region()),
-                '.' => { break; }
-                c => {
-                    bug!("parse_region_param_def: bad bounds ('{}')", c)
-                }
-            }
-        }
-        ty::RegionParameterDef {
-            name: name,
-            def_id: def_id,
-            index: index,
-            bounds: bounds,
-        }
-    }
-
-
-    fn parse_object_lifetime_default(&mut self) -> ty::ObjectLifetimeDefault<'tcx> {
-        match self.next() {
-            'a' => ty::ObjectLifetimeDefault::Ambiguous,
-            'b' => ty::ObjectLifetimeDefault::BaseDefault,
-            's' => {
-                let region = self.parse_region();
-                ty::ObjectLifetimeDefault::Specific(region)
-            }
-            _ => bug!("parse_object_lifetime_default: bad input")
         }
     }
 

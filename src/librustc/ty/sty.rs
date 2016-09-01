@@ -290,7 +290,7 @@ pub struct TraitObject<'tcx> {
 /// Note that a `TraitRef` introduces a level of region binding, to
 /// account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
 /// U>` or higher-ranked object types.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
@@ -366,7 +366,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 /// erase, or otherwise "discharge" these bound regions, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Binder<T>(pub T);
 
 impl<T> Binder<T> {
@@ -414,7 +414,7 @@ impl fmt::Debug for TypeFlags {
 
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ProjectionTy<'tcx> {
     /// The trait reference `T as Trait<..>`.
     pub trait_ref: ty::TraitRef<'tcx>,
@@ -430,7 +430,7 @@ pub struct BareFnTy<'tcx> {
     pub sig: PolyFnSig<'tcx>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ClosureTy<'tcx> {
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
@@ -443,7 +443,7 @@ pub struct ClosureTy<'tcx> {
 /// - `inputs` is the list of arguments and their modes.
 /// - `output` is the return type.
 /// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct FnSig<'tcx> {
     pub inputs: Vec<Ty<'tcx>>,
     pub output: Ty<'tcx>,
