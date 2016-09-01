@@ -110,10 +110,10 @@ pub fn trans_closure_body_via_mir<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         unsafe {
             if ccx.sess().target.target.options.allows_weak_linkage {
-                llvm::LLVMSetLinkage(llfn, llvm::WeakODRLinkage);
+                llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::WeakODRLinkage);
                 llvm::SetUniqueComdat(ccx.llmod(), llfn);
             } else {
-                llvm::LLVMSetLinkage(llfn, llvm::InternalLinkage);
+                llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage);
             }
         }
 
