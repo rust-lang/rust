@@ -539,6 +539,7 @@ This is currently hidden behind the `abi_vectorcall` gate and is subject to chan
 * `system`
 * `C`
 * `win64`
+* `sysv64`
 
 Most of the abis in this list are self-explanatory, but the `system` abi may
 seem a little odd. This constraint selects whatever the appropriate ABI is for
