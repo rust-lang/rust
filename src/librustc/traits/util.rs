@@ -23,9 +23,6 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::Predicate::Trait(ref data) =>
             ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data)),
 
-        ty::Predicate::Rfc1592(ref data) =>
-            ty::Predicate::Rfc1592(Box::new(anonymize_predicate(tcx, data))),
-
         ty::Predicate::Equate(ref data) =>
             ty::Predicate::Equate(tcx.anonymize_late_bound_regions(data)),
 
@@ -149,9 +146,6 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 predicates.retain(|r| self.visited.insert(r));
 
                 self.stack.extend(predicates);
-            }
-            ty::Predicate::Rfc1592(..) => {
-                // Nothing to elaborate.
             }
             ty::Predicate::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,

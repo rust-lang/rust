@@ -178,9 +178,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
             ty::Predicate::WellFormed(ty) => {
                 tcx.lift(&ty).map(ty::Predicate::WellFormed)
             }
-            ty::Predicate::Rfc1592(box ref a) => {
-                tcx.lift(a).map(|a| ty::Predicate::Rfc1592(Box::new(a)))
-            }
             ty::Predicate::ClosureKind(closure_def_id, kind) => {
                 Some(ty::Predicate::ClosureKind(closure_def_id, kind))
             }
@@ -790,8 +787,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
         match *self {
             ty::Predicate::Trait(ref a) =>
                 ty::Predicate::Trait(a.fold_with(folder)),
-            ty::Predicate::Rfc1592(ref a) =>
-                ty::Predicate::Rfc1592(a.fold_with(folder)),
             ty::Predicate::Equate(ref binder) =>
                 ty::Predicate::Equate(binder.fold_with(folder)),
             ty::Predicate::RegionOutlives(ref binder) =>
@@ -812,7 +807,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
             ty::Predicate::Trait(ref a) => a.visit_with(visitor),
-            ty::Predicate::Rfc1592(ref a) => a.visit_with(visitor),
             ty::Predicate::Equate(ref binder) => binder.visit_with(visitor),
             ty::Predicate::RegionOutlives(ref binder) => binder.visit_with(visitor),
             ty::Predicate::TypeOutlives(ref binder) => binder.visit_with(visitor),
