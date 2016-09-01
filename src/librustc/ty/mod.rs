@@ -953,8 +953,9 @@ impl<'tcx> TraitPredicate<'tcx> {
                     _ =>
                         None
                 })
+                .chain(iter::once(self.def_id()))
                 .collect();
-        DepNode::TraitSelect(self.def_id(), def_ids)
+        DepNode::TraitSelect(def_ids)
     }
 
     pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {

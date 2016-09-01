@@ -84,6 +84,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 
     translation_items: RefCell<FnvHashSet<TransItem<'tcx>>>,
     trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
+    project_cache: RefCell<DepTrackingMap<ProjectionCache<'tcx>>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -192,6 +193,46 @@ impl<'tcx> DepTrackingMapConfig for MirCache<'tcx> {
     type Value = Rc<mir::Mir<'tcx>>;
     fn to_dep_node(key: &DefId) -> DepNode<DefId> {
         DepNode::Mir(*key)
+    }
+}
+
+// # Global Cache
+
+pub struct ProjectionCache<'gcx> {
+    data: PhantomData<&'gcx ()>
+}
+
+impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
+    type Key = Ty<'gcx>;
+    type Value = Ty<'gcx>;
+    fn to_dep_node(key: &Self::Key) -> DepNode<DefId> {
+        // Ideally, we'd just put `key` into the dep-node, but we
+        // can't put full types in there. So just collect up all the
+        // def-ids of structs/enums as well as any traits that we
+        // project out of. It doesn't matter so much what we do here,
+        // except that if we are too coarse, we'll create overly
+        // coarse edges between impls and the trans. For example, if
+        // we just used the def-id of things we are projecting out of,
+        // then the key for `<Foo as SomeTrait>::T` and `<Bar as
+        // SomeTrait>::T` would both share a dep-node
+        // (`TraitSelect(SomeTrait)`), and hence the impls for both
+        // `Foo` and `Bar` would be considered inputs. So a change to
+        // `Bar` would affect things that just normalized `Foo`.
+        // Anyway, this heuristic is not ideal, but better than
+        // nothing.
+        let def_ids: Vec<DefId> =
+            key.walk()
+               .filter_map(|t| match t.sty {
+                   ty::TyStruct(adt_def, _) |
+                   ty::TyEnum(adt_def, _) =>
+                       Some(adt_def.did),
+                   ty::TyProjection(ref proj) =>
+                       Some(proj.trait_ref.def_id),
+                   _ =>
+                       None
+               })
+               .collect();
+        DepNode::TraitSelect(def_ids)
     }
 }
 
@@ -496,6 +537,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             use_dll_storage_attrs: use_dll_storage_attrs,
             translation_items: RefCell::new(FnvHashSet()),
             trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
+            project_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
         }
     }
 
@@ -517,6 +559,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
         &self.trait_cache
+    }
+
+    pub fn project_cache(&self) -> &RefCell<DepTrackingMap<ProjectionCache<'tcx>>> {
+        &self.project_cache
     }
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
@@ -950,7 +996,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn layout_of(&self, ty: Ty<'tcx>) -> &'tcx ty::layout::Layout {
-        self.tcx().normalizing_infer_ctxt(traits::Reveal::All).enter(|infcx| {
+        self.tcx().infer_ctxt(None, None, traits::Reveal::All).enter(|infcx| {
             ty.layout(&infcx).unwrap_or_else(|e| {
                 bug!("failed to get layout for `{}`: {}", ty, e);
             })

@@ -350,7 +350,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        monomorphize::apply_param_substs(self.ccx.tcx(),
+        monomorphize::apply_param_substs(self.ccx.shared(),
                                          self.param_substs,
                                          value)
     }
@@ -519,7 +519,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        monomorphize::apply_param_substs(self.tcx(),
+        monomorphize::apply_param_substs(self.fcx.ccx.shared(),
                                          self.fcx.param_substs,
                                          value)
     }
@@ -955,7 +955,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+        tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
 
             let obligation_cause = traits::ObligationCause::misc(span,
@@ -1014,7 +1014,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+    tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = traits::FulfillmentContext::new();
         let cause = traits::ObligationCause::dummy();
@@ -1028,7 +1028,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
 
-        infcx.drain_fulfillment_cx(&mut fulfill_cx, &()).is_ok()
+        fulfill_cx.select_all_or_error(&infcx).is_ok()
     })
 }
 
