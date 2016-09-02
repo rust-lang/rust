@@ -435,7 +435,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::def_key(&cdata, def.index)
     }
 
-    fn relative_def_path(&self, def: DefId) -> hir_map::DefPath {
+    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
         // See `Note` above in `def_key()` for why this read is
         // commented out:
         //
