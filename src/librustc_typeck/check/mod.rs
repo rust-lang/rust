@@ -4412,19 +4412,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Check provided lifetime parameters.
         let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
         if lifetimes.len() > lifetime_defs.len() {
-            let span = lifetimes[lifetime_defs.len()].span;
-            span_err!(self.tcx.sess, span, E0088,
-                      "too many lifetime parameters provided: \
-                       expected {}, found {}",
-                      count(lifetime_defs.len()),
-                      count(lifetimes.len()));
-        } else if lifetimes.len() > 0 && lifetimes.len() < lifetime_defs.len() {
-            span_err!(self.tcx.sess, span, E0090,
-                      "too few lifetime parameters provided: \
-                       expected {}, found {}",
-                      count(lifetime_defs.len()),
-                      count(lifetimes.len()));
+            let span = lifetimes[..].into_iter().skip(1).map(|lft| lft.span)
+                .fold(lifetimes[0].span, |acc, n| Span {
+                    expn_id: acc.expn_id,
+                    lo: acc.lo,
+                    hi: n.hi,
+                });
+
+            struct_span_err!(self.tcx.sess, span, E0088,
+                             "too many lifetime parameters provided: \
+                              expected {}, found {}",
+                              count(lifetime_defs.len()),
+                              count(lifetimes.len()))
+                .span_label(span, &format!("unexpected lifetime parameter{}",
+                                           match lifetimes.len() { 1 => "", _ => "s" }))
+                .emit();
         }
+
+        // The case where there is not enough lifetime parameters is not checked,
+        // because this is not possible - a function never takes lifetime parameters. 
+        // See discussion for Pull Request 36208.
 
         // Check provided type parameters.
         let type_defs = segment.map_or(&[][..], |(_, generics)| {
