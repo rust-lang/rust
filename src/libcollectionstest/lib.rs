@@ -16,7 +16,6 @@
 #![feature(collections)]
 #![feature(collections_bound)]
 #![feature(const_fn)]
-#![feature(fn_traits)]
 #![feature(enumset)]
 #![feature(pattern)]
 #![feature(rand)]
