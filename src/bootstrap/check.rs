@@ -268,10 +268,47 @@ pub fn krate(build: &Build,
              compiler: &Compiler,
              target: &str,
              mode: Mode) {
-    let (name, path, features) = match mode {
-        Mode::Libstd => ("libstd", "src/rustc/std_shim", build.std_features()),
-        Mode::Libtest => ("libtest", "src/rustc/test_shim", String::new()),
-        Mode::Librustc => ("librustc", "src/rustc", build.rustc_features()),
+    let (name, path, features, excluded) = match mode {
+        Mode::Libstd => {
+            let excluded = vec![
+               "alloc_jemalloc", "arena", "bootstrap", "cargotest", "compiletest",
+               "error_index_generator", "flate", "fmt_macros", "getopts", "graphviz",
+               "linkchecker", "log", "proc_macro", "rbml", "rustbook", "rustc", "rustc-main",
+               "rustc_back", "rustc_bitflags", "rustc_borrowck", "rustc_const_eval",
+               "rustc_const_math", "rustc_data_structures", "rustc_driver", "rustc_errors",
+               "rustc_incremental", "rustc_lint", "rustc_llvm", "rustc_metadata", "rustc_mir",
+               "rustc_passes", "rustc_platform_intrinsics", "rustc_plugin", "rustc_privacy",
+               "rustc_resolve", "rustc_save_analysis", "rustc_trans", "rustc_typeck", "rustdoc",
+               "serialize", "syntax", "syntax_ext", "syntax_pos", "term", "test", "test_shim",
+               "tidy", "unwind",
+            ];
+            ("libstd", "src/rustc/std_shim", build.std_features(), excluded)
+        }
+        Mode::Libtest => {
+            let excluded = vec![
+                "alloc", "alloc_jemalloc", "alloc_system", "arena", "bootstrap", "build_helper",
+                "cargotest", "collections", "compiletest", "core", "error_index_generator",
+                "flate", "fmt_macros", "graphviz", "libc", "linkchecker", "log", "panic_abort",
+                "panic_unwind", "proc_macro", "rand", "rbml", "rustbook", "rustc", "rustc-main",
+                "rustc_back", "rustc_bitflags", "rustc_borrowck", "rustc_const_eval",
+                "rustc_const_math", "rustc_data_structures", "rustc_driver", "rustc_errors",
+                "rustc_incremental", "rustc_lint", "rustc_llvm", "rustc_metadata", "rustc_mir",
+                "rustc_passes", "rustc_platform_intrinsics", "rustc_plugin", "rustc_privacy",
+                "rustc_resolve", "rustc_save_analysis", "rustc_trans", "rustc_typeck",
+                "rustc_unicode", "rustdoc", "serialize", "std", "std_shim", "syntax", "syntax_ext",
+                "syntax_pos", "tidy", "unwind",
+            ];
+            ("libtest", "src/rustc/test_shim", String::new(), excluded)
+        }
+        Mode::Librustc => {
+            let excluded = vec![
+                "alloc", "alloc_jemalloc", "alloc_system", "bootstrap", "cargotest", "collections",
+                "compiletest", "core", "error_index_generator", "getopts", "libc", "linkchecker",
+                "panic_abort", "panic_unwind", "rand", "rustbook", "rustc_unicode", "std",
+                "std_shim", "term", "test", "test_shim", "tidy", "unwind",
+            ];
+            ("librustc", "src/rustc", build.rustc_features(), excluded)
+        }
         _ => panic!("can only test libraries"),
     };
     println!("Testing {} stage{} ({} -> {})", name, compiler.stage,
@@ -285,7 +322,7 @@ pub fn krate(build: &Build,
 
     // Generate a list of `-p` arguments to pass to the `cargo test` invocation
     // by crawling the corresponding Cargo.lock file.
-    let lockfile = build.src.join(path).join("Cargo.lock");
+    let lockfile = build.src.join("src").join("Cargo.lock");
     let mut contents = String::new();
     t!(t!(File::open(&lockfile)).read_to_string(&mut contents));
     let mut lines = contents.lines();
@@ -305,10 +342,7 @@ pub fn krate(build: &Build,
 
         let crate_name = &line[prefix.len()..line.len() - 1];
 
-        // Right now jemalloc is our only target-specific crate in the sense
-        // that it's not present on all platforms. Custom skip it here for now,
-        // but if we add more this probably wants to get more generalized.
-        if crate_name.contains("jemalloc") {
+        if excluded.contains(&crate_name) {
             continue
         }
 
