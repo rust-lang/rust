@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use std::cell::RefCell;
 use super::DepNode;
 use super::thread::{DepGraphThreadData, DepMessage};
 
