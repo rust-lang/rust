@@ -53,6 +53,7 @@ impl MultiItemModifier for CustomDerive {
             }
         }
 
+        let input_span = item.span;
         let input = __internal::new_token_stream(item);
         let res = __internal::set_parse_sess(&ecx.parse_sess, || {
             let inner = self.inner;
@@ -77,9 +78,9 @@ impl MultiItemModifier for CustomDerive {
 
         // Right now we have no knowledge of spans at all in custom derive
         // macros, everything is just parsed as a string. Reassign all spans to
-        // the #[derive] attribute for better errors here.
+        // the input `item` for better errors here.
         item.into_iter().flat_map(|item| {
-            ChangeSpan { span: span }.fold_item(item)
+            ChangeSpan { span: input_span }.fold_item(item)
         }).map(Annotatable::Item).collect()
     }
 }
