@@ -42,13 +42,13 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// impl X {
-///     fn len(&self) -> usize { .. }
+///     pub fn len(&self) -> usize { .. }
 /// }
 /// ```
 declare_lint! {
     pub LEN_WITHOUT_IS_EMPTY,
     Warn,
-    "traits and impls that have `.len()` but not `.is_empty()`"
+    "traits or impls with a public `len` method but no corresponding `is_empty` method"
 }
 
 #[derive(Copy,Clone)]
@@ -99,13 +99,12 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItem]) {
     }
 
     if !trait_items.iter().any(|i| is_named_self(i, "is_empty")) {
-        for i in trait_items {
-            if is_named_self(i, "len") {
+        if let Some(i) = trait_items.iter().find(|i| is_named_self(i, "len")) {
+            if cx.access_levels.is_exported(i.id) {
                 span_lint(cx,
                           LEN_WITHOUT_IS_EMPTY,
                           i.span,
-                          &format!("trait `{}` has a `.len(_: &Self)` method, but no `.is_empty(_: &Self)` method. \
-                                    Consider adding one",
+                          &format!("trait `{}` has a `len` method but no `is_empty` method",
                                    item.name));
             }
         }
@@ -122,19 +121,26 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
         }
     }
 
-    if !impl_items.iter().any(|i| is_named_self(i, "is_empty")) {
-        for i in impl_items {
-            if is_named_self(i, "len") {
-                let ty = cx.tcx.node_id_to_type(item.id);
+    let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(i, "is_empty")) {
+        if cx.access_levels.is_exported(is_empty.id) {
+            return;
+        } else {
+            "a private"
+        }
+    } else {
+        "no corresponding"
+    };
 
-                span_lint(cx,
-                          LEN_WITHOUT_IS_EMPTY,
-                          i.span,
-                          &format!("item `{}` has a `.len(_: &Self)` method, but no `.is_empty(_: &Self)` method. \
-                                    Consider adding one",
-                                   ty));
-                return;
-            }
+    if let Some(i) = impl_items.iter().find(|i| is_named_self(i, "len")) {
+        if cx.access_levels.is_exported(i.id) {
+            let ty = cx.tcx.node_id_to_type(item.id);
+
+            span_lint(cx,
+                      LEN_WITHOUT_IS_EMPTY,
+                      i.span,
+                      &format!("item `{}` has a public `len` method but {} `is_empty` method",
+                               ty,
+                               is_empty));
         }
     }
 }
