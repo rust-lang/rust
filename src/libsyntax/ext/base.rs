@@ -646,7 +646,6 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn bt_push(&mut self, ei: ExpnInfo) {
-        self.recursion_count += 1;
         if self.recursion_count > self.ecfg.recursion_limit {
             self.span_fatal(ei.call_site,
                             &format!("recursion limit reached while expanding the macro `{}`",
@@ -660,17 +659,7 @@ impl<'a> ExtCtxt<'a> {
             callee: ei.callee
         });
     }
-    pub fn bt_pop(&mut self) {
-        match self.backtrace {
-            NO_EXPANSION => self.bug("tried to pop without a push"),
-            expn_id => {
-                self.recursion_count -= 1;
-                self.backtrace = self.codemap().with_expn_info(expn_id, |expn_info| {
-                    expn_info.map_or(NO_EXPANSION, |ei| ei.call_site.expn_id)
-                });
-            }
-        }
-    }
+    pub fn bt_pop(&mut self) {}
 
     pub fn insert_macro(&mut self, def: ast::MacroDef) {
         if def.export {
@@ -799,8 +788,6 @@ impl<'a> ExtCtxt<'a> {
             self.crate_root = Some("std");
         }
 
-        // User extensions must be added before expander.load_macros is called,
-        // so that macros from external crates shadow user defined extensions.
         for (name, extension) in user_exts {
             self.syntax_env.insert(name, extension);
         }
@@ -900,7 +887,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
 /// This environment maps Names to SyntaxExtensions.
 pub struct SyntaxEnv {
     module_data: Vec<ModuleData>,
-    current_module: Module,
+    pub current_module: Module,
 
     /// All bang-style macro/extension names
     /// encountered so far; to be used for diagnostics in resolve
@@ -938,10 +925,6 @@ impl SyntaxEnv {
 
     fn data(&self, module: Module) -> &ModuleData {
         &self.module_data[module.0 as usize]
-    }
-
-    pub fn set_current_module(&mut self, module: Module) -> Module {
-        ::std::mem::replace(&mut self.current_module, module)
     }
 
     pub fn paths(&self) -> Rc<ModulePaths> {
@@ -994,8 +977,6 @@ impl SyntaxEnv {
     }
 
     pub fn is_crate_root(&mut self) -> bool {
-        // The first frame is pushed in `SyntaxEnv::new()` and the second frame is
-        // pushed when folding the crate root pseudo-module (c.f. noop_fold_crate).
-        self.current_module.0 <= 1
+        self.current_module == Module(0)
     }
 }
