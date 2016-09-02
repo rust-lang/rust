@@ -14,7 +14,6 @@ struct Foo {
 
 impl Drop for Foo {
     fn drop(&mut self) {}
-    //~^ NOTE destructor defined here
 }
 
 struct Bar {
@@ -26,8 +25,6 @@ impl Drop for Bar {
 }
 
 const F : Foo = Foo { a : 0 };
-//~^ ERROR constants are not allowed to have destructors [E0493]
-//~| NOTE constants cannot have destructors
 
 fn main() {
 }
