@@ -76,6 +76,7 @@ tmp/dist/$$(SRC_PKG_NAME)-image: $(PKG_FILES)
 	@$(call E, making src image)
 	$(Q)rm -Rf tmp/dist/$(SRC_PKG_NAME)-image
 	$(Q)mkdir -p tmp/dist/$(SRC_PKG_NAME)-image/lib/rustlib/src/rust
+	$(Q)echo "$(CFG_VERSION)" > tmp/dist/$(SRC_PKG_NAME)-image/lib/rustlib/src/rust/version
 	$(Q)tar \
          -C $(S) \
          -f - \
