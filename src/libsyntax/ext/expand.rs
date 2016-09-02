@@ -25,8 +25,6 @@ use parse::token::{intern, keywords};
 use ptr::P;
 use tokenstream::TokenTree;
 use util::small_vector::SmallVector;
-use visit;
-use visit::Visitor;
 
 use std::collections::HashMap;
 use std::mem;
@@ -35,8 +33,7 @@ use std::rc::Rc;
 
 macro_rules! expansions {
     ($($kind:ident: $ty:ty [$($vec:ident, $ty_elt:ty)*], $kind_name:expr, .$make:ident,
-            $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
-            $(.$visit:ident)* $(lift .$visit_elt:ident)*;)*) => {
+            $(.$fold:ident)*  $(lift .$fold_elt:ident)*;)*) => {
         #[derive(Copy, Clone)]
         pub enum ExpansionKind { OptExpr, $( $kind, )*  }
         pub enum Expansion { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
@@ -81,17 +78,6 @@ macro_rules! expansions {
                     }, )*)*
                 }
             }
-
-            fn visit_with<V: Visitor>(&self, visitor: &mut V) {
-                match *self {
-                    Expansion::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
-                    $($( Expansion::$kind(ref ast) => visitor.$visit(ast), )*)*
-                    $($( Expansion::$kind(ref ast) => for ast in ast.as_slice() {
-                        visitor.$visit_elt(ast);
-                    }, )*)*
-                    _ => {}
-                }
-            }
         }
 
         impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
@@ -109,17 +95,17 @@ macro_rules! expansions {
 }
 
 expansions! {
-    Expr: P<ast::Expr> [], "expression", .make_expr, .fold_expr, .visit_expr;
-    Pat: P<ast::Pat>   [], "pattern",    .make_pat,  .fold_pat,  .visit_pat;
-    Ty: P<ast::Ty>     [], "type",       .make_ty,   .fold_ty,   .visit_ty;
+    Expr: P<ast::Expr> [], "expression", .make_expr, .fold_expr;
+    Pat: P<ast::Pat>   [], "pattern",    .make_pat,  .fold_pat;
+    Ty: P<ast::Ty>     [], "type",       .make_ty,   .fold_ty;
     Stmts: SmallVector<ast::Stmt> [SmallVector, ast::Stmt],
-        "statement",  .make_stmts,       lift .fold_stmt,       lift .visit_stmt;
+        "statement",  .make_stmts,       lift .fold_stmt;
     Items: SmallVector<P<ast::Item>> [SmallVector, P<ast::Item>],
-        "item",       .make_items,       lift .fold_item,       lift .visit_item;
+        "item",       .make_items,       lift .fold_item;
     TraitItems: SmallVector<ast::TraitItem> [SmallVector, ast::TraitItem],
-        "trait item", .make_trait_items, lift .fold_trait_item, lift .visit_trait_item;
+        "trait item", .make_trait_items, lift .fold_trait_item;
     ImplItems: SmallVector<ast::ImplItem> [SmallVector, ast::ImplItem],
-        "impl item",  .make_impl_items,  lift .fold_impl_item,  lift .visit_impl_item;
+        "impl item",  .make_impl_items,  lift .fold_impl_item;
 }
 
 impl ExpansionKind {
@@ -228,48 +214,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             sess: self.cx.parse_sess,
             features: self.cx.ecfg.features,
         });
-        self.load_macros(&expansion);
         let mut collector = InvocationCollector { cx: self.cx, invocations: Vec::new() };
         (expansion.fold_with(&mut collector), collector.invocations)
-    }
-
-    fn load_macros(&mut self, node: &Expansion) {
-        struct MacroLoadingVisitor<'a, 'b: 'a>{
-            cx: &'a mut ExtCtxt<'b>,
-            at_crate_root: bool,
-        }
-
-        impl<'a, 'b> Visitor for MacroLoadingVisitor<'a, 'b> {
-            fn visit_mac(&mut self, _: &ast::Mac) {}
-            fn visit_item(&mut self, item: &ast::Item) {
-                if let ast::ItemKind::ExternCrate(..) = item.node {
-                    // We need to error on `#[macro_use] extern crate` when it isn't at the
-                    // crate root, because `$crate` won't work properly.
-                    for def in self.cx.loader.load_crate(item, self.at_crate_root) {
-                        match def {
-                            LoadedMacro::Def(def) => self.cx.insert_macro(def),
-                            LoadedMacro::CustomDerive(name, ext) => {
-                                self.cx.insert_custom_derive(&name, ext, item.span);
-                            }
-                        }
-                    }
-                } else {
-                    let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
-                    visit::walk_item(self, item);
-                    self.at_crate_root = at_crate_root;
-                }
-            }
-            fn visit_block(&mut self, block: &ast::Block) {
-                let at_crate_root = ::std::mem::replace(&mut self.at_crate_root, false);
-                visit::walk_block(self, block);
-                self.at_crate_root = at_crate_root;
-            }
-        }
-
-        node.visit_with(&mut MacroLoadingVisitor {
-            at_crate_root: self.cx.syntax_env.is_crate_root(),
-            cx: self.cx,
-        });
     }
 
     fn expand_invoc(&mut self, invoc: Invocation) -> Expansion {
@@ -644,6 +590,20 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 let result = noop_fold_item(item, self);
                 self.cx.syntax_env.current_module = module;
                 result
+            },
+            ast::ItemKind::ExternCrate(..) => {
+                // We need to error on `#[macro_use] extern crate` when it isn't at the
+                // crate root, because `$crate` won't work properly.
+                let is_crate_root = self.cx.syntax_env.is_crate_root();
+                for def in self.cx.loader.load_crate(&*item, is_crate_root) {
+                    match def {
+                        LoadedMacro::Def(def) => self.cx.insert_macro(def),
+                        LoadedMacro::CustomDerive(name, ext) => {
+                            self.cx.insert_custom_derive(&name, ext, item.span);
+                        }
+                    }
+                }
+                SmallVector::one(item)
             },
             _ => noop_fold_item(item, self),
         }
