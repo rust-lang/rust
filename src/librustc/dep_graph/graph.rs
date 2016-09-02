@@ -38,10 +38,6 @@ struct DepGraphData {
 
     /// Work-products that we generate in this run.
     work_products: RefCell<FnvHashMap<Arc<WorkProductId>, WorkProduct>>,
-
-    /// Tracks nodes that are forbidden to read/write; see
-    /// `DepGraph::forbid`. Used for debugging only.
-    forbidden: RefCell<Vec<DepNode<DefId>>>,
 }
 
 impl DepGraph {
@@ -51,7 +47,6 @@ impl DepGraph {
                 thread: DepGraphThreadData::new(enabled),
                 previous_work_products: RefCell::new(FnvHashMap()),
                 work_products: RefCell::new(FnvHashMap()),
-                forbidden: RefCell::new(Vec::new()),
             })
         }
     }
@@ -75,15 +70,6 @@ impl DepGraph {
         raii::DepTask::new(&self.data.thread, key)
     }
 
-    /// Debugging aid -- forbid reads/writes to `key` while the return
-    /// value is in scope. Note that this is only available when debug
-    /// assertions are enabled -- you should not check in code that
-    /// invokes this function.
-    #[cfg(debug_assertions)]
-    pub fn forbid<'graph>(&'graph self, key: DepNode<DefId>) -> raii::Forbid<'graph> {
-        raii::Forbid::new(&self.data.forbidden, key)
-    }
-
     pub fn with_ignore<OP,R>(&self, op: OP) -> R
         where OP: FnOnce() -> R
     {
@@ -99,12 +85,10 @@ impl DepGraph {
     }
 
     pub fn read(&self, v: DepNode<DefId>) {
-        debug_assert!(!self.data.forbidden.borrow().contains(&v));
         self.data.thread.enqueue(DepMessage::Read(v));
     }
 
     pub fn write(&self, v: DepNode<DefId>) {
-        debug_assert!(!self.data.forbidden.borrow().contains(&v));
         self.data.thread.enqueue(DepMessage::Write(v));
     }
 

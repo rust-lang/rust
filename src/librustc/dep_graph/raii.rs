@@ -49,19 +49,3 @@ impl<'graph> Drop for IgnoreTask<'graph> {
     }
 }
 
-pub struct Forbid<'graph> {
-    forbidden: &'graph RefCell<Vec<DepNode<DefId>>>
-}
-
-impl<'graph> Forbid<'graph> {
-    pub fn new(forbidden: &'graph RefCell<Vec<DepNode<DefId>>>, node: DepNode<DefId>) -> Self {
-        forbidden.borrow_mut().push(node);
-        Forbid { forbidden: forbidden }
-    }
-}
-
-impl<'graph> Drop for Forbid<'graph> {
-    fn drop(&mut self) {
-        self.forbidden.borrow_mut().pop();
-    }
-}
