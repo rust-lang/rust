@@ -74,15 +74,18 @@ pub struct PlaceholderExpander {
 }
 
 impl PlaceholderExpander {
-    pub fn new(expansions: HashMap<ast::NodeId, Expansion>) -> Self {
+    pub fn new() -> Self {
         PlaceholderExpander {
-            expansions: expansions,
+            expansions: HashMap::new(),
         }
     }
 
+    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion) {
+        self.expansions.insert(id, expansion);
+    }
+
     pub fn remove(&mut self, id: ast::NodeId) -> Expansion {
-        let expansion = self.expansions.remove(&id).unwrap();
-        expansion.fold_with(self)
+        self.expansions.remove(&id).unwrap()
     }
 }
 
