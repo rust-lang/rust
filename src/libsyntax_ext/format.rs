@@ -17,7 +17,6 @@ use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
-use syntax::fold::Folder;
 use syntax::parse::token::{self, keywords};
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
@@ -702,10 +701,12 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     let arg_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let macsp = ecx.call_site();
-    // Expand the format literal so that efmt.span will have a backtrace. This
-    // is essential for locating a bug when the format literal is generated in
-    // a macro. (e.g. println!("{}"), which uses concat!($fmt, "\n")).
-    let efmt = ecx.expander().fold_expr(efmt);
+    let msg = "format argument must be a string literal.";
+    let fmt = match expr_to_spanned_string(ecx, efmt, msg) {
+        Some(fmt) => fmt,
+        None => return DummyResult::raw_expr(sp),
+    };
+
     let mut cx = Context {
         ecx: ecx,
         args: args,
@@ -723,14 +724,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         str_pieces: Vec::new(),
         all_pieces_simple: true,
         macsp: macsp,
-        fmtsp: efmt.span,
-    };
-    let fmt = match expr_to_string(cx.ecx, efmt, "format argument must be a string literal.") {
-        Some((fmt, _)) => fmt,
-        None => return DummyResult::raw_expr(sp),
+        fmtsp: fmt.span,
     };
 
-    let mut parser = parse::Parser::new(&fmt);
+    let mut parser = parse::Parser::new(&fmt.node.0);
     let mut pieces = vec![];
 
     loop {
