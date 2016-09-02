@@ -270,7 +270,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     _ => {}
                                 }
                             }
-                            err.emit();
+
+                            err.span_label( pat.span,
+                                &format!("pattern cannot match with input type `{}`", expected_ty)
+                            ).emit();
                         }
                         (tcx.types.err, tcx.types.err)
                     }
