@@ -1359,9 +1359,10 @@ how long the data stored within them is guaranteed to be live. This lifetime
 must be as long as the data needs to be alive, and missing the constraint that
 denotes this will cause this error.
 
+This won't compile because T is not constrained, meaning the data stored in it
+is not guaranteed to last as long as the reference.
+
 ```compile_fail,E0309
-// This won't compile because T is not constrained, meaning the data
-// stored in it is not guaranteed to last as long as the reference
 struct Foo<'a, T> {
     foo: &'a T
 }
@@ -1382,9 +1383,10 @@ how long the data stored within them is guaranteed to be live. This lifetime
 must be as long as the data needs to be alive, and missing the constraint that
 denotes this will cause this error.
 
+This won't compile because T is not constrained to the static lifetime the
+reference needs.
+
 ```compile_fail,E0310
-// This won't compile because T is not constrained to the static lifetime
-// the reference needs
 struct Foo<T> {
     foo: &'static T
 }
