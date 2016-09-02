@@ -302,6 +302,12 @@ macro_rules! forward_ref_binop {
 ///                Point { x: 3, y: 3 });
 /// }
 /// ```
+///
+/// Note that `RHS = Self` by default, but this is not mandatory. For example,
+/// [std::time::SystemTime] implements `Add<Duration>`, which permits
+/// operations of the form `SystemTime = SystemTime + Duration`.
+///
+/// [std::time::SystemTime]: ../../std/time/struct.SystemTime.html
 #[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Add<RHS=Self> {
@@ -369,6 +375,12 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///                Point { x: 1, y: 0 });
 /// }
 /// ```
+///
+/// Note that `RHS = Self` by default, but this is not mandatory. For example,
+/// [std::time::SystemTime] implements `Sub<Duration>`, which permits
+/// operations of the form `SystemTime = SystemTime - Duration`.
+///
+/// [std::time::SystemTime]: ../../std/time/struct.SystemTime.html
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Sub<RHS=Self> {
