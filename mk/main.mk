@@ -348,6 +348,7 @@ LLVM_AS_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-as$$(X_$(1))
 LLC_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llc$$(X_$(1))
 
 LLVM_ALL_COMPONENTS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --components)
+LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
 
 endef
 
