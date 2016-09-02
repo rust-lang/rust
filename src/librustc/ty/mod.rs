@@ -38,6 +38,7 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::hash::{Hash, Hasher};
 use std::iter;
+use std::ops::Deref;
 use std::rc::Rc;
 use std::slice;
 use std::vec::IntoIter;
@@ -568,6 +569,45 @@ pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
+
+/// A wrapper for slices with the additioanl invariant
+/// that the slice is interned and no other slice with
+/// the same contents can exist in the same context.
+/// This means we can use pointer + length for both
+/// equality comparisons and hashing.
+#[derive(Debug, RustcEncodable)]
+pub struct Slice<T>([T]);
+
+impl<T> PartialEq for Slice<T> {
+    #[inline]
+    fn eq(&self, other: &Slice<T>) -> bool {
+        (&self.0 as *const [T]) == (&other.0 as *const [T])
+    }
+}
+impl<T> Eq for Slice<T> {}
+
+impl<T> Hash for Slice<T> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        (self.as_ptr(), self.len()).hash(s)
+    }
+}
+
+impl<T> Deref for Slice<T> {
+    type Target = [T];
+    fn deref(&self) -> &[T] {
+        &self.0
+    }
+}
+
+impl<'a, T> IntoIterator for &'a Slice<T> {
+    type Item = &'a T;
+    type IntoIter = <&'a [T] as IntoIterator>::IntoIter;
+    fn into_iter(self) -> Self::IntoIter {
+        self[..].iter()
+    }
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Slice<Ty<'tcx>> {}
 
 /// Upvars do not get their own node-id. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced

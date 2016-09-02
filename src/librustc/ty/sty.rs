@@ -13,12 +13,12 @@
 use hir::def_id::DefId;
 use middle::region;
 use ty::subst::Substs;
-use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TyS, TypeFoldable};
+use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TypeFoldable};
+use ty::{Slice, TyS};
 use util::common::ErrorReported;
 
 use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
-use std::mem;
 use std::ops;
 use syntax::abi;
 use syntax::ast::{self, Name};
@@ -31,7 +31,7 @@ use hir;
 use self::InferTy::*;
 use self::TypeVariants::*;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: hir::Mutability,
@@ -87,7 +87,7 @@ pub enum Issue32330 {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum TypeVariants<'tcx> {
     /// The primitive boolean type. Written as `bool`.
     TyBool,
@@ -155,7 +155,7 @@ pub enum TypeVariants<'tcx> {
     TyNever,
 
     /// A tuple type.  For example, `(i32, bool)`.
-    TyTuple(&'tcx [Ty<'tcx>]),
+    TyTuple(&'tcx Slice<Ty<'tcx>>),
 
     /// The projection of an associated type.  For example,
     /// `<T as Trait<..>>::N`.
@@ -252,7 +252,7 @@ pub enum TypeVariants<'tcx> {
 /// closure C wind up influencing the decisions we ought to make for
 /// closure C (which would then require fixed point iteration to
 /// handle). Plus it fixes an ICE. :P
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function.
     /// These are separated out because trans wants to pass them around
@@ -262,12 +262,10 @@ pub struct ClosureSubsts<'tcx> {
     /// The types of the upvars. The list parallels the freevars and
     /// `upvar_borrows` lists. These are kept distinct so that we can
     /// easily index into them.
-    pub upvar_tys: &'tcx [Ty<'tcx>]
+    pub upvar_tys: &'tcx Slice<Ty<'tcx>>
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for ClosureSubsts<'tcx> {}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TraitObject<'tcx> {
     pub principal: PolyExistentialTraitRef<'tcx>,
     pub region_bound: &'tcx ty::Region,
@@ -330,7 +328,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 ///
 /// The substitutions don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ExistentialTraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
@@ -423,12 +421,14 @@ pub struct ProjectionTy<'tcx> {
     pub item_name: Name,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct BareFnTy<'tcx> {
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
     pub sig: PolyFnSig<'tcx>,
 }
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx BareFnTy<'tcx> {}
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ClosureTy<'tcx> {
@@ -467,7 +467,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ParamTy {
     pub idx: u32,
     pub name: Name,
@@ -654,17 +654,17 @@ pub struct EarlyBoundRegion {
     pub name: Name,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TyVid {
     pub index: u32,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct IntVid {
     pub index: u32
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct FloatVid {
     pub index: u32
 }
@@ -679,7 +679,7 @@ pub struct SkolemizedRegionVid {
     pub index: u32
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
@@ -694,7 +694,7 @@ pub enum InferTy {
 }
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExistentialProjection<'tcx> {
     pub trait_ref: ExistentialTraitRef<'tcx>,
     pub item_name: Name,
@@ -739,7 +739,7 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct BuiltinBounds(EnumSet<BuiltinBound>);
 
 impl<'a, 'gcx, 'tcx> BuiltinBounds {
@@ -782,12 +782,11 @@ impl<'a> IntoIterator for &'a BuiltinBounds {
 
 #[derive(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
            Debug, Copy)]
-#[repr(usize)]
 pub enum BuiltinBound {
-    Send,
-    Sized,
-    Copy,
-    Sync,
+    Send = 0,
+    Sized = 1,
+    Copy = 2,
+    Sync = 3,
 }
 
 impl CLike for BuiltinBound {
@@ -795,7 +794,13 @@ impl CLike for BuiltinBound {
         *self as usize
     }
     fn from_usize(v: usize) -> BuiltinBound {
-        unsafe { mem::transmute(v) }
+        match v {
+            0 => BuiltinBound::Send,
+            1 => BuiltinBound::Sized,
+            2 => BuiltinBound::Copy,
+            3 => BuiltinBound::Sync,
+            _ => bug!("{} is not a valid BuiltinBound", v)
+        }
     }
 }
 

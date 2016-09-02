@@ -26,8 +26,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::{cmt};
 use rustc::hir::pat_util::*;
 use rustc::traits::Reveal;
-use rustc::ty::*;
-use rustc::ty;
+use rustc::ty::{self, Ty, TyCtxt};
 use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
@@ -110,7 +109,7 @@ impl<'a, 'tcx> FromIterator<Vec<(&'a Pat, Option<Ty<'tcx>>)>> for Matrix<'a, 'tc
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub param_env: ParameterEnvironment<'tcx>,
+    pub param_env: ty::ParameterEnvironment<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -248,7 +247,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                 if edef.is_enum() {
                     if let Def::Local(..) = cx.tcx.expect_def(p.id) {
                         if edef.variants.iter().any(|variant| {
-                            variant.name == name.node && variant.kind == VariantKind::Unit
+                            variant.name == name.node && variant.kind == ty::VariantKind::Unit
                         }) {
                             let ty_path = cx.tcx.item_path_str(edef.did);
                             let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
@@ -579,7 +578,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         ty::TyAdt(adt, _) => {
             let v = ctor.variant_for_adt(adt);
             match v.kind {
-                VariantKind::Struct => {
+                ty::VariantKind::Struct => {
                     let field_pats: hir::HirVec<_> = v.fields.iter()
                         .zip(pats)
                         .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
@@ -594,10 +593,10 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     let has_more_fields = field_pats.len() < pats_len;
                     PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
                 }
-                VariantKind::Tuple => {
+                ty::VariantKind::Tuple => {
                     PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
                 }
-                VariantKind::Unit => {
+                ty::VariantKind::Unit => {
                     PatKind::Path(None, def_to_path(cx.tcx, v.did))
                 }
             }
@@ -639,7 +638,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 impl Constructor {
     fn variant_for_adt<'tcx, 'container, 'a>(&self,
                                              adt: &'a ty::AdtDefData<'tcx, 'container>)
-                                             -> &'a VariantDefData<'tcx, 'container> {
+                                             -> &'a ty::VariantDefData<'tcx, 'container> {
         match self {
             &Variant(vid) => adt.variant_with_id(vid),
             _ => adt.struct_variant()
@@ -878,7 +877,7 @@ fn wrap_pat<'a, 'b, 'tcx>(cx: &MatchCheckCtxt<'b, 'tcx>,
     let pat_ty = cx.tcx.pat_ty(pat);
     (pat, Some(match pat.node {
         PatKind::Binding(hir::BindByRef(..), ..) => {
-            pat_ty.builtin_deref(false, NoPreference).unwrap().ty
+            pat_ty.builtin_deref(false, ty::NoPreference).unwrap().ty
         }
         _ => pat_ty
     }))
@@ -1068,7 +1067,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             fn_id: NodeId) {
     match kind {
         FnKind::Closure(_) => {}
-        _ => cx.param_env = ParameterEnvironment::for_item(cx.tcx, fn_id),
+        _ => cx.param_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_id),
     }
 
     intravisit::walk_fn(cx, kind, decl, body, sp, fn_id);
@@ -1187,17 +1186,17 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
               _: NodeId,
               span: Span,
               _: cmt,
-              _: &'tcx Region,
-              kind: BorrowKind,
+              _: &'tcx ty::Region,
+              kind:ty:: BorrowKind,
               _: LoanCause) {
         match kind {
-            MutBorrow => {
+            ty::MutBorrow => {
                 struct_span_err!(self.cx.tcx.sess, span, E0301,
                           "cannot mutably borrow in a pattern guard")
                     .span_label(span, &format!("borrowed mutably in pattern guard"))
                     .emit();
             }
-            ImmBorrow | UniqueImmBorrow => {}
+            ty::ImmBorrow | ty::UniqueImmBorrow => {}
         }
     }
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}

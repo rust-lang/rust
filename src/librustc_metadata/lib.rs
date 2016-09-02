@@ -17,9 +17,9 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![feature(core_intrinsics)]
 #![feature(box_patterns)]
 #![feature(dotdot_in_tuple_patterns)]
-#![feature(enumset)]
 #![feature(question_mark)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -63,8 +63,6 @@ pub mod diagnostics;
 pub mod astencode;
 pub mod common;
 pub mod def_key;
-pub mod tyencode;
-pub mod tydecode;
 pub mod encoder;
 mod index_builder;
 pub mod decoder;

@@ -18,7 +18,6 @@ use common::*;
 use cstore;
 use decoder;
 use def_key;
-use tyencode;
 use index::{self, IndexData};
 
 use middle::cstore::{InlinedItemRef, LinkMeta};
@@ -34,8 +33,10 @@ use rustc::mir::mir_map::MirMap;
 use rustc::session::config::{self, PanicStrategy, CrateTypeRustcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
-use rustc_serialize::{Encodable, SpecializedEncoder, opaque};
+use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
 use rustc_serialize as serialize;
+use std::cell::RefCell;
+use std::intrinsics;
 use std::io::prelude::*;
 use std::io::Cursor;
 use std::ops::{Deref, DerefMut};
@@ -55,14 +56,14 @@ use rustc::hir::map::DefKey;
 use super::index_builder::{FromId, IndexBuilder, ItemContentBuilder, Untracked, XRef};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
-    pub rbml_w: rbml::writer::Encoder<'a>,
+    rbml_w: rbml::writer::Encoder<'a>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub reexports: &'a def::ExportMap,
-    pub link_meta: &'a LinkMeta,
-    pub cstore: &'a cstore::CStore,
-    pub type_abbrevs: &'a tyencode::abbrev_map<'tcx>,
-    pub reachable: &'a NodeSet,
-    pub mir_map: &'a MirMap<'tcx>,
+    reexports: &'a def::ExportMap,
+    link_meta: &'a LinkMeta,
+    cstore: &'a cstore::CStore,
+    type_shorthands: RefCell<FnvHashMap<Ty<'tcx>, usize>>,
+    reachable: &'a NodeSet,
+    mir_map: &'a MirMap<'tcx>,
 }
 
 impl<'a, 'tcx> Deref for EncodeContext<'a, 'tcx> {
@@ -116,12 +117,32 @@ impl<'a, 'tcx> serialize::Encoder for ::encoder::EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
-        let cx = self.ty_str_ctxt();
+        let existing_shorthand = self.type_shorthands.borrow().get(ty).cloned();
+        if let Some(shorthand) = existing_shorthand {
+            return self.emit_usize(shorthand);
+        }
 
-        self.start_tag(tag_opaque)?;
-        tyencode::enc_ty(&mut self.rbml_w.opaque.cursor, &cx, ty);
-        self.mark_stable_position();
-        self.end_tag()
+        let start = self.mark_stable_position();
+        ty.sty.encode(self)?;
+        let len = self.mark_stable_position() - start;
+
+        // The shorthand encoding uses the same usize as the
+        // discriminant, with an offset so they can't conflict.
+        let discriminant = unsafe { intrinsics::discriminant_value(&ty.sty) };
+        assert!(discriminant < TYPE_SHORTHAND_OFFSET as u64);
+        let shorthand = start + TYPE_SHORTHAND_OFFSET;
+
+        // Get the number of bits that leb128 could fit
+        // in the same space as the fully encoded type.
+        let leb128_bits = len * 7;
+
+        // Check that the shorthand is a not longer than the
+        // full encoding itself, i.e. it's an obvious win.
+        if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
+            self.type_shorthands.borrow_mut().insert(*ty, shorthand);
+        }
+
+        Ok(())
     }
 }
 
@@ -1742,7 +1763,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cstore: cstore,
         reachable: reachable,
         mir_map: mir_map,
-        type_abbrevs: &Default::default(),
+        type_shorthands: Default::default(),
     });
 
     // RBML compacts the encoded bytes whenever appropriate,
