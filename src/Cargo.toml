@@ -1,0 +1,13 @@
+[workspace]
+members = [
+  "bootstrap",
+  "rustc",
+  "rustc/std_shim",
+  "rustc/test_shim",
+  "tools/cargotest",
+  "tools/compiletest",
+  "tools/error_index_generator",
+  "tools/linkchecker",
+  "tools/rustbook",
+  "tools/tidy",
+]
