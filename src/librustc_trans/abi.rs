@@ -21,6 +21,7 @@ use cabi_aarch64;
 use cabi_powerpc;
 use cabi_powerpc64;
 use cabi_mips;
+use cabi_mips64;
 use cabi_asmjs;
 use machine::{llalign_of_min, llsize_of, llsize_of_real, llsize_of_store};
 use type_::Type;
@@ -501,6 +502,7 @@ impl FnType {
                 cabi_arm::compute_abi_info(ccx, self, flavor);
             },
             "mips" => cabi_mips::compute_abi_info(ccx, self),
+            "mips64" => cabi_mips64::compute_abi_info(ccx, self),
             "powerpc" => cabi_powerpc::compute_abi_info(ccx, self),
             "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, self),
             "asmjs" => cabi_asmjs::compute_abi_info(ccx, self),

@@ -1,4 +1,4 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_upper_case_globals)]
+
 use libc::c_uint;
+use std::cmp;
 use llvm;
-use llvm::{Integer, Pointer, Float, Double, Struct, Array};
-use abi::{FnType, ArgType};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
+use abi::{ArgType, FnType};
 use context::CrateContext;
 use type_::Type;
-
-use std::cmp;
 
 fn align_up_to(off: usize, a: usize) -> usize {
     return (off + a - 1) / a * a;
@@ -29,7 +30,7 @@ fn align(off: usize, ty: Type) -> usize {
 fn ty_align(ty: Type) -> usize {
     match ty.kind() {
         Integer => ((ty.int_width() as usize) + 7) / 8,
-        Pointer => 4,
+        Pointer => 8,
         Float => 4,
         Double => 8,
         Struct => {
@@ -44,14 +45,19 @@ fn ty_align(ty: Type) -> usize {
             let elt = ty.element_type();
             ty_align(elt)
         }
-        _ => bug!("ty_size: unhandled type")
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            ty_align(elt) * len
+        }
+        _ => bug!("ty_align: unhandled type")
     }
 }
 
 fn ty_size(ty: Type) -> usize {
     match ty.kind() {
         Integer => ((ty.int_width() as usize) + 7) / 8,
-        Pointer => 4,
+        Pointer => 8,
         Float => 4,
         Double => 8,
         Struct => {
@@ -70,13 +76,19 @@ fn ty_size(ty: Type) -> usize {
             let eltsz = ty_size(elt);
             len * eltsz
         }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt);
+            len * eltsz
+        }
         _ => bug!("ty_size: unhandled type")
     }
 }
 
 fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
     if is_reg_ty(ret.ty) {
-        ret.extend_integer_width_to(32);
+        ret.extend_integer_width_to(64);
     } else {
         ret.make_indirect(ccx);
     }
@@ -95,7 +107,7 @@ fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut usize) {
         arg.cast = Some(struct_ty(ccx, arg.ty));
         arg.pad = padding_ty(ccx, align, orig_offset);
     } else {
-        arg.extend_integer_width_to(32);
+        arg.extend_integer_width_to(64);
     }
 }
 
@@ -104,30 +116,31 @@ fn is_reg_ty(ty: Type) -> bool {
         Integer
         | Pointer
         | Float
-        | Double => true,
+        | Double
+        | Vector => true,
         _ => false
     };
 }
 
 fn padding_ty(ccx: &CrateContext, align: usize, offset: usize) -> Option<Type> {
     if ((align - 1 ) & offset) > 0 {
-        Some(Type::i32(ccx))
+        Some(Type::i64(ccx))
     } else {
         None
     }
 }
 
 fn coerce_to_int(ccx: &CrateContext, size: usize) -> Vec<Type> {
-    let int_ty = Type::i32(ccx);
+    let int_ty = Type::i64(ccx);
     let mut args = Vec::new();
 
-    let mut n = size / 32;
+    let mut n = size / 64;
     while n > 0 {
         args.push(int_ty);
         n -= 1;
     }
 
-    let r = size % 32;
+    let r = size % 64;
     if r > 0 {
         unsafe {
             args.push(Type::from_ref(llvm::LLVMIntTypeInContext(ccx.llcx(), r as c_uint)));
@@ -147,7 +160,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
         classify_ret_ty(ccx, &mut fty.ret);
     }
 
-    let mut offset = if fty.ret.is_indirect() { 4 } else { 0 };
+    let mut offset = if fty.ret.is_indirect() { 8 } else { 0 };
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
         classify_arg_ty(ccx, arg, &mut offset);

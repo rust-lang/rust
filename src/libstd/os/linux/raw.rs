@@ -155,6 +155,11 @@ mod arch {
     }
 }
 
+#[cfg(target_arch = "mips64")]
+mod arch {
+    pub use libc::{off_t, ino_t, nlink_t, blksize_t, blkcnt_t, stat, time_t};
+}
+
 #[cfg(target_arch = "aarch64")]
 mod arch {
     use os::raw::{c_long, c_int};

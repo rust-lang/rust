@@ -659,6 +659,7 @@ pub mod consts {
     /// - arm
     /// - aarch64
     /// - mips
+    /// - mips64
     /// - powerpc
     /// - powerpc64
     #[stable(feature = "env", since = "1.0.0")]
@@ -924,6 +925,11 @@ mod arch {
 #[cfg(target_arch = "mips")]
 mod arch {
     pub const ARCH: &'static str = "mips";
+}
+
+#[cfg(target_arch = "mips64")]
+mod arch {
+    pub const ARCH: &'static str = "mips64";
 }
 
 #[cfg(target_arch = "powerpc")]
