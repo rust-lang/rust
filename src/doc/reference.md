@@ -2071,6 +2071,9 @@ macro scope.
    trait of the same name. `{Self}` will be replaced with the type that is supposed
    to implement the trait but doesn't. To use this, the `on_unimplemented` feature gate
    must be enabled.
+- `must_use` - on structs and enums, will warn if a value of this type isn't used or
+   assigned to a variable. You may also include an optional message by using
+   `#[must_use = "message"]` which will be given alongside the warning.
 
 ### Conditional compilation
 
