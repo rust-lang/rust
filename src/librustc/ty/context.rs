@@ -25,7 +25,7 @@ use middle::stability;
 use ty::subst::Substs;
 use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
-use ty::{TyS, TypeVariants};
+use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
 use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitObject};
@@ -92,7 +92,7 @@ pub struct CtxtInterners<'tcx> {
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
     type_: RefCell<FnvHashSet<Interned<'tcx, TyS<'tcx>>>>,
-    type_list: RefCell<FnvHashSet<Interned<'tcx, [Ty<'tcx>]>>>,
+    type_list: RefCell<FnvHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
     substs: RefCell<FnvHashSet<Interned<'tcx, Substs<'tcx>>>>,
     bare_fn: RefCell<FnvHashSet<Interned<'tcx, BareFnTy<'tcx>>>>,
     region: RefCell<FnvHashSet<Interned<'tcx, Region>>>,
@@ -847,10 +847,11 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Region {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a [Ty<'a>] {
-    type Lifted = &'tcx [Ty<'tcx>];
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx [Ty<'tcx>]> {
-        if let Some(&Interned(list)) = tcx.interners.type_list.borrow().get(*self) {
+impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Ty<'a>> {
+    type Lifted = &'tcx Slice<Ty<'tcx>>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
+                             -> Option<&'tcx Slice<Ty<'tcx>>> {
+        if let Some(&Interned(list)) = tcx.interners.type_list.borrow().get(&self[..]) {
             if *self as *const _ == list as *const _ {
                 return Some(list);
             }
@@ -1067,9 +1068,24 @@ impl<'tcx: 'lcx, 'lcx> Borrow<TypeVariants<'lcx>> for Interned<'tcx, TyS<'tcx>> 
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for Interned<'tcx, [Ty<'tcx>]> {
+// NB: An Interned<Slice<T>> compares and hashes as its elements.
+impl<'tcx, T: PartialEq> PartialEq for Interned<'tcx, Slice<T>> {
+    fn eq(&self, other: &Interned<'tcx, Slice<T>>) -> bool {
+        self.0[..] == other.0[..]
+    }
+}
+
+impl<'tcx, T: Eq> Eq for Interned<'tcx, Slice<T>> {}
+
+impl<'tcx, T: Hash> Hash for Interned<'tcx, Slice<T>> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.0[..].hash(s)
+    }
+}
+
+impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for Interned<'tcx, Slice<Ty<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Ty<'lcx>] {
-        self.0
+        &self.0[..]
     }
 }
 
@@ -1091,31 +1107,22 @@ impl<'tcx> Borrow<Region> for Interned<'tcx, Region> {
     }
 }
 
-macro_rules! items { ($($item:item)+) => ($($item)+) }
-macro_rules! impl_interners {
-    ($lt_tcx:tt, $($name:ident: $method:ident($alloc:ty, $needs_infer:expr)-> $ty:ty),+) => {
-        items!($(impl<$lt_tcx> PartialEq for Interned<$lt_tcx, $ty> {
-            fn eq(&self, other: &Self) -> bool {
-                self.0 == other.0
-            }
-        }
-
-        impl<$lt_tcx> Eq for Interned<$lt_tcx, $ty> {}
-
-        impl<$lt_tcx> Hash for Interned<$lt_tcx, $ty> {
-            fn hash<H: Hasher>(&self, s: &mut H) {
-                self.0.hash(s)
-            }
-        }
-
+macro_rules! intern_method {
+    ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
+                                            $alloc_to_key:expr,
+                                            $alloc_to_ret:expr,
+                                            $needs_infer:expr) -> $ty:ty) => {
         impl<'a, 'gcx, $lt_tcx> TyCtxt<'a, 'gcx, $lt_tcx> {
             pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
-                if let Some(i) = self.interners.$name.borrow().get::<$ty>(&v) {
-                    return i.0;
-                }
-                if !self.is_global() {
-                    if let Some(i) = self.global_interners.$name.borrow().get::<$ty>(&v) {
+                {
+                    let key = ($alloc_to_key)(&v);
+                    if let Some(i) = self.interners.$name.borrow().get(key) {
                         return i.0;
+                    }
+                    if !self.is_global() {
+                        if let Some(i) = self.global_interners.$name.borrow().get(key) {
+                            return i.0;
+                        }
                     }
                 }
 
@@ -1127,7 +1134,7 @@ macro_rules! impl_interners {
                         let v = unsafe {
                             mem::transmute(v)
                         };
-                        let i = self.global_interners.arenas.$name.alloc(v);
+                        let i = ($alloc_to_ret)(self.global_interners.arenas.$name.alloc(v));
                         self.global_interners.$name.borrow_mut().insert(Interned(i));
                         return i;
                     }
@@ -1141,11 +1148,31 @@ macro_rules! impl_interners {
                     }
                 }
 
-                let i = self.interners.arenas.$name.alloc(v);
+                let i = ($alloc_to_ret)(self.interners.arenas.$name.alloc(v));
                 self.interners.$name.borrow_mut().insert(Interned(i));
                 i
             }
-        })+);
+        }
+    }
+}
+
+macro_rules! direct_interners {
+    ($lt_tcx:tt, $($name:ident: $method:ident($needs_infer:expr) -> $ty:ty),+) => {
+        $(impl<$lt_tcx> PartialEq for Interned<$lt_tcx, $ty> {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        impl<$lt_tcx> Eq for Interned<$lt_tcx, $ty> {}
+
+        impl<$lt_tcx> Hash for Interned<$lt_tcx, $ty> {
+            fn hash<H: Hasher>(&self, s: &mut H) {
+                self.0.hash(s)
+            }
+        }
+
+        intern_method!($lt_tcx, $name: $method($ty, |x| x, |x| x, $needs_infer) -> $ty);)+
     }
 }
 
@@ -1153,20 +1180,25 @@ fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
     x.has_type_flags(ty::TypeFlags::KEEP_IN_LOCAL_TCX)
 }
 
-impl_interners!('tcx,
-    type_list: mk_type_list(Vec<Ty<'tcx>>, keep_local) -> [Ty<'tcx>],
-    substs: mk_substs(Substs<'tcx>, |substs: &Substs| {
+direct_interners!('tcx,
+    substs: mk_substs(|substs: &Substs| {
         substs.params().iter().any(keep_local)
     }) -> Substs<'tcx>,
-    bare_fn: mk_bare_fn(BareFnTy<'tcx>, |fty: &BareFnTy| {
+    bare_fn: mk_bare_fn(|fty: &BareFnTy| {
         keep_local(&fty.sig)
     }) -> BareFnTy<'tcx>,
-    region: mk_region(Region, |r| {
+    region: mk_region(|r| {
         match r {
             &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
             _ => false
         }
     }) -> Region
+);
+
+intern_method!('tcx,
+    type_list: mk_type_list(Vec<Ty<'tcx>>, Deref::deref, |xs: &[Ty]| -> &Slice<Ty> {
+        unsafe { mem::transmute(xs) }
+    }, keep_local) -> Slice<Ty<'tcx>>
 );
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {

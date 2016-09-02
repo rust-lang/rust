@@ -20,7 +20,6 @@ use common::*;
 use def_key;
 use encoder::def_to_u64;
 use index;
-use tydecode::TyDecoder;
 
 use rustc::hir::def_id::CRATE_DEF_INDEX;
 use rustc::hir::svh::Svh;
@@ -45,13 +44,14 @@ use rustc_const_math::ConstInt;
 use rustc::mir::repr::Mir;
 
 use std::io;
+use std::mem;
 use std::rc::Rc;
 use std::str;
 use std::u32;
 
 use rbml::reader;
 use rbml;
-use rustc_serialize::{Decodable, SpecializedDecoder, opaque};
+use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use rustc_serialize as serialize;
 use syntax::attr;
 use syntax::parse::token;
@@ -233,35 +233,53 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedDecoder<Ty<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Ty<'tcx>, Self::Error> {
-        let pos = self.opaque.position();
-        let doc = rbml::Doc::at(self.opaque.data, pos);
-        self.opaque.advance(doc.end - pos);
-        Ok(TyDecoder::with_doc(self.tcx(), self.cdata().cnum, doc,
-                               &mut |d| translate_def_id(self.cdata(), d))
-            .parse_ty())
+        let tcx = self.tcx();
+
+        // Handle shorthands first, if we have an usize > 0x80.
+        if self.opaque.data[self.opaque.position()] & 0x80 != 0 {
+            let pos = self.read_usize()?;
+            assert!(pos >= TYPE_SHORTHAND_OFFSET);
+            let key = ty::CReaderCacheKey {
+                cnum: self.cdata().cnum,
+                pos: pos - TYPE_SHORTHAND_OFFSET
+            };
+            if let Some(ty) = tcx.rcache.borrow().get(&key).cloned() {
+                return Ok(ty);
+            }
+
+            let new = opaque::Decoder::new(self.opaque.data, key.pos);
+            let old = mem::replace(&mut self.opaque, new);
+            let ty = Ty::decode(self)?;
+            self.opaque = old;
+            tcx.rcache.borrow_mut().insert(key, ty);
+            return Ok(ty);
+        }
+
+        Ok(tcx.mk_ty(ty::TypeVariants::decode(self)?))
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
-        let substs = Substs::decode(self)?;
-        Ok(self.tcx().mk_substs(substs))
+        Ok(self.tcx().mk_substs(Decodable::decode(self)?))
     }
 }
 
 impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Region> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx ty::Region, Self::Error> {
-        let r = ty::Region::decode(self)?;
-        Ok(self.tcx().mk_region(r))
+        Ok(self.tcx().mk_region(Decodable::decode(self)?))
     }
 }
 
-impl<'a, 'tcx> SpecializedDecoder<ty::ClosureSubsts<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<ty::ClosureSubsts<'tcx>, Self::Error> {
-        Ok(ty::ClosureSubsts {
-            func_substs: Decodable::decode(self)?,
-            upvar_tys: self.tcx().mk_type_list(Decodable::decode(self)?)
-        })
+impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<Ty<'tcx>>> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<&'tcx ty::Slice<Ty<'tcx>>, Self::Error> {
+        Ok(self.tcx().mk_type_list(Decodable::decode(self)?))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::BareFnTy<'tcx>> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<&'tcx ty::BareFnTy<'tcx>, Self::Error> {
+        Ok(self.tcx().mk_bare_fn(Decodable::decode(self)?))
     }
 }
 

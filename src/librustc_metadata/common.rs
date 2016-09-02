@@ -10,9 +10,7 @@
 
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
-pub const tag_opaque: usize = 0x00;
-
-// GAP 0x01...0x19
+// GAP 0x00...0x19
 
 pub const tag_items: usize = 0x100; // top-level only
 
@@ -214,3 +212,8 @@ pub const tag_macro_derive_registrar: usize = 0x115;
 // NB: increment this if you change the format of metadata such that
 // rustc_version can't be found.
 pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2];
+
+/// The shorthand encoding of `Ty` uses `TypeVariants`' variant `usize`
+/// and is offset by this value so it never matches a real variant.
+/// This offset is also chosen so that the first byte is never < 0x80.
+pub const TYPE_SHORTHAND_OFFSET: usize = 0x80;
