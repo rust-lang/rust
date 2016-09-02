@@ -26,7 +26,6 @@ use ptr::P;
 use tokenstream::TokenTree;
 use util::small_vector::SmallVector;
 
-use std::collections::HashMap;
 use std::mem;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -182,10 +181,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     // Fully expand all the invocations in `expansion`.
     fn expand(&mut self, expansion: Expansion) -> Expansion {
+        self.cx.recursion_count = 0;
         let (expansion, mut invocations) = self.collect_invocations(expansion);
         invocations.reverse();
 
-        let mut expansions = HashMap::new();
+        let mut expansions = vec![vec![(0, expansion)]];
         while let Some(invoc) = invocations.pop() {
             let Invocation { mark, module, depth, backtrace, .. } = invoc;
             self.cx.syntax_env.current_module = module;
@@ -198,13 +198,24 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.recursion_count = depth + 1;
             let (expansion, new_invocations) = self.collect_invocations(expansion);
 
-            expansions.insert(mark.as_u32(), expansion);
+            if expansions.len() == depth {
+                expansions.push(Vec::new());
+            }
+            expansions[depth].push((mark.as_u32(), expansion));
             if !self.single_step {
                 invocations.extend(new_invocations.into_iter().rev());
             }
         }
 
-        expansion.fold_with(&mut PlaceholderExpander::new(expansions))
+        let mut placeholder_expander = PlaceholderExpander::new();
+        while let Some(expansions) = expansions.pop() {
+            for (mark, expansion) in expansions.into_iter().rev() {
+                let expansion = expansion.fold_with(&mut placeholder_expander);
+                placeholder_expander.add(mark, expansion);
+            }
+        }
+
+        placeholder_expander.remove(0)
     }
 
     fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
