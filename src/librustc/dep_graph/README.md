@@ -341,6 +341,8 @@ path is found (as demonstrated above).
 
 ### Debugging the dependency graph
 
+#### Dumping the graph
+
 The compiler is also capable of dumping the dependency graph for your
 debugging pleasure. To do so, pass the `-Z dump-dep-graph` flag. The
 graph will be dumped to `dep_graph.{txt,dot}` in the current
@@ -391,6 +393,35 @@ RUST_DEP_GRAPH_FILTER='Hir&foo -> TypeckItemBody & bar'
 This will dump out all the nodes that lead from `Hir(foo)` to
 `TypeckItemBody(bar)`, from which you can (hopefully) see the source
 of the erroneous edge.
+
+#### Tracking down incorrect edges
+
+Sometimes, after you dump the dependency graph, you will find some
+path that should not exist, but you will not be quite sure how it came
+to be. **When the compiler is built with debug assertions,** it can
+help you track that down. Simply set the `RUST_FORBID_DEP_GRAPH_EDGE`
+environment variable to a filter. Every edge created in the dep-graph
+will be tested against that filter -- if it matches, a `bug!` is
+reported, so you can easily see the backtrace (`RUST_BACKTRACE=1`).
+
+The syntax for these filters is the same as described in the previous
+section. However, note that this filter is applied to every **edge**
+and doesn't handle longer paths in the graph, unlike the previous
+section.
+
+Example:
+
+You find that there is a path from the `Hir` of `foo` to the type
+check of `bar` and you don't think there should be. You dump the
+dep-graph as described in the previous section and open `dep-graph.txt`
+to see something like:
+
+    Hir(foo) -> Collect(bar)
+    Collect(bar) -> TypeckItemBody(bar)
+    
+That first edge looks suspicious to you. So you set
+`RUST_FORBID_DEP_GRAPH_EDGE` to `Hir&foo -> Collect&bar`, re-run, and
+then observe the backtrace. Voila, bug fixed!
 
 ### Inlining of HIR nodes
 
