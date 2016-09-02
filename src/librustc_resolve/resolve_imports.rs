@@ -27,7 +27,7 @@ use rustc::hir::def::*;
 
 use syntax::ast::{NodeId, Name};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 use std::cell::{Cell, RefCell};
 
@@ -52,7 +52,11 @@ pub enum ImportDirectiveSubclass<'a> {
         value_result: Cell<Result<&'a NameBinding<'a>, Determinacy>>,
         type_result: Cell<Result<&'a NameBinding<'a>, Determinacy>>,
     },
-    GlobImport { is_prelude: bool },
+    GlobImport {
+        is_prelude: bool,
+        max_vis: Cell<ty::Visibility>, // The visibility of the greatest reexport.
+        // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
+    },
 }
 
 impl<'a> ImportDirectiveSubclass<'a> {
@@ -167,8 +171,10 @@ impl<'a> Resolver<'a> {
             _ => return Failed(None), // This happens when there is a cycle of imports
         };
 
+        let new_import_semantics = self.new_import_semantics;
         let is_disallowed_private_import = |binding: &NameBinding| {
-            !allow_private_imports && !binding.is_pseudo_public() && binding.is_import()
+            !new_import_semantics && !allow_private_imports && // disallowed
+            binding.vis != ty::Visibility::Public && binding.is_import() // non-`pub` import
         };
 
         if let Some(span) = record_used {
@@ -176,7 +182,9 @@ impl<'a> Resolver<'a> {
                 if is_disallowed_private_import(binding) {
                     return Failed(None);
                 }
-                self.record_use(name, ns, binding);
+                if self.record_use(name, ns, binding, span) {
+                    return Success(self.dummy_binding);
+                }
                 if !self.is_accessible(binding.vis) {
                     self.privacy_errors.push(PrivacyError(span, name, binding));
                 }
@@ -274,7 +282,7 @@ impl<'a> Resolver<'a> {
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
-            GlobImport { is_prelude: true } => {}
+            GlobImport { is_prelude: true, .. } => {}
             GlobImport { .. } => self.current_module.globs.borrow_mut().push(directive),
         }
     }
@@ -283,13 +291,26 @@ impl<'a> Resolver<'a> {
     // return the corresponding binding defined by the import directive.
     fn import(&mut self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
               -> NameBinding<'a> {
+        let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
+                     !directive.is_glob() && binding.is_extern_crate() { // c.f. `PRIVATE_IN_PUBLIC`
+            directive.vis.get()
+        } else {
+            binding.pseudo_vis()
+        };
+
+        if let GlobImport { ref max_vis, .. } = directive.subclass {
+            if vis == directive.vis.get() || vis.is_at_least(max_vis.get(), self) {
+                max_vis.set(vis)
+            }
+        }
+
         NameBinding {
             kind: NameBindingKind::Import {
                 binding: binding,
                 directive: directive,
             },
             span: directive.span,
-            vis: directive.vis.get(),
+            vis: vis,
         }
     }
 
@@ -299,10 +320,28 @@ impl<'a> Resolver<'a> {
         where T: ToNameBinding<'a>
     {
         let binding = self.arenas.alloc_name_binding(binding.to_name_binding());
-        self.update_resolution(module, name, ns, |_, resolution| {
+        self.update_resolution(module, name, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {
-                    resolution.duplicate_globs.push(binding);
+                    if !this.new_import_semantics || !old_binding.is_glob_import() {
+                        resolution.duplicate_globs.push(binding);
+                    } else if binding.def() != old_binding.def() {
+                        resolution.binding = Some(this.arenas.alloc_name_binding(NameBinding {
+                            kind: NameBindingKind::Ambiguity {
+                                b1: old_binding,
+                                b2: binding,
+                            },
+                            vis: if old_binding.vis.is_at_least(binding.vis, this) {
+                                old_binding.vis
+                            } else {
+                                binding.vis
+                            },
+                            span: old_binding.span,
+                        }));
+                    } else if !old_binding.vis.is_at_least(binding.vis, this) {
+                        // We are glob-importing the same item but with greater visibility.
+                        resolution.binding = Some(binding);
+                    }
                 } else if old_binding.is_glob_import() {
                     resolution.duplicate_globs.push(old_binding);
                     resolution.binding = Some(binding);
@@ -324,23 +363,29 @@ impl<'a> Resolver<'a> {
     {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
-        let (new_binding, t) = {
+        let (binding, t) = {
             let mut resolution = &mut *self.resolution(module, name, ns).borrow_mut();
-            let was_known = resolution.binding().is_some();
+            let old_binding = resolution.binding();
 
             let t = f(self, resolution);
 
-            if was_known { return t; }
             match resolution.binding() {
-                Some(binding) => (binding, t),
+                _ if !self.new_import_semantics && old_binding.is_some() => return t,
                 None => return t,
+                Some(binding) => match old_binding {
+                    Some(old_binding) if old_binding as *const _ == binding as *const _ => return t,
+                    _ => (binding, t),
+                }
             }
         };
 
-        // Define `new_binding` in `module`s glob importers.
-        if new_binding.is_importable() && new_binding.is_pseudo_public() {
-            for directive in module.glob_importers.borrow_mut().iter() {
-                let imported_binding = self.import(new_binding, directive);
+        // Define `binding` in `module`s glob importers.
+        for directive in module.glob_importers.borrow_mut().iter() {
+            if match self.new_import_semantics {
+                true => self.is_accessible_from(binding.vis, directive.parent),
+                false => binding.vis == ty::Visibility::Public,
+            } {
+                let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
         }
@@ -381,14 +426,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     // remain or unsuccessfully when no forward progress in resolving imports
     // is made.
 
-    fn set_current_module(&mut self, module: Module<'b>) {
-        self.current_module = module;
-        self.current_vis = ty::Visibility::Restricted({
-            let normal_module = self.get_nearest_normal_module_parent_or_self(module);
-            self.definitions.as_local_node_id(normal_module.def_id().unwrap()).unwrap()
-        });
-    }
-
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
     fn resolve_imports(&mut self) {
@@ -424,7 +461,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 errors = true;
                 let (span, help) = match err {
                     Some((span, msg)) => (span, msg),
-                    None => (import.span, String::new()),
+                    None => continue,
                 };
 
                 // If the error is a single failed import then create a "fake" import
@@ -450,13 +487,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     // failed resolution
     fn import_dummy_binding(&mut self, directive: &'b ImportDirective<'b>) {
         if let SingleImport { target, .. } = directive.subclass {
-            let dummy_binding = self.arenas.alloc_name_binding(NameBinding {
-                kind: NameBindingKind::Def(Def::Err),
-                span: DUMMY_SP,
-                vis: ty::Visibility::Public,
-            });
+            let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, directive);
-
             let _ = self.try_define(directive.parent, target, ValueNS, dummy_binding.clone());
             let _ = self.try_define(directive.parent, target, TypeNS, dummy_binding);
         }
@@ -472,7 +504,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                names_to_string(&directive.module_path),
                module_to_string(self.current_module));
 
-        self.set_current_module(directive.parent);
+        self.current_module = directive.parent;
 
         let module = if let Some(module) = directive.imported_module.get() {
             module
@@ -548,7 +580,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     }
 
     fn finalize_import(&mut self, directive: &'b ImportDirective<'b>) -> ResolveResult<()> {
-        self.set_current_module(directive.parent);
+        self.current_module = directive.parent;
 
         let ImportDirective { ref module_path, span, .. } = *directive;
         let module_result = self.resolve_module_path(&module_path, DontUseLexicalScope, Some(span));
@@ -566,12 +598,23 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let msg = "Cannot glob-import a module into itself.".into();
                 return Failed(Some((directive.span, msg)));
             }
-            GlobImport { .. } => return Success(()),
+            GlobImport { is_prelude, ref max_vis } => {
+                if !is_prelude &&
+                   max_vis.get() != ty::Visibility::PrivateExternal && // Allow empty globs.
+                   !max_vis.get().is_at_least(directive.vis.get(), self) {
+                    let msg = "A non-empty glob must import something with the glob's visibility";
+                    self.session.span_err(directive.span, msg);
+                }
+                return Success(());
+            }
         };
 
         for &(ns, result) in &[(ValueNS, value_result), (TypeNS, type_result)] {
             if let Ok(binding) = result {
-                self.record_use(name, ns, binding);
+                if self.record_use(name, ns, binding, directive.span) {
+                    self.resolution(module, name, ns).borrow_mut().binding =
+                        Some(self.dummy_binding);
+                }
             }
         }
 
@@ -608,22 +651,44 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         }
 
+        let session = self.session;
+        let reexport_error = || {
+            let msg = format!("`{}` is private, and cannot be reexported", name);
+            let note_msg =
+                format!("consider marking `{}` as `pub` in the imported module", name);
+            struct_span_err!(session, directive.span, E0364, "{}", &msg)
+                .span_note(directive.span, &note_msg)
+                .emit();
+        };
+
+        let extern_crate_lint = || {
+            let msg = format!("extern crate `{}` is private, and cannot be reexported \
+                               (error E0364), consider declaring with `pub`",
+                               name);
+            session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
+        };
+
         match (value_result, type_result) {
+            // With `#![feature(item_like_imports)]`, all namespaces
+            // must be re-exported with extra visibility for an error to occur.
+            (Ok(value_binding), Ok(type_binding)) if self.new_import_semantics => {
+                let vis = directive.vis.get();
+                if !value_binding.pseudo_vis().is_at_least(vis, self) &&
+                   !type_binding.pseudo_vis().is_at_least(vis, self) {
+                    reexport_error();
+                } else if type_binding.is_extern_crate() &&
+                          !type_binding.vis.is_at_least(vis, self) {
+                    extern_crate_lint();
+                }
+            }
+
             (Ok(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
-                let msg = format!("`{}` is private, and cannot be reexported", name);
-                let note_msg =
-                    format!("consider marking `{}` as `pub` in the imported module", name);
-                struct_span_err!(self.session, directive.span, E0364, "{}", &msg)
-                    .span_note(directive.span, &note_msg)
-                    .emit();
+                reexport_error();
             }
 
             (_, Ok(binding)) if !binding.pseudo_vis().is_at_least(directive.vis.get(), self) => {
                 if binding.is_extern_crate() {
-                    let msg = format!("extern crate `{}` is private, and cannot be reexported \
-                                       (error E0364), consider declaring with `pub`",
-                                       name);
-                    self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
+                    extern_crate_lint();
                 } else {
                     struct_span_err!(self.session, directive.span, E0365,
                                      "`{}` is private, and cannot be reexported", name)
@@ -639,9 +704,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // Record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        let def = match type_result.ok().and_then(NameBinding::def) {
+        let def = match type_result.ok().map(NameBinding::def) {
             Some(def) => def,
-            None => value_result.ok().and_then(NameBinding::def).unwrap(),
+            None => value_result.ok().map(NameBinding::def).unwrap(),
         };
         let path_resolution = PathResolution::new(def);
         self.def_map.insert(directive.id, path_resolution);
@@ -656,11 +721,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         if let Some(Def::Trait(_)) = module.def {
             self.session.span_err(directive.span, "items in traits are not importable.");
-        }
-
-        if module.def_id() == directive.parent.def_id()  {
             return;
-        } else if let GlobImport { is_prelude: true } = directive.subclass {
+        } else if module.def_id() == directive.parent.def_id()  {
+            return;
+        } else if let GlobImport { is_prelude: true, .. } = directive.subclass {
             self.prelude = Some(module);
             return;
         }
@@ -674,7 +738,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
-            if binding.is_importable() && binding.is_pseudo_public() {
+            if binding.pseudo_vis() == ty::Visibility::Public ||
+               self.new_import_semantics && self.is_accessible(binding.vis) {
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, name, ns, imported_binding);
             }
@@ -702,20 +767,23 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             };
 
             // Report conflicts
-            for duplicate_glob in resolution.duplicate_globs.iter() {
-                // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
-                if !binding.is_import() {
-                    if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
-                        if binding.is_import() { continue }
+            if !self.new_import_semantics {
+                for duplicate_glob in resolution.duplicate_globs.iter() {
+                    // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
+                    if !binding.is_import() {
+                        if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
+                            if binding.is_import() { continue }
+                        }
                     }
-                }
 
-                self.report_conflict(module, name, ns, duplicate_glob, binding);
+                    self.report_conflict(module, name, ns, duplicate_glob, binding);
+                }
             }
 
             if binding.vis == ty::Visibility::Public &&
                (binding.is_import() || binding.is_extern_crate()) {
-                if let Some(def) = binding.def() {
+                let def = binding.def();
+                if def != Def::Err {
                     reexports.push(Export { name: name, def_id: def.def_id() });
                 }
             }

@@ -285,7 +285,10 @@ declare_features! (
 
     // Allows the sysV64 ABI to be specified on all platforms
     // instead of just the platforms on which it is the C ABI
-    (active, abi_sysv64, "1.13.0", Some(36167))
+    (active, abi_sysv64, "1.13.0", Some(36167)),
+
+    // Use the import semantics from RFC 1560.
+    (active, item_like_imports, "1.13.0", Some(35120))
 );
 
 declare_features! (
