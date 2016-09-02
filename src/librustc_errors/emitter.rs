@@ -883,7 +883,11 @@ impl Destination {
             Style::FileNameStyle | Style::LineAndColumn => {}
             Style::LineNumber => {
                 try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE)));
+                if cfg!(windows) {
+                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN)));
+                } else {
+                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE)));
+                }
             }
             Style::ErrorCode => {
                 try!(self.start_attr(term::Attr::Bold));
@@ -896,6 +900,9 @@ impl Destination {
             }
             Style::OldSchoolNoteText | Style::HeaderMsg => {
                 try!(self.start_attr(term::Attr::Bold));
+                if cfg!(windows) {
+                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_WHITE)));
+                }
             }
             Style::UnderlinePrimary | Style::LabelPrimary => {
                 try!(self.start_attr(term::Attr::Bold));
@@ -904,7 +911,11 @@ impl Destination {
             Style::UnderlineSecondary |
             Style::LabelSecondary => {
                 try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE)));
+                if cfg!(windows) {
+                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN)));
+                } else {
+                    try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE)));
+                }
             }
             Style::NoStyle => {}
             Style::Level(l) => {
