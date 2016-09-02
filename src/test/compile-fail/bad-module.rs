@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: failed to resolve. Use of undeclared type or module `thing`
+fn main() {
+    let foo = thing::len(Vec::new());
+    //~^ ERROR failed to resolve. Use of undeclared type or module `thing`
 
-fn main() { let foo = thing::len(Vec::new()); }
+    let foo = foo::bar::baz();
+    //~^ ERROR failed to resolve. Use of undeclared type or module `foo`
+}
