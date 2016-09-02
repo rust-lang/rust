@@ -10,12 +10,7 @@
 
 fn f() {
     let x = [1].iter();
-    //~^ ERROR borrowed value does not live long enough
-    //~| NOTE does not live long enough
-    //~| NOTE borrowed value only valid until here
-    //~| HELP consider using a `let` binding to increase its lifetime
 }
-//~^ borrowed value must be valid until here
 
 fn main() {
     f();

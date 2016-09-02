@@ -649,6 +649,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) = \
 	--lldb-python $$(CFG_LLDB_PYTHON) \
         --gdb-version="$(CFG_GDB_VERSION)" \
         --lldb-version="$(CFG_LLDB_VERSION)" \
+        --llvm-version="$$(LLVM_VERSION_$(3))" \
         --android-cross-path=$(CFG_ARM_LINUX_ANDROIDEABI_NDK) \
         --adb-path=$(CFG_ADB) \
         --adb-test-dir=$(CFG_ADB_TEST_DIR) \
