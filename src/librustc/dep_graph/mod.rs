@@ -15,6 +15,7 @@ mod edges;
 mod graph;
 mod query;
 mod raii;
+mod shadow;
 mod thread;
 mod visit;
 
