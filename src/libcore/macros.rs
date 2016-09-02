@@ -189,10 +189,19 @@ macro_rules! debug_assert_eq {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_eq!($($arg)*); })
 }
 
-/// Helper macro for unwrapping `Result` values while returning early with an
-/// error if the value of the expression is `Err`. Can only be used in
-/// functions that return `Result` because of the early return of `Err` that
-/// it provides.
+/// Helper macro for reducing boilerplate code for matching `Result` together
+/// with converting downstream errors.
+///
+/// `try!` matches the given `Result`. In case of the `Ok` variant, the
+/// expression has the value of the wrapped value.
+///
+/// In case of the `Err` variant, it retrieves the inner error. `try!` then
+/// performs conversion using `From`. This provides automatic conversion
+/// between specialized errors and more general ones. The resulting
+/// error is then immediately returned.
+///
+/// Because of the early return, `try!` can only be used in functions that
+/// return `Result`.
 ///
 /// # Examples
 ///
@@ -201,18 +210,28 @@ macro_rules! debug_assert_eq {
 /// use std::fs::File;
 /// use std::io::prelude::*;
 ///
-/// fn write_to_file_using_try() -> Result<(), io::Error> {
+/// enum MyError {
+///     FileWriteError
+/// }
+///
+/// impl From<io::Error> for MyError {
+///     fn from(e: io::Error) -> MyError {
+///         MyError::FileWriteError
+///     }
+/// }
+///
+/// fn write_to_file_using_try() -> Result<(), MyError> {
 ///     let mut file = try!(File::create("my_best_friends.txt"));
 ///     try!(file.write_all(b"This is a list of my best friends."));
 ///     println!("I wrote to the file");
 ///     Ok(())
 /// }
 /// // This is equivalent to:
-/// fn write_to_file_using_match() -> Result<(), io::Error> {
+/// fn write_to_file_using_match() -> Result<(), MyError> {
 ///     let mut file = try!(File::create("my_best_friends.txt"));
 ///     match file.write_all(b"This is a list of my best friends.") {
 ///         Ok(v) => v,
-///         Err(e) => return Err(e),
+///         Err(e) => return Err(From::from(e)),
 ///     }
 ///     println!("I wrote to the file");
 ///     Ok(())
