@@ -388,6 +388,9 @@ pub fn rust_src(build: &Build) {
     // Rename directory, so that root folder of tarball has the correct name
     t!(fs::rename(&dst_src, &plain_dst_src));
 
+    // Create the version file
+    write_file(&plain_dst_src.join("version"), build.version.as_bytes());
+
     // Create plain source tarball
     let mut cmd = Command::new("tar");
     cmd.arg("-czf").arg(sanitize_sh(&distdir(build).join(&format!("{}.tar.gz", plain_name))))
@@ -430,4 +433,9 @@ fn sanitize_sh(path: &Path) -> String {
         }
         Some(format!("/{}/{}", drive, &s[drive.len_utf8() + 2..]))
     }
+}
+
+fn write_file(path: &Path, data: &[u8]) {
+    let mut vf = t!(fs::File::create(path));
+    t!(vf.write_all(data));
 }
