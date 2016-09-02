@@ -109,29 +109,104 @@ impl ExpansionKind {
     fn dummy(self, span: Span) -> Expansion {
         self.make_from(DummyResult::any(span)).unwrap()
     }
+
+    fn expect_from_annotatables<I: IntoIterator<Item = Annotatable>>(self, items: I) -> Expansion {
+        let items = items.into_iter();
+        match self {
+            ExpansionKind::Items =>
+                Expansion::Items(items.map(Annotatable::expect_item).collect()),
+            ExpansionKind::ImplItems =>
+                Expansion::ImplItems(items.map(Annotatable::expect_impl_item).collect()),
+            ExpansionKind::TraitItems =>
+                Expansion::TraitItems(items.map(Annotatable::expect_trait_item).collect()),
+            _ => unreachable!(),
+        }
+    }
 }
 
 pub struct Invocation {
-    span: Span,
-    attrs: Vec<ast::Attribute>,
-    mac: ast::Mac,
-    ident: Option<Ident>,
+    kind: InvocationKind,
+    expansion_kind: ExpansionKind,
     mark: Mark,
-    kind: ExpansionKind,
+}
+
+enum InvocationKind {
+    Bang {
+        attrs: Vec<ast::Attribute>,
+        mac: ast::Mac,
+        ident: Option<Ident>,
+        span: Span,
+    },
+    Attr {
+        attr: ast::Attribute,
+        item: Annotatable,
+    },
 }
 
 pub fn expand_expr(expr: ast::Expr, fld: &mut MacroExpander) -> P<ast::Expr> {
     if let ast::ExprKind::Mac(mac) = expr.node {
-        let invoc = fld.new_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::Expr);
-        expand_mac_invoc(invoc, fld).make_expr()
+        let invoc = fld.new_bang_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::Expr);
+        expand_invoc(invoc, fld).make_expr()
     } else {
         P(noop_fold_expr(expr, fld))
     }
 }
 
+fn expand_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
+    match invoc.kind {
+        InvocationKind::Bang { .. } => expand_bang_invoc(invoc, fld),
+        InvocationKind::Attr { .. } => expand_attr_invoc(invoc, fld),
+    }
+}
+
+fn expand_attr_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
+    let Invocation { expansion_kind: kind, .. } = invoc;
+    let (attr, item) = match invoc.kind {
+        InvocationKind::Attr { attr, item } => (attr, item),
+        _ => unreachable!(),
+    };
+
+    let extension = match fld.cx.syntax_env.find(intern(&attr.name())) {
+        Some(extension) => extension,
+        None => unreachable!(),
+    };
+
+    attr::mark_used(&attr);
+    fld.cx.bt_push(ExpnInfo {
+        call_site: attr.span,
+        callee: NameAndSpan {
+            format: MacroAttribute(intern(&attr.name())),
+            span: Some(attr.span),
+            allow_internal_unstable: false,
+        }
+    });
+
+    let modified = match *extension {
+        MultiModifier(ref mac) => {
+            kind.expect_from_annotatables(mac.expand(fld.cx, attr.span, &attr.node.value, item))
+        }
+        MultiDecorator(ref mac) => {
+            let mut items = Vec::new();
+            mac.expand(fld.cx, attr.span, &attr.node.value, &item, &mut |item| items.push(item));
+            items.push(item);
+            kind.expect_from_annotatables(items)
+        }
+        _ => unreachable!(),
+    };
+
+    fld.cx.bt_pop();
+
+    let configured = modified.fold_with(&mut fld.strip_unconfigured());
+    configured.fold_with(fld)
+}
+
 /// Expand a macro invocation. Returns the result of expansion.
-fn expand_mac_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
-    let Invocation { span, attrs, mac, ident, mark, kind } = invoc;
+fn expand_bang_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
+    let Invocation { mark, expansion_kind: kind, .. } = invoc;
+    let (attrs, mac, ident, span) = match invoc.kind {
+        InvocationKind::Bang { attrs, mac, ident, span } => (attrs, mac, ident, span),
+        _ => unreachable!(),
+    };
     let Mac_ { path, tts, .. } = mac.node;
 
     // Detect use of feature-gated or invalid attributes on macro invoations
@@ -270,11 +345,8 @@ fn expand_mac_invoc(invoc: Invocation, fld: &mut MacroExpander) -> Expansion {
     fully_expanded
 }
 
-// When we enter a module, record it, for the sake of `module!`
-pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
-                   -> SmallVector<P<ast::Item>> {
-    expand_annotatable(Annotatable::Item(it), fld)
-        .into_iter().map(|i| i.expect_item()).collect()
+pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
+    expand_annotatable(Annotatable::Item(it), fld).make_items()
 }
 
 // does this attribute list contain "macro_use" ?
@@ -311,8 +383,8 @@ fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
         _ => return noop_fold_stmt(stmt, fld)
     };
 
-    let invoc = fld.new_invoc(mac, attrs.into(), stmt.span, ExpansionKind::Stmts);
-    let mut fully_expanded = expand_mac_invoc(invoc, fld).make_stmts();
+    let invoc = fld.new_bang_invoc(mac, attrs.into(), stmt.span, ExpansionKind::Stmts);
+    let mut fully_expanded = expand_invoc(invoc, fld).make_stmts();
 
     // If this is a macro invocation with a semicolon, then apply that
     // semicolon to the final statement produced by expansion.
@@ -332,14 +404,14 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
     }
     p.and_then(|p| match p.node {
         PatKind::Mac(mac) => {
-            let invoc = fld.new_invoc(mac, Vec::new(), p.span, ExpansionKind::Pat);
-            expand_mac_invoc(invoc, fld).make_pat()
+            let invoc = fld.new_bang_invoc(mac, Vec::new(), p.span, ExpansionKind::Pat);
+            expand_invoc(invoc, fld).make_pat()
         }
         _ => unreachable!(),
     })
 }
 
-fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable> {
+fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> Expansion {
     match a {
         Annotatable::Item(it) => match it.node {
             ast::ItemKind::Mac(..) => {
@@ -347,13 +419,15 @@ fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector
                     ItemKind::Mac(ref mac) => mac.node.path.segments.is_empty(),
                     _ => unreachable!(),
                 } {
-                    return SmallVector::one(Annotatable::Item(it));
+                    return Expansion::Items(SmallVector::one(it));
                 }
                 it.and_then(|it| match it.node {
                     ItemKind::Mac(mac) => {
-                        let mut invoc = fld.new_invoc(mac, it.attrs, it.span, ExpansionKind::Items);
-                        invoc.ident = Some(it.ident);
-                        expand_mac_invoc(invoc, fld).make_items()
+                        let invoc =
+                            fld.new_invoc(ExpansionKind::Items, InvocationKind::Bang {
+                                mac: mac, attrs: it.attrs, ident: Some(it.ident), span: it.span,
+                            });
+                        expand_invoc(invoc, fld)
                     }
                     _ => unreachable!(),
                 })
@@ -370,31 +444,24 @@ fn expand_multi_modified(a: Annotatable, fld: &mut MacroExpander) -> SmallVector
                 if valid_ident {
                     fld.cx.mod_pop();
                 }
-                result
+                Expansion::Items(result)
             },
-            _ => noop_fold_item(it, fld),
-        }.into_iter().map(|i| Annotatable::Item(i)).collect(),
+            _ => Expansion::Items(noop_fold_item(it, fld)),
+        },
 
-        Annotatable::TraitItem(it) => {
-            expand_trait_item(it.unwrap(), fld).into_iter().
-                map(|it| Annotatable::TraitItem(P(it))).collect()
-        }
-
-        Annotatable::ImplItem(ii) => {
-            expand_impl_item(ii.unwrap(), fld).into_iter().
-                map(|ii| Annotatable::ImplItem(P(ii))).collect()
-        }
+        Annotatable::TraitItem(it) => Expansion::TraitItems(expand_trait_item(it.unwrap(), fld)),
+        Annotatable::ImplItem(ii) => Expansion::ImplItems(expand_impl_item(ii.unwrap(), fld)),
     }
 }
 
-fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> SmallVector<Annotatable> {
-    let mut multi_modifier = None;
+fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> Expansion {
+    let mut attr = None;
     item = item.map_attrs(|mut attrs| {
         for i in 0..attrs.len() {
             if let Some(extension) = fld.cx.syntax_env.find(intern(&attrs[i].name())) {
                 match *extension {
                     MultiModifier(..) | MultiDecorator(..) => {
-                        multi_modifier = Some((attrs.remove(i), extension));
+                        attr = Some(attrs.remove(i));
                         break;
                     }
                     _ => {}
@@ -404,38 +471,16 @@ fn expand_annotatable(mut item: Annotatable, fld: &mut MacroExpander) -> SmallVe
         attrs
     });
 
-    match multi_modifier {
-        None => expand_multi_modified(item, fld),
-        Some((attr, extension)) => {
-            attr::mark_used(&attr);
-            fld.cx.bt_push(ExpnInfo {
-                call_site: attr.span,
-                callee: NameAndSpan {
-                    format: MacroAttribute(intern(&attr.name())),
-                    span: Some(attr.span),
-                    allow_internal_unstable: false,
-                }
-            });
-
-            let modified = match *extension {
-                MultiModifier(ref mac) => mac.expand(fld.cx, attr.span, &attr.node.value, item),
-                MultiDecorator(ref mac) => {
-                    let mut items = Vec::new();
-                    mac.expand(fld.cx, attr.span, &attr.node.value, &item,
-                               &mut |item| items.push(item));
-                    items.push(item);
-                    items
-                }
-                _ => unreachable!(),
-            };
-
-            fld.cx.bt_pop();
-            let configured = modified.into_iter().flat_map(|it| {
-                it.fold_with(&mut fld.strip_unconfigured())
-            }).collect::<SmallVector<_>>();
-
-            configured.into_iter().flat_map(|it| expand_annotatable(it, fld)).collect()
-        }
+    if let Some(attr) = attr {
+        let kind = match item {
+            Annotatable::Item(_) => ExpansionKind::Items,
+            Annotatable::ImplItem(_) => ExpansionKind::ImplItems,
+            Annotatable::TraitItem(_) => ExpansionKind::TraitItems,
+        };
+        let invoc = fld.new_invoc(kind, InvocationKind::Attr { attr: attr, item: item });
+        expand_invoc(invoc, fld)
+    } else {
+        expand_multi_modified(item, fld)
     }
 }
 
@@ -443,8 +488,8 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
                  -> SmallVector<ast::ImplItem> {
     match ii.node {
         ast::ImplItemKind::Macro(mac) => {
-            let invoc = fld.new_invoc(mac, ii.attrs, ii.span, ExpansionKind::ImplItems);
-            expand_mac_invoc(invoc, fld).make_impl_items()
+            let invoc = fld.new_bang_invoc(mac, ii.attrs, ii.span, ExpansionKind::ImplItems);
+            expand_invoc(invoc, fld).make_impl_items()
         }
         _ => fold::noop_fold_impl_item(ii, fld)
     }
@@ -454,8 +499,8 @@ fn expand_trait_item(ti: ast::TraitItem, fld: &mut MacroExpander)
                      -> SmallVector<ast::TraitItem> {
     match ti.node {
         ast::TraitItemKind::Macro(mac) => {
-            let invoc = fld.new_invoc(mac, ti.attrs, ti.span, ExpansionKind::TraitItems);
-            expand_mac_invoc(invoc, fld).make_trait_items()
+            let invoc = fld.new_bang_invoc(mac, ti.attrs, ti.span, ExpansionKind::TraitItems);
+            expand_invoc(invoc, fld).make_trait_items()
         }
         _ => fold::noop_fold_trait_item(ti, fld)
     }
@@ -469,8 +514,8 @@ pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
 
     match t.node {
         ast::TyKind::Mac(mac) => {
-            let invoc = fld.new_invoc(mac, Vec::new(), t.span, ExpansionKind::Ty);
-            expand_mac_invoc(invoc, fld).make_ty()
+            let invoc = fld.new_bang_invoc(mac, Vec::new(), t.span, ExpansionKind::Ty);
+            expand_invoc(invoc, fld).make_ty()
         }
         _ => unreachable!(),
     }
@@ -542,10 +587,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         });
     }
 
-    fn new_invoc(&self, mac: ast::Mac, attrs: Vec<ast::Attribute>, span: Span, kind: ExpansionKind)
+    fn new_invoc(&self, expansion_kind: ExpansionKind, kind: InvocationKind)
                  -> Invocation {
-        let mark = Mark::fresh();
-        Invocation { span: span, attrs: attrs, mac: mac, mark: mark, kind: kind, ident: None }
+        Invocation { mark: Mark::fresh(), kind: kind, expansion_kind: expansion_kind }
+    }
+
+    fn new_bang_invoc(
+        &self, mac: ast::Mac, attrs: Vec<ast::Attribute>, span: Span, kind: ExpansionKind,
+    ) -> Invocation {
+        self.new_invoc(kind, InvocationKind::Bang {
+            attrs: attrs,
+            mac: mac,
+            ident: None,
+            span: span,
+        })
     }
 
     fn with_exts_frame<T, F: FnOnce(&mut Self) -> T>(&mut self, macros_escape: bool, f: F) -> T {
@@ -573,8 +628,8 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expr.and_then(|expr| match expr.node {
             ast::ExprKind::Mac(mac) => {
                 let invoc =
-                    self.new_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::OptExpr);
-                expand_mac_invoc(invoc, self).make_opt_expr()
+                    self.new_bang_invoc(mac, expr.attrs.into(), expr.span, ExpansionKind::OptExpr);
+                expand_invoc(invoc, self).make_opt_expr()
             }
             _ => Some(expand_expr(expr, self)),
         })
@@ -624,13 +679,11 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 
     fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
-        expand_annotatable(Annotatable::TraitItem(P(i)), self)
-            .into_iter().map(|i| i.expect_trait_item()).collect()
+        expand_annotatable(Annotatable::TraitItem(P(i)), self).make_trait_items()
     }
 
     fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
-        expand_annotatable(Annotatable::ImplItem(P(i)), self)
-            .into_iter().map(|i| i.expect_impl_item()).collect()
+        expand_annotatable(Annotatable::ImplItem(P(i)), self).make_impl_items()
     }
 
     fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
