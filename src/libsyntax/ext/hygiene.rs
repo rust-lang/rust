@@ -40,6 +40,10 @@ impl Mark {
             ::std::mem::replace(&mut data.next_mark, next_mark)
         })
     }
+
+    pub fn as_u32(&self) -> u32 {
+        self.0
+    }
 }
 
 struct HygieneData {
