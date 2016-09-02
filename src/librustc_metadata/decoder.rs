@@ -759,7 +759,7 @@ pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id:
         krate: cdata.cnum,
         index: def_key(cdata, id).parent.unwrap()
     };
-    let mut parent_def_path = def_path(cdata, id);
+    let mut parent_def_path = def_path(cdata, id).unwrap();
     parent_def_path.data.pop();
     if let Some(ast_doc) = reader::maybe_get_doc(item_doc, tag_ast as usize) {
         let ii = decode_inlined_item(cdata,
@@ -1626,9 +1626,16 @@ fn item_def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
     }
 }
 
-pub fn def_path(cdata: Cmd, id: DefIndex) -> hir_map::DefPath {
+// Returns the path leading to the thing with this `id`. Note that
+// some def-ids don't wind up in the metadata, so `def_path` sometimes
+// returns `None`
+pub fn def_path(cdata: Cmd, id: DefIndex) -> Option<hir_map::DefPath> {
     debug!("def_path(id={:?})", id);
-    hir_map::DefPath::make(cdata.cnum, id, |parent| def_key(cdata, parent))
+    if cdata.get_item(id).is_some() {
+        Some(hir_map::DefPath::make(cdata.cnum, id, |parent| def_key(cdata, parent)))
+    } else {
+        None
+    }
 }
 
 pub fn get_panic_strategy(data: &[u8]) -> PanicStrategy {
