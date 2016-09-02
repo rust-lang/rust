@@ -438,7 +438,8 @@ pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<Inte
             } else {
                 struct_span_err!(diag, attr.span, E0558,
                                  "export_name attribute has invalid format")
-                                .span_label(attr.span, &format!("did you mean #[export_name=\"*\"]?"))
+                                .span_label(attr.span,
+                                    &format!("did you mean #[export_name=\"*\"]?"))
                                 .emit();
                 None
             }
