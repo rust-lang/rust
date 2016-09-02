@@ -360,6 +360,13 @@ abs_path() {
     (unset CDPATH && cd "$_path" > /dev/null && pwd)
 }
 
+HELP=0
+for arg; do
+    case "$arg" in
+        --help) HELP=1;;
+    esac
+done
+
 msg "looking for configure programs"
 need_cmd cmp
 need_cmd mkdir
@@ -566,11 +573,8 @@ esac
 
 
 OPTIONS=""
-HELP=0
-if [ "$1" = "--help" ]
+if [ "$HELP" -eq 1 ]
 then
-    HELP=1
-    shift
     echo
     echo "Usage: $CFG_SELF [options]"
     echo
