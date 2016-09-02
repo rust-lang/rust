@@ -128,6 +128,8 @@ supported_targets! {
     ("i686-unknown-linux-gnu", i686_unknown_linux_gnu),
     ("i586-unknown-linux-gnu", i586_unknown_linux_gnu),
     ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
+    ("mips64-unknown-linux-gnuabi64", mips64_unknown_linux_gnuabi64),
+    ("mips64el-unknown-linux-gnuabi64", mips64el_unknown_linux_gnuabi64),
     ("mipsel-unknown-linux-gnu", mipsel_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
