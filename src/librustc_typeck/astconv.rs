@@ -1878,11 +1878,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::DefaultReturn(..) => self.tcx().mk_nil(),
         };
 
+        let input_tys = self_ty.into_iter().chain(arg_tys).collect();
+
+        debug!("ty_of_method_or_bare_fn: input_tys={:?}", input_tys);
+        debug!("ty_of_method_or_bare_fn: output_ty={:?}", output_ty);
+
         (self.tcx().mk_bare_fn(ty::BareFnTy {
             unsafety: unsafety,
             abi: abi,
             sig: ty::Binder(ty::FnSig {
-                inputs: self_ty.into_iter().chain(arg_tys).collect(),
+                inputs: input_tys,
                 output: output_ty,
                 variadic: decl.variadic
             }),
