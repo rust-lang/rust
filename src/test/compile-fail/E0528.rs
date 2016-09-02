@@ -13,7 +13,9 @@
 fn main() {
     let r = &[1, 2];
     match r {
-        &[a, b, c, rest..] => { //~ ERROR E0528
+        &[a, b, c, rest..] => {
+        //~^ ERROR E0528
+        //~| NOTE pattern cannot match array of 2 elements
         }
     }
 }
