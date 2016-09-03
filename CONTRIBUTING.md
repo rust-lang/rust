@@ -151,6 +151,10 @@ Some common make targets are:
   command above as we only build the stage1 compiler, not the entire thing).
   You can also leave off the `-rpass` to run all stage1 test types.
 - `make check-stage1-coretest` - Run stage1 tests in `libcore`.
+- `make tidy` - Check that the source code is in compliance with Rust's style
+  guidelines. There is no official document describing Rust's full guidelines 
+  as of yet, but basic rules like 4 spaces for indentation and no more than 99
+  characters in a single line should be kept in mind when writing code.
 
 ## Pull Requests
 
@@ -176,6 +180,15 @@ you’re adding something to the standard library, try
     $ make -j8 check-stage1-std NO_REBUILD=1
 
 This will not rebuild the compiler, but will run the tests.
+
+Please make sure your pull request is in compliance with Rust's style
+guidelines by running
+
+    $ make tidy
+
+Make this check before every pull request (and every new commit in a pull
+request) ; you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
+before every push to make sure you never forget to make this check.
 
 All pull requests are reviewed by another person. We have a bot,
 @rust-highfive, that will automatically assign a random person to review your
