@@ -462,41 +462,28 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let variances = self.tcx().item_variances(item_def_id);
 
         let mut constrained_parameters: FnvHashSet<_> =
-            variances[ast_generics.lifetimes.len()..]
-                     .iter().enumerate()
+            variances.iter().enumerate()
                      .filter(|&(_, &variance)| variance != ty::Bivariant)
-                     .map(|(index, _)| self.param_ty(ast_generics, index))
-                     .map(|p| Parameter::Type(p))
+                     .map(|(index, _)| Parameter(index as u32))
                      .collect();
 
         identify_constrained_type_params(ty_predicates.predicates.as_slice(),
                                          None,
                                          &mut constrained_parameters);
 
-        for (index, &variance) in variances.iter().enumerate() {
-            let (span, name) = if index < ast_generics.lifetimes.len() {
-                if variance != ty::Bivariant {
-                    continue;
-                }
+        for (index, _) in variances.iter().enumerate() {
+            if constrained_parameters.contains(&Parameter(index as u32)) {
+                continue;
+            }
 
+            let (span, name) = if index < ast_generics.lifetimes.len() {
                 (ast_generics.lifetimes[index].lifetime.span,
                  ast_generics.lifetimes[index].lifetime.name)
             } else {
-                let index = index - ast_generics.lifetimes.len();
-                let param_ty = self.param_ty(ast_generics, index);
-                if constrained_parameters.contains(&Parameter::Type(param_ty)) {
-                    continue;
-                }
-                (ast_generics.ty_params[index].span, param_ty.name)
+                (ast_generics.ty_params[index].span,
+                 ast_generics.ty_params[index].name)
             };
             self.report_bivariance(span, name);
-        }
-    }
-
-    fn param_ty(&self, ast_generics: &hir::Generics, index: usize) -> ty::ParamTy {
-        ty::ParamTy {
-            idx: index as u32,
-            name: ast_generics.ty_params[index].name
         }
     }
 
