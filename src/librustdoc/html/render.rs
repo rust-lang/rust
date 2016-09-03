@@ -1549,15 +1549,13 @@ impl<'a> fmt::Display for Item<'a> {
         // Write the breadcrumb trail header for the top
         write!(fmt, "\n<h1 class='fqn'><span class='in-band'>")?;
         match self.item.inner {
+            // Only add item type to the title for items without a definition
+            // on the page.
             clean::ModuleItem(ref m) => if m.is_crate {
                     write!(fmt, "Crate ")?;
                 } else {
                     write!(fmt, "Module ")?;
                 },
-            clean::FunctionItem(..) => write!(fmt, "Function ")?,
-            clean::TraitItem(..) => write!(fmt, "Trait ")?,
-            clean::StructItem(..) => write!(fmt, "Struct ")?,
-            clean::EnumItem(..) => write!(fmt, "Enum ")?,
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
             _ => {}
         }
