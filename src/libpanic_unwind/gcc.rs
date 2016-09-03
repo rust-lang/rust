@@ -125,10 +125,13 @@ const UNWIND_DATA_REG: (i32, i32) = (0, 1); // RAX, RDX
 const UNWIND_DATA_REG: (i32, i32) = (0, 1); // R0, R1 / X0, X1
 
 #[cfg(any(target_arch = "mips", target_arch = "mipsel", target_arch = "mips64"))]
-const UNWIND_DATA_REG: (i32, i32) = (4, 5); // A0, A1
+const UNWIND_DATA_REG: (i32, i32) = (4, 5); // A0, A1 / A0_64, A1_64
 
 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
 const UNWIND_DATA_REG: (i32, i32) = (3, 4); // R3, R4 / X3, X4
+
+#[cfg(any(target_arch = "s390x"))]
+const UNWIND_DATA_REG: (i32, i32) = (6, 7); // R6D, R7D
 
 // The following code is based on GCC's C and C++ personality routines.  For reference, see:
 // https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/libsupc++/eh_personality.cc

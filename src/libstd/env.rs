@@ -942,6 +942,11 @@ mod arch {
     pub const ARCH: &'static str = "powerpc64";
 }
 
+#[cfg(target_arch = "s390x")]
+mod arch {
+    pub const ARCH: &'static str = "s390x";
+}
+
 #[cfg(target_arch = "le32")]
 mod arch {
     pub const ARCH: &'static str = "le32";
