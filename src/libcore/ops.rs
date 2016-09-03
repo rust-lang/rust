@@ -2219,6 +2219,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// array elements up to and including the index indicated by `end`.
 ///
 /// ```
+/// #![feature(inclusive_range_syntax)]
 /// let arr = [0, 1, 2, 3];
 /// assert_eq!(arr[ ...2], [0, 1, 2]);
 /// ```
