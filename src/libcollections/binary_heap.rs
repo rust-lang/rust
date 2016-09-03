@@ -884,58 +884,61 @@ struct Hole<'a, T: 'a> {
 
 impl<'a, T> Hole<'a, T> {
     /// Create a new Hole at index `pos`.
-    fn new(data: &'a mut [T], pos: usize) -> Self {
-        unsafe {
-            let elt = ptr::read(&data[pos]);
-            Hole {
-                data: data,
-                elt: Some(elt),
-                pos: pos,
-            }
+    ///
+    /// Unsafe because pos must be within the data slice.
+    #[inline]
+    unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
+        debug_assert!(pos < data.len());
+        let elt = ptr::read(&data[pos]);
+        Hole {
+            data: data,
+            elt: Some(elt),
+            pos: pos,
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn pos(&self) -> usize {
         self.pos
     }
 
     /// Return a reference to the element removed
-    #[inline(always)]
+    #[inline]
     fn element(&self) -> &T {
         self.elt.as_ref().unwrap()
     }
 
     /// Return a reference to the element at `index`.
     ///
-    /// Panics if the index is out of bounds.
-    ///
-    /// Unsafe because index must not equal pos.
-    #[inline(always)]
+    /// Unsafe because index must be within the data slice and not equal to pos.
+    #[inline]
     unsafe fn get(&self, index: usize) -> &T {
         debug_assert!(index != self.pos);
-        &self.data[index]
+        debug_assert!(index < self.data.len());
+        self.data.get_unchecked(index)
     }
 
     /// Move hole to new location
     ///
-    /// Unsafe because index must not equal pos.
-    #[inline(always)]
+    /// Unsafe because index must be within the data slice and not equal to pos.
+    #[inline]
     unsafe fn move_to(&mut self, index: usize) {
         debug_assert!(index != self.pos);
-        let index_ptr: *const _ = &self.data[index];
-        let hole_ptr = &mut self.data[self.pos];
+        debug_assert!(index < self.data.len());
+        let index_ptr: *const _ = self.data.get_unchecked(index);
+        let hole_ptr = self.data.get_unchecked_mut(self.pos);
         ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
         self.pos = index;
     }
 }
 
 impl<'a, T> Drop for Hole<'a, T> {
+    #[inline]
     fn drop(&mut self) {
         // fill the hole again
         unsafe {
             let pos = self.pos;
-            ptr::write(&mut self.data[pos], self.elt.take().unwrap());
+            ptr::write(self.data.get_unchecked_mut(pos), self.elt.take().unwrap());
         }
     }
 }
