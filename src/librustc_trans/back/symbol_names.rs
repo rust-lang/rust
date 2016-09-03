@@ -188,6 +188,11 @@ impl<'a, 'tcx> Instance<'tcx> {
                 let idx = def_id.index;
                 return scx.sess().generate_plugin_registrar_symbol(svh, idx);
             }
+            if scx.sess().derive_registrar_fn.get() == Some(id) {
+                let svh = &scx.link_meta().crate_hash;
+                let idx = def_id.index;
+                return scx.sess().generate_derive_registrar_symbol(svh, idx);
+            }
         }
 
         // FIXME(eddyb) Precompute a custom symbol name based on attributes.

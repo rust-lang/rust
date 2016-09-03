@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// aux-build:derive-panic.rs
 
-#![feature(custom_derive)]
+#![feature(rustc_macro)]
 
-#[derive_Clone]
-struct Test;
+#[macro_use]
+extern crate derive_panic;
 
-pub fn main() {
-    Test.clone();
-}
+#[derive(A)]
+//~^ ERROR: custom derive attribute panicked
+//~| HELP: message: nope!
+struct Foo;
+
+fn main() {}

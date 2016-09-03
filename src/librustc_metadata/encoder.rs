@@ -31,7 +31,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 
 use rustc::hir::svh::Svh;
 use rustc::mir::mir_map::MirMap;
-use rustc::session::config::{self, PanicStrategy};
+use rustc::session::config::{self, PanicStrategy, CrateTypeRustcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
 use rustc_serialize::Encodable;
@@ -1567,7 +1567,8 @@ fn encode_codemap(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 
 /// Serialize the text of the exported macros
 fn encode_macro_defs(rbml_w: &mut Encoder,
-                     krate: &hir::Crate) {
+                     krate: &hir::Crate,
+                     tcx: TyCtxt) {
     rbml_w.start_tag(tag_macro_defs);
     for def in &krate.exported_macros {
         rbml_w.start_tag(tag_macro_def);
@@ -1585,6 +1586,12 @@ fn encode_macro_defs(rbml_w: &mut Encoder,
         rbml_w.end_tag();
     }
     rbml_w.end_tag();
+
+    if tcx.sess.crate_types.borrow().contains(&CrateTypeRustcMacro) {
+        let id = tcx.sess.derive_registrar_fn.get().unwrap();
+        let did = tcx.map.local_def_id(id);
+        rbml_w.wr_tagged_u32(tag_macro_derive_registrar, did.index.as_u32());
+    }
 }
 
 fn encode_struct_field_attrs(ecx: &EncodeContext,
@@ -1882,7 +1889,7 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
 
     // Encode macro definitions
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
-    encode_macro_defs(rbml_w, krate);
+    encode_macro_defs(rbml_w, krate, ecx.tcx);
     stats.macro_defs_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode the def IDs of impls, for coherence checking.

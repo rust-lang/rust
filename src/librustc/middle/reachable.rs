@@ -138,7 +138,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Creates a new reachability computation context.
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ReachableContext<'a, 'tcx> {
         let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
-            *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib
+            *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||
+            *ty == config::CrateTypeRustcMacro
         });
         ReachableContext {
             tcx: tcx,
