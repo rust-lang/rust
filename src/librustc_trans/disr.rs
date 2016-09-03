@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/// Representation of single value in a C-style enum.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Disr(pub u64);
 
