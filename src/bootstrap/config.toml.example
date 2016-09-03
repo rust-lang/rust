@@ -1,6 +1,7 @@
 # Sample TOML configuration file for building Rust.
 #
-# To configure rustbuild, copy this file to ../config.toml.
+# To configure rustbuild, copy this file to the directory from which you will be
+# running the build, and name it config.toml.
 #
 # All options are commented out by default in this file, and they're commented
 # out with their default values. The build system by default looks for
