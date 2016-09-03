@@ -170,6 +170,11 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
             enc_substs(w, cx, substs);
             write!(w, "]");
         }
+        ty::TyUnion(def, substs) => {
+            write!(w, "U[{}|", (cx.ds)(cx.tcx, def.did));
+            enc_substs(w, cx, substs);
+            write!(w, "]");
+        }
         ty::TyClosure(def, substs) => {
             write!(w, "k[{}|", (cx.ds)(cx.tcx, def));
             enc_substs(w, cx, substs.func_substs);

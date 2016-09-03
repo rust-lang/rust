@@ -128,6 +128,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  InvalidNoMangleItems,
                  PluginAsLibrary,
                  MutableTransmutes,
+                 UnionsWithDropFields,
                  );
 
     add_builtin_with_new!(sess,

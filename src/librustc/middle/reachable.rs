@@ -269,7 +269,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
                     hir::ItemImpl(..) | hir::ItemTrait(..) |
                     hir::ItemStruct(..) | hir::ItemEnum(..) |
-                    hir::ItemDefaultImpl(..) => {}
+                    hir::ItemUnion(..) | hir::ItemDefaultImpl(..) => {}
                 }
             }
             ast_map::NodeTraitItem(trait_method) => {

@@ -30,6 +30,7 @@ pub enum SimplifiedType {
     TupleSimplifiedType(usize),
     TraitSimplifiedType(DefId),
     StructSimplifiedType(DefId),
+    UnionSimplifiedType(DefId),
     ClosureSimplifiedType(DefId),
     AnonSimplifiedType(DefId),
     FunctionSimplifiedType(usize),
@@ -65,6 +66,9 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         }
         ty::TyStruct(def, _) => {
             Some(StructSimplifiedType(def.did))
+        }
+        ty::TyUnion(def, _) => {
+            Some(UnionSimplifiedType(def.did))
         }
         ty::TyRef(_, mt) => {
             // since we introduce auto-refs during method lookup, we

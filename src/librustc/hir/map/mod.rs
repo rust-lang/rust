@@ -1030,6 +1030,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemTy(..) => "ty",
                 ItemEnum(..) => "enum",
                 ItemStruct(..) => "struct",
+                ItemUnion(..) => "union",
                 ItemTrait(..) => "trait",
                 ItemImpl(..) => "impl",
                 ItemDefaultImpl(..) => "default impl",

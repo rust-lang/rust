@@ -105,6 +105,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             match item.node {
                 hir::ItemImpl(..) => "impl",
                 hir::ItemStruct(..) => "struct",
+                hir::ItemUnion(..) => "union",
                 hir::ItemEnum(..) => "enum",
                 hir::ItemTrait(..) => "trait",
                 hir::ItemFn(..) => "function body",
@@ -1370,7 +1371,8 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 }
                 hir::TyPath(ref maybe_qself, ref path) => {
                     match self.tcx.expect_def(cur_ty.id) {
-                        Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
+                        Def::Enum(did) | Def::TyAlias(did) |
+                        Def::Struct(did) | Def::Union(did) => {
                             let generics = self.tcx.lookup_generics(did);
 
                             let expected =

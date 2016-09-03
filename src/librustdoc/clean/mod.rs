@@ -321,6 +321,7 @@ impl Item {
     pub fn has_stripped_fields(&self) -> Option<bool> {
         match self.inner {
             StructItem(ref _struct) => Some(_struct.fields_stripped),
+            UnionItem(ref union) => Some(union.fields_stripped),
             VariantItem(Variant { kind: StructVariant(ref vstruct)} ) => {
                 Some(vstruct.fields_stripped)
             },
@@ -351,6 +352,7 @@ pub enum ItemEnum {
     ExternCrateItem(String, Option<String>),
     ImportItem(Import),
     StructItem(Struct),
+    UnionItem(Union),
     EnumItem(Enum),
     FunctionItem(Function),
     ModuleItem(Module),
@@ -414,6 +416,7 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.structs.iter().map(|x| x.clean(cx)));
+        items.extend(self.unions.iter().map(|x| x.clean(cx)));
         items.extend(self.enums.iter().map(|x| x.clean(cx)));
         items.extend(self.fns.iter().map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().flat_map(|x| x.clean(cx)));
@@ -1464,6 +1467,7 @@ pub enum TypeKind {
     TypeConst,
     TypeStatic,
     TypeStruct,
+    TypeUnion,
     TypeTrait,
     TypeVariant,
     TypeTypedef,
@@ -1802,10 +1806,12 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 abi: fty.abi,
             }),
             ty::TyStruct(def, substs) |
+            ty::TyUnion(def, substs) |
             ty::TyEnum(def, substs) => {
                 let did = def.did;
                 let kind = match self.sty {
                     ty::TyStruct(..) => TypeStruct,
+                    ty::TyUnion(..) => TypeUnion,
                     _ => TypeEnum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
@@ -1928,6 +1934,14 @@ pub struct Struct {
     pub fields_stripped: bool,
 }
 
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct Union {
+    pub struct_type: doctree::StructType,
+    pub generics: Generics,
+    pub fields: Vec<Item>,
+    pub fields_stripped: bool,
+}
+
 impl Clean<Item> for doctree::Struct {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
@@ -1939,6 +1953,26 @@ impl Clean<Item> for doctree::Struct {
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
             inner: StructItem(Struct {
+                struct_type: self.struct_type,
+                generics: self.generics.clean(cx),
+                fields: self.fields.clean(cx),
+                fields_stripped: false,
+            }),
+        }
+    }
+}
+
+impl Clean<Item> for doctree::Union {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: Some(self.name.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            source: self.whence.clean(cx),
+            def_id: cx.map.local_def_id(self.id),
+            visibility: self.vis.clean(cx),
+            stability: self.stab.clean(cx),
+            deprecation: self.depr.clean(cx),
+            inner: UnionItem(Union {
                 struct_type: self.struct_type,
                 generics: self.generics.clean(cx),
                 fields: self.fields.clean(cx),
@@ -2747,6 +2781,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Enum(i) => (i, TypeEnum),
         Def::Trait(i) => (i, TypeTrait),
         Def::Struct(i) => (i, TypeStruct),
+        Def::Union(i) => (i, TypeUnion),
         Def::Mod(i) => (i, TypeModule),
         Def::Static(i, _) => (i, TypeStatic),
         Def::Variant(i, _) => (i, TypeEnum),

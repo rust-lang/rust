@@ -88,6 +88,11 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
         }
+        Def::Union(did) => {
+            record_extern_fqn(cx, did, clean::TypeUnion);
+            ret.extend(build_impls(cx, tcx, did));
+            clean::UnionItem(build_union(cx, tcx, did))
+        }
         Def::TyAlias(did) => {
             record_extern_fqn(cx, did, clean::TypeTypedef);
             ret.extend(build_impls(cx, tcx, did));
@@ -208,6 +213,20 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &[..] if variant.kind == ty::VariantKind::Tuple => doctree::Tuple,
             _ => doctree::Plain,
         },
+        generics: (t.generics, &predicates).clean(cx),
+        fields: variant.fields.clean(cx),
+        fields_stripped: false,
+    }
+}
+
+fn build_union<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          did: DefId) -> clean::Union {
+    let t = tcx.lookup_item_type(did);
+    let predicates = tcx.lookup_predicates(did);
+    let variant = tcx.lookup_adt_def(did).struct_variant();
+
+    clean::Union {
+        struct_type: doctree::Plain,
         generics: (t.generics, &predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,

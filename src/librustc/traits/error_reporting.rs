@@ -166,6 +166,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyParam(..) => Some(14),
                 ty::TyAnon(..) => Some(15),
                 ty::TyNever => Some(16),
+                ty::TyUnion(..) => Some(17),
                 ty::TyInfer(..) | ty::TyError => None
             }
         }
@@ -173,6 +174,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         match (type_category(a), type_category(b)) {
             (Some(cat_a), Some(cat_b)) => match (&a.sty, &b.sty) {
                 (&ty::TyStruct(def_a, _), &ty::TyStruct(def_b, _)) |
+                (&ty::TyUnion(def_a, _), &ty::TyUnion(def_b, _)) |
                 (&ty::TyEnum(def_a, _), &ty::TyEnum(def_b, _)) =>
                     def_a == def_b,
                 _ => cat_a == cat_b

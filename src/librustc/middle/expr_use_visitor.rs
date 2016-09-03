@@ -414,7 +414,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprStruct(_, ref fields, ref opt_with) => {
-                self.walk_struct_expr(expr, fields, opt_with);
+                self.walk_struct_expr(fields, opt_with);
             }
 
             hir::ExprTup(ref exprs) => {
@@ -655,7 +655,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn walk_struct_expr(&mut self,
-                        _expr: &hir::Expr,
                         fields: &[hir::Field],
                         opt_with: &Option<P<hir::Expr>>) {
         // Consume the expressions supplying values for each field.
@@ -695,7 +694,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     with_expr.span,
                     "with expression doesn't evaluate to a struct");
             }
-        };
+        }
 
         // walk the with expression so that complex expressions
         // are properly handled.
@@ -1012,7 +1011,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     debug!("variant downcast_cmt={:?} pat={:?}", downcast_cmt, pat);
                     delegate.matched_pat(pat, downcast_cmt, match_mode);
                 }
-                Some(Def::Struct(..)) | Some(Def::TyAlias(..)) | Some(Def::AssociatedTy(..)) => {
+                Some(Def::Struct(..)) | Some(Def::Union(..)) |
+                Some(Def::TyAlias(..)) | Some(Def::AssociatedTy(..)) => {
                     debug!("struct cmt_pat={:?} pat={:?}", cmt_pat, pat);
                     delegate.matched_pat(pat, cmt_pat, match_mode);
                 }

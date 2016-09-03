@@ -89,27 +89,23 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             Type::nil(cx)
         }
 
-        ty::TyTuple(..) | ty::TyEnum(..) | ty::TyClosure(..) => {
-            let repr = adt::represent_type(cx, t);
-            adt::sizing_type_of(cx, &repr, false)
+        ty::TyStruct(..) if t.is_simd() => {
+            let e = t.simd_type(cx.tcx());
+            if !e.is_machine() {
+                cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
+                                          a non-machine element type `{}`",
+                                         t, e))
+            }
+            let llet = type_of(cx, e);
+            let n = t.simd_size(cx.tcx()) as u64;
+            ensure_array_fits_in_address_space(cx, llet, n, t);
+            Type::vector(&llet, n)
         }
 
-        ty::TyStruct(..) => {
-            if t.is_simd() {
-                let e = t.simd_type(cx.tcx());
-                if !e.is_machine() {
-                    cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
-                                              a non-machine element type `{}`",
-                                             t, e))
-                }
-                let llet = type_of(cx, e);
-                let n = t.simd_size(cx.tcx()) as u64;
-                ensure_array_fits_in_address_space(cx, llet, n, t);
-                Type::vector(&llet, n)
-            } else {
-                let repr = adt::represent_type(cx, t);
-                adt::sizing_type_of(cx, &repr, false)
-            }
+        ty::TyTuple(..) | ty::TyStruct(..) | ty::TyUnion(..) |
+        ty::TyEnum(..) | ty::TyClosure(..) => {
+            let repr = adt::represent_type(cx, t);
+            adt::sizing_type_of(cx, &repr, false)
         }
 
         ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) |
@@ -244,15 +240,6 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyUint(t) => Type::uint_from_ty(cx, t),
       ty::TyFloat(t) => Type::float_from_ty(cx, t),
       ty::TyNever => Type::nil(cx),
-      ty::TyEnum(def, ref substs) => {
-          // Only create the named struct, but don't fill it in. We
-          // fill it in *after* placing it into the type cache. This
-          // avoids creating more than one copy of the enum when one
-          // of the enum's variants refers to the enum itself.
-          let repr = adt::represent_type(cx, t);
-          let name = llvm_type_name(cx, def.did, substs);
-          adt::incomplete_type_of(cx, &repr, &name[..])
-      }
       ty::TyClosure(..) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache.
@@ -307,26 +294,28 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           let repr = adt::represent_type(cx, t);
           adt::type_of(cx, &repr)
       }
-      ty::TyStruct(def, ref substs) => {
-          if t.is_simd() {
-              let e = t.simd_type(cx.tcx());
-              if !e.is_machine() {
-                  cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
-                                            a non-machine element type `{}`",
-                                           t, e))
-              }
-              let llet = in_memory_type_of(cx, e);
-              let n = t.simd_size(cx.tcx()) as u64;
-              ensure_array_fits_in_address_space(cx, llet, n, t);
-              Type::vector(&llet, n)
-          } else {
-              // Only create the named struct, but don't fill it in. We fill it
-              // in *after* placing it into the type cache. This prevents
-              // infinite recursion with recursive struct types.
-              let repr = adt::represent_type(cx, t);
-              let name = llvm_type_name(cx, def.did, substs);
-              adt::incomplete_type_of(cx, &repr, &name[..])
+      ty::TyStruct(..) if t.is_simd() => {
+          let e = t.simd_type(cx.tcx());
+          if !e.is_machine() {
+              cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
+                                        a non-machine element type `{}`",
+                                       t, e))
           }
+          let llet = in_memory_type_of(cx, e);
+          let n = t.simd_size(cx.tcx()) as u64;
+          ensure_array_fits_in_address_space(cx, llet, n, t);
+          Type::vector(&llet, n)
+      }
+      ty::TyStruct(def, ref substs) |
+      ty::TyUnion(def, ref substs) |
+      ty::TyEnum(def, ref substs) => {
+          // Only create the named struct, but don't fill it in. We
+          // fill it in *after* placing it into the type cache. This
+          // avoids creating more than one copy of the enum when one
+          // of the enum's variants refers to the enum itself.
+          let repr = adt::represent_type(cx, t);
+          let name = llvm_type_name(cx, def.did, substs);
+          adt::incomplete_type_of(cx, &repr, &name[..])
       }
 
       ty::TyInfer(..) |
@@ -342,7 +331,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
     // If this was an enum or struct, fill in the type now.
     match t.sty {
-        ty::TyEnum(..) | ty::TyStruct(..) | ty::TyClosure(..)
+        ty::TyEnum(..) | ty::TyStruct(..) | ty::TyUnion(..) | ty::TyClosure(..)
                 if !t.is_simd() => {
             let repr = adt::represent_type(cx, t);
             adt::finish_type_of(cx, &repr, &mut llty);

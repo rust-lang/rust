@@ -292,6 +292,9 @@ declare_features! (
 
     // Macros 1.1
     (active, rustc_macro, "1.13.0", Some(35900)),
+
+    // Allows untagged unions `union U { ... }`
+    (active, untagged_unions, "1.13.0", Some(32836)),
 );
 
 declare_features! (
@@ -951,6 +954,12 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                         }
                     }
                 }
+            }
+
+            ast::ItemKind::Union(..) => {
+                gate_feature_post!(&self, untagged_unions,
+                                   i.span,
+                                   "unions are unstable and possibly buggy");
             }
 
             ast::ItemKind::DefaultImpl(..) => {

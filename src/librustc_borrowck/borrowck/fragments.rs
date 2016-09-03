@@ -461,6 +461,10 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
             }
         }
 
+        (&ty::TyUnion(..), None) => {
+            // Do nothing, all union fields are moved/assigned together.
+        }
+
         (&ty::TyEnum(def, _), ref enum_variant_info) => {
             let variant = match *enum_variant_info {
                 Some((vid, ref _lp2)) => def.variant_with_id(vid),

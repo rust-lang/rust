@@ -136,14 +136,21 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 self.check_item_type(item);
             }
             hir::ItemStruct(ref struct_def, ref ast_generics) => {
-                self.check_type_defn(item, |fcx| {
+                self.check_type_defn(item, false, |fcx| {
+                    vec![fcx.struct_variant(struct_def)]
+                });
+
+                self.check_variances_for_type_defn(item, ast_generics);
+            }
+            hir::ItemUnion(ref struct_def, ref ast_generics) => {
+                self.check_type_defn(item, true, |fcx| {
                     vec![fcx.struct_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
             hir::ItemEnum(ref enum_def, ref ast_generics) => {
-                self.check_type_defn(item, |fcx| {
+                self.check_type_defn(item, false, |fcx| {
                     fcx.enum_variants(enum_def)
                 });
 
@@ -216,24 +223,22 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-    fn check_type_defn<F>(&mut self, item: &hir::Item, mut lookup_fields: F) where
-        F: for<'fcx, 'tcx> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx>)
-                                 -> Vec<AdtVariant<'tcx>>
+    fn check_type_defn<F>(&mut self, item: &hir::Item, all_sized: bool, mut lookup_fields: F)
+        where F: for<'fcx, 'tcx> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx>) -> Vec<AdtVariant<'tcx>>
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let variants = lookup_fields(fcx);
 
             for variant in &variants {
                 // For DST, all intermediate types must be sized.
-                if let Some((_, fields)) = variant.fields.split_last() {
-                    for field in fields {
-                        fcx.register_builtin_bound(
-                            field.ty,
-                            ty::BoundSized,
-                            traits::ObligationCause::new(field.span,
-                                                         fcx.body_id,
-                                                         traits::FieldSized));
-                    }
+                let unsized_len = if all_sized || variant.fields.is_empty() { 0 } else { 1 };
+                for field in &variant.fields[..variant.fields.len() - unsized_len] {
+                    fcx.register_builtin_bound(
+                        field.ty,
+                        ty::BoundSized,
+                        traits::ObligationCause::new(field.span,
+                                                     fcx.body_id,
+                                                     traits::FieldSized));
                 }
 
                 // All field types must be well-formed.

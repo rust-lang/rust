@@ -1780,7 +1780,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(tys.last().into_iter().cloned().collect()))
             }
 
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyStruct(def, substs) | ty::TyUnion(def, substs) |
+            ty::TyEnum(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
                 Where(ty::Binder(match sized_crit.sty {
@@ -1836,7 +1837,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(tys.to_vec()))
             }
 
-            ty::TyStruct(..) | ty::TyEnum(..) |
+            ty::TyStruct(..) | ty::TyUnion(..) | ty::TyEnum(..) |
             ty::TyProjection(..) | ty::TyParam(..) | ty::TyAnon(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
@@ -1933,7 +1934,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 substs.types().collect()
             }
 
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyStruct(def, substs) | ty::TyUnion(def, substs) | ty::TyEnum(def, substs) => {
                 def.all_fields()
                     .map(|f| f.ty(self.tcx(), substs))
                     .collect()

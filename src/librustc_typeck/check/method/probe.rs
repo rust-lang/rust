@@ -293,7 +293,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 self.assemble_inherent_impl_candidates_for_type(data.principal.def_id());
             }
             ty::TyEnum(def, _) |
-            ty::TyStruct(def, _) => {
+            ty::TyStruct(def, _) |
+            ty::TyUnion(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
             ty::TyBox(_) => {

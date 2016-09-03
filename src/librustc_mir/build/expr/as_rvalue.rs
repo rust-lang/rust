@@ -181,6 +181,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Adt {
                 adt_def, variant_index, substs, fields, base
             } => { // see (*) above
+                let is_union = adt_def.adt_kind() == ty::AdtKind::Union;
+                let active_field_index = if is_union { Some(fields[0].name.index()) } else { None };
+
                 // first process the set of fields that were provided
                 // (evaluating them in order given by user)
                 let fields_map: FnvHashMap<_, _> =
@@ -204,11 +207,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         })
                         .collect()
                 } else {
-                    field_names.iter().map(|n| fields_map[n].clone()).collect()
+                    field_names.iter().filter_map(|n| fields_map.get(n).cloned()).collect()
                 };
 
-                block.and(Rvalue::Aggregate(AggregateKind::Adt(adt_def, variant_index, substs),
-                                            fields))
+                let adt = AggregateKind::Adt(adt_def, variant_index, substs, active_field_index);
+                block.and(Rvalue::Aggregate(adt, fields))
             }
             ExprKind::Assign { .. } |
             ExprKind::AssignOp { .. } => {

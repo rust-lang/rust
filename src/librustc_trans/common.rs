@@ -88,8 +88,8 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         return false;
     }
     match ty.sty {
-        ty::TyStruct(..) | ty::TyEnum(..) | ty::TyTuple(..) | ty::TyArray(_, _) |
-        ty::TyClosure(..) => {
+        ty::TyStruct(..) | ty::TyUnion(..) | ty::TyEnum(..) |
+        ty::TyTuple(..) | ty::TyArray(..) | ty::TyClosure(..) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
         }
@@ -205,7 +205,7 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
                    -> Self
     {
         match ty.sty {
-            ty::TyStruct(adt, substs) | ty::TyEnum(adt, substs) => {
+            ty::TyStruct(adt, substs) | ty::TyUnion(adt, substs) | ty::TyEnum(adt, substs) => {
                 let variant = match opt_def {
                     None => adt.struct_variant(),
                     Some(def) => adt.variant_of_def(def)

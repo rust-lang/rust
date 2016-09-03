@@ -89,7 +89,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 self.restrict(cmt_base)
             }
 
-            Categorization::Interior(cmt_base, i) => {
+            Categorization::Interior(cmt_base, interior) => {
                 // R-Field
                 //
                 // Overwriting the base would not change the type of
@@ -99,8 +99,35 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                     Categorization::Downcast(_, variant_id) => Some(variant_id),
                     _ => None
                 };
+                let interior = interior.cleaned();
+                let base_ty = cmt_base.ty;
                 let result = self.restrict(cmt_base);
-                self.extend(result, &cmt, LpInterior(opt_variant_id, i.cleaned()))
+                // Borrowing one union field automatically borrows all its fields.
+                if let ty::TyUnion(ref adt_def, _) = base_ty.sty {
+                    match result {
+                        RestrictionResult::Safe => RestrictionResult::Safe,
+                        RestrictionResult::SafeIf(base_lp, mut base_vec) => {
+                            for field in &adt_def.struct_variant().fields {
+                                let field = InteriorKind::InteriorField(mc::NamedField(field.name));
+                                let field_ty = if field == interior {
+                                    cmt.ty
+                                } else {
+                                    self.bccx.tcx.types.err // Doesn't matter
+                                };
+                                let sibling_lp_kind = LpExtend(base_lp.clone(), cmt.mutbl,
+                                                               LpInterior(opt_variant_id, field));
+                                let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
+                                base_vec.push(sibling_lp);
+                            }
+
+                            let lp = new_lp(LpExtend(base_lp, cmt.mutbl,
+                                                     LpInterior(opt_variant_id, interior)));
+                            RestrictionResult::SafeIf(lp, base_vec)
+                        }
+                    }
+                } else {
+                    self.extend(result, &cmt, LpInterior(opt_variant_id, interior))
+                }
             }
 
             Categorization::StaticItem => {

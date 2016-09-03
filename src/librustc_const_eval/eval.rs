@@ -271,6 +271,10 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             tcx.item_path_str(adt_def.did)));
             }
         }
+        ty::TyUnion(..) => {
+            // Matching on union fields is unsafe, we can't hide it in constants
+            tcx.sess.span_err(span, "cannot use unions in constant patterns");
+        }
         _ => { }
     }
     let pat = match expr.node {

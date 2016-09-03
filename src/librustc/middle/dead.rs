@@ -86,7 +86,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_definition(&mut self, id: ast::NodeId) {
-        use ty::TypeVariants::{TyEnum, TyStruct};
+        use ty::TypeVariants::{TyEnum, TyStruct, TyUnion};
 
         let def = self.tcx.expect_def(id);
 
@@ -96,7 +96,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             if self.tcx.trait_of_item(def.def_id()).is_some() => {
                 if let Some(substs) = self.tcx.tables.borrow().item_substs.get(&id) {
                     match substs.substs.type_at(0).sty {
-                        TyEnum(tyid, _) | TyStruct(tyid, _) => {
+                        TyEnum(tyid, _) | TyStruct(tyid, _) | TyUnion(tyid, _) => {
                             self.check_def_id(tyid.did)
                         }
                         _ => {}
@@ -132,10 +132,11 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
-        if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
-            self.insert_def_id(def.struct_variant().field_named(name).did);
-        } else {
-            span_bug!(lhs.span, "named field access on non-struct")
+        match self.tcx.expr_ty_adjusted(lhs).sty {
+            ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                self.insert_def_id(def.struct_variant().field_named(name).did);
+            }
+            _ => span_bug!(lhs.span, "named field access on non-struct/union"),
         }
     }
 
@@ -148,7 +149,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat,
                                   pats: &[codemap::Spanned<hir::FieldPat>]) {
         let variant = match self.tcx.node_id_to_type(lhs.id).sty {
-            ty::TyStruct(adt, _) | ty::TyEnum(adt, _) => {
+            ty::TyStruct(adt, _) | ty::TyUnion(adt, _) | ty::TyEnum(adt, _) => {
                 adt.variant_of_def(self.tcx.expect_def(lhs.id))
             }
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
@@ -185,7 +186,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    hir::ItemStruct(..) => {
+                    hir::ItemStruct(..) | hir::ItemUnion(..) => {
                         self.struct_has_extern_repr = item.attrs.iter().any(|attr| {
                             attr::find_repr_attrs(self.tcx.sess.diagnostic(), attr)
                                 .contains(&attr::ReprExtern)
@@ -423,7 +424,8 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             | hir::ItemConst(..)
             | hir::ItemFn(..)
             | hir::ItemEnum(..)
-            | hir::ItemStruct(..) => true,
+            | hir::ItemStruct(..)
+            | hir::ItemUnion(..) => true,
             _ => false
         };
         let ctor_id = get_struct_ctor_id(item);

@@ -196,6 +196,16 @@ impl<'a> Visitor for AstValidator<'a> {
                 // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
                 attr::first_attr_value_str_by_name(&item.attrs, "path");
             }
+            ItemKind::Union(ref vdata, _) => {
+                if !vdata.is_struct() {
+                    self.err_handler().span_err(item.span,
+                                                "tuple and unit unions are not permitted");
+                }
+                if vdata.fields().len() == 0 {
+                    self.err_handler().span_err(item.span,
+                                                "unions cannot have zero fields");
+                }
+            }
             _ => {}
         }
 

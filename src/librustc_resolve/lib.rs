@@ -2187,6 +2187,7 @@ impl<'a> Resolver<'a> {
                                         Def::Trait(_) |
                                         Def::Enum(_) |
                                         Def::Struct(_) |
+                                        Def::Union(_) |
                                         Def::TyAlias(_) => true,
                                         _               => false,
                                     },
@@ -2389,7 +2390,7 @@ impl<'a> Resolver<'a> {
                 PatKind::Struct(ref path, _, _) => {
                     self.resolve_pattern_path(pat.id, None, path, TypeNS, |def| {
                         match def {
-                            Def::Struct(..) | Def::Variant(..) |
+                            Def::Struct(..) | Def::Union(..) | Def::Variant(..) |
                             Def::TyAlias(..) | Def::AssociatedTy(..) => true,
                             _ => false,
                         }
@@ -2735,7 +2736,7 @@ impl<'a> Resolver<'a> {
             // Look for a field with the same name in the current self_type.
             if let Some(resolution) = self.def_map.get(&node_id) {
                 match resolution.base_def {
-                    Def::Enum(did) | Def::TyAlias(did) |
+                    Def::Enum(did) | Def::TyAlias(did) | Def::Union(did) |
                     Def::Struct(did) | Def::Variant(_, did) if resolution.depth == 0 => {
                         if let Some(fields) = self.structs.get(&did) {
                             if fields.iter().any(|&field_name| name == field_name) {

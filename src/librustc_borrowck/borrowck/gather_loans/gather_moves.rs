@@ -178,7 +178,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Interior(ref b, mc::InteriorField(_)) |
         Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
             match b.ty.sty {
-                ty::TyStruct(def, _) | ty::TyEnum(def, _) => {
+                ty::TyStruct(def, _) | ty::TyUnion(def, _) | ty::TyEnum(def, _) => {
                     if def.has_dtor() {
                         Some(cmt.clone())
                     } else {

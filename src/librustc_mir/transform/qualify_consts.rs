@@ -705,7 +705,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::Aggregate(ref kind, _) => {
-                if let AggregateKind::Adt(def, _, _) = *kind {
+                if let AggregateKind::Adt(def, _, _, _) = *kind {
                     if def.has_dtor() {
                         self.add(Qualif::NEEDS_DROP);
                         self.deny_drop();

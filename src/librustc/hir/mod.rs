@@ -1483,6 +1483,8 @@ pub enum Item_ {
     ItemEnum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
     ItemStruct(VariantData, Generics),
+    /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
+    ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Unsafety, Generics, TyParamBounds, HirVec<TraitItem>),
 
@@ -1512,6 +1514,7 @@ impl Item_ {
             ItemTy(..) => "type alias",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",
+            ItemUnion(..) => "union",
             ItemTrait(..) => "trait",
             ItemImpl(..) |
             ItemDefaultImpl(..) => "item",

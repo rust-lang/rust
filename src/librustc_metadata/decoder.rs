@@ -133,6 +133,7 @@ enum Family {
     DefaultImpl,           // d
     Trait,                 // I
     Struct(VariantKind),   // S, s, u
+    Union,                 // U
     PublicField,           // g
     InheritedField,        // N
     Constant,              // C
@@ -160,6 +161,7 @@ fn item_family(item: rbml::Doc) -> Family {
       'S' => Struct(VariantKind::Struct),
       's' => Struct(VariantKind::Tuple),
       'u' => Struct(VariantKind::Unit),
+      'U' => Union,
       'g' => PublicField,
       'N' => InheritedField,
        c => bug!("unexpected family char: {}", c)
@@ -289,7 +291,7 @@ fn maybe_item_name(item: rbml::Doc) -> Option<ast::Name> {
 
 fn family_to_variant_kind<'tcx>(family: Family) -> Option<ty::VariantKind> {
     match family {
-        Struct(VariantKind::Struct) | Variant(VariantKind::Struct) =>
+        Struct(VariantKind::Struct) | Variant(VariantKind::Struct) | Union =>
             Some(ty::VariantKind::Struct),
         Struct(VariantKind::Tuple) | Variant(VariantKind::Tuple) =>
             Some(ty::VariantKind::Tuple),
@@ -317,6 +319,7 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
         ImmStatic => DlDef(Def::Static(did, false)),
         MutStatic => DlDef(Def::Static(did, true)),
         Struct(..) => DlDef(Def::Struct(did)),
+        Union => DlDef(Def::Union(did)),
         Fn        => DlDef(Def::Fn(did)),
         Method | StaticMethod => {
             DlDef(Def::Method(did))
@@ -460,6 +463,10 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
             });
             (ty::AdtKind::Struct,
              vec![get_struct_variant(cdata, doc, ctor_did.unwrap_or(did))])
+        }
+        Union => {
+            (ty::AdtKind::Union,
+             vec![get_struct_variant(cdata, doc, did)])
         }
         _ => bug!("get_adt_def called on a non-ADT {:?} - {:?}",
                   item_family(doc), did)

@@ -744,6 +744,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     // monomorphized Drop::drop() implementation.
     let destructor_did = match ty.sty {
         ty::TyStruct(def, _) |
+        ty::TyUnion(def, _) |
         ty::TyEnum(def, _)   => def.destructor(),
         _ => None
     };
@@ -798,6 +799,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             /* nothing to do */
         }
         ty::TyStruct(ref adt_def, substs) |
+        ty::TyUnion(ref adt_def, substs) |
         ty::TyEnum(ref adt_def, substs) => {
             for field in adt_def.all_fields() {
                 let field_type = monomorphize::apply_param_substs(scx,
@@ -1121,8 +1123,9 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                 }
             }
 
-            hir::ItemEnum(_, ref generics)        |
-            hir::ItemStruct(_, ref generics)      => {
+            hir::ItemEnum(_, ref generics) |
+            hir::ItemStruct(_, ref generics) |
+            hir::ItemUnion(_, ref generics) => {
                 if !generics.is_parameterized() {
                     let ty = {
                         let tables = self.scx.tcx().tables.borrow();

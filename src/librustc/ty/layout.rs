@@ -488,7 +488,7 @@ impl<'a, 'gcx, 'tcx> Struct {
 
         for field in fields {
             if !self.sized {
-                bug!("Struct::compute: field #{} of `{}` comes after unsized field",
+                bug!("Struct::extend: field #{} of `{}` comes after unsized field",
                      self.offset_after_field.len(), scapegoat);
             }
 
@@ -623,6 +623,54 @@ impl<'a, 'gcx, 'tcx> Struct {
     }
 }
 
+/// An untagged union.
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct Union {
+    pub align: Align,
+
+    pub min_size: Size,
+
+    /// If true, no alignment padding is used.
+    pub packed: bool,
+}
+
+impl<'a, 'gcx, 'tcx> Union {
+    pub fn new(dl: &TargetDataLayout, packed: bool) -> Union {
+        Union {
+            align: if packed { dl.i8_align } else { dl.aggregate_align },
+            min_size: Size::from_bytes(0),
+            packed: packed,
+        }
+    }
+
+    /// Extend the Struct with more fields.
+    pub fn extend<I>(&mut self, dl: &TargetDataLayout,
+                     fields: I,
+                     scapegoat: Ty<'gcx>)
+                     -> Result<(), LayoutError<'gcx>>
+    where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
+        for (index, field) in fields.enumerate() {
+            let field = field?;
+            if field.is_unsized() {
+                bug!("Union::extend: field #{} of `{}` is unsized",
+                     index, scapegoat);
+            }
+
+            if !self.packed {
+                self.align = self.align.max(field.align(dl));
+            }
+            self.min_size = cmp::max(self.min_size, field.size(dl));
+        }
+
+        Ok(())
+    }
+
+    /// Get the size with trailing aligment padding.
+    pub fn stride(&self) -> Size {
+        self.min_size.abi_align(self.align)
+    }
+}
+
 /// The first half of a fat pointer.
 /// - For a trait object, this is the address of the box.
 /// - For a slice, this is the base address.
@@ -688,6 +736,11 @@ pub enum Layout {
         // If true, the structure is NonZero.
         // FIXME(eddyb) use a newtype Layout kind for this.
         non_zero: bool
+    },
+
+    /// Untagged unions.
+    UntaggedUnion {
+        variants: Union,
     },
 
     /// General-case enums: for each case there is a struct, and they
@@ -895,6 +948,15 @@ impl<'a, 'gcx, 'tcx> Layout {
                     variant: st,
                     non_zero: Some(def.did) == tcx.lang_items.non_zero()
                 }
+            }
+            ty::TyUnion(def, substs) => {
+                let fields = def.struct_variant().fields.iter().map(|field| {
+                    field.ty(tcx, substs).layout(infcx)
+                });
+                let packed = tcx.lookup_packed(def.did);
+                let mut un = Union::new(dl, packed);
+                un.extend(dl, fields, ty)?;
+                UntaggedUnion { variants: un }
             }
             ty::TyEnum(def, substs) => {
                 let hint = *tcx.lookup_repr_hints(def.did).get(0)
@@ -1115,7 +1177,7 @@ impl<'a, 'gcx, 'tcx> Layout {
     pub fn is_unsized(&self) -> bool {
         match *self {
             Scalar {..} | Vector {..} | FatPointer {..} |
-            CEnum {..} | General {..} |
+            CEnum {..} | UntaggedUnion {..} | General {..} |
             RawNullablePointer {..} |
             StructWrappedNullablePointer {..} => false,
 
@@ -1149,6 +1211,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             CEnum { discr, .. } => Int(discr).size(dl),
             Array { size, .. } | General { size, .. } => size,
+            UntaggedUnion { ref variants } => variants.stride(),
 
             Univariant { ref variant, .. } |
             StructWrappedNullablePointer { nonnull: ref variant, .. } => {
@@ -1188,6 +1251,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             CEnum { discr, .. } => Int(discr).align(dl),
             Array { align, .. } | General { align, .. } => align,
+            UntaggedUnion { ref variants } => variants.align,
 
             Univariant { ref variant, .. } |
             StructWrappedNullablePointer { nonnull: ref variant, .. } => {

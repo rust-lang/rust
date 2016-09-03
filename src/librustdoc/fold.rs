@@ -49,6 +49,13 @@ pub trait DocFolder : Sized {
                                      i.fields.iter().any(|f| f.is_stripped());
                 StructItem(i)
             },
+            UnionItem(mut i) => {
+                let num_fields = i.fields.len();
+                i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                i.fields_stripped |= num_fields != i.fields.len() ||
+                                     i.fields.iter().any(|f| f.is_stripped());
+                UnionItem(i)
+            },
             EnumItem(mut i) => {
                 let num_variants = i.variants.len();
                 i.variants = i.variants.into_iter().filter_map(|x| self.fold_item(x)).collect();

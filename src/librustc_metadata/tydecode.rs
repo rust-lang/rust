@@ -472,6 +472,14 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 let def = self.tcx.lookup_adt_def(did);
                 return self.tcx.mk_struct(def, substs);
             }
+            'U' => {
+                assert_eq!(self.next(), '[');
+                let did = self.parse_def();
+                let substs = self.parse_substs();
+                assert_eq!(self.next(), ']');
+                let def = self.tcx.lookup_adt_def(did);
+                return self.tcx.mk_union(def, substs);
+            }
             'k' => {
                 assert_eq!(self.next(), '[');
                 let did = self.parse_def();

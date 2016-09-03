@@ -156,6 +156,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
                 hir::ItemTy(_, ref generics) |
                 hir::ItemEnum(_, ref generics) |
                 hir::ItemStruct(_, ref generics) |
+                hir::ItemUnion(_, ref generics) |
                 hir::ItemTrait(_, ref generics, _, _) |
                 hir::ItemImpl(_, _, ref generics, _, _, _) => {
                     // These kinds of items have only early bound lifetime parameters.

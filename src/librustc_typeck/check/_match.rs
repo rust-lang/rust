@@ -11,7 +11,6 @@
 use hir::def::Def;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference, VariantKind};
 use check::{FnCtxt, Expectation};
 use lint;
@@ -509,11 +508,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
-        let substs = match pat_ty.sty {
-            ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
-            _ => span_bug!(pat.span, "struct variant is not an ADT")
-        };
-        self.check_struct_pat_fields(pat.span, fields, variant, substs, etc);
+        self.check_struct_pat_fields(pat_ty, pat.span, variant, fields, etc);
     }
 
     fn check_pat_path(&self,
@@ -658,18 +653,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// `path` is the AST path item naming the type of this struct.
-    /// `fields` is the field patterns of the struct pattern.
-    /// `struct_fields` describes the type of each field of the struct.
-    /// `struct_id` is the ID of the struct.
-    /// `etc` is true if the pattern said '...' and false otherwise.
-    pub fn check_struct_pat_fields(&self,
-                                   span: Span,
-                                   fields: &'gcx [Spanned<hir::FieldPat>],
-                                   variant: ty::VariantDef<'tcx>,
-                                   substs: &Substs<'tcx>,
-                                   etc: bool) {
+    fn check_struct_pat_fields(&self,
+                               adt_ty: Ty<'tcx>,
+                               span: Span,
+                               variant: ty::VariantDef<'tcx>,
+                               fields: &'gcx [Spanned<hir::FieldPat>],
+                               etc: bool) {
         let tcx = self.tcx;
+
+        let (substs, kind_name) = match adt_ty.sty {
+            ty::TyEnum(_, substs) => (substs, "variant"),
+            ty::TyStruct(_, substs) => (substs, "struct"),
+            ty::TyUnion(_, substs) => (substs, "union"),
+            _ => span_bug!(span, "struct pattern is not an ADT")
+        };
 
         // Index the struct fields' types.
         let field_map = variant.fields
@@ -700,11 +697,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         .map(|f| self.field_ty(span, f, substs))
                         .unwrap_or_else(|| {
                             struct_span_err!(tcx.sess, span, E0026,
-                                             "struct `{}` does not have a field named `{}`",
+                                             "{} `{}` does not have a field named `{}`",
+                                             kind_name,
                                              tcx.item_path_str(variant.did),
                                              field.name)
                                 .span_label(span,
-                                            &format!("struct `{}` does not have field `{}`",
+                                            &format!("{} `{}` does not have field `{}`",
+                                                     kind_name,
                                                      tcx.item_path_str(variant.did),
                                                      field.name))
                                 .emit();
@@ -717,8 +716,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_pat(&field.pat, field_ty);
         }
 
-        // Report an error if not all the fields were specified.
-        if !etc {
+        // Report an error if incorrect number of the fields were specified.
+        if kind_name == "union" {
+            if fields.len() != 1 {
+                tcx.sess.span_err(span, "union patterns should have exactly one field");
+            }
+            if etc {
+                tcx.sess.span_err(span, "`..` cannot be used in union patterns");
+            }
+        } else if !etc {
             for field in variant.fields
                 .iter()
                 .filter(|field| !used_fields.contains_key(&field.name)) {
