@@ -2175,7 +2175,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ty_generics = generics_of_def_id(ccx, impl_def_id);
     for (ty_param, param) in ty_generics.types.iter().zip(&generics.ty_params) {
         let param_ty = ty::ParamTy::for_def(ty_param);
-        if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
+        if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
             report_unused_parameter(ccx, param.span, "type", &param_ty.to_string());
         }
     }
@@ -2206,23 +2206,19 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
         })
         .flat_map(|ty| ctp::parameters_for(&ty, true))
-        .filter_map(|p| match p {
-            ctp::Parameter::Type(_) => None,
-            ctp::Parameter::Region(r) => Some(r),
-        })
         .collect();
 
-    for (index, lifetime_def) in ast_generics.lifetimes.iter().enumerate() {
-        let region = ty::EarlyBoundRegion {
-            index: index as u32,
-            name: lifetime_def.lifetime.name
-        };
+    for (ty_lifetime, lifetime) in impl_scheme.generics.regions.iter()
+        .zip(&ast_generics.lifetimes)
+    {
+        let param = ctp::Parameter::from(ty_lifetime.to_early_bound_region_data());
+
         if
-            lifetimes_in_associated_types.contains(&region) && // (*)
-            !input_parameters.contains(&ctp::Parameter::Region(region))
+            lifetimes_in_associated_types.contains(&param) && // (*)
+            !input_parameters.contains(&param)
         {
-            report_unused_parameter(ccx, lifetime_def.lifetime.span,
-                                    "lifetime", &region.name.to_string());
+            report_unused_parameter(ccx, lifetime.lifetime.span,
+                                    "lifetime", &lifetime.lifetime.name.to_string());
         }
     }
 
