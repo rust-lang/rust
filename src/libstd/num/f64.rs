@@ -689,6 +689,7 @@ impl f64 {
     /// let y = 2.0_f64;
     ///
     /// assert_eq!(x.max(y), y);
+    /// assert_eq!(f64::max(x,y), y);
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
@@ -705,6 +706,7 @@ impl f64 {
     /// let y = 2.0_f64;
     ///
     /// assert_eq!(x.min(y), x);
+    /// assert_eq!(f64::min(x,y), x);
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
@@ -891,20 +893,17 @@ impl f64 {
     /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
     ///
     /// ```
-    /// use std::f64;
-    ///
-    /// let pi = f64::consts::PI;
+    /// let pi = std::f64::consts::PI;
     /// // All angles from horizontal right (+x)
     /// // 45 deg counter-clockwise
-    /// let x1 = 3.0_f64;
-    /// let y1 = -3.0_f64;
+    /// let point = (3.0_f64, -3.0_f64);
     ///
     /// // 135 deg clockwise
-    /// let x2 = -3.0_f64;
-    /// let y2 = 3.0_f64;
+    /// let x = -3.0_f64;
+    /// let y = 3.0_f64;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-pi/4.0)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - 3.0*pi/4.0).abs();
+    /// let abs_difference_1 = (f64::atan2(point.1, point.0) - (-pi/4.0)).abs();
+    /// let abs_difference_2 = (y.atan2(x) - 3.0*pi/4.0).abs();
     ///
     /// assert!(abs_difference_1 < 1e-10);
     /// assert!(abs_difference_2 < 1e-10);
