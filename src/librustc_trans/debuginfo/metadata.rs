@@ -184,6 +184,10 @@ impl<'tcx> TypeMap<'tcx> {
                 unique_type_id.push_str("struct ");
                 from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
             },
+            ty::TyUnion(def, substs) => {
+                unique_type_id.push_str("union ");
+                from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
+            },
             ty::TyTuple(component_types) if component_types.is_empty() => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
@@ -781,6 +785,12 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     unique_type_id,
                                     usage_site_span).finalize(cx)
         }
+        ty::TyUnion(..) => {
+            prepare_union_metadata(cx,
+                                   t,
+                                   unique_type_id,
+                                   usage_site_span).finalize(cx)
+        }
         ty::TyTuple(ref elements) => {
             prepare_tuple_metadata(cx,
                                    t,
@@ -1031,6 +1041,7 @@ enum MemberDescriptionFactory<'tcx> {
     StructMDF(StructMemberDescriptionFactory<'tcx>),
     TupleMDF(TupleMemberDescriptionFactory<'tcx>),
     EnumMDF(EnumMemberDescriptionFactory<'tcx>),
+    UnionMDF(UnionMemberDescriptionFactory<'tcx>),
     VariantMDF(VariantMemberDescriptionFactory<'tcx>)
 }
 
@@ -1045,6 +1056,9 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
                 this.create_member_descriptions(cx)
             }
             EnumMDF(ref this) => {
+                this.create_member_descriptions(cx)
+            }
+            UnionMDF(ref this) => {
                 this.create_member_descriptions(cx)
             }
             VariantMDF(ref this) => {
@@ -1147,7 +1161,6 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     )
 }
 
-
 //=-----------------------------------------------------------------------------
 // Tuples
 //=-----------------------------------------------------------------------------
@@ -1202,6 +1215,66 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     )
 }
 
+//=-----------------------------------------------------------------------------
+// Unions
+//=-----------------------------------------------------------------------------
+
+struct UnionMemberDescriptionFactory<'tcx> {
+    variant: ty::VariantDef<'tcx>,
+    substs: &'tcx Substs<'tcx>,
+    span: Span,
+}
+
+impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
+    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+                                      -> Vec<MemberDescription> {
+        self.variant.fields.iter().map(|field| {
+            let fty = monomorphize::field_ty(cx.tcx(), self.substs, field);
+            MemberDescription {
+                name: field.name.to_string(),
+                llvm_type: type_of::type_of(cx, fty),
+                type_metadata: type_metadata(cx, fty, self.span),
+                offset: FixedMemberOffset { bytes: 0 },
+                flags: FLAGS_NONE,
+            }
+        }).collect()
+    }
+}
+
+fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                    union_type: Ty<'tcx>,
+                                    unique_type_id: UniqueTypeId,
+                                    span: Span)
+                                    -> RecursiveTypeDescription<'tcx> {
+    let union_name = compute_debuginfo_type_name(cx, union_type, false);
+    let union_llvm_type = type_of::in_memory_type_of(cx, union_type);
+
+    let (union_def_id, variant, substs) = match union_type.sty {
+        ty::TyUnion(def, substs) => (def.did, def.struct_variant(), substs),
+        _ => bug!("prepare_union_metadata on a non-union")
+    };
+
+    let (containing_scope, _) = get_namespace_and_span_for_item(cx, union_def_id);
+
+    let union_metadata_stub = create_union_stub(cx,
+                                                union_llvm_type,
+                                                &union_name,
+                                                unique_type_id,
+                                                containing_scope);
+
+    create_and_register_recursive_type_forward_declaration(
+        cx,
+        union_type,
+        unique_type_id,
+        union_metadata_stub,
+        union_llvm_type,
+        UnionMDF(UnionMemberDescriptionFactory {
+            variant: variant,
+            substs: substs,
+            span: span,
+        })
+    )
+}
 
 //=-----------------------------------------------------------------------------
 // Enums
@@ -1411,7 +1484,9 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 ]
             },
-            adt::CEnum(..) => span_bug!(self.span, "This should be unreachable.")
+            adt::CEnum(..) | adt::UntaggedUnion(..) => {
+                span_bug!(self.span, "This should be unreachable.")
+            }
         }
     }
 }
@@ -1609,7 +1684,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         adt::RawNullablePointer { .. }           |
         adt::StructWrappedNullablePointer { .. } |
-        adt::Univariant(..)                      => None,
+        adt::Univariant(..) | adt::UntaggedUnion(..) => None,
         adt::General(inttype, _) => Some(discriminant_type_metadata(inttype)),
     };
 
@@ -1783,6 +1858,42 @@ fn create_struct_stub(cx: &CrateContext,
             empty_array,
             0,
             ptr::null_mut(),
+            unique_type_id.as_ptr())
+    };
+
+    return metadata_stub;
+}
+
+fn create_union_stub(cx: &CrateContext,
+                     union_llvm_type: Type,
+                     union_type_name: &str,
+                     unique_type_id: UniqueTypeId,
+                     containing_scope: DIScope)
+                   -> DICompositeType {
+    let (union_size, union_align) = size_and_align_of(cx, union_llvm_type);
+
+    let unique_type_id_str = debug_context(cx).type_map
+                                              .borrow()
+                                              .get_unique_type_id_as_string(unique_type_id);
+    let name = CString::new(union_type_name).unwrap();
+    let unique_type_id = CString::new(unique_type_id_str.as_bytes()).unwrap();
+    let metadata_stub = unsafe {
+        // LLVMRustDIBuilderCreateUnionType() wants an empty array. A null
+        // pointer will lead to hard to trace and debug LLVM assertions
+        // later on in llvm/lib/IR/Value.cpp.
+        let empty_array = create_DIArray(DIB(cx), &[]);
+
+        llvm::LLVMRustDIBuilderCreateUnionType(
+            DIB(cx),
+            containing_scope,
+            name.as_ptr(),
+            unknown_file_metadata(cx),
+            UNKNOWN_LINE_NUMBER,
+            bytes_to_bits(union_size),
+            bytes_to_bits(union_align),
+            0, // Flags
+            empty_array,
+            0, // RuntimeLang
             unique_type_id.as_ptr())
     };
 

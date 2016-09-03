@@ -761,6 +761,10 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
             let struct_def = folder.fold_variant_data(struct_def);
             ItemStruct(struct_def, folder.fold_generics(generics))
         }
+        ItemUnion(struct_def, generics) => {
+            let struct_def = folder.fold_variant_data(struct_def);
+            ItemUnion(struct_def, folder.fold_generics(generics))
+        }
         ItemDefaultImpl(unsafety, ref trait_ref) => {
             ItemDefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }

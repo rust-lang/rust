@@ -116,7 +116,8 @@ impl LateLintPass for BoxPointers {
             hir::ItemFn(..) |
             hir::ItemTy(..) |
             hir::ItemEnum(..) |
-            hir::ItemStruct(..) =>
+            hir::ItemStruct(..) |
+            hir::ItemUnion(..) =>
                 self.check_heap_type(cx, it.span,
                                      cx.tcx.node_id_to_type(it.id)),
             _ => ()
@@ -124,7 +125,8 @@ impl LateLintPass for BoxPointers {
 
         // If it's a struct, we also have to check the fields' types
         match it.node {
-            hir::ItemStruct(ref struct_def, _) => {
+            hir::ItemStruct(ref struct_def, _) |
+            hir::ItemUnion(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.node_id_to_type(struct_field.id));
@@ -348,6 +350,7 @@ impl LateLintPass for MissingDoc {
             hir::ItemMod(..) => "a module",
             hir::ItemEnum(..) => "an enum",
             hir::ItemStruct(..) => "a struct",
+            hir::ItemUnion(..) => "a union",
             hir::ItemTrait(_, _, _, ref items) => {
                 // Issue #11592, traits are always considered exported, even when private.
                 if it.vis == hir::Visibility::Inherited {
@@ -467,6 +470,13 @@ impl LateLintPass for MissingCopyImplementations {
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
                 (def, cx.tcx.mk_struct(def, Substs::empty(cx.tcx)))
             }
+            hir::ItemUnion(_, ref ast_generics) => {
+                if ast_generics.is_parameterized() {
+                    return;
+                }
+                let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
+                (def, cx.tcx.mk_union(def, Substs::empty(cx.tcx)))
+            }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
@@ -523,7 +533,7 @@ impl LateLintPass for MissingDebugImplementations {
         }
 
         match item.node {
-            hir::ItemStruct(..) | hir::ItemEnum(..) => {},
+            hir::ItemStruct(..) | hir::ItemUnion(..) | hir::ItemEnum(..) => {},
             _ => return,
         }
 
@@ -1149,6 +1159,39 @@ impl LateLintPass for UnstableFeatures {
             if let Some(items) = attr.meta().meta_item_list() {
                 for item in items {
                     ctx.span_lint(UNSTABLE_FEATURES, item.span(), "unstable feature");
+                }
+            }
+        }
+    }
+}
+
+/// Lint for unions that contain fields with possibly non-trivial destructors.
+pub struct UnionsWithDropFields;
+
+declare_lint! {
+    UNIONS_WITH_DROP_FIELDS,
+    Warn,
+    "use of unions that contain fields with possibly non-trivial drop code"
+}
+
+impl LintPass for UnionsWithDropFields {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNIONS_WITH_DROP_FIELDS)
+    }
+}
+
+impl LateLintPass for UnionsWithDropFields {
+    fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
+        if let hir::ItemUnion(ref vdata, _) = item.node {
+            let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
+            for field in vdata.fields() {
+                let field_ty = ctx.tcx.node_id_to_type(field.id);
+                if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
+                    ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
+                                  field.span,
+                                  "union contains a field with possibly non-trivial drop code, \
+                                   drop code of union fields is ignored when dropping the union");
+                    return;
                 }
             }
         }

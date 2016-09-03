@@ -547,7 +547,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                                         self.monomorphize(&substs));
                 }
 
-                let val = if let mir::AggregateKind::Adt(adt_def, index, _) = *kind {
+                let val = if let mir::AggregateKind::Adt(adt_def, index, _, _) = *kind {
                     let repr = adt::represent_type(self.ccx, dest_ty);
                     let disr = Disr::from(adt_def.variants[index].disr_val);
                     adt::trans_const(self.ccx, &repr, disr, &fields)

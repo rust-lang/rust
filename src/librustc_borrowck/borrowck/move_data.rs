@@ -21,7 +21,8 @@ use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
-use rustc::ty::TyCtxt;
+use rustc::middle::mem_categorization as mc;
+use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
 use std::cell::RefCell;
@@ -364,6 +365,32 @@ impl<'a, 'tcx> MoveData<'tcx> {
                     lp: Rc<LoanPath<'tcx>>,
                     id: ast::NodeId,
                     kind: MoveKind) {
+        // Moving one union field automatically moves all its fields.
+        if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
+            if let ty::TyUnion(ref adt_def, _) = base_lp.ty.sty {
+                for field in &adt_def.struct_variant().fields {
+                    let field = InteriorKind::InteriorField(mc::NamedField(field.name));
+                    let field_ty = if field == interior {
+                        lp.ty
+                    } else {
+                        tcx.types.err // Doesn't matter
+                    };
+                    let sibling_lp_kind = LpExtend(base_lp.clone(), mutbl,
+                                                   LpInterior(opt_variant_id, field));
+                    let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
+                    self.add_move_helper(tcx, sibling_lp, id, kind);
+                }
+                return;
+            }
+        }
+
+        self.add_move_helper(tcx, lp.clone(), id, kind);
+    }
+
+    fn add_move_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       lp: Rc<LoanPath<'tcx>>,
+                       id: ast::NodeId,
+                       kind: MoveKind) {
         debug!("add_move(lp={:?}, id={}, kind={:?})",
                lp,
                id,
@@ -393,6 +420,34 @@ impl<'a, 'tcx> MoveData<'tcx> {
                           span: Span,
                           assignee_id: ast::NodeId,
                           mode: euv::MutateMode) {
+        // Assigning to one union field automatically assigns to all its fields.
+        if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
+            if let ty::TyUnion(ref adt_def, _) = base_lp.ty.sty {
+                for field in &adt_def.struct_variant().fields {
+                    let field = InteriorKind::InteriorField(mc::NamedField(field.name));
+                    let field_ty = if field == interior {
+                        lp.ty
+                    } else {
+                        tcx.types.err // Doesn't matter
+                    };
+                    let sibling_lp_kind = LpExtend(base_lp.clone(), mutbl,
+                                                   LpInterior(opt_variant_id, field));
+                    let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
+                    self.add_assignment_helper(tcx, sibling_lp, assign_id, span, assignee_id, mode);
+                }
+                return;
+            }
+        }
+
+        self.add_assignment_helper(tcx, lp.clone(), assign_id, span, assignee_id, mode);
+    }
+
+    fn add_assignment_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             lp: Rc<LoanPath<'tcx>>,
+                             assign_id: ast::NodeId,
+                             span: Span,
+                             assignee_id: ast::NodeId,
+                             mode: euv::MutateMode) {
         debug!("add_assignment(lp={:?}, assign_id={}, assignee_id={}",
                lp, assign_id, assignee_id);
 

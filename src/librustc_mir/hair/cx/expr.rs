@@ -459,7 +459,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprStruct(_, ref fields, ref base) => {
             match expr_ty.sty {
-                ty::TyStruct(adt, substs) => {
+                ty::TyStruct(adt, substs) | ty::TyUnion(adt, substs) => {
                     let field_refs = field_refs(&adt.variants[0], fields);
                     ExprKind::Adt {
                         adt_def: adt,
@@ -579,7 +579,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                              body: block::to_expr_ref(cx, body) },
         hir::ExprField(ref source, name) => {
             let index = match cx.tcx.expr_ty_adjusted(source).sty {
-                ty::TyStruct(adt_def, _) =>
+                ty::TyStruct(adt_def, _) | ty::TyUnion(adt_def, _) =>
                     adt_def.variants[0].index_of_field_named(name.node),
                 ref ty =>
                     span_bug!(

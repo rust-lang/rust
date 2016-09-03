@@ -164,30 +164,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // give a helping note that it has to be called as (x.f)(...).
                 if let Some(expr) = rcvr_expr {
                     for (ty, _) in self.autoderef(span, rcvr_ty) {
-                        if let ty::TyStruct(def, substs) = ty.sty {
-                            if let Some(field) = def.struct_variant().find_field_named(item_name) {
-                                let snippet = tcx.sess.codemap().span_to_snippet(expr.span);
-                                let expr_string = match snippet {
-                                    Ok(expr_string) => expr_string,
-                                    _ => "s".into() // Default to a generic placeholder for the
-                                                    // expression when we can't generate a
-                                                    // string snippet
-                                };
+                        match ty.sty {
+                            ty::TyStruct(def, substs) | ty::TyUnion(def, substs) => {
+                                if let Some(field) = def.struct_variant().
+                                                         find_field_named(item_name) {
+                                    let snippet = tcx.sess.codemap().span_to_snippet(expr.span);
+                                    let expr_string = match snippet {
+                                        Ok(expr_string) => expr_string,
+                                        _ => "s".into() // Default to a generic placeholder for the
+                                                        // expression when we can't generate a
+                                                        // string snippet
+                                    };
 
-                                let field_ty = field.ty(tcx, substs);
+                                    let field_ty = field.ty(tcx, substs);
 
-                                if self.is_fn_ty(&field_ty, span) {
-                                    err.span_note(span, &format!(
-                                        "use `({0}.{1})(...)` if you meant to call the function \
-                                         stored in the `{1}` field",
-                                        expr_string, item_name));
-                                } else {
-                                    err.span_note(span, &format!(
-                                        "did you mean to write `{0}.{1}`?",
-                                        expr_string, item_name));
+                                    if self.is_fn_ty(&field_ty, span) {
+                                        err.span_note(span, &format!(
+                                            "use `({0}.{1})(...)` if you meant to call the \
+                                             function stored in the `{1}` field",
+                                            expr_string, item_name));
+                                    } else {
+                                        err.span_note(span, &format!(
+                                            "did you mean to write `{0}.{1}`?",
+                                            expr_string, item_name));
+                                    }
+                                    break;
                                 }
-                                break;
                             }
+                            _ => {}
                         }
                     }
                 }
@@ -355,7 +359,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             rcvr_expr: Option<&hir::Expr>) -> bool {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
-                ty::TyEnum(def, _) | ty::TyStruct(def, _) => def.did.is_local(),
+                ty::TyEnum(def, _) | ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                    def.did.is_local()
+                }
 
                 ty::TyTrait(ref tr) => tr.principal.def_id().is_local(),
 

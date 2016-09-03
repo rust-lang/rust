@@ -566,7 +566,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
     let pat = match left_ty.sty {
         ty::TyTuple(..) => PatKind::Tuple(pats.collect(), None),
 
-        ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
+        ty::TyEnum(adt, _) | ty::TyStruct(adt, _) | ty::TyUnion(adt, _) => {
             let v = ctor.variant_for_adt(adt);
             match v.kind {
                 VariantKind::Struct => {
@@ -792,7 +792,8 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
             match cx.tcx.expect_def(pat.id) {
                 Def::Variant(_, id) => vec![Variant(id)],
-                Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
+                Def::Struct(..) | Def::Union(..) |
+                Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat.span, "const pattern should've been rewritten"),
                 def => span_bug!(pat.span, "pat_constructors: unexpected definition {:?}", def),
@@ -836,7 +837,7 @@ pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> us
             _ => bug!()
         },
         ty::TyRef(..) => 1,
-        ty::TyEnum(adt, _) | ty::TyStruct(adt, _) => {
+        ty::TyEnum(adt, _) | ty::TyStruct(adt, _) | ty::TyUnion(adt, _) => {
             ctor.variant_for_adt(adt).fields.len()
         }
         ty::TyArray(_, n) => n,

@@ -112,13 +112,18 @@ pub enum TypeVariants<'tcx> {
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `TyEnum` corresponds to an enum
     /// definition and not a concrete use of it. This is true for `TyStruct`
-    /// as well.
+    /// and `TyUnion` as well.
     TyEnum(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// A structure type, defined with `struct`.
     ///
     /// See warning about substitutions for enumerated types.
     TyStruct(AdtDef<'tcx>, &'tcx Substs<'tcx>),
+
+    /// A union type, defined with `union`.
+    ///
+    /// See warning about substitutions for enumerated types.
+    TyUnion(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// `Box<T>`; this is nominally a struct in the documentation, but is
     /// special-cased internally. For example, it is possible to implicitly
@@ -917,7 +922,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
         // more complete.
         match self.sty {
-            TyEnum(def, _) | TyStruct(def, _) => def.is_empty(),
+            TyEnum(def, _) | TyStruct(def, _) | TyUnion(def, _) => def.is_empty(),
 
             // FIXME(canndrew): There's no reason why these can't be uncommented, they're tested
             // and they don't break anything. But I'm keeping my changes small for now.
@@ -980,7 +985,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_structural(&self) -> bool {
         match self.sty {
-            TyStruct(..) | TyTuple(_) | TyEnum(..) |
+            TyStruct(..) | TyUnion(..) | TyTuple(..) | TyEnum(..) |
             TyArray(..) | TyClosure(..) => true,
             _ => self.is_slice() | self.is_trait()
         }
@@ -1199,6 +1204,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         match self.sty {
             TyTrait(ref tt) => Some(tt.principal.def_id()),
             TyStruct(def, _) |
+            TyUnion(def, _) |
             TyEnum(def, _) => Some(def.did),
             TyClosure(id, _) => Some(id),
             _ => None
@@ -1207,7 +1213,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn ty_adt_def(&self) -> Option<AdtDef<'tcx>> {
         match self.sty {
-            TyStruct(adt, _) | TyEnum(adt, _) => Some(adt),
+            TyStruct(adt, _) | TyUnion(adt, _) | TyEnum(adt, _) => Some(adt),
             _ => None
         }
     }
@@ -1227,6 +1233,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             TyEnum(_, substs) |
             TyStruct(_, substs) |
+            TyUnion(_, substs) |
             TyAnon(_, substs) => {
                 substs.regions().collect()
             }

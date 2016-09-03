@@ -45,6 +45,7 @@ pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> 
     let dtor_predicates = ccx.tcx.lookup_predicates(drop_impl_did);
     match dtor_self_type.sty {
         ty::TyEnum(adt_def, self_to_impl_substs) |
+        ty::TyUnion(adt_def, self_to_impl_substs) |
         ty::TyStruct(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(ccx,
                                                           drop_impl_did,
@@ -304,7 +305,9 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
                                                      tcx.item_path_str(def_id),
                                                      variant),
                         ty::AdtKind::Struct => format!("struct {}",
-                                                       tcx.item_path_str(def_id))
+                                                       tcx.item_path_str(def_id)),
+                        ty::AdtKind::Union => format!("union {}",
+                                                       tcx.item_path_str(def_id)),
                     };
                     span_note!(
                         &mut err,
@@ -439,7 +442,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
                 cx, context, ity, depth+1)
         }
 
-        ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+        ty::TyStruct(def, substs) | ty::TyUnion(def, substs) | ty::TyEnum(def, substs) => {
             let did = def.did;
             for variant in &def.variants {
                 for field in variant.fields.iter() {
@@ -494,7 +497,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
 fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                         ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::TyEnum(def, _) | ty::TyStruct(def, _) => {
+        ty::TyEnum(def, _) | ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
             def.is_dtorck(tcx)
         }
         ty::TyTrait(..) | ty::TyProjection(..) | ty::TyAnon(..) => {

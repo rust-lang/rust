@@ -13,15 +13,14 @@
 use self::RootUnsafeContext::*;
 
 use dep_graph::DepNode;
-use hir::def::Def;
 use ty::{self, Ty, TyCtxt};
 use ty::MethodCall;
 
 use syntax::ast;
 use syntax_pos::Span;
-use hir;
-use hir::intravisit;
-use hir::intravisit::{FnKind, Visitor};
+use hir::{self, PatKind};
+use hir::def::Def;
+use hir::intravisit::{self, FnKind, Visitor};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -178,10 +177,27 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                     self.require_unsafe(expr.span, "use of mutable static");
                 }
             }
+            hir::ExprField(ref base_expr, field) => {
+                if let ty::TyUnion(..) = self.tcx.expr_ty_adjusted(base_expr).sty {
+                    self.require_unsafe(field.span, "access to union field");
+                }
+            }
             _ => {}
         }
 
         intravisit::walk_expr(self, expr);
+    }
+
+    fn visit_pat(&mut self, pat: &hir::Pat) {
+        if let PatKind::Struct(_, ref fields, _) = pat.node {
+            if let ty::TyUnion(..) = self.tcx.pat_ty(pat).sty {
+                for field in fields {
+                    self.require_unsafe(field.span, "matching on union field");
+                }
+            }
+        }
+
+        intravisit::walk_pat(self, pat);
     }
 }
 

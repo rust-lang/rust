@@ -377,7 +377,8 @@ enum FfiResult {
     FfiSafe,
     FfiUnsafe(&'static str),
     FfiBadStruct(DefId, &'static str),
-    FfiBadEnum(DefId, &'static str)
+    FfiBadUnion(DefId, &'static str),
+    FfiBadEnum(DefId, &'static str),
 }
 
 /// Check if this enum can be safely exported based on the
@@ -452,8 +453,28 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     let r = self.check_type_for_ffi(cache, field_ty);
                     match r {
                         FfiSafe => {}
-                        FfiBadStruct(..) | FfiBadEnum(..) => { return r; }
+                        FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => { return r; }
                         FfiUnsafe(s) => { return FfiBadStruct(def.did, s); }
+                    }
+                }
+                FfiSafe
+            }
+            ty::TyUnion(def, substs) => {
+                if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
+                    return FfiUnsafe(
+                        "found union without foreign-function-safe \
+                         representation annotation in foreign module, \
+                         consider adding a #[repr(C)] attribute to \
+                         the type");
+                }
+
+                for field in &def.struct_variant().fields {
+                    let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
+                    let r = self.check_type_for_ffi(cache, field_ty);
+                    match r {
+                        FfiSafe => {}
+                        FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => { return r; }
+                        FfiUnsafe(s) => { return FfiBadUnion(def.did, s); }
                     }
                 }
                 FfiSafe
@@ -507,7 +528,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         let r = self.check_type_for_ffi(cache, arg);
                         match r {
                             FfiSafe => {}
-                            FfiBadStruct(..) | FfiBadEnum(..) => { return r; }
+                            FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => { return r; }
                             FfiUnsafe(s) => { return FfiBadEnum(def.did, s); }
                         }
                     }
@@ -613,6 +634,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                     &format!("found non-foreign-function-safe member in \
                               struct marked #[repr(C)]: {}", s));
+            }
+            FfiResult::FfiBadUnion(_, s) => {
+                // FIXME: This diagnostic is difficult to read, and doesn't
+                // point at the relevant field.
+                self.cx.span_lint(IMPROPER_CTYPES, sp,
+                    &format!("found non-foreign-function-safe member in \
+                              union marked #[repr(C)]: {}", s));
             }
             FfiResult::FfiBadEnum(_, s) => {
                 // FIXME: This diagnostic is difficult to read, and doesn't

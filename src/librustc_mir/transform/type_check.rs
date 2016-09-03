@@ -281,7 +281,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 (&adt_def.variants[variant_index], substs)
             }
             LvalueTy::Ty { ty } => match ty.sty {
-                ty::TyStruct(adt_def, substs) | ty::TyEnum(adt_def, substs)
+                ty::TyStruct(adt_def, substs) |
+                ty::TyUnion(adt_def, substs) |
+                ty::TyEnum(adt_def, substs)
                     if adt_def.is_univariant() => {
                         (&adt_def.variants[0], substs)
                     }

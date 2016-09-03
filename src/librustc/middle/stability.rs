@@ -561,9 +561,11 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node).did,
+                ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                    def.struct_variant().field_named(field.node).did
+                }
                 _ => span_bug!(e.span,
-                               "stability::check_expr: named field access on non-struct")
+                               "stability::check_expr: named field access on non-struct/union")
             }
         }
         hir::ExprTupField(ref base_e, ref field) => {
@@ -579,7 +581,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         hir::ExprStruct(_, ref expr_fields, _) => {
             let type_ = tcx.expr_ty(e);
             match type_.sty {
-                ty::TyStruct(def, _) => {
+                ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
                     // check the stability of each field that appears
                     // in the construction expression.
                     for field in expr_fields {
@@ -599,7 +601,7 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
                 _ => {
                     span_bug!(e.span,
                               "stability::check_expr: struct construction \
-                               of non-struct, type {:?}",
+                               of non-struct/union, type {:?}",
                               type_);
                 }
             }
@@ -647,7 +649,8 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     if is_internal(tcx, pat.span) { return; }
 
     let v = match tcx.pat_ty_opt(pat) {
-        Some(&ty::TyS { sty: ty::TyStruct(def, _), .. }) => def.struct_variant(),
+        Some(&ty::TyS { sty: ty::TyStruct(def, _), .. }) |
+        Some(&ty::TyS { sty: ty::TyUnion(def, _), .. }) => def.struct_variant(),
         Some(_) | None => return,
     };
     match pat.node {

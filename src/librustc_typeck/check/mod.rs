@@ -713,14 +713,16 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     fcx
 }
 
-pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
-    let tcx = ccx.tcx;
+fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
+    check_representable(ccx.tcx, span, id);
 
-    check_representable(tcx, span, id, "struct");
-
-    if tcx.lookup_simd(ccx.tcx.map.local_def_id(id)) {
-        check_simd(tcx, span, id);
+    if ccx.tcx.lookup_simd(ccx.tcx.map.local_def_id(id)) {
+        check_simd(ccx.tcx, span, id);
     }
+}
+
+fn check_union(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
+    check_representable(ccx.tcx, span, id);
 }
 
 pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
@@ -761,6 +763,9 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       }
       hir::ItemStruct(..) => {
         check_struct(ccx, it.id, it.span);
+      }
+      hir::ItemUnion(..) => {
+        check_union(ccx, it.id, it.span);
       }
       hir::ItemTy(_, ref generics) => {
         let pty_ty = ccx.tcx.node_id_to_type(it.id);
@@ -1171,10 +1176,10 @@ fn check_const<'a, 'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 /// Checks whether a type can be represented in memory. In particular, it
 /// identifies types that contain themselves without indirection through a
 /// pointer, which would mean their size is unbounded.
-pub fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     sp: Span,
-                                     item_id: ast::NodeId,
-                                     _designation: &str) -> bool {
+fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 sp: Span,
+                                 item_id: ast::NodeId)
+                                 -> bool {
     let rty = tcx.node_id_to_type(item_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -1274,7 +1279,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         disr_vals.push(current_disr_val);
     }
 
-    check_representable(ccx.tcx, sp, id, "enum");
+    check_representable(ccx.tcx, sp, id);
 }
 
 impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
@@ -2942,18 +2947,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, autoderefs)) = autoderef.next() {
-            if let ty::TyStruct(base_def, substs) = base_t.sty {
-                debug!("struct named {:?}",  base_t);
-                if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
-                    let field_ty = self.field_ty(expr.span, field, substs);
-                    if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
-                        autoderef.finalize(lvalue_pref, Some(base));
-                        self.write_ty(expr.id, field_ty);
-                        self.write_autoderef_adjustment(base.id, autoderefs);
-                        return;
+            match base_t.sty {
+                ty::TyStruct(base_def, substs) | ty::TyUnion(base_def, substs) => {
+                    debug!("struct named {:?}",  base_t);
+                    if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
+                        let field_ty = self.field_ty(expr.span, field, substs);
+                        if field.vis.is_accessible_from(self.body_id, &self.tcx().map) {
+                            autoderef.finalize(lvalue_pref, Some(base));
+                            self.write_ty(expr.id, field_ty);
+                            self.write_autoderef_adjustment(base.id, autoderefs);
+                            return;
+                        }
+                        private_candidate = Some((base_def.did, field_ty));
                     }
-                    private_candidate = Some((base_def.did, field_ty));
                 }
+                _ => {}
             }
         }
         autoderef.unambiguous_final_ty();
@@ -2986,12 +2994,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          but no field with that name was found",
                         field.node, actual)
             }, expr_t);
-            if let ty::TyRawPtr(..) = expr_t.sty {
-                err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
-                                  `(*{0}).{1}`", pprust::expr_to_string(base), field.node));
-            }
-            if let ty::TyStruct(def, _) = expr_t.sty {
-                Self::suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
+            match expr_t.sty {
+                ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                    Self::suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
+                }
+                ty::TyRawPtr(..) => {
+                    err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
+                                      `(*{0}).{1}`", pprust::expr_to_string(base), field.node));
+                }
+                _ => {}
             }
             err.emit();
             self.write_error(expr.id);
@@ -3098,17 +3109,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             ty: Ty<'tcx>,
                             variant: ty::VariantDef<'tcx>,
                             field: &hir::Field,
-                            skip_fields: &[hir::Field]) {
+                            skip_fields: &[hir::Field],
+                            kind_name: &str) {
         let mut err = self.type_error_struct_with_diag(
             field.name.span,
             |actual| if let ty::TyEnum(..) = ty.sty {
                 struct_span_err!(self.tcx.sess, field.name.span, E0559,
-                                 "struct variant `{}::{}` has no field named `{}`",
-                                 actual, variant.name.as_str(), field.name.node)
+                                 "{} `{}::{}` has no field named `{}`",
+                                 kind_name, actual, variant.name.as_str(), field.name.node)
             } else {
                 struct_span_err!(self.tcx.sess, field.name.span, E0560,
-                                 "structure `{}` has no field named `{}`",
-                                 actual, field.name.node)
+                                 "{} `{}` has no field named `{}`",
+                                 kind_name, actual, field.name.node)
             },
             ty);
         // prevent all specified fields from being suggested
@@ -3124,8 +3136,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 ast_fields: &'gcx [hir::Field],
                                 check_completeness: bool) {
         let tcx = self.tcx;
-        let substs = match adt_ty.sty {
-            ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
+        let (substs, kind_name) = match adt_ty.sty {
+            ty::TyEnum(_, substs) => (substs, "variant"),
+            ty::TyStruct(_, substs) => (substs, "struct"),
+            ty::TyUnion(_, substs) => (substs, "union"),
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
@@ -3164,7 +3178,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     err.emit();
                 } else {
-                    self.report_unknown_field(adt_ty, variant, field, ast_fields);
+                    self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name);
                 }
             }
 
@@ -3173,11 +3187,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_expr_coercable_to_type(&field.expr, expected_field_type);
         }
 
-            // Make sure the programmer specified all the fields.
-        if check_completeness &&
-            !error_happened &&
-            !remaining_fields.is_empty()
-        {
+        // Make sure the programmer specified correct number of fields.
+        if kind_name == "union" {
+            if ast_fields.len() != 1 {
+                tcx.sess.span_err(span, "union expressions should have exactly one field");
+            }
+        } else if check_completeness && !error_happened && !remaining_fields.is_empty() {
             span_err!(tcx.sess, span, E0063,
                       "missing field{} {} in initializer of `{}`",
                       if remaining_fields.len() == 1 {""} else {"s"},
@@ -3187,7 +3202,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       .join(", "),
                       adt_ty);
         }
-
     }
 
     fn check_struct_fields_on_error(&self,
@@ -3217,15 +3231,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Def::Variant(type_did, _) | Def::Struct(type_did) => {
+            Def::Variant(type_did, _) | Def::Struct(type_did) | Def::Union(type_did) => {
                 Some((type_did, self.tcx.expect_variant_def(def)))
             }
             Def::TyAlias(did) => {
-                if let Some(&ty::TyStruct(adt, _)) = self.tcx.opt_lookup_item_type(did)
-                                                             .map(|scheme| &scheme.ty.sty) {
-                    Some((did, adt.struct_variant()))
-                } else {
-                    None
+                match self.tcx.opt_lookup_item_type(did).map(|scheme| &scheme.ty.sty) {
+                    Some(&ty::TyStruct(adt, _)) |
+                    Some(&ty::TyUnion(adt, _)) => Some((did, adt.struct_variant())),
+                    _ => None,
                 }
             }
             _ => None
@@ -4118,6 +4131,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match def {
             // Case 1 and 1b. Reference to a *type* or *enum variant*.
             Def::Struct(def_id) |
+            Def::Union(def_id) |
             Def::Variant(_, def_id) |
             Def::Enum(def_id) |
             Def::TyAlias(def_id) |

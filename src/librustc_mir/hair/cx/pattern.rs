@@ -217,7 +217,9 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
             PatKind::Struct(_, ref fields, _) => {
                 let pat_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
-                    ty::TyStruct(adt_def, _) | ty::TyEnum(adt_def, _) => adt_def,
+                    ty::TyStruct(adt_def, _) |
+                    ty::TyUnion(adt_def, _) |
+                    ty::TyEnum(adt_def, _) => adt_def,
                     _ => {
                         span_bug!(
                             pat.span,
@@ -313,7 +315,8 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 }
             }
 
-            Def::Struct(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => {
+            Def::Struct(..) | Def::Union(..) |
+            Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 

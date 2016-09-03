@@ -5102,6 +5102,25 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Struct(vdata, generics), None))
     }
 
+    /// Parse union Foo { ... }
+    fn parse_item_union(&mut self) -> PResult<'a, ItemInfo> {
+        let class_name = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+
+        let vdata = if self.token.is_keyword(keywords::Where) {
+            generics.where_clause = self.parse_where_clause()?;
+            VariantData::Struct(self.parse_record_struct_body()?, ast::DUMMY_NODE_ID)
+        } else if self.token == token::OpenDelim(token::Brace) {
+            VariantData::Struct(self.parse_record_struct_body()?, ast::DUMMY_NODE_ID)
+        } else {
+            let token_str = self.this_token_to_string();
+            return Err(self.fatal(&format!("expected `where` or `{{` after union \
+                                            name, found `{}`", token_str)))
+        };
+
+        Ok((class_name, ItemKind::Union(vdata, generics), None))
+    }
+
     pub fn parse_record_struct_body(&mut self) -> PResult<'a, Vec<StructField>> {
         let mut fields = Vec::new();
         if self.eat(&token::OpenDelim(token::Brace)) {
@@ -5929,6 +5948,20 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(keywords::Struct) {
             // STRUCT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_struct()?;
+            let last_span = self.last_span;
+            let item = self.mk_item(lo,
+                                    last_span.hi,
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return Ok(Some(item));
+        }
+        if self.check_keyword(keywords::Union) &&
+                self.look_ahead(1, |t| t.is_ident() && !t.is_any_keyword()) {
+            // UNION ITEM
+            self.bump();
+            let (ident, item_, extra_attrs) = self.parse_item_union()?;
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,

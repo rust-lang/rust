@@ -477,8 +477,6 @@ impl<'a, 'tcx> LoanPath<'tcx> {
                     base.common(&base2).map(|x| {
                         let xd = x.depth();
                         if base.depth() == xd && base2.depth() == xd {
-                            assert_eq!(base.ty, base2.ty);
-                            assert_eq!(self.ty, other.ty);
                             LoanPath {
                                 kind: LpExtend(Rc::new(x), a, LpInterior(opt_variant_id, id)),
                                 ty: self.ty,
@@ -495,7 +493,6 @@ impl<'a, 'tcx> LoanPath<'tcx> {
             (_, &LpExtend(ref other, _, LpDeref(_))) => self.common(&other),
             (&LpVar(id), &LpVar(id2)) => {
                 if id == id2 {
-                    assert_eq!(self.ty, other.ty);
                     Some(LoanPath { kind: LpVar(id), ty: self.ty })
                 } else {
                     None
@@ -503,7 +500,6 @@ impl<'a, 'tcx> LoanPath<'tcx> {
             }
             (&LpUpvar(id), &LpUpvar(id2)) => {
                 if id == id2 {
-                    assert_eq!(self.ty, other.ty);
                     Some(LoanPath { kind: LpUpvar(id), ty: self.ty })
                 } else {
                     None
@@ -1135,7 +1131,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push_str(&self.tcx.item_path_str(variant_def_id));
                 out.push(')');
             }
-
 
             LpExtend(ref lp_base, _, LpInterior(_, InteriorField(fname))) => {
                 self.append_autoderefd_loan_path_to_string(&lp_base, out);

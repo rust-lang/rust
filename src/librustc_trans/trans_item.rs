@@ -397,6 +397,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
         ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
         ty::TyStruct(adt_def, substs) |
+        ty::TyUnion(adt_def, substs) |
         ty::TyEnum(adt_def, substs) => {
             push_item_name(tcx, adt_def.did, output);
             push_type_params(tcx, substs, &[], output);

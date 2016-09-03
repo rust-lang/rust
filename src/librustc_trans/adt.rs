@@ -79,6 +79,8 @@ pub enum Repr<'tcx> {
     CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
     /// Single-case variants, and structs/tuples/records.
     Univariant(Struct<'tcx>),
+    /// Untagged unions.
+    UntaggedUnion(Union<'tcx>),
     /// General-case enums: for each case there is a struct, and they
     /// all start with a field for the discriminant.
     General(IntType, Vec<Struct<'tcx>>),
@@ -117,6 +119,15 @@ pub struct Struct<'tcx> {
     pub size: u64,
     pub align: u32,
     pub sized: bool,
+    pub packed: bool,
+    pub fields: Vec<Ty<'tcx>>,
+}
+
+/// For untagged unions.
+#[derive(Eq, PartialEq, Debug)]
+pub struct Union<'tcx> {
+    pub min_size: u64,
+    pub align: u32,
     pub packed: bool,
     pub fields: Vec<Ty<'tcx>>,
 }
@@ -175,6 +186,13 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let packed = cx.tcx().lookup_packed(def.did);
 
             Univariant(mk_struct(cx, &ftys[..], packed, t))
+        }
+        ty::TyUnion(def, substs) => {
+            let ftys = def.struct_variant().fields.iter().map(|field| {
+                monomorphize::field_ty(cx.tcx(), substs, field)
+            }).collect::<Vec<_>>();
+            let packed = cx.tcx().lookup_packed(def.did);
+            UntaggedUnion(mk_union(cx, &ftys[..], packed, t))
         }
         ty::TyClosure(_, ref substs) => {
             Univariant(mk_struct(cx, &substs.upvar_tys, false, t))
@@ -479,6 +497,31 @@ fn mk_struct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
+fn mk_union<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                      tys: &[Ty<'tcx>], packed: bool,
+                      _scapegoat: Ty<'tcx>)
+                      -> Union<'tcx> {
+    let mut min_size = 0;
+    let mut align = 0;
+    for llty in tys.iter().map(|&ty| type_of::sizing_type_of(cx, ty)) {
+        let field_size = machine::llsize_of_alloc(cx, llty);
+        if min_size < field_size {
+            min_size = field_size;
+        }
+        let field_align = machine::llalign_of_min(cx, llty);
+        if align < field_align {
+            align = field_align;
+        }
+    }
+
+    Union {
+        min_size: min_size,
+        align: if packed { 1 } else { align },
+        packed: packed,
+        fields: tys.to_vec(),
+    }
+}
+
 #[derive(Debug)]
 struct IntBounds {
     slo: i64,
@@ -643,7 +686,7 @@ pub fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 r: &Repr<'tcx>, llty: &mut Type) {
     match *r {
-        CEnum(..) | General(..) | RawNullablePointer { .. } => { }
+        CEnum(..) | General(..) | UntaggedUnion(..) | RawNullablePointer { .. } => { }
         Univariant(ref st) | StructWrappedNullablePointer { nonnull: ref st, .. } =>
             llty.set_struct_body(&struct_llfields(cx, st, false, false),
                                  st.packed)
@@ -684,6 +727,34 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     // drop flag. (... needs validation.)
                     assert_eq!(sizing, false);
                     Type::named_struct(cx, name)
+                }
+            }
+        }
+        UntaggedUnion(ref un) => {
+            // Use alignment-sized ints to fill all the union storage.
+            let (size, align) = (roundup(un.min_size, un.align), un.align);
+
+            let align_s = align as u64;
+            assert_eq!(size % align_s, 0); // Ensure division in align_units comes out evenly
+            let align_units = size / align_s;
+            let fill_ty = match align_s {
+                1 => Type::array(&Type::i8(cx), align_units),
+                2 => Type::array(&Type::i16(cx), align_units),
+                4 => Type::array(&Type::i32(cx), align_units),
+                8 if machine::llalign_of_min(cx, Type::i64(cx)) == 8 =>
+                                 Type::array(&Type::i64(cx), align_units),
+                a if a.count_ones() == 1 => Type::array(&Type::vector(&Type::i32(cx), a / 4),
+                                                              align_units),
+                _ => bug!("unsupported union alignment: {}", align)
+            };
+            match name {
+                None => {
+                    Type::struct_(cx, &[fill_ty], un.packed)
+                }
+                Some(name) => {
+                    let mut llty = Type::named_struct(cx, name);
+                    llty.set_struct_body(&[fill_ty], un.packed);
+                    llty
                 }
             }
         }
@@ -759,7 +830,7 @@ pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
             (BranchKind::Switch, Some(trans_get_discr(bcx, r, scrutinee, None, range_assert)))
         }
-        Univariant(..) => {
+        Univariant(..) | UntaggedUnion(..) => {
             // N.B.: Univariant means <= 1 enum variants (*not* == 1 variants).
             (BranchKind::Single, None)
         }
@@ -770,7 +841,7 @@ pub fn is_discr_signed<'tcx>(r: &Repr<'tcx>) -> bool {
     match *r {
         CEnum(ity, _, _) => ity.is_signed(),
         General(ity, _) => ity.is_signed(),
-        Univariant(..) => false,
+        Univariant(..) | UntaggedUnion(..) => false,
         RawNullablePointer { .. } => false,
         StructWrappedNullablePointer { .. } => false,
     }
@@ -791,7 +862,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             load_discr(bcx, ity, ptr, Disr(0), Disr(cases.len() as u64 - 1),
                        range_assert)
         }
-        Univariant(..) => C_u8(bcx.ccx(), 0),
+        Univariant(..) | UntaggedUnion(..) => C_u8(bcx.ccx(), 0),
         RawNullablePointer { nndiscr, nnty, .. } =>  {
             let cmp = if nndiscr == Disr(0) { IntEQ } else { IntNE };
             let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
@@ -853,8 +924,8 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
         General(ity, _) => {
             C_integral(ll_inttype(bcx.ccx(), ity), discr.0, true)
         }
-        Univariant(..) => {
-            bug!("no cases for univariants or structs")
+        Univariant(..) | UntaggedUnion(..) => {
+            bug!("no cases for univariants, structs or unions")
         }
         RawNullablePointer { .. } |
         StructWrappedNullablePointer { .. } => {
@@ -879,6 +950,9 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                   StructGEP(bcx, val, 0));
         }
         Univariant(_) => {
+            assert_eq!(discr, Disr(0));
+        }
+        UntaggedUnion(..) => {
             assert_eq!(discr, Disr(0));
         }
         RawNullablePointer { nndiscr, nnty, ..} => {
@@ -935,6 +1009,11 @@ pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         }
         General(_, ref cases) => {
             struct_field_ptr(bcx, &cases[discr.0 as usize], val, ix + 1, true)
+        }
+        UntaggedUnion(ref un) => {
+            let ty = type_of::in_memory_type_of(bcx.ccx(), un.fields[ix]);
+            if bcx.is_unreachable() { return C_undef(ty.ptr_to()); }
+            bcx.pointercast(val.value, ty.ptr_to())
         }
         RawNullablePointer { nndiscr, ref nullfields, .. } |
         StructWrappedNullablePointer { nndiscr, ref nullfields, .. } if discr != nndiscr => {
@@ -1097,6 +1176,11 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             contents.extend_from_slice(&[padding(ccx, max_sz - case.size)]);
             C_struct(ccx, &contents[..], false)
         }
+        UntaggedUnion(ref un) => {
+            assert_eq!(discr, Disr(0));
+            let contents = build_const_union(ccx, un, vals[0]);
+            C_struct(ccx, &contents, un.packed)
+        }
         Univariant(ref st) => {
             assert_eq!(discr, Disr(0));
             let contents = build_const_struct(ccx, st, vals);
@@ -1190,6 +1274,21 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     cfields
 }
 
+fn build_const_union<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               un: &Union<'tcx>,
+                               field_val: ValueRef)
+                               -> Vec<ValueRef> {
+    let mut cfields = vec![field_val];
+
+    let offset = machine::llsize_of_alloc(ccx, val_ty(field_val));
+    let size = roundup(un.min_size, un.align);
+    if offset != size {
+        cfields.push(padding(ccx, size - offset));
+    }
+
+    cfields
+}
+
 fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
     C_undef(Type::array(&Type::i8(ccx), size))
 }
@@ -1208,6 +1307,7 @@ pub fn const_get_field(r: &Repr, val: ValueRef, _discr: Disr,
     match *r {
         CEnum(..) => bug!("element access in C-like enum const"),
         Univariant(..) => const_struct_field(val, ix),
+        UntaggedUnion(..) => const_struct_field(val, 0),
         General(..) => const_struct_field(val, ix + 1),
         RawNullablePointer { .. } => {
             assert_eq!(ix, 0);

@@ -1053,6 +1053,7 @@ impl DocFolder for Cache {
                             // information if present.
                             Some(&(ref fqp, ItemType::Trait)) |
                             Some(&(ref fqp, ItemType::Struct)) |
+                            Some(&(ref fqp, ItemType::Union)) |
                             Some(&(ref fqp, ItemType::Enum)) =>
                                 Some(&fqp[..fqp.len() - 1]),
                             Some(..) => Some(&*self.stack),
@@ -1106,7 +1107,8 @@ impl DocFolder for Cache {
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
-            clean::ConstantItem(..) | clean::StaticItem(..)
+            clean::ConstantItem(..) | clean::StaticItem(..) |
+            clean::UnionItem(..)
             if !self.stripped_mod => {
                 // Reexported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
@@ -1141,7 +1143,8 @@ impl DocFolder for Cache {
         // Maintain the parent stack
         let orig_parent_is_trait_impl = self.parent_is_trait_impl;
         let parent_pushed = match item.inner {
-            clean::TraitItem(..) | clean::EnumItem(..) | clean::StructItem(..) => {
+            clean::TraitItem(..) | clean::EnumItem(..) |
+            clean::StructItem(..) | clean::UnionItem(..) => {
                 self.parent_stack.push(item.def_id);
                 self.parent_is_trait_impl = false;
                 true
@@ -1557,6 +1560,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::FunctionItem(..) => write!(fmt, "Function ")?,
             clean::TraitItem(..) => write!(fmt, "Trait ")?,
             clean::StructItem(..) => write!(fmt, "Struct ")?,
+            clean::UnionItem(..) => write!(fmt, "Union ")?,
             clean::EnumItem(..) => write!(fmt, "Enum ")?,
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
             _ => {}
@@ -1613,6 +1617,7 @@ impl<'a> fmt::Display for Item<'a> {
                 item_function(fmt, self.cx, self.item, f),
             clean::TraitItem(ref t) => item_trait(fmt, self.cx, self.item, t),
             clean::StructItem(ref s) => item_struct(fmt, self.cx, self.item, s),
+            clean::UnionItem(ref s) => item_union(fmt, self.cx, self.item, s),
             clean::EnumItem(ref e) => item_enum(fmt, self.cx, self.item, e),
             clean::TypedefItem(ref t, _) => item_typedef(fmt, self.cx, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.cx, self.item, m),
@@ -1715,7 +1720,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             ItemType::Trait           => 9,
             ItemType::Function        => 10,
             ItemType::Typedef         => 12,
-            _                         => 13 + ty as u8,
+            ItemType::Union           => 13,
+            _                         => 14 + ty as u8,
         }
     }
 
@@ -1759,6 +1765,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ItemType::Import          => ("reexports", "Reexports"),
                 ItemType::Module          => ("modules", "Modules"),
                 ItemType::Struct          => ("structs", "Structs"),
+                ItemType::Union           => ("unions", "Unions"),
                 ItemType::Enum            => ("enums", "Enums"),
                 ItemType::Function        => ("functions", "Functions"),
                 ItemType::Typedef         => ("types", "Type Definitions"),
@@ -2312,6 +2319,40 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
+fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
+               s: &clean::Union) -> fmt::Result {
+    write!(w, "<pre class='rust union'>")?;
+    render_attributes(w, it)?;
+    render_union(w,
+                 it,
+                 Some(&s.generics),
+                 &s.fields,
+                 "",
+                 true)?;
+    write!(w, "</pre>")?;
+
+    document(w, cx, it)?;
+    let mut fields = s.fields.iter().filter_map(|f| {
+        match f.inner {
+            clean::StructFieldItem(ref ty) => Some((f, ty)),
+            _ => None,
+        }
+    }).peekable();
+    if fields.peek().is_some() {
+        write!(w, "<h2 class='fields'>Fields</h2>")?;
+        for (field, ty) in fields {
+            write!(w, "<span id='{shortty}.{name}' class='{shortty}'><code>{name}: {ty}</code>
+                       </span><span class='stab {stab}'></span>",
+                   shortty = ItemType::StructField,
+                   stab = field.stability_class(),
+                   name = field.name.as_ref().unwrap(),
+                   ty = ty)?;
+            document(w, cx, field)?;
+        }
+    }
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+}
+
 fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
     write!(w, "<pre class='rust enum'>")?;
@@ -2511,6 +2552,38 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             write!(w, ";")?;
         }
     }
+    Ok(())
+}
+
+fn render_union(w: &mut fmt::Formatter, it: &clean::Item,
+                g: Option<&clean::Generics>,
+                fields: &[clean::Item],
+                tab: &str,
+                structhead: bool) -> fmt::Result {
+    write!(w, "{}{}{}",
+           VisSpace(&it.visibility),
+           if structhead {"union "} else {""},
+           it.name.as_ref().unwrap())?;
+    if let Some(g) = g {
+        write!(w, "{}", g)?;
+        write!(w, "{}", WhereClause(g))?;
+    }
+
+    write!(w, " {{\n{}", tab)?;
+    for field in fields {
+        if let clean::StructFieldItem(ref ty) = field.inner {
+            write!(w, "    {}{}: {},\n{}",
+                   VisSpace(&field.visibility),
+                   field.name.as_ref().unwrap(),
+                   *ty,
+                   tab)?;
+        }
+    }
+
+    if it.has_stripped_fields().unwrap() {
+        write!(w, "    // some fields omitted\n{}", tab)?;
+    }
+    write!(w, "}}")?;
     Ok(())
 }
 

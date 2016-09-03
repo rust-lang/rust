@@ -931,7 +931,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             tcx.trait_item_def_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
                                                        trait_item_def_ids);
         },
-        hir::ItemStruct(ref struct_def, _) => {
+        hir::ItemStruct(ref struct_def, _) |
+        hir::ItemUnion(ref struct_def, _) => {
             let def_id = ccx.tcx.map.local_def_id(it.id);
             let scheme = type_scheme_of_def_id(ccx, def_id);
             let predicates = predicates_of_item(ccx, it);
@@ -1067,6 +1068,16 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ccx.tcx.insert_adt_def(ctor_id, adt);
     }
     adt
+}
+
+fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                it: &hir::Item,
+                                def: &hir::VariantData)
+                                -> ty::AdtDefMaster<'tcx>
+{
+    let did = ccx.tcx.map.local_def_id(it.id);
+    let variants = vec![convert_struct_variant(ccx, did, it.name, ConstInt::Infer(0), def)];
+    ccx.tcx.intern_adt_def(did, ty::AdtKind::Union, variants)
 }
 
     fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, e: &hir::Expr)
@@ -1439,7 +1450,8 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
                     ItemTy(_, ref generics) |
                     ItemEnum(_, ref generics) |
-                    ItemStruct(_, ref generics) => {
+                    ItemStruct(_, ref generics) |
+                    ItemUnion(_, ref generics) => {
                         allow_defaults = true;
                         generics
                     }
@@ -1576,6 +1588,11 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
                         ccx.tcx.mk_struct(def, substs)
                     }
+                    ItemUnion(ref un, ref generics) => {
+                        let def = convert_union_def(ccx, item, un);
+                        let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
+                        ccx.tcx.mk_union(def, substs)
+                    }
                     ItemDefaultImpl(..) |
                     ItemTrait(..) |
                     ItemImpl(..) |
@@ -1637,7 +1654,8 @@ fn predicates_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         hir::ItemFn(_, _, _, _, ref generics, _) |
         hir::ItemTy(_, ref generics) |
         hir::ItemEnum(_, ref generics) |
-        hir::ItemStruct(_, ref generics) => generics,
+        hir::ItemStruct(_, ref generics) |
+        hir::ItemUnion(_, ref generics) => generics,
         _ => &no_generics
     };
 

@@ -278,7 +278,19 @@ impl<'b> Resolver<'b> {
                 self.structs.insert(item_def_id, field_names);
             }
 
-            ItemKind::Union(..) => panic!("`union` is not yet implemented"),
+            ItemKind::Union(ref vdata, _) => {
+                let def = Def::Union(self.definitions.local_def_id(item.id));
+                self.define(parent, name, TypeNS, (def, sp, vis));
+
+                // Record the def ID and fields of this union.
+                let field_names = vdata.fields().iter().enumerate().map(|(index, field)| {
+                    self.resolve_visibility(&field.vis);
+                    field.ident.map(|ident| ident.name)
+                               .unwrap_or_else(|| token::intern(&index.to_string()))
+                }).collect();
+                let item_def_id = self.definitions.local_def_id(item.id);
+                self.structs.insert(item_def_id, field_names);
+            }
 
             ItemKind::DefaultImpl(_, _) | ItemKind::Impl(..) => {}
 
@@ -458,6 +470,13 @@ impl<'b> Resolver<'b> {
                 }
 
                 // Record the def ID and fields of this struct.
+                let fields = self.session.cstore.struct_field_names(def_id);
+                self.structs.insert(def_id, fields);
+            }
+            Def::Union(def_id) => {
+                let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
+
+                // Record the def ID and fields of this union.
                 let fields = self.session.cstore.struct_field_names(def_id);
                 self.structs.insert(def_id, fields);
             }

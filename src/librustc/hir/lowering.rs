@@ -638,7 +638,10 @@ impl<'a> LoweringContext<'a> {
                 let struct_def = self.lower_variant_data(struct_def);
                 hir::ItemStruct(struct_def, self.lower_generics(generics))
             }
-            ItemKind::Union(..) => panic!("`union` is not yet implemented"),
+            ItemKind::Union(ref vdata, ref generics) => {
+                let vdata = self.lower_variant_data(vdata);
+                hir::ItemUnion(vdata, self.lower_generics(generics))
+            }
             ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
                 hir::ItemDefaultImpl(self.lower_unsafety(unsafety),
                                      self.lower_trait_ref(trait_ref))

@@ -1029,6 +1029,33 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                                               def_to_u64(ctor_did));
                 }
             }
+            hir::ItemUnion(..) => {
+                let def = ecx.tcx.lookup_adt_def(def_id);
+                let variant = def.struct_variant();
+
+                encode_def_id_and_key(ecx, self.rbml_w, def_id);
+                encode_family(self.rbml_w, 'U');
+                self.encode_bounds_and_type_for_item(item.id);
+
+                encode_item_variances(self.rbml_w, ecx, item.id);
+                encode_name(self.rbml_w, item.name);
+                encode_attributes(self.rbml_w, &item.attrs);
+                encode_stability(self.rbml_w, stab);
+                encode_deprecation(self.rbml_w, depr);
+                self.encode_visibility(vis);
+                self.encode_repr_attrs(&item.attrs);
+
+                /* Encode def_ids for each field and method
+                for methods, write all the stuff get_trait_method
+                needs to know*/
+                self.encode_struct_fields(variant);
+
+                encode_inlined_item(ecx, self.rbml_w, InlinedItemRef::Item(def_id, item));
+                self.encode_mir(item.id);
+
+                // Encode inherent implementations for self union.
+                encode_inherent_implementations(ecx, self.rbml_w, def_id);
+            }
             hir::ItemDefaultImpl(unsafety, _) => {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'd');
@@ -1179,6 +1206,9 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
             hir::ItemStruct(ref struct_def, _) => {
                 self.encode_addl_struct_info(def_id, struct_def.id(), item);
             }
+            hir::ItemUnion(..) => {
+                self.encode_addl_union_info(def_id);
+            }
             hir::ItemImpl(_, _, _, _, _, ref ast_items) => {
                 self.encode_addl_impl_info(def_id, item.id, ast_items);
             }
@@ -1212,6 +1242,10 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
                             (def_id, item.id, struct_node_id));
             }
         }
+    }
+
+    fn encode_addl_union_info(&mut self, def_id: DefId) {
+        self.encode_fields(def_id);
     }
 
     fn encode_addl_impl_info(&mut self,

@@ -174,7 +174,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     self.update(trait_item.id, item_level);
                 }
             }
-            hir::ItemStruct(ref def, _) => {
+            hir::ItemStruct(ref def, _) | hir::ItemUnion(ref def, _) => {
                 if !def.is_struct() {
                     self.update(def.id(), item_level);
                 }
@@ -234,7 +234,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
             // Visit everything except for private fields
-            hir::ItemStruct(ref struct_def, ref generics) => {
+            hir::ItemStruct(ref struct_def, ref generics) |
+            hir::ItemUnion(ref struct_def, ref generics) => {
                 if item_level.is_some() {
                     self.reach().visit_generics(generics);
                     for field in struct_def.fields() {
@@ -320,8 +321,8 @@ impl<'b, 'a, 'tcx: 'a, 'v> Visitor<'v> for ReachEverythingInTheInterfaceVisitor<
         if let hir::TyPath(_, ref path) = ty.node {
             let def = self.ev.tcx.expect_def(ty.id);
             match def {
-                Def::Struct(def_id) | Def::Enum(def_id) | Def::TyAlias(def_id) |
-                Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
+                Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
+                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
                     if let Some(node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
                         let item = self.ev.tcx.map.expect_item(node_id);
                         if let Def::TyAlias(..) = def {
@@ -382,10 +383,11 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 
     // Checks that a field is in scope.
     fn check_field(&mut self, span: Span, def: ty::AdtDef<'tcx>, field: ty::FieldDef<'tcx>) {
-        if def.adt_kind() == ty::AdtKind::Struct &&
+        if def.adt_kind() != ty::AdtKind::Enum &&
            !field.vis.is_accessible_from(self.curitem, &self.tcx.map) {
-            struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of struct `{}` is private",
-                      field.name, self.tcx.item_path_str(def.did))
+            let kind_descr = if def.adt_kind() == ty::AdtKind::Union { "union" } else { "struct" };
+            struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
+                      field.name, kind_descr, self.tcx.item_path_str(def.did))
                 .span_label(span, &format!("field `{}` is private", field.name))
                 .emit();
         }
@@ -427,19 +429,24 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 let method = self.tcx.tables.borrow().method_map[&method_call];
                 self.check_method(expr.span, method.def_id);
             }
-            hir::ExprStruct(_, ref fields, _) => {
+            hir::ExprStruct(_, ref expr_fields, _) => {
                 let adt = self.tcx.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(self.tcx.expect_def(expr.id));
                 // RFC 736: ensure all unmentioned fields are visible.
                 // Rather than computing the set of unmentioned fields
-                // (i.e. `all_fields - fields`), just check them all.
-                for field in variant.fields.iter() {
-                    let span = if let Some(f) = fields.iter().find(|f| f.name.node == field.name) {
-                        f.span
-                    } else {
-                        expr.span
-                    };
-                    self.check_field(span, adt, field);
+                // (i.e. `all_fields - fields`), just check them all,
+                // unless the ADT is a union, then unmentioned fields
+                // are not checked.
+                if adt.adt_kind() == ty::AdtKind::Union {
+                    for expr_field in expr_fields {
+                        self.check_field(expr.span, adt, variant.field_named(expr_field.name.node));
+                    }
+                } else {
+                    for field in &variant.fields {
+                        let expr_field = expr_fields.iter().find(|f| f.name.node == field.name);
+                        let span = if let Some(f) = expr_field { f.span } else { expr.span };
+                        self.check_field(span, adt, field);
+                    }
                 }
             }
             hir::ExprPath(..) => {
@@ -942,8 +949,8 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                     // free type aliases, but this isn't done yet.
                     return
                 }
-                Def::Struct(def_id) | Def::Enum(def_id) | Def::TyAlias(def_id) |
-                Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
+                Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
+                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
                     // Non-local means public (private items can't leave their crate, modulo bugs)
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                         let item = self.tcx.map.expect_item(node_id);
@@ -1067,8 +1074,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
                     check.visit_foreign_item(foreign_item);
                 }
             }
-            // Subitems of structs have their own publicity
-            hir::ItemStruct(ref struct_def, ref generics) => {
+            // Subitems of structs and unions have their own publicity
+            hir::ItemStruct(ref struct_def, ref generics) |
+            hir::ItemUnion(ref struct_def, ref generics) => {
                 check.required_visibility = item_visibility;
                 check.visit_generics(generics);
 
