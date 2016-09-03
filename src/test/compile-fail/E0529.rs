@@ -13,7 +13,9 @@
 fn main() {
     let r: f32 = 1.0;
     match r {
-        [a, b] => { //~ ERROR E0529
+        [a, b] => {
+        //~^ ERROR E0529
+        //~| NOTE pattern cannot match with input type `f32`
         }
     }
 }
