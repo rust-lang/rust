@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::{self, BufWriter};
 use std::io::prelude::*;
+use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -28,16 +29,16 @@ use syntax::ast;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 pub struct LinkerInfo {
-    dylib_exports: Vec<String>,
-    cdylib_exports: Vec<String>
+    exports: HashMap<CrateType, Vec<String>>,
 }
 
 impl<'a, 'tcx> LinkerInfo {
     pub fn new(scx: &SharedCrateContext<'a, 'tcx>,
                reachable: &[String]) -> LinkerInfo {
         LinkerInfo {
-            dylib_exports: exported_symbols(scx, reachable, CrateType::CrateTypeDylib),
-            cdylib_exports: exported_symbols(scx, reachable, CrateType::CrateTypeCdylib)
+            exports: scx.sess().crate_types.borrow().iter().map(|&c| {
+                (c, exported_symbols(scx, reachable, c))
+            }).collect(),
         }
     }
 
@@ -243,7 +244,8 @@ impl<'a> Linker for GnuLinker<'a> {
         // exported symbols to ensure we don't expose any more. The object files
         // have far more public symbols than we actually want to export, so we
         // hide them all here.
-        if crate_type == CrateType::CrateTypeDylib {
+        if crate_type == CrateType::CrateTypeDylib ||
+           crate_type == CrateType::CrateTypeRustcMacro {
             return
         }
 
@@ -254,7 +256,7 @@ impl<'a> Linker for GnuLinker<'a> {
             let res = (|| -> io::Result<()> {
                 let mut f = BufWriter::new(File::create(&path)?);
                 writeln!(f, "{{\n  global:")?;
-                for sym in &self.info.cdylib_exports {
+                for sym in self.info.exports[&crate_type].iter() {
                     writeln!(f, "    {};", sym)?;
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
@@ -274,7 +276,7 @@ impl<'a> Linker for GnuLinker<'a> {
             };
             let res = (|| -> io::Result<()> {
                 let mut f = BufWriter::new(File::create(&path)?);
-                for sym in &self.info.cdylib_exports {
+                for sym in self.info.exports[&crate_type].iter() {
                     writeln!(f, "{}{}", prefix, sym)?;
                 }
                 Ok(())
@@ -427,12 +429,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-            let symbols = if crate_type == CrateType::CrateTypeCdylib {
-                &self.info.cdylib_exports
-            } else {
-                &self.info.dylib_exports
-            };
-            for symbol in symbols {
+            for symbol in self.info.exports[&crate_type].iter() {
                 writeln!(f, "  {}", symbol)?;
             }
             Ok(())
@@ -450,13 +447,10 @@ fn exported_symbols(scx: &SharedCrateContext,
                     reachable: &[String],
                     crate_type: CrateType)
                     -> Vec<String> {
-    if !scx.sess().crate_types.borrow().contains(&crate_type) {
-        return vec![];
-    }
-
     // See explanation in GnuLinker::export_symbols, for
     // why we don't ever need dylib symbols on non-MSVC.
-    if crate_type == CrateType::CrateTypeDylib {
+    if crate_type == CrateType::CrateTypeDylib ||
+       crate_type == CrateType::CrateTypeRustcMacro {
         if !scx.sess().target.target.options.is_like_msvc {
             return vec![];
         }

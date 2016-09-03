@@ -238,6 +238,7 @@ pub fn invalid_output_for_target(sess: &Session,
     match (sess.target.target.options.dynamic_linking,
            sess.target.target.options.executables, crate_type) {
         (false, _, config::CrateTypeCdylib) |
+        (false, _, config::CrateTypeRustcMacro) |
         (false, _, config::CrateTypeDylib) => true,
         (_, false, config::CrateTypeExecutable) => true,
         _ => false
@@ -261,6 +262,7 @@ pub fn filename_for_input(sess: &Session,
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
         }
         config::CrateTypeCdylib |
+        config::CrateTypeRustcMacro |
         config::CrateTypeDylib => {
             let (prefix, suffix) = (&sess.target.target.options.dll_prefix,
                                     &sess.target.target.options.dll_suffix);
@@ -291,7 +293,8 @@ pub fn each_linked_rlib(sess: &Session,
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)
                    .or_else(|| fmts.get(&config::CrateTypeStaticlib))
-                   .or_else(|| fmts.get(&config::CrateTypeCdylib));
+                   .or_else(|| fmts.get(&config::CrateTypeCdylib))
+                   .or_else(|| fmts.get(&config::CrateTypeRustcMacro));
     let fmts = fmts.unwrap_or_else(|| {
         bug!("could not find formats for rlibs")
     });
@@ -738,7 +741,8 @@ fn link_args(cmd: &mut Linker,
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
-    if crate_type == config::CrateTypeDylib {
+    if crate_type == config::CrateTypeDylib ||
+       crate_type == config::CrateTypeRustcMacro {
         cmd.add_object(&outputs.with_extension("metadata.o"));
     }
 

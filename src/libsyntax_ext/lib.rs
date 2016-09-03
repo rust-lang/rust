@@ -19,6 +19,8 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![feature(rustc_macro_lib)]
+#![feature(rustc_macro_internals)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 
@@ -28,6 +30,7 @@ extern crate log;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
+extern crate rustc_macro;
 extern crate rustc_errors as errors;
 
 use syntax::ext::base::{MacroExpanderFn, NormalTT};
@@ -43,6 +46,8 @@ mod env;
 mod format;
 mod log_syntax;
 mod trace_macros;
+
+pub mod rustc_macro_registrar;
 
 // for custom_derive
 pub mod deriving;

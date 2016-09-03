@@ -10,8 +10,6 @@
 
 // Regression test for #20797.
 
-// pretty-expanded FIXME #23616
-
 #![feature(question_mark)]
 
 use std::default::Default;

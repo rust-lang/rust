@@ -139,8 +139,13 @@ fn calculate_type(sess: &session::Session,
             }
         }
 
-        // Everything else falls through below
-        config::CrateTypeExecutable | config::CrateTypeDylib => {},
+        // Everything else falls through below. This will happen either with the
+        // `-C prefer-dynamic` or because we're a rustc-macro crate. Note that
+        // rustc-macro crates are required to be dylibs, and they're currently
+        // required to link to libsyntax as well.
+        config::CrateTypeExecutable |
+        config::CrateTypeDylib |
+        config::CrateTypeRustcMacro => {},
     }
 
     let mut formats = FnvHashMap();

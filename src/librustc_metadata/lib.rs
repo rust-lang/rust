@@ -19,11 +19,13 @@
 
 #![feature(box_patterns)]
 #![feature(enumset)]
+#![feature(question_mark)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(rustc_macro_lib)]
+#![feature(rustc_macro_internals)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(question_mark)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -33,12 +35,14 @@ extern crate flate;
 extern crate rbml;
 extern crate serialize as rustc_serialize; // used by deriving
 extern crate rustc_errors as errors;
+extern crate syntax_ext;
 
 #[macro_use]
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_back;
 extern crate rustc_llvm;
+extern crate rustc_macro;
 extern crate rustc_const_math;
 
 pub use rustc::middle;

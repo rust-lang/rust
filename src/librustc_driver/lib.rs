@@ -107,7 +107,7 @@ pub mod test;
 pub mod driver;
 pub mod pretty;
 pub mod target_features;
-
+mod derive_registrar;
 
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";

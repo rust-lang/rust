@@ -13,8 +13,6 @@
 
 // Tests (correct) usage of trait super-builtin-kinds cross-crate.
 
-// pretty-expanded FIXME #23616
-
 extern crate trait_superkinds_in_metadata;
 use trait_superkinds_in_metadata::{RequiresRequiresShareAndSend, RequiresShare};
 use trait_superkinds_in_metadata::RequiresCopy;
