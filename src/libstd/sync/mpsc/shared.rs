@@ -21,6 +21,7 @@
 pub use self::Failure::*;
 
 use core::cmp;
+use core::intrinsics::abort;
 use core::isize;
 
 use sync::atomic::{AtomicUsize, AtomicIsize, AtomicBool, Ordering};
@@ -34,6 +35,7 @@ use time::Instant;
 
 const DISCONNECTED: isize = isize::MIN;
 const FUDGE: isize = 1024;
+const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 #[cfg(test)]
 const MAX_STEALS: isize = 5;
 #[cfg(not(test))]
@@ -46,7 +48,7 @@ pub struct Packet<T> {
     to_wake: AtomicUsize, // SignalToken for wake up
 
     // The number of channels which are currently using this packet.
-    channels: AtomicIsize,
+    channels: AtomicUsize,
 
     // See the discussion in Port::drop and the channel send methods for what
     // these are used for
@@ -72,7 +74,7 @@ impl<T> Packet<T> {
             cnt: AtomicIsize::new(0),
             steals: 0,
             to_wake: AtomicUsize::new(0),
-            channels: AtomicIsize::new(2),
+            channels: AtomicUsize::new(2),
             port_dropped: AtomicBool::new(false),
             sender_drain: AtomicIsize::new(0),
             select_lock: Mutex::new(()),
@@ -340,7 +342,14 @@ impl<T> Packet<T> {
     // Prepares this shared packet for a channel clone, essentially just bumping
     // a refcount.
     pub fn clone_chan(&mut self) {
-        self.channels.fetch_add(1, Ordering::SeqCst);
+        let old_count = self.channels.fetch_add(1, Ordering::SeqCst);
+
+        // See comments on Arc::clone() on why we do this (for `mem::forget`).
+        if old_count > MAX_REFCOUNT {
+            unsafe {
+                abort();
+            }
+        }
     }
 
     // Decrement the reference count on a channel. This is called whenever a
