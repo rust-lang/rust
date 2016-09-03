@@ -14,7 +14,7 @@
 
 struct Foo {
     x: usize,
-    b: bool, //~ ERROR: struct field is never used
+    b: bool, //~ ERROR: field is never used
 }
 
 fn field_read(f: Foo) -> usize {
@@ -46,8 +46,8 @@ enum IJK {
     I, //~ ERROR variant is never used
     J {
         a: String,
-        b: i32, //~ ERROR struct field is never used
-        c: i32, //~ ERROR struct field is never used
+        b: i32, //~ ERROR field is never used
+        c: i32, //~ ERROR field is never used
     },
     K //~ ERROR variant is never used
 
@@ -68,9 +68,9 @@ fn field_match_in_patterns(b: XYZ) -> String {
 }
 
 struct Bar {
-    x: usize, //~ ERROR: struct field is never used
+    x: usize, //~ ERROR: field is never used
     b: bool,
-    c: bool, //~ ERROR: struct field is never used
+    c: bool, //~ ERROR: field is never used
     _guard: ()
 }
 
