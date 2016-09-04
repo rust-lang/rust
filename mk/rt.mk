@@ -554,8 +554,6 @@ ifeq ($$(findstring msvc,$(1)),)
 ifeq ($$(findstring freebsd,$(1)),)
 $(call ADD_INTRINSIC,$(1),gcc_personality_v0.o)
 endif
-
-$(call ADD_INTRINSIC,$(1),emutls.o)
 endif
 
 ifeq ($$(findstring aarch64,$(1)),aarch64)
