@@ -5,3 +5,4 @@ krate2: krate2.rs
 code: foo.rs krate2
 	$(RUSTC) foo.rs -Zsave-analysis-csv
 	$(RUSTC) foo.rs -Zsave-analysis
+	$(RUSTC) foo.rs -Zsave-analysis-api

@@ -30,6 +30,7 @@ extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
 
 mod csv_dumper;
+mod json_api_dumper;
 mod json_dumper;
 mod data;
 mod dump;
@@ -57,6 +58,7 @@ use syntax::codemap::MacroAttribute;
 use syntax_pos::*;
 
 pub use self::csv_dumper::CsvDumper;
+pub use self::json_api_dumper::JsonApiDumper;
 pub use self::json_dumper::JsonDumper;
 pub use self::data::*;
 pub use self::dump::Dump;
@@ -138,6 +140,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
                     value: make_signature(decl, generics),
+                    visibility: From::from(&item.vis),
+                    parent: None,
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -160,8 +164,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
+                    parent: None,
                     value: value,
                     type_value: ty_to_string(&typ),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Const(ref typ, ref expr) => {
@@ -175,8 +181,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
+                    parent: None,
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
@@ -195,6 +203,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                     filename: filename,
                     items: m.items.iter().map(|i| i.id).collect(),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Enum(ref def, _) => {
@@ -215,6 +224,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     scope: self.enclosing_scope(item.id),
                     variants: def.variants.iter().map(|v| v.node.data.id()).collect(),
+                    visibility: From::from(&item.vis),
                 }))
             }
             ast::ItemKind::Impl(_, _, _, ref trait_ref, ref typ, _) => {
@@ -277,8 +287,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 qualname: qualname,
                 span: sub_span.unwrap(),
                 scope: scope,
+                parent: Some(scope),
                 value: "".to_owned(),
                 type_value: typ,
+                visibility: From::from(&field.vis),
             })
         } else {
             None
@@ -291,7 +303,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                            name: ast::Name, span: Span) -> Option<FunctionData> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let qualname = match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
+        let (qualname, vis) = match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
             Some(impl_id) => match self.tcx.map.get_if_local(impl_id) {
                 Some(NodeItem(item)) => {
                     match item.node {
@@ -304,7 +316,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 result.push_str(&self.tcx.item_path_str(def_id));
                             }
                             result.push_str(">");
-                            result
+                            (result, From::from(&item.vis))
                         }
                         _ => {
                             span_bug!(span,
@@ -325,8 +337,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             None => match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                 Some(def_id) => {
                     match self.tcx.map.get_if_local(def_id) {
-                        Some(NodeItem(_)) => {
-                            format!("::{}", self.tcx.item_path_str(def_id))
+                        Some(NodeItem(item)) => {
+                            (format!("::{}", self.tcx.item_path_str(def_id)), From::from(&item.vis))
                         }
                         r => {
                             span_bug!(span,
@@ -358,6 +370,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
         filter!(self.span_utils, sub_span, span, None);
+        let parent_scope = self.enclosing_scope(id);
         Some(FunctionData {
             id: id,
             name: name.to_string(),
@@ -367,6 +380,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             scope: self.enclosing_scope(id),
             // FIXME you get better data here by using the visitor.
             value: String::new(),
+            visibility: vis,
+            parent: Some(parent_scope),
         })
     }
 
@@ -728,13 +743,14 @@ impl Visitor for PathCollector {
 pub enum Format {
     Csv,
     Json,
+    JsonApi,
 }
 
 impl Format {
     fn extension(&self) -> &'static str {
         match *self {
             Format::Csv => ".csv",
-            Format::Json => ".json",
+            Format::Json | Format::JsonApi => ".json",
         }
     }
 }
@@ -804,6 +820,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
     match format {
         Format::Csv => dump!(CsvDumper::new(output)),
         Format::Json => dump!(JsonDumper::new(output)),
+        Format::JsonApi => dump!(JsonApiDumper::new(output)),
     }
 }
 
