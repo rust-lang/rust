@@ -1032,8 +1032,8 @@ impl f32 {
     /// let abs_difference_1 = (f32::atan2(point.1, point.0) - (-pi/4.0)).abs();
     /// let abs_difference_2 = (y.atan2(x) - 3.0*pi/4.0).abs();
     ///
-    /// assert!(abs_difference_1 <= f32::EPSILON);
-    /// assert!(abs_difference_2 <= f32::EPSILON);
+    /// assert!(abs_difference_1 <= std::f32::EPSILON);
+    /// assert!(abs_difference_2 <= std::f32::EPSILON);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
