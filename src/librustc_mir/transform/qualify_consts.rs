@@ -18,6 +18,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::dep_graph::DepNode;
 use rustc::hir;
+use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
@@ -252,12 +253,44 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         let mut err =
             struct_span_err!(self.tcx.sess, self.span, E0493, "{}", msg);
+
         if self.mode != Mode::Const {
             help!(&mut err,
                   "in Nightly builds, add `#![feature(drop_types_in_const)]` \
                    to the crate attributes to enable");
+        } else {
+            self.find_drop_implementation_method_span()
+                .map(|span| err.span_label(span, &format!("destructor defined here")));
+
+            err.span_label(self.span, &format!("constants cannot have destructors"));
         }
+
         err.emit();
+    }
+
+    fn find_drop_implementation_method_span(&self) -> Option<Span> {
+        self.tcx.lang_items
+            .drop_trait()
+            .and_then(|drop_trait_id| {
+                let mut span = None;
+
+                self.tcx
+                    .lookup_trait_def(drop_trait_id)
+                    .for_each_relevant_impl(self.tcx, self.mir.return_ty, |impl_did| {
+                        self.tcx.map
+                            .as_local_node_id(impl_did)
+                            .and_then(|impl_node_id| self.tcx.map.find(impl_node_id))
+                            .map(|node| {
+                                if let hir_map::NodeItem(item) = node {
+                                    if let hir::ItemImpl(_, _, _, _, _, ref methods) = item.node {
+                                        span = methods.first().map(|method| method.span);
+                                    }
+                                }
+                            });
+                    });
+
+                span
+            })
     }
 
     /// Check if an Lvalue with the current qualifications could
