@@ -110,6 +110,7 @@ pub fn run(input: &str,
         external_traits: RefCell::new(FnvHashMap()),
         populated_crate_impls: RefCell::new(FnvHashSet()),
         deref_trait_did: Cell::new(None),
+        deref_mut_trait_did: Cell::new(None),
         access_levels: Default::default(),
         renderinfo: Default::default(),
     };
