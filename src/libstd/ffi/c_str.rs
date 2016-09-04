@@ -19,6 +19,7 @@ use mem;
 use memchr;
 use ops;
 use os::raw::c_char;
+use ptr;
 use slice;
 use str::{self, Utf8Error};
 
@@ -68,6 +69,9 @@ use str::{self, Utf8Error};
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
+    // Invariant 1: the slice ends with a zero byte and has a length of at least one.
+    // Invariant 2: the slice contains only one zero byte.
+    // Improper usage of unsafe function can break Invariant 2, but not Invariant 1.
     inner: Box<[u8]>,
 }
 
@@ -244,7 +248,7 @@ impl CString {
     /// Failure to call `from_raw` will lead to a memory leak.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub fn into_raw(self) -> *mut c_char {
-        Box::into_raw(self.inner) as *mut c_char
+        Box::into_raw(self.into_inner()) as *mut c_char
     }
 
     /// Converts the `CString` into a `String` if it contains valid Unicode data.
@@ -265,7 +269,7 @@ impl CString {
     /// it is guaranteed to not have any interior nul bytes.
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes(self) -> Vec<u8> {
-        let mut vec = self.inner.into_vec();
+        let mut vec = self.into_inner().into_vec();
         let _nul = vec.pop();
         debug_assert_eq!(_nul, Some(0u8));
         vec
@@ -275,7 +279,7 @@ impl CString {
     /// includes the trailing nul byte.
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes_with_nul(self) -> Vec<u8> {
-        self.inner.into_vec()
+        self.into_inner().into_vec()
     }
 
     /// Returns the contents of this `CString` as a slice of bytes.
@@ -292,6 +296,24 @@ impl CString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
+    }
+
+    // Bypass "move out of struct which implements `Drop` trait" restriction.
+    fn into_inner(self) -> Box<[u8]> {
+        unsafe {
+            let result = ptr::read(&self.inner);
+            mem::forget(self);
+            result
+        }
+    }
+}
+
+// Turns this `CString` into an empty string to prevent
+// memory unsafe code from working by accident.
+#[stable(feature = "cstring_drop", since = "1.13.0")]
+impl Drop for CString {
+    fn drop(&mut self) {
+        unsafe { *self.inner.get_unchecked_mut(0) = 0; }
     }
 }
 
