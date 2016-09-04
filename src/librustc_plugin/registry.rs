@@ -69,11 +69,11 @@ pub struct Registry<'a> {
 
 impl<'a> Registry<'a> {
     #[doc(hidden)]
-    pub fn new(sess: &'a Session, krate: &ast::Crate) -> Registry<'a> {
+    pub fn new(sess: &'a Session, krate_span: Span) -> Registry<'a> {
         Registry {
             sess: sess,
             args_hidden: None,
-            krate_span: krate.span,
+            krate_span: krate_span,
             syntax_exts: vec!(),
             early_lint_passes: vec!(),
             late_lint_passes: vec!(),

@@ -146,7 +146,7 @@ pub fn run_core(search_paths: SearchPaths,
 
     let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
         driver::phase_2_configure_and_expand(
-            &sess, &cstore, krate, &name, None, resolve::MakeGlobMap::No, |_| Ok(()),
+            &sess, &cstore, krate, None, &name, None, resolve::MakeGlobMap::No, |_| Ok(()),
         ).expect("phase_2_configure_and_expand aborted in rustdoc!")
     };
 
