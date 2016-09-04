@@ -1,7 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.88 — ??
+## 0.0.88 — 2016-09-04
+* Rustup to *rustc 1.13.0-nightly (70598e04f 2016-09-03)*
 * The following lints are not new but were only usable through the `clippy`
   lint groups: [`filter_next`], [`for_loop_over_option`],
   [`for_loop_over_result`] and [`match_overlapping_arm`]. You should now be
