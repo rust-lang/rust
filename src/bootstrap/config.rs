@@ -144,6 +144,7 @@ struct Rust {
     rpath: Option<bool>,
     optimize_tests: Option<bool>,
     debuginfo_tests: Option<bool>,
+    codegen_tests: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -232,6 +233,7 @@ impl Config {
             set(&mut config.rust_optimize, rust.optimize);
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
+            set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.debug_jemalloc, rust.debug_jemalloc);
             set(&mut config.use_jemalloc, rust.use_jemalloc);
