@@ -23,7 +23,7 @@ use filetime::FileTime;
 
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
-    if target.contains("windows-msvc") {
+    if target.contains("windows") {
         format!("{}.lib", name)
     } else {
         format!("lib{}.a", name)
