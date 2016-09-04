@@ -133,6 +133,10 @@
 #optimize-tests = true
 #debuginfo-tests = true
 
+# Flag indicating whether codegen tests will be run or not. If you get an error
+# saying that the FileCheck executable is missing, you may want to disable this.
+#codegen-tests = true
+
 # =============================================================================
 # Options for specific targets
 #
