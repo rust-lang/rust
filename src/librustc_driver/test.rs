@@ -115,7 +115,7 @@ fn test_env<F>(source_string: &str,
     let krate = driver::phase_1_parse_input(&sess, krate_config, &input).unwrap();
     let driver::ExpansionResult { defs, resolutions, mut hir_forest, .. } = {
         driver::phase_2_configure_and_expand(
-            &sess, &cstore, krate, "test", None, MakeGlobMap::No, |_| Ok(()),
+            &sess, &cstore, krate, None, "test", None, MakeGlobMap::No, |_| Ok(()),
         ).expect("phase 2 aborted")
     };
     let _ignore = dep_graph.in_ignore();
