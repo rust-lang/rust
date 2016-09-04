@@ -127,6 +127,7 @@ cache: cargo
 before_script: (cargo install rustfmt || true)
 script:
 - |
+  export PATH=$PATH:~/.cargo/bin &&
   cargo fmt -- --write-mode=diff &&
   cargo build &&
   cargo test
