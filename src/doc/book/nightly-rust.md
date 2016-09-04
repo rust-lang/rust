@@ -54,7 +54,7 @@ binary downloads][install-page].
 
 Oh, we should also mention the officially supported platforms:
 
-* Windows (7, 8, Server 2008 R2)
+* Windows (7+)
 * Linux (2.6.18 or later, various distributions), x86 and x86-64
 * OSX 10.7 (Lion) or greater, x86 and x86-64
 
