@@ -228,11 +228,11 @@ impl<'b> Resolver<'b> {
                 let def = Def::Static(self.definitions.local_def_id(item.id), mutbl);
                 self.define(parent, name, ValueNS, (def, sp, vis));
             }
-            ItemKind::Const(_, _) => {
+            ItemKind::Const(..) => {
                 let def = Def::Const(self.definitions.local_def_id(item.id));
                 self.define(parent, name, ValueNS, (def, sp, vis));
             }
-            ItemKind::Fn(_, _, _, _, _, _) => {
+            ItemKind::Fn(..) => {
                 let def = Def::Fn(self.definitions.local_def_id(item.id));
                 self.define(parent, name, ValueNS, (def, sp, vis));
             }
@@ -292,9 +292,9 @@ impl<'b> Resolver<'b> {
                 self.structs.insert(item_def_id, field_names);
             }
 
-            ItemKind::DefaultImpl(_, _) | ItemKind::Impl(..) => {}
+            ItemKind::DefaultImpl(..) | ItemKind::Impl(..) => {}
 
-            ItemKind::Trait(_, _, _, ref items) => {
+            ItemKind::Trait(.., ref items) => {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.

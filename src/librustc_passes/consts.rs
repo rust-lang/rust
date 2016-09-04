@@ -147,9 +147,9 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         }
 
         let mode = match fk {
-            FnKind::ItemFn(_, _, _, hir::Constness::Const, _, _, _)
+            FnKind::ItemFn(_, _, _, hir::Constness::Const, ..)
                 => Mode::ConstFn,
-            FnKind::Method(_, m, _, _) => {
+            FnKind::Method(_, m, ..) => {
                 if m.constness == hir::Constness::Const {
                     Mode::ConstFn
                 } else {
@@ -307,8 +307,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                         hir::DeclItem(_) => continue,
                     }
                 }
-                hir::StmtExpr(_, _) => {}
-                hir::StmtSemi(_, _) => {}
+                hir::StmtExpr(..) => {}
+                hir::StmtSemi(..) => {}
             }
             self.add_qualif(ConstQualif::NOT_CONST);
         }
@@ -671,7 +671,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
                 Categorization::StaticItem => {
                     break;
                 }
-                Categorization::Deref(ref cmt, _, _) |
+                Categorization::Deref(ref cmt, ..) |
                 Categorization::Downcast(ref cmt, _) |
                 Categorization::Interior(ref cmt, _) => cur = cmt,
 
@@ -716,7 +716,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
                         // type of the expression.  `&mut [1]` has exactly the
                         // same representation as &mut 1.
                         match cmt.ty.sty {
-                            ty::TyArray(_, _) |
+                            ty::TyArray(..) |
                             ty::TySlice(_) => break,
                             _ => {}
                         }
@@ -727,7 +727,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
                 Categorization::StaticItem => {
                     break;
                 }
-                Categorization::Deref(ref cmt, _, _) |
+                Categorization::Deref(ref cmt, ..) |
                 Categorization::Downcast(ref cmt, _) |
                 Categorization::Interior(ref cmt, _) => {
                     cur = cmt;

@@ -252,7 +252,7 @@ impl<'tcx> TypeMap<'tcx> {
                                        principal.substs,
                                        &mut unique_type_id);
             },
-            ty::TyFnDef(_, _, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+            ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
             ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
                 if unsafety == hir::Unsafety::Unsafe {
                     unique_type_id.push_str("unsafe ");
@@ -756,7 +756,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        ty::TyFnDef(_, _, ref barefnty) | ty::TyFnPtr(ref barefnty) => {
+        ty::TyFnDef(.., ref barefnty) | ty::TyFnPtr(ref barefnty) => {
             let fn_metadata = subroutine_type_metadata(cx,
                                                        unique_type_id,
                                                        &barefnty.sig,
@@ -1679,7 +1679,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let type_rep = adt::represent_type(cx, enum_type);
 
     let discriminant_type_metadata = match *type_rep {
-        adt::CEnum(inttype, _, _) => {
+        adt::CEnum(inttype, ..) => {
             return FinalMetadata(discriminant_type_metadata(inttype))
         },
         adt::RawNullablePointer { .. }           |

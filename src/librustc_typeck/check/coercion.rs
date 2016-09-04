@@ -195,7 +195,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         }
 
         match a.sty {
-            ty::TyFnDef(_, _, a_f) => {
+            ty::TyFnDef(.., a_f) => {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
                 // require double indirection).

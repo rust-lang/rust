@@ -344,7 +344,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
                 self.worklist.extend(enum_def.variants.iter()
                                                       .map(|variant| variant.node.data.id()));
             }
-            hir::ItemTrait(_, _, _, ref trait_items) => {
+            hir::ItemTrait(.., ref trait_items) => {
                 for trait_item in trait_items {
                     match trait_item.node {
                         hir::ConstTraitItem(_, Some(_)) |
@@ -357,7 +357,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
                     }
                 }
             }
-            hir::ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
+            hir::ItemImpl(.., ref opt_trait, _, ref impl_items) => {
                 for impl_item in impl_items {
                     if opt_trait.is_some() ||
                             has_allow_dead_code_or_lang_attr(&impl_item.attrs) {

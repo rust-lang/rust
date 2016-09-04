@@ -49,8 +49,8 @@ pub enum FnKind<'a> {
 impl<'a> FnKind<'a> {
     pub fn attrs(&self) -> &'a [Attribute] {
         match *self {
-            FnKind::ItemFn(_, _, _, _, _, _, attrs) => attrs,
-            FnKind::Method(_, _, _, attrs) => attrs,
+            FnKind::ItemFn(.., attrs) => attrs,
+            FnKind::Method(.., attrs) => attrs,
             FnKind::Closure(attrs) => attrs,
         }
     }
@@ -341,7 +341,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemImpl(_, _, ref type_parameters, ref opt_trait_reference, ref typ, ref impl_items) => {
+        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_items) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
@@ -622,10 +622,10 @@ pub fn walk_fn_decl_nopat<'v, V: Visitor<'v>>(visitor: &mut V, function_declarat
 
 pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'v>) {
     match function_kind {
-        FnKind::ItemFn(_, generics, _, _, _, _, _) => {
+        FnKind::ItemFn(_, generics, ..) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(_, sig, _, _) => {
+        FnKind::Method(_, sig, ..) => {
             visitor.visit_generics(&sig.generics);
         }
         FnKind::Closure(_) => {}

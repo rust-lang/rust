@@ -98,7 +98,7 @@ impl<'tcx> Callee<'tcx> {
         }
 
         let fn_ty = def_ty(ccx.shared(), def_id, substs);
-        if let ty::TyFnDef(_, _, f) = fn_ty.sty {
+        if let ty::TyFnDef(.., f) = fn_ty.sty {
             if f.abi == Abi::RustIntrinsic || f.abi == Abi::PlatformIntrinsic {
                 return Callee {
                     data: Intrinsic,
@@ -314,7 +314,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
     let sig = match bare_fn_ty.sty {
-        ty::TyFnDef(_, _,
+        ty::TyFnDef(..,
                     &ty::BareFnTy { unsafety: hir::Unsafety::Normal,
                                     abi: Abi::Rust,
                                     ref sig }) |
@@ -442,7 +442,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // other weird situations. Annoying.
 
     let fn_ptr_ty = match fn_ty.sty {
-        ty::TyFnDef(_, _, fty) => {
+        ty::TyFnDef(.., fty) => {
             // Create a fn pointer with the substituted signature.
             tcx.mk_fn_ptr(fty)
         }

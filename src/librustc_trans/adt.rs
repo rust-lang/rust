@@ -701,7 +701,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     debug!("adt::generic_type_of r: {:?} name: {:?} sizing: {} dst: {}",
            r, name, sizing, dst);
     match *r {
-        CEnum(ity, _, _) => ll_inttype(cx, ity),
+        CEnum(ity, ..) => ll_inttype(cx, ity),
         RawNullablePointer { nnty, .. } =>
             type_of::sizing_type_of(cx, nnty),
         StructWrappedNullablePointer { nonnull: ref st, .. } => {
@@ -839,7 +839,7 @@ pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn is_discr_signed<'tcx>(r: &Repr<'tcx>) -> bool {
     match *r {
-        CEnum(ity, _, _) => ity.is_signed(),
+        CEnum(ity, ..) => ity.is_signed(),
         General(ity, _) => ity.is_signed(),
         Univariant(..) | UntaggedUnion(..) => false,
         RawNullablePointer { .. } => false,
@@ -918,7 +918,7 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr,
 pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
                               -> ValueRef {
     match *r {
-        CEnum(ity, _, _) => {
+        CEnum(ity, ..) => {
             C_integral(ll_inttype(bcx.ccx(), ity), discr.0, true)
         }
         General(ity, _) => {

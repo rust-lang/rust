@@ -24,6 +24,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_syntax)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -805,7 +806,7 @@ Available lint options:
     let (plugin_groups, builtin_groups): (Vec<_>, _) = lint_store.get_lint_groups()
                                                                  .iter()
                                                                  .cloned()
-                                                                 .partition(|&(_, _, p)| p);
+                                                                 .partition(|&(.., p)| p);
     let plugin_groups = sort_lint_groups(plugin_groups);
     let builtin_groups = sort_lint_groups(builtin_groups);
 
@@ -880,7 +881,7 @@ Available lint options:
             println!("Compiler plugins can provide additional lints and lint groups. To see a \
                       listing of these, re-run `rustc -W help` with a crate filename.");
         }
-        (false, _, _) => panic!("didn't load lint plugins but got them anyway!"),
+        (false, ..) => panic!("didn't load lint plugins but got them anyway!"),
         (true, 0, 0) => println!("This crate does not load any lint plugins or lint groups."),
         (true, l, g) => {
             if l > 0 {

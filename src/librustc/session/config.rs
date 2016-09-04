@@ -1539,8 +1539,8 @@ pub fn get_unstable_features_setting() -> UnstableFeatures {
     let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
     match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
         (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
-        (true, _, _) => UnstableFeatures::Disallow,
-        (false, _, _) => UnstableFeatures::Allow
+        (true, ..) => UnstableFeatures::Disallow,
+        (false, ..) => UnstableFeatures::Allow
     }
 }
 

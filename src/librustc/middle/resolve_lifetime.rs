@@ -157,8 +157,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
                 hir::ItemEnum(_, ref generics) |
                 hir::ItemStruct(_, ref generics) |
                 hir::ItemUnion(_, ref generics) |
-                hir::ItemTrait(_, ref generics, _, _) |
-                hir::ItemImpl(_, _, ref generics, _, _, _) => {
+                hir::ItemTrait(_, ref generics, ..) |
+                hir::ItemImpl(_, _, ref generics, ..) => {
                     // These kinds of items have only early bound lifetime parameters.
                     let lifetimes = &generics.lifetimes;
                     let start = if let hir::ItemTrait(..) = item.node {
@@ -204,12 +204,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
     fn visit_fn(&mut self, fk: FnKind<'v>, decl: &'v hir::FnDecl,
                 b: &'v hir::Block, s: Span, fn_id: ast::NodeId) {
         match fk {
-            FnKind::ItemFn(_, generics, _, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, ..) => {
                 self.visit_early_late(fn_id,decl, generics, |this| {
                     this.add_scope_and_walk_fn(fk, decl, b, s, fn_id)
                 })
             }
-            FnKind::Method(_, sig, _, _) => {
+            FnKind::Method(_, sig, ..) => {
                 self.visit_early_late(
                     fn_id,
                     decl,
@@ -455,7 +455,7 @@ fn extract_labels(ctxt: &mut LifetimeContext, b: &hir::Block) {
 
     fn expression_label(ex: &hir::Expr) -> Option<(ast::Name, Span)> {
         match ex.node {
-            hir::ExprWhile(_, _, Some(label)) |
+            hir::ExprWhile(.., Some(label)) |
             hir::ExprLoop(_, Some(label)) => Some((label.node, label.span)),
             _ => None,
         }
@@ -499,11 +499,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                  fn_id: ast::NodeId) {
 
         match fk {
-            FnKind::ItemFn(_, generics, _, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, ..) => {
                 intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(generics);
             }
-            FnKind::Method(_, sig, _, _) => {
+            FnKind::Method(_, sig, ..) => {
                 intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(&sig.generics);
             }
@@ -583,8 +583,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 start += 1; // Self comes first.
             }
             match parent.node {
-                hir::ItemTrait(_, ref generics, _, _) |
-                hir::ItemImpl(_, _, ref generics, _, _, _) => {
+                hir::ItemTrait(_, ref generics, ..) |
+                hir::ItemImpl(_, _, ref generics, ..) => {
                     start += generics.lifetimes.len() + generics.ty_params.len();
                 }
                 _ => {}

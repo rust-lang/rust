@@ -95,7 +95,7 @@ impl<'a, 'b> Visitor for UnusedImportCheckVisitor<'a, 'b> {
             }
             ast::ItemKind::Use(ref p) => {
                 match p.node {
-                    ViewPathSimple(_, _) => {
+                    ViewPathSimple(..) => {
                         self.check_import(item.id, p.span)
                     }
 

@@ -12,6 +12,7 @@
 
 #![feature(plugin_registrar)]
 #![feature(box_syntax)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(rustc_private)]
 
 extern crate syntax;
@@ -75,7 +76,7 @@ fn expand(cx: &mut ExtCtxt,
 fn totalsum_substructure(cx: &mut ExtCtxt, trait_span: Span,
                          substr: &Substructure) -> P<ast::Expr> {
     let fields = match *substr.fields {
-        Struct(_, ref fs) | EnumMatching(_, _, ref fs) => fs,
+        Struct(_, ref fs) | EnumMatching(.., ref fs) => fs,
         _ => cx.span_bug(trait_span, "impossible substructure")
     };
 

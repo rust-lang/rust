@@ -1171,7 +1171,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn fn_sig(&self) -> &'tcx PolyFnSig<'tcx> {
         match self.sty {
-            TyFnDef(_, _, ref f) | TyFnPtr(ref f) => &f.sig,
+            TyFnDef(.., ref f) | TyFnPtr(ref f) => &f.sig,
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
@@ -1179,7 +1179,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Returns the ABI of the given function.
     pub fn fn_abi(&self) -> abi::Abi {
         match self.sty {
-            TyFnDef(_, _, ref f) | TyFnPtr(ref f) => f.abi,
+            TyFnDef(.., ref f) | TyFnPtr(ref f) => f.abi,
             _ => bug!("Ty::fn_abi() called on non-fn type"),
         }
     }
@@ -1252,7 +1252,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyFloat(_) |
             TyBox(_) |
             TyStr |
-            TyArray(_, _) |
+            TyArray(..) |
             TySlice(_) |
             TyRawPtr(_) |
             TyNever |

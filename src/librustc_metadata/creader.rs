@@ -490,7 +490,7 @@ impl<'a> CrateReader<'a> {
         // numbers
         let map: FnvHashMap<_, _> = decoder::get_crate_deps(cdata).iter().map(|dep| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
-            let (local_cnum, _, _) = self.resolve_crate(root,
+            let (local_cnum, ..) = self.resolve_crate(root,
                                                         &dep.name,
                                                         &dep.name,
                                                         Some(&dep.hash),
@@ -1003,13 +1003,13 @@ impl<'a> LocalCrateReader<'a> {
                     if !info.should_link {
                         return;
                     }
-                    let (cnum, _, _) = self.creader.resolve_crate(&None,
-                                                                  &info.ident,
-                                                                  &info.name,
-                                                                  None,
-                                                                  i.span,
-                                                                  PathKind::Crate,
-                                                                  true);
+                    let (cnum, ..) = self.creader.resolve_crate(&None,
+                                                                &info.ident,
+                                                                &info.name,
+                                                                None,
+                                                                i.span,
+                                                                PathKind::Crate,
+                                                                true);
 
                     let def_id = self.definitions.opt_local_def_id(i.id).unwrap();
                     let len = self.definitions.def_path(def_id.index).data.len();

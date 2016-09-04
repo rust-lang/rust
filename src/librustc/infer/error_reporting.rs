@@ -140,9 +140,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Some(ast_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
                         hir::ExprMethodCall(..) => "method call",
-                        hir::ExprMatch(_, _, hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                        hir::ExprMatch(_, _, hir::MatchSource::WhileLetDesugar) =>  "while let",
-                        hir::ExprMatch(_, _, hir::MatchSource::ForLoopDesugar) =>  "for",
+                        hir::ExprMatch(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
+                        hir::ExprMatch(.., hir::MatchSource::WhileLetDesugar) =>  "while let",
+                        hir::ExprMatch(.., hir::MatchSource::ForLoopDesugar) =>  "for",
                         hir::ExprMatch(..) => "match",
                         _ => "expression",
                     },
@@ -1787,7 +1787,7 @@ fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let method_id_opt = match tcx.map.find(parent) {
         Some(node) => match node {
             ast_map::NodeItem(item) => match item.node {
-                hir::ItemFn(_, _, _, _, ref gen, _) => {
+                hir::ItemFn(.., ref gen, _) => {
                     taken.extend_from_slice(&gen.lifetimes);
                     None
                 },
@@ -1811,7 +1811,7 @@ fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         if let Some(node) = tcx.map.find(parent) {
             match node {
                 ast_map::NodeItem(item) => match item.node {
-                    hir::ItemImpl(_, _, ref gen, _, _, _) => {
+                    hir::ItemImpl(_, _, ref gen, ..) => {
                         taken.extend_from_slice(&gen.lifetimes);
                     }
                     _ => ()

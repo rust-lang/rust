@@ -10,8 +10,8 @@
 
 #![ crate_name = "test" ]
 #![feature(box_syntax)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(rustc_private)]
-
 
 extern crate graphviz;
 // A simple rust project
@@ -206,7 +206,7 @@ fn matchSomeEnum(val: SomeEnum) {
     match val {
         SomeEnum::Ints(int1, int2) => { println(&(int1+int2).to_string()); }
         SomeEnum::Floats(float1, float2) => { println(&(float2*float1).to_string()); }
-        SomeEnum::Strings(_, _, s3) => { println(s3); }
+        SomeEnum::Strings(.., s3) => { println(s3); }
         SomeEnum::MyTypes(mt1, mt2) => { println(&(mt1.field1 - mt2.field1).to_string()); }
     }
 }
@@ -225,7 +225,7 @@ fn matchSomeStructEnum2(se: SomeStructEnum) {
     match se {
         EnumStruct{a: ref aaa, ..} => println(&aaa.to_string()),
         EnumStruct2{f1, f2: f2} => println(&f1.field1.to_string()),
-        EnumStruct3{f1, f3: SomeEnum::Ints(_, _), f2} => println(&f1.field1.to_string()),
+        EnumStruct3{f1, f3: SomeEnum::Ints(..), f2} => println(&f1.field1.to_string()),
         _ => {},
     }
 }

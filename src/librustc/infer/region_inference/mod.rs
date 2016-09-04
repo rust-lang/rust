@@ -605,7 +605,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                                  undo_entry: &UndoLogEntry<'tcx>)
                                  -> bool {
             match undo_entry {
-                &AddConstraint(ConstrainVarSubVar(_, _)) =>
+                &AddConstraint(ConstrainVarSubVar(..)) =>
                     false,
                 &AddConstraint(ConstrainRegSubVar(a, _)) =>
                     skols.contains(&a),
@@ -613,7 +613,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                     skols.contains(&b),
                 &AddConstraint(ConstrainRegSubReg(a, b)) =>
                     skols.contains(&a) || skols.contains(&b),
-                &AddGiven(_, _) =>
+                &AddGiven(..) =>
                     false,
                 &AddVerify(_) =>
                     false,
@@ -1372,7 +1372,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 (&ReFree(..), &ReFree(..)) => Equal,
                 (&ReFree(..), _) => Less,
                 (_, &ReFree(..)) => Greater,
-                (_, _) => Equal,
+                (..) => Equal,
             }
         }
         lower_bounds.sort_by(|a, b| free_regions_first(a, b));

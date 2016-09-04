@@ -228,7 +228,7 @@ fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
             Ok(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::TyArray(_, _) | ty::TySlice(_) => {
+        ty::TyArray(..) | ty::TySlice(_) => {
             // no deref of indexed content without supplying InteriorOffsetKind
             if let Some(context) = context {
                 Ok(deref_interior(InteriorElement(context, ElementKind::VecElement)))
@@ -318,7 +318,7 @@ impl MutabilityCategory {
     fn from_local(tcx: TyCtxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
             ast_map::NodeLocal(p) => match p.node {
-                PatKind::Binding(bind_mode, _, _) => {
+                PatKind::Binding(bind_mode, ..) => {
                     if bind_mode == hir::BindByValue(hir::MutMutable) {
                         McDeclared
                     } else {
@@ -419,7 +419,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // *being borrowed* is.  But ideally we would put in a more
         // fundamental fix to this conflated use of the node id.
         let ret_ty = match pat.node {
-            PatKind::Binding(hir::BindByRef(_), _, _) => {
+            PatKind::Binding(hir::BindByRef(_), ..) => {
                 // a bind-by-ref means that the base_ty will be the type of the ident itself,
                 // but what we want here is the type of the underlying value being borrowed.
                 // So peel off one-level, turning the &T into T.
@@ -761,7 +761,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             };
 
             match fn_expr.node {
-                hir::ExprClosure(_, _, ref body, _) => body.id,
+                hir::ExprClosure(.., ref body, _) => body.id,
                 _ => bug!()
             }
         };
@@ -1185,7 +1185,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          PatKind::Binding(_, _, Some(ref subpat)) => {
+          PatKind::Binding(.., Some(ref subpat)) => {
               self.cat_pattern_(cmt, &subpat, op)?;
           }
 
@@ -1225,7 +1225,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          PatKind::Path(..) | PatKind::Binding(_, _, None) |
+          PatKind::Path(..) | PatKind::Binding(.., None) |
           PatKind::Lit(..) | PatKind::Range(..) | PatKind::Wild => {
             // always ok
           }
@@ -1275,9 +1275,9 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Rvalue(..) |
             Categorization::StaticItem |
             Categorization::Local(..) |
-            Categorization::Deref(_, _, UnsafePtr(..)) |
-            Categorization::Deref(_, _, BorrowedPtr(..)) |
-            Categorization::Deref(_, _, Implicit(..)) |
+            Categorization::Deref(.., UnsafePtr(..)) |
+            Categorization::Deref(.., BorrowedPtr(..)) |
+            Categorization::Deref(.., Implicit(..)) |
             Categorization::Upvar(..) => {
                 Rc::new((*self).clone())
             }
@@ -1320,7 +1320,7 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Rvalue(..) |
             Categorization::Local(..) |
             Categorization::Upvar(..) |
-            Categorization::Deref(_, _, UnsafePtr(..)) => { // yes, it's aliasable, but...
+            Categorization::Deref(.., UnsafePtr(..)) => { // yes, it's aliasable, but...
                 NonAliasable
             }
 
@@ -1349,9 +1349,9 @@ impl<'tcx> cmt_<'tcx> {
         match self.note {
             NoteClosureEnv(..) | NoteUpvarRef(..) => {
                 Some(match self.cat {
-                    Categorization::Deref(ref inner, _, _) => {
+                    Categorization::Deref(ref inner, ..) => {
                         match inner.cat {
-                            Categorization::Deref(ref inner, _, _) => inner.clone(),
+                            Categorization::Deref(ref inner, ..) => inner.clone(),
                             Categorization::Upvar(..) => inner.clone(),
                             _ => bug!()
                         }
@@ -1379,7 +1379,7 @@ impl<'tcx> cmt_<'tcx> {
                     "local variable".to_string()
                 }
             }
-            Categorization::Deref(_, _, pk) => {
+            Categorization::Deref(.., pk) => {
                 let upvar = self.upvar();
                 match upvar.as_ref().map(|i| &i.cat) {
                     Some(&Categorization::Upvar(ref var)) => {

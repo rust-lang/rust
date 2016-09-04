@@ -112,7 +112,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                           ref trait_ref, ref self_ty, _) => {
                 self.check_impl(item, self_ty, trait_ref);
             }
-            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, Some(_), _, _) => {
+            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, Some(_), ..) => {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = ccx.tcx.impl_trait_ref(ccx.tcx.map.local_def_id(item.id)).unwrap();
@@ -126,7 +126,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                     }
                 }
             }
-            hir::ItemFn(_, _, _, _, _, ref body) => {
+            hir::ItemFn(.., ref body) => {
                 self.check_item_fn(item, body);
             }
             hir::ItemStatic(..) => {
@@ -156,7 +156,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
-            hir::ItemTrait(_, _, _, ref items) => {
+            hir::ItemTrait(.., ref items) => {
                 self.check_trait(item, items);
             }
             _ => {}
@@ -286,7 +286,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             let type_scheme = fcx.tcx.lookup_item_type(fcx.tcx.map.local_def_id(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span, free_substs, &type_scheme.ty);
             let bare_fn_ty = match item_ty.sty {
-                ty::TyFnDef(_, _, ref bare_fn_ty) => bare_fn_ty,
+                ty::TyFnDef(.., ref bare_fn_ty) => bare_fn_ty,
                 _ => {
                     span_bug!(item.span, "Fn item without fn type");
                 }

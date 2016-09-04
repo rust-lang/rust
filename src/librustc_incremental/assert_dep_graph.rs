@@ -196,7 +196,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let targets = match then_this_would_need.get(id) {
             Some(targets) => targets,
             None => {
-                for &(source_span, _, _) in sources.iter().take(1) {
+                for &(source_span, ..) in sources.iter().take(1) {
                     tcx.sess.span_err(
                         source_span,
                         &format!("no targets for id `{}`", id));

@@ -86,7 +86,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
             TyStr | TyArray(..) | TySlice(..) | TyFnDef(..) | TyFnPtr(_) |
             TyTuple(..) | TyParam(..) | TyError | TyNever |
-            TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
+            TyRawPtr(_) | TyRef(..) | TyProjection(..) => {
                 None
             }
 
@@ -195,7 +195,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
     // Converts an implementation in the AST to a vector of items.
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
-            ItemImpl(_, _, _, _, _, ref impl_items) => {
+            ItemImpl(.., ref impl_items) => {
                 impl_items.iter().map(|impl_item| {
                     let impl_def_id = self.crate_context.tcx.map.local_def_id(impl_item.id);
                     match impl_item.node {
@@ -252,7 +252,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                         match tcx.map.find(impl_node_id) {
                             Some(hir_map::NodeItem(item)) => {
                                 let span = match item.node {
-                                    ItemImpl(_, _, _, _, ref ty, _) => {
+                                    ItemImpl(.., ref ty, _) => {
                                         ty.span
                                     },
                                     _ => item.span
@@ -324,7 +324,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 }
                 Err(CopyImplementationError::InfrigingVariant(name)) => {
                     let item = tcx.map.expect_item(impl_node_id);
-                    let span = if let ItemImpl(_, _, _, Some(ref tr), _, _) = item.node {
+                    let span = if let ItemImpl(.., Some(ref tr), _, _) = item.node {
                         tr.path.span
                     } else {
                         span
@@ -338,7 +338,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                 }
                 Err(CopyImplementationError::NotAnAdt) => {
                     let item = tcx.map.expect_item(impl_node_id);
-                    let span = if let ItemImpl(_, _, _, _, ref ty, _) = item.node {
+                    let span = if let ItemImpl(.., ref ty, _) = item.node {
                         ty.span
                     } else {
                         span
@@ -463,7 +463,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                             return;
                         } else if diff_fields.len() > 1 {
                             let item = tcx.map.expect_item(impl_node_id);
-                            let span = if let ItemImpl(_, _, _, Some(ref t), _, _) = item.node {
+                            let span = if let ItemImpl(.., Some(ref t), _, _) = item.node {
                                 t.path.span
                             } else {
                                 tcx.map.span(impl_node_id)

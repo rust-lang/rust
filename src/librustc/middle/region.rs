@@ -956,7 +956,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
     ///        | box P&
     fn is_binding_pat(pat: &hir::Pat) -> bool {
         match pat.node {
-            PatKind::Binding(hir::BindByRef(_), _, _) => true,
+            PatKind::Binding(hir::BindByRef(_), ..) => true,
 
             PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))

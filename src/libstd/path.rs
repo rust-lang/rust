@@ -332,7 +332,7 @@ impl<'a> Prefix<'a> {
     pub fn is_verbatim(&self) -> bool {
         use self::Prefix::*;
         match *self {
-            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(_, _) => true,
+            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..) => true,
             _ => false,
         }
     }

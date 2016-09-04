@@ -199,7 +199,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                 mparams[0] = Number(x + 1);
                                 mparams[1] = Number(y + 1);
                             }
-                            (_, _) => {
+                            _ => {
                                 return Err("first two params not numbers with %i".to_string())
                             }
                         }

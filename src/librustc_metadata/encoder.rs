@@ -915,7 +915,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_deprecation(self.rbml_w, depr);
                 encode_attributes(self.rbml_w, &item.attrs);
             }
-            hir::ItemConst(_, _) => {
+            hir::ItemConst(..) => {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'C');
                 self.encode_bounds_and_type_for_item(item.id);
@@ -1065,7 +1065,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 let trait_ref = tcx.impl_trait_ref(ecx.tcx.map.local_def_id(item.id)).unwrap();
                 encode_trait_ref(self.rbml_w, ecx, trait_ref, tag_item_trait_ref);
             }
-            hir::ItemImpl(unsafety, polarity, _, _, _, _) => {
+            hir::ItemImpl(unsafety, polarity, ..) => {
                 // We need to encode information about the default methods we
                 // have inherited, so we drive self based on the impl structure.
                 let impl_items = tcx.impl_items.borrow();
@@ -1129,7 +1129,7 @@ impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
                 encode_stability(self.rbml_w, stab);
                 encode_deprecation(self.rbml_w, depr);
             }
-            hir::ItemTrait(_, _, _, _) => {
+            hir::ItemTrait(..) => {
                 encode_def_id_and_key(ecx, self.rbml_w, def_id);
                 encode_family(self.rbml_w, 'I');
                 encode_item_variances(self.rbml_w, ecx, item.id);
@@ -1209,10 +1209,10 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
             hir::ItemUnion(..) => {
                 self.encode_addl_union_info(def_id);
             }
-            hir::ItemImpl(_, _, _, _, _, ref ast_items) => {
+            hir::ItemImpl(.., ref ast_items) => {
                 self.encode_addl_impl_info(def_id, item.id, ast_items);
             }
-            hir::ItemTrait(_, _, _, ref trait_items) => {
+            hir::ItemTrait(.., ref trait_items) => {
                 self.encode_addl_trait_info(def_id, trait_items);
             }
         }

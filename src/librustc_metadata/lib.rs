@@ -18,6 +18,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_patterns)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(enumset)]
 #![feature(question_mark)]
 #![feature(quote)]

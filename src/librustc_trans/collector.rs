@@ -628,7 +628,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                               def_id: DefId)
                                               -> bool {
             if !match tcx.lookup_item_type(def_id).ty.sty {
-                ty::TyFnDef(def_id, _, _) => {
+                ty::TyFnDef(def_id, ..) => {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in
                     // translation item. Same for FFI functions.
@@ -1152,7 +1152,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                 // const items only generate translation items if they are
                 // actually used somewhere. Just declaring them is insufficient.
             }
-            hir::ItemFn(_, _, _, _, ref generics, _) => {
+            hir::ItemFn(.., ref generics, _) => {
                 if !generics.is_type_parameterized() {
                     let def_id = self.scx.tcx().map.local_def_id(item.id);
 
@@ -1179,7 +1179,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                 let parent_node_id = hir_map.get_parent_node(ii.id);
                 let is_impl_generic = match hir_map.expect_item(parent_node_id) {
                     &hir::Item {
-                        node: hir::ItemImpl(_, _, ref generics, _, _, _),
+                        node: hir::ItemImpl(_, _, ref generics, ..),
                         ..
                     } => {
                         generics.is_type_parameterized()
@@ -1214,8 +1214,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
         hir::ItemImpl(_,
                       _,
                       ref generics,
-                      _,
-                      _,
+                      ..,
                       ref items) => {
             if generics.is_type_parameterized() {
                 return

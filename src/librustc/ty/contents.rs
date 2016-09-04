@@ -202,7 +202,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     TC::None
                 }
 
-                ty::TyRef(_, _) => {
+                ty::TyRef(..) => {
                     TC::None
                 }
 

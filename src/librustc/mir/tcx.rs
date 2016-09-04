@@ -153,7 +153,7 @@ impl<'tcx> Rvalue<'tcx> {
                 ))
             }
             &Rvalue::Len(..) => Some(tcx.types.usize),
-            &Rvalue::Cast(_, _, ty) => Some(ty),
+            &Rvalue::Cast(.., ty) => Some(ty),
             &Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
                 let lhs_ty = lhs.ty(mir, tcx);
                 let rhs_ty = rhs.ty(mir, tcx);

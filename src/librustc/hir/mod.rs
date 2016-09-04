@@ -469,7 +469,7 @@ impl Pat {
         }
 
         match self.node {
-            PatKind::Binding(_, _, Some(ref p)) => p.walk_(it),
+            PatKind::Binding(.., Some(ref p)) => p.walk_(it),
             PatKind::Struct(_, ref fields, _) => {
                 fields.iter().all(|field| field.node.pat.walk_(it))
             }
@@ -486,7 +486,7 @@ impl Pat {
             }
             PatKind::Wild |
             PatKind::Lit(_) |
-            PatKind::Range(_, _) |
+            PatKind::Range(..) |
             PatKind::Binding(..) |
             PatKind::Path(..) => {
                 true

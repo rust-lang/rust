@@ -180,7 +180,7 @@ impl Token {
             Ident(..)                   => true,
             Underscore                  => true,
             Tilde                       => true,
-            Literal(_, _)               => true,
+            Literal(..)                 => true,
             Not                         => true,
             BinOp(Minus)                => true,
             BinOp(Star)                 => true,
@@ -202,8 +202,8 @@ impl Token {
     /// Returns `true` if the token is any literal
     pub fn is_lit(&self) -> bool {
         match *self {
-            Literal(_, _) => true,
-            _             => false,
+            Literal(..) => true,
+            _           => false,
         }
     }
 

@@ -106,7 +106,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => None
             },
             Some(ast_map::NodeTraitItem(ti)) => match ti.node {
-                hir::ConstTraitItem(_, _) => {
+                hir::ConstTraitItem(..) => {
                     if let Some(substs) = substs {
                         // If we have a trait item and the substitutions for it,
                         // `resolve_trait_associated_const` will select an impl
@@ -151,7 +151,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => None
             },
             Some((&InlinedItem::TraitItem(trait_id, ref ti), _)) => match ti.node {
-                hir::ConstTraitItem(_, _) => {
+                hir::ConstTraitItem(..) => {
                     used_substs = true;
                     if let Some(substs) = substs {
                         // As mentioned in the comments above for in-crate
@@ -228,10 +228,10 @@ pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     };
 
     match fn_like.kind() {
-        FnKind::ItemFn(_, _, _, hir::Constness::Const, _, _, _) => {
+        FnKind::ItemFn(_, _, _, hir::Constness::Const, ..) => {
             Some(fn_like)
         }
-        FnKind::Method(_, m, _, _) => {
+        FnKind::Method(_, m, ..) => {
             if m.constness == hir::Constness::Const {
                 Some(fn_like)
             } else {
