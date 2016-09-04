@@ -13,8 +13,9 @@
 //! The `Dump` trait can be used together with `DumpVisitor` in order to
 //! retrieve the data from a crate.
 
+use rustc::hir;
 use rustc::hir::def_id::DefId;
-use syntax::ast::{CrateNum, NodeId};
+use syntax::ast::{self, CrateNum, NodeId};
 use syntax_pos::Span;
 
 pub struct CrateData {
@@ -76,6 +77,35 @@ pub enum Data {
     VariableRefData(VariableRefData),
 }
 
+#[derive(Eq, PartialEq, Clone, Copy, Debug, RustcEncodable)]
+pub enum Visibility {
+    Public,
+    Restricted,
+    Inherited,
+}
+
+impl<'a> From<&'a ast::Visibility> for Visibility {
+    fn from(v: &'a ast::Visibility) -> Visibility {
+        match *v {
+            ast::Visibility::Public => Visibility::Public,
+            ast::Visibility::Crate(_) => Visibility::Restricted,
+            ast::Visibility::Restricted { .. } => Visibility::Restricted,
+            ast::Visibility::Inherited => Visibility::Inherited,
+        }
+    }
+}
+
+impl<'a> From<&'a hir::Visibility> for Visibility {
+    fn from(v: &'a hir::Visibility) -> Visibility {
+        match *v {
+            hir::Visibility::Public => Visibility::Public,
+            hir::Visibility::Crate => Visibility::Restricted,
+            hir::Visibility::Restricted { .. } => Visibility::Restricted,
+            hir::Visibility::Inherited => Visibility::Inherited,
+        }
+    }
+}
+
 /// Data for the prelude of a crate.
 #[derive(Debug, RustcEncodable)]
 pub struct CratePreludeData {
@@ -103,7 +133,7 @@ pub struct EnumData {
     pub span: Span,
     pub scope: NodeId,
     pub variants: Vec<NodeId>,
-
+    pub visibility: Visibility,
 }
 
 /// Data for extern crates.
@@ -135,6 +165,8 @@ pub struct FunctionData {
     pub span: Span,
     pub scope: NodeId,
     pub value: String,
+    pub visibility: Visibility,
+    pub parent: Option<NodeId>,
 }
 
 /// Data about a function call.
@@ -215,6 +247,7 @@ pub struct MethodData {
     pub scope: NodeId,
     pub value: String,
     pub decl_id: Option<DefId>,
+    pub visibility: Visibility,
 }
 
 /// Data for modules.
@@ -227,6 +260,7 @@ pub struct ModData {
     pub scope: NodeId,
     pub filename: String,
     pub items: Vec<NodeId>,
+    pub visibility: Visibility,
 }
 
 /// Data for a reference to a module.
@@ -248,6 +282,7 @@ pub struct StructData {
     pub scope: NodeId,
     pub value: String,
     pub fields: Vec<NodeId>,
+    pub visibility: Visibility,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -258,7 +293,8 @@ pub struct StructVariantData {
     pub qualname: String,
     pub type_value: String,
     pub value: String,
-    pub scope: NodeId
+    pub scope: NodeId,
+    pub parent: Option<NodeId>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -270,6 +306,7 @@ pub struct TraitData {
     pub scope: NodeId,
     pub value: String,
     pub items: Vec<NodeId>,
+    pub visibility: Visibility,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -280,7 +317,8 @@ pub struct TupleVariantData {
     pub qualname: String,
     pub type_value: String,
     pub value: String,
-    pub scope: NodeId
+    pub scope: NodeId,
+    pub parent: Option<NodeId>,
 }
 
 /// Data for a typedef.
@@ -291,6 +329,8 @@ pub struct TypeDefData {
     pub span: Span,
     pub qualname: String,
     pub value: String,
+    pub visibility: Visibility,
+    pub parent: Option<NodeId>,
 }
 
 /// Data for a reference to a type or trait.
@@ -308,7 +348,8 @@ pub struct UseData {
     pub span: Span,
     pub name: String,
     pub mod_id: Option<DefId>,
-    pub scope: NodeId
+    pub scope: NodeId,
+    pub visibility: Visibility,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -316,7 +357,8 @@ pub struct UseGlobData {
     pub id: NodeId,
     pub span: Span,
     pub names: Vec<String>,
-    pub scope: NodeId
+    pub scope: NodeId,
+    pub visibility: Visibility,
 }
 
 /// Data for local and global variables (consts and statics).
@@ -328,8 +370,10 @@ pub struct VariableData {
     pub qualname: String,
     pub span: Span,
     pub scope: NodeId,
+    pub parent: Option<NodeId>,
     pub value: String,
     pub type_value: String,
+    pub visibility: Visibility,
 }
 
 #[derive(Debug, RustcEncodable)]
