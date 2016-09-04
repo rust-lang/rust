@@ -53,6 +53,7 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub input: Input,
     pub populated_crate_impls: RefCell<FnvHashSet<ast::CrateNum>>,
     pub deref_trait_did: Cell<Option<DefId>>,
+    pub deref_mut_trait_did: Cell<Option<DefId>>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
@@ -180,6 +181,7 @@ pub fn run_core(search_paths: SearchPaths,
             input: input,
             populated_crate_impls: RefCell::new(FnvHashSet()),
             deref_trait_did: Cell::new(None),
+            deref_mut_trait_did: Cell::new(None),
             access_levels: RefCell::new(access_levels),
             external_traits: RefCell::new(FnvHashMap()),
             renderinfo: RefCell::new(Default::default()),
