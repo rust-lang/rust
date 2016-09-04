@@ -135,29 +135,24 @@
 //!
 //! ## Thread-local storage
 //!
-//! This module also provides an implementation of thread local storage for Rust
-//! programs. Thread local storage is a method of storing data into a global
-//! variable which each thread in the program will have its own copy of.
+//! This module also provides an implementation of thread-local storage for Rust
+//! programs. Thread-local storage is a method of storing data into a global
+//! variable that each thread in the program will have its own copy of.
 //! Threads do not share this data, so accesses do not need to be synchronized.
 //!
-//! At a high level, this module provides two variants of storage:
-//!
-//! * Owned thread-local storage. This is a type of thread local key which
-//!   owns the value that it contains, and will destroy the value when the
-//!   thread exits. This variant is created with the `thread_local!` macro and
-//!   can contain any value which is `'static` (no borrowed pointers).
-//!
-//! * Scoped thread-local storage. This type of key is used to store a reference
-//!   to a value into local storage temporarily for the scope of a function
-//!   call. There are no restrictions on what types of values can be placed
-//!   into this key.
-//!
-//! Both forms of thread local storage provide an accessor function, `with`,
-//! which will yield a shared reference to the value to the specified
-//! closure. Thread-local keys only allow shared access to values as there is no
-//! way to guarantee uniqueness if a mutable borrow was allowed. Most values
+//! A thread-local key owns the value it contains and will destroy the value when the
+//! thread exits. It is created with the [`thread_local!`] macro and can contain any
+//! value that is `'static` (no borrowed pointers). It provides an accessor function,
+//! [`with`], that yields a shared reference to the value to the specified
+//! closure. Thread-local keys allow only shared access to values, as there would be no
+//! way to guarantee uniqueness if mutable borrows were allowed. Most values
 //! will want to make use of some form of **interior mutability** through the
-//! `Cell` or `RefCell` types.
+//! [`Cell`] or [`RefCell`] types.
+//!
+//! [`Cell`]: ../cell/struct.Cell.html
+//! [`RefCell`]: ../cell/struct.RefCell.html
+//! [`thread_local!`]: ../macro.thread_local!.html
+//! [`with`]: struct.LocalKey.html#method.with
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
