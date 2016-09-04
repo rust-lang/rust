@@ -68,7 +68,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     fn check_item(&self, item: &hir::Item) {
         let def_id = self.tcx.map.local_def_id(item.id);
         match item.node {
-            hir::ItemImpl(_, _, _, None, ref ty, _) => {
+            hir::ItemImpl(.., None, ref ty, _) => {
                 // For inherent impls, self type must be a nominal type
                 // defined in this crate.
                 debug!("coherence2::orphan check: inherent impl {}",
@@ -222,7 +222,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                     }
                 }
             }
-            hir::ItemImpl(_, _, _, Some(_), _, _) => {
+            hir::ItemImpl(.., Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}",
                        self.tcx.map.node_to_string(item.id));

@@ -409,7 +409,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_exprs(args);
             }
 
-            hir::ExprMethodCall(_, _, ref args) => { // callee.m(args)
+            hir::ExprMethodCall(.., ref args) => { // callee.m(args)
                 self.consume_exprs(args);
             }
 
@@ -544,7 +544,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&count);
             }
 
-            hir::ExprClosure(_, _, _, fn_decl_span) => {
+            hir::ExprClosure(.., fn_decl_span) => {
                 self.walk_captures(expr, fn_decl_span)
             }
 
@@ -940,9 +940,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                pat);
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |_mc, cmt_pat, pat| {
             match pat.node {
-                PatKind::Binding(hir::BindByRef(..), _, _) =>
+                PatKind::Binding(hir::BindByRef(..), ..) =>
                     mode.lub(BorrowingMatch),
-                PatKind::Binding(hir::BindByValue(..), _, _) => {
+                PatKind::Binding(hir::BindByValue(..), ..) => {
                     match copy_or_move(self.mc.infcx, &cmt_pat, PatBindingMove) {
                         Copy => mode.lub(CopyingMatch),
                         Move(..) => mode.lub(MovingMatch),
@@ -964,7 +964,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         let infcx = self.mc.infcx;
         let delegate = &mut self.delegate;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
-            if let PatKind::Binding(bmode, _, _) = pat.node {
+            if let PatKind::Binding(bmode, ..) = pat.node {
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}", cmt_pat, pat, match_mode);
 
                 // pat_ty: the type of the binding being produced.

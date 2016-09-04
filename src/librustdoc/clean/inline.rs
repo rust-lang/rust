@@ -180,7 +180,7 @@ fn build_external_function<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx
                                      did: DefId) -> clean::Function {
     let t = tcx.lookup_item_type(did);
     let (decl, style, abi) = match t.ty.sty {
-        ty::TyFnDef(_, _, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
+        ty::TyFnDef(.., ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
         _ => panic!("bad function"),
     };
 

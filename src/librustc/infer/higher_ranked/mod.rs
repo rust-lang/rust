@@ -684,7 +684,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             warnings.extend(
                                 match self.region_vars.var_origin(vid) {
                                     LateBoundRegion(_,
-                                                    ty::BrNamed(_, _, wc),
+                                                    ty::BrNamed(.., wc),
                                                     _) => Some(wc),
                                     _ => None,
                                 });

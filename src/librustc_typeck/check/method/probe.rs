@@ -1314,8 +1314,8 @@ impl<'tcx> Candidate<'tcx> {
         Pick {
             item: self.item.clone(),
             kind: match self.kind {
-                InherentImplCandidate(_, _) => InherentImplPick,
-                ExtensionImplCandidate(def_id, _, _) => {
+                InherentImplCandidate(..) => InherentImplPick,
+                ExtensionImplCandidate(def_id, ..) => {
                     ExtensionImplPick(def_id)
                 }
                 ObjectCandidate => ObjectPick,
@@ -1340,10 +1340,10 @@ impl<'tcx> Candidate<'tcx> {
 
     fn to_source(&self) -> CandidateSource {
         match self.kind {
-            InherentImplCandidate(_, _) => {
+            InherentImplCandidate(..) => {
                 ImplSource(self.item.container().id())
             }
-            ExtensionImplCandidate(def_id, _, _) => ImplSource(def_id),
+            ExtensionImplCandidate(def_id, ..) => ImplSource(def_id),
             ObjectCandidate |
             TraitCandidate |
             WhereClauseCandidate(_) => TraitSource(self.item.container().id()),

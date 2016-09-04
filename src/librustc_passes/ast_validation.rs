@@ -98,10 +98,10 @@ impl<'a> Visitor for AstValidator<'a> {
 
     fn visit_expr(&mut self, expr: &Expr) {
         match expr.node {
-            ExprKind::While(_, _, Some(ident)) |
+            ExprKind::While(.., Some(ident)) |
             ExprKind::Loop(_, Some(ident)) |
-            ExprKind::WhileLet(_, _, _, Some(ident)) |
-            ExprKind::ForLoop(_, _, _, Some(ident)) |
+            ExprKind::WhileLet(.., Some(ident)) |
+            ExprKind::ForLoop(.., Some(ident)) |
             ExprKind::Break(Some(ident)) |
             ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span, expr.id);
@@ -155,7 +155,7 @@ impl<'a> Visitor for AstValidator<'a> {
                         .span_err(path.span, "type or lifetime parameters in import path");
                 }
             }
-            ItemKind::Impl(_, _, _, Some(..), _, ref impl_items) => {
+            ItemKind::Impl(.., Some(..), _, ref impl_items) => {
                 self.invalid_visibility(&item.vis, item.span, None);
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, impl_item.span, None);
@@ -164,7 +164,7 @@ impl<'a> Visitor for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Impl(_, _, _, None, _, _) => {
+            ItemKind::Impl(.., None, _, _) => {
                 self.invalid_visibility(&item.vis,
                                         item.span,
                                         Some("place qualifiers on individual impl items instead"));
@@ -185,7 +185,7 @@ impl<'a> Visitor for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Trait(_, _, _, ref trait_items) => {
+            ItemKind::Trait(.., ref trait_items) => {
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, _) = trait_item.node {
                         self.check_trait_fn_not_const(sig.constness);

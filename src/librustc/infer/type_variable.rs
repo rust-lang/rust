@@ -267,7 +267,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 
-                sv::UndoLog::Other(SpecifyVar(vid, _, _)) => {
+                sv::UndoLog::Other(SpecifyVar(vid, ..)) => {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.

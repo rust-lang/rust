@@ -27,6 +27,7 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(dotdot_in_tuple_patterns)]
 #![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(quote)]

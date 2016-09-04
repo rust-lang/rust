@@ -1891,7 +1891,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                     (false, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
                         format!(" (<a href=\"{}{}\">#{}</a>)", Escape(&tracker_url), issue_no,
                                 issue_no),
-                    (true, _, _) =>
+                    (true, ..) =>
                         format!(" (<code>{}</code>)", Escape(&stab.feature)),
                     _ => String::new(),
                 }

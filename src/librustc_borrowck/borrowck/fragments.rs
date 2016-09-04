@@ -365,9 +365,9 @@ fn add_fragment_siblings<'a, 'tcx>(this: &MoveData<'tcx>,
         }
 
         // *LV for unsafe and borrowed pointers do not consume their loan path, so stop here.
-        LpExtend(_, _, LpDeref(mc::UnsafePtr(..)))   |
-        LpExtend(_, _, LpDeref(mc::Implicit(..)))    |
-        LpExtend(_, _, LpDeref(mc::BorrowedPtr(..))) => {}
+        LpExtend(.., LpDeref(mc::UnsafePtr(..)))   |
+        LpExtend(.., LpDeref(mc::Implicit(..)))    |
+        LpExtend(.., LpDeref(mc::BorrowedPtr(..))) => {}
 
         // FIXME (pnkfelix): LV[j] should be tracked, at least in the
         // sense of we will track the remaining drop obligation of the
@@ -378,7 +378,7 @@ fn add_fragment_siblings<'a, 'tcx>(this: &MoveData<'tcx>,
         // bind.
         //
         // Anyway, for now: LV[j] is not tracked precisely
-        LpExtend(_, _, LpInterior(_, InteriorElement(..))) => {
+        LpExtend(.., LpInterior(_, InteriorElement(..))) => {
             let mp = this.move_path(tcx, lp.clone());
             gathered_fragments.push(AllButOneFrom(mp));
         }

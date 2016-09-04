@@ -642,7 +642,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: boo
                 output: output
             }
         },
-        (_, _) => {
+        (..) => {
             PathParameters::AngleBracketed {
                 lifetimes: lifetimes,
                 types: types.clean(cx),
@@ -717,7 +717,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
             if let ty::TyTuple(ts) = ty_s.sty {
                 for &ty_s in ts {
                     if let ty::TyRef(ref reg, _) = ty_s.sty {
-                        if let &ty::Region::ReLateBound(_, _) = *reg {
+                        if let &ty::Region::ReLateBound(..) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(lt) = reg.clean(cx) {
                                 late_bounds.push(lt);
@@ -1794,7 +1794,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 mutability: mt.mutbl.clean(cx),
                 type_: box mt.ty.clean(cx),
             },
-            ty::TyFnDef(_, _, ref fty) |
+            ty::TyFnDef(.., ref fty) |
             ty::TyFnPtr(ref fty) => BareFunction(box BareFunctionDecl {
                 unsafety: fty.unsafety,
                 generics: Generics {
@@ -2699,7 +2699,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
     match p.node {
         PatKind::Wild => "_".to_string(),
         PatKind::Binding(_, ref p, _) => p.node.to_string(),
-        PatKind::TupleStruct(ref p, _, _) | PatKind::Path(None, ref p) => path_to_string(p),
+        PatKind::TupleStruct(ref p, ..) | PatKind::Path(None, ref p) => path_to_string(p),
         PatKind::Path(..) => panic!("tried to get argument name from qualified PatKind::Path, \
                                      which is not allowed in function arguments"),
         PatKind::Struct(ref name, ref fields, etc) => {

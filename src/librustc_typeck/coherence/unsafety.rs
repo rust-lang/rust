@@ -81,7 +81,7 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
             hir::ItemDefaultImpl(unsafety, _) => {
                 self.check_unsafety_coherence(item, unsafety, hir::ImplPolarity::Positive);
             }
-            hir::ItemImpl(unsafety, polarity, _, _, _, _) => {
+            hir::ItemImpl(unsafety, polarity, ..) => {
                 self.check_unsafety_coherence(item, unsafety, polarity);
             }
             _ => { }

@@ -924,7 +924,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
         let (param_substs, def_id) = match definition {
-            Some((instance, _, _)) => {
+            Some((instance, ..)) => {
                 common::validate_substs(instance.substs);
                 (instance.substs, Some(instance.def))
             }

@@ -976,7 +976,7 @@ impl<'a> MethodDef<'a> {
                         other: other_fields.iter_mut()
                             .map(|l| {
                                 match l.next().unwrap() {
-                                    (_, _, ex, _) => ex,
+                                    (.., ex, _) => ex,
                                 }
                             })
                             .collect(),
@@ -1527,7 +1527,7 @@ impl<'a> TraitDef<'a> {
             VariantData::Struct(..) => {
                 let field_pats = subpats.into_iter()
                     .zip(&ident_exprs)
-                    .map(|(pat, &(sp, ident, _, _))| {
+                    .map(|(pat, &(sp, ident, ..))| {
                         if ident.is_none() {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
@@ -1583,7 +1583,7 @@ pub fn cs_fold<F>(use_foldl: bool,
     where F: FnMut(&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>
 {
     match *substructure.fields {
-        EnumMatching(_, _, ref all_fields) |
+        EnumMatching(.., ref all_fields) |
         Struct(_, ref all_fields) => {
             if use_foldl {
                 all_fields.iter().fold(base, |old, field| {
@@ -1623,7 +1623,7 @@ pub fn cs_same_method<F>(f: F,
     where F: FnOnce(&mut ExtCtxt, Span, Vec<P<Expr>>) -> P<Expr>
 {
     match *substructure.fields {
-        EnumMatching(_, _, ref all_fields) |
+        EnumMatching(.., ref all_fields) |
         Struct(_, ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
             let called = all_fields.iter()

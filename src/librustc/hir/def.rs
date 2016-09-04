@@ -104,7 +104,7 @@ impl Def {
     pub fn var_id(&self) -> ast::NodeId {
         match *self {
             Def::Local(_, id) |
-            Def::Upvar(_, id, _, _) => {
+            Def::Upvar(_, id, ..) => {
                 id
             }
 
@@ -124,7 +124,7 @@ impl Def {
             Def::Variant(_, id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(_, id) |
             Def::TyParam(id) | Def::Struct(id) | Def::Union(id) | Def::Trait(id) |
             Def::Method(id) | Def::Const(id) | Def::AssociatedConst(id) |
-            Def::Local(id, _) | Def::Upvar(id, _, _, _) => {
+            Def::Local(id, _) | Def::Upvar(id, ..) => {
                 id
             }
 

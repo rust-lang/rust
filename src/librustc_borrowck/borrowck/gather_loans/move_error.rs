@@ -117,9 +117,9 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                        move_from: mc::cmt<'tcx>)
                                        -> DiagnosticBuilder<'a> {
     match move_from.cat {
-        Categorization::Deref(_, _, mc::BorrowedPtr(..)) |
-        Categorization::Deref(_, _, mc::Implicit(..)) |
-        Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+        Categorization::Deref(.., mc::BorrowedPtr(..)) |
+        Categorization::Deref(.., mc::Implicit(..)) |
+        Categorization::Deref(.., mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             let mut err = struct_span_err!(bccx, move_from.span, E0507,
                              "cannot move out of {}",

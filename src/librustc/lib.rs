@@ -30,6 +30,7 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(enumset)]
 #![feature(libc)]
 #![feature(nonzero)]

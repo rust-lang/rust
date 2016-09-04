@@ -53,7 +53,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
 
 pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        PatKind::Lit(_) | PatKind::Range(_, _) | PatKind::Path(Some(..), _) => true,
+        PatKind::Lit(_) | PatKind::Range(..) | PatKind::Path(Some(..), _) => true,
         PatKind::TupleStruct(..) |
         PatKind::Path(..) |
         PatKind::Struct(..) => {
@@ -62,7 +62,7 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
                 _ => false
             }
         }
-        PatKind::Vec(_, _, _) => true,
+        PatKind::Vec(..) => true,
         _ => false
     }
 }

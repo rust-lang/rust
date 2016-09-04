@@ -312,7 +312,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     qualname: String::new()
                 }.lower(self.tcx));
             }
-            Def::Static(_, _) |
+            Def::Static(..) |
             Def::Const(_) |
             Def::AssociatedConst(..) |
             Def::Local(..) |
@@ -351,7 +351,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             let mut collector = PathCollector::new();
             collector.visit_pat(&arg.pat);
             let span_utils = self.span.clone();
-            for &(id, ref p, _, _) in &collector.collected_paths {
+            for &(id, ref p, ..) in &collector.collected_paths {
                 let typ = self.tcx.node_types().get(&id).unwrap().to_string();
                 // get the span only for the name of the variable (I hope the path is only ever a
                 // variable name, but who knows?)
@@ -893,7 +893,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 }
             }
             Def::Local(..) |
-            Def::Static(_,_) |
+            Def::Static(..) |
             Def::Const(..) |
             Def::AssociatedConst(..) |
             Def::Struct(..) |
@@ -1206,7 +1206,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                     }.lower(self.tcx));
                 }
             }
-            Fn(ref decl, _, _, _, ref ty_params, ref body) =>
+            Fn(ref decl, .., ref ty_params, ref body) =>
                 self.process_fn(item, &decl, ty_params, &body),
             Static(ref typ, _, ref expr) =>
                 self.process_static_or_const_item(item, typ, expr),
@@ -1214,7 +1214,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                 self.process_static_or_const_item(item, &typ, &expr),
             Struct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
             Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
-            Impl(_, _,
+            Impl(..,
                           ref ty_params,
                           ref trait_ref,
                           ref typ,
@@ -1306,7 +1306,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                 let def = self.tcx.expect_def(hir_expr.id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
             }
-            ast::ExprKind::MethodCall(_, _, ref args) => self.process_method_call(ex, args),
+            ast::ExprKind::MethodCall(.., ref args) => self.process_method_call(ex, args),
             ast::ExprKind::Field(ref sub_ex, _) => {
                 self.visit_expr(&sub_ex);
 
@@ -1437,7 +1437,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                     paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
                 // FIXME(nrc) what are these doing here?
-                Def::Static(_, _) |
+                Def::Static(..) |
                 Def::Const(..) |
                 Def::AssociatedConst(..) => {}
                 def => error!("unexpected definition kind when processing collected paths: {:?}",

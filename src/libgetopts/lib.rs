@@ -279,7 +279,7 @@ impl OptGroup {
                                   }],
                 }
             }
-            (_, _) => panic!("something is wrong with the long-form opt"),
+            _ => panic!("something is wrong with the long-form opt"),
         }
     }
 }

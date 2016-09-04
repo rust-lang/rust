@@ -482,7 +482,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         intravisit::walk_expr(ir, expr);
       }
-      hir::ExprBinary(op, _, _) if op.node.is_lazy() => {
+      hir::ExprBinary(op, ..) if op.node.is_lazy() => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         intravisit::walk_expr(ir, expr);
       }
@@ -943,7 +943,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.propagate_through_expr(&e, succ)
           }
 
-          hir::ExprClosure(_, _, ref blk, _) => {
+          hir::ExprClosure(.., ref blk, _) => {
               debug!("{} is an ExprClosure",
                      expr_to_string(expr));
 
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&f, succ)
           }
 
-          hir::ExprMethodCall(_, _, ref args) => {
+          hir::ExprMethodCall(.., ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.tables.borrow().method_map[&method_call].ty;
             // FIXME(canndrew): This is_never should really be an is_uninhabited
