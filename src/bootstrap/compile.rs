@@ -93,16 +93,16 @@ pub fn std_link(build: &Build,
     add_to_sysroot(&out_dir, &libdir);
 
     if target.contains("musl") && !target.contains("mips") {
-        copy_third_party_objects(build, target, &libdir);
+        copy_musl_third_party_objects(build, &libdir);
     }
 }
 
 /// Copies the crt(1,i,n).o startup objects
 ///
 /// Only required for musl targets that statically link to libc
-fn copy_third_party_objects(build: &Build, target: &str, into: &Path) {
+fn copy_musl_third_party_objects(build: &Build, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-        copy(&compiler_file(build.cc(target), obj), &into.join(obj));
+        copy(&build.config.musl_root.as_ref().unwrap().join("lib").join(obj), &into.join(obj));
     }
 }
 
