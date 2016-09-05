@@ -160,7 +160,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 &format!("symbol `{}` is already defined", symbol_name))
         });
 
-        unsafe { llvm::LLVMSetLinkage(g, linkage) };
+        unsafe { llvm::LLVMRustSetLinkage(g, linkage) };
 
         let instance = Instance::mono(ccx.shared(), def_id);
         ccx.instances().borrow_mut().insert(instance, g);
@@ -180,10 +180,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         let attrs = ccx.tcx().get_attrs(instance.def);
         let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
-        unsafe { llvm::LLVMSetLinkage(lldecl, linkage) };
+        unsafe { llvm::LLVMRustSetLinkage(lldecl, linkage) };
         base::set_link_section(ccx, lldecl, &attrs);
-        if linkage == llvm::LinkOnceODRLinkage ||
-            linkage == llvm::WeakODRLinkage {
+        if linkage == llvm::Linkage::LinkOnceODRLinkage ||
+            linkage == llvm::Linkage::WeakODRLinkage {
             llvm::SetUniqueComdat(ccx.llmod(), lldecl);
         }
 
@@ -214,9 +214,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         assert!(declare::get_defined_value(ccx, symbol_name).is_none());
         let llfn = declare::declare_cfn(ccx, symbol_name, llfnty);
-        unsafe { llvm::LLVMSetLinkage(llfn, linkage) };
-        if linkage == llvm::LinkOnceODRLinkage ||
-           linkage == llvm::WeakODRLinkage {
+        unsafe { llvm::LLVMRustSetLinkage(llfn, linkage) };
+        if linkage == llvm::Linkage::LinkOnceODRLinkage ||
+           linkage == llvm::Linkage::WeakODRLinkage {
             llvm::SetUniqueComdat(ccx.llmod(), llfn);
         }
         attributes::set_frame_pointer_elimination(ccx, llfn);

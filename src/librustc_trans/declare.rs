@@ -164,7 +164,7 @@ pub fn define_internal_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     name: &str,
                                     fn_type: ty::Ty<'tcx>) -> ValueRef {
     let llfn = define_fn(ccx, name, fn_type);
-    unsafe { llvm::LLVMSetLinkage(llfn, llvm::InternalLinkage) };
+    unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
     llfn
 }
 
