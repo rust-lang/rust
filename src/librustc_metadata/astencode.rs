@@ -19,10 +19,9 @@ use decoder::DecodeContext;
 use encoder::EncodeContext;
 
 use middle::cstore::{InlinedItem, InlinedItemRef};
-use rustc::ty::adjustment;
 use rustc::hir::def;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 
 use syntax::ast;
 
@@ -128,12 +127,8 @@ enum Table {
     Def,
     NodeType,
     ItemSubsts,
-    Freevars,
-    MethodMap,
     Adjustment,
-    UpvarCaptureMap,
-    ConstQualif,
-    CastKind
+    ConstQualif
 }
 
 fn encode_side_tables_for_id(ecx: &mut EncodeContext, id: ast::NodeId) {
@@ -156,58 +151,9 @@ fn encode_side_tables_for_id(ecx: &mut EncodeContext, id: ast::NodeId) {
         item_substs.substs.encode(ecx).unwrap();
     }
 
-    if let Some(fv) = tcx.freevars.borrow().get(&id) {
-        ecx.entry(Table::Freevars, id);
-        fv.encode(ecx).unwrap();
-
-        for freevar in fv {
-            ecx.entry(Table::UpvarCaptureMap, id);
-            let def_id = freevar.def.def_id();
-            let var_id = tcx.map.as_local_node_id(def_id).unwrap();
-            let upvar_id = ty::UpvarId {
-                var_id: var_id,
-                closure_expr_id: id
-            };
-            let upvar_capture = tcx.tables
-                                    .borrow()
-                                    .upvar_capture_map
-                                    .get(&upvar_id)
-                                    .unwrap()
-                                    .clone();
-            var_id.encode(ecx).unwrap();
-            upvar_capture.encode(ecx).unwrap();
-        }
-    }
-
-    let method_call = ty::MethodCall::expr(id);
-    if let Some(method) = tcx.tables.borrow().method_map.get(&method_call) {
-        ecx.entry(Table::MethodMap, id);
-        method_call.autoderef.encode(ecx).unwrap();
-        method.encode(ecx).unwrap();
-    }
-
     if let Some(adjustment) = tcx.tables.borrow().adjustments.get(&id) {
-        match *adjustment {
-            adjustment::AdjustDerefRef(ref adj) => {
-                for autoderef in 0..adj.autoderefs {
-                    let method_call = ty::MethodCall::autoderef(id, autoderef as u32);
-                    if let Some(method) = tcx.tables.borrow().method_map.get(&method_call) {
-                        ecx.entry(Table::MethodMap, id);
-                        method_call.autoderef.encode(ecx).unwrap();
-                        method.encode(ecx).unwrap();
-                    }
-                }
-            }
-            _ => {}
-        }
-
         ecx.entry(Table::Adjustment, id);
         adjustment.encode(ecx).unwrap();
-    }
-
-    if let Some(cast_kind) = tcx.cast_kinds.borrow().get(&id) {
-        ecx.entry(Table::CastKind, id);
-        cast_kind.encode(ecx).unwrap();
     }
 
     if let Some(qualif) = tcx.const_qualif_map.borrow().get(&id) {
@@ -234,33 +180,9 @@ fn decode_side_tables(dcx: &mut DecodeContext, ast_doc: rbml::Doc) {
                 let item_substs = Decodable::decode(dcx).unwrap();
                 dcx.tcx().tables.borrow_mut().item_substs.insert(id, item_substs);
             }
-            Table::Freevars => {
-                let fv_info = Decodable::decode(dcx).unwrap();
-                dcx.tcx().freevars.borrow_mut().insert(id, fv_info);
-            }
-            Table::UpvarCaptureMap => {
-                let upvar_id = ty::UpvarId {
-                    var_id: Decodable::decode(dcx).unwrap(),
-                    closure_expr_id: id
-                };
-                let ub = Decodable::decode(dcx).unwrap();
-                dcx.tcx().tables.borrow_mut().upvar_capture_map.insert(upvar_id, ub);
-            }
-            Table::MethodMap => {
-                let method_call = ty::MethodCall {
-                    expr_id: id,
-                    autoderef: Decodable::decode(dcx).unwrap()
-                };
-                let method = Decodable::decode(dcx).unwrap();
-                dcx.tcx().tables.borrow_mut().method_map.insert(method_call, method);
-            }
             Table::Adjustment => {
                 let adj = Decodable::decode(dcx).unwrap();
                 dcx.tcx().tables.borrow_mut().adjustments.insert(id, adj);
-            }
-            Table::CastKind => {
-                let cast_kind = Decodable::decode(dcx).unwrap();
-                dcx.tcx().cast_kinds.borrow_mut().insert(id, cast_kind);
             }
             Table::ConstQualif => {
                 let qualif = Decodable::decode(dcx).unwrap();
