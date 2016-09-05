@@ -99,7 +99,7 @@ pub fn compile_input(sess: &Session,
             }
         };
 
-        let krate = {
+        let (krate, registry) = {
             let mut compile_state = CompileState::state_after_parse(input,
                                                                     sess,
                                                                     outdir,
@@ -111,14 +111,14 @@ pub fn compile_input(sess: &Session,
                                     compile_state,
                                     Ok(()));
 
-            compile_state.krate.unwrap()
+            (compile_state.krate.unwrap(), compile_state.registry)
         };
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let crate_name = link::find_crate_name(Some(sess), &krate.attrs, input);
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
-                sess, &cstore, krate, &crate_name, addl_plugins, control.make_glob_map,
+                sess, &cstore, krate, registry, &crate_name, addl_plugins, control.make_glob_map,
                 |expanded_crate| {
                     let mut state = CompileState::state_after_expand(
                         input, sess, outdir, output, &cstore, expanded_crate, &crate_name,
@@ -332,6 +332,7 @@ pub struct CompileState<'a, 'b, 'ast: 'a, 'tcx: 'b> where 'ast: 'tcx {
     pub input: &'a Input,
     pub session: &'ast Session,
     pub krate: Option<ast::Crate>,
+    pub registry: Option<Registry<'a>>,
     pub cstore: Option<&'a CStore>,
     pub crate_name: Option<&'a str>,
     pub output_filenames: Option<&'a OutputFilenames>,
@@ -360,6 +361,7 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
             out_file: None,
             arenas: None,
             krate: None,
+            registry: None,
             cstore: None,
             crate_name: None,
             output_filenames: None,
@@ -382,6 +384,8 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
                          cstore: &'a CStore)
                          -> CompileState<'a, 'b, 'ast, 'tcx> {
         CompileState {
+            // Initialize the registry before moving `krate`
+            registry: Some(Registry::new(&session, krate.span)),
             krate: Some(krate),
             cstore: Some(cstore),
             out_file: out_file.as_ref().map(|s| &**s),
@@ -548,6 +552,7 @@ pub struct ExpansionResult<'a> {
 pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                            cstore: &CStore,
                                            mut krate: ast::Crate,
+                                           registry: Option<Registry>,
                                            crate_name: &'a str,
                                            addl_plugins: Option<Vec<String>>,
                                            make_glob_map: MakeGlobMap,
@@ -595,7 +600,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                    addl_plugins.take().unwrap())
     });
 
-    let mut registry = Registry::new(sess, &krate);
+    let mut registry = registry.unwrap_or(Registry::new(sess, krate.span));
 
     time(time_passes, "plugin registration", || {
         if sess.features.borrow().rustc_diagnostic_macros {
