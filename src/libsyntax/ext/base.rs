@@ -546,7 +546,7 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders
 }
 
-pub trait MacroLoader {
+pub trait Resolver {
     fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool)
                   -> Vec<LoadedMacro>;
 }
@@ -556,8 +556,8 @@ pub enum LoadedMacro {
     CustomDerive(String, Box<MultiItemModifier>),
 }
 
-pub struct DummyMacroLoader;
-impl MacroLoader for DummyMacroLoader {
+pub struct DummyResolver;
+impl Resolver for DummyResolver {
     fn load_crate(&mut self, _: &ast::Item, _: bool) -> Vec<LoadedMacro> {
         Vec::new()
     }
@@ -572,7 +572,7 @@ pub struct ExtCtxt<'a> {
     pub backtrace: ExpnId,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
-    pub loader: &'a mut MacroLoader,
+    pub resolver: &'a mut Resolver,
 
     pub exported_macros: Vec<ast::MacroDef>,
 
@@ -584,7 +584,7 @@ pub struct ExtCtxt<'a> {
 impl<'a> ExtCtxt<'a> {
     pub fn new(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
                ecfg: expand::ExpansionConfig<'a>,
-               loader: &'a mut MacroLoader)
+               resolver: &'a mut Resolver)
                -> ExtCtxt<'a> {
         ExtCtxt {
             syntax_env: initial_syntax_expander_table(&ecfg),
@@ -594,7 +594,7 @@ impl<'a> ExtCtxt<'a> {
             ecfg: ecfg,
             crate_root: None,
             exported_macros: Vec::new(),
-            loader: loader,
+            resolver: resolver,
             derive_modes: HashMap::new(),
             recursion_count: 0,
         }

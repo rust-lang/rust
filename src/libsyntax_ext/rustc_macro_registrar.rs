@@ -13,7 +13,7 @@ use std::mem;
 use errors;
 use syntax::ast::{self, Ident, NodeId};
 use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute};
-use syntax::ext::base::{ExtCtxt, DummyMacroLoader};
+use syntax::ext::base::{ExtCtxt, DummyResolver};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::parse::ParseSess;
@@ -44,7 +44,7 @@ pub fn modify(sess: &ParseSess,
               num_crate_types: usize,
               handler: &errors::Handler,
               features: &Features) -> ast::Crate {
-    let mut loader = DummyMacroLoader;
+    let mut loader = DummyResolver;
     let mut cx = ExtCtxt::new(sess,
                               Vec::new(),
                               ExpansionConfig::default("rustc_macro".to_string()),
