@@ -630,9 +630,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// The expressions *must not* have any pre-existing adjustments.
     pub fn try_coerce(&self,
                       expr: &hir::Expr,
+                      expr_ty: Ty<'tcx>,
                       target: Ty<'tcx>)
                       -> RelateResult<'tcx, Ty<'tcx>> {
-        let source = self.resolve_type_vars_with_obligations(self.expr_ty(expr));
+        let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let mut coerce = Coerce::new(self, TypeOrigin::ExprAssignable(expr.span));
@@ -658,14 +659,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            origin: TypeOrigin,
                                            exprs: E,
                                            prev_ty: Ty<'tcx>,
-                                           new: &'b hir::Expr)
+                                           new: &'b hir::Expr,
+                                           new_ty: Ty<'tcx>)
                                            -> RelateResult<'tcx, Ty<'tcx>>
         // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
         where E: Fn() -> I,
               I: IntoIterator<Item=&'b hir::Expr> {
 
         let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
-        let new_ty = self.resolve_type_vars_with_obligations(self.expr_ty(new));
+        let new_ty = self.resolve_type_vars_with_obligations(new_ty);
         debug!("coercion::try_find_lub({:?}, {:?})", prev_ty, new_ty);
 
         let trace = TypeTrace::types(origin, true, prev_ty, new_ty);
@@ -741,7 +743,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     autoderefs: 1,
                     autoref: Some(AutoPtr(_, mutbl_adj)),
                     unsize: None
-                })) => match self.expr_ty(expr).sty {
+                })) => match self.node_ty(expr.id).sty {
                     ty::TyRef(_, mt_orig) => {
                         // Reborrow that we can safely ignore.
                         mutbl_adj == mt_orig.mutbl

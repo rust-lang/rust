@@ -15,7 +15,7 @@ use CrateCtxt;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::Def;
 use hir::def_id::DefId;
-use rustc::infer;
+use rustc::{infer, traits};
 use rustc::ty::{self, LvaluePreference, Ty};
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -45,10 +45,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       call_expr: &'gcx hir::Expr,
                       callee_expr: &'gcx hir::Expr,
                       arg_exprs: &'gcx [P<hir::Expr>],
-                      expected: Expectation<'tcx>)
+                      expected: Expectation<'tcx>) -> Ty<'tcx>
     {
-        self.check_expr(callee_expr);
-        let original_callee_ty = self.expr_ty(callee_expr);
+        let original_callee_ty = self.check_expr(callee_expr);
 
         let mut autoderef = self.autoderef(callee_expr.span, original_callee_ty);
         let result = autoderef.by_ref().flat_map(|(adj_ty, idx)| {
@@ -57,25 +56,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let callee_ty = autoderef.unambiguous_final_ty();
         autoderef.finalize(LvaluePreference::NoPreference, Some(callee_expr));
 
-        match result {
+        let output = match result {
             None => {
                 // this will report an error since original_callee_ty is not a fn
-                self.confirm_builtin_call(call_expr, original_callee_ty, arg_exprs, expected);
+                self.confirm_builtin_call(call_expr, original_callee_ty, arg_exprs, expected)
             }
 
             Some(CallStep::Builtin) => {
-                self.confirm_builtin_call(call_expr, callee_ty, arg_exprs, expected);
+                self.confirm_builtin_call(call_expr, callee_ty, arg_exprs, expected)
             }
 
             Some(CallStep::DeferredClosure(fn_sig)) => {
-                self.confirm_deferred_closure_call(call_expr, arg_exprs, expected, fn_sig);
+                self.confirm_deferred_closure_call(call_expr, arg_exprs, expected, fn_sig)
             }
 
             Some(CallStep::Overloaded(method_callee)) => {
                 self.confirm_overloaded_call(call_expr, callee_expr,
-                                             arg_exprs, expected, method_callee);
+                                             arg_exprs, expected, method_callee)
             }
-        }
+        };
+
+        // we must check that return type of called functions is WF:
+        self.register_wf_obligation(output, call_expr.span, traits::MiscObligation);
+
+        output
     }
 
     fn try_overloaded_call_step(&self,
@@ -181,7 +185,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             call_expr: &hir::Expr,
                             callee_ty: Ty<'tcx>,
                             arg_exprs: &'gcx [P<hir::Expr>],
-                            expected: Expectation<'tcx>)
+                            expected: Expectation<'tcx>) -> Ty<'tcx>
     {
         let error_fn_sig;
 
@@ -245,14 +249,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   fn_sig.variadic,
                                   TupleArgumentsFlag::DontTupleArguments);
 
-        self.write_call(call_expr, fn_sig.output);
+        fn_sig.output
     }
 
     fn confirm_deferred_closure_call(&self,
                                      call_expr: &hir::Expr,
                                      arg_exprs: &'gcx [P<hir::Expr>],
                                      expected: Expectation<'tcx>,
-                                     fn_sig: ty::FnSig<'tcx>)
+                                     fn_sig: ty::FnSig<'tcx>) -> Ty<'tcx>
     {
         // `fn_sig` is the *signature* of the cosure being called. We
         // don't know the full details yet (`Fn` vs `FnMut` etc), but we
@@ -272,7 +276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   fn_sig.variadic,
                                   TupleArgumentsFlag::TupleArguments);
 
-        self.write_call(call_expr, fn_sig.output);
+        fn_sig.output
     }
 
     fn confirm_overloaded_call(&self,
@@ -280,7 +284,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                callee_expr: &'gcx hir::Expr,
                                arg_exprs: &'gcx [P<hir::Expr>],
                                expected: Expectation<'tcx>,
-                               method_callee: ty::MethodCallee<'tcx>)
+                               method_callee: ty::MethodCallee<'tcx>) -> Ty<'tcx>
     {
         let output_type =
             self.check_method_argument_types(call_expr.span,
@@ -289,9 +293,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              arg_exprs,
                                              TupleArgumentsFlag::TupleArguments,
                                              expected);
-        self.write_call(call_expr, output_type);
 
         self.write_overloaded_call_method_map(call_expr, method_callee);
+        output_type
     }
 
     fn write_overloaded_call_method_map(&self,
