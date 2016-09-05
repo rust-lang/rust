@@ -45,6 +45,7 @@ use self::ParentLink::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
+use rustc::middle::cstore::MacroLoader;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
@@ -53,6 +54,8 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
+use syntax::ext;
+use syntax::ext::base::LoadedMacro;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
@@ -1068,6 +1071,8 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
     new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
+
+    macro_loader: &'a mut MacroLoader,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1149,6 +1154,12 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     }
 }
 
+impl<'a> ext::base::Resolver for Resolver<'a> {
+    fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro> {
+        self.macro_loader.load_crate(extern_crate, allows_macros)
+    }
+}
+
 trait Named {
     fn name(&self) -> Name;
 }
@@ -1166,7 +1177,10 @@ impl Named for hir::PathSegment {
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new(session: &'a Session, make_glob_map: MakeGlobMap, arenas: &'a ResolverArenas<'a>)
+    pub fn new(session: &'a Session,
+               make_glob_map: MakeGlobMap,
+               macro_loader: &'a mut MacroLoader,
+               arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let graph_root =
@@ -1227,6 +1241,8 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
             new_import_semantics: session.features.borrow().item_like_imports,
+
+            macro_loader: macro_loader,
         }
     }
 

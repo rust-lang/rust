@@ -644,7 +644,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 // We need to error on `#[macro_use] extern crate` when it isn't at the
                 // crate root, because `$crate` won't work properly.
                 let is_crate_root = self.cx.syntax_env.is_crate_root();
-                for def in self.cx.loader.load_crate(&*item, is_crate_root) {
+                for def in self.cx.resolver.load_crate(&*item, is_crate_root) {
                     match def {
                         LoadedMacro::Def(def) => self.cx.insert_macro(def),
                         LoadedMacro::CustomDerive(name, ext) => {
@@ -809,7 +809,7 @@ fn mark_tts(tts: &[TokenTree], m: Mark) -> Vec<TokenTree> {
 mod tests {
     use super::{expand_crate, ExpansionConfig};
     use ast;
-    use ext::base::{ExtCtxt, DummyMacroLoader};
+    use ext::base::{ExtCtxt, DummyResolver};
     use parse;
     use util::parser_testing::{string_to_parser};
     use visit;
@@ -850,7 +850,7 @@ mod tests {
             src,
             Vec::new(), &sess).unwrap();
         // should fail:
-        let mut loader = DummyMacroLoader;
+        let mut loader = DummyResolver;
         let mut ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
         expand_crate(&mut ecx, vec![], crate_ast);
     }
@@ -865,7 +865,7 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess).unwrap();
-        let mut loader = DummyMacroLoader;
+        let mut loader = DummyResolver;
         let mut ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
         expand_crate(&mut ecx, vec![], crate_ast);
     }
@@ -879,7 +879,7 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess).unwrap();
-        let mut loader = DummyMacroLoader;
+        let mut loader = DummyResolver;
         let mut ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut loader);
         expand_crate(&mut ecx, vec![], crate_ast);
     }
@@ -888,7 +888,7 @@ mod tests {
         let ps = parse::ParseSess::new();
         let crate_ast = panictry!(string_to_parser(&ps, crate_str).parse_crate_mod());
         // the cfg argument actually does matter, here...
-        let mut loader = DummyMacroLoader;
+        let mut loader = DummyResolver;
         let mut ecx = ExtCtxt::new(&ps, vec![], test_ecfg(), &mut loader);
         expand_crate(&mut ecx, vec![], crate_ast)
     }

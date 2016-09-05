@@ -28,7 +28,7 @@ use errors;
 use errors::snippet::{SnippetData};
 use config;
 use entry::{self, EntryPointType};
-use ext::base::{ExtCtxt, DummyMacroLoader};
+use ext::base::{ExtCtxt, DummyResolver};
 use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
 use fold::Folder;
@@ -276,13 +276,13 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
 
-    let mut loader = DummyMacroLoader;
+    let mut resolver = DummyResolver;
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, vec![],
                              ExpansionConfig::default("test".to_string()),
-                             &mut loader),
+                             &mut resolver),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main: reexport_test_harness_main,
