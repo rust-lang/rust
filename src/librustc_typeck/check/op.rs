@@ -23,21 +23,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               expr: &'gcx hir::Expr,
                               op: hir::BinOp,
                               lhs_expr: &'gcx hir::Expr,
-                              rhs_expr: &'gcx hir::Expr)
+                              rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
     {
-        self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
+        let lhs_ty = self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
 
-        let lhs_ty = self.resolve_type_vars_with_obligations(self.expr_ty(lhs_expr));
+        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
         let (rhs_ty, return_ty) =
             self.check_overloaded_binop(expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::Yes);
         let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
 
-        if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
+        let ty = if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var()
+                    && is_builtin_binop(lhs_ty, rhs_ty, op) {
             self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-            self.write_nil(expr.id);
+            self.tcx.mk_nil()
         } else {
-            self.write_ty(expr.id, return_ty);
-        }
+            return_ty
+        };
 
         let tcx = self.tcx;
         if !tcx.expr_is_lval(lhs_expr) {
@@ -49,6 +50,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 &format!("invalid expression for left-hand side"))
             .emit();
         }
+        ty
     }
 
     /// Check a potentially overloaded binary operator.
@@ -56,7 +58,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        expr: &'gcx hir::Expr,
                        op: hir::BinOp,
                        lhs_expr: &'gcx hir::Expr,
-                       rhs_expr: &'gcx hir::Expr)
+                       rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
     {
         let tcx = self.tcx;
 
@@ -67,15 +69,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                lhs_expr,
                rhs_expr);
 
-        self.check_expr(lhs_expr);
-        let lhs_ty = self.resolve_type_vars_with_obligations(self.expr_ty(lhs_expr));
+        let lhs_ty = self.check_expr(lhs_expr);
+        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
                 // && and || are a simple case.
                 self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
                 self.check_expr_coercable_to_type(rhs_expr, tcx.mk_bool());
-                self.write_ty(expr.id, tcx.mk_bool());
+                tcx.mk_bool()
             }
             _ => {
                 // Otherwise, we always treat operators as if they are
@@ -107,7 +109,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.demand_suptype(expr.span, builtin_return_ty, return_ty);
                 }
 
-                self.write_ty(expr.id, return_ty);
+                return_ty
             }
         }
     }

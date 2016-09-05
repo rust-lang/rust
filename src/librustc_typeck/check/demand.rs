@@ -53,11 +53,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Checks that the type of `expr` can be coerced to `expected`.
-    pub fn demand_coerce(&self, expr: &hir::Expr, expected: Ty<'tcx>) {
+    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
-        if let Err(e) = self.try_coerce(expr, expected) {
+        if let Err(e) = self.try_coerce(expr, checked_ty, expected) {
             let origin = TypeOrigin::Misc(expr.span);
-            let expr_ty = self.resolve_type_vars_with_obligations(self.expr_ty(expr));
+            let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
             self.report_mismatched_types(origin, expected, expr_ty, e);
         }
     }

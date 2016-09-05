@@ -24,7 +24,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               _capture: hir::CaptureClause,
                               decl: &'gcx hir::FnDecl,
                               body: &'gcx hir::Block,
-                              expected: Expectation<'tcx>) {
+                              expected: Expectation<'tcx>) -> Ty<'tcx> {
         debug!("check_expr_closure(expr={:?},expected={:?})",
                expr,
                expected);
@@ -44,7 +44,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                      opt_kind: Option<ty::ClosureKind>,
                      decl: &'gcx hir::FnDecl,
                      body: &'gcx hir::Block,
-                     expected_sig: Option<ty::FnSig<'tcx>>) {
+                     expected_sig: Option<ty::FnSig<'tcx>>) -> Ty<'tcx> {
         let expr_def_id = self.tcx.map.local_def_id(expr.id);
 
         debug!("check_closure opt_kind={:?} expected_sig={:?}",
@@ -70,8 +70,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.parameter_environment.free_substs,
             upvar_tys);
 
-        self.write_ty(expr.id, closure_type);
-
         let fn_sig = self.tcx.liberate_late_bound_regions(
             self.tcx.region_maps.call_site_extent(expr.id, body.id), &fn_ty.sig);
         let fn_sig =
@@ -93,6 +91,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Some(kind) => { self.tables.borrow_mut().closure_kinds.insert(expr_def_id, kind); }
             None => { }
         }
+
+        closure_type
     }
 
     fn deduce_expectations_from_expected_type(&self, expected_ty: Ty<'tcx>)

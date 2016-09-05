@@ -321,7 +321,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (None, Some(t_cast)) => {
                 if let ty::TyFnDef(.., f) = self.expr_ty.sty {
                     // Attempt a coercion to a fn pointer type.
-                    let res = fcx.try_coerce(self.expr, fcx.tcx.mk_fn_ptr(f));
+                    let res = fcx.try_coerce(self.expr, self.expr_ty, fcx.tcx.mk_fn_ptr(f));
                     if !res.is_ok() {
                         return Err(CastError::NonScalar);
                     }
@@ -471,7 +471,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> bool {
-        fcx.try_coerce(self.expr, self.cast_ty).is_ok()
+        fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty).is_ok()
     }
 
 }
