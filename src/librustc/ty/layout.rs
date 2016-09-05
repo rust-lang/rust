@@ -856,10 +856,10 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
+                let pointee = normalize_associated_type(infcx, pointee);
                 if pointee.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
                     Scalar { value: Pointer, non_zero: non_zero }
                 } else {
-                    let pointee = normalize_associated_type(infcx, pointee);
                     let unsized_part = tcx.struct_tail(pointee);
                     let meta = match unsized_part.sty {
                         ty::TySlice(_) | ty::TyStr => {
