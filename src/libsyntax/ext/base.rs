@@ -464,6 +464,7 @@ pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
 pub trait Resolver {
     fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro>;
+    fn next_node_id(&mut self) -> ast::NodeId;
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion);
     fn add_macro(&mut self, scope: Mark, ident: ast::Ident, ext: Rc<SyntaxExtension>);
@@ -479,10 +480,12 @@ pub enum LoadedMacro {
 }
 
 pub struct DummyResolver;
+
 impl Resolver for DummyResolver {
     fn load_crate(&mut self, _extern_crate: &ast::Item, _allows_macros: bool) -> Vec<LoadedMacro> {
         Vec::new()
     }
+    fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion) {}
     fn add_macro(&mut self, _scope: Mark, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}

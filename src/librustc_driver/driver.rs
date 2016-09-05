@@ -707,8 +707,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                                   &sess.features.borrow())
     });
 
-    let krate = time(sess.time_passes(), "assigning node ids", || resolver.assign_node_ids(krate));
-
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
     }

@@ -195,6 +195,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         krate.module.items = self.expand(items).make_items().into();
         krate.exported_macros = mem::replace(&mut self.cx.exported_macros, Vec::new());
 
+        for def in &mut krate.exported_macros {
+            def.id = self.cx.resolver.next_node_id()
+        }
+
         if self.cx.parse_sess.span_diagnostic.err_count() > err_count {
             self.cx.parse_sess.span_diagnostic.abort_if_errors();
         }
@@ -234,7 +238,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         self.cx.current_expansion = orig_expansion_data;
 
-        let mut placeholder_expander = PlaceholderExpander::new();
+        let mut placeholder_expander = PlaceholderExpander::new(self.cx);
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
                 let expansion = expansion.fold_with(&mut placeholder_expander);
@@ -530,9 +534,14 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
             None => return SmallVector::zero(),
         };
 
-        let (mac, style, attrs) = match stmt.node {
-            StmtKind::Mac(mac) => mac.unwrap(),
-            _ => return noop_fold_stmt(stmt, self),
+        let (mac, style, attrs) = if let StmtKind::Mac(mac) = stmt.node {
+            mac.unwrap()
+        } else {
+            // The placeholder expander gives ids to statements, so we avoid folding the id here.
+            let ast::Stmt { id, node, span } = stmt;
+            return noop_fold_stmt_kind(node, self).into_iter().map(|node| {
+                ast::Stmt { id: id, node: node, span: span }
+            }).collect()
         };
 
         let mut placeholder =
@@ -624,7 +633,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         }
                     }
                 }
-                SmallVector::one(item)
+                noop_fold_item(item, self)
             },
             _ => noop_fold_item(item, self),
         }
@@ -686,6 +695,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
     fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
         noop_fold_item_kind(self.cfg.configure_item_kind(item), self)
+    }
+
+    fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
+        assert_eq!(id, ast::DUMMY_NODE_ID);
+        self.cx.resolver.next_node_id()
     }
 }
 
