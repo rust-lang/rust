@@ -157,7 +157,7 @@ pub trait CrateStore<'tcx> {
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
 
     // impl info
-    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<ty::ImplOrTraitItemId>;
+    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<DefId>;
     fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                           -> Option<ty::TraitRef<'tcx>>;
     fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity;
@@ -329,7 +329,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     }
 
     // impl info
-    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<ty::ImplOrTraitItemId>
+    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<DefId>
         { bug!("impl_or_trait_items") }
     fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                           -> Option<ty::TraitRef<'tcx>> { bug!("impl_trait_ref") }

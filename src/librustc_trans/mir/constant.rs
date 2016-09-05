@@ -248,16 +248,14 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             if let traits::VtableImpl(vtable_impl) = vtable {
                 let name = ccx.tcx().item_name(instance.def);
                 let ac = ccx.tcx().impl_or_trait_items(vtable_impl.impl_def_id)
-                    .iter().filter_map(|id| {
-                        match *id {
-                            ty::ConstTraitItemId(def_id) => {
-                                Some(ccx.tcx().impl_or_trait_item(def_id))
-                            }
+                    .iter().filter_map(|&def_id| {
+                        match ccx.tcx().impl_or_trait_item(def_id) {
+                            ty::ConstTraitItem(ac) => Some(ac),
                             _ => None
                         }
-                    }).find(|ic| ic.name() == name);
+                    }).find(|ic| ic.name == name);
                 if let Some(ac) = ac {
-                    instance = Instance::new(ac.def_id(), vtable_impl.substs);
+                    instance = Instance::new(ac.def_id, vtable_impl.substs);
                 }
             }
         }

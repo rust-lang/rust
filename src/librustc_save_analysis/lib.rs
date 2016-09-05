@@ -374,8 +374,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let qualname = format!("{}::{}", qualname, name);
 
         let def_id = self.tcx.map.local_def_id(id);
-        let decl_id = self.tcx.trait_item_of_item(def_id).and_then(|new_id| {
-            let new_def_id = new_id.def_id();
+        let decl_id = self.tcx.trait_item_of_item(def_id).and_then(|new_def_id| {
             if new_def_id != def_id {
                 Some(new_def_id)
             } else {
@@ -543,14 +542,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 .map(|mr| mr.def_id())
                         }
                         ty::ImplContainer(def_id) => {
-                            let impl_items = self.tcx.impl_or_trait_items(def_id);
-                            Some(impl_items.iter()
-                                           .find(|mr| {
-                                               self.tcx.impl_or_trait_item(mr.def_id()).name() ==
-                                               ti.name()
-                                           })
-                                           .unwrap()
-                                           .def_id())
+                            Some(*self.tcx.impl_or_trait_items(def_id).iter().find(|&&mr| {
+                                self.tcx.impl_or_trait_item(mr).name() == ti.name()
+                            }).unwrap())
                         }
                     }
                 } else {

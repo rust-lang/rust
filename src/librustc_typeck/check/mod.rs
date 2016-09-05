@@ -1348,8 +1348,12 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                            assoc_name: ast::Name)
                                            -> bool
     {
-        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
-        trait_def.associated_type_names.contains(&assoc_name)
+        self.tcx().impl_or_trait_items(trait_def_id).iter().any(|&def_id| {
+            match self.tcx().impl_or_trait_item(def_id) {
+                ty::TypeTraitItem(ref item) => item.name == assoc_name,
+                _ => false
+            }
+        })
     }
 
     fn ty_infer(&self, _span: Span) -> Ty<'tcx> {

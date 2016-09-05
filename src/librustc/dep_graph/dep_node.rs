@@ -108,7 +108,7 @@ pub enum DepNode<D: Clone + Debug> {
     ItemSignature(D),
     FieldTy(D),
     SizedConstraint(D),
-    ImplOrTraitItemIds(D),
+    ImplOrTraitItemDefIds(D),
     InherentImpls(D),
 
     // The set of impls for a given trait. Ultimately, it would be
@@ -157,7 +157,7 @@ impl<D: Clone + Debug> DepNode<D> {
             ImplOrTraitItems,
             ItemSignature,
             FieldTy,
-            ImplOrTraitItemIds,
+            ImplOrTraitItemDefIds,
             InherentImpls,
             TraitImpls,
             ReprHints,
@@ -225,7 +225,7 @@ impl<D: Clone + Debug> DepNode<D> {
             ItemSignature(ref d) => op(d).map(ItemSignature),
             FieldTy(ref d) => op(d).map(FieldTy),
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
-            ImplOrTraitItemIds(ref d) => op(d).map(ImplOrTraitItemIds),
+            ImplOrTraitItemDefIds(ref d) => op(d).map(ImplOrTraitItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),

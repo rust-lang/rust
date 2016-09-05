@@ -235,24 +235,20 @@ pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .iter()
 
         // Filter out non-method items.
-        .filter_map(|item_def_id| {
-            match *item_def_id {
-                ty::MethodTraitItemId(def_id) => Some(def_id),
-                _ => None,
+        .filter_map(|&item_def_id| {
+            match tcx.impl_or_trait_item(item_def_id) {
+                ty::MethodTraitItem(m) => Some(m),
+                _ => None
             }
         })
 
         // Now produce pointers for each remaining method. If the
         // method could never be called from this object, just supply
         // null.
-        .map(|trait_method_def_id| {
+        .map(|trait_method_type| {
             debug!("get_vtable_methods: trait_method_def_id={:?}",
-                   trait_method_def_id);
+                   trait_method_type.def_id);
 
-            let trait_method_type = match tcx.impl_or_trait_item(trait_method_def_id) {
-                ty::MethodTraitItem(m) => m,
-                _ => bug!("should be a method, not other assoc item"),
-            };
             let name = trait_method_type.name;
 
             // Some methods cannot be called on an object; skip those.
@@ -266,7 +262,7 @@ pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // the method may have some early-bound lifetimes, add
             // regions for those
-            let method_substs = Substs::for_item(tcx, trait_method_def_id,
+            let method_substs = Substs::for_item(tcx, trait_method_type.def_id,
                                                  |_, _| tcx.mk_region(ty::ReErased),
                                                  |_, _| tcx.types.err);
 

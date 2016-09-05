@@ -1134,16 +1134,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             return tcx.types.err;
         }
 
-        let mut associated_types: FnvHashSet<(DefId, ast::Name)> =
-            traits::supertraits(tcx, principal)
-            .flat_map(|tr| {
-                let trait_def = tcx.lookup_trait_def(tr.def_id());
-                trait_def.associated_type_names
-                    .clone()
-                    .into_iter()
-                    .map(move |associated_type_name| (tr.def_id(), associated_type_name))
-            })
-            .collect();
+        let mut associated_types = FnvHashSet::default();
+        for tr in traits::supertraits(tcx, principal) {
+            if let Some(trait_id) = tcx.map.as_local_node_id(tr.def_id()) {
+                use collect::trait_associated_type_names;
+
+                associated_types.extend(trait_associated_type_names(tcx, trait_id)
+                    .map(|name| (tr.def_id(), name)))
+            } else {
+                let trait_items = tcx.impl_or_trait_items(tr.def_id());
+                associated_types.extend(trait_items.iter().filter_map(|&def_id| {
+                    match tcx.impl_or_trait_item(def_id) {
+                        ty::TypeTraitItem(ref item) => Some(item.name),
+                        _ => None
+                    }
+                }).map(|name| (tr.def_id(), name)));
+            }
+        }
 
         for projection_bound in &projection_bounds {
             let pair = (projection_bound.0.projection_ty.trait_ref.def_id,

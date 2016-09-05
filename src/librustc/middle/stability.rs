@@ -695,10 +695,9 @@ fn is_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span) -> bool {
 
 fn is_staged_api<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> bool {
     match tcx.trait_item_of_item(id) {
-        Some(ty::MethodTraitItemId(trait_method_id))
-            if trait_method_id != id => {
-                is_staged_api(tcx, trait_method_id)
-            }
+        Some(trait_method_id) if trait_method_id != id => {
+            is_staged_api(tcx, trait_method_id)
+        }
         _ => {
             *tcx.stability.borrow_mut().staged_api.entry(id.krate).or_insert_with(
                 || tcx.sess.cstore.is_staged_api(id.krate))

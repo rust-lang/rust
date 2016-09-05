@@ -166,9 +166,6 @@ pub const tag_item_predicates: usize = 0x95;
 
 pub const tag_unsafety: usize = 0x9a;
 
-pub const tag_associated_type_names: usize = 0x9b;
-pub const tag_associated_type_name: usize = 0x9c;
-
 pub const tag_polarity: usize = 0x9d;
 
 pub const tag_macro_defs: usize = 0x10e; // top-level only

@@ -993,8 +993,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
 
                 self.start_tag(tag_mod_children);
-                let items = tcx.impl_or_trait_items(def_id);
-                self.seq(&items[..], |_, id| id.def_id());
+                tcx.impl_or_trait_items(def_id).encode(self).unwrap();
                 <[def::Export]>::encode(&[], self).unwrap();
                 self.end_tag();
 
@@ -1039,7 +1038,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 tcx.trait_has_default_impl(def_id).encode(self).unwrap();
                 self.end_tag();
 
-                encode_associated_type_names(self, &trait_def.associated_type_names);
                 self.encode_generics(&trait_def.generics, &trait_predicates);
                 self.encode_predicates(&tcx.lookup_super_predicates(def_id),
                                        tag_item_super_predicates);
@@ -1051,8 +1049,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 encode_deprecation(self, depr);
 
                 self.start_tag(tag_mod_children);
-                let items = tcx.impl_or_trait_items(def_id);
-                self.seq(&items[..], |_, id| id.def_id());
+                tcx.impl_or_trait_items(def_id).encode(self).unwrap();
                 <[def::Export]>::encode(&[], self).unwrap();
                 self.end_tag();
 
@@ -1151,7 +1148,6 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                 None
             };
 
-            let trait_item_def_id = trait_item_def_id.def_id();
             self.record(trait_item_def_id,
                         EncodeContext::encode_info_for_impl_item,
                         (impl_id, trait_item_def_id, ast_item));
@@ -1163,8 +1159,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                               trait_items: &[hir::TraitItem]) {
         // Now output the trait item info for each trait item.
         let r = self.tcx.impl_or_trait_items(def_id);
-        for (item_def_id, trait_item) in r.iter().zip(trait_items) {
-            let item_def_id = item_def_id.def_id();
+        for (&item_def_id, trait_item) in r.iter().zip(trait_items) {
             assert!(item_def_id.is_local());
             self.record(item_def_id,
                         EncodeContext::encode_info_for_trait_item,
@@ -1328,12 +1323,6 @@ fn encode_item_index(ecx: &mut EncodeContext, index: IndexData) {
 fn encode_attributes(ecx: &mut EncodeContext, attrs: &[ast::Attribute]) {
     ecx.start_tag(tag_attributes);
     attrs.encode(ecx).unwrap();
-    ecx.end_tag();
-}
-
-fn encode_associated_type_names(ecx: &mut EncodeContext, names: &[Name]) {
-    ecx.start_tag(tag_associated_type_names);
-    names.encode(ecx).unwrap();
     ecx.end_tag();
 }
 
