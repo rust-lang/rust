@@ -900,7 +900,7 @@ then
     fi
 
     CMD="${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF}"
-    LRV=`$CMD --version`
+    LRV=`LD_LIBRARY_PATH=${CFG_LOCAL_RUST_ROOT}/lib $CMD --version`
     if [ $? -ne 0 ]
     then
         step_msg "failure while running $CMD --version"
