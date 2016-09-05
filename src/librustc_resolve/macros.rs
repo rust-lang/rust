@@ -41,6 +41,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.macro_loader.load_crate(extern_crate, allows_macros)
     }
 
+    fn next_node_id(&mut self) -> ast::NodeId {
+        self.session.next_node_id()
+    }
+
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
         expansion.visit_with(&mut ExpansionVisitor {
             current_module: self.expansion_data[mark.as_u32() as usize].module.clone(),
