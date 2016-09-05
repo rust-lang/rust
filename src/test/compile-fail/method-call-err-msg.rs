@@ -23,10 +23,9 @@ fn main() {
      //~^ NOTE expected 0 parameters
      .one()     //~ ERROR this function takes 1 parameter but 0 parameters were supplied
      //~^ NOTE the following parameter type was expected
-     //~| NOTE expected 1 parameter
      .two(0);   //~ ERROR this function takes 2 parameters but 1 parameter was supplied
      //~^ NOTE the following parameter types were expected
-     //~| NOTE expected 2 parameters
+     //~| NOTE isize, isize
 
     let y = Foo;
     y.zero()
