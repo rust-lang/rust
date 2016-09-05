@@ -615,16 +615,20 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
                 let mut paths = (*self.cx.syntax_env.paths()).clone();
                 paths.mod_path.push(item.ident);
-                if item.span.contains(inner) {
+
+                // Detect if this is an inline module (`mod m { ... }` as opposed to `mod m;`).
+                // In the non-inline case, `inner` is never the dummy span (c.f. `parse_item_mod`).
+                // Thus, if `inner` is the dummy span, we know the module is inline.
+                let inline_module = item.span.contains(inner) || inner == syntax_pos::DUMMY_SP;
+
+                if inline_module {
                     paths.directory.push(&*{
                         ::attr::first_attr_value_str_by_name(&item.attrs, "path")
                             .unwrap_or(item.ident.name.as_str())
                     });
                 } else {
-                    paths.directory = match inner {
-                        syntax_pos::DUMMY_SP => PathBuf::new(),
-                        _ => PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner)),
-                    };
+                    paths.directory =
+                        PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner));
                     paths.directory.pop();
                 }
 
