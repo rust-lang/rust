@@ -55,7 +55,6 @@
 //! give a callback fn, rather than taking a closure: it allows us to
 //! easily control precisely what data is given to that fn.
 
-use common::tag_items_data_item;
 use encoder::EncodeContext;
 use index::IndexData;
 use rustc::dep_graph::DepNode;
@@ -120,7 +119,8 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         let position = self.ecx.mark_stable_position();
         self.items.record(id, position);
         let _task = self.tcx.dep_graph.in_task(DepNode::MetaData(id));
-        self.ecx.start_tag(tag_items_data_item).unwrap();
+        // FIXME(eddyb) Avoid wrapping the entries in docs.
+        self.ecx.start_tag(0).unwrap();
         data.read(self.tcx);
         op(&mut self.ecx, data);
         self.ecx.end_tag().unwrap();

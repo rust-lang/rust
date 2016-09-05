@@ -33,7 +33,7 @@ use rustc_serialize::{Decodable, Encodable};
 // Top-level methods.
 
 pub fn encode_inlined_item(ecx: &mut EncodeContext, ii: InlinedItemRef) {
-    ecx.tag(::common::tag_ast, |ecx| {
+    ecx.tag(::common::item_tag::ast, |ecx| {
         let mut visitor = IdRangeComputingVisitor::new();
         match ii {
             InlinedItemRef::Item(_, i) => visitor.visit_item(i),

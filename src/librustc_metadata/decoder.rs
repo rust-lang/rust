@@ -324,53 +324,53 @@ impl CrateMetadata {
 }
 
 pub fn load_index(data: &[u8]) -> index::Index {
-    index::Index::from_rbml(rbml::Doc::new(data).get(tag_index))
+    index::Index::from_rbml(rbml::Doc::new(data).get(root_tag::index))
 }
 
 pub fn crate_rustc_version(data: &[u8]) -> Option<String> {
     let doc = rbml::Doc::new(data);
-    reader::maybe_get_doc(doc, tag_rustc_version).map(|s| {
+    reader::maybe_get_doc(doc, root_tag::rustc_version).map(|s| {
         str::from_utf8(&s.data[s.start..s.end]).unwrap().to_string()
     })
 }
 
 pub fn load_xrefs(data: &[u8]) -> index::DenseIndex {
-    let index = rbml::Doc::new(data).get(tag_xref_index);
+    let index = rbml::Doc::new(data).get(root_tag::xref_index);
     index::DenseIndex::from_buf(index.data, index.start, index.end)
 }
 
 // Go through each item in the metadata and create a map from that
 // item's def-key to the item's DefIndex.
 pub fn load_key_map(data: &[u8]) -> FnvHashMap<DefKey, DefIndex> {
-    rbml::Doc::new(data).get(tag_items).get(tag_items_data).children().map(|item_doc| {
+    rbml::Doc::new(data).get(root_tag::items).children().map(|item_doc| {
         // load def-key from item
         let key = item_def_key(item_doc);
 
         // load def-index from item
-        (key, item_doc.get(tag_def_index).decoder().decode())
+        (key, item_doc.get(item_tag::def_index).decoder().decode())
     }).collect()
 }
 
 fn item_family(item: rbml::Doc) -> Family {
-    item.get(tag_items_data_item_family).decoder().decode()
+    item.get(item_tag::family).decoder().decode()
 }
 
 fn item_visibility(item: rbml::Doc) -> ty::Visibility {
-    match reader::maybe_get_doc(item, tag_items_data_item_visibility) {
+    match reader::maybe_get_doc(item, item_tag::visibility) {
         None => ty::Visibility::Public,
         Some(visibility_doc) => visibility_doc.decoder().decode()
     }
 }
 
 fn item_defaultness(item: rbml::Doc) -> hir::Defaultness {
-    match reader::maybe_get_doc(item, tag_items_data_item_defaultness) {
+    match reader::maybe_get_doc(item, item_tag::defaultness) {
         None => hir::Defaultness::Default, // should occur only for default impls on traits
         Some(defaultness_doc) => defaultness_doc.decoder().decode()
     }
 }
 
 fn item_parent_item(cdata: Cmd, d: rbml::Doc) -> Option<DefId> {
-    reader::maybe_get_doc(d, tag_items_data_parent_item).map(|did| {
+    reader::maybe_get_doc(d, item_tag::parent_item).map(|did| {
         let mut dcx = did.decoder();
         dcx.cdata = Some(cdata);
         dcx.decode()
@@ -378,7 +378,7 @@ fn item_parent_item(cdata: Cmd, d: rbml::Doc) -> Option<DefId> {
 }
 
 fn item_require_parent_item(cdata: Cmd, d: rbml::Doc) -> DefId {
-    let mut dcx = d.get(tag_items_data_parent_item).decoder();
+    let mut dcx = d.get(item_tag::parent_item).decoder();
     dcx.cdata = Some(cdata);
     dcx.decode()
 }
@@ -386,17 +386,17 @@ fn item_require_parent_item(cdata: Cmd, d: rbml::Doc) -> DefId {
 fn item_def_id(d: rbml::Doc, cdata: Cmd) -> DefId {
     DefId {
         krate: cdata.cnum,
-        index: d.get(tag_def_index).decoder().decode()
+        index: d.get(item_tag::def_index).decoder().decode()
     }
 }
 
 fn doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd) -> Ty<'tcx> {
-    maybe_doc_type(doc, tcx, cdata).expect("missing tag_items_data_item_type")
+    maybe_doc_type(doc, tcx, cdata).expect("missing item_tag::ty")
 }
 
 fn maybe_doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd)
                             -> Option<Ty<'tcx>> {
-    reader::maybe_get_doc(doc, tag_items_data_item_type).map(|tp| {
+    reader::maybe_get_doc(doc, item_tag::ty).map(|tp| {
         let mut dcx = tp.decoder();
         dcx.tcx = Some(tcx);
         dcx.cdata = Some(cdata);
@@ -417,7 +417,7 @@ fn item_name(item: rbml::Doc) -> ast::Name {
 }
 
 fn maybe_item_name(item: rbml::Doc) -> Option<ast::Name> {
-    reader::maybe_get_doc(item, tag_paths_data_name).map(|name| {
+    reader::maybe_get_doc(item, item_tag::name).map(|name| {
         name.decoder().decode()
     })
 }
@@ -459,9 +459,9 @@ pub fn get_trait_def<'a, 'tcx>(cdata: Cmd,
 {
     let item_doc = cdata.lookup_item(item_id);
     let generics = doc_generics(item_doc, tcx, cdata);
-    let unsafety = item_doc.get(tag_unsafety).decoder().decode();
-    let paren_sugar = item_doc.get(tag_paren_sugar).decoder().decode();
-    let trait_ref = doc_trait_ref(item_doc.get(tag_item_trait_ref), tcx, cdata);
+    let unsafety = item_doc.get(item_tag::unsafety).decoder().decode();
+    let paren_sugar = item_doc.get(item_tag::paren_sugar).decoder().decode();
+    let trait_ref = doc_trait_ref(item_doc.get(item_tag::trait_ref), tcx, cdata);
     let def_path = def_path(cdata, item_id).unwrap();
 
     ty::TraitDef::new(unsafety, paren_sugar, generics, trait_ref,
@@ -481,12 +481,12 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
         }
     }
     fn get_enum_variants<'tcx>(cdata: Cmd, doc: rbml::Doc) -> Vec<ty::VariantDefData<'tcx, 'tcx>> {
-        let mut dcx = doc.get(tag_mod_children).decoder();
+        let mut dcx = doc.get(item_tag::children).decoder();
         dcx.cdata = Some(cdata);
 
         dcx.seq().map(|did: DefId| {
             let item = cdata.lookup_item(did.index);
-            let disr = item.get(tag_disr_val).decoder().decode();
+            let disr = item.get(item_tag::disr_val).decoder().decode();
             ty::VariantDefData {
                 did: did,
                 name: item_name(item),
@@ -497,7 +497,7 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
         }).collect()
     }
     fn get_variant_fields<'tcx>(cdata: Cmd, doc: rbml::Doc) -> Vec<ty::FieldDefData<'tcx, 'tcx>> {
-        let mut dcx = doc.get(tag_item_fields).decoder();
+        let mut dcx = doc.get(item_tag::fields).decoder();
         dcx.cdata = Some(cdata);
 
         dcx.seq().map(|did: DefId| {
@@ -531,7 +531,7 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
         }
         Struct(..) => {
             // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
-            ctor_did = reader::maybe_get_doc(doc, tag_items_data_item_struct_ctor).map(|ctor_doc| {
+            ctor_did = reader::maybe_get_doc(doc, item_tag::struct_ctor).map(|ctor_doc| {
                 let mut dcx = ctor_doc.decoder();
                 dcx.cdata = Some(cdata);
                 dcx.decode()
@@ -595,7 +595,7 @@ pub fn get_predicates<'a, 'tcx>(cdata: Cmd,
                                 -> ty::GenericPredicates<'tcx>
 {
     let item_doc = cdata.lookup_item(item_id);
-    doc_predicates(item_doc, tcx, cdata, tag_item_predicates)
+    doc_predicates(item_doc, tcx, cdata, item_tag::predicates)
 }
 
 pub fn get_super_predicates<'a, 'tcx>(cdata: Cmd,
@@ -604,7 +604,7 @@ pub fn get_super_predicates<'a, 'tcx>(cdata: Cmd,
                                       -> ty::GenericPredicates<'tcx>
 {
     let item_doc = cdata.lookup_item(item_id);
-    doc_predicates(item_doc, tcx, cdata, tag_item_super_predicates)
+    doc_predicates(item_doc, tcx, cdata, item_tag::super_predicates)
 }
 
 pub fn get_generics<'a, 'tcx>(cdata: Cmd,
@@ -625,14 +625,14 @@ pub fn get_type<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
 pub fn get_stability(cdata: Cmd, id: DefIndex) -> Option<attr::Stability> {
     let item = cdata.lookup_item(id);
-    reader::maybe_get_doc(item, tag_items_data_item_stability).map(|doc| {
+    reader::maybe_get_doc(item, item_tag::stability).map(|doc| {
         doc.decoder().decode()
     })
 }
 
 pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
     let item = cdata.lookup_item(id);
-    reader::maybe_get_doc(item, tag_items_data_item_deprecation).map(|doc| {
+    reader::maybe_get_doc(item, item_tag::deprecation).map(|doc| {
         doc.decoder().decode()
     })
 }
@@ -643,7 +643,7 @@ pub fn get_visibility(cdata: Cmd, id: DefIndex) -> ty::Visibility {
 
 pub fn get_parent_impl(cdata: Cmd, id: DefIndex) -> Option<DefId> {
     let item = cdata.lookup_item(id);
-    reader::maybe_get_doc(item, tag_items_data_parent_impl).map(|doc| {
+    reader::maybe_get_doc(item, item_tag::parent_impl).map(|doc| {
         let mut dcx = doc.decoder();
         dcx.cdata = Some(cdata);
         dcx.decode()
@@ -652,13 +652,13 @@ pub fn get_parent_impl(cdata: Cmd, id: DefIndex) -> Option<DefId> {
 
 pub fn get_repr_attrs(cdata: Cmd, id: DefIndex) -> Vec<attr::ReprAttr> {
     let item = cdata.lookup_item(id);
-    reader::maybe_get_doc(item, tag_items_data_item_repr).map_or(vec![], |doc| {
+    reader::maybe_get_doc(item, item_tag::repr).map_or(vec![], |doc| {
         doc.decoder().decode()
     })
 }
 
 pub fn get_impl_polarity(cdata: Cmd, id: DefIndex) -> hir::ImplPolarity {
-    cdata.lookup_item(id).get(tag_polarity).decoder().decode()
+    cdata.lookup_item(id).get(item_tag::polarity).decoder().decode()
 }
 
 pub fn get_custom_coerce_unsized_kind(
@@ -667,7 +667,7 @@ pub fn get_custom_coerce_unsized_kind(
     -> Option<ty::adjustment::CustomCoerceUnsized>
 {
     let item_doc = cdata.lookup_item(id);
-    reader::maybe_get_doc(item_doc, tag_impl_coerce_unsized_kind).map(|kind_doc| {
+    reader::maybe_get_doc(item_doc, item_tag::impl_coerce_unsized_kind).map(|kind_doc| {
         kind_doc.decoder().decode()
     })
 }
@@ -678,14 +678,14 @@ pub fn get_impl_trait<'a, 'tcx>(cdata: Cmd,
                                 -> Option<ty::TraitRef<'tcx>>
 {
     let item_doc = cdata.lookup_item(id);
-    reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
+    reader::maybe_get_doc(item_doc, item_tag::trait_ref).map(|tp| {
         doc_trait_ref(tp, tcx, cdata)
     })
 }
 
 /// Iterates over the language items in the given crate.
 pub fn get_lang_items(cdata: Cmd) -> Vec<(DefIndex, usize)> {
-    rbml::Doc::new(cdata.data()).get(tag_lang_items).decoder().decode()
+    rbml::Doc::new(cdata.data()).get(root_tag::lang_items).decoder().decode()
 }
 
 
@@ -702,7 +702,7 @@ pub fn each_child_of_item<F, G>(cdata: Cmd, id: DefIndex,
         Some(item_doc) => item_doc,
     };
 
-    let mut dcx = match reader::maybe_get_doc(item_doc, tag_mod_children) {
+    let mut dcx = match reader::maybe_get_doc(item_doc, item_tag::children) {
         Some(doc) => doc.decoder(),
         None => return
     };
@@ -782,7 +782,7 @@ pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id:
     };
     let mut parent_def_path = def_path(cdata, id).unwrap();
     parent_def_path.data.pop();
-    if let Some(ast_doc) = reader::maybe_get_doc(item_doc, tag_ast as usize) {
+    if let Some(ast_doc) = reader::maybe_get_doc(item_doc, item_tag::ast as usize) {
         let ii = decode_inlined_item(cdata,
                                      tcx,
                                      parent_def_path,
@@ -800,7 +800,7 @@ pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id:
         let mut grandparent_def_path = parent_def_path;
         grandparent_def_path.data.pop();
         let parent_doc = cdata.lookup_item(parent_did.index);
-        if let Some(ast_doc) = reader::maybe_get_doc(parent_doc, tag_ast as usize) {
+        if let Some(ast_doc) = reader::maybe_get_doc(parent_doc, item_tag::ast as usize) {
             let ii = decode_inlined_item(cdata,
                                          tcx,
                                          grandparent_def_path,
@@ -817,7 +817,7 @@ pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id:
 
 pub fn is_item_mir_available<'tcx>(cdata: Cmd, id: DefIndex) -> bool {
     if let Some(item_doc) = cdata.get_item(id) {
-        return reader::maybe_get_doc(item_doc, tag_mir as usize).is_some();
+        return reader::maybe_get_doc(item_doc, item_tag::mir as usize).is_some();
     }
 
     false
@@ -829,7 +829,7 @@ pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
                                     -> Option<Mir<'tcx>> {
     let item_doc = cdata.lookup_item(id);
 
-    reader::maybe_get_doc(item_doc, tag_mir).map(|mir_doc| {
+    reader::maybe_get_doc(item_doc, item_tag::mir).map(|mir_doc| {
         let mut dcx = mir_doc.decoder();
         dcx.tcx = Some(tcx);
         dcx.cdata = Some(cdata);
@@ -839,7 +839,7 @@ pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
 
 fn get_explicit_self<'a, 'tcx>(cdata: Cmd, item: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                -> ty::ExplicitSelfCategory<'tcx> {
-    let mut dcx = item.get(tag_item_trait_method_explicit_self).decoder();
+    let mut dcx = item.get(item_tag::trait_method_explicit_self).decoder();
     dcx.cdata = Some(cdata);
     dcx.tcx = Some(tcx);
 
@@ -881,12 +881,12 @@ pub fn get_impl_or_trait_item<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a
                 defaultness: defaultness,
                 def_id: def_id,
                 container: container,
-                has_value: item_doc.get(tag_item_trait_item_has_body).decoder().decode(),
+                has_value: item_doc.get(item_tag::trait_item_has_body).decoder().decode(),
             }))
         }
         Family::Method => {
             let generics = doc_generics(item_doc, tcx, cdata);
-            let predicates = doc_predicates(item_doc, tcx, cdata, tag_item_predicates);
+            let predicates = doc_predicates(item_doc, tcx, cdata, item_tag::predicates);
             let ity = tcx.lookup_item_type(def_id).ty;
             let fty = match ity.sty {
                 ty::TyFnDef(.., fty) => fty,
@@ -904,7 +904,7 @@ pub fn get_impl_or_trait_item<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a
                 explicit_self: explicit_self,
                 vis: vis,
                 defaultness: defaultness,
-                has_body: item_doc.get(tag_item_trait_item_has_body).decoder().decode(),
+                has_body: item_doc.get(item_tag::trait_item_has_body).decoder().decode(),
                 def_id: def_id,
                 container: container,
             }))
@@ -926,13 +926,13 @@ pub fn get_impl_or_trait_item<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a
 
 pub fn get_item_variances(cdata: Cmd, id: DefIndex) -> Vec<ty::Variance> {
     let item_doc = cdata.lookup_item(id);
-    item_doc.get(tag_item_variances).decoder().decode()
+    item_doc.get(item_tag::variances).decoder().decode()
 }
 
 pub fn get_struct_ctor_def_id(cdata: Cmd, node_id: DefIndex) -> Option<DefId>
 {
     let item = cdata.lookup_item(node_id);
-    reader::maybe_get_doc(item, tag_items_data_item_struct_ctor).map(|ctor_doc| {
+    reader::maybe_get_doc(item, item_tag::struct_ctor).map(|ctor_doc| {
         let mut dcx = ctor_doc.decoder();
         dcx.cdata = Some(cdata);
         dcx.decode()
@@ -946,7 +946,7 @@ pub fn get_tuple_struct_definition_if_ctor(cdata: Cmd,
     -> Option<DefId>
 {
     let item = cdata.lookup_item(node_id);
-    reader::maybe_get_doc(item, tag_items_data_item_is_tuple_struct_ctor).and_then(|doc| {
+    reader::maybe_get_doc(item, item_tag::is_tuple_struct_ctor).and_then(|doc| {
         if doc.decoder().decode() {
             Some(item_require_parent_item(cdata, item))
         } else {
@@ -968,7 +968,7 @@ pub fn get_item_attrs(cdata: Cmd,
 }
 
 pub fn get_struct_field_names(cdata: Cmd, id: DefIndex) -> Vec<ast::Name> {
-    let mut dcx = cdata.lookup_item(id).get(tag_item_fields).decoder();
+    let mut dcx = cdata.lookup_item(id).get(item_tag::fields).decoder();
     dcx.cdata = Some(cdata);
 
     dcx.seq().map(|did: DefId| {
@@ -977,7 +977,7 @@ pub fn get_struct_field_names(cdata: Cmd, id: DefIndex) -> Vec<ast::Name> {
 }
 
 fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
-    reader::maybe_get_doc(md, tag_attributes).map_or(vec![], |attrs_doc| {
+    reader::maybe_get_doc(md, item_tag::attributes).map_or(vec![], |attrs_doc| {
         let mut attrs = attrs_doc.decoder().decode::<Vec<ast::Attribute>>();
 
         // Need new unique IDs: old thread-local IDs won't map to new threads.
@@ -998,7 +998,7 @@ pub struct CrateDep {
 }
 
 pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
-    let dcx = rbml::Doc::new(data).get(tag_crate_deps).decoder();
+    let dcx = rbml::Doc::new(data).get(root_tag::crate_deps).decoder();
 
     dcx.seq().enumerate().map(|(crate_num, (name, hash, explicitly_linked))| {
         CrateDep {
@@ -1021,29 +1021,29 @@ fn list_crate_deps(data: &[u8], out: &mut io::Write) -> io::Result<()> {
 
 pub fn maybe_get_crate_hash(data: &[u8]) -> Option<Svh> {
     let cratedoc = rbml::Doc::new(data);
-    reader::maybe_get_doc(cratedoc, tag_crate_hash).map(|doc| {
+    reader::maybe_get_doc(cratedoc, root_tag::crate_hash).map(|doc| {
         doc.decoder().decode()
     })
 }
 
 pub fn get_crate_hash(data: &[u8]) -> Svh {
-    rbml::Doc::new(data).get(tag_crate_hash).decoder().decode()
+    rbml::Doc::new(data).get(root_tag::crate_hash).decoder().decode()
 }
 
 pub fn maybe_get_crate_name(data: &[u8]) -> Option<String> {
     let cratedoc = rbml::Doc::new(data);
-    reader::maybe_get_doc(cratedoc, tag_crate_crate_name).map(|doc| {
+    reader::maybe_get_doc(cratedoc, root_tag::crate_crate_name).map(|doc| {
         doc.decoder().decode()
     })
 }
 
 pub fn get_crate_disambiguator(data: &[u8]) -> String {
-    rbml::Doc::new(data).get(tag_crate_disambiguator).decoder().decode()
+    rbml::Doc::new(data).get(root_tag::crate_disambiguator).decoder().decode()
 }
 
 pub fn get_crate_triple(data: &[u8]) -> Option<String> {
     let cratedoc = rbml::Doc::new(data);
-    let triple_doc = reader::maybe_get_doc(cratedoc, tag_crate_triple);
+    let triple_doc = reader::maybe_get_doc(cratedoc, root_tag::crate_triple);
     triple_doc.map(|s| s.decoder().decode())
 }
 
@@ -1073,7 +1073,7 @@ pub fn each_inherent_implementation_for_type<F>(cdata: Cmd,
     where F: FnMut(DefId),
 {
     let item_doc = cdata.lookup_item(id);
-    let mut dcx = item_doc.get(tag_items_data_item_inherent_impls).decoder();
+    let mut dcx = item_doc.get(item_tag::inherent_impls).decoder();
     dcx.cdata = Some(cdata);
 
     for impl_def_id in dcx.seq() {
@@ -1095,7 +1095,7 @@ pub fn each_implementation_for_trait<F>(cdata: Cmd,
     };
 
     // FIXME(eddyb) Make this O(1) instead of O(n).
-    for trait_doc in rbml::Doc::new(cdata.data()).get(tag_impls).children() {
+    for trait_doc in rbml::Doc::new(cdata.data()).get(root_tag::impls).children() {
         let mut dcx = trait_doc.decoder();
         dcx.cdata = Some(cdata);
 
@@ -1128,18 +1128,18 @@ pub fn get_trait_of_item(cdata: Cmd, id: DefIndex) -> Option<DefId> {
 
 pub fn get_native_libraries(cdata: Cmd)
                             -> Vec<(cstore::NativeLibraryKind, String)> {
-    rbml::Doc::new(cdata.data()).get(tag_native_libraries).decoder().decode()
+    rbml::Doc::new(cdata.data()).get(root_tag::native_libraries).decoder().decode()
 }
 
 pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<DefIndex> {
-    reader::maybe_get_doc(rbml::Doc::new(data), tag_plugin_registrar_fn)
+    reader::maybe_get_doc(rbml::Doc::new(data), root_tag::plugin_registrar_fn)
         .map(|doc| doc.decoder().decode())
 }
 
 pub fn each_exported_macro<F>(data: &[u8], mut f: F) where
     F: FnMut(ast::Name, Vec<ast::Attribute>, Span, String) -> bool,
 {
-    let dcx = rbml::Doc::new(data).get(tag_macro_defs).decoder();
+    let dcx = rbml::Doc::new(data).get(root_tag::macro_defs).decoder();
     for (name, attrs, span, body) in dcx.seq() {
         if !f(name, attrs, span, body) {
             break;
@@ -1148,14 +1148,14 @@ pub fn each_exported_macro<F>(data: &[u8], mut f: F) where
 }
 
 pub fn get_derive_registrar_fn(data: &[u8]) -> Option<DefIndex> {
-    reader::maybe_get_doc(rbml::Doc::new(data), tag_macro_derive_registrar)
+    reader::maybe_get_doc(rbml::Doc::new(data), root_tag::macro_derive_registrar)
         .map(|doc| doc.decoder().decode())
 }
 
 pub fn get_dylib_dependency_formats(cdata: Cmd)
     -> Vec<(CrateNum, LinkagePreference)>
 {
-    let dcx = rbml::Doc::new(cdata.data()).get(tag_dylib_dependency_formats).decoder();
+    let dcx = rbml::Doc::new(cdata.data()).get(root_tag::dylib_dependency_formats).decoder();
 
     dcx.seq::<Option<_>>().enumerate().flat_map(|(i, link)| {
         let cnum = CrateNum::new(i + 1);
@@ -1164,19 +1164,19 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
 }
 
 pub fn get_missing_lang_items(cdata: Cmd) -> Vec<lang_items::LangItem> {
-    rbml::Doc::new(cdata.data()).get(tag_lang_items_missing).decoder().decode()
+    rbml::Doc::new(cdata.data()).get(root_tag::lang_items_missing).decoder().decode()
 }
 
 pub fn get_method_arg_names(cdata: Cmd, id: DefIndex) -> Vec<String> {
     let method_doc = cdata.lookup_item(id);
-    match reader::maybe_get_doc(method_doc, tag_method_argument_names) {
+    match reader::maybe_get_doc(method_doc, item_tag::method_argument_names) {
         Some(args_doc) => args_doc.decoder().decode(),
         None => vec![],
     }
 }
 
 pub fn get_reachable_ids(cdata: Cmd) -> Vec<DefId> {
-    let dcx = rbml::Doc::new(cdata.data()).get(tag_reachable_ids).decoder();
+    let dcx = rbml::Doc::new(cdata.data()).get(root_tag::reachable_ids).decoder();
 
     dcx.seq().map(|index| {
         DefId {
@@ -1187,7 +1187,7 @@ pub fn get_reachable_ids(cdata: Cmd) -> Vec<DefId> {
 }
 
 pub fn is_const_fn(cdata: Cmd, id: DefIndex) -> bool {
-    match reader::maybe_get_doc(cdata.lookup_item(id), tag_items_data_item_constness) {
+    match reader::maybe_get_doc(cdata.lookup_item(id), item_tag::constness) {
         None => false,
         Some(doc) => {
             match doc.decoder().decode() {
@@ -1235,7 +1235,7 @@ fn doc_generics<'a, 'tcx>(base_doc: rbml::Doc,
                           cdata: Cmd)
                           -> &'tcx ty::Generics<'tcx>
 {
-    let mut dcx = base_doc.get(tag_item_generics).decoder();
+    let mut dcx = base_doc.get(item_tag::generics).decoder();
     dcx.tcx = Some(tcx);
     dcx.cdata = Some(cdata);
     tcx.alloc_generics(dcx.decode())
@@ -1268,7 +1268,7 @@ fn doc_predicates<'a, 'tcx>(base_doc: rbml::Doc,
 }
 
 pub fn is_defaulted_trait(cdata: Cmd, trait_id: DefIndex) -> bool {
-    cdata.lookup_item(trait_id).get(tag_defaulted_trait).decoder().decode()
+    cdata.lookup_item(trait_id).get(item_tag::defaulted_trait).decoder().decode()
 }
 
 pub fn is_default_impl(cdata: Cmd, impl_id: DefIndex) -> bool {
@@ -1276,17 +1276,17 @@ pub fn is_default_impl(cdata: Cmd, impl_id: DefIndex) -> bool {
 }
 
 pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<syntax_pos::FileMap> {
-    rbml::Doc::new(metadata).get(tag_codemap).decoder().decode()
+    rbml::Doc::new(metadata).get(root_tag::codemap).decoder().decode()
 }
 
 pub fn closure_kind(cdata: Cmd, closure_id: DefIndex) -> ty::ClosureKind {
-    cdata.lookup_item(closure_id).get(tag_items_closure_kind).decoder().decode()
+    cdata.lookup_item(closure_id).get(item_tag::closure_kind).decoder().decode()
 }
 
 pub fn closure_ty<'a, 'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                             -> ty::ClosureTy<'tcx> {
     let closure_doc = cdata.lookup_item(closure_id);
-    let closure_ty_doc = closure_doc.get(tag_items_closure_ty);
+    let closure_ty_doc = closure_doc.get(item_tag::closure_ty);
     let mut dcx = closure_ty_doc.decoder();
     dcx.tcx = Some(tcx);
     dcx.cdata = Some(cdata);
@@ -1300,18 +1300,9 @@ pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
 }
 
 fn item_def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
-    match reader::maybe_get_doc(item_doc, tag_def_key) {
-        Some(def_key_doc) => {
-            let simple_key = def_key_doc.decoder().decode();
-            let name = maybe_item_name(item_doc).map(|name| name.as_str());
-            def_key::recover_def_key(simple_key, name)
-        }
-        None => {
-            bug!("failed to find block with tag {:?} for item with family {:?}",
-                   tag_def_key,
-                   item_family(item_doc))
-        }
-    }
+    let simple_key = item_doc.get(item_tag::def_key).decoder().decode();
+    let name = maybe_item_name(item_doc).map(|name| name.as_str());
+    def_key::recover_def_key(simple_key, name)
 }
 
 // Returns the path leading to the thing with this `id`. Note that
@@ -1327,5 +1318,5 @@ pub fn def_path(cdata: Cmd, id: DefIndex) -> Option<hir_map::DefPath> {
 }
 
 pub fn get_panic_strategy(data: &[u8]) -> PanicStrategy {
-    rbml::Doc::new(data).get(tag_panic_strategy).decoder().decode()
+    rbml::Doc::new(data).get(root_tag::panic_strategy).decoder().decode()
 }
