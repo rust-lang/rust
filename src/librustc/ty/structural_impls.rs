@@ -482,7 +482,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyRawPtr(tm) => ty::TyRawPtr(tm.fold_with(folder)),
             ty::TyArray(typ, sz) => ty::TyArray(typ.fold_with(folder), sz),
             ty::TySlice(typ) => ty::TySlice(typ.fold_with(folder)),
-            ty::TyEnum(tid, substs) => ty::TyEnum(tid, substs.fold_with(folder)),
+            ty::TyAdt(tid, substs) => ty::TyAdt(tid, substs.fold_with(folder)),
             ty::TyTrait(ref trait_ty) => ty::TyTrait(trait_ty.fold_with(folder)),
             ty::TyTuple(ts) => ty::TyTuple(ts.fold_with(folder)),
             ty::TyFnDef(def_id, substs, f) => {
@@ -494,8 +494,6 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyRef(ref r, tm) => {
                 ty::TyRef(r.fold_with(folder), tm.fold_with(folder))
             }
-            ty::TyStruct(did, substs) => ty::TyStruct(did, substs.fold_with(folder)),
-            ty::TyUnion(did, substs) => ty::TyUnion(did, substs.fold_with(folder)),
             ty::TyClosure(did, substs) => ty::TyClosure(did, substs.fold_with(folder)),
             ty::TyProjection(ref data) => ty::TyProjection(data.fold_with(folder)),
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
@@ -516,7 +514,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyRawPtr(ref tm) => tm.visit_with(visitor),
             ty::TyArray(typ, _sz) => typ.visit_with(visitor),
             ty::TySlice(typ) => typ.visit_with(visitor),
-            ty::TyEnum(_tid, ref substs) => substs.visit_with(visitor),
+            ty::TyAdt(_, substs) => substs.visit_with(visitor),
             ty::TyTrait(ref trait_ty) => trait_ty.visit_with(visitor),
             ty::TyTuple(ts) => ts.visit_with(visitor),
             ty::TyFnDef(_, substs, ref f) => {
@@ -524,8 +522,6 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             }
             ty::TyFnPtr(ref f) => f.visit_with(visitor),
             ty::TyRef(r, ref tm) => r.visit_with(visitor) || tm.visit_with(visitor),
-            ty::TyStruct(_did, ref substs) => substs.visit_with(visitor),
-            ty::TyUnion(_did, ref substs) => substs.visit_with(visitor),
             ty::TyClosure(_did, ref substs) => substs.visit_with(visitor),
             ty::TyProjection(ref data) => data.visit_with(visitor),
             ty::TyAnon(_, ref substs) => substs.visit_with(visitor),

@@ -11,7 +11,7 @@
 use hir::def_id::DefId;
 use ty::subst::{self, Subst, Substs};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
-use ty::{TyBool, TyChar, TyStruct, TyUnion, TyEnum};
+use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::TyClosure;
@@ -868,7 +868,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
-            TyEnum(def, substs) | TyStruct(def, substs) | TyUnion(def, substs) => {
+            TyAdt(def, substs) => {
                 ty::tls::with(|tcx| {
                     if def.did.is_local() &&
                           !tcx.tcache.borrow().contains_key(&def.did) {

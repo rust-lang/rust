@@ -156,7 +156,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyInt(..) |
             ty::TyUint(..) |
             ty::TyFloat(..) |
-            ty::TyEnum(..) |
+            ty::TyAdt(..) |
             ty::TyBox(..) |
             ty::TyStr |
             ty::TyError |
@@ -167,8 +167,6 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyFnDef(..) |
             ty::TyFnPtr(_) |
             ty::TyTrait(..) |
-            ty::TyStruct(..) |
-            ty::TyUnion(..) |
             ty::TyClosure(..) |
             ty::TyNever |
             ty::TyTuple(..) |

@@ -408,7 +408,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "discriminant_value") => {
             let val_ty = substs.type_at(0);
             match val_ty.sty {
-                ty::TyEnum(..) => {
+                ty::TyAdt(adt, ..) if adt.is_enum() => {
                     let repr = adt::represent_type(ccx, val_ty);
                     adt::trans_get_discr(bcx, &repr, llargs[0],
                                          Some(llret_ty), true)

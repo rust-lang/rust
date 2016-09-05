@@ -224,8 +224,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                         |ty| tc_ty(tcx, *ty, cache))
                 }
 
-                ty::TyStruct(def, substs) | ty::TyUnion(def, substs) |
-                ty::TyEnum(def, substs) => {
+                ty::TyAdt(def, substs) => {
                     let mut res =
                         TypeContents::union(&def.variants, |v| {
                             TypeContents::union(&v.fields, |f| {

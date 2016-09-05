@@ -238,7 +238,7 @@ fn build_type<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
     match t.ty.sty {
-        ty::TyEnum(edef, _) if !tcx.sess.cstore.is_typedef(did) => {
+        ty::TyAdt(edef, _) if edef.is_enum() && !tcx.sess.cstore.is_typedef(did) => {
             return clean::EnumItem(clean::Enum {
                 generics: (t.generics, &predicates).clean(cx),
                 variants_stripped: false,

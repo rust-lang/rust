@@ -358,14 +358,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 }
             }
             'c' => return tcx.types.char,
-            't' => {
-                assert_eq!(self.next(), '[');
-                let did = self.parse_def();
-                let substs = self.parse_substs();
-                assert_eq!(self.next(), ']');
-                let def = self.tcx.lookup_adt_def(did);
-                return tcx.mk_enum(def, substs);
-            }
             'x' => {
                 assert_eq!(self.next(), '[');
                 let trait_ref = ty::Binder(self.parse_existential_trait_ref());
@@ -470,15 +462,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 let substs = self.parse_substs();
                 assert_eq!(self.next(), ']');
                 let def = self.tcx.lookup_adt_def(did);
-                return self.tcx.mk_struct(def, substs);
-            }
-            'U' => {
-                assert_eq!(self.next(), '[');
-                let did = self.parse_def();
-                let substs = self.parse_substs();
-                assert_eq!(self.next(), ']');
-                let def = self.tcx.lookup_adt_def(did);
-                return self.tcx.mk_union(def, substs);
+                return self.tcx.mk_adt(def, substs);
             }
             'k' => {
                 assert_eq!(self.next(), '[');

@@ -89,7 +89,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             Type::nil(cx)
         }
 
-        ty::TyStruct(..) if t.is_simd() => {
+        ty::TyAdt(..) if t.is_simd() => {
             let e = t.simd_type(cx.tcx());
             if !e.is_machine() {
                 cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
@@ -102,8 +102,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             Type::vector(&llet, n)
         }
 
-        ty::TyTuple(..) | ty::TyStruct(..) | ty::TyUnion(..) |
-        ty::TyEnum(..) | ty::TyClosure(..) => {
+        ty::TyTuple(..) | ty::TyAdt(..) | ty::TyClosure(..) => {
             let repr = adt::represent_type(cx, t);
             adt::sizing_type_of(cx, &repr, false)
         }
@@ -294,7 +293,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           let repr = adt::represent_type(cx, t);
           adt::type_of(cx, &repr)
       }
-      ty::TyStruct(..) if t.is_simd() => {
+      ty::TyAdt(..) if t.is_simd() => {
           let e = t.simd_type(cx.tcx());
           if !e.is_machine() {
               cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
@@ -306,9 +305,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           ensure_array_fits_in_address_space(cx, llet, n, t);
           Type::vector(&llet, n)
       }
-      ty::TyStruct(def, ref substs) |
-      ty::TyUnion(def, ref substs) |
-      ty::TyEnum(def, ref substs) => {
+      ty::TyAdt(def, substs) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache. This
           // avoids creating more than one copy of the enum when one
@@ -331,8 +328,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
     // If this was an enum or struct, fill in the type now.
     match t.sty {
-        ty::TyEnum(..) | ty::TyStruct(..) | ty::TyUnion(..) | ty::TyClosure(..)
-                if !t.is_simd() => {
+        ty::TyAdt(..) | ty::TyClosure(..) if !t.is_simd() => {
             let repr = adt::represent_type(cx, t);
             adt::finish_type_of(cx, &repr, &mut llty);
         }

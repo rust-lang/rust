@@ -367,20 +367,22 @@ impl<'a, 'tcx> MoveData<'tcx> {
                     kind: MoveKind) {
         // Moving one union field automatically moves all its fields.
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
-            if let ty::TyUnion(ref adt_def, _) = base_lp.ty.sty {
-                for field in &adt_def.struct_variant().fields {
-                    let field = InteriorKind::InteriorField(mc::NamedField(field.name));
-                    let field_ty = if field == interior {
-                        lp.ty
-                    } else {
-                        tcx.types.err // Doesn't matter
-                    };
-                    let sibling_lp_kind = LpExtend(base_lp.clone(), mutbl,
-                                                   LpInterior(opt_variant_id, field));
-                    let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
-                    self.add_move_helper(tcx, sibling_lp, id, kind);
+            if let ty::TyAdt(adt_def, _) = base_lp.ty.sty {
+                if adt_def.is_union() {
+                    for field in &adt_def.struct_variant().fields {
+                        let field = InteriorKind::InteriorField(mc::NamedField(field.name));
+                        let field_ty = if field == interior {
+                            lp.ty
+                        } else {
+                            tcx.types.err // Doesn't matter
+                        };
+                        let sibling_lp_kind = LpExtend(base_lp.clone(), mutbl,
+                                                    LpInterior(opt_variant_id, field));
+                        let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
+                        self.add_move_helper(tcx, sibling_lp, id, kind);
+                    }
+                    return;
                 }
-                return;
             }
         }
 
@@ -422,20 +424,23 @@ impl<'a, 'tcx> MoveData<'tcx> {
                           mode: euv::MutateMode) {
         // Assigning to one union field automatically assigns to all its fields.
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
-            if let ty::TyUnion(ref adt_def, _) = base_lp.ty.sty {
-                for field in &adt_def.struct_variant().fields {
-                    let field = InteriorKind::InteriorField(mc::NamedField(field.name));
-                    let field_ty = if field == interior {
-                        lp.ty
-                    } else {
-                        tcx.types.err // Doesn't matter
-                    };
-                    let sibling_lp_kind = LpExtend(base_lp.clone(), mutbl,
-                                                   LpInterior(opt_variant_id, field));
-                    let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
-                    self.add_assignment_helper(tcx, sibling_lp, assign_id, span, assignee_id, mode);
+            if let ty::TyAdt(adt_def, _) = base_lp.ty.sty {
+                if adt_def.is_union() {
+                    for field in &adt_def.struct_variant().fields {
+                        let field = InteriorKind::InteriorField(mc::NamedField(field.name));
+                        let field_ty = if field == interior {
+                            lp.ty
+                        } else {
+                            tcx.types.err // Doesn't matter
+                        };
+                        let sibling_lp_kind = LpExtend(base_lp.clone(), mutbl,
+                                                    LpInterior(opt_variant_id, field));
+                        let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
+                        self.add_assignment_helper(tcx, sibling_lp, assign_id,
+                                                   span, assignee_id, mode);
+                    }
+                    return;
                 }
-                return;
             }
         }
 

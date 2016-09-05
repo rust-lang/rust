@@ -88,8 +88,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         return false;
     }
     match ty.sty {
-        ty::TyStruct(..) | ty::TyUnion(..) | ty::TyEnum(..) |
-        ty::TyTuple(..) | ty::TyArray(..) | ty::TyClosure(..) => {
+        ty::TyAdt(..) | ty::TyTuple(..) | ty::TyArray(..) | ty::TyClosure(..) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
         }
@@ -101,7 +100,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
 pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                                   -> Option<[Ty<'tcx>; 2]> {
     match ty.sty {
-        ty::TyEnum(adt, substs) | ty::TyStruct(adt, substs) => {
+        ty::TyAdt(adt, substs) => {
             assert_eq!(adt.variants.len(), 1);
             let fields = &adt.variants[0].fields;
             if fields.len() != 2 {
@@ -205,7 +204,7 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
                    -> Self
     {
         match ty.sty {
-            ty::TyStruct(adt, substs) | ty::TyUnion(adt, substs) | ty::TyEnum(adt, substs) => {
+            ty::TyAdt(adt, substs) => {
                 let variant = match opt_def {
                     None => adt.struct_variant(),
                     Some(def) => adt.variant_of_def(def)

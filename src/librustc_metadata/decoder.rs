@@ -36,7 +36,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use rustc::ty::{ImplContainer, TraitContainer};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
+use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, VariantKind};
 
 use rustc_const_math::ConstInt;
 
@@ -453,23 +453,19 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
     let mut ctor_did = None;
     let (kind, variants) = match item_family(doc) {
         Enum => {
-            (ty::AdtKind::Enum,
-             get_enum_variants(cdata, doc))
+            (AdtKind::Enum, get_enum_variants(cdata, doc))
         }
         Struct(..) => {
             // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
             ctor_did = reader::maybe_get_doc(doc, tag_items_data_item_struct_ctor).map(|ctor_doc| {
                 translated_def_id(cdata, ctor_doc)
             });
-            (ty::AdtKind::Struct,
-             vec![get_struct_variant(cdata, doc, ctor_did.unwrap_or(did))])
+            (AdtKind::Struct, vec![get_struct_variant(cdata, doc, ctor_did.unwrap_or(did))])
         }
         Union => {
-            (ty::AdtKind::Union,
-             vec![get_struct_variant(cdata, doc, did)])
+            (AdtKind::Union, vec![get_struct_variant(cdata, doc, did)])
         }
-        _ => bug!("get_adt_def called on a non-ADT {:?} - {:?}",
-                  item_family(doc), did)
+        _ => bug!("get_adt_def called on a non-ADT {:?} - {:?}", item_family(doc), did)
     };
 
     let adt = tcx.intern_adt_def(did, kind, variants);
@@ -481,8 +477,7 @@ pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,
     // this needs to be done *after* the variant is interned,
     // to support recursive structures
     for variant in &adt.variants {
-        if variant.kind == ty::VariantKind::Tuple &&
-            adt.adt_kind() == ty::AdtKind::Enum {
+        if variant.kind == ty::VariantKind::Tuple && adt.is_enum() {
             // tuple-like enum variant fields aren't real items - get the types
             // from the ctor.
             debug!("evaluating the ctor-type of {:?}",

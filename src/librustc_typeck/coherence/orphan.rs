@@ -75,9 +75,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                        self.tcx.map.node_to_string(item.id));
                 let self_ty = self.tcx.lookup_item_type(def_id).ty;
                 match self_ty.sty {
-                    ty::TyEnum(def, _) |
-                    ty::TyStruct(def, _) |
-                    ty::TyUnion(def, _) => {
+                    ty::TyAdt(def, _) => {
                         self.check_def_id(item, def.did);
                     }
                     ty::TyTrait(ref data) => {
@@ -294,14 +292,9 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
-                        ty::TyStruct(self_def, _) |
-                        ty::TyUnion(self_def, _) |
-                        ty::TyEnum(self_def, _) =>
-                            Some(self_def.did),
-                        ty::TyBox(..) =>
-                            self.tcx.lang_items.owned_box(),
-                        _ =>
-                            None
+                        ty::TyAdt(self_def, _) => Some(self_def.did),
+                        ty::TyBox(..) => self.tcx.lang_items.owned_box(),
+                        _ => None,
                     };
 
                     let msg = match opt_self_def_id {

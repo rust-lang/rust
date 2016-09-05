@@ -1200,7 +1200,7 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, id: ast::NodeId) {
     let t = tcx.node_id_to_type(id);
     match t.sty {
-        ty::TyStruct(def, substs) => {
+        ty::TyAdt(def, substs) if def.is_struct() => {
             let fields = &def.struct_variant().fields;
             if fields.is_empty() {
                 span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty");
@@ -2911,7 +2911,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, autoderefs)) = autoderef.next() {
             match base_t.sty {
-                ty::TyStruct(base_def, substs) | ty::TyUnion(base_def, substs) => {
+                ty::TyAdt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}",  base_t);
                     if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
                         let field_ty = self.field_ty(expr.span, field, substs);
@@ -2957,7 +2957,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         field.node, actual)
             }, expr_t);
             match expr_t.sty {
-                ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                ty::TyAdt(def, _) if !def.is_enum() => {
                     if let Some(suggested_field_name) =
                         Self::suggest_field_name(def.struct_variant(), field, vec![]) {
                         err.span_help(field.span,
@@ -3009,7 +3009,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, autoderefs)) = autoderef.next() {
             let field = match base_t.sty {
-                ty::TyStruct(base_def, substs) => {
+                ty::TyAdt(base_def, substs) if base_def.is_struct() => {
                     tuple_like = base_def.struct_variant().kind == ty::VariantKind::Tuple;
                     if !tuple_like { continue }
 
@@ -3074,14 +3074,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             kind_name: &str) {
         let mut err = self.type_error_struct_with_diag(
             field.name.span,
-            |actual| if let ty::TyEnum(..) = ty.sty {
-                struct_span_err!(self.tcx.sess, field.name.span, E0559,
-                                 "{} `{}::{}` has no field named `{}`",
-                                 kind_name, actual, variant.name.as_str(), field.name.node)
-            } else {
-                struct_span_err!(self.tcx.sess, field.name.span, E0560,
-                                 "{} `{}` has no field named `{}`",
-                                 kind_name, actual, field.name.node)
+            |actual| match ty.sty {
+                ty::TyAdt(adt, ..) if adt.is_enum() => {
+                    struct_span_err!(self.tcx.sess, field.name.span, E0559,
+                                    "{} `{}::{}` has no field named `{}`",
+                                    kind_name, actual, variant.name.as_str(), field.name.node)
+                }
+                _ => {
+                    struct_span_err!(self.tcx.sess, field.name.span, E0560,
+                                    "{} `{}` has no field named `{}`",
+                                    kind_name, actual, field.name.node)
+                }
             },
             ty);
         // prevent all specified fields from being suggested
@@ -3102,9 +3105,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 check_completeness: bool) {
         let tcx = self.tcx;
         let (substs, kind_name) = match adt_ty.sty {
-            ty::TyEnum(_, substs) => (substs, "variant"),
-            ty::TyStruct(_, substs) => (substs, "struct"),
-            ty::TyUnion(_, substs) => (substs, "union"),
+            ty::TyAdt(adt, substs) => (substs, adt.variant_descr()),
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
@@ -3199,8 +3200,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             Def::TyAlias(did) => {
                 match self.tcx.opt_lookup_item_type(did).map(|scheme| &scheme.ty.sty) {
-                    Some(&ty::TyStruct(adt, _)) |
-                    Some(&ty::TyUnion(adt, _)) => Some((did, adt.struct_variant())),
+                    Some(&ty::TyAdt(adt, _)) if !adt.is_enum() => {
+                        Some((did, adt.struct_variant()))
+                    }
                     _ => None,
                 }
             }
@@ -3246,7 +3248,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let &Some(ref base_expr) = base_expr {
             self.check_expr_has_type(base_expr, struct_ty);
             match struct_ty.sty {
-                ty::TyStruct(adt, substs) => {
+                ty::TyAdt(adt, substs) if adt.is_struct() => {
                     self.tables.borrow_mut().fru_field_types.insert(
                         expr.id,
                         adt.struct_variant().fields.iter().map(|f| {
