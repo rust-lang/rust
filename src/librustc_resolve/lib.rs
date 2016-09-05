@@ -1276,14 +1276,15 @@ impl<'a> Resolver<'a> {
             self.used_crates.insert(krate);
         }
 
-        if let NameBindingKind::Import { directive, .. } = binding.kind {
-            self.used_imports.insert((directive.id, ns));
-            self.add_to_glob_map(directive.id, name);
-        }
-
         if binding.ambiguity().is_some() {
             self.ambiguity_errors.push((span, name, binding));
             return true;
+        }
+
+        if let NameBindingKind::Import { directive, binding } = binding.kind {
+            self.used_imports.insert((directive.id, ns));
+            self.add_to_glob_map(directive.id, name);
+            self.record_use(name, ns, binding, span);
         }
 
         false
