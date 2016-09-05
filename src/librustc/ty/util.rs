@@ -253,15 +253,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// if not a structure at all. Corresponds to the only possible unsized
     /// field, and its type can be used to determine unsizing strategy.
     pub fn struct_tail(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        loop {
-            match ty.sty {
-                TyAdt(def, substs) if def.is_struct() => {
-                    match def.struct_variant().fields.last() {
-                        Some(f) => ty = f.ty(self, substs),
-                        None => break
-                    }
-                }
-                _ => break
+        while let TyAdt(def, substs) = ty.sty {
+            if !def.is_struct() {
+                break
+            }
+            match def.struct_variant().fields.last() {
+                Some(f) => ty = f.ty(self, substs),
+                None => break
             }
         }
         ty
@@ -277,17 +275,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  target: Ty<'tcx>)
                                  -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
-        loop {
-            match (&a.sty, &b.sty) {
-                (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs))
-                        if a_def == b_def && a_def.is_struct() => {
-                    match a_def.struct_variant().fields.last() {
-                        Some(f) => {
-                            a = f.ty(self, a_substs);
-                            b = f.ty(self, b_substs);
-                        }
-                        _ => break
-                    }
+        while let (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) = (&a.sty, &b.sty) {
+            if a_def != b_def || !a_def.is_struct() {
+                break
+            }
+            match a_def.struct_variant().fields.last() {
+                Some(f) => {
+                    a = f.ty(self, a_substs);
+                    b = f.ty(self, b_substs);
                 }
                 _ => break
             }
