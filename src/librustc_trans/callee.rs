@@ -472,7 +472,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // FIXME(eddyb) Doubt all extern fn should allow unwinding.
             attributes::unwind(llfn, true);
             unsafe {
-                llvm::LLVMSetLinkage(llfn, llvm::ExternalLinkage);
+                llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
             }
         }
 

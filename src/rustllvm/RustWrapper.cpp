@@ -1232,3 +1232,83 @@ extern "C" void LLVMRustUnsetComdat(LLVMValueRef V) {
     GlobalObject *GV = unwrap<GlobalObject>(V);
     GV->setComdat(nullptr);
 }
+
+enum class LLVMRustLinkage {
+    ExternalLinkage = 0,
+    AvailableExternallyLinkage = 1,
+    LinkOnceAnyLinkage = 2,
+    LinkOnceODRLinkage = 3,
+    WeakAnyLinkage = 4,
+    WeakODRLinkage = 5,
+    AppendingLinkage = 6,
+    InternalLinkage = 7,
+    PrivateLinkage = 8,
+    ExternalWeakLinkage = 9,
+    CommonLinkage = 10,
+};
+
+static LLVMRustLinkage to_rust(LLVMLinkage linkage) {
+    switch (linkage) {
+        case LLVMExternalLinkage:
+            return LLVMRustLinkage::ExternalLinkage;
+        case LLVMAvailableExternallyLinkage:
+            return LLVMRustLinkage::AvailableExternallyLinkage;
+        case LLVMLinkOnceAnyLinkage:
+            return LLVMRustLinkage::LinkOnceAnyLinkage;
+        case LLVMLinkOnceODRLinkage:
+            return LLVMRustLinkage::LinkOnceODRLinkage;
+        case LLVMWeakAnyLinkage:
+            return LLVMRustLinkage::WeakAnyLinkage;
+        case LLVMWeakODRLinkage:
+            return LLVMRustLinkage::WeakODRLinkage;
+        case LLVMAppendingLinkage:
+            return LLVMRustLinkage::AppendingLinkage;
+        case LLVMInternalLinkage:
+            return LLVMRustLinkage::InternalLinkage;
+        case LLVMPrivateLinkage:
+            return LLVMRustLinkage::PrivateLinkage;
+        case LLVMExternalWeakLinkage:
+            return LLVMRustLinkage::ExternalWeakLinkage;
+        case LLVMCommonLinkage:
+            return LLVMRustLinkage::CommonLinkage;
+        default:
+            llvm_unreachable("Invalid LLVMRustLinkage value!");
+    }
+}
+
+static LLVMLinkage from_rust(LLVMRustLinkage linkage) {
+    switch (linkage) {
+        case LLVMRustLinkage::ExternalLinkage:
+            return LLVMExternalLinkage;
+        case LLVMRustLinkage::AvailableExternallyLinkage:
+            return LLVMAvailableExternallyLinkage;
+        case LLVMRustLinkage::LinkOnceAnyLinkage:
+            return LLVMLinkOnceAnyLinkage;
+        case LLVMRustLinkage::LinkOnceODRLinkage:
+            return LLVMLinkOnceODRLinkage;
+        case LLVMRustLinkage::WeakAnyLinkage:
+            return LLVMWeakAnyLinkage;
+        case LLVMRustLinkage::WeakODRLinkage:
+            return LLVMWeakODRLinkage;
+        case LLVMRustLinkage::AppendingLinkage:
+            return LLVMAppendingLinkage;
+        case LLVMRustLinkage::InternalLinkage:
+            return LLVMInternalLinkage;
+        case LLVMRustLinkage::PrivateLinkage:
+            return LLVMPrivateLinkage;
+        case LLVMRustLinkage::ExternalWeakLinkage:
+            return LLVMExternalWeakLinkage;
+        case LLVMRustLinkage::CommonLinkage:
+            return LLVMCommonLinkage;
+        default:
+            llvm_unreachable("Invalid LLVMRustLinkage value!");
+    } 
+}
+
+extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
+    return to_rust(LLVMGetLinkage(V));
+}
+
+extern "C" void LLVMRustSetLinkage(LLVMValueRef V, LLVMRustLinkage RustLinkage) {
+    LLVMSetLinkage(V, from_rust(RustLinkage));
+}
