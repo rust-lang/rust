@@ -902,7 +902,13 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
-/// An iterator over the value in a `Ok` variant of a `Result`.
+/// An iterator over the value in a `Ok` variant of a `Result`. This struct is
+/// created by the [`into_iter`] method on [`Result`][`Result`] (provided by
+/// the [`IntoIterator`] trait).
+///
+/// [`Result`]: enum.Result.html
+/// [`into_iter`]: ../iter/trait.IntoIterator.html#tymethod.into_iter
+/// [`IntoIterator`]: ../iter/trait.IntoIterator.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> { inner: Option<T> }
