@@ -323,6 +323,9 @@ pub fn krate(build: &Build,
     if target.contains("android") {
         build.run(cargo.arg("--no-run"));
         krate_android(build, compiler, target, mode);
+    } else if target.contains("asmjs") {
+        build.run(cargo.arg("--no-run"));
+        krate_asmjs(build, compiler, target, mode);
     } else {
         cargo.args(&build.flags.args);
         build.run(&mut cargo);
@@ -371,6 +374,23 @@ fn krate_android(build: &Build,
     }
 }
 
+fn krate_asmjs(build: &Build,
+                 compiler: &Compiler,
+                 target: &str,
+                 mode: Mode) {
+     let mut tests = Vec::new();
+     let out_dir = build.cargo_out(compiler, mode, target);
+     find_tests(&out_dir, target, &mut tests);
+     find_tests(&out_dir.join("deps"), target, &mut tests);
+
+     for test in tests {
+         let test_file_name = test.to_string_lossy().into_owned();
+         let output = output(Command::new("node").arg(&test_file_name));
+         println!("{}", output);
+     }
+ }
+
+
 fn find_tests(dir: &Path,
               target: &str,
               dst: &mut Vec<PathBuf>) {
@@ -381,7 +401,8 @@ fn find_tests(dir: &Path,
         }
         let filename = e.file_name().into_string().unwrap();
         if (target.contains("windows") && filename.ends_with(".exe")) ||
-           (!target.contains("windows") && !filename.contains(".")) {
+           (!target.contains("windows") && !filename.contains(".")) ||
+           (target.contains("asmjs") && filename.contains(".js")){
             dst.push(e.path());
         }
     }
