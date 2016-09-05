@@ -743,9 +743,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     // If the type implements Drop, also add a translation item for the
     // monomorphized Drop::drop() implementation.
     let destructor_did = match ty.sty {
-        ty::TyStruct(def, _) |
-        ty::TyUnion(def, _) |
-        ty::TyEnum(def, _)   => def.destructor(),
+        ty::TyAdt(def, _) => def.destructor(),
         _ => None
     };
 
@@ -798,9 +796,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         ty::TyTrait(_)  => {
             /* nothing to do */
         }
-        ty::TyStruct(ref adt_def, substs) |
-        ty::TyUnion(ref adt_def, substs) |
-        ty::TyEnum(ref adt_def, substs) => {
+        ty::TyAdt(adt_def, substs) => {
             for field in adt_def.all_fields() {
                 let field_type = monomorphize::apply_param_substs(scx,
                                                                   substs,
@@ -989,8 +985,8 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             }
         }
 
-        (&ty::TyStruct(source_adt_def, source_substs),
-         &ty::TyStruct(target_adt_def, target_substs)) => {
+        (&ty::TyAdt(source_adt_def, source_substs),
+         &ty::TyAdt(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
             let kind = custom_coerce_unsize_info(scx, source_ty, target_ty);

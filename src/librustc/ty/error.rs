@@ -216,7 +216,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr | ty::TyNever => self.to_string(),
             ty::TyTuple(ref tys) if tys.is_empty() => self.to_string(),
 
-            ty::TyEnum(def, _) => format!("enum `{}`", tcx.item_path_str(def.did)),
+            ty::TyAdt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
             ty::TyBox(_) => "box".to_string(),
             ty::TyArray(_, n) => format!("array of {} elements", n),
             ty::TySlice(_) => "slice".to_string(),
@@ -243,12 +243,6 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyTrait(ref inner) => {
                 format!("trait {}", tcx.item_path_str(inner.principal.def_id()))
-            }
-            ty::TyStruct(def, _) => {
-                format!("struct `{}`", tcx.item_path_str(def.did))
-            }
-            ty::TyUnion(def, _) => {
-                format!("union `{}`", tcx.item_path_str(def.did))
             }
             ty::TyClosure(..) => "closure".to_string(),
             ty::TyTuple(_) => "tuple".to_string(),

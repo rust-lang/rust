@@ -103,8 +103,8 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 let base_ty = cmt_base.ty;
                 let result = self.restrict(cmt_base);
                 // Borrowing one union field automatically borrows all its fields.
-                if let ty::TyUnion(ref adt_def, _) = base_ty.sty {
-                    match result {
+                match base_ty.sty {
+                    ty::TyAdt(adt_def, _) if adt_def.is_union() => match result {
                         RestrictionResult::Safe => RestrictionResult::Safe,
                         RestrictionResult::SafeIf(base_lp, mut base_vec) => {
                             for field in &adt_def.struct_variant().fields {
@@ -124,9 +124,8 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                                                      LpInterior(opt_variant_id, interior)));
                             RestrictionResult::SafeIf(lp, base_vec)
                         }
-                    }
-                } else {
-                    self.extend(result, &cmt, LpInterior(opt_variant_id, interior))
+                    },
+                    _ => self.extend(result, &cmt, LpInterior(opt_variant_id, interior))
                 }
             }
 

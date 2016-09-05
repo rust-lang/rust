@@ -22,9 +22,9 @@ use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::traits::{self, Reveal};
 use rustc::ty::{ImplOrTraitItemId, ConstTraitItemId};
 use rustc::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
-use rustc::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
+use rustc::ty::{Ty, TyBool, TyChar, TyError};
 use rustc::ty::{TyParam, TyRawPtr};
-use rustc::ty::{TyRef, TyStruct, TyUnion, TyTrait, TyNever, TyTuple};
+use rustc::ty::{TyRef, TyAdt, TyTrait, TyNever, TyTuple};
 use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use rustc::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
 use rustc::ty::{TyProjection, TyAnon};
@@ -69,9 +69,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
     // Returns the def ID of the base type, if there is one.
     fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
         match ty.sty {
-            TyEnum(def, _) |
-            TyStruct(def, _) |
-            TyUnion(def, _) => {
+            TyAdt(def, _) => {
                 Some(def.did)
             }
 
@@ -241,9 +239,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
 
             let self_type = tcx.lookup_item_type(impl_did);
             match self_type.ty.sty {
-                ty::TyEnum(type_def, _) |
-                ty::TyStruct(type_def, _) |
-                ty::TyUnion(type_def, _) => {
+                ty::TyAdt(type_def, _) => {
                     type_def.set_destructor(method_def_id.def_id());
                 }
                 _ => {
@@ -426,7 +422,8 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
                         check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
                     }
 
-                    (&ty::TyStruct(def_a, substs_a), &ty::TyStruct(def_b, substs_b)) => {
+                    (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b))
+                            if def_a.is_struct() && def_b.is_struct() => {
                         if def_a != def_b {
                             let source_path = tcx.item_path_str(def_a.did);
                             let target_path = tcx.item_path_str(def_b.did);

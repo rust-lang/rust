@@ -15,7 +15,7 @@ pub use self::Primitive::*;
 use infer::InferCtxt;
 use session::Session;
 use traits;
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
@@ -555,7 +555,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             }
 
             // Is this the NonZero lang item wrapping a pointer or integer type?
-            (&Univariant { non_zero: true, .. }, &ty::TyStruct(def, substs)) => {
+            (&Univariant { non_zero: true, .. }, &ty::TyAdt(def, substs)) if def.is_struct() => {
                 let fields = &def.struct_variant().fields;
                 assert_eq!(fields.len(), 1);
                 match *fields[0].ty(tcx, substs).layout(infcx)? {
@@ -573,7 +573,7 @@ impl<'a, 'gcx, 'tcx> Struct {
 
             // Perhaps one of the fields of this struct is non-zero
             // let's recurse and find out
-            (_, &ty::TyStruct(def, substs)) => {
+            (_, &ty::TyAdt(def, substs)) if def.is_struct() => {
                 Struct::non_zero_field_path(infcx, def.struct_variant().fields
                                                       .iter().map(|field| {
                     field.ty(tcx, substs)
@@ -694,7 +694,7 @@ pub enum Layout {
         non_zero: bool
     },
 
-    /// SIMD vectors, from TyStruct marked with #[repr(simd)].
+    /// SIMD vectors, from structs marked with #[repr(simd)].
     Vector {
         element: Primitive,
         count: u64
@@ -715,7 +715,7 @@ pub enum Layout {
         non_zero: bool
     },
 
-    // Remaining variants are all ADTs such as TyStruct, TyEnum or TyTuple.
+    // Remaining variants are all ADTs such as structs, enums or tuples.
 
     /// C-like enums; basically an integer.
     CEnum {
@@ -919,240 +919,242 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             // ADTs.
-            ty::TyStruct(def, substs) => {
-                if ty.is_simd() {
-                    // SIMD vector types.
-                    let element = ty.simd_type(tcx);
-                    match *element.layout(infcx)? {
-                        Scalar { value, .. } => {
-                            return success(Vector {
-                                element: value,
-                                count: ty.simd_size(tcx) as u64
-                            });
+            ty::TyAdt(def, substs) => match def.adt_kind() {
+                AdtKind::Struct => {
+                    if ty.is_simd() {
+                        // SIMD vector types.
+                        let element = ty.simd_type(tcx);
+                        match *element.layout(infcx)? {
+                            Scalar { value, .. } => {
+                                return success(Vector {
+                                    element: value,
+                                    count: ty.simd_size(tcx) as u64
+                                });
+                            }
+                            _ => {
+                                tcx.sess.fatal(&format!("monomorphising SIMD type `{}` with \
+                                                        a non-machine element type `{}`",
+                                                        ty, element));
+                            }
                         }
-                        _ => {
-                            tcx.sess.fatal(&format!("monomorphising SIMD type `{}` with \
-                                                     a non-machine element type `{}`",
-                                                    ty, element));
-                        }
                     }
-                }
-                let fields = def.struct_variant().fields.iter().map(|field| {
-                    field.ty(tcx, substs).layout(infcx)
-                });
-                let packed = tcx.lookup_packed(def.did);
-                let mut st = Struct::new(dl, packed);
-                st.extend(dl, fields, ty)?;
-
-                Univariant {
-                    variant: st,
-                    non_zero: Some(def.did) == tcx.lang_items.non_zero()
-                }
-            }
-            ty::TyUnion(def, substs) => {
-                let fields = def.struct_variant().fields.iter().map(|field| {
-                    field.ty(tcx, substs).layout(infcx)
-                });
-                let packed = tcx.lookup_packed(def.did);
-                let mut un = Union::new(dl, packed);
-                un.extend(dl, fields, ty)?;
-                UntaggedUnion { variants: un }
-            }
-            ty::TyEnum(def, substs) => {
-                let hint = *tcx.lookup_repr_hints(def.did).get(0)
-                    .unwrap_or(&attr::ReprAny);
-
-                if def.variants.is_empty() {
-                    // Uninhabitable; represent as unit
-                    // (Typechecking will reject discriminant-sizing attrs.)
-                    assert_eq!(hint, attr::ReprAny);
-
-                    return success(Univariant {
-                        variant: Struct::new(dl, false),
-                        non_zero: false
-                    });
-                }
-
-                if def.variants.iter().all(|v| v.fields.is_empty()) {
-                    // All bodies empty -> intlike
-                    let (mut min, mut max) = (i64::MAX, i64::MIN);
-                    for v in &def.variants {
-                        let x = v.disr_val.to_u64_unchecked() as i64;
-                        if x < min { min = x; }
-                        if x > max { max = x; }
-                    }
-
-                    let (discr, signed) = Integer::repr_discr(tcx, hint, min, max);
-                    return success(CEnum {
-                        discr: discr,
-                        signed: signed,
-                        min: min as u64,
-                        max: max as u64
-                    });
-                }
-
-                // Since there's at least one
-                // non-empty body, explicit discriminants should have
-                // been rejected by a checker before this point.
-                for (i, v) in def.variants.iter().enumerate() {
-                    if i as u64 != v.disr_val.to_u64_unchecked() {
-                        bug!("non-C-like enum {} with specified discriminants",
-                             tcx.item_path_str(def.did));
-                    }
-                }
-
-                if def.variants.len() == 1 {
-                    // Equivalent to a struct/tuple/newtype.
-                    // (Typechecking will reject discriminant-sizing attrs.)
-                    assert_eq!(hint, attr::ReprAny);
-                    let fields = def.variants[0].fields.iter().map(|field| {
+                    let fields = def.struct_variant().fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
                     });
-                    let mut st = Struct::new(dl, false);
+                    let packed = tcx.lookup_packed(def.did);
+                    let mut st = Struct::new(dl, packed);
                     st.extend(dl, fields, ty)?;
-                    return success(Univariant { variant: st, non_zero: false });
-                }
 
-                // Cache the substituted and normalized variant field types.
-                let variants = def.variants.iter().map(|v| {
-                    v.fields.iter().map(|field| field.ty(tcx, substs)).collect::<Vec<_>>()
-                }).collect::<Vec<_>>();
-
-                if variants.len() == 2 && hint == attr::ReprAny {
-                    // Nullable pointer optimization
-                    for discr in 0..2 {
-                        let other_fields = variants[1 - discr].iter().map(|ty| {
-                            ty.layout(infcx)
-                        });
-                        if !Struct::would_be_zero_sized(dl, other_fields)? {
-                            continue;
-                        }
-                        let path = Struct::non_zero_field_path(infcx,
-                            variants[discr].iter().cloned())?;
-                        let mut path = if let Some(p) = path { p } else { continue };
-
-                        // FIXME(eddyb) should take advantage of a newtype.
-                        if path == &[0] && variants[discr].len() == 1 {
-                            match *variants[discr][0].layout(infcx)? {
-                                Scalar { value, .. } => {
-                                    return success(RawNullablePointer {
-                                        nndiscr: discr as u64,
-                                        value: value
-                                    });
-                                }
-                                _ => {
-                                    bug!("Layout::compute: `{}`'s non-zero \
-                                          `{}` field not scalar?!",
-                                         ty, variants[discr][0])
-                                }
-                            }
-                        }
-
-                        path.push(0); // For GEP through a pointer.
-                        path.reverse();
-                        let mut st = Struct::new(dl, false);
-                        st.extend(dl, variants[discr].iter().map(|ty| ty.layout(infcx)), ty)?;
-                        return success(StructWrappedNullablePointer {
-                            nndiscr: discr as u64,
-                            nonnull: st,
-                            discrfield: path
-                        });
+                    Univariant {
+                        variant: st,
+                        non_zero: Some(def.did) == tcx.lang_items.non_zero()
                     }
                 }
-
-                // The general case.
-                let discr_max = (variants.len() - 1) as i64;
-                assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, hint, 0, discr_max);
-
-                let mut align = dl.aggregate_align;
-                let mut size = Size::from_bytes(0);
-
-                // We're interested in the smallest alignment, so start large.
-                let mut start_align = Align::from_bytes(256, 256).unwrap();
-
-                // Create the set of structs that represent each variant
-                // Use the minimum integer type we figured out above
-                let discr = Some(Scalar { value: Int(min_ity), non_zero: false });
-                let mut variants = variants.into_iter().map(|fields| {
-                    let mut found_start = false;
-                    let fields = fields.into_iter().map(|field| {
-                        let field = field.layout(infcx)?;
-                        if !found_start {
-                            // Find the first field we can't move later
-                            // to make room for a larger discriminant.
-                            let field_align = field.align(dl);
-                            if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
-                                start_align = start_align.min(field_align);
-                                found_start = true;
-                            }
-                        }
-                        Ok(field)
+                AdtKind::Union => {
+                    let fields = def.struct_variant().fields.iter().map(|field| {
+                        field.ty(tcx, substs).layout(infcx)
                     });
-                    let mut st = Struct::new(dl, false);
-                    st.extend(dl, discr.iter().map(Ok).chain(fields), ty)?;
-                    size = cmp::max(size, st.min_size());
-                    align = align.max(st.align);
-                    Ok(st)
-                }).collect::<Result<Vec<_>, _>>()?;
-
-                // Align the maximum variant size to the largest alignment.
-                size = size.abi_align(align);
-
-                if size.bytes() >= dl.obj_size_bound() {
-                    return Err(LayoutError::SizeOverflow(ty));
+                    let packed = tcx.lookup_packed(def.did);
+                    let mut un = Union::new(dl, packed);
+                    un.extend(dl, fields, ty)?;
+                    UntaggedUnion { variants: un }
                 }
+                AdtKind::Enum => {
+                    let hint = *tcx.lookup_repr_hints(def.did).get(0)
+                        .unwrap_or(&attr::ReprAny);
 
-                // Check to see if we should use a different type for the
-                // discriminant. We can safely use a type with the same size
-                // as the alignment of the first field of each variant.
-                // We increase the size of the discriminant to avoid LLVM copying
-                // padding when it doesn't need to. This normally causes unaligned
-                // load/stores and excessive memcpy/memset operations. By using a
-                // bigger integer size, LLVM can be sure about it's contents and
-                // won't be so conservative.
+                    if def.variants.is_empty() {
+                        // Uninhabitable; represent as unit
+                        // (Typechecking will reject discriminant-sizing attrs.)
+                        assert_eq!(hint, attr::ReprAny);
 
-                // Use the initial field alignment
-                let wanted = start_align.abi();
-                let mut ity = min_ity;
-                for &candidate in &[I16, I32, I64] {
-                    let ty = Int(candidate);
-                    if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
-                        ity = candidate;
-                        break;
+                        return success(Univariant {
+                            variant: Struct::new(dl, false),
+                            non_zero: false
+                        });
                     }
-                }
 
-                // FIXME(eddyb) conservative only to avoid diverging from trans::adt.
-                if align.abi() != start_align.abi() {
-                    ity = min_ity;
-                }
+                    if def.variants.iter().all(|v| v.fields.is_empty()) {
+                        // All bodies empty -> intlike
+                        let (mut min, mut max) = (i64::MAX, i64::MIN);
+                        for v in &def.variants {
+                            let x = v.disr_val.to_u64_unchecked() as i64;
+                            if x < min { min = x; }
+                            if x > max { max = x; }
+                        }
 
-                // If the alignment is not larger than the chosen discriminant size,
-                // don't use the alignment as the final size.
-                if ity <= min_ity {
-                    ity = min_ity;
-                } else {
-                    // Patch up the variants' first few fields.
-                    let old_ity_size = Int(min_ity).size(dl);
-                    let new_ity_size = Int(ity).size(dl);
-                    for variant in &mut variants {
-                        for offset in &mut variant.offset_after_field {
-                            if *offset > old_ity_size {
-                                break;
-                            }
-                            *offset = new_ity_size;
+                        let (discr, signed) = Integer::repr_discr(tcx, hint, min, max);
+                        return success(CEnum {
+                            discr: discr,
+                            signed: signed,
+                            min: min as u64,
+                            max: max as u64
+                        });
+                    }
+
+                    // Since there's at least one
+                    // non-empty body, explicit discriminants should have
+                    // been rejected by a checker before this point.
+                    for (i, v) in def.variants.iter().enumerate() {
+                        if i as u64 != v.disr_val.to_u64_unchecked() {
+                            bug!("non-C-like enum {} with specified discriminants",
+                                tcx.item_path_str(def.did));
                         }
                     }
-                }
 
-                General {
-                    discr: ity,
-                    variants: variants,
-                    size: size,
-                    align: align
+                    if def.variants.len() == 1 {
+                        // Equivalent to a struct/tuple/newtype.
+                        // (Typechecking will reject discriminant-sizing attrs.)
+                        assert_eq!(hint, attr::ReprAny);
+                        let fields = def.variants[0].fields.iter().map(|field| {
+                            field.ty(tcx, substs).layout(infcx)
+                        });
+                        let mut st = Struct::new(dl, false);
+                        st.extend(dl, fields, ty)?;
+                        return success(Univariant { variant: st, non_zero: false });
+                    }
+
+                    // Cache the substituted and normalized variant field types.
+                    let variants = def.variants.iter().map(|v| {
+                        v.fields.iter().map(|field| field.ty(tcx, substs)).collect::<Vec<_>>()
+                    }).collect::<Vec<_>>();
+
+                    if variants.len() == 2 && hint == attr::ReprAny {
+                        // Nullable pointer optimization
+                        for discr in 0..2 {
+                            let other_fields = variants[1 - discr].iter().map(|ty| {
+                                ty.layout(infcx)
+                            });
+                            if !Struct::would_be_zero_sized(dl, other_fields)? {
+                                continue;
+                            }
+                            let path = Struct::non_zero_field_path(infcx,
+                                variants[discr].iter().cloned())?;
+                            let mut path = if let Some(p) = path { p } else { continue };
+
+                            // FIXME(eddyb) should take advantage of a newtype.
+                            if path == &[0] && variants[discr].len() == 1 {
+                                match *variants[discr][0].layout(infcx)? {
+                                    Scalar { value, .. } => {
+                                        return success(RawNullablePointer {
+                                            nndiscr: discr as u64,
+                                            value: value
+                                        });
+                                    }
+                                    _ => {
+                                        bug!("Layout::compute: `{}`'s non-zero \
+                                            `{}` field not scalar?!",
+                                            ty, variants[discr][0])
+                                    }
+                                }
+                            }
+
+                            path.push(0); // For GEP through a pointer.
+                            path.reverse();
+                            let mut st = Struct::new(dl, false);
+                            st.extend(dl, variants[discr].iter().map(|ty| ty.layout(infcx)), ty)?;
+                            return success(StructWrappedNullablePointer {
+                                nndiscr: discr as u64,
+                                nonnull: st,
+                                discrfield: path
+                            });
+                        }
+                    }
+
+                    // The general case.
+                    let discr_max = (variants.len() - 1) as i64;
+                    assert!(discr_max >= 0);
+                    let (min_ity, _) = Integer::repr_discr(tcx, hint, 0, discr_max);
+
+                    let mut align = dl.aggregate_align;
+                    let mut size = Size::from_bytes(0);
+
+                    // We're interested in the smallest alignment, so start large.
+                    let mut start_align = Align::from_bytes(256, 256).unwrap();
+
+                    // Create the set of structs that represent each variant
+                    // Use the minimum integer type we figured out above
+                    let discr = Some(Scalar { value: Int(min_ity), non_zero: false });
+                    let mut variants = variants.into_iter().map(|fields| {
+                        let mut found_start = false;
+                        let fields = fields.into_iter().map(|field| {
+                            let field = field.layout(infcx)?;
+                            if !found_start {
+                                // Find the first field we can't move later
+                                // to make room for a larger discriminant.
+                                let field_align = field.align(dl);
+                                if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
+                                    start_align = start_align.min(field_align);
+                                    found_start = true;
+                                }
+                            }
+                            Ok(field)
+                        });
+                        let mut st = Struct::new(dl, false);
+                        st.extend(dl, discr.iter().map(Ok).chain(fields), ty)?;
+                        size = cmp::max(size, st.min_size());
+                        align = align.max(st.align);
+                        Ok(st)
+                    }).collect::<Result<Vec<_>, _>>()?;
+
+                    // Align the maximum variant size to the largest alignment.
+                    size = size.abi_align(align);
+
+                    if size.bytes() >= dl.obj_size_bound() {
+                        return Err(LayoutError::SizeOverflow(ty));
+                    }
+
+                    // Check to see if we should use a different type for the
+                    // discriminant. We can safely use a type with the same size
+                    // as the alignment of the first field of each variant.
+                    // We increase the size of the discriminant to avoid LLVM copying
+                    // padding when it doesn't need to. This normally causes unaligned
+                    // load/stores and excessive memcpy/memset operations. By using a
+                    // bigger integer size, LLVM can be sure about it's contents and
+                    // won't be so conservative.
+
+                    // Use the initial field alignment
+                    let wanted = start_align.abi();
+                    let mut ity = min_ity;
+                    for &candidate in &[I16, I32, I64] {
+                        let ty = Int(candidate);
+                        if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
+                            ity = candidate;
+                            break;
+                        }
+                    }
+
+                    // FIXME(eddyb) conservative only to avoid diverging from trans::adt.
+                    if align.abi() != start_align.abi() {
+                        ity = min_ity;
+                    }
+
+                    // If the alignment is not larger than the chosen discriminant size,
+                    // don't use the alignment as the final size.
+                    if ity <= min_ity {
+                        ity = min_ity;
+                    } else {
+                        // Patch up the variants' first few fields.
+                        let old_ity_size = Int(min_ity).size(dl);
+                        let new_ity_size = Int(ity).size(dl);
+                        for variant in &mut variants {
+                            for offset in &mut variant.offset_after_field {
+                                if *offset > old_ity_size {
+                                    break;
+                                }
+                                *offset = new_ity_size;
+                            }
+                        }
+                    }
+
+                    General {
+                        discr: ity,
+                        variants: variants,
+                        size: size,
+                        align: align
+                    }
                 }
-            }
+            },
 
             // Types with no meaningful known layout.
             ty::TyProjection(_) | ty::TyAnon(..) => {
@@ -1317,9 +1319,9 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
                 }
             }
 
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
-                if def.variants.is_empty() || def.variants.len() > 2 {
+                if def.is_union() || def.variants.is_empty() || def.variants.len() > 2 {
                     return Err(err);
                 }
 

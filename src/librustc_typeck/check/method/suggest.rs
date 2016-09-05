@@ -165,7 +165,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let Some(expr) = rcvr_expr {
                     for (ty, _) in self.autoderef(span, rcvr_ty) {
                         match ty.sty {
-                            ty::TyStruct(def, substs) | ty::TyUnion(def, substs) => {
+                            ty::TyAdt(def, substs) if !def.is_enum() => {
                                 if let Some(field) = def.struct_variant().
                                                          find_field_named(item_name) {
                                     let snippet = tcx.sess.codemap().span_to_snippet(expr.span);
@@ -359,9 +359,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             rcvr_expr: Option<&hir::Expr>) -> bool {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
-                ty::TyEnum(def, _) | ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
-                    def.did.is_local()
-                }
+                ty::TyAdt(def, _) => def.did.is_local(),
 
                 ty::TyTrait(ref tr) => tr.principal.def_id().is_local(),
 

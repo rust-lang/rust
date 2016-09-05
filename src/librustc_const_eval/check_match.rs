@@ -245,21 +245,23 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
     pat.walk(|p| {
         if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), name, None) = p.node {
             let pat_ty = cx.tcx.pat_ty(p);
-            if let ty::TyEnum(edef, _) = pat_ty.sty {
-                if let Def::Local(..) = cx.tcx.expect_def(p.id) {
-                    if edef.variants.iter().any(|variant| {
-                        variant.name == name.node && variant.kind == VariantKind::Unit
-                    }) {
-                        let ty_path = cx.tcx.item_path_str(edef.did);
-                        let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
-                            "pattern binding `{}` is named the same as one \
-                             of the variants of the type `{}`",
-                            name.node, ty_path);
-                        help!(err,
-                            "if you meant to match on a variant, \
-                             consider making the path in the pattern qualified: `{}::{}`",
-                            ty_path, name.node);
-                        err.emit();
+            if let ty::TyAdt(edef, _) = pat_ty.sty {
+                if edef.is_enum() {
+                    if let Def::Local(..) = cx.tcx.expect_def(p.id) {
+                        if edef.variants.iter().any(|variant| {
+                            variant.name == name.node && variant.kind == VariantKind::Unit
+                        }) {
+                            let ty_path = cx.tcx.item_path_str(edef.did);
+                            let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
+                                "pattern binding `{}` is named the same as one \
+                                of the variants of the type `{}`",
+                                name.node, ty_path);
+                            help!(err,
+                                "if you meant to match on a variant, \
+                                consider making the path in the pattern qualified: `{}::{}`",
+                                ty_path, name.node);
+                            err.emit();
+                        }
                     }
                 }
             }
@@ -566,7 +568,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
     let pat = match left_ty.sty {
         ty::TyTuple(..) => PatKind::Tuple(pats.collect(), None),
 
-        ty::TyEnum(adt, _) | ty::TyStruct(adt, _) | ty::TyUnion(adt, _) => {
+        ty::TyAdt(adt, _) => {
             let v = ctor.variant_for_adt(adt);
             match v.kind {
                 VariantKind::Struct => {
@@ -659,7 +661,8 @@ fn all_constructors(_cx: &MatchCheckCtxt, left_ty: Ty,
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
         ty::TySlice(_) =>
             (0..max_slice_length+1).map(|length| Slice(length)).collect(),
-        ty::TyEnum(def, _) => def.variants.iter().map(|v| Variant(v.did)).collect(),
+        ty::TyAdt(def, _) if def.is_enum() =>
+            def.variants.iter().map(|v| Variant(v.did)).collect(),
         _ => vec![Single]
     }
 }
@@ -837,7 +840,7 @@ pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> us
             _ => bug!()
         },
         ty::TyRef(..) => 1,
-        ty::TyEnum(adt, _) | ty::TyStruct(adt, _) | ty::TyUnion(adt, _) => {
+        ty::TyAdt(adt, _) => {
             ctor.variant_for_adt(adt).fields.len()
         }
         ty::TyArray(_, n) => n,

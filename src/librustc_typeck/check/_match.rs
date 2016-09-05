@@ -617,7 +617,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if subpats.len() == variant.fields.len() ||
                 subpats.len() < variant.fields.len() && ddpos.is_some() {
             let substs = match pat_ty.sty {
-                ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
+                ty::TyAdt(_, substs) => substs,
                 ref ty => bug!("unexpected pattern type {:?}", ty),
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
@@ -657,9 +657,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
 
         let (substs, kind_name) = match adt_ty.sty {
-            ty::TyEnum(_, substs) => (substs, "variant"),
-            ty::TyStruct(_, substs) => (substs, "struct"),
-            ty::TyUnion(_, substs) => (substs, "union"),
+            ty::TyAdt(adt, substs) => (substs, adt.variant_descr()),
             _ => span_bug!(span, "struct pattern is not an ADT")
         };
 

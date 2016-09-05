@@ -336,9 +336,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     self.compute_projection(data);
                 }
 
-                ty::TyEnum(def, substs) |
-                ty::TyStruct(def, substs) |
-                ty::TyUnion(def, substs) => {
+                ty::TyAdt(def, substs) => {
                     // WfNominalType
                     let obligations = self.nominal_obligations(def.did, substs);
                     self.out.extend(obligations);

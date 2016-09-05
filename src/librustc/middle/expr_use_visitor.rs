@@ -671,28 +671,31 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        if let ty::TyStruct(def, substs) = with_cmt.ty.sty {
-            // Consume those fields of the with expression that are needed.
-            for with_field in &def.struct_variant().fields {
-                if !contains_field_named(with_field, fields) {
-                    let cmt_field = self.mc.cat_field(
-                        &*with_expr,
-                        with_cmt.clone(),
-                        with_field.name,
-                        with_field.ty(self.tcx(), substs)
-                    );
-                    self.delegate_consume(with_expr.id, with_expr.span, cmt_field);
+        match with_cmt.ty.sty {
+            ty::TyAdt(adt, substs) if adt.is_struct() => {
+                // Consume those fields of the with expression that are needed.
+                for with_field in &adt.struct_variant().fields {
+                    if !contains_field_named(with_field, fields) {
+                        let cmt_field = self.mc.cat_field(
+                            &*with_expr,
+                            with_cmt.clone(),
+                            with_field.name,
+                            with_field.ty(self.tcx(), substs)
+                        );
+                        self.delegate_consume(with_expr.id, with_expr.span, cmt_field);
+                    }
                 }
             }
-        } else {
-            // the base expression should always evaluate to a
-            // struct; however, when EUV is run during typeck, it
-            // may not. This will generate an error earlier in typeck,
-            // so we can just ignore it.
-            if !self.tcx().sess.has_errors() {
-                span_bug!(
-                    with_expr.span,
-                    "with expression doesn't evaluate to a struct");
+            _ => {
+                // the base expression should always evaluate to a
+                // struct; however, when EUV is run during typeck, it
+                // may not. This will generate an error earlier in typeck,
+                // so we can just ignore it.
+                if !self.tcx().sess.has_errors() {
+                    span_bug!(
+                        with_expr.span,
+                        "with expression doesn't evaluate to a struct");
+                }
             }
         }
 

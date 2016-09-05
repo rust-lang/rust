@@ -106,24 +106,13 @@ pub enum TypeVariants<'tcx> {
     /// A primitive floating-point type. For example, `f64`.
     TyFloat(ast::FloatTy),
 
-    /// An enumerated type, defined with `enum`.
+    /// Structures, enumerations and unions.
     ///
     /// Substs here, possibly against intuition, *may* contain `TyParam`s.
     /// That is, even after substitution it is possible that there are type
-    /// variables. This happens when the `TyEnum` corresponds to an enum
-    /// definition and not a concrete use of it. This is true for `TyStruct`
-    /// and `TyUnion` as well.
-    TyEnum(AdtDef<'tcx>, &'tcx Substs<'tcx>),
-
-    /// A structure type, defined with `struct`.
-    ///
-    /// See warning about substitutions for enumerated types.
-    TyStruct(AdtDef<'tcx>, &'tcx Substs<'tcx>),
-
-    /// A union type, defined with `union`.
-    ///
-    /// See warning about substitutions for enumerated types.
-    TyUnion(AdtDef<'tcx>, &'tcx Substs<'tcx>),
+    /// variables. This happens when the `TyAdt` corresponds to an ADT
+    /// definition and not a concrete use of it.
+    TyAdt(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// `Box<T>`; this is nominally a struct in the documentation, but is
     /// special-cased internally. For example, it is possible to implicitly
@@ -922,7 +911,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
         // more complete.
         match self.sty {
-            TyEnum(def, _) | TyStruct(def, _) | TyUnion(def, _) => def.is_empty(),
+            TyAdt(def, _) => def.is_empty(),
 
             // FIXME(canndrew): There's no reason why these can't be uncommented, they're tested
             // and they don't break anything. But I'm keeping my changes small for now.
@@ -950,7 +939,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     pub fn is_phantom_data(&self) -> bool {
-        if let TyStruct(def, _) = self.sty {
+        if let TyAdt(def, _) = self.sty {
             def.is_phantom_data()
         } else {
             false
@@ -985,8 +974,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_structural(&self) -> bool {
         match self.sty {
-            TyStruct(..) | TyUnion(..) | TyTuple(..) | TyEnum(..) |
-            TyArray(..) | TyClosure(..) => true,
+            TyAdt(..) | TyTuple(..) | TyArray(..) | TyClosure(..) => true,
             _ => self.is_slice() | self.is_trait()
         }
     }
@@ -994,7 +982,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_simd(&self) -> bool {
         match self.sty {
-            TyStruct(def, _) => def.is_simd(),
+            TyAdt(def, _) => def.is_simd(),
             _ => false
         }
     }
@@ -1009,7 +997,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn simd_type(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self.sty {
-            TyStruct(def, substs) => {
+            TyAdt(def, substs) => {
                 def.struct_variant().fields[0].ty(tcx, substs)
             }
             _ => bug!("simd_type called on invalid type")
@@ -1018,7 +1006,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn simd_size(&self, _cx: TyCtxt) -> usize {
         match self.sty {
-            TyStruct(def, _) => def.struct_variant().fields.len(),
+            TyAdt(def, _) => def.struct_variant().fields.len(),
             _ => bug!("simd_size called on invalid type")
         }
     }
@@ -1203,9 +1191,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn ty_to_def_id(&self) -> Option<DefId> {
         match self.sty {
             TyTrait(ref tt) => Some(tt.principal.def_id()),
-            TyStruct(def, _) |
-            TyUnion(def, _) |
-            TyEnum(def, _) => Some(def.did),
+            TyAdt(def, _) => Some(def.did),
             TyClosure(id, _) => Some(id),
             _ => None
         }
@@ -1213,7 +1199,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn ty_adt_def(&self) -> Option<AdtDef<'tcx>> {
         match self.sty {
-            TyStruct(adt, _) | TyUnion(adt, _) | TyEnum(adt, _) => Some(adt),
+            TyAdt(adt, _) => Some(adt),
             _ => None
         }
     }
@@ -1231,10 +1217,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 v.extend(obj.principal.skip_binder().substs.regions());
                 v
             }
-            TyEnum(_, substs) |
-            TyStruct(_, substs) |
-            TyUnion(_, substs) |
-            TyAnon(_, substs) => {
+            TyAdt(_, substs) | TyAnon(_, substs) => {
                 substs.regions().collect()
             }
             TyClosure(_, ref substs) => {

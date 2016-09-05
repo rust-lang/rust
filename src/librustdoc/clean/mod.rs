@@ -41,7 +41,7 @@ use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::fold::Folder;
 use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
-use rustc::ty;
+use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
 use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
 
@@ -1811,14 +1811,12 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 decl: (cx.map.local_def_id(0), &fty.sig).clean(cx),
                 abi: fty.abi,
             }),
-            ty::TyStruct(def, substs) |
-            ty::TyUnion(def, substs) |
-            ty::TyEnum(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 let did = def.did;
-                let kind = match self.sty {
-                    ty::TyStruct(..) => TypeStruct,
-                    ty::TyUnion(..) => TypeUnion,
-                    _ => TypeEnum,
+                let kind = match def.adt_kind() {
+                    AdtKind::Struct => TypeStruct,
+                    AdtKind::Union => TypeUnion,
+                    AdtKind::Enum => TypeEnum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, &cx.tcx().item_name(did).as_str(),

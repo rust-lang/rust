@@ -97,11 +97,6 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
                 ast::FloatTy::F64 => write!(w, "MF"),
             };
         }
-        ty::TyEnum(def, substs) => {
-            write!(w, "t[{}|", (cx.ds)(cx.tcx, def.did));
-            enc_substs(w, cx, substs);
-            write!(w, "]");
-        }
         ty::TyTrait(ref obj) => {
             write!(w, "x[");
             enc_existential_trait_ref(w, cx, obj.principal.0);
@@ -165,13 +160,8 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         ty::TyParam(p) => {
             write!(w, "p[{}|{}]", p.idx, p.name);
         }
-        ty::TyStruct(def, substs) => {
+        ty::TyAdt(def, substs) => {
             write!(w, "a[{}|", (cx.ds)(cx.tcx, def.did));
-            enc_substs(w, cx, substs);
-            write!(w, "]");
-        }
-        ty::TyUnion(def, substs) => {
-            write!(w, "U[{}|", (cx.ds)(cx.tcx, def.did));
             enc_substs(w, cx, substs);
             write!(w, "]");
         }

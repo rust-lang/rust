@@ -75,13 +75,13 @@ pub mod testtypes {
         fn foo_method(&self) -> usize;
     }
 
-    // Tests TyStruct
+    // Tests struct
     pub struct FooStruct {
         pub pub_foo_field: usize,
         foo_field: usize
     }
 
-    // Tests TyEnum
+    // Tests enum
     pub enum FooEnum {
         VarA(usize),
         VarB(usize, usize)
