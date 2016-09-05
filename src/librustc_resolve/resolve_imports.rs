@@ -308,6 +308,7 @@ impl<'a> Resolver<'a> {
             kind: NameBindingKind::Import {
                 binding: binding,
                 directive: directive,
+                used: Cell::new(false),
             },
             span: directive.span,
             vis: vis,
