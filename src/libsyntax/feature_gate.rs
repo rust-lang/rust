@@ -308,6 +308,7 @@ declare_features! (
     (removed, struct_inherit, "1.0.0", None),
     (removed, test_removed_feature, "1.0.0", None),
     (removed, visible_private_types, "1.0.0", None),
+    (removed, unsafe_no_drop_flag, "1.0.0", None),
 );
 
 declare_features! (
