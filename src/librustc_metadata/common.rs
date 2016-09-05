@@ -35,164 +35,12 @@ pub enum Family {
     AssociatedConst,
 }
 
-// GAP 0x00...0x19
-
-pub const tag_items: usize = 0x100; // top-level only
-
-pub const tag_paths_data_name: usize = 0x20;
-
-pub const tag_def_index: usize = 0x21;
-
-pub const tag_items_data: usize = 0x22;
-
-pub const tag_items_data_item: usize = 0x23;
-
-pub const tag_items_data_item_family: usize = 0x24;
-
-pub const tag_items_data_item_type: usize = 0x25;
-
-// GAP 0x26, 0x27
-
-pub const tag_items_data_parent_item: usize = 0x28;
-
-pub const tag_items_data_item_is_tuple_struct_ctor: usize = 0x29;
-
-pub const tag_items_closure_kind: usize = 0x2a;
-pub const tag_items_closure_ty: usize = 0x2b;
-pub const tag_def_key: usize = 0x2c;
-
-// GAP 0x2d 0x34
-
-pub const tag_index: usize = 0x110; // top-level only
-pub const tag_xref_index: usize = 0x111; // top-level only
-pub const tag_xref_data: usize = 0x112; // top-level only
-pub const tag_attributes: usize = 0x101; // top-level only
-
-// The list of crates that this crate depends on
-pub const tag_crate_deps: usize = 0x102; // top-level only
-pub const tag_crate_hash: usize = 0x103; // top-level only
-pub const tag_crate_crate_name: usize = 0x104; // top-level only
-pub const tag_crate_disambiguator: usize = 0x113; // top-level only
-
-// GAP 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a
-
-pub const tag_item_trait_ref: usize = 0x3b;
-
-// discriminator value for variants
-pub const tag_disr_val: usize = 0x3c;
-
-// GAP 0x3d, 0x3e, 0x3f, 0x40
-
-pub const tag_item_fields: usize = 0x41;
-// GAP 0x42
-pub const tag_item_variances: usize = 0x43;
-// GAP 0x44
-pub const tag_item_trait_method_explicit_self: usize = 0x45;
-
-// GAP 0x46, 0x47, 0x48
-
-// used to encode crate_ctxt side tables
-pub const tag_ast: usize = 0x50;
-
-// GAP 0x51
-
-pub const tag_mir: usize = 0x52;
-
-// GAP 0x53...0x6a
-
-pub const tag_item_trait_item_has_body: usize = 0x70;
-
-pub const tag_crate_triple: usize = 0x105; // top-level only
-
-pub const tag_dylib_dependency_formats: usize = 0x106; // top-level only
-
-pub const tag_lang_items: usize = 0x107; // top-level only
-
-// GAP 0x73, 0x74, 0x75
-
-pub const tag_lang_items_missing: usize = 0x76; // top-level only
-
-// GAP 0x77
-
-pub const tag_items_data_item_visibility: usize = 0x78;
-pub const tag_items_data_item_inherent_impls: usize = 0x79;
-
-// GAP 0x7a
+// NB: increment this if you change the format of metadata such that
+// rustc_version can't be found.
+pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2];
 
 // GAP 0x7c
-pub const tag_mod_children: usize = 0x7b;
-
-// GAP 0x108 // top-level only
-
-// GAP 0x7c
-
 // GAP 0x108
-pub const tag_impls: usize = 0x109; // top-level only
-
-// GAP 0x7d, 0x7e, 0x7f, 0x80, 0x81
-
-pub const tag_native_libraries: usize = 0x10a; // top-level only
-
-// GAP 0x82, 0x83, 0x84
-
-pub const tag_plugin_registrar_fn: usize = 0x10b; // top-level only
-
-pub const tag_method_argument_names: usize = 0x85;
-
-// GAP 0x86
-
-pub const tag_reachable_ids: usize = 0x10c; // top-level only
-
-// GAP 0x87
-
-pub const tag_items_data_item_stability: usize = 0x88;
-
-pub const tag_items_data_item_repr: usize = 0x89;
-
-// GAP 0x10d // top-level only
-
-// GAP 0x8a
-
-pub const tag_items_data_item_struct_ctor: usize = 0x8b;
-pub const tag_attribute_is_sugared_doc: usize = 0x8c;
-// GAP 0x8d
-pub const tag_items_data_region: usize = 0x8e;
-
-pub const tag_item_generics: usize = 0x8f;
-// GAP 0x90, 0x91, 0x92, 0x93, 0x94
-
-pub const tag_item_predicates: usize = 0x95;
-// GAP 0x96, 0x97, 0x98, 0x99
-
-pub const tag_unsafety: usize = 0x9a;
-
-pub const tag_polarity: usize = 0x9d;
-
-pub const tag_macro_defs: usize = 0x10e; // top-level only
-
-// GAP 0x9e, 0x9f
-
-pub const tag_paren_sugar: usize = 0xa0;
-
-pub const tag_codemap: usize = 0xa1;
-
-// GAP 0xa2
-
-pub const tag_item_super_predicates: usize = 0xa3;
-
-pub const tag_defaulted_trait: usize = 0xa4;
-
-pub const tag_impl_coerce_unsized_kind: usize = 0xa5;
-
-pub const tag_items_data_item_constness: usize = 0xa6;
-
-pub const tag_items_data_item_deprecation: usize = 0xa7;
-
-pub const tag_items_data_item_defaultness: usize = 0xa8;
-
-pub const tag_items_data_parent_impl: usize = 0xa9;
-
-pub const tag_rustc_version: usize = 0x10f;
 pub fn rustc_version() -> String {
     format!(
         "rustc {}",
@@ -200,13 +48,69 @@ pub fn rustc_version() -> String {
     )
 }
 
-pub const tag_panic_strategy: usize = 0x114;
+pub mod root_tag {
+    pub const rustc_version: usize = 0x10f;
+    pub const crate_deps: usize = 0x102;
+    pub const crate_hash: usize = 0x103;
+    pub const crate_crate_name: usize = 0x104;
+    pub const crate_disambiguator: usize = 0x113;
+    pub const items: usize = 0x100;
+    pub const index: usize = 0x110;
+    pub const xref_index: usize = 0x111;
+    pub const xref_data: usize = 0x112;
+    pub const crate_triple: usize = 0x105;
+    pub const dylib_dependency_formats: usize = 0x106;
+    pub const lang_items: usize = 0x107;
+    pub const lang_items_missing: usize = 0x76;
+    pub const impls: usize = 0x109;
+    pub const native_libraries: usize = 0x10a;
+    pub const plugin_registrar_fn: usize = 0x10b;
+    pub const panic_strategy: usize = 0x114;
+    pub const macro_derive_registrar: usize = 0x115;
+    pub const reachable_ids: usize = 0x10c;
+    pub const macro_defs: usize = 0x10e;
+    pub const codemap: usize = 0xa1;
+}
 
-pub const tag_macro_derive_registrar: usize = 0x115;
-
-// NB: increment this if you change the format of metadata such that
-// rustc_version can't be found.
-pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2];
+pub mod item_tag {
+    pub const name: usize = 0x20;
+    pub const def_index: usize = 0x21;
+    pub const family: usize = 0x24;
+    pub const ty: usize = 0x25;
+    pub const parent_item: usize = 0x28;
+    pub const is_tuple_struct_ctor: usize = 0x29;
+    pub const closure_kind: usize = 0x2a;
+    pub const closure_ty: usize = 0x2b;
+    pub const def_key: usize = 0x2c;
+    pub const attributes: usize = 0x101;
+    pub const trait_ref: usize = 0x3b;
+    pub const disr_val: usize = 0x3c;
+    pub const fields: usize = 0x41;
+    pub const variances: usize = 0x43;
+    pub const trait_method_explicit_self: usize = 0x45;
+    pub const ast: usize = 0x50;
+    pub const mir: usize = 0x52;
+    pub const trait_item_has_body: usize = 0x70;
+    pub const visibility: usize = 0x78;
+    pub const inherent_impls: usize = 0x79;
+    pub const children: usize = 0x7b;
+    pub const method_argument_names: usize = 0x85;
+    pub const stability: usize = 0x88;
+    pub const repr: usize = 0x89;
+    pub const struct_ctor: usize = 0x8b;
+    pub const generics: usize = 0x8f;
+    pub const predicates: usize = 0x95;
+    pub const unsafety: usize = 0x9a;
+    pub const polarity: usize = 0x9d;
+    pub const paren_sugar: usize = 0xa0;
+    pub const super_predicates: usize = 0xa3;
+    pub const defaulted_trait: usize = 0xa4;
+    pub const impl_coerce_unsized_kind: usize = 0xa5;
+    pub const constness: usize = 0xa6;
+    pub const deprecation: usize = 0xa7;
+    pub const defaultness: usize = 0xa8;
+    pub const parent_impl: usize = 0xa9;
+}
 
 /// The shorthand encoding of `Ty` uses `TypeVariants`' variant `usize`
 /// and is offset by this value so it never matches a real variant.

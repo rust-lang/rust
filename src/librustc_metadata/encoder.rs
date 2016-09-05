@@ -169,21 +169,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 }
 
 fn encode_name(ecx: &mut EncodeContext, name: Name) {
-    ecx.start_tag(tag_paths_data_name);
+    ecx.start_tag(item_tag::name);
     name.encode(ecx).unwrap();
     ecx.end_tag();
 }
 
 fn encode_def_id(ecx: &mut EncodeContext, def_id: DefId) {
     assert!(def_id.is_local());
-    ecx.start_tag(tag_def_index);
+    ecx.start_tag(item_tag::def_index);
     def_id.index.encode(ecx).unwrap();
     ecx.end_tag();
 }
 
 fn encode_def_key(ecx: &mut EncodeContext, key: DefKey) {
     let simple_key = def_key::simplify_def_key(key);
-    ecx.start_tag(tag_def_key);
+    ecx.start_tag(item_tag::def_key);
     simple_key.encode(ecx);
     ecx.end_tag();
 }
@@ -206,14 +206,14 @@ fn encode_trait_ref<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
 
 // Item info table encoding
 fn encode_family(ecx: &mut EncodeContext, f: Family) {
-    ecx.start_tag(tag_items_data_item_family);
+    ecx.start_tag(item_tag::family);
     f.encode(ecx).unwrap();
     ecx.end_tag();
 }
 
 fn encode_item_variances(ecx: &mut EncodeContext, id: NodeId) {
     let v = ecx.tcx.item_variances(ecx.tcx.map.local_def_id(id));
-    ecx.start_tag(tag_item_variances);
+    ecx.start_tag(item_tag::variances);
     v.encode(ecx);
     ecx.end_tag();
 }
@@ -233,27 +233,27 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_type(&mut self, typ: Ty<'tcx>) {
-        self.start_tag(tag_items_data_item_type);
+        self.start_tag(item_tag::ty);
         typ.encode(self).unwrap();
         self.end_tag();
     }
 
     fn encode_disr_val(&mut self,
                        disr_val: ty::Disr) {
-        self.start_tag(tag_disr_val);
+        self.start_tag(item_tag::disr_val);
         disr_val.to_u64_unchecked().encode(self).unwrap();
         self.end_tag();
     }
 
     fn encode_parent_item(&mut self, id: DefId) {
-        self.start_tag(tag_items_data_parent_item);
+        self.start_tag(item_tag::parent_item);
         id.encode(self).unwrap();
         self.end_tag();
     }
 
     fn encode_variant_fields(&mut self,
                              variant: ty::VariantDef) {
-        self.start_tag(tag_item_fields);
+        self.start_tag(item_tag::fields);
         self.seq(&variant.fields, |_, f| f.did);
         self.end_tag();
     }
@@ -321,7 +321,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("(encoding info for module) encoding info for module ID {}", id);
 
         // Encode info about all the module children.
-        self.start_tag(tag_mod_children);
+        self.start_tag(item_tag::children);
         self.seq(&md.item_ids, |_, item_id| {
             tcx.map.local_def_id(item_id.id)
         });
@@ -358,7 +358,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         } else {
             ty::Visibility::PrivateExternal
         };
-        self.start_tag(tag_items_data_item_visibility);
+        self.start_tag(item_tag::visibility);
         vis.encode(self).unwrap();
         self.end_tag();
     }
@@ -381,13 +381,13 @@ impl HasVisibility for ty::Visibility {
 }
 
 fn encode_constness(ecx: &mut EncodeContext, constness: hir::Constness) {
-    ecx.start_tag(tag_items_data_item_constness);
+    ecx.start_tag(item_tag::constness);
     constness.encode(ecx).unwrap();
     ecx.end_tag();
 }
 
 fn encode_defaultness(ecx: &mut EncodeContext, defaultness: hir::Defaultness) {
-    ecx.start_tag(tag_items_data_item_defaultness);
+    ecx.start_tag(item_tag::defaultness);
     defaultness.encode(ecx).unwrap();
     ecx.end_tag();
 }
@@ -463,7 +463,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // definition, but without this there is no way for them
         // to tell that they actually have a ctor rather than a
         // normal function
-        self.start_tag(tag_items_data_item_is_tuple_struct_ctor);
+        self.start_tag(item_tag::is_tuple_struct_ctor);
         true.encode(self).unwrap();
         self.end_tag();
     }
@@ -472,10 +472,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                        generics: &ty::Generics<'tcx>,
                        predicates: &ty::GenericPredicates<'tcx>)
     {
-        self.start_tag(tag_item_generics);
+        self.start_tag(item_tag::generics);
         generics.encode(self).unwrap();
         self.end_tag();
-        self.encode_predicates(predicates, tag_item_predicates);
+        self.encode_predicates(predicates, item_tag::predicates);
     }
 
     fn encode_predicates(&mut self,
@@ -495,7 +495,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_generics(&method_ty.generics, &method_ty.predicates);
         self.encode_visibility(method_ty.vis);
 
-        self.start_tag(tag_item_trait_method_explicit_self);
+        self.start_tag(item_tag::trait_method_explicit_self);
         method_ty.explicit_self.encode(self).unwrap();
         self.end_tag();
 
@@ -541,7 +541,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         encode_attributes(self, &trait_item.attrs);
         match trait_item.node {
             hir::ConstTraitItem(_, ref default) => {
-                self.start_tag(tag_item_trait_item_has_body);
+                self.start_tag(item_tag::trait_item_has_body);
                 default.is_some().encode(self).unwrap();
                 self.end_tag();
 
@@ -550,7 +550,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_mir(item_def_id);
             }
             hir::MethodTraitItem(ref sig, ref body) => {
-                self.start_tag(tag_item_trait_item_has_body);
+                self.start_tag(item_tag::trait_item_has_body);
                 body.is_some().encode(self).unwrap();
                 self.end_tag();
 
@@ -600,7 +600,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         self.encode_parent_item(tcx.map.local_def_id(parent_id));
 
-        self.start_tag(tag_item_trait_item_has_body);
+        self.start_tag(item_tag::trait_item_has_body);
         true.encode(self).unwrap();
         self.end_tag();
 
@@ -632,7 +632,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_method_ty_fields(m);
         self.encode_parent_item(tcx.map.local_def_id(parent_id));
 
-        self.start_tag(tag_item_trait_item_has_body);
+        self.start_tag(item_tag::trait_item_has_body);
         true.encode(self).unwrap();
         self.end_tag();
 
@@ -697,7 +697,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_method_argument_names(&mut self,
                                     decl: &hir::FnDecl) {
-        self.start_tag(tag_method_argument_names);
+        self.start_tag(item_tag::method_argument_names);
 
         self.seq(&decl.inputs, |_, arg| {
             if let PatKind::Binding(_, ref path1, _) = arg.pat.node {
@@ -717,14 +717,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             repr_attrs.extend(attr::find_repr_attrs(self.tcx.sess.diagnostic(),
                                                     attr));
         }
-        self.start_tag(tag_items_data_item_repr);
+        self.start_tag(item_tag::repr);
         repr_attrs.encode(self);
         self.end_tag();
     }
 
     fn encode_mir(&mut self, def_id: DefId) {
         if let Some(mir) = self.mir_map.map.get(&def_id) {
-            self.start_tag(tag_mir as usize);
+            self.start_tag(item_tag::mir as usize);
             mir.encode(self);
             self.end_tag();
         }
@@ -734,7 +734,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 // Encodes the inherent implementations of a structure, enumeration, or trait.
 fn encode_inherent_implementations(ecx: &mut EncodeContext,
                                    def_id: DefId) {
-    ecx.start_tag(tag_items_data_item_inherent_impls);
+    ecx.start_tag(item_tag::inherent_impls);
     match ecx.tcx.inherent_impls.borrow().get(&def_id) {
         None => <[DefId]>::encode(&[], ecx).unwrap(),
         Some(implementations) => implementations.encode(ecx).unwrap()
@@ -744,7 +744,7 @@ fn encode_inherent_implementations(ecx: &mut EncodeContext,
 
 fn encode_stability(ecx: &mut EncodeContext, stab_opt: Option<&attr::Stability>) {
     stab_opt.map(|stab| {
-        ecx.start_tag(tag_items_data_item_stability);
+        ecx.start_tag(item_tag::stability);
         stab.encode(ecx).unwrap();
         ecx.end_tag();
     });
@@ -752,7 +752,7 @@ fn encode_stability(ecx: &mut EncodeContext, stab_opt: Option<&attr::Stability>)
 
 fn encode_deprecation(ecx: &mut EncodeContext, depr_opt: Option<attr::Deprecation>) {
     depr_opt.map(|depr| {
-        ecx.start_tag(tag_items_data_item_deprecation);
+        ecx.start_tag(item_tag::deprecation);
         depr.encode(ecx).unwrap();
         ecx.end_tag();
     });
@@ -772,7 +772,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut sorted_xrefs: Vec<_> = xrefs.into_iter().collect();
         sorted_xrefs.sort_by_key(|&(_, id)| id);
 
-        self.start_tag(tag_xref_data);
+        self.start_tag(root_tag::xref_data);
         for (xref, id) in sorted_xrefs.into_iter() {
             xref_positions[id as usize] = self.mark_stable_position() as u32;
             match xref {
@@ -782,7 +782,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.mark_stable_position();
         self.end_tag();
 
-        self.start_tag(tag_xref_index);
+        self.start_tag(root_tag::xref_index);
         index::write_dense_index(xref_positions, &mut self.opaque.cursor);
         self.end_tag();
     }
@@ -857,7 +857,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 encode_name(self, item.name);
 
                 // Encode all the items in self module.
-                self.start_tag(tag_mod_children);
+                self.start_tag(item_tag::children);
                 self.seq(&fm.items, |_, foreign_item| {
                     tcx.map.local_def_id(foreign_item.id)
                 });
@@ -886,7 +886,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 encode_attributes(self, &item.attrs);
                 self.encode_repr_attrs(&item.attrs);
 
-                self.start_tag(tag_mod_children);
+                self.start_tag(item_tag::children);
                 self.seq(&enum_definition.variants, |_, v| {
                     tcx.map.local_def_id(v.node.data.id())
                 });
@@ -928,7 +928,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 if !struct_def.is_struct() {
                     let ctor_did = tcx.map.local_def_id(struct_def.id());
-                    self.start_tag(tag_items_data_item_struct_ctor);
+                    self.start_tag(item_tag::struct_ctor);
                     ctor_did.encode(self).unwrap();
                     self.end_tag();
                 }
@@ -966,7 +966,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 encode_name(self, item.name);
 
                 let trait_ref = tcx.impl_trait_ref(tcx.map.local_def_id(item.id)).unwrap();
-                encode_trait_ref(self, trait_ref, tag_item_trait_ref);
+                encode_trait_ref(self, trait_ref, item_tag::trait_ref);
             }
             hir::ItemImpl(_, polarity, ..) => {
                 encode_def_id_and_key(self, def_id);
@@ -975,7 +975,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 encode_name(self, item.name);
                 encode_attributes(self, &item.attrs);
 
-                self.start_tag(tag_polarity);
+                self.start_tag(item_tag::polarity);
                 polarity.encode(self).unwrap();
                 self.end_tag();
 
@@ -985,21 +985,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                        .get(&tcx.map.local_def_id(item.id))
                 {
                     Some(&kind) => {
-                        self.start_tag(tag_impl_coerce_unsized_kind);
+                        self.start_tag(item_tag::impl_coerce_unsized_kind);
                         kind.encode(self);
                         self.end_tag();
                     }
                     None => {}
                 }
 
-                self.start_tag(tag_mod_children);
+                self.start_tag(item_tag::children);
                 tcx.impl_or_trait_items(def_id).encode(self).unwrap();
                 <[def::Export]>::encode(&[], self).unwrap();
                 self.end_tag();
 
                 let did = tcx.map.local_def_id(item.id);
                 if let Some(trait_ref) = tcx.impl_trait_ref(did) {
-                    encode_trait_ref(self, trait_ref, tag_item_trait_ref);
+                    encode_trait_ref(self, trait_ref, item_tag::trait_ref);
 
                     let trait_def = tcx.lookup_trait_def(trait_ref.def_id);
                     let parent = trait_def.ancestors(did)
@@ -1011,7 +1011,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                               _ => None,
                                           });
                     parent.map(|parent| {
-                        self.start_tag(tag_items_data_parent_impl);
+                        self.start_tag(item_tag::parent_impl);
                         parent.encode(self).unwrap();
                         self.end_tag();
                     });
@@ -1026,29 +1026,29 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let trait_def = tcx.lookup_trait_def(def_id);
                 let trait_predicates = tcx.lookup_predicates(def_id);
 
-                self.start_tag(tag_unsafety);
+                self.start_tag(item_tag::unsafety);
                 trait_def.unsafety.encode(self).unwrap();
                 self.end_tag();
 
-                self.start_tag(tag_paren_sugar);
+                self.start_tag(item_tag::paren_sugar);
                 trait_def.paren_sugar.encode(self).unwrap();
                 self.end_tag();
 
-                self.start_tag(tag_defaulted_trait);
+                self.start_tag(item_tag::defaulted_trait);
                 tcx.trait_has_default_impl(def_id).encode(self).unwrap();
                 self.end_tag();
 
                 self.encode_generics(&trait_def.generics, &trait_predicates);
                 self.encode_predicates(&tcx.lookup_super_predicates(def_id),
-                                       tag_item_super_predicates);
-                encode_trait_ref(self, trait_def.trait_ref, tag_item_trait_ref);
+                                       item_tag::super_predicates);
+                encode_trait_ref(self, trait_def.trait_ref, item_tag::trait_ref);
                 encode_name(self, item.name);
                 encode_attributes(self, &item.attrs);
                 self.encode_visibility(vis);
                 encode_stability(self, stab);
                 encode_deprecation(self, depr);
 
-                self.start_tag(tag_mod_children);
+                self.start_tag(item_tag::children);
                 tcx.impl_or_trait_items(def_id).encode(self).unwrap();
                 <[def::Export]>::encode(&[], self).unwrap();
                 self.end_tag();
@@ -1276,11 +1276,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         encode_def_id_and_key(self, def_id);
         encode_name(self, syntax::parse::token::intern("<closure>"));
 
-        self.start_tag(tag_items_closure_ty);
+        self.start_tag(item_tag::closure_ty);
         tcx.tables.borrow().closure_tys[&def_id].encode(self).unwrap();
         self.end_tag();
 
-        self.start_tag(tag_items_closure_kind);
+        self.start_tag(item_tag::closure_kind);
         tcx.closure_kind(def_id).encode(self).unwrap();
         self.end_tag();
 
@@ -1292,7 +1292,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 fn encode_info_for_items(ecx: &mut EncodeContext) -> IndexData {
     let krate = ecx.tcx.map.krate();
 
-    ecx.start_tag(tag_items_data);
+    ecx.start_tag(root_tag::items);
 
     let items = {
         let mut index = IndexBuilder::new(ecx);
@@ -1315,13 +1315,13 @@ fn encode_info_for_items(ecx: &mut EncodeContext) -> IndexData {
 }
 
 fn encode_item_index(ecx: &mut EncodeContext, index: IndexData) {
-    ecx.start_tag(tag_index);
+    ecx.start_tag(root_tag::index);
     index.write_index(&mut ecx.opaque.cursor);
     ecx.end_tag();
 }
 
 fn encode_attributes(ecx: &mut EncodeContext, attrs: &[ast::Attribute]) {
-    ecx.start_tag(tag_attributes);
+    ecx.start_tag(item_tag::attributes);
     attrs.encode(ecx).unwrap();
     ecx.end_tag();
 }
@@ -1352,7 +1352,7 @@ fn encode_crate_deps(ecx: &mut EncodeContext, cstore: &cstore::CStore) {
     // the assumption that they are numbered 1 to n.
     // FIXME (#2166): This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
-    ecx.start_tag(tag_crate_deps);
+    ecx.start_tag(root_tag::crate_deps);
     ecx.seq(&get_ordered_deps(cstore), |_, &(_, ref dep)| {
         (dep.name(), decoder::get_crate_hash(dep.data()),
          dep.explicitly_linked.get())
@@ -1376,11 +1376,11 @@ fn encode_lang_items(ecx: &mut EncodeContext) {
     let count = lang_items().count();
     let mut lang_items = lang_items();
 
-    ecx.start_tag(tag_lang_items);
+    ecx.start_tag(root_tag::lang_items);
     ecx.seq(0..count, |_, _| lang_items.next().unwrap());
     ecx.end_tag();
 
-    ecx.start_tag(tag_lang_items_missing);
+    ecx.start_tag(root_tag::lang_items_missing);
     tcx.lang_items.missing.encode(ecx).unwrap();
     ecx.end_tag();
 }
@@ -1401,7 +1401,7 @@ fn encode_native_libraries(ecx: &mut EncodeContext) {
     let count = libs().count();
     let mut libs = libs();
 
-    ecx.start_tag(tag_native_libraries);
+    ecx.start_tag(root_tag::native_libraries);
     ecx.seq(0..count, |_, _| libs.next().unwrap());
     ecx.end_tag();
 }
@@ -1410,7 +1410,7 @@ fn encode_plugin_registrar_fn(ecx: &mut EncodeContext) {
     match ecx.tcx.sess.plugin_registrar_fn.get() {
         Some(id) => {
             let def_id = ecx.tcx.map.local_def_id(id);
-            ecx.start_tag(tag_plugin_registrar_fn);
+            ecx.start_tag(root_tag::plugin_registrar_fn);
             def_id.index.encode(ecx).unwrap();
             ecx.end_tag();
         }
@@ -1434,7 +1434,7 @@ fn encode_codemap(ecx: &mut EncodeContext) {
     let count = filemaps().count();
     let mut filemaps = filemaps();
 
-    ecx.start_tag(tag_codemap);
+    ecx.start_tag(root_tag::codemap);
     ecx.seq(0..count, |_, _| filemaps.next().unwrap());
     ecx.end_tag();
 }
@@ -1442,7 +1442,7 @@ fn encode_codemap(ecx: &mut EncodeContext) {
 /// Serialize the text of the exported macros
 fn encode_macro_defs(ecx: &mut EncodeContext) {
     let tcx = ecx.tcx;
-    ecx.start_tag(tag_macro_defs);
+    ecx.start_tag(root_tag::macro_defs);
     ecx.seq(&tcx.map.krate().exported_macros, |_, def| {
         let body = ::syntax::print::pprust::tts_to_string(&def.body);
         (def.name, &def.attrs, def.span, body)
@@ -1453,7 +1453,7 @@ fn encode_macro_defs(ecx: &mut EncodeContext) {
         let id = ecx.tcx.sess.derive_registrar_fn.get().unwrap();
         let did = ecx.tcx.map.local_def_id(id);
 
-        ecx.start_tag(tag_macro_derive_registrar);
+        ecx.start_tag(root_tag::macro_derive_registrar);
         did.index.encode(ecx).unwrap();
         ecx.end_tag();
     }
@@ -1485,7 +1485,7 @@ fn encode_impls(ecx: &mut EncodeContext) {
     };
     ecx.tcx.map.krate().visit_all_items(&mut visitor);
 
-    ecx.start_tag(tag_impls);
+    ecx.start_tag(root_tag::impls);
     for (trait_def_id, trait_impls) in visitor.impls {
         // FIXME(eddyb) Avoid wrapping the entries in docs.
         ecx.start_tag(0);
@@ -1503,7 +1503,7 @@ fn encode_impls(ecx: &mut EncodeContext) {
 // symbol associated with them (they weren't translated) or if they're an FFI
 // definition (as that's not defined in this crate).
 fn encode_reachable(ecx: &mut EncodeContext) {
-    ecx.start_tag(tag_reachable_ids);
+    ecx.start_tag(root_tag::reachable_ids);
 
     let reachable = ecx.reachable;
     ecx.seq(reachable, |ecx, &id| ecx.tcx.map.local_def_id(id).index);
@@ -1512,7 +1512,7 @@ fn encode_reachable(ecx: &mut EncodeContext) {
 }
 
 fn encode_dylib_dependency_formats(ecx: &mut EncodeContext) {
-    ecx.start_tag(tag_dylib_dependency_formats);
+    ecx.start_tag(root_tag::dylib_dependency_formats);
     match ecx.tcx.sess.dependency_formats.borrow().get(&config::CrateTypeDylib) {
         Some(arr) => {
             ecx.seq(arr, |_, slot| {
@@ -1596,30 +1596,30 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn encode_metadata_inner(ecx: &mut EncodeContext) {
-    ecx.wr_tagged_str(tag_rustc_version, &rustc_version());
+    ecx.wr_tagged_str(root_tag::rustc_version, &rustc_version());
 
     let tcx = ecx.tcx;
     let link_meta = ecx.link_meta;
 
-    ecx.start_tag(tag_crate_crate_name);
+    ecx.start_tag(root_tag::crate_crate_name);
     link_meta.crate_name.encode(ecx).unwrap();
     ecx.end_tag();
 
-    ecx.start_tag(tag_crate_triple);
+    ecx.start_tag(root_tag::crate_triple);
     tcx.sess.opts.target_triple.encode(ecx).unwrap();
     ecx.end_tag();
 
-    ecx.start_tag(tag_crate_hash);
+    ecx.start_tag(root_tag::crate_hash);
     link_meta.crate_hash.encode(ecx).unwrap();
     ecx.end_tag();
 
-    ecx.start_tag(tag_crate_disambiguator);
+    ecx.start_tag(root_tag::crate_disambiguator);
     tcx.sess.local_crate_disambiguator().encode(ecx).unwrap();
     ecx.end_tag();
 
     encode_dylib_dependency_formats(ecx);
 
-    ecx.start_tag(tag_panic_strategy);
+    ecx.start_tag(root_tag::panic_strategy);
     ecx.tcx.sess.opts.cg.panic.encode(ecx);
     ecx.end_tag();
 
@@ -1663,11 +1663,9 @@ fn encode_metadata_inner(ecx: &mut EncodeContext) {
     let reachable_bytes = ecx.position() - i;
 
     // Encode and index the items.
-    ecx.start_tag(tag_items);
     i = ecx.position();
     let items = encode_info_for_items(ecx);
     let item_bytes = ecx.position() - i;
-    ecx.end_tag();
 
     i = ecx.position();
     encode_item_index(ecx, items);
