@@ -453,10 +453,6 @@ fn item_to_def(cdata: Cmd, item: rbml::Doc, did: DefId) -> Option<Def> {
     })
 }
 
-fn parse_associated_type_names(item_doc: rbml::Doc) -> Vec<ast::Name> {
-    item_doc.get(tag_associated_type_names).decoder().decode()
-}
-
 pub fn get_trait_def<'a, 'tcx>(cdata: Cmd,
                                item_id: DefIndex,
                                tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::TraitDef<'tcx>
@@ -464,16 +460,11 @@ pub fn get_trait_def<'a, 'tcx>(cdata: Cmd,
     let item_doc = cdata.lookup_item(item_id);
     let generics = doc_generics(item_doc, tcx, cdata);
     let unsafety = item_doc.get(tag_unsafety).decoder().decode();
-    let associated_type_names = parse_associated_type_names(item_doc);
     let paren_sugar = item_doc.get(tag_paren_sugar).decoder().decode();
     let trait_ref = doc_trait_ref(item_doc.get(tag_item_trait_ref), tcx, cdata);
     let def_path = def_path(cdata, item_id).unwrap();
 
-    ty::TraitDef::new(unsafety,
-                      paren_sugar,
-                      generics,
-                      trait_ref,
-                      associated_type_names,
+    ty::TraitDef::new(unsafety, paren_sugar, generics, trait_ref,
                       def_path.deterministic_hash(tcx))
 }
 
@@ -853,22 +844,6 @@ fn get_explicit_self<'a, 'tcx>(cdata: Cmd, item: rbml::Doc, tcx: TyCtxt<'a, 'tcx
     dcx.tcx = Some(tcx);
 
     dcx.decode()
-}
-
-/// Returns the def IDs of all the items in the given implementation.
-pub fn get_impl_or_trait_items(cdata: Cmd, impl_id: DefIndex)
-                               -> Vec<ty::ImplOrTraitItemId> {
-    let item = cdata.lookup_item(impl_id);
-    let mut dcx = item.get(tag_mod_children).decoder();
-    dcx.cdata = Some(cdata);
-    dcx.seq().map(|def_id: DefId| {
-        match item_to_def(cdata, cdata.lookup_item(def_id.index), def_id) {
-            Some(Def::AssociatedConst(def_id)) => ty::ConstTraitItemId(def_id),
-            Some(Def::Method(def_id)) => ty::MethodTraitItemId(def_id),
-            Some(Def::AssociatedTy(_, def_id)) => ty::TypeTraitItemId(def_id),
-            def => bug!("get_impl_or_trait_items: invalid def {:?}", def)
-        }
-    }).collect()
 }
 
 pub fn get_trait_name(cdata: Cmd, id: DefIndex) -> ast::Name {

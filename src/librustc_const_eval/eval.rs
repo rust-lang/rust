@@ -1081,16 +1081,14 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match selection {
             traits::VtableImpl(ref impl_data) => {
                 let ac = tcx.impl_or_trait_items(impl_data.impl_def_id)
-                    .iter().filter_map(|id| {
-                        match *id {
-                            ty::ConstTraitItemId(def_id) => {
-                                Some(tcx.impl_or_trait_item(def_id))
-                            }
+                    .iter().filter_map(|&def_id| {
+                        match tcx.impl_or_trait_item(def_id) {
+                            ty::ConstTraitItem(ic) => Some(ic),
                             _ => None
                         }
-                    }).find(|ic| ic.name() == ti.name);
+                    }).find(|ic| ic.name == ti.name);
                 match ac {
-                    Some(ic) => lookup_const_by_id(tcx, ic.def_id(), None),
+                    Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                     None => match ti.node {
                         hir::ConstTraitItem(ref ty, Some(ref expr)) => {
                             Some((&*expr, tcx.ast_ty_to_prim_ty(ty)))

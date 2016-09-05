@@ -361,10 +361,15 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
                                            -> bool
     {
         if let Some(trait_id) = self.tcx().map.as_local_node_id(trait_def_id) {
-            trait_defines_associated_type_named(self.ccx, trait_id, assoc_name)
+            trait_associated_type_names(self.tcx(), trait_id)
+                .any(|name| name == assoc_name)
         } else {
-            let trait_def = self.tcx().lookup_trait_def(trait_def_id);
-            trait_def.associated_type_names.contains(&assoc_name)
+            self.tcx().impl_or_trait_items(trait_def_id).iter().any(|&def_id| {
+                match self.tcx().impl_or_trait_item(def_id) {
+                    ty::TypeTraitItem(ref item) => item.name == assoc_name,
+                    _ => false
+                }
+            })
         }
     }
 
@@ -926,15 +931,10 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Add an entry mapping
             let trait_item_def_ids = Rc::new(trait_items.iter().map(|trait_item| {
-                let def_id = ccx.tcx.map.local_def_id(trait_item.id);
-                match trait_item.node {
-                    hir::ConstTraitItem(..) => ty::ConstTraitItemId(def_id),
-                    hir::MethodTraitItem(..) => ty::MethodTraitItemId(def_id),
-                    hir::TypeTraitItem(..) => ty::TypeTraitItemId(def_id)
-                }
+                ccx.tcx.map.local_def_id(trait_item.id)
             }).collect());
-            tcx.impl_or_trait_item_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
-                                                           trait_item_def_ids);
+            tcx.impl_or_trait_item_def_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
+                                                               trait_item_def_ids);
         },
         hir::ItemStruct(ref struct_def, _) |
         hir::ItemUnion(ref struct_def, _) => {
@@ -1266,9 +1266,9 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return def.clone();
     }
 
-    let (unsafety, generics, items) = match it.node {
-        hir::ItemTrait(unsafety, ref generics, _, ref items) => {
-            (unsafety, generics, items)
+    let (unsafety, generics) = match it.node {
+        hir::ItemTrait(unsafety, ref generics, _, _) => {
+            (unsafety, generics)
         }
         _ => span_bug!(it.span, "trait_def_of_item invoked on non-trait"),
     };
@@ -1288,32 +1288,20 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ty_generics = generics_of_def_id(ccx, def_id);
     let substs = mk_item_substs(&ccx.icx(generics), it.span, def_id);
 
-    let associated_type_names: Vec<_> = items.iter().filter_map(|trait_item| {
-        match trait_item.node {
-            hir::TypeTraitItem(..) => Some(trait_item.name),
-            _ => None,
-        }
-    }).collect();
-
     let def_path_hash = tcx.def_path(def_id).deterministic_hash(tcx);
 
     let trait_ref = ty::TraitRef::new(def_id, substs);
-    let trait_def = ty::TraitDef::new(unsafety,
-                                      paren_sugar,
-                                      ty_generics,
-                                      trait_ref,
-                                      associated_type_names,
+    let trait_def = ty::TraitDef::new(unsafety, paren_sugar, ty_generics, trait_ref,
                                       def_path_hash);
 
     tcx.intern_trait_def(trait_def)
 }
 
-fn trait_defines_associated_type_named(ccx: &CrateCtxt,
-                                       trait_node_id: ast::NodeId,
-                                       assoc_name: ast::Name)
-                                       -> bool
+pub fn trait_associated_type_names<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                   trait_node_id: ast::NodeId)
+                                                   -> impl Iterator<Item=ast::Name> + 'a
 {
-    let item = match ccx.tcx.map.get(trait_node_id) {
+    let item = match tcx.map.get(trait_node_id) {
         hir_map::NodeItem(item) => item,
         _ => bug!("trait_node_id {} is not an item", trait_node_id)
     };
@@ -1323,10 +1311,10 @@ fn trait_defines_associated_type_named(ccx: &CrateCtxt,
         _ => bug!("trait_node_id {} is not a trait", trait_node_id)
     };
 
-    trait_items.iter().any(|trait_item| {
+    trait_items.iter().filter_map(|trait_item| {
         match trait_item.node {
-            hir::TypeTraitItem(..) => trait_item.name == assoc_name,
-            _ => false,
+            hir::TypeTraitItem(..) => Some(trait_item.name),
+            _ => None,
         }
     })
 }

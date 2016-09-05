@@ -304,7 +304,7 @@ impl<'a, 'gcx, 'tcx> Node {
 /// An iterator over the items defined within a trait or impl.
 pub struct NodeItems<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    items: Rc<Vec<ty::ImplOrTraitItemId>>,
+    items: Rc<Vec<DefId>>,
     idx: usize
 }
 
@@ -312,7 +312,7 @@ impl<'a, 'tcx> Iterator for NodeItems<'a, 'tcx> {
     type Item = ImplOrTraitItem<'tcx>;
     fn next(&mut self) -> Option<ImplOrTraitItem<'tcx>> {
         if self.idx < self.items.len() {
-            let item_def_id = self.items[self.idx].def_id();
+            let item_def_id = self.items[self.idx];
             let items_table = self.tcx.impl_or_trait_items.borrow();
             let item = items_table[&item_def_id].clone();
             self.idx += 1;

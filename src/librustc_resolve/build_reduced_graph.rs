@@ -432,9 +432,9 @@ impl<'b> Resolver<'b> {
                 // info.
 
                 let trait_item_def_ids = self.session.cstore.impl_or_trait_items(def_id);
-                for trait_item_def in &trait_item_def_ids {
+                for &trait_item_def in &trait_item_def_ids {
                     let trait_item_name =
-                        self.session.cstore.item_name(trait_item_def.def_id());
+                        self.session.cstore.item_name(trait_item_def);
 
                     debug!("(building reduced graph for external crate) ... adding trait item \
                             '{}'",

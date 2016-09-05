@@ -179,10 +179,15 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<ty::ImplOrTraitItemId> {
+    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<DefId> {
         self.dep_graph.read(DepNode::MetaData(def_id));
-        let cdata = self.get_crate_data(def_id.krate);
-        decoder::get_impl_or_trait_items(&cdata, def_id.index)
+        let mut result = vec![];
+        let crate_data = self.get_crate_data(def_id.krate);
+        let get_crate_data = |cnum| self.get_crate_data(cnum);
+        decoder::each_child_of_item(&crate_data, def_id.index, get_crate_data, |def, _, _| {
+            result.push(def.def_id());
+        });
+        result
     }
 
     fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity

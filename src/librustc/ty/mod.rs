@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::ImplOrTraitItemId::*;
 pub use self::Variance::*;
 pub use self::DtorKind::*;
 pub use self::ImplOrTraitItemContainer::*;
@@ -190,18 +189,6 @@ pub enum ImplOrTraitItem<'tcx> {
 }
 
 impl<'tcx> ImplOrTraitItem<'tcx> {
-    fn id(&self) -> ImplOrTraitItemId {
-        match *self {
-            ConstTraitItem(ref associated_const) => {
-                ConstTraitItemId(associated_const.def_id)
-            }
-            MethodTraitItem(ref method) => MethodTraitItemId(method.def_id),
-            TypeTraitItem(ref associated_type) => {
-                TypeTraitItemId(associated_type.def_id)
-            }
-        }
-    }
-
     pub fn def(&self) -> Def {
         match *self {
             ConstTraitItem(ref associated_const) => Def::AssociatedConst(associated_const.def_id),
@@ -246,23 +233,6 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
         match *self {
             MethodTraitItem(ref m) => Some((*m).clone()),
             _ => None,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
-pub enum ImplOrTraitItemId {
-    ConstTraitItemId(DefId),
-    MethodTraitItemId(DefId),
-    TypeTraitItemId(DefId),
-}
-
-impl ImplOrTraitItemId {
-    pub fn def_id(&self) -> DefId {
-        match *self {
-            ConstTraitItemId(def_id) => def_id,
-            MethodTraitItemId(def_id) => def_id,
-            TypeTraitItemId(def_id) => def_id,
         }
     }
 }
@@ -2276,8 +2246,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn provided_trait_methods(self, id: DefId) -> Vec<Rc<Method<'gcx>>> {
-        self.impl_or_trait_items(id).iter().filter_map(|id| {
-            match self.impl_or_trait_item(id.def_id()) {
+        self.impl_or_trait_items(id).iter().filter_map(|&def_id| {
+            match self.impl_or_trait_item(def_id) {
                 MethodTraitItem(ref m) if m.has_body => Some(m.clone()),
                 _ => None
             }
@@ -2321,9 +2291,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                    .expect("missing ImplOrTraitItem in metadata"))
     }
 
-    pub fn impl_or_trait_items(self, id: DefId) -> Rc<Vec<ImplOrTraitItemId>> {
+    pub fn impl_or_trait_items(self, id: DefId) -> Rc<Vec<DefId>> {
         lookup_locally_or_in_crate_store(
-            "impl_or_trait_items", id, &self.impl_or_trait_item_ids,
+            "impl_or_trait_items", id, &self.impl_or_trait_item_def_ids,
             || Rc::new(self.sess.cstore.impl_or_trait_items(id)))
     }
 
@@ -2600,7 +2570,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let impl_items = self.sess.cstore.impl_or_trait_items(primitive_def_id);
 
         // Store the implementation info.
-        self.impl_or_trait_item_ids.borrow_mut().insert(primitive_def_id, Rc::new(impl_items));
+        self.impl_or_trait_item_def_ids.borrow_mut().insert(primitive_def_id, Rc::new(impl_items));
         self.populated_external_primitive_impls.borrow_mut().insert(primitive_def_id);
     }
 
@@ -2627,7 +2597,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         for &impl_def_id in &inherent_impls {
             // Store the implementation info.
             let impl_items = self.sess.cstore.impl_or_trait_items(impl_def_id);
-            self.impl_or_trait_item_ids.borrow_mut().insert(impl_def_id, Rc::new(impl_items));
+            self.impl_or_trait_item_def_ids.borrow_mut().insert(impl_def_id, Rc::new(impl_items));
         }
 
         self.inherent_impls.borrow_mut().insert(type_id, inherent_impls);
@@ -2669,15 +2639,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             // For any methods that use a default implementation, add them to
             // the map. This is a bit unfortunate.
-            for impl_item_def_id in &impl_items {
-                let method_def_id = impl_item_def_id.def_id();
+            for &impl_item_def_id in &impl_items {
                 // load impl items eagerly for convenience
                 // FIXME: we may want to load these lazily
-                self.impl_or_trait_item(method_def_id);
+                self.impl_or_trait_item(impl_item_def_id);
             }
 
             // Store the implementation info.
-            self.impl_or_trait_item_ids.borrow_mut().insert(impl_def_id, Rc::new(impl_items));
+            self.impl_or_trait_item_def_ids.borrow_mut().insert(impl_def_id, Rc::new(impl_items));
         }
 
         def.flags.set(def.flags.get() | TraitFlags::IMPLS_VALID);
@@ -2766,19 +2735,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// is already that of the original trait method, then the return value is
     /// the same).
     /// Otherwise, return `None`.
-    pub fn trait_item_of_item(self, def_id: DefId) -> Option<ImplOrTraitItemId> {
+    pub fn trait_item_of_item(self, def_id: DefId) -> Option<DefId> {
         let impl_or_trait_item = match self.impl_or_trait_items.borrow().get(&def_id) {
             Some(m) => m.clone(),
             None => return None,
         };
         match impl_or_trait_item.container() {
-            TraitContainer(_) => Some(impl_or_trait_item.id()),
+            TraitContainer(_) => Some(impl_or_trait_item.def_id()),
             ImplContainer(def_id) => {
                 self.trait_id_of_impl(def_id).and_then(|trait_did| {
                     let name = impl_or_trait_item.name();
                     self.trait_items(trait_did).iter()
                         .find(|item| item.name() == name)
-                        .map(|item| item.id())
+                        .map(|item| item.def_id())
                 })
             }
         }

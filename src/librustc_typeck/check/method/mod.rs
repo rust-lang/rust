@@ -368,7 +368,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         self.tcx.impl_or_trait_items(def_id)
             .iter()
-            .map(|&did| self.tcx.impl_or_trait_item(did.def_id()))
+            .map(|&did| self.tcx.impl_or_trait_item(did))
             .find(|m| m.name() == item_name)
     }
 }

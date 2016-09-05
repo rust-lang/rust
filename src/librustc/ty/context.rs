@@ -331,7 +331,7 @@ pub struct GlobalCtxt<'tcx> {
     pub impl_or_trait_items: RefCell<DepTrackingMap<maps::ImplOrTraitItems<'tcx>>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
-    pub impl_or_trait_item_ids: RefCell<DepTrackingMap<maps::ImplOrTraitItemIds<'tcx>>>,
+    pub impl_or_trait_item_def_ids: RefCell<DepTrackingMap<maps::ImplOrTraitItemDefIds<'tcx>>>,
 
     /// A cache for the trait_items() routine; note that the routine
     /// itself pushes the `TraitItems` dependency node.
@@ -728,7 +728,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             rcache: RefCell::new(FnvHashMap()),
             tc_cache: RefCell::new(FnvHashMap()),
             impl_or_trait_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            impl_or_trait_item_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            impl_or_trait_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_items_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             ty_param_defs: RefCell::new(NodeMap()),
             normalized_cache: RefCell::new(FnvHashMap()),
@@ -1396,7 +1396,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.trait_items_cache.memoize(trait_did, || {
             let def_ids = self.impl_or_trait_items(trait_did);
             Rc::new(def_ids.iter()
-                           .map(|d| self.impl_or_trait_item(d.def_id()))
+                           .map(|&def_id| self.impl_or_trait_item(def_id))
                            .collect())
         })
     }

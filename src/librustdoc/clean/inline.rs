@@ -368,10 +368,8 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
     let predicates = tcx.lookup_predicates(did);
     let trait_items = tcx.sess.cstore.impl_or_trait_items(did)
             .iter()
-            .filter_map(|did| {
-        let did = did.def_id();
-        let impl_item = tcx.impl_or_trait_item(did);
-        match impl_item {
+            .filter_map(|&did| {
+        match tcx.impl_or_trait_item(did) {
             ty::ConstTraitItem(ref assoc_const) => {
                 let did = assoc_const.def_id;
                 let type_scheme = tcx.lookup_item_type(did);

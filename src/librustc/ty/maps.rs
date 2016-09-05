@@ -34,8 +34,7 @@ dep_map_ty! { Tcache: ItemSignature(DefId) -> Ty<'tcx> }
 dep_map_ty! { Generics: ItemSignature(DefId) -> &'tcx ty::Generics<'tcx> }
 dep_map_ty! { Predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
 dep_map_ty! { SuperPredicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx> }
-dep_map_ty! { ImplOrTraitItemIds: ImplOrTraitItemIds(DefId)
-                                    -> Rc<Vec<ty::ImplOrTraitItemId>> }
+dep_map_ty! { ImplOrTraitItemDefIds: ImplOrTraitItemDefIds(DefId) -> Rc<Vec<DefId>> }
 dep_map_ty! { ImplTraitRefs: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>> }
 dep_map_ty! { TraitDefs: ItemSignature(DefId) -> &'tcx ty::TraitDef<'tcx> }
 dep_map_ty! { AdtDefs: ItemSignature(DefId) -> ty::AdtDefMaster<'tcx> }
