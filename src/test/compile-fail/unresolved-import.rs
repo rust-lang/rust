@@ -35,3 +35,12 @@ mod food {
         }
     }
 }
+
+mod m {
+    enum MyEnum {
+        MyVariant
+    }
+
+    use MyEnum::*; //~ ERROR unresolved import `MyEnum::*` [E0432]
+                   //~^ Did you mean `self::MyEnum`?
+}
