@@ -519,6 +519,7 @@ impl FnType {
             "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, self),
             "s390x" => cabi_s390x::compute_abi_info(ccx, self),
             "asmjs" => cabi_asmjs::compute_abi_info(ccx, self),
+            "wasm32" => cabi_asmjs::compute_abi_info(ccx, self),
             a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
         }
 
