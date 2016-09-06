@@ -549,7 +549,13 @@ impl<'a> ExtCtxt<'a> {
 
     /// Returns a `Folder` for deeply expanding all macros in an AST node.
     pub fn expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
-        expand::MacroExpander::new(self, false, false)
+        expand::MacroExpander::new(self, false)
+    }
+
+    /// Returns a `Folder` that deeply expands all macros and assigns all node ids in an AST node.
+    /// Once node ids are assigned, the node may not be expanded, removed, or otherwise modified.
+    pub fn monotonic_expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
+        expand::MacroExpander::new(self, true)
     }
 
     pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree])

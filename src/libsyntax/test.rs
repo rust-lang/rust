@@ -257,7 +257,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     };
 
     let sym = token::gensym_ident("__test_reexports");
-    let it = cx.ext_cx.expander().fold_item(P(ast::Item {
+    let it = cx.ext_cx.monotonic_expander().fold_item(P(ast::Item {
         ident: sym.clone(),
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
@@ -512,7 +512,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
     let item_ = ast::ItemKind::Mod(testmod);
     let mod_ident = token::gensym_ident("__test");
 
-    let mut expander = cx.ext_cx.expander();
+    let mut expander = cx.ext_cx.monotonic_expander();
     let item = expander.fold_item(P(ast::Item {
         id: ast::DUMMY_NODE_ID,
         ident: mod_ident,

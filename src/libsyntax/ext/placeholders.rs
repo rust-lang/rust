@@ -75,13 +75,15 @@ pub fn macro_scope_placeholder() -> Expansion {
 pub struct PlaceholderExpander<'a, 'b: 'a> {
     expansions: HashMap<ast::NodeId, Expansion>,
     cx: &'a mut ExtCtxt<'b>,
+    monotonic: bool,
 }
 
 impl<'a, 'b> PlaceholderExpander<'a, 'b> {
-    pub fn new(cx: &'a mut ExtCtxt<'b>) -> Self {
+    pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
         PlaceholderExpander {
             cx: cx,
             expansions: HashMap::new(),
+            monotonic: monotonic,
         }
     }
 
@@ -182,13 +184,15 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
                     // which shares a HIR node with the expression itself.
                     ast::StmtKind::Expr(ref expr) if remaining_stmts == 0 => stmt.id = expr.id,
 
-                    _ => {
+                    _ if self.monotonic => {
                         assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
                         stmt.id = self.cx.resolver.next_node_id();
                     }
+
+                    _ => {}
                 }
 
-                if !macros.is_empty() {
+                if self.monotonic && !macros.is_empty() {
                     let macros = mem::replace(&mut macros, Vec::new());
                     self.cx.resolver.add_expansions_at_stmt(stmt.id, macros);
                 }

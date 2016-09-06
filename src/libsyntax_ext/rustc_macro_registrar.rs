@@ -273,5 +273,5 @@ fn mk_registrar(cx: &mut ExtCtxt,
         i
     });
 
-    cx.expander().fold_item(module).pop().unwrap()
+    cx.monotonic_expander().fold_item(module).pop().unwrap()
 }

@@ -175,16 +175,16 @@ pub struct MacroExpander<'a, 'b:'a> {
     pub cx: &'a mut ExtCtxt<'b>,
     pub single_step: bool,
     pub keep_macs: bool,
+    monotonic: bool, // c.f. `cx.monotonic_expander()`
 }
 
 impl<'a, 'b> MacroExpander<'a, 'b> {
-    pub fn new(cx: &'a mut ExtCtxt<'b>,
-               single_step: bool,
-               keep_macs: bool) -> MacroExpander<'a, 'b> {
+    pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
         MacroExpander {
             cx: cx,
-            single_step: single_step,
-            keep_macs: keep_macs
+            monotonic: monotonic,
+            single_step: false,
+            keep_macs: false,
         }
     }
 
@@ -245,7 +245,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         self.cx.current_expansion = orig_expansion_data;
 
-        let mut placeholder_expander = PlaceholderExpander::new(self.cx);
+        let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
                 let expansion = expansion.fold_with(&mut placeholder_expander);
@@ -268,6 +268,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 },
                 cx: self.cx,
                 invocations: Vec::new(),
+                monotonic: self.monotonic,
             };
             (expansion.fold_with(&mut collector), collector.invocations)
         };
@@ -450,6 +451,7 @@ struct InvocationCollector<'a, 'b: 'a> {
     cx: &'a mut ExtCtxt<'b>,
     cfg: StripUnconfigured<'a>,
     invocations: Vec<Invocation>,
+    monotonic: bool,
 }
 
 macro_rules! fully_configure {
@@ -709,8 +711,12 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
-        assert_eq!(id, ast::DUMMY_NODE_ID);
-        self.cx.resolver.next_node_id()
+        if self.monotonic {
+            assert_eq!(id, ast::DUMMY_NODE_ID);
+            self.cx.resolver.next_node_id()
+        } else {
+            id
+        }
     }
 }
 
@@ -763,7 +769,7 @@ pub fn expand_crate(cx: &mut ExtCtxt,
                     user_exts: Vec<NamedSyntaxExtension>,
                     c: Crate) -> Crate {
     cx.initialize(user_exts, &c);
-    cx.expander().expand_crate(c)
+    cx.monotonic_expander().expand_crate(c)
 }
 
 // Expands crate using supplied MacroExpander - allows for
