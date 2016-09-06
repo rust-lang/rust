@@ -1906,7 +1906,7 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 ///
 /// See the [module examples] for the behavior of other range structs.
 ///
-/// [module examples]: ../#Examples
+/// [module examples]: ../index.html#examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
@@ -1937,7 +1937,7 @@ impl fmt::Debug for RangeFull {
 ///
 /// See the [module examples] for the behavior of other range structs.
 ///
-/// [module examples]: ../#Examples
+/// [module examples]: ../index.html#examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
@@ -2001,7 +2001,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///
 /// See the [module examples] for the behavior of other range structs.
 ///
-/// [module examples]: ../#Examples
+/// [module examples]: ../index.html#examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
@@ -2068,7 +2068,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///
 /// See the [module examples] for the behavior of other range structs.
 ///
-/// [module examples]: ../#Examples
+/// [module examples]: ../index.html#examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
@@ -2121,7 +2121,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 ///
 /// See the [module examples] for the behavior of other range structs.
 ///
-/// [module examples]: ../#Examples
+/// [module examples]: ../index.html#examples
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub enum RangeInclusive<Idx> {
@@ -2226,7 +2226,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///
 /// See the [module examples] for the behavior of other range structs.
 ///
-/// [module examples]: ../#Examples
+/// [module examples]: ../index.html#examples
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub struct RangeToInclusive<Idx> {
