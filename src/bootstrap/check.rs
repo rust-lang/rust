@@ -385,8 +385,19 @@ fn krate_emscripten(build: &Build,
 
      for test in tests {
          let test_file_name = test.to_string_lossy().into_owned();
-         let output = output(Command::new("node").arg(&test_file_name));
-         println!("{}", output);
+         println!("running {}", test_file_name);
+         let output = Command::new("node")
+             .arg(&test_file_name)
+             .stderr(::std::process::Stdio::inherit())
+             .output();
+         let output = match output {
+             Ok(status) => status,
+             Err(e) => panic!(format!("failed to execute command: {}", e)),
+         };
+         println!("{}", String::from_utf8(output.stdout).unwrap());
+         if !output.status.success() {
+             panic!("some tests failed");
+         }
      }
  }
 
@@ -402,7 +413,7 @@ fn find_tests(dir: &Path,
         let filename = e.file_name().into_string().unwrap();
         if (target.contains("windows") && filename.ends_with(".exe")) ||
            (!target.contains("windows") && !filename.contains(".")) ||
-           (target.contains("asmjs") && filename.contains(".js")){
+           (target.contains("emscripten") && filename.contains(".js")){
             dst.push(e.path());
         }
     }
