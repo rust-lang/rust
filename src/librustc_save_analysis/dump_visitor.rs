@@ -982,15 +982,23 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         self.visit_pat(&p);
 
         for &(id, ref p, immut, _) in &collector.collected_paths {
-            let mut value = if immut == ast::Mutability::Immutable {
-                value.to_string()
-            } else {
-                "<mutable>".to_string()
+            let mut value = match immut {
+                ast::Mutability::Immutable => value.to_string(),
+                _ => String::new(),
             };
             let types = self.tcx.node_types();
-            let typ = types.get(&id).map(|t| t.to_string()).unwrap_or(String::new());
-            value.push_str(": ");
-            value.push_str(&typ);
+            let typ = match types.get(&id) {
+                Some(typ) => {
+                    let typ = typ.to_string();
+                    if !value.is_empty() {
+                        value.push_str(": ");
+                    }
+                    value.push_str(&typ);
+                    typ
+                }
+                None => String::new(),
+            };
+
             // Get the span only for the name of the variable (I hope the path
             // is only ever a variable name, but who knows?).
             let sub_span = self.span.span_for_last_ident(p.span);
