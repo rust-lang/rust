@@ -587,7 +587,21 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let module = match module_result {
             Success(module) => module,
             Indeterminate => return Indeterminate,
-            Failed(err) => return Failed(err),
+            Failed(err) => {
+                let self_module = self.current_module.clone();
+
+                let resolve_from_self_result = self.resolve_module_path_from_root(
+                    &self_module, &module_path, 0, Some(span));
+
+                return match resolve_from_self_result {
+                    Success(_) => {
+                        let msg = format!("Did you mean `self::{}`?",
+                                          &names_to_string(module_path));
+                        Failed(Some((span, msg)))
+                    },
+                    _ => Failed(err),
+                };
+            },
         };
 
         let (name, value_result, type_result) = match directive.subclass {
