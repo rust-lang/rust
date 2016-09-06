@@ -690,6 +690,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess,
+                                         &mut resolver,
                                          sess.opts.test,
                                          krate,
                                          sess.diagnostic())
@@ -700,6 +701,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
         let num_crate_types = crate_types.len();
         syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
+                                                  &mut resolver,
                                                   krate,
                                                   is_rustc_macro_crate,
                                                   num_crate_types,
