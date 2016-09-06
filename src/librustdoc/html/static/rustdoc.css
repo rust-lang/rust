@@ -239,23 +239,23 @@ nav.sub {
 }
 .line-numbers span { cursor: pointer; }
 
-.docblock.short p {
+.docblock-short p {
     display: inline;
 }
 
-.docblock.short.nowrap {
+.docblock-short.nowrap {
     display: block;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-.docblock.short p {
+.docblock-short p {
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
 }
-.docblock.short code { white-space: nowrap; }
+.docblock-short code { white-space: nowrap; }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
     border-bottom: 1px solid;
