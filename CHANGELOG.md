@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.89 — 2016-09-06
+* Rustup to *rustc 1.13.0-nightly (cbe4de78e 2016-09-05)*
+
 ## 0.0.88 — 2016-09-04
 * Rustup to *rustc 1.13.0-nightly (70598e04f 2016-09-03)*
 * The following lints are not new but were only usable through the `clippy`
