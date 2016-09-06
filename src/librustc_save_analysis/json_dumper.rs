@@ -16,6 +16,7 @@ use rustc_serialize::json::as_json;
 use external_data::*;
 use data::VariableKind;
 use dump::Dump;
+use super::Format;
 
 pub struct JsonDumper<'b, W: Write + 'b> {
     output: &'b mut W,
@@ -87,6 +88,7 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
 
 #[derive(Debug, RustcEncodable)]
 struct Analysis {
+    kind: Format,
     prelude: Option<CratePreludeData>,
     imports: Vec<Import>,
     defs: Vec<Def>,
@@ -97,6 +99,7 @@ struct Analysis {
 impl Analysis {
     fn new() -> Analysis {
         Analysis {
+            kind: Format::Json,
             prelude: None,
             imports: vec![],
             defs: vec![],
