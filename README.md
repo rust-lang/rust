@@ -17,7 +17,7 @@ Table of contents:
 
 ## Lints
 
-There are 170 lints included in this crate:
+There are 171 lints included in this crate:
 
 name                                                                                                                 | default | triggers on
 ---------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -50,6 +50,7 @@ name                                                                            
 [cyclomatic_complexity](https://github.com/Manishearth/rust-clippy/wiki#cyclomatic_complexity)                       | warn    | functions that should be split up into multiple functions
 [deprecated_semver](https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver)                               | warn    | use of `#[deprecated(since = "x")]` where x is not semver
 [derive_hash_xor_eq](https://github.com/Manishearth/rust-clippy/wiki#derive_hash_xor_eq)                             | warn    | deriving `Hash` but implementing `PartialEq` explicitly
+[diverging_sub_expression](https://github.com/Manishearth/rust-clippy/wiki#diverging_sub_expression)                 | warn    | whether an expression contains a diverging sub expression
 [doc_markdown](https://github.com/Manishearth/rust-clippy/wiki#doc_markdown)                                         | warn    | presence of `_`, `::` or camel-case outside backticks in documentation
 [double_neg](https://github.com/Manishearth/rust-clippy/wiki#double_neg)                                             | warn    | `--x`, which is a double negation of `x` and not a pre-decrement as in C/C++
 [drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                                 | warn    | calls to `std::mem::drop` with a reference instead of an owned value

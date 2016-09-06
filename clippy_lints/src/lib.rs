@@ -332,6 +332,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
+        eval_order_dependence::DIVERGING_SUB_EXPRESSION,
         eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         format::USELESS_FORMAT,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,

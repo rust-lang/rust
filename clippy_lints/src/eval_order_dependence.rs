@@ -1,8 +1,9 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{Visitor, walk_expr};
 use rustc::hir::*;
+use rustc::ty;
 use rustc::lint::*;
-use utils::{get_parent_expr, span_note_and_lint};
+use utils::{get_parent_expr, span_note_and_lint, span_lint};
 
 /// **What it does:** Checks for a read and a write to the same variable where
 /// whether the read occurs before or after the write depends on the evaluation
@@ -26,12 +27,32 @@ declare_lint! {
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
 }
 
+/// **What it does:** Checks for diverging calls that are not match arms or statements.
+///
+/// **Why is this bad?** It is often confusing to read. In addition, the
+/// sub-expression evaluation order for Rust is not well documented.
+///
+/// **Known problems:** Someone might want to use `some_bool || panic!()` as a shorthand.
+///
+/// **Example:**
+/// ```rust
+/// let a = b() || panic!() || c();
+/// // `c()` is dead, `panic!()` is only called if `b()` returns `false`
+/// let x = (a, b, c, panic!());
+/// // can simply be replaced by `panic!()`
+/// ```
+declare_lint! {
+    pub DIVERGING_SUB_EXPRESSION,
+    Warn,
+    "whether an expression contains a diverging sub expression"
+}
+
 #[derive(Copy,Clone)]
 pub struct EvalOrderDependence;
 
 impl LintPass for EvalOrderDependence {
     fn get_lints(&self) -> LintArray {
-        lint_array!(EVAL_ORDER_DEPENDENCE)
+        lint_array!(EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_EXPRESSION)
     }
 }
 
@@ -55,6 +76,75 @@ impl LateLintPass for EvalOrderDependence {
             }
             _ => {}
         }
+    }
+    fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
+        match stmt.node {
+            StmtExpr(ref e, _) | StmtSemi(ref e, _) => DivergenceVisitor(cx).maybe_walk_expr(e),
+            StmtDecl(ref d, _) => {
+                if let DeclLocal(ref local) = d.node {
+                    if let Local { init: Some(ref e), .. } = **local {
+                        DivergenceVisitor(cx).visit_expr(e);
+                    }
+                }
+            },
+        }
+    }
+}
+
+struct DivergenceVisitor<'a, 'tcx: 'a>(&'a LateContext<'a, 'tcx>);
+
+impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
+    fn maybe_walk_expr(&mut self, e: &Expr) {
+        match e.node {
+            ExprClosure(..) => {},
+            ExprMatch(ref e, ref arms, _) => {
+                self.visit_expr(e);
+                for arm in arms {
+                    if let Some(ref guard) = arm.guard {
+                        self.visit_expr(guard);
+                    }
+                    // make sure top level arm expressions aren't linted
+                    walk_expr(self, &*arm.body);
+                }
+            }
+            _ => walk_expr(self, e),
+        }
+    }
+    fn report_diverging_sub_expr(&mut self, e: &Expr) {
+        span_lint(
+            self.0,
+            DIVERGING_SUB_EXPRESSION,
+            e.span,
+            "sub-expression diverges",
+        );
+    }
+}
+
+impl<'a, 'tcx, 'v> Visitor<'v> for DivergenceVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, e: &'v Expr) {
+        // this match can be replaced by just the default arm, once
+        // https://github.com/rust-lang/rust/issues/35121 makes sure that
+        // ! is propagated properly
+        match e.node {
+            ExprAgain(_) |
+            ExprBreak(_) |
+            ExprRet(_) => self.report_diverging_sub_expr(e),
+            ExprCall(ref func, _) => match self.0.tcx.expr_ty(func).sty {
+                ty::TyFnDef(_, _, fn_ty) |
+                ty::TyFnPtr(fn_ty) => if let ty::TyNever = self.0.tcx.erase_late_bound_regions(&fn_ty.sig).output.sty {
+                    self.report_diverging_sub_expr(e);
+                },
+                _ => {},
+            },
+            ExprMethodCall(..) => { /* TODO */ },
+            _ => if let ty::TyNever = self.0.tcx.expr_ty(e).sty {
+                self.report_diverging_sub_expr(e);
+            },
+        }
+        self.maybe_walk_expr(e);
+    }
+    fn visit_block(&mut self, _: &'v Block) {
+        // don't continue over blocks, LateLintPass already does that
     }
 }
 
