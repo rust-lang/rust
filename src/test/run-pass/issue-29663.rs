@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // write_volatile causes an LLVM assert with composite types
+// ignore-emscripten write_volatile doesn't work on arrays of structs?
 
 #![feature(volatile)]
 use std::ptr::{read_volatile, write_volatile};
