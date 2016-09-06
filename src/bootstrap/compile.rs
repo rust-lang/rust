@@ -59,8 +59,9 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
             cargo.env("JEMALLOC_OVERRIDE", jemalloc);
         }
     }
-    if let Some(ref p) = build.config.musl_root {
-        if target.contains("musl") {
+    if target.contains("musl") {
+        if let Some(p) = build.config.target_config[target].musl_root.as_ref()
+            .or(build.config.musl_root.as_ref()) {
             cargo.env("MUSL_ROOT", p);
         }
     }
