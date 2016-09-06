@@ -2437,16 +2437,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if arg_count == 1 {" was"} else {"s were"}),
                 error_code);
 
-            err.span_label(sp, &format!("expected {}{} parameter{}",
-                                        if variadic {"at least "} else {""},
-                                        expected_count,
-                                        if expected_count == 1 {""} else {"s"}));
-
             let input_types = fn_inputs.iter().map(|i| format!("{:?}", i)).collect::<Vec<String>>();
-            if input_types.len() > 0 {
-                err.note(&format!("the following parameter type{} expected: {}",
-                        if expected_count == 1 {" was"} else {"s were"},
-                        input_types.join(", ")));
+            if input_types.len() > 1 {
+                err.note("the following parameter types were expected:");
+                err.note(&input_types.join(", "));
+            } else if input_types.len() > 0 {
+                err.note(&format!("the following parameter type was expected: {}",
+                                  input_types[0]));
+            } else {
+                err.span_label(sp, &format!("expected {}{} parameter{}",
+                                            if variadic {"at least "} else {""},
+                                            expected_count,
+                                            if expected_count == 1 {""} else {"s"}));
             }
             err.emit();
         }
