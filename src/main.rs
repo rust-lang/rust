@@ -72,7 +72,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
             let old = std::mem::replace(&mut control.after_parse.callback, box |_| {});
             control.after_parse.callback = Box::new(move |state| {
                 {
-                    let mut registry = rustc_plugin::registry::Registry::new(state.session, state.krate.as_ref().expect("at this compilation stage the krate must be parsed"));
+                    let mut registry = rustc_plugin::registry::Registry::new(state.session, state.krate.as_ref().expect("at this compilation stage the krate must be parsed").span);
                     registry.args_hidden = Some(Vec::new());
                     clippy_lints::register_plugins(&mut registry);
 
