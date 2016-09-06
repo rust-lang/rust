@@ -292,7 +292,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty, substs);
 
-        self.tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+        self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             // TODO(solson): Report this error properly.
             ty.layout(&infcx).unwrap()
         })
@@ -454,7 +454,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     General { discr, ref variants, .. } => {
-                        if let mir::AggregateKind::Adt(adt_def, variant, _) = *kind {
+                        if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let discr_val = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let discr_size = discr.size().bytes() as usize;
                             self.memory.write_uint(dest, discr_val, discr_size)?;
@@ -468,7 +468,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     RawNullablePointer { nndiscr, .. } => {
-                        if let mir::AggregateKind::Adt(_, variant, _) = *kind {
+                        if let mir::AggregateKind::Adt(_, variant, _, _) = *kind {
                             if nndiscr == variant as u64 {
                                 assert_eq!(operands.len(), 1);
                                 let operand = &operands[0];
@@ -485,7 +485,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield } => {
-                        if let mir::AggregateKind::Adt(_, variant, _) = *kind {
+                        if let mir::AggregateKind::Adt(_, variant, _, _) = *kind {
                             if nndiscr == variant as u64 {
                                 let offsets = iter::once(0)
                                     .chain(nonnull.offset_after_field.iter().map(|s| s.bytes()));
@@ -503,7 +503,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     CEnum { discr, signed, .. } => {
                         assert_eq!(operands.len(), 0);
-                        if let mir::AggregateKind::Adt(adt_def, variant, _) = *kind {
+                        if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
                             let val = adt_def.variants[variant].disr_val.to_u64_unchecked();
                             let size = discr.size().bytes() as usize;
 

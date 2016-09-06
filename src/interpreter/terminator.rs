@@ -240,6 +240,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // The discriminant_value intrinsic returns 0 for non-sum types.
             Array { .. } | FatPointer { .. } | Scalar { .. } | Univariant { .. } |
             Vector { .. } => 0,
+            UntaggedUnion { .. } => unimplemented!(),
         };
 
         Ok(discr_val)
@@ -278,7 +279,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "assume" => {}
 
             "copy_nonoverlapping" => {
-                let elem_ty = substs.types[0];
+                let elem_ty = substs.types().next().expect("should at least have one type argument");
                 let elem_size = self.type_size(elem_ty);
                 let elem_align = self.type_align(elem_ty);
                 let src = self.memory.read_ptr(args_ptrs[0])?;
@@ -288,7 +289,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "discriminant_value" => {
-                let ty = substs.types[0];
+                let ty = substs.types().next().expect("should have at least one type argument");
                 let adt_ptr = self.memory.read_ptr(args_ptrs[0])?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
                 self.memory.write_uint(dest, discr_val, 8)?;
@@ -299,19 +300,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "init" => self.memory.write_repeat(dest, 0, dest_layout.size(&self.tcx.data_layout).bytes() as usize)?,
 
             "min_align_of" => {
-                let elem_ty = substs.types[0];
+                let elem_ty = substs.types().next().expect("should have at least one type argument");
                 let elem_align = self.type_align(elem_ty);
                 self.memory.write_uint(dest, elem_align as u64, pointer_size)?;
             }
 
             "move_val_init" => {
-                let ty = substs.types[0];
+                let ty = substs.types().next().expect("should have at least one type argument");
                 let ptr = self.memory.read_ptr(args_ptrs[0])?;
                 self.move_(args_ptrs[1], ptr, ty)?;
             }
 
             "offset" => {
-                let pointee_ty = substs.types[0];
+                let pointee_ty = substs.types().next().expect("should have at least one type argument");
                 let pointee_size = self.type_size(pointee_ty) as isize;
                 let ptr_arg = args_ptrs[0];
                 let offset = self.memory.read_isize(args_ptrs[1])?;
@@ -343,13 +344,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "size_of" => {
-                let ty = substs.types[0];
+                let ty = substs.types().next().expect("should have at least one type argument");
                 let size = self.type_size(ty) as u64;
                 self.memory.write_uint(dest, size, pointer_size)?;
             }
 
             "size_of_val" => {
-                let ty = substs.types[0];
+                let ty = substs.types().next().expect("should have at least one type argument");
                 if self.type_is_sized(ty) {
                     let size = self.type_size(ty) as u64;
                     self.memory.write_uint(dest, size, pointer_size)?;
@@ -369,7 +370,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "transmute" => {
-                let ty = substs.types[0];
+                let ty = substs.types().next().expect("should have at least one type argument");
                 self.move_(args_ptrs[0], dest, ty)?;
             }
             "uninit" => self.memory.mark_definedness(dest, dest_layout.size(&self.tcx.data_layout).bytes() as usize, false)?,
@@ -457,7 +458,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
-        self.tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+        self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             let mut selcx = traits::SelectionContext::new(&infcx);
 
             let obligation = traits::Obligation::new(
@@ -570,14 +571,14 @@ fn get_impl_method<'a, 'tcx>(
     impl_substs: &'tcx Substs<'tcx>,
     name: ast::Name,
 ) -> ImplMethod<'tcx> {
-    assert!(!substs.types.needs_infer());
+    assert!(!substs.types().any(|ty| ty.needs_infer()));
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
-            let substs = tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+            let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);
                 let substs = traits::translate_substs(&infcx, impl_def_id,
                                                       substs, node_item.node);
