@@ -446,58 +446,21 @@ impl<'a> FmtVisitor<'a> {
 }
 
 pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
-    if let ast::ItemKind::Impl(unsafety,
-                               polarity,
-                               ref generics,
-                               ref trait_ref,
-                               ref self_ty,
-                               ref items) = item.node {
+    if let ast::ItemKind::Impl(_, _, ref generics, ref trait_ref, _, ref items) = item.node {
         let mut result = String::new();
 
-        result.push_str(&*format_visibility(&item.vis));
-        result.push_str(format_unsafety(unsafety));
-        result.push_str("impl");
+        // First try to format the ref and type without a split at the 'for'.
+        let mut ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset, false));
 
-        let lo = context.codemap.span_after(item.span, "impl");
-        let hi = match *trait_ref {
-            Some(ref tr) => tr.path.span.lo,
-            None => self_ty.span.lo,
-        };
-        let generics_str = try_opt!(rewrite_generics(context,
-                                                     generics,
-                                                     offset,
-                                                     context.config.max_width,
-                                                     offset + result.len(),
-                                                     mk_sp(lo, hi)));
-        result.push_str(&generics_str);
-
-        // FIXME might need to linebreak in the impl header, here would be a
-        // good place.
-        result.push(' ');
-        if polarity == ast::ImplPolarity::Negative {
-            result.push_str("!");
-        }
-        if let Some(ref trait_ref) = *trait_ref {
-            let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
-            let indent = offset + result.len();
-            result.push_str(&*try_opt!(trait_ref.rewrite(context, budget, indent)));
-            result.push_str(" for ");
-        }
-
-        let mut used_space = result.len();
-        if generics.where_clause.predicates.is_empty() {
-            // If there is no where clause adapt budget for type formatting to take space and curly
-            // brace into account.
-            match context.config.item_brace_style {
-                BraceStyle::AlwaysNextLine => {}
-                BraceStyle::PreferSameLine => used_space += 2,
-                BraceStyle::SameLineWhere => used_space += 2,
+        // If there is a line break present in the first result format it again
+        // with a split at the 'for'. Skip this if there is no trait ref and
+        // therefore no 'for'.
+        if let Some(_) = *trait_ref {
+            if ref_and_type.contains('\n') {
+                ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset, true));
             }
         }
-
-        let budget = try_opt!(context.config.max_width.checked_sub(used_space));
-        let indent = offset + result.len();
-        result.push_str(&*try_opt!(self_ty.rewrite(context, budget, indent)));
+        result.push_str(&ref_and_type);
 
         let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
@@ -592,6 +555,76 @@ fn is_impl_single_line(context: &RewriteContext,
     Some(context.config.impl_empty_single_line && items.is_empty() &&
          result.len() + where_clause_str.len() <= context.config.max_width &&
          !contains_comment(&snippet[open_pos..]))
+}
+
+fn format_impl_ref_and_type(context: &RewriteContext,
+                            item: &ast::Item,
+                            offset: Indent,
+                            split_at_for: bool)
+                            -> Option<String> {
+    if let ast::ItemKind::Impl(unsafety, polarity, ref generics, ref trait_ref, ref self_ty, _) =
+           item.node {
+        let mut result = String::new();
+
+        result.push_str(&*format_visibility(&item.vis));
+        result.push_str(format_unsafety(unsafety));
+        result.push_str("impl");
+
+        let lo = context.codemap.span_after(item.span, "impl");
+        let hi = match *trait_ref {
+            Some(ref tr) => tr.path.span.lo,
+            None => self_ty.span.lo,
+        };
+        let generics_str = try_opt!(rewrite_generics(context,
+                                                     generics,
+                                                     offset,
+                                                     context.config.max_width,
+                                                     offset + result.len(),
+                                                     mk_sp(lo, hi)));
+        result.push_str(&generics_str);
+
+        result.push(' ');
+        if polarity == ast::ImplPolarity::Negative {
+            result.push('!');
+        }
+        if let Some(ref trait_ref) = *trait_ref {
+            let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
+            let indent = offset + result.len();
+            result.push_str(&*try_opt!(trait_ref.rewrite(context, budget, indent)));
+
+            if split_at_for {
+                result.push('\n');
+
+                // Add indentation of one additional tab.
+                let width = context.block_indent.width() + context.config.tab_spaces;
+                let for_indent = Indent::new(0, width);
+                result.push_str(&for_indent.to_string(context.config));
+
+                result.push_str("for ");
+            } else {
+                result.push_str(" for ");
+            }
+        }
+
+        let mut used_space = last_line_width(&result);
+        if generics.where_clause.predicates.is_empty() {
+            // If there is no where clause adapt budget for type formatting to take space and curly
+            // brace into account.
+            match context.config.item_brace_style {
+                BraceStyle::AlwaysNextLine => {}
+                BraceStyle::PreferSameLine => used_space += 2,
+                BraceStyle::SameLineWhere => used_space += 2,
+            }
+        }
+
+        let budget = try_opt!(context.config.max_width.checked_sub(used_space));
+        let indent = offset + result.len();
+        result.push_str(&*try_opt!(self_ty.rewrite(context, budget, indent)));
+
+        Some(result)
+    } else {
+        unreachable!();
+    }
 }
 
 pub fn format_struct(context: &RewriteContext,

@@ -100,3 +100,6 @@ mod m {
 
 impl<BorrowType, K, V, NodeType, HandleType> Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType> {
 }
+
+impl<BorrowType, K, V, NodeType, HandleType> PartialEq for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType> {
+}
