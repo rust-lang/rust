@@ -86,8 +86,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             span.hi
         };
 
-        let (file1, line1, col1) = self.codemap.byte_pos_to_line_and_col(span.lo);
-        let (file2, line2, col2) = self.codemap.byte_pos_to_line_and_col(span_hi);
+        let loc1 = self.codemap.byte_pos_to_line_and_col(span.lo);
+        let loc2 = self.codemap.byte_pos_to_line_and_col(span_hi);
 
         let expansion_kind = match span.expn_id {
             NO_EXPANSION => SawSpanExpnKind::NoExpansion,
@@ -95,9 +95,10 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             _ => SawSpanExpnKind::SomeExpansion,
         };
 
-        SawSpan(&file1.name[..], line1, col1,
-                &file2.name[..], line2, col2,
-                expansion_kind).hash(self.st);
+        SawSpan(loc1.as_ref().map(|&(ref fm, line, col)| (&fm.name[..], line, col)),
+                loc2.as_ref().map(|&(ref fm, line, col)| (&fm.name[..], line, col)),
+                expansion_kind)
+            .hash(self.st);
 
         if expansion_kind == SawSpanExpnKind::SomeExpansion {
             let call_site = self.codemap.codemap().source_callsite(span);
@@ -171,7 +172,9 @@ enum SawAbiComponent<'a> {
     SawAssocTypeBinding,
     SawAttribute(ast::AttrStyle),
     SawMacroDef,
-    SawSpan(&'a str, usize, BytePos, &'a str, usize, BytePos, SawSpanExpnKind),
+    SawSpan(Option<(&'a str, usize, BytePos)>,
+            Option<(&'a str, usize, BytePos)>,
+            SawSpanExpnKind),
 }
 
 /// SawExprComponent carries all of the information that we want

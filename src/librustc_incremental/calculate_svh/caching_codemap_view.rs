@@ -53,16 +53,16 @@ impl<'tcx> CachingCodemapView<'tcx> {
 
     pub fn byte_pos_to_line_and_col(&mut self,
                                     pos: BytePos)
-                                    -> (Rc<FileMap>, usize, BytePos) {
+                                    -> Option<(Rc<FileMap>, usize, BytePos)> {
         self.time_stamp += 1;
 
         // Check if the position is in one of the cached lines
         for cache_entry in self.line_cache.iter_mut() {
             if pos >= cache_entry.line_start && pos < cache_entry.line_end {
                 cache_entry.time_stamp = self.time_stamp;
-                return (cache_entry.file.clone(),
-                        cache_entry.line_number,
-                        pos - cache_entry.line_start);
+                return Some((cache_entry.file.clone(),
+                             cache_entry.line_number,
+                             pos - cache_entry.line_start));
             }
         }
 
@@ -78,8 +78,26 @@ impl<'tcx> CachingCodemapView<'tcx> {
 
         // If the entry doesn't point to the correct file, fix it up
         if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
-            let file_index = self.codemap.lookup_filemap_idx(pos);
-            cache_entry.file = self.codemap.files.borrow()[file_index].clone();
+            let file_valid;
+            let files = self.codemap.files.borrow();
+
+            if files.len() > 0 {
+                let file_index = self.codemap.lookup_filemap_idx(pos);
+                let file = files[file_index].clone();
+
+                if pos >= file.start_pos && pos < file.end_pos {
+                    cache_entry.file = file;
+                    file_valid = true;
+                } else {
+                    file_valid = false;
+                }
+            } else {
+                file_valid = false;
+            }
+
+            if !file_valid {
+                return None;
+            }
         }
 
         let line_index = cache_entry.file.lookup_line(pos).unwrap();
@@ -90,8 +108,8 @@ impl<'tcx> CachingCodemapView<'tcx> {
         cache_entry.line_end = line_bounds.1;
         cache_entry.time_stamp = self.time_stamp;
 
-        return (cache_entry.file.clone(),
-                cache_entry.line_number,
-                pos - cache_entry.line_start);
+        return Some((cache_entry.file.clone(),
+                     cache_entry.line_number,
+                     pos - cache_entry.line_start));
     }
 }
