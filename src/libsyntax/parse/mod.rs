@@ -258,13 +258,6 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     }
 }
 
-pub fn span_to_tts(sess: &ParseSess, span: Span) -> Vec<tokenstream::TokenTree> {
-    let cfg = Vec::new();
-    let srdr = lexer::StringReader::from_span(&sess.span_diagnostic, span, &sess.code_map);
-    let mut p1 = Parser::new(sess, cfg, Box::new(srdr));
-    panictry!(p1.parse_all_token_trees())
-}
-
 /// Given a filemap, produce a sequence of token-trees
 pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     -> Vec<tokenstream::TokenTree> {

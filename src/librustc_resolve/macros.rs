@@ -73,7 +73,9 @@ impl<'a> base::Resolver for Resolver<'a> {
             let name = intern(&attrs[i].name());
             match self.expansion_data[0].module.macros.borrow().get(&name) {
                 Some(ext) => match **ext {
-                    MultiModifier(..) | MultiDecorator(..) => return Some(attrs.remove(i)),
+                    MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
+                        return Some(attrs.remove(i))
+                    }
                     _ => {}
                 },
                 None => {}

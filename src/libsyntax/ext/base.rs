@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT, MacroRulesTT};
+pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT};
 
 use ast::{self, Attribute, Name, PatKind};
 use attr::HasAttrs;
@@ -18,6 +18,7 @@ use errors::DiagnosticBuilder;
 use ext::expand::{self, Invocation, Expansion};
 use ext::hygiene::Mark;
 use ext::tt::macro_rules;
+use fold;
 use parse;
 use parse::parser::{self, Parser};
 use parse::token;
@@ -61,14 +62,6 @@ impl HasAttrs for Annotatable {
 }
 
 impl Annotatable {
-    pub fn span(&self) -> Span {
-        match *self {
-            Annotatable::Item(ref item) => item.span,
-            Annotatable::TraitItem(ref trait_item) => trait_item.span,
-            Annotatable::ImplItem(ref impl_item) => impl_item.span,
-        }
-    }
-
     pub fn expect_item(self) -> P<ast::Item> {
         match self {
             Annotatable::Item(i) => i,
@@ -160,21 +153,19 @@ pub trait ProcMacro {
                    ecx: &'cx mut ExtCtxt,
                    span: Span,
                    ts: TokenStream)
-                   -> Box<MacResult+'cx>;
+                   -> TokenStream;
 }
 
 impl<F> ProcMacro for F
     where F: Fn(TokenStream) -> TokenStream
 {
     fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
-                   span: Span,
+                   _ecx: &'cx mut ExtCtxt,
+                   _span: Span,
                    ts: TokenStream)
-                   -> Box<MacResult+'cx> {
-        let result = (*self)(ts);
+                   -> TokenStream {
         // FIXME setup implicit context in TLS before calling self.
-        let parser = ecx.new_parser_from_tts(&result.to_tts());
-        Box::new(TokResult { parser: parser, span: span })
+        (*self)(ts)
     }
 }
 
@@ -184,50 +175,63 @@ pub trait AttrProcMacro {
                    span: Span,
                    annotation: TokenStream,
                    annotated: TokenStream)
-                   -> Box<MacResult+'cx>;
+                   -> TokenStream;
 }
 
 impl<F> AttrProcMacro for F
     where F: Fn(TokenStream, TokenStream) -> TokenStream
 {
     fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
-                   span: Span,
+                   _ecx: &'cx mut ExtCtxt,
+                   _span: Span,
                    annotation: TokenStream,
                    annotated: TokenStream)
-                   -> Box<MacResult+'cx> {
+                   -> TokenStream {
         // FIXME setup implicit context in TLS before calling self.
-        let parser = ecx.new_parser_from_tts(&(*self)(annotation, annotated).to_tts());
-        Box::new(TokResult { parser: parser, span: span })
+        (*self)(annotation, annotated)
     }
 }
 
-struct TokResult<'a> {
-    parser: Parser<'a>,
-    span: Span,
+pub struct TokResult<'a> {
+    pub parser: Parser<'a>,
+    pub span: Span,
+}
+
+impl<'a> TokResult<'a> {
+    // There is quite a lot of overlap here with ParserAnyMacro in ext/tt/macro_rules.rs
+    // We could probably share more code.
+    // FIXME(#36641) Unify TokResult and ParserAnyMacro.
+    fn ensure_complete_parse(&mut self, allow_semi: bool) {
+        let macro_span = &self.span;
+        self.parser.ensure_complete_parse(allow_semi, |parser| {
+            let token_str = parser.this_token_to_string();
+            let msg = format!("macro expansion ignores token `{}` and any following", token_str);
+            let span = parser.span;
+            parser.diagnostic()
+                  .struct_span_err(span, &msg)
+                  .span_note(*macro_span, "caused by the macro expansion here")
+                  .emit();
+        });
+    }
 }
 
 impl<'a> MacResult for TokResult<'a> {
     fn make_items(mut self: Box<Self>) -> Option<SmallVector<P<ast::Item>>> {
         if self.parser.sess.span_diagnostic.has_errors() {
-            return None;
+            return Some(SmallVector::zero());
         }
 
         let mut items = SmallVector::zero();
         loop {
             match self.parser.parse_item() {
-                Ok(Some(item)) => {
-                    // FIXME better span info.
-                    let mut item = item.unwrap();
-                    item.span = self.span;
-                    items.push(P(item));
-                }
+                Ok(Some(item)) => items.push(item),
                 Ok(None) => {
+                    self.ensure_complete_parse(false);
                     return Some(items);
                 }
                 Err(mut e) => {
                     e.emit();
-                    return None;
+                    return Some(SmallVector::zero());
                 }
             }
         }
@@ -236,57 +240,61 @@ impl<'a> MacResult for TokResult<'a> {
     fn make_impl_items(mut self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
         let mut items = SmallVector::zero();
         loop {
+            if self.parser.token == token::Eof {
+                break;
+            }
             match self.parser.parse_impl_item() {
-                Ok(mut item) => {
-                    // FIXME better span info.
-                    item.span = self.span;
-                    items.push(item);
-
-                    return Some(items);
-                }
+                Ok(item) => items.push(item),
                 Err(mut e) => {
                     e.emit();
-                    return None;
+                    return Some(SmallVector::zero());
                 }
             }
         }
+        self.ensure_complete_parse(false);
+        Some(items)
     }
 
     fn make_trait_items(mut self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
         let mut items = SmallVector::zero();
         loop {
+            if self.parser.token == token::Eof {
+                break;
+            }
             match self.parser.parse_trait_item() {
-                Ok(mut item) => {
-                    // FIXME better span info.
-                    item.span = self.span;
-                    items.push(item);
-
-                    return Some(items);
-                }
+                Ok(item) => items.push(item),
                 Err(mut e) => {
                     e.emit();
-                    return None;
+                    return Some(SmallVector::zero());
                 }
             }
         }
+        self.ensure_complete_parse(false);
+        Some(items)
     }
 
     fn make_expr(mut self: Box<Self>) -> Option<P<ast::Expr>> {
         match self.parser.parse_expr() {
-            Ok(e) => Some(e),
+            Ok(e) => {
+                self.ensure_complete_parse(true);
+                Some(e)
+            }
             Err(mut e) => {
                 e.emit();
-                return None;
+                Some(DummyResult::raw_expr(self.span))
             }
         }
     }
 
     fn make_pat(mut self: Box<Self>) -> Option<P<ast::Pat>> {
         match self.parser.parse_pat() {
-            Ok(e) => Some(e),
+            Ok(e) => {
+                self.ensure_complete_parse(false);
+                Some(e)
+            }
             Err(mut e) => {
                 e.emit();
-                return None;
+                Some(P(DummyResult::raw_pat(self.span)))
             }
         }
     }
@@ -295,28 +303,30 @@ impl<'a> MacResult for TokResult<'a> {
         let mut stmts = SmallVector::zero();
         loop {
             if self.parser.token == token::Eof {
-                return Some(stmts);
+                break;
             }
-            match self.parser.parse_full_stmt(true) {
-                Ok(Some(mut stmt)) => {
-                    stmt.span = self.span;
-                    stmts.push(stmt);
-                }
+            match self.parser.parse_full_stmt(false) {
+                Ok(Some(stmt)) => stmts.push(stmt),
                 Ok(None) => { /* continue */ }
                 Err(mut e) => {
                     e.emit();
-                    return None;
+                    return Some(SmallVector::zero());
                 }
             }
         }
+        self.ensure_complete_parse(false);
+        Some(stmts)
     }
 
     fn make_ty(mut self: Box<Self>) -> Option<P<ast::Ty>> {
         match self.parser.parse_ty() {
-            Ok(e) => Some(e),
+            Ok(e) => {
+                self.ensure_complete_parse(false);
+                Some(e)
+            }
             Err(mut e) => {
                 e.emit();
-                return None;
+                Some(DummyResult::raw_ty(self.span))
             }
         }
     }
@@ -1003,4 +1013,18 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
         }
     }
     Some(es)
+}
+
+pub struct ChangeSpan {
+    pub span: Span
+}
+
+impl Folder for ChangeSpan {
+    fn new_span(&mut self, _sp: Span) -> Span {
+        self.span
+    }
+
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+        fold::noop_fold_mac(mac, self)
+    }
 }

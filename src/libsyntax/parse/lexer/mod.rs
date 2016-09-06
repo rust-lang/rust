@@ -110,7 +110,6 @@ impl<'a> Reader for StringReader<'a> {
             Some(t) => self.pos > t,
             None => false,
         }
-
     }
     /// Return the next token. EFFECT: advances the string_reader.
     fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
@@ -215,28 +214,6 @@ impl<'a> StringReader<'a> {
                    filemap: Rc<syntax_pos::FileMap>)
                    -> StringReader<'b> {
         let mut sr = StringReader::new_raw(span_diagnostic, filemap);
-        if let Err(_) = sr.advance_token() {
-            sr.emit_fatal_errors();
-            panic!(FatalError);
-        }
-        sr
-    }
-
-    pub fn from_span<'b>(span_diagnostic: &'b Handler,
-                         span: Span,
-                         codemap: &CodeMap)
-                         -> StringReader<'b> {
-        let start_pos = codemap.lookup_byte_offset(span.lo);
-        let last_pos = codemap.lookup_byte_offset(span.hi);
-        assert!(start_pos.fm.name == last_pos.fm.name, "Attempt to lex span which crosses files");
-        let mut sr = StringReader::new_raw_internal(span_diagnostic, start_pos.fm.clone());
-        sr.pos = span.lo;
-        sr.last_pos = span.lo;
-        sr.terminator = Some(span.hi);
-        sr.save_new_lines = false;
-
-        sr.bump();
-
         if let Err(_) = sr.advance_token() {
             sr.emit_fatal_errors();
             panic!(FatalError);
