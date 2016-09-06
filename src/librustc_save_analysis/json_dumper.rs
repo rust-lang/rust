@@ -183,6 +183,7 @@ struct Def {
     value: String,
     children: Vec<Id>,
     decl_id: Option<Id>,
+    docs: String,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -223,6 +224,7 @@ impl From<EnumData> for Def {
             value: data.value,
             children: data.variants.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
@@ -238,6 +240,7 @@ impl From<TupleVariantData> for Def {
             value: data.value,
             children: vec![],
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
@@ -252,6 +255,7 @@ impl From<StructVariantData> for Def {
             value: data.value,
             children: vec![],
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
@@ -266,6 +270,7 @@ impl From<StructData> for Def {
             value: data.value,
             children: data.fields.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
@@ -280,6 +285,7 @@ impl From<TraitData> for Def {
             value: data.value,
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
@@ -294,6 +300,7 @@ impl From<FunctionData> for Def {
             value: data.value,
             children: vec![],
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
@@ -308,6 +315,7 @@ impl From<MethodData> for Def {
             value: data.value,
             children: vec![],
             decl_id: data.decl_id.map(|id| From::from(id)),
+            docs: data.docs,
         }
     }
 }
@@ -322,6 +330,7 @@ impl From<MacroData> for Def {
             value: String::new(),
             children: vec![],
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
@@ -336,6 +345,7 @@ impl From<ModData> for Def {
             value: data.filename,
             children: data.items.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
@@ -350,6 +360,7 @@ impl From<TypeDefData> for Def {
             value: data.value,
             children: vec![],
             decl_id: None,
+            docs: String::new(),
         }
     }
 }
@@ -369,6 +380,7 @@ impl From<VariableData> for Def {
             value: data.value,
             children: vec![],
             decl_id: None,
+            docs: data.docs,
         }
     }
 }
