@@ -16,6 +16,8 @@ use rustc_serialize::json::as_json;
 use external_data::*;
 use data::{VariableKind, Visibility};
 use dump::Dump;
+use super::Format;
+
 
 // A dumper to dump a restricted set of JSON information, designed for use with
 // libraries distributed without their source. Clients are likely to use type
@@ -81,17 +83,25 @@ impl<'b, W: Write + 'b> Dump for JsonApiDumper<'b, W> {
 
 #[derive(Debug, RustcEncodable)]
 struct Analysis {
+    kind: Format,
     prelude: Option<CratePreludeData>,
     imports: Vec<Import>,
     defs: Vec<Def>,
+    // These two fields are dummies so that clients can parse the two kinds of
+    // JSON data in the same way.
+    refs: Vec<()>,
+    macro_refs: Vec<()>,
 }
 
 impl Analysis {
     fn new() -> Analysis {
         Analysis {
+            kind: Format::JsonApi,
             prelude: None,
             imports: vec![],
             defs: vec![],
+            refs: vec![],
+            macro_refs: vec![],
         }
     }
 }

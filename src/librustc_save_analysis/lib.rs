@@ -766,7 +766,7 @@ fn docs_for_attrs(attrs: &[Attribute]) -> String {
     result
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, RustcEncodable)]
 pub enum Format {
     Csv,
     Json,
