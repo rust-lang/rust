@@ -871,6 +871,7 @@ enum NameBindingKind<'a> {
     Import {
         binding: &'a NameBinding<'a>,
         directive: &'a ImportDirective<'a>,
+        used: Cell<bool>,
     },
     Ambiguity {
         b1: &'a NameBinding<'a>,
@@ -878,8 +879,14 @@ enum NameBindingKind<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
 struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
+
+struct AmbiguityError<'a> {
+    span: Span,
+    name: Name,
+    b1: &'a NameBinding<'a>,
+    b2: &'a NameBinding<'a>,
+}
 
 impl<'a> NameBinding<'a> {
     fn module(&self) -> Result<Module<'a>, bool /* true if an error has already been reported */> {
@@ -936,14 +943,6 @@ impl<'a> NameBinding<'a> {
         match self.def() {
             Def::AssociatedConst(..) | Def::Method(..) | Def::AssociatedTy(..) => false,
             _ => true,
-        }
-    }
-
-    fn ambiguity(&self) -> Option<(&'a NameBinding<'a>, &'a NameBinding<'a>)> {
-        match self.kind {
-            NameBindingKind::Ambiguity { b1, b2 } => Some((b1, b2)),
-            NameBindingKind::Import { binding, .. } => binding.ambiguity(),
-            _ => None,
         }
     }
 }
@@ -1064,7 +1063,7 @@ pub struct Resolver<'a> {
     pub maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
-    ambiguity_errors: Vec<(Span, Name, &'a NameBinding<'a>)>,
+    ambiguity_errors: Vec<AmbiguityError<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1276,17 +1275,21 @@ impl<'a> Resolver<'a> {
             self.used_crates.insert(krate);
         }
 
-        if let NameBindingKind::Import { directive, .. } = binding.kind {
-            self.used_imports.insert((directive.id, ns));
-            self.add_to_glob_map(directive.id, name);
+        match binding.kind {
+            NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
+                used.set(true);
+                self.used_imports.insert((directive.id, ns));
+                self.add_to_glob_map(directive.id, name);
+                self.record_use(name, ns, binding, span)
+            }
+            NameBindingKind::Import { .. } => false,
+            NameBindingKind::Ambiguity { b1, b2 } => {
+                let ambiguity_error = AmbiguityError { span: span, name: name, b1: b1, b2: b2 };
+                self.ambiguity_errors.push(ambiguity_error);
+                true
+            }
+            _ => false
         }
-
-        if binding.ambiguity().is_some() {
-            self.ambiguity_errors.push((span, name, binding));
-            return true;
-        }
-
-        false
     }
 
     fn add_to_glob_map(&mut self, id: NodeId, name: Name) {
@@ -3306,9 +3309,8 @@ impl<'a> Resolver<'a> {
     fn report_errors(&self) {
         let mut reported_spans = FnvHashSet();
 
-        for &(span, name, binding) in &self.ambiguity_errors {
+        for &AmbiguityError { span, name, b1, b2 } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }
-            let (b1, b2) = binding.ambiguity().unwrap();
             let msg1 = format!("`{}` could resolve to the name imported here", name);
             let msg2 = format!("`{}` could also resolve to the name imported here", name);
             self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
