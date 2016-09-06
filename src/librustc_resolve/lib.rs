@@ -879,8 +879,14 @@ enum NameBindingKind<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
 struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
+
+struct AmbiguityError<'a> {
+    span: Span,
+    name: Name,
+    b1: &'a NameBinding<'a>,
+    b2: &'a NameBinding<'a>,
+}
 
 impl<'a> NameBinding<'a> {
     fn module(&self) -> Result<Module<'a>, bool /* true if an error has already been reported */> {
@@ -1057,7 +1063,7 @@ pub struct Resolver<'a> {
     pub maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
-    ambiguity_errors: Vec<(Span, Name, &'a NameBinding<'a>, &'a NameBinding<'a>)>,
+    ambiguity_errors: Vec<AmbiguityError<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
@@ -1278,7 +1284,8 @@ impl<'a> Resolver<'a> {
             }
             NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { b1, b2 } => {
-                self.ambiguity_errors.push((span, name, b1, b2));
+                let ambiguity_error = AmbiguityError { span: span, name: name, b1: b1, b2: b2 };
+                self.ambiguity_errors.push(ambiguity_error);
                 true
             }
             _ => false
@@ -3302,7 +3309,7 @@ impl<'a> Resolver<'a> {
     fn report_errors(&self) {
         let mut reported_spans = FnvHashSet();
 
-        for &(span, name, b1, b2) in &self.ambiguity_errors {
+        for &AmbiguityError { span, name, b1, b2 } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }
             let msg1 = format!("`{}` could resolve to the name imported here", name);
             let msg2 = format!("`{}` could also resolve to the name imported here", name);
