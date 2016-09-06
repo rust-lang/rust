@@ -56,8 +56,12 @@ use self::Entry::*;
 /// however, performance is excellent.
 ///
 /// It is a logic error for a key to be modified in such a way that the key's ordering relative to
-/// any other key, as determined by the `Ord` trait, changes while it is in the map. This is
-/// normally only possible through `Cell`, `RefCell`, global state, I/O, or unsafe code.
+/// any other key, as determined by the [`Ord`] trait, changes while it is in the map. This is
+/// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
+///
+/// [`Ord`]: ../../std/cmp/trait.Ord.html
+/// [`Cell`]: ../../std/cell/struct.Cell.html
+/// [`RefCell`]: ../../std/cell/struct.RefCell.html
 ///
 /// # Examples
 ///
@@ -2020,7 +2024,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
         self.key
     }
 
-    /// Sets the value of the entry with the VacantEntry's key,
+    /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
     ///
     /// # Examples
@@ -2192,7 +2196,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         self.handle.into_kv_mut().1
     }
 
-    /// Sets the value of the entry with the OccupiedEntry's key,
+    /// Sets the value of the entry with the `OccupiedEntry`'s key,
     /// and returns the entry's old value.
     ///
     /// # Examples
