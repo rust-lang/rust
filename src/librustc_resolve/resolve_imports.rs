@@ -588,18 +588,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             Success(module) => module,
             Indeterminate => return Indeterminate,
             Failed(err) => {
-                let self_module = self.current_module.clone();
+                let self_module = self.module_map[&self.current_module.normal_ancestor_id.unwrap()];
 
                 let resolve_from_self_result = self.resolve_module_path_from_root(
                     &self_module, &module_path, 0, Some(span));
 
-                return match resolve_from_self_result {
-                    Success(_) => {
-                        let msg = format!("Did you mean `self::{}`?",
-                                          &names_to_string(module_path));
-                        Failed(Some((span, msg)))
-                    },
-                    _ => Failed(err),
+                return if let Success(_) = resolve_from_self_result {
+                    let msg = format!("Did you mean `self::{}`?", &names_to_string(module_path));
+                    Failed(Some((span, msg)))
+                } else {
+                    Failed(err)
                 };
             },
         };
