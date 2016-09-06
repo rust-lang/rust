@@ -44,7 +44,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
             fn extract_str(lit: &syntax::ast::Lit) -> syntax::parse::token::InternedString {
                 match lit.node {
                     syntax::ast::LitKind::Str(ref s, _) => s.clone(),
-                    _ => panic!("attribute values need to be strings"),
+                    _ => bug!("attribute values need to be strings"),
                 }
             }
             for attr in krate.attrs.iter() {

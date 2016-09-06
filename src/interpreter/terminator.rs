@@ -198,7 +198,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 arg_srcs.push((src, ty));
                             }
                         }
-                        ty => panic!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
+                        ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
                     }
                 }
 
@@ -523,7 +523,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 //                   ty: def_ty(tcx, def_id, substs)
                 // }
             }
-            vtable => unreachable!("resolved vtable bad vtable {:?} in trans", vtable),
+            vtable => bug!("resolved vtable bad vtable {:?} in trans", vtable),
         }
     }
 

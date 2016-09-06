@@ -187,9 +187,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_f64(ptr, f)?;
                 Ok(ptr)
             },
-            Float(ConstFloat::FInfer{..}) => unreachable!(),
-            Integral(ConstInt::Infer(_)) => unreachable!(),
-            Integral(ConstInt::InferSigned(_)) => unreachable!(),
+            Float(ConstFloat::FInfer{..}) |
+            Integral(ConstInt::Infer(_)) |
+            Integral(ConstInt::InferSigned(_)) => bug!("uninferred constants only exist before typeck"),
             Integral(ConstInt::I8(i)) => i2p!(i, 1),
             Integral(ConstInt::U8(i)) => i2p!(i, 1),
             Integral(ConstInt::Isize(ConstIsize::Is16(i))) |
@@ -255,7 +255,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             let cs = &self.tcx.sess.cstore;
             let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
-                panic!("no mir for `{}`", self.tcx.item_path_str(def_id));
+                bug!("no mir for `{}`", self.tcx.item_path_str(def_id));
             });
             let cached = Rc::new(mir);
             mir_cache.insert(def_id, cached.clone());
@@ -359,7 +359,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::ty::layout::Layout::*;
         let tup_layout = match *dest_layout {
             Univariant { ref variant, .. } => variant,
-            _ => panic!("checked bin op returns something other than a tuple"),
+            _ => bug!("checked bin op returns something other than a tuple"),
         };
 
         let overflowed = self.intrinsic_overflowing(op, left, right, dest)?;
@@ -446,8 +446,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Array { .. } => {
                         let elem_size = match dest_ty.sty {
                             ty::TyArray(elem_ty, _) => self.type_size(elem_ty) as u64,
-                            _ => panic!("tried to assign {:?} to non-array type {:?}",
-                                        kind, dest_ty),
+                            _ => bug!("tried to assign {:?} to non-array type {:?}", kind, dest_ty),
                         };
                         let offsets = (0..).map(|i| i * elem_size);
                         self.assign_fields(dest, offsets, operands)?;
@@ -463,7 +462,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 .map(|s| s.bytes());
                             self.assign_fields(dest, offsets, operands)?;
                         } else {
-                            panic!("tried to assign {:?} to Layout::General", kind);
+                            bug!("tried to assign {:?} to Layout::General", kind);
                         }
                     }
 
@@ -480,7 +479,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 self.memory.write_isize(dest, 0)?;
                             }
                         } else {
-                            panic!("tried to assign {:?} to Layout::RawNullablePointer", kind);
+                            bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
                         }
                     }
 
@@ -497,7 +496,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 try!(self.memory.write_isize(dest, 0));
                             }
                         } else {
-                            panic!("tried to assign {:?} to Layout::RawNullablePointer", kind);
+                            bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
                         }
                     }
 
@@ -513,7 +512,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 self.memory.write_uint(dest, val, size)?;
                             }
                         } else {
-                            panic!("tried to assign {:?} to Layout::CEnum", kind);
+                            bug!("tried to assign {:?} to Layout::CEnum", kind);
                         }
                     }
 
@@ -524,7 +523,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Repeat(ref operand, _) => {
                 let (elem_size, elem_align, length) = match dest_ty.sty {
                     ty::TyArray(elem_ty, n) => (self.type_size(elem_ty), self.type_align(elem_ty), n),
-                    _ => panic!("tried to assign array-repeat to non-array type {:?}", dest_ty),
+                    _ => bug!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
 
                 let src = self.eval_operand(operand)?;
@@ -542,9 +541,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TySlice(_) => if let LvalueExtra::Length(n) = src.extra {
                         n
                     } else {
-                        panic!("Rvalue::Len of a slice given non-slice pointer: {:?}", src);
+                        bug!("Rvalue::Len of a slice given non-slice pointer: {:?}", src);
                     },
-                    _ => panic!("Rvalue::Len expected array or slice, got {:?}", ty),
+                    _ => bug!("Rvalue::Len expected array or slice, got {:?}", ty),
                 };
                 self.memory.write_usize(dest, len)?;
             }
@@ -559,7 +558,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         self.memory.write_usize(len_ptr, len)?;
                     }
                     LvalueExtra::DowncastVariant(..) =>
-                        panic!("attempted to take a reference to an enum downcast lvalue"),
+                        bug!("attempted to take a reference to an enum downcast lvalue"),
                 }
             }
 
@@ -615,7 +614,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, fn_ty);
                             self.memory.write_ptr(dest, fn_ptr)?;
                         },
-                        ref other => panic!("reify fn pointer on {:?}", other),
+                        ref other => bug!("reify fn pointer on {:?}", other),
                     },
 
                     UnsafeFnPointer => match dest_ty.sty {
@@ -626,7 +625,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let fn_ptr = self.memory.create_fn_ptr(fn_def.def_id, fn_def.substs, unsafe_fn_ty);
                             self.memory.write_ptr(dest, fn_ptr)?;
                         },
-                        ref other => panic!("fn to unsafe fn cast on {:?}", other),
+                        ref other => bug!("fn to unsafe fn cast on {:?}", other),
                     },
                 }
             }
@@ -649,10 +648,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let field = &variant.fields[index];
                 field.ty(self.tcx, substs)
             }
-            _ => panic!(
-                "non-enum for StructWrappedNullablePointer: {}",
-                ty,
-            ),
+            _ => bug!("non-enum for StructWrappedNullablePointer: {}", ty),
         };
 
         self.field_path_offset(inner_ty, path)
@@ -772,7 +768,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 if let LvalueExtra::DowncastVariant(variant_idx) = base.extra {
                                     &variants[variant_idx]
                                 } else {
-                                    panic!("field access on enum had no variant index");
+                                    bug!("field access on enum had no variant index");
                                 }
                             }
                             RawNullablePointer { .. } => {
@@ -780,7 +776,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 return Ok(base);
                             }
                             StructWrappedNullablePointer { ref nonnull, .. } => nonnull,
-                            _ => panic!("field access on non-product type: {:?}", base_layout),
+                            _ => bug!("field access on non-product type: {:?}", base_layout),
                         };
 
                         let offset = variant.field_offset(field.index()).bytes();
@@ -799,7 +795,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
                                 return Ok(base);
                             }
-                            _ => panic!("variant downcast on non-aggregate: {:?}", base_layout),
+                            _ => bug!("variant downcast on non-aggregate: {:?}", base_layout),
                         }
                     },
 
@@ -822,7 +818,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let elem_size = match base_ty.sty {
                             ty::TyArray(elem_ty, _) |
                             ty::TySlice(elem_ty) => self.type_size(elem_ty),
-                            _ => panic!("indexing expected an array or slice, got {:?}", base_ty),
+                            _ => bug!("indexing expected an array or slice, got {:?}", base_ty),
                         };
                         let n_ptr = self.eval_operand(operand)?;
                         let n = self.memory.read_usize(n_ptr)?;
@@ -901,7 +897,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            _ => panic!("primitive read of non-primitive type: {:?}", ty),
+            _ => bug!("primitive read of non-primitive type: {:?}", ty),
         };
         Ok(val)
     }
