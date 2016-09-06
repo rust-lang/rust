@@ -12,6 +12,7 @@
 // compile-flags:--test
 // check-stdout
 // ignore-pretty: does not work well with `--test`
+// ignore-emscripten Needs threads.
 
 mod m {
     pub fn exported() {}

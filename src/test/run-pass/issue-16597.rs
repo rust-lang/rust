@@ -10,6 +10,7 @@
 
 // compile-flags:--test
 // ignore-pretty turns out the pretty-printer doesn't handle gensym'd things...
+// ignore-emscripten
 
 mod tests {
     use super::*;

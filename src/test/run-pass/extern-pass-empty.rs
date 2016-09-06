@@ -12,6 +12,7 @@
 
 // pretty-expanded FIXME #23616
 // ignore-msvc
+// ignore-emscripten
 
 struct TwoU8s {
     one: u8,
