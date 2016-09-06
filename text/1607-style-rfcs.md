@@ -208,7 +208,6 @@ let y = Foo {
     c: 1000
 };
 ```
-"
 
 (Note this is just an example, not a proposed guideline).
 
