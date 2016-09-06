@@ -913,6 +913,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "dump MIR state at various points in translation"),
     dump_mir_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "the directory the MIR is dumped into"),
+    perf_stats: bool = (false, parse_bool, [UNTRACKED],
+          "print some performance-related statistics"),
 }
 
 pub fn default_lib_output() -> CrateType {

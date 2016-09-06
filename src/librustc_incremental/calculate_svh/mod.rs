@@ -35,12 +35,16 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc::util::common::record_time;
+use rustc::session::config::DebugInfoLevel::NoDebugInfo;
 
 use self::def_path_hash::DefPathHashes;
 use self::svh_visitor::StrictVersionHashVisitor;
+use self::caching_codemap_view::CachingCodemapView;
 
 mod def_path_hash;
 mod svh_visitor;
+mod caching_codemap_view;
 
 pub type IncrementalHashesMap = FnvHashMap<DepNode<DefId>, u64>;
 
@@ -48,19 +52,29 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                                     -> IncrementalHashesMap {
     let _ignore = tcx.dep_graph.in_ignore();
     let krate = tcx.map.krate();
-    let mut visitor = HashItemsVisitor { tcx: tcx,
-                                         hashes: FnvHashMap(),
-                                         def_path_hashes: DefPathHashes::new(tcx) };
-    visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX), |v| visit::walk_crate(v, krate));
-    krate.visit_all_items(&mut visitor);
-    visitor.compute_crate_hash();
+    let hash_spans = tcx.sess.opts.debuginfo != NoDebugInfo;
+    let mut visitor = HashItemsVisitor {
+        tcx: tcx,
+        hashes: FnvHashMap(),
+        def_path_hashes: DefPathHashes::new(tcx),
+        codemap: CachingCodemapView::new(tcx),
+        hash_spans: hash_spans,
+    };
+    record_time(&tcx.sess.perf_stats.incr_comp_hashes_time, || {
+        visitor.calculate_def_id(DefId::local(CRATE_DEF_INDEX),
+                                 |v| visit::walk_crate(v, krate));
+        krate.visit_all_items(&mut visitor);
+    });
+    record_time(&tcx.sess.perf_stats.svh_time, || visitor.compute_crate_hash());
     visitor.hashes
 }
 
 struct HashItemsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_path_hashes: DefPathHashes<'a, 'tcx>,
+    codemap: CachingCodemapView<'tcx>,
     hashes: IncrementalHashesMap,
+    hash_spans: bool,
 }
 
 impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
@@ -81,7 +95,9 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
         let mut state = SipHasher::new();
         walk_op(&mut StrictVersionHashVisitor::new(&mut state,
                                                    self.tcx,
-                                                   &mut self.def_path_hashes));
+                                                   &mut self.def_path_hashes,
+                                                   &mut self.codemap,
+                                                   self.hash_spans));
         let item_hash = state.finish();
         self.hashes.insert(DepNode::Hir(def_id), item_hash);
         debug!("calculate_item_hash: def_id={:?} hash={:?}", def_id, item_hash);
@@ -117,9 +133,13 @@ impl<'a, 'tcx> HashItemsVisitor<'a, 'tcx> {
             item_hashes.hash(&mut crate_state);
         }
 
-        for attr in &krate.attrs {
-            debug!("krate attr {:?}", attr);
-            attr.meta().hash(&mut crate_state);
+        {
+            let mut visitor = StrictVersionHashVisitor::new(&mut crate_state,
+                                                            self.tcx,
+                                                            &mut self.def_path_hashes,
+                                                            &mut self.codemap,
+                                                            self.hash_spans);
+            visitor.hash_attributes(&krate.attrs);
         }
 
         let crate_hash = crate_state.finish();

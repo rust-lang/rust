@@ -108,6 +108,7 @@ use rustc::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::subst::Substs;
 use rustc::hir::map::definitions::{DefPath, DefPathData};
+use rustc::util::common::record_time;
 
 use syntax::attr;
 use syntax::parse::token::{self, InternedString};
@@ -138,33 +139,35 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     let tcx = scx.tcx();
 
-    let mut hash_state = scx.symbol_hasher().borrow_mut();
+    return record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
+        let mut hash_state = scx.symbol_hasher().borrow_mut();
 
-    hash_state.reset();
+        hash_state.reset();
 
-    // the main symbol name is not necessarily unique; hash in the
-    // compiler's internal def-path, guaranteeing each symbol has a
-    // truly unique path
-    hash_state.input_str(&def_path.to_string(tcx));
+        // the main symbol name is not necessarily unique; hash in the
+        // compiler's internal def-path, guaranteeing each symbol has a
+        // truly unique path
+        hash_state.input_str(&def_path.to_string(tcx));
 
-    // Include the main item-type. Note that, in this case, the
-    // assertions about `needs_subst` may not hold, but this item-type
-    // ought to be the same for every reference anyway.
-    assert!(!item_type.has_erasable_regions());
-    let encoded_item_type = tcx.sess.cstore.encode_type(tcx, item_type, def_id_to_string);
-    hash_state.input(&encoded_item_type[..]);
+        // Include the main item-type. Note that, in this case, the
+        // assertions about `needs_subst` may not hold, but this item-type
+        // ought to be the same for every reference anyway.
+        assert!(!item_type.has_erasable_regions());
+        let encoded_item_type = tcx.sess.cstore.encode_type(tcx, item_type, def_id_to_string);
+        hash_state.input(&encoded_item_type[..]);
 
-    // also include any type parameters (for generic items)
-    if let Some(substs) = substs {
-        for t in substs.types() {
-            assert!(!t.has_erasable_regions());
-            assert!(!t.needs_subst());
-            let encoded_type = tcx.sess.cstore.encode_type(tcx, t, def_id_to_string);
-            hash_state.input(&encoded_type[..]);
+        // also include any type parameters (for generic items)
+        if let Some(substs) = substs {
+            for t in substs.types() {
+                assert!(!t.has_erasable_regions());
+                assert!(!t.needs_subst());
+                let encoded_type = tcx.sess.cstore.encode_type(tcx, t, def_id_to_string);
+                hash_state.input(&encoded_type[..]);
+            }
         }
-    }
 
-    return format!("h{}", truncated_hash_result(&mut *hash_state));
+        format!("h{}", truncated_hash_result(&mut *hash_state))
+    });
 
     fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
         let output = symbol_hasher.result_bytes();
