@@ -22,16 +22,20 @@ struct A {
 fn main () {
     // external crate struct
     let k = B {
-        aa: 20, //~ ERROR struct `xc::B` has no field named `aa`
-        //~^ HELP did you mean `a`?
-        bb: 20, //~ ERROR struct `xc::B` has no field named `bb`
-        //~^ HELP did you mean `a`?
+        aa: 20,
+        //~^ ERROR struct `xc::B` has no field named `aa`
+        //~| NOTE did you mean `a`?
+        bb: 20,
+        //~^ ERROR struct `xc::B` has no field named `bb`
+        //~| NOTE did you mean `a`?
     };
     // local crate struct
     let l = A {
-        aa: 20, //~ ERROR struct `A` has no field named `aa`
-        //~^ HELP did you mean `a`?
-        bb: 20, //~ ERROR struct `A` has no field named `bb`
-        //~^ HELP did you mean `b`?
+        aa: 20,
+        //~^ ERROR struct `A` has no field named `aa`
+        //~| NOTE did you mean `a`?
+        bb: 20,
+        //~^ ERROR struct `A` has no field named `bb`
+        //~| NOTE did you mean `b`?
     };
 }

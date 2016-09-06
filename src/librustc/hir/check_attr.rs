@@ -42,7 +42,9 @@ struct CheckAttrVisitor<'a> {
 impl<'a> CheckAttrVisitor<'a> {
     fn check_inline(&self, attr: &ast::Attribute, target: Target) {
         if target != Target::Fn {
-            span_err!(self.sess, attr.span, E0518, "attribute should be applied to function");
+            struct_span_err!(self.sess, attr.span, E0518, "attribute should be applied to function")
+                .span_label(attr.span, &format!("requires a function"))
+                .emit();
         }
     }
 
@@ -56,18 +58,20 @@ impl<'a> CheckAttrVisitor<'a> {
 
         let mut conflicting_reprs = 0;
         for word in words {
+
             let name = match word.name() {
                 Some(word) => word,
                 None => continue,
             };
 
-            let message = match &*name {
+            let (message, label) = match &*name {
                 "C" => {
                     conflicting_reprs += 1;
                     if target != Target::Struct &&
                             target != Target::Union &&
                             target != Target::Enum {
-                        "attribute should be applied to struct, enum or union"
+                                ("attribute should be applied to struct, enum or union",
+                                 "a struct, enum or union")
                     } else {
                         continue
                     }
@@ -77,7 +81,8 @@ impl<'a> CheckAttrVisitor<'a> {
                     // can be used to modify another repr hint
                     if target != Target::Struct &&
                             target != Target::Union {
-                        "attribute should be applied to struct or union"
+                                ("attribute should be applied to struct or union",
+                                 "a struct or union")
                     } else {
                         continue
                     }
@@ -85,7 +90,8 @@ impl<'a> CheckAttrVisitor<'a> {
                 "simd" => {
                     conflicting_reprs += 1;
                     if target != Target::Struct {
-                        "attribute should be applied to struct"
+                        ("attribute should be applied to struct",
+                         "a struct")
                     } else {
                         continue
                     }
@@ -95,15 +101,17 @@ impl<'a> CheckAttrVisitor<'a> {
                 "isize" | "usize" => {
                     conflicting_reprs += 1;
                     if target != Target::Enum {
-                        "attribute should be applied to enum"
+                        ("attribute should be applied to enum",
+                         "an enum")
                     } else {
                         continue
                     }
                 }
                 _ => continue,
             };
-
-            span_err!(self.sess, attr.span, E0517, "{}", message);
+            struct_span_err!(self.sess, attr.span, E0517, "{}", message)
+                .span_label(attr.span, &format!("requires {}", label))
+                .emit();
         }
         if conflicting_reprs > 1 {
             span_warn!(self.sess, attr.span, E0566,

@@ -118,7 +118,6 @@ use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, Span};
-use errors::DiagnosticBuilder;
 
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir::{self, PatKind};
@@ -2959,7 +2958,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }, expr_t);
             match expr_t.sty {
                 ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
-                    Self::suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
+                    if let Some(suggested_field_name) =
+                        Self::suggest_field_name(def.struct_variant(), field, vec![]) {
+                        err.span_help(field.span,
+                                      &format!("did you mean `{}`?", suggested_field_name));
+                    };
                 }
                 ty::TyRawPtr(..) => {
                     err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
@@ -2972,11 +2975,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // displays hints about the closest matches in field names
-    fn suggest_field_names(err: &mut DiagnosticBuilder,
-                           variant: ty::VariantDef<'tcx>,
-                           field: &Spanned<ast::Name>,
-                           skip : Vec<InternedString>) {
+    // Return an hint about the closest match in field names
+    fn suggest_field_name(variant: ty::VariantDef<'tcx>,
+                          field: &Spanned<ast::Name>,
+                          skip : Vec<InternedString>)
+                          -> Option<InternedString> {
         let name = field.node.as_str();
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates
@@ -2989,10 +2992,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         });
 
         // only find fits with at least one matching letter
-        if let Some(name) = find_best_match_for_name(names, &name, Some(name.len())) {
-            err.span_help(field.span,
-                          &format!("did you mean `{}`?", name));
-        }
+        find_best_match_for_name(names, &name, Some(name.len()))
     }
 
     // Check tuple index expressions
@@ -3086,7 +3086,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty);
         // prevent all specified fields from being suggested
         let skip_fields = skip_fields.iter().map(|ref x| x.name.node.as_str());
-        Self::suggest_field_names(&mut err, variant, &field.name, skip_fields.collect());
+        if let Some(field_name) = Self::suggest_field_name(variant,
+                                                           &field.name,
+                                                           skip_fields.collect()) {
+            err.span_label(field.name.span,&format!("did you mean `{}`?",field_name));
+        };
         err.emit();
     }
 

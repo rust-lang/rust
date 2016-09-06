@@ -9,15 +9,19 @@
 // except according to those terms.
 
 #[repr(C)] //~ ERROR E0517
+           //~| requires a struct, enum or union
 type Foo = u8;
 
 #[repr(packed)] //~ ERROR E0517
+                //~| requires a struct
 enum Foo2 {Bar, Baz}
 
 #[repr(u8)] //~ ERROR E0517
+            //~| requires an enum
 struct Foo3 {bar: bool, baz: bool}
 
 #[repr(C)] //~ ERROR E0517
+           //~| requires a struct, enum or union
 impl Foo3 {
 }
 

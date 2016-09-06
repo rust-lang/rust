@@ -1769,8 +1769,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             }
             hir::TyTypeof(ref _e) => {
-                span_err!(tcx.sess, ast_ty.span, E0516,
-                      "`typeof` is a reserved keyword but unimplemented");
+                struct_span_err!(tcx.sess, ast_ty.span, E0516,
+                                 "`typeof` is a reserved keyword but unimplemented")
+                    .span_label(ast_ty.span, &format!("reserved keyword"))
+                    .emit();
+
                 tcx.types.err
             }
             hir::TyInfer => {
