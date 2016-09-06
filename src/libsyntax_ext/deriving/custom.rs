@@ -15,7 +15,7 @@ use rustc_macro::{TokenStream, __internal};
 use syntax::ast::{self, ItemKind};
 use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan, Span};
 use syntax::ext::base::*;
-use syntax::fold::{self, Folder};
+use syntax::fold::Folder;
 use syntax::parse::token::intern;
 use syntax::print::pprust;
 
@@ -97,14 +97,3 @@ impl MultiItemModifier for CustomDerive {
     }
 }
 
-struct ChangeSpan { span: Span }
-
-impl Folder for ChangeSpan {
-    fn new_span(&mut self, _sp: Span) -> Span {
-        self.span
-    }
-
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-        fold::noop_fold_mac(mac, self)
-    }
-}
