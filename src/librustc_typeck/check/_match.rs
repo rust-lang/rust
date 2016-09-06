@@ -233,9 +233,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let min_len = before.len() + after.len();
                         if slice.is_none() {
                             if min_len != size {
-                                span_err!(tcx.sess, pat.span, E0527,
-                                          "pattern requires {} elements but array has {}",
-                                          min_len, size);
+                                struct_span_err!(
+                                    tcx.sess, pat.span, E0527,
+                                    "pattern requires {} elements but array has {}",
+                                    min_len, size)
+                                    .span_label(pat.span, &format!("expected {} elements",size))
+                                    .emit();
                             }
                             (inner_ty, tcx.types.err)
                         } else if let Some(rest) = size.checked_sub(min_len) {
