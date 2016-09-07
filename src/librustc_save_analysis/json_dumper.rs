@@ -380,7 +380,7 @@ impl From<VariableData> for Def {
             span: data.span,
             name: data.name,
             qualname: data.qualname,
-            value: data.value,
+            value: data.type_value,
             children: vec![],
             decl_id: None,
             docs: data.docs,
