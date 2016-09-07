@@ -71,6 +71,9 @@ pub struct Frame<'a, 'tcx: 'a> {
     /// A pointer for writing the return value of the current call if it's not a diverging call.
     pub return_ptr: Option<Pointer>,
 
+    /// The block to return to when returning from the current stack frame
+    pub return_to_block: Option<mir::BasicBlock>,
+
     /// The list of locals for the current function, stored in order as
     /// `[arguments..., variables..., temporaries...]`. The variables begin at `self.var_offset`
     /// and the temporaries at `self.temp_offset`.
@@ -305,6 +308,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         mir: CachedMir<'a, 'tcx>,
         substs: &'tcx Substs<'tcx>,
         return_ptr: Option<Pointer>,
+        return_to_block: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx, ()> {
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
@@ -325,6 +329,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             mir: mir.clone(),
             block: mir::START_BLOCK,
             return_ptr: return_ptr,
+            return_to_block: return_to_block,
             locals: locals?,
             var_offset: num_args,
             temp_offset: num_args + num_vars,
@@ -342,7 +347,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn pop_stack_frame(&mut self) {
         ::log_settings::settings().indentation -= 1;
-        let _frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
+        let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
+        if let Some(target) = frame.return_to_block {
+            self.goto_block(target);
+        }
         // TODO(solson): Deallocate local variables.
     }
 
@@ -961,7 +969,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
         .expect("should at least be able to allocate space for the main function's return value");
 
-    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr))
+    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr), None)
         .expect("could not allocate first stack frame");
 
     if mir.arg_decls.len() == 2 {

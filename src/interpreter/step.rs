@@ -87,8 +87,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx, ()> {
-        // after a terminator we go to a new block
-        self.frame_mut().stmt = 0;
         trace!("{:?}", terminator.kind);
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
@@ -125,7 +123,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         self.try(|this| {
             let ptr = this.ecx.alloc_ret_ptr(mir.return_ty, substs)?;
             this.ecx.statics.insert(cid.clone(), ptr);
-            this.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr))
+            this.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr), None)
         });
     }
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
@@ -170,7 +168,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                     let return_ptr = this.ecx.alloc_ret_ptr(return_ty, cid.substs)?;
                     let mir = CachedMir::Owned(Rc::new(mir));
                     this.ecx.statics.insert(cid.clone(), return_ptr);
-                    this.ecx.push_stack_frame(this.def_id, constant.span, mir, this.substs, Some(return_ptr))
+                    this.ecx.push_stack_frame(this.def_id, constant.span, mir, this.substs, Some(return_ptr), None)
                 });
             }
         }

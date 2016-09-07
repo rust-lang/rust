@@ -15,6 +15,12 @@ use error::{EvalError, EvalResult};
 use memory::{Pointer, FunctionDefinition};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+
+    pub(super) fn goto_block(&mut self, target: mir::BasicBlock) {
+        self.frame_mut().block = target;
+        self.frame_mut().stmt = 0;
+    }
+
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
@@ -23,14 +29,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match terminator.kind {
             Return => self.pop_stack_frame(),
 
-            Goto { target } => {
-                self.frame_mut().block = target;
-            },
+            Goto { target } => self.goto_block(target),
 
             If { ref cond, targets: (then_target, else_target) } => {
                 let cond_ptr = self.eval_operand(cond)?;
                 let cond_val = self.memory.read_bool(cond_ptr)?;
-                self.frame_mut().block = if cond_val { then_target } else { else_target };
+                self.goto_block(if cond_val { then_target } else { else_target });
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
@@ -59,7 +63,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
 
-                self.frame_mut().block = target_block;
+                self.goto_block(target_block);
             }
 
             Switch { ref discr, ref targets, adt_def } => {
@@ -70,19 +74,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     .position(|v| discr_val == v.disr_val.to_u64_unchecked());
 
                 match matching {
-                    Some(i) => {
-                        self.frame_mut().block = targets[i];
-                    },
+                    Some(i) => self.goto_block(targets[i]),
                     None => return Err(EvalError::InvalidDiscriminant),
                 }
             }
 
             Call { ref func, ref args, ref destination, .. } => {
-                let mut return_ptr = None;
-                if let Some((ref lv, target)) = *destination {
-                    self.frame_mut().block = target;
-                    return_ptr = Some(self.eval_lvalue(lv)?.to_ptr());
-                }
+                let destination = match *destination {
+                    Some((ref lv, target)) => Some((self.eval_lvalue(lv)?.to_ptr(), target)),
+                    None => None,
+                };
 
                 let func_ty = self.operand_ty(func);
                 match func_ty.sty {
@@ -93,11 +94,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         if fn_ty != bare_fn_ty {
                             return Err(EvalError::FunctionPointerTyMismatch(fn_ty, bare_fn_ty));
                         }
-                        self.eval_fn_call(def_id, substs, bare_fn_ty, return_ptr, args,
+                        self.eval_fn_call(def_id, substs, bare_fn_ty, destination, args,
                                           terminator.source_info.span)?
                     },
                     ty::TyFnDef(def_id, substs, fn_ty) => {
-                        self.eval_fn_call(def_id, substs, fn_ty, return_ptr, args,
+                        self.eval_fn_call(def_id, substs, fn_ty, destination, args,
                                           terminator.source_info.span)?
                     }
 
@@ -109,13 +110,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = self.eval_lvalue(location)?.to_ptr();
                 let ty = self.lvalue_ty(location);
                 self.drop(ptr, ty)?;
-                self.frame_mut().block = target;
+                self.goto_block(target);
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
                 let cond_ptr = self.eval_operand(cond)?;
                 if expected == self.memory.read_bool(cond_ptr)? {
-                    self.frame_mut().block = target;
+                    self.goto_block(target);
                 } else {
                     return match *msg {
                         mir::AssertMessage::BoundsCheck { ref len, ref index } => {
@@ -143,7 +144,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         fn_ty: &'tcx BareFnTy,
-        return_ptr: Option<Pointer>,
+        destination: Option<(Pointer, mir::BasicBlock)>,
         args: &[mir::Operand<'tcx>],
         span: Span,
     ) -> EvalResult<'tcx, ()> {
@@ -152,14 +153,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Abi::RustIntrinsic => {
                 let ty = fn_ty.sig.0.output;
                 let layout = self.type_layout(ty);
-                let ret = return_ptr.unwrap();
-                self.call_intrinsic(def_id, substs, args, ret, layout)
+                let (ret, target) = destination.unwrap();
+                self.call_intrinsic(def_id, substs, args, ret, layout)?;
+                self.goto_block(target);
+                Ok(())
             }
 
             Abi::C => {
                 let ty = fn_ty.sig.0.output;
                 let size = self.type_size(ty);
-                self.call_c_abi(def_id, args, return_ptr.unwrap(), size)
+                let (ret, target) = destination.unwrap();
+                self.call_c_abi(def_id, args, ret, size)?;
+                self.goto_block(target);
+                Ok(())
             }
 
             Abi::Rust | Abi::RustCall => {
@@ -203,7 +209,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
 
                 let mir = self.load_mir(resolved_def_id);
-                self.push_stack_frame(def_id, span, mir, resolved_substs, return_ptr)?;
+                let (return_ptr, return_to_block) = match destination {
+                    Some((ptr, block)) => (Some(ptr), Some(block)),
+                    None => (None, None),
+                };
+                self.push_stack_frame(def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
 
                 for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                     let dest = self.frame().locals[i];

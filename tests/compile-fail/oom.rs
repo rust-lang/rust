@@ -6,6 +6,6 @@ fn bar() {
     assert_eq!(x, 6);
 }
 
-fn main() { //~ ERROR tried to allocate 4 more bytes, but only 0 bytes are free of the 0 byte memory
-    bar();
+fn main() {
+    bar(); //~ ERROR tried to allocate 4 more bytes, but only 0 bytes are free of the 0 byte memory
 }
