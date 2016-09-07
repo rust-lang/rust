@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(static_in_const)]
 #![allow(dead_code)]
 
 // very simple test for a 'static static with default lifetime

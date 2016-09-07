@@ -295,6 +295,9 @@ declare_features! (
 
     // Allows untagged unions `union U { ... }`
     (active, untagged_unions, "1.13.0", Some(32836)),
+
+    // elide `'static` lifetimes in `static`s and `const`s
+    (active, static_in_const, "1.13.0", Some(35897)),
 );
 
 declare_features! (
