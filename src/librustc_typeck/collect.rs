@@ -1567,7 +1567,7 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             NodeItem(item) => {
                 match item.node {
                     ItemStatic(ref t, ..) | ItemConst(ref t, _) => {
-                        ccx.icx(&()).to_ty(&ElidableRscope::new(ty::ReStatic), &t)
+                        ccx.icx(&()).to_ty(&StaticRscope::new(&ccx.tcx), &t)
                     }
                     ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
                         let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl,
