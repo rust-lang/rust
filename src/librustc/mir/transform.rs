@@ -15,7 +15,9 @@ use mir::mir_map::MirMap;
 use mir::repr::{Mir, Promoted};
 use ty::TyCtxt;
 use syntax::ast::NodeId;
+use util::common::time;
 
+use std::borrow::Cow;
 use std::fmt;
 
 /// Where a specific Mir comes from.
@@ -72,12 +74,12 @@ impl<'a, 'tcx> MirSource {
 /// Various information about pass.
 pub trait Pass {
     // fn should_run(Session) to check if pass should run?
-    fn name(&self) -> &str {
+    fn name<'a>(&self) -> Cow<'static, str> {
         let name = unsafe { ::std::intrinsics::type_name::<Self>() };
         if let Some(tail) = name.rfind(":") {
-            &name[tail+1..]
+            Cow::from(&name[tail+1..])
         } else {
-            name
+            Cow::from(name)
         }
     }
     fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> { None }
@@ -162,11 +164,10 @@ impl<'a, 'tcx> Passes {
     }
 
     pub fn run_passes(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, map: &mut MirMap<'tcx>) {
-        for pass in &mut self.plugin_passes {
-            pass.run_pass(tcx, map, &mut self.pass_hooks);
-        }
-        for pass in &mut self.passes {
-            pass.run_pass(tcx, map, &mut self.pass_hooks);
+        let Passes { ref mut passes, ref mut plugin_passes, ref mut pass_hooks } = *self;
+        for pass in plugin_passes.iter_mut().chain(passes.iter_mut()) {
+            time(tcx.sess.time_passes(), &*pass.name(),
+                 || pass.run_pass(tcx, map, pass_hooks));
         }
     }
 
