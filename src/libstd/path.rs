@@ -1169,9 +1169,9 @@ impl PathBuf {
     /// let mut p = PathBuf::from("/test/test.rs");
     ///
     /// p.pop();
-    /// assert_eq!(Path::new("/test"), p.as_path());
+    /// assert_eq!(Path::new("/test"), p);
     /// p.pop();
-    /// assert_eq!(Path::new("/"), p.as_path());
+    /// assert_eq!(Path::new("/"), p);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> bool {
