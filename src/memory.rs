@@ -303,7 +303,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     println!("(deallocated)");
                     continue;
                 },
-                (Some(_), Some(_)) => unreachable!(),
+                (Some(_), Some(_)) => bug!("miri invariant broken: an allocation id exists that points to both a function and a memory location"),
             };
 
             for i in 0..alloc.bytes.len() {
@@ -481,7 +481,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             2 => Ok(self.layout.i16_align.abi() as usize),
             4 => Ok(self.layout.i32_align.abi() as usize),
             8 => Ok(self.layout.i64_align.abi() as usize),
-            _ => panic!("bad integer size"),
+            _ => bug!("bad integer size"),
         }
     }
 

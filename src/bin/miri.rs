@@ -41,12 +41,12 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
             let mut memory_size = 100*1024*1024; // 100MB
             let mut step_limit = 1000_000;
             let mut stack_limit = 100;
-            fn extract_str(lit: &syntax::ast::Lit) -> syntax::parse::token::InternedString {
+            let extract_int = |lit: &syntax::ast::Lit| -> u64 {
                 match lit.node {
-                    syntax::ast::LitKind::Str(ref s, _) => s.clone(),
-                    _ => panic!("attribute values need to be strings"),
+                    syntax::ast::LitKind::Int(i, _) => i,
+                    _ => state.session.span_fatal(lit.span, "expected an integer literal"),
                 }
-            }
+            };
             for attr in krate.attrs.iter() {
                 match attr.node.value.node {
                     MetaItemKind::List(ref name, _) if name != "miri" => {}
@@ -55,9 +55,9 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                             NestedMetaItemKind::MetaItem(ref inner) => match inner.node {
                                 MetaItemKind::NameValue(ref name, ref value) => {
                                     match &**name {
-                                        "memory_size" => memory_size = extract_str(value).parse().expect("not a number"),
-                                        "step_limit" => step_limit = extract_str(value).parse().expect("not a number"),
-                                        "stack_limit" => stack_limit = extract_str(value).parse().expect("not a number"),
+                                        "memory_size" => memory_size = extract_int(value) as usize,
+                                        "step_limit" => step_limit = extract_int(value),
+                                        "stack_limit" => stack_limit = extract_int(value) as usize,
                                         _ => state.session.span_err(item.span, "unknown miri attribute"),
                                     }
                                 }

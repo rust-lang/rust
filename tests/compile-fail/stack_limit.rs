@@ -1,5 +1,5 @@
-#![feature(custom_attribute)]
-#![miri(stack_limit="2")]
+#![feature(custom_attribute, attr_literals)]
+#![miri(stack_limit=2)]
 
 fn bar() {
     foo();

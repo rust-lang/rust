@@ -49,8 +49,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 BitOr  => $v($l | $r),
 
                 // these have already been handled
-                Shl => unreachable!(),
-                Shr => unreachable!(),
+                Shl | Shr => bug!("`{}` operation should already have been handled", bin_op.to_hir_binop().as_str()),
 
                 Eq => Bool($l == $r),
                 Ne => Bool($l != $r),
@@ -72,11 +71,8 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 Rem    => $v($l % $r),
 
                 // invalid float ops
-                BitXor => unreachable!(),
-                BitAnd => unreachable!(),
-                BitOr  => unreachable!(),
-                Shl => unreachable!(),
-                Shr => unreachable!(),
+                BitXor | BitAnd | BitOr |
+                Shl | Shr => bug!("`{}` is not a valid operation on floats", bin_op.to_hir_binop().as_str()),
 
                 Eq => Bool($l == $r),
                 Ne => Bool($l != $r),
@@ -108,7 +104,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 I16(_) | U16(_) => 16,
                 I32(_) | U32(_) => 32,
                 I64(_) | U64(_) => 64,
-                _ => unreachable!(),
+                _ => bug!("bad MIR: bitshift lhs is not integral"),
             };
             assert!(type_bits.is_power_of_two());
             // turn into `u32` because `overflowing_sh{l,r}` only take `u32`
@@ -121,7 +117,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 U16(i) => i as u32,
                 U32(i) => i as u32,
                 U64(i) => i as u32,
-                _ => panic!("bad MIR: bitshift rhs is not integral"),
+                _ => bug!("bad MIR: bitshift rhs is not integral"),
             };
             // apply mask
             let r = r & (type_bits - 1);
@@ -130,7 +126,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                     match bin_op {
                         Shl => overflow!($v, U32, $l, overflowing_shl, $r),
                         Shr => overflow!($v, U32, $l, overflowing_shr, $r),
-                        _ => unreachable!(),
+                        _ => bug!("it has already been checked that this is a shift op"),
                     }
                 })
             }
@@ -143,7 +139,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 U16(l) => shift!(U16, l, r),
                 U32(l) => shift!(U32, l, r),
                 U64(l) => shift!(U64, l, r),
-                _ => unreachable!(),
+                _ => bug!("bad MIR: bitshift lhs is not integral (should already have been checked)"),
             };
             return Ok((val, false));
         },
@@ -168,7 +164,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
             Le => Bool(l <= r),
             Gt => Bool(l > r),
             Ge => Bool(l >= r),
-            _ => panic!("invalid char op: {:?}", bin_op),
+            _ => bug!("invalid char op: {:?}", bin_op),
         },
 
         (Bool(l), Bool(r)) => {
