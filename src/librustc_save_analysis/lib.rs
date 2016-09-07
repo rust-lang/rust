@@ -52,6 +52,7 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, NodeId, PatKind, Attribute};
+use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token::{self, keywords, InternedString};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{ty_to_string, arg_to_string};
@@ -756,7 +757,7 @@ fn docs_for_attrs(attrs: &[Attribute]) -> String {
     for attr in attrs {
         if attr.name() == doc {
             if let Some(ref val) = attr.value_str() {
-                result.push_str(val);
+                result.push_str(&strip_doc_comment_decoration(val));
                 result.push('\n');
             }
         }
