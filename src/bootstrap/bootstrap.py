@@ -236,15 +236,6 @@ class RustBuild:
             return config + '/bin/rustc' + self.exe_suffix()
         return os.path.join(self.bin_root(), "bin/rustc" + self.exe_suffix())
 
-    def nodejs(self):
-        config = self.get_toml('nodejs')
-        if config:
-            return config
-        if os.path.exists(os.path.join(self.bin_root(), "bin/nodejs")):
-            return os.path.join(self.bin_root(), "bin/nodejs" + self.exe_suffix())
-        elif os.path.exists(os.path.join(self.bin_root(), "bin/node")):
-            return os.path.join(self.bin_root(), "bin/node" + self.exe_suffix())
-
     def get_string(self, line):
         start = line.find('"')
         end = start + 1 + line[start+1:].find('"')
