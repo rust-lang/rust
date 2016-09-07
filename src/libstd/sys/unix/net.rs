@@ -213,7 +213,7 @@ impl Socket {
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        let mut nonblocking = nonblocking as libc::c_ulong;
+        let mut nonblocking = nonblocking as libc::c_int;
         cvt(unsafe { libc::ioctl(*self.as_inner(), libc::FIONBIO, &mut nonblocking) }).map(|_| ())
     }
 
