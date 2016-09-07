@@ -33,7 +33,8 @@ use syntax::parse;
 use syntax_pos::Span;
 
 /// Highlights `src`, returning the HTML output.
-pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>) -> String {
+pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>,
+                                extension: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new();
     let fm = sess.codemap().new_filemap("<stdin>".to_string(), None, src.to_string());
@@ -47,6 +48,9 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>
         return format!("<pre>{}</pre>", src);
     }
 
+    if let Some(extension) = extension {
+        write!(out, "{}", extension).unwrap();
+    }
     write_footer(&mut out).unwrap();
     String::from_utf8_lossy(&out[..]).into_owned()
 }

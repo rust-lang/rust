@@ -568,14 +568,17 @@ pre.rust .lifetime { color: #B76514; }
 .rusttest { display: none; }
 pre.rust { position: relative; }
 a.test-arrow {
+    background-color: rgba(78, 139, 202, 0.2);
     display: inline-block;
     position: absolute;
-    background-color: #4e8bca;
     padding: 5px 10px 5px 10px;
     border-radius: 5px;
     font-size: 130%;
     top: 5px;
     right: 5px;
+}
+a.test-arrow:hover{
+    background-color: #4e8bca;
 }
 
 .section-header:hover a:after {
