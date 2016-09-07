@@ -161,13 +161,15 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
            externs: Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
            compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-           maybe_sysroot: Option<PathBuf>) {
+           maybe_sysroot: Option<PathBuf>,
+           original: &str) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
-    let test = maketest(test, Some(cratename), as_test_harness, opts);
+    let new_test = maketest(test, Some(cratename), as_test_harness, opts);
+    let test = format!("```{}\n{}\n```\n", original, test);
     let input = config::Input::Str {
         name: driver::anon_src(),
-        input: test.to_owned(),
+        input: new_test.to_owned(),
     };
     let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
 
@@ -249,20 +251,22 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                     if count > 0 && !compile_fail {
                         sess.fatal("aborting due to previous error(s)")
                     } else if count == 0 && compile_fail {
-                        panic!("test compiled while it wasn't supposed to")
+                        panic!("test compiled while it wasn't supposed to:\n\n{}\n", test)
                     }
                     if count > 0 && error_codes.len() > 0 {
                         let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
                         error_codes.retain(|err| !out.contains(err));
                     }
                 }
-                Ok(()) if compile_fail => panic!("test compiled while it wasn't supposed to"),
+                Ok(()) if compile_fail => {
+                    panic!("test compiled while it wasn't supposed to:\n\n{}\n", test)
+                }
                 _ => {}
             }
         }
         Err(_) => {
             if !compile_fail {
-                panic!("couldn't compile the test");
+                panic!("couldn't compile the test:\n\n{}\n", test);
             }
             if error_codes.len() > 0 {
                 let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
@@ -272,7 +276,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     }
 
     if error_codes.len() > 0 {
-        panic!("Some expected error codes were not found: {:?}", error_codes);
+        panic!("Some expected error codes were not found: {:?}\n\n{}\n", error_codes, test);
     }
 
     if no_run { return }
@@ -294,17 +298,18 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     cmd.env(var, &newpath);
 
     match cmd.output() {
-        Err(e) => panic!("couldn't run the test: {}{}", e,
+        Err(e) => panic!("couldn't run the test: {}{}\n\n{}\n", e,
                         if e.kind() == io::ErrorKind::PermissionDenied {
                             " - maybe your tempdir is mounted with noexec?"
-                        } else { "" }),
+                        } else { "" }, test),
         Ok(out) => {
             if should_panic && out.status.success() {
-                panic!("test executable succeeded when it should have failed");
+                panic!("test executable succeeded when it should have failed\n\n{}\n", test);
             } else if !should_panic && !out.status.success() {
-                panic!("test executable failed:\n{}\n{}",
+                panic!("test executable failed:\n{}\n{}\n\n{}\n",
                        str::from_utf8(&out.stdout).unwrap_or(""),
-                       str::from_utf8(&out.stderr).unwrap_or(""));
+                       str::from_utf8(&out.stderr).unwrap_or(""),
+                       test);
             }
         }
     }
@@ -406,7 +411,8 @@ impl Collector {
 
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
-                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>) {
+                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
+                    original: String) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
             format!("{}_{}", s, self.cnt)
@@ -446,7 +452,8 @@ impl Collector {
                                 compile_fail,
                                 error_codes,
                                 &opts,
-                                maybe_sysroot)
+                                maybe_sysroot,
+                                &original)
                     })
                 } {
                     Ok(()) => (),

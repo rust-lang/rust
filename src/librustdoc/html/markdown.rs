@@ -448,7 +448,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             tests.add_test(text.to_owned(),
                            block_info.should_panic, block_info.no_run,
                            block_info.ignore, block_info.test_harness,
-                           block_info.compile_fail, block_info.error_codes);
+                           block_info.compile_fail, block_info.error_codes,
+                           block_info.original);
         }
     }
 
@@ -488,6 +489,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 struct LangString {
+    original: String,
     should_panic: bool,
     no_run: bool,
     ignore: bool,
@@ -500,6 +502,7 @@ struct LangString {
 impl LangString {
     fn all_false() -> LangString {
         LangString {
+            original: String::new(),
             should_panic: false,
             no_run: false,
             ignore: false,
@@ -521,6 +524,7 @@ impl LangString {
             allow_error_code_check = true;
         }
 
+        data.original = string.to_owned();
         let tokens = string.split(|c: char|
             !(c == '_' || c == '-' || c.is_alphanumeric())
         );
@@ -647,6 +651,7 @@ mod tests {
                 test_harness: test_harness,
                 compile_fail: compile_fail,
                 error_codes: error_codes,
+                original: s.to_owned(),
             })
         }
 
