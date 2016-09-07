@@ -54,8 +54,6 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FnvHashMap, FnvHashSet};
 
-use syntax::ext;
-use syntax::ext::base::LoadedMacro;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
@@ -82,6 +80,7 @@ use resolve_imports::{ImportDirective, NameResolution};
 // registered before they are used.
 mod diagnostics;
 
+mod macros;
 mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
@@ -1073,6 +1072,10 @@ pub struct Resolver<'a> {
     new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
 
     macro_loader: &'a mut MacroLoader,
+    macro_names: FnvHashSet<Name>,
+
+    // Maps the `Mark` of an expansion to its containing module or block.
+    expansion_data: Vec<macros::ExpansionData>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1151,12 +1154,6 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
     fn definitions(&mut self) -> Option<&mut Definitions> {
         Some(&mut self.definitions)
-    }
-}
-
-impl<'a> ext::base::Resolver for Resolver<'a> {
-    fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro> {
-        self.macro_loader.load_crate(extern_crate, allows_macros)
     }
 }
 
@@ -1243,6 +1240,8 @@ impl<'a> Resolver<'a> {
             new_import_semantics: session.features.borrow().item_like_imports,
 
             macro_loader: macro_loader,
+            macro_names: FnvHashSet(),
+            expansion_data: vec![macros::ExpansionData::default()],
         }
     }
 
@@ -2784,8 +2783,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_best_match(&mut self, name: &str) -> SuggestionType {
-        if let Some(macro_name) = self.session.available_macros
-                                  .borrow().iter().find(|n| n.as_str() == name) {
+        if let Some(macro_name) = self.macro_names.iter().find(|n| n.as_str() == name) {
             return SuggestionType::Macro(format!("{}!", macro_name));
         }
 
