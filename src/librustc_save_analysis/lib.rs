@@ -676,7 +676,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 }
 
 fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
-    let mut sig = String::new();
+    let mut sig = "fn ".to_owned();
     if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
         sig.push('<');
         sig.push_str(&generics.lifetimes.iter()
@@ -696,7 +696,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     sig.push_str(&decl.inputs.iter().map(arg_to_string).collect::<Vec<_>>().join(", "));
     sig.push(')');
     match decl.output {
-        ast::FunctionRetTy::Default(_) => {}
+        ast::FunctionRetTy::Default(_) => sig.push_str(" -> ()"),
         ast::FunctionRetTy::Ty(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
     }
 
