@@ -333,7 +333,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn visit_item(&mut self, item: &hir::Item,
                       renamed: Option<ast::Name>, om: &mut Module) {
         debug!("Visiting item {:?}", item);
-        let name = renamed.unwrap_or(item.name);
+        let name = renamed.unwrap_or(item.name.node);
         match item.node {
             hir::ItemExternCrate(ref p) => {
                 let cstore = &self.cx.sess().cstore;

@@ -742,7 +742,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
       hir::ItemImpl(.., ref impl_items) => {
-          debug!("ItemImpl {} with id {}", it.name, it.id);
+          debug!("ItemImpl {} with id {}", it.name.node, it.id);
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           match ccx.tcx.impl_trait_ref(impl_def_id) {
               Some(impl_trait_ref) => {
@@ -812,7 +812,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_bare_fn(ccx, &decl, &body, it.id);
       }
       hir::ItemImpl(.., ref impl_items) => {
-        debug!("ItemImpl {} with id {}", it.name, it.id);
+        debug!("ItemImpl {} with id {}", it.name.node, it.id);
 
         for impl_item in impl_items {
             match impl_item.node {
@@ -1187,9 +1187,28 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // recursive type. It is only necessary to throw an error on those that
     // contain themselves. For case 2, there must be an inner type that will be
     // caught by case 1.
+    // rty.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive => {
+            println!("sp {:?}", sp);
             let item_def_id = tcx.map.local_def_id(item_id);
+            println!("item_id {:?}", item_id);
+            println!("0 node {:?} span {:?}", tcx.map.find(0), tcx.map.opt_span(0));
+            println!("1 node {:?} span {:?}", tcx.map.find(1), tcx.map.opt_span(1));
+            println!("2 node {:?} span {:?}", tcx.map.find(2), tcx.map.opt_span(2));
+            println!("3 node {:?} span {:?}", tcx.map.find(3), tcx.map.opt_span(3));
+            println!("4 node {:?} span {:?}", tcx.map.find(4), tcx.map.opt_span(4));
+            println!("5 node {:?} span {:?}", tcx.map.find(5), tcx.map.opt_span(5));
+            println!("6 node {:?} span {:?}", tcx.map.find(6), tcx.map.opt_span(6));
+            println!("7 node {:?} span {:?}", tcx.map.find(7), tcx.map.opt_span(7));
+            println!("8 node {:?} span {:?}", tcx.map.find(8), tcx.map.opt_span(8));
+            println!("9 node {:?} span {:?}", tcx.map.find(9), tcx.map.opt_span(9));
+            println!("10 node {:?} span {:?}", tcx.map.find(10), tcx.map.opt_span(10));
+            println!("11 node {:?} span {:?}", tcx.map.find(11), tcx.map.opt_span(11));
+            println!("12 node {:?} span {:?}", tcx.map.find(12), tcx.map.opt_span(12));
+            println!("13 node {:?} span {:?}", tcx.map.find(13), tcx.map.opt_span(13));
+            println!("14 node {:?} span {:?}", tcx.map.find(14), tcx.map.opt_span(14));
+            println!("15 node {:?} span {:?}", tcx.map.find(15), tcx.map.opt_span(15));
             tcx.recursive_type_with_infinite_size_error(item_def_id).emit();
             return false
         }
@@ -3216,6 +3235,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              pprust::path_to_string(path))
                 .span_label(path.span, &format!("not a struct"))
                 .emit();
+
+            // println!("sess {}", self.tcx.sess);
+            println!("span {:?}", path.span);
             None
         }
     }
