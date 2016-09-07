@@ -480,6 +480,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 (ast_generics.lifetimes[index].lifetime.span,
                  ast_generics.lifetimes[index].lifetime.name)
             } else {
+                let index = index - ast_generics.lifetimes.len();
                 (ast_generics.ty_params[index].span,
                  ast_generics.ty_params[index].name)
             };
