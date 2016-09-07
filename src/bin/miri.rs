@@ -13,7 +13,7 @@ use miri::{eval_main, run_mir_passes};
 use rustc::session::Session;
 use rustc::mir::mir_map::MirMap;
 use rustc_driver::{driver, CompilerCalls, Compilation};
-use syntax::ast::MetaItemKind;
+use syntax::ast::{MetaItemKind, NestedMetaItemKind};
 
 struct MiriCompilerCalls;
 
@@ -52,14 +52,17 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
                     MetaItemKind::List(ref name, _) if name != "miri" => {}
                     MetaItemKind::List(_, ref items) => for item in items {
                         match item.node {
-                            MetaItemKind::NameValue(ref name, ref value) => {
-                                match &**name {
-                                    "memory_size" => memory_size = extract_str(value).parse().expect("not a number"),
-                                    "step_limit" => step_limit = extract_str(value).parse().expect("not a number"),
-                                    "stack_limit" => stack_limit = extract_str(value).parse().expect("not a number"),
-                                    _ => state.session.span_err(item.span, "unknown miri attribute"),
+                            NestedMetaItemKind::MetaItem(ref inner) => match inner.node {
+                                MetaItemKind::NameValue(ref name, ref value) => {
+                                    match &**name {
+                                        "memory_size" => memory_size = extract_str(value).parse().expect("not a number"),
+                                        "step_limit" => step_limit = extract_str(value).parse().expect("not a number"),
+                                        "stack_limit" => stack_limit = extract_str(value).parse().expect("not a number"),
+                                        _ => state.session.span_err(item.span, "unknown miri attribute"),
+                                    }
                                 }
-                            }
+                                _ => state.session.span_err(inner.span, "miri attributes need to be of key = value kind"),
+                            },
                             _ => state.session.span_err(item.span, "miri attributes need to be of key = value kind"),
                         }
                     },

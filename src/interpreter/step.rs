@@ -24,11 +24,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
 
         let block = self.frame().block;
-        let stmt = self.frame().stmt;
+        let stmt_id = self.frame().stmt;
         let mir = self.mir();
         let basic_block = &mir.basic_blocks()[block];
 
-        if let Some(ref stmt) = basic_block.statements.get(stmt) {
+        if let Some(ref stmt) = basic_block.statements.get(stmt_id) {
             let mut new = Ok(0);
             ConstantExtractor {
                 span: stmt.source_info.span,
@@ -37,7 +37,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ecx: self,
                 mir: &mir,
                 new_constants: &mut new,
-            }.visit_statement(block, stmt);
+            }.visit_statement(block, stmt, mir::Location {
+                block: block,
+                statement_index: stmt_id,
+            });
             if new? == 0 {
                 self.statement(stmt)?;
             }
@@ -55,7 +58,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ecx: self,
             mir: &mir,
             new_constants: &mut new,
-        }.visit_terminator(block, terminator);
+        }.visit_terminator(block, terminator, mir::Location {
+            block: block,
+            statement_index: stmt_id,
+        });
         if new? == 0 {
             self.terminator(terminator)?;
         }
@@ -135,8 +141,8 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
-    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>) {
-        self.super_constant(constant);
+    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: mir::Location) {
+        self.super_constant(constant, location);
         match constant.literal {
             // already computed by rustc
             mir::Literal::Value { .. } => {}
@@ -170,8 +176,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>, context: LvalueContext) {
-        self.super_lvalue(lvalue, context);
+    fn visit_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>, context: LvalueContext, location: mir::Location) {
+        self.super_lvalue(lvalue, context, location);
         if let mir::Lvalue::Static(def_id) = *lvalue {
             let substs = subst::Substs::empty(self.ecx.tcx);
             let span = self.span;
