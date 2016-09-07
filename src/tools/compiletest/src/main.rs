@@ -431,10 +431,17 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
         }
     };
 
+    // Debugging emscripten code doesn't make sense today
+    let mut ignore = early_props.ignore;
+    if (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb) &&
+        config.target.contains("emscripten") {
+        ignore = true;
+    }
+
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
-            ignore: early_props.ignore,
+            ignore: ignore,
             should_panic: should_panic,
         },
         testfn: make_test_closure(config, testpaths),
