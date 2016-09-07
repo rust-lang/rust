@@ -165,6 +165,7 @@ mod tests {
     }
 
     #[bench]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn bench_uninitialized(b: &mut ::test::Bencher) {
         b.iter(|| {
             let mut lr = repeat(1).take(10000000);

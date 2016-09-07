@@ -305,6 +305,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress() {
         unsafe {
             stress_bound(0);

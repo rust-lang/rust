@@ -819,6 +819,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn smoke() {
         let p = Command::new("true").spawn();
         assert!(p.is_ok());
@@ -837,6 +838,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn exit_reported_right() {
         let p = Command::new("false").spawn();
         assert!(p.is_ok());
@@ -848,6 +850,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn signal_reported_right() {
         use os::unix::process::ExitStatusExt;
 
@@ -876,6 +879,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stdout_works() {
         let mut cmd = Command::new("echo");
         cmd.arg("foobar").stdout(Stdio::piped());
@@ -884,6 +888,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(any(windows, target_os = "android"), ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn set_current_dir_works() {
         let mut cmd = Command::new("/bin/sh");
         cmd.arg("-c").arg("pwd")
@@ -894,6 +899,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(any(windows, target_os = "android"), ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stdin_works() {
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("read line; echo $line")
@@ -912,6 +918,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
     #[cfg(unix)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn uid_works() {
         use os::unix::prelude::*;
         use libc;
@@ -938,6 +945,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_process_status() {
         let mut status = Command::new("false").status().unwrap();
         assert!(status.code() == Some(1));
@@ -947,6 +955,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_process_output_fail_to_start() {
         match Command::new("/no-binary-by-this-name-should-exist").output() {
             Err(e) => assert_eq!(e.kind(), ErrorKind::NotFound),
@@ -956,6 +965,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_process_output_output() {
         let Output {status, stdout, stderr}
              = Command::new("echo").arg("hello").output().unwrap();
@@ -968,6 +978,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_process_output_error() {
         let Output {status, stdout, stderr}
              = Command::new("mkdir").arg(".").output().unwrap();
@@ -979,6 +990,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_finish_once() {
         let mut prog = Command::new("false").spawn().unwrap();
         assert!(prog.wait().unwrap().code() == Some(1));
@@ -986,6 +998,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_finish_twice() {
         let mut prog = Command::new("false").spawn().unwrap();
         assert!(prog.wait().unwrap().code() == Some(1));
@@ -994,6 +1007,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_wait_with_output_once() {
         let prog = Command::new("echo").arg("hello").stdout(Stdio::piped())
             .spawn().unwrap();
@@ -1024,6 +1038,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_inherit_env() {
         use env;
 
@@ -1049,6 +1064,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_override_env() {
         use env;
 
@@ -1069,6 +1085,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_add_to_env() {
         let result = env_cmd().env("RUN_TEST_NEW_ENV", "123").output().unwrap();
         let output = String::from_utf8_lossy(&result.stdout).to_string();

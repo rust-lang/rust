@@ -385,6 +385,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stampede_once() {
         static O: Once = Once::new();
         static mut run: bool = false;
@@ -447,6 +448,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn wait_for_force_to_finish() {
         static O: Once = Once::new();
 

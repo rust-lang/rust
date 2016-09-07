@@ -668,6 +668,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn panic_doesnt_poison() {
         thread::spawn(|| {
             let _a = stdin();

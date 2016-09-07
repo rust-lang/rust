@@ -161,6 +161,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test() {
         let nthreads = 8;
         let nmsgs = 1000;
