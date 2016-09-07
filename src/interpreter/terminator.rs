@@ -239,8 +239,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             // The discriminant_value intrinsic returns 0 for non-sum types.
             Array { .. } | FatPointer { .. } | Scalar { .. } | Univariant { .. } |
-            Vector { .. } => 0,
-            UntaggedUnion { .. } => unimplemented!(),
+            Vector { .. } | UntaggedUnion { .. } => 0,
         };
 
         Ok(discr_val)
@@ -279,7 +278,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "assume" => {}
 
             "copy_nonoverlapping" => {
-                let elem_ty = substs.types().next().expect("should at least have one type argument");
+                let elem_ty = substs.type_at(0);
                 let elem_size = self.type_size(elem_ty);
                 let elem_align = self.type_align(elem_ty);
                 let src = self.memory.read_ptr(args_ptrs[0])?;
@@ -289,7 +288,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "discriminant_value" => {
-                let ty = substs.types().next().expect("should have at least one type argument");
+                let ty = substs.type_at(0);
                 let adt_ptr = self.memory.read_ptr(args_ptrs[0])?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
                 self.memory.write_uint(dest, discr_val, 8)?;
@@ -300,19 +299,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "init" => self.memory.write_repeat(dest, 0, dest_layout.size(&self.tcx.data_layout).bytes() as usize)?,
 
             "min_align_of" => {
-                let elem_ty = substs.types().next().expect("should have at least one type argument");
+                let elem_ty = substs.type_at(0);
                 let elem_align = self.type_align(elem_ty);
                 self.memory.write_uint(dest, elem_align as u64, pointer_size)?;
             }
 
             "move_val_init" => {
-                let ty = substs.types().next().expect("should have at least one type argument");
+                let ty = substs.type_at(0);
                 let ptr = self.memory.read_ptr(args_ptrs[0])?;
                 self.move_(args_ptrs[1], ptr, ty)?;
             }
 
             "offset" => {
-                let pointee_ty = substs.types().next().expect("should have at least one type argument");
+                let pointee_ty = substs.type_at(0);
                 let pointee_size = self.type_size(pointee_ty) as isize;
                 let ptr_arg = args_ptrs[0];
                 let offset = self.memory.read_isize(args_ptrs[1])?;
@@ -344,13 +343,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "size_of" => {
-                let ty = substs.types().next().expect("should have at least one type argument");
+                let ty = substs.type_at(0);
                 let size = self.type_size(ty) as u64;
                 self.memory.write_uint(dest, size, pointer_size)?;
             }
 
             "size_of_val" => {
-                let ty = substs.types().next().expect("should have at least one type argument");
+                let ty = substs.type_at(0);
                 if self.type_is_sized(ty) {
                     let size = self.type_size(ty) as u64;
                     self.memory.write_uint(dest, size, pointer_size)?;
@@ -370,7 +369,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "transmute" => {
-                let ty = substs.types().next().expect("should have at least one type argument");
+                let ty = substs.type_at(0);
                 self.move_(args_ptrs[0], dest, ty)?;
             }
             "uninit" => self.memory.mark_definedness(dest, dest_layout.size(&self.tcx.data_layout).bytes() as usize, false)?,
@@ -571,7 +570,7 @@ fn get_impl_method<'a, 'tcx>(
     impl_substs: &'tcx Substs<'tcx>,
     name: ast::Name,
 ) -> ImplMethod<'tcx> {
-    assert!(!substs.types().any(|ty| ty.needs_infer()));
+    assert!(!substs.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
