@@ -60,8 +60,7 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
         }
     }
     if target.contains("musl") {
-        if let Some(p) = build.config.target_config[target].musl_root.as_ref()
-            .or(build.config.musl_root.as_ref()) {
+        if let Some(p) = build.musl_root(target) {
             cargo.env("MUSL_ROOT", p);
         }
     }

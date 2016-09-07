@@ -977,6 +977,13 @@ impl Build {
         }
         return base
     }
+
+    /// Returns the "musl root" for this `target`, if defined
+    fn musl_root(&self, target: &str) -> Option<&Path> {
+        self.config.target_config[target].musl_root.as_ref()
+            .or(self.config.musl_root.as_ref())
+            .map(|p| &**p)
+    }
 }
 
 impl<'a> Compiler<'a> {

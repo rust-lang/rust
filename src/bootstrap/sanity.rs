@@ -111,8 +111,7 @@ pub fn check(build: &mut Build) {
 
         // Make sure musl-root is valid if specified
         if target.contains("musl") && !target.contains("mips") {
-            match build.config.target_config[target].musl_root.as_ref()
-                .or(build.config.musl_root.as_ref()) {
+            match build.musl_root(target) {
                 Some(root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {
                         panic!("couldn't find libc.a in musl dir: {}",
