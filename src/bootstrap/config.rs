@@ -76,6 +76,7 @@ pub struct Config {
 
     // misc
     pub channel: String,
+    // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<String>,
     pub codegen_tests: bool,
@@ -89,6 +90,7 @@ pub struct Target {
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
+    pub musl_root: Option<PathBuf>,
 }
 
 /// Structure of the `config.toml` file that configuration is read from.

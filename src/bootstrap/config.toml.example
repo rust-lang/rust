@@ -118,10 +118,6 @@
 # nightly features
 #channel = "dev"
 
-# The root location of the MUSL installation directory. The library directory
-# will also need to contain libunwind.a for an unwinding implementation.
-#musl-root = "..."
-
 # By default the `rustc` executable is built with `-Wl,-rpath` flags on Unix
 # platforms to ensure that the compiler is usable by default from the build
 # directory (as it links to a number of dynamic libraries). This may not be
@@ -167,3 +163,9 @@
 # the NDK for the target lives. This is used to find the C compiler to link and
 # build native code.
 #android-ndk = "/path/to/ndk"
+
+# The root location of the MUSL installation directory. The library directory
+# will also need to contain libunwind.a for an unwinding implementation. Note
+# that this option only makes sense for MUSL targets that produce statically
+# linked binaries
+#musl-root = "..."
