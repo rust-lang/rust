@@ -67,7 +67,6 @@ pub struct Config {
     pub target: Vec<String>,
     pub rustc: Option<PathBuf>,
     pub cargo: Option<PathBuf>,
-    pub nodejs: Option<PathBuf>,
     pub local_rebuild: bool,
 
     // libstd features
@@ -112,7 +111,6 @@ struct Build {
     host: Vec<String>,
     target: Vec<String>,
     cargo: Option<String>,
-    nodejs: Option<String>,
     rustc: Option<String>,
     compiler_docs: Option<bool>,
     docs: Option<bool>,
@@ -217,7 +215,6 @@ impl Config {
         }
         config.rustc = build.rustc.map(PathBuf::from);
         config.cargo = build.cargo.map(PathBuf::from);
-        config.nodejs = build.nodejs.map(PathBuf::from);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
 
