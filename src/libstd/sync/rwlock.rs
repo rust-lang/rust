@@ -403,6 +403,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn frob() {
         const N: usize = 10;
         const M: usize = 1000;
@@ -430,6 +431,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_rw_arc_poison_wr() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
@@ -441,6 +443,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_rw_arc_poison_ww() {
         let arc = Arc::new(RwLock::new(1));
         assert!(!arc.is_poisoned());
@@ -454,6 +457,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_rw_arc_no_poison_rr() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
@@ -465,6 +469,7 @@ mod tests {
         assert_eq!(*lock, 1);
     }
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_rw_arc_no_poison_rw() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
@@ -477,6 +482,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_rw_arc() {
         let arc = Arc::new(RwLock::new(0));
         let arc2 = arc.clone();
@@ -515,6 +521,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_rw_arc_access_in_unwind() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
@@ -587,6 +594,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_into_inner_poison() {
         let m = Arc::new(RwLock::new(NonCopy(10)));
         let m2 = m.clone();
@@ -610,6 +618,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_get_mut_poison() {
         let m = Arc::new(RwLock::new(NonCopy(10)));
         let m2 = m.clone();

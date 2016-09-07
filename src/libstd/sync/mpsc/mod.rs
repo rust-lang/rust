@@ -1314,6 +1314,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn smoke_threads() {
         let (tx, rx) = channel::<i32>();
         let _t = thread::spawn(move|| {
@@ -1346,6 +1347,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn port_gone_concurrent() {
         let (tx, rx) = channel::<i32>();
         let _t = thread::spawn(move|| {
@@ -1355,6 +1357,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn port_gone_concurrent_shared() {
         let (tx, rx) = channel::<i32>();
         let tx2 = tx.clone();
@@ -1381,6 +1384,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn chan_gone_concurrent() {
         let (tx, rx) = channel::<i32>();
         let _t = thread::spawn(move|| {
@@ -1391,6 +1395,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress() {
         let (tx, rx) = channel::<i32>();
         let t = thread::spawn(move|| {
@@ -1403,6 +1408,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress_shared() {
         const AMT: u32 = 10000;
         const NTHREADS: u32 = 8;
@@ -1429,6 +1435,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn send_from_outside_runtime() {
         let (tx1, rx1) = channel::<()>();
         let (tx2, rx2) = channel::<i32>();
@@ -1449,6 +1456,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn recv_from_outside_runtime() {
         let (tx, rx) = channel::<i32>();
         let t = thread::spawn(move|| {
@@ -1463,6 +1471,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn no_runtime() {
         let (tx1, rx1) = channel::<i32>();
         let (tx2, rx2) = channel::<i32>();
@@ -1501,6 +1510,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
         let res = thread::spawn(move|| {
@@ -1570,6 +1580,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_task_recv_then_send() {
         let (tx, rx) = channel::<Box<i32>>();
         let _t = thread::spawn(move|| {
@@ -1580,6 +1591,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_task_recv_then_close() {
         let (tx, rx) = channel::<Box<i32>>();
         let _t = thread::spawn(move|| {
@@ -1592,6 +1604,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_thread_close_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = channel::<i32>();
@@ -1603,6 +1616,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_thread_send_close_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = channel::<i32>();
@@ -1616,6 +1630,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_thread_recv_close_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = channel::<i32>();
@@ -1634,6 +1649,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_thread_send_recv_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = channel::<Box<isize>>();
@@ -1645,6 +1661,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stream_send_recv_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = channel();
@@ -1683,6 +1700,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress_recv_timeout_two_threads() {
         let (tx, rx) = channel();
         let stress = stress_factor() + 100;
@@ -1724,6 +1742,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress_recv_timeout_shared() {
         let (tx, rx) = channel();
         let stress = stress_factor() + 100;
@@ -1762,6 +1781,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn shared_recv_timeout() {
         let (tx, rx) = channel();
         let total = 5;
@@ -1780,6 +1800,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn shared_chan_stress() {
         let (tx, rx) = channel();
         let total = stress_factor() + 100;
@@ -1796,6 +1817,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_nested_recv_iter() {
         let (tx, rx) = channel::<i32>();
         let (total_tx, total_rx) = channel::<i32>();
@@ -1816,6 +1838,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_recv_iter_break() {
         let (tx, rx) = channel::<i32>();
         let (count_tx, count_rx) = channel();
@@ -1841,6 +1864,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_recv_try_iter() {
         let (request_tx, request_rx) = channel();
         let (response_tx, response_rx) = channel();
@@ -1895,6 +1919,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn try_recv_states() {
         let (tx1, rx1) = channel::<i32>();
         let (tx2, rx2) = channel::<()>();
@@ -1921,6 +1946,7 @@ mod tests {
     // This bug used to end up in a livelock inside of the Receiver destructor
     // because the internal state of the Shared packet was corrupted
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn destroy_upgraded_shared_port_when_sender_still_active() {
         let (tx, rx) = channel();
         let (tx2, rx2) = channel();
@@ -1988,6 +2014,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn smoke_threads() {
         let (tx, rx) = sync_channel::<i32>(0);
         let _t = thread::spawn(move|| {
@@ -2013,6 +2040,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn port_gone_concurrent() {
         let (tx, rx) = sync_channel::<i32>(0);
         let _t = thread::spawn(move|| {
@@ -2022,6 +2050,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn port_gone_concurrent_shared() {
         let (tx, rx) = sync_channel::<i32>(0);
         let tx2 = tx.clone();
@@ -2048,6 +2077,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn chan_gone_concurrent() {
         let (tx, rx) = sync_channel::<i32>(0);
         thread::spawn(move|| {
@@ -2058,6 +2088,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress() {
         let (tx, rx) = sync_channel::<i32>(0);
         thread::spawn(move|| {
@@ -2069,6 +2100,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress_recv_timeout_two_threads() {
         let (tx, rx) = sync_channel::<i32>(0);
 
@@ -2092,6 +2124,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress_recv_timeout_shared() {
         const AMT: u32 = 1000;
         const NTHREADS: u32 = 8;
@@ -2130,6 +2163,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress_shared() {
         const AMT: u32 = 1000;
         const NTHREADS: u32 = 8;
@@ -2180,6 +2214,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
         let res = thread::spawn(move|| {
@@ -2264,6 +2299,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_task_recv_then_send() {
         let (tx, rx) = sync_channel::<Box<i32>>(0);
         let _t = thread::spawn(move|| {
@@ -2274,6 +2310,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_task_recv_then_close() {
         let (tx, rx) = sync_channel::<Box<i32>>(0);
         let _t = thread::spawn(move|| {
@@ -2286,6 +2323,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_thread_close_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<i32>(0);
@@ -2297,6 +2335,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_thread_send_close_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<i32>(0);
@@ -2310,6 +2349,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_thread_recv_close_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<i32>(0);
@@ -2328,6 +2368,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_multi_thread_send_recv_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<Box<i32>>(0);
@@ -2339,6 +2380,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stream_send_recv_stress() {
         for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<Box<i32>>(0);
@@ -2375,6 +2417,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn shared_chan_stress() {
         let (tx, rx) = sync_channel(0);
         let total = stress_factor() + 100;
@@ -2391,6 +2434,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_nested_recv_iter() {
         let (tx, rx) = sync_channel::<i32>(0);
         let (total_tx, total_rx) = sync_channel::<i32>(0);
@@ -2411,6 +2455,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_recv_iter_break() {
         let (tx, rx) = sync_channel::<i32>(0);
         let (count_tx, count_rx) = sync_channel(0);
@@ -2436,6 +2481,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn try_recv_states() {
         let (tx1, rx1) = sync_channel::<i32>(1);
         let (tx2, rx2) = sync_channel::<()>(1);
@@ -2462,6 +2508,7 @@ mod sync_tests {
     // This bug used to end up in a livelock inside of the Receiver destructor
     // because the internal state of the Shared packet was corrupted
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn destroy_upgraded_shared_port_when_sender_still_active() {
         let (tx, rx) = sync_channel::<()>(0);
         let (tx2, rx2) = sync_channel::<()>(0);
@@ -2483,6 +2530,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn send1() {
         let (tx, rx) = sync_channel::<i32>(0);
         let _t = thread::spawn(move|| { rx.recv().unwrap(); });
@@ -2490,6 +2538,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn send2() {
         let (tx, rx) = sync_channel::<i32>(0);
         let _t = thread::spawn(move|| { drop(rx); });
@@ -2497,6 +2546,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn send3() {
         let (tx, rx) = sync_channel::<i32>(1);
         assert_eq!(tx.send(1), Ok(()));
@@ -2505,6 +2555,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn send4() {
         let (tx, rx) = sync_channel::<i32>(0);
         let tx2 = tx.clone();
@@ -2545,6 +2596,7 @@ mod sync_tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn issue_15761() {
         fn repro() {
             let (tx1, rx1) = sync_channel::<()>(3);

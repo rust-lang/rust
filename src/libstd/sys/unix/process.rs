@@ -630,6 +630,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "macos", ignore)]
     #[cfg_attr(target_os = "nacl", ignore)] // no signals on NaCl.
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_process_mask() {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.

@@ -806,6 +806,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn basic() {
         let dir = tmpdir();
         let socket_path = dir.path().join("sock");
@@ -834,6 +835,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn pair() {
         let msg1 = b"hello";
         let msg2 = b"world!";
@@ -857,6 +859,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn try_clone() {
         let dir = tmpdir();
         let socket_path = dir.path().join("sock");
@@ -883,6 +886,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn iter() {
         let dir = tmpdir();
         let socket_path = dir.path().join("sock");
@@ -905,6 +909,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn long_path() {
         let dir = tmpdir();
         let socket_path = dir.path()
@@ -930,6 +935,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn timeouts() {
         let dir = tmpdir();
         let socket_path = dir.path().join("sock");
@@ -957,6 +963,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_read_timeout() {
         let dir = tmpdir();
         let socket_path = dir.path().join("sock");
@@ -972,6 +979,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_read_with_timeout() {
         let dir = tmpdir();
         let socket_path = dir.path().join("sock");
@@ -993,6 +1001,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_unix_datagram() {
         let dir = tmpdir();
         let path1 = dir.path().join("sock1");
@@ -1009,6 +1018,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_unnamed_unix_datagram() {
         let dir = tmpdir();
         let path1 = dir.path().join("sock1");
@@ -1026,6 +1036,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_connect_unix_datagram() {
         let dir = tmpdir();
         let path1 = dir.path().join("sock1");
@@ -1052,6 +1063,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_unix_datagram_recv() {
         let dir = tmpdir();
         let path1 = dir.path().join("sock1");
@@ -1069,6 +1081,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn datagram_pair() {
         let msg1 = b"hello";
         let msg2 = b"world!";

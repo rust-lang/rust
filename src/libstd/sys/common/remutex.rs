@@ -181,6 +181,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn is_mutex() {
         let m = Arc::new(ReentrantMutex::new(RefCell::new(0)));
         let m2 = m.clone();
@@ -198,6 +199,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn trylock_works() {
         let m = Arc::new(ReentrantMutex::new(()));
         let m2 = m.clone();
@@ -218,6 +220,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
     fn poison_works() {
         let m = Arc::new(ReentrantMutex::new(RefCell::new(0)));
         let mc = m.clone();
