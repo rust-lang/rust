@@ -76,7 +76,7 @@ pub fn check(build: &mut Build) {
     need_cmd("python".as_ref());
 
     // If a manual nodejs was added to the config,
-    // of if a nodejs install is detected through bootstrap.py, use it.
+    // of if a nodejs install is detected through config, use it.
     if build.config.nodejs.is_some() {
         need_cmd("nodejs".as_ref())
     }
