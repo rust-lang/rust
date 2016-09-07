@@ -64,7 +64,7 @@ use rustc::hir;
 use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
 use rustc_data_structures::flock;
 
-use clean::{self, Attributes, GetDefId};
+use clean::{self, Attributes, GetDefId, SelfTy, Mutability};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -266,6 +266,7 @@ pub struct Cache {
     seen_mod: bool,
     stripped_mod: bool,
     deref_trait_did: Option<DefId>,
+    deref_mut_trait_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,
@@ -283,6 +284,7 @@ pub struct RenderInfo {
     pub external_paths: ::core::ExternalPaths,
     pub external_typarams: FnvHashMap<DefId, String>,
     pub deref_trait_did: Option<DefId>,
+    pub deref_mut_trait_did: Option<DefId>,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -508,6 +510,7 @@ pub fn run(mut krate: clean::Crate,
         external_paths,
         external_typarams,
         deref_trait_did,
+        deref_mut_trait_did,
     } = renderinfo;
 
     let external_paths = external_paths.into_iter()
@@ -532,6 +535,7 @@ pub fn run(mut krate: clean::Crate,
         orphan_impl_items: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, FnvHashMap()),
         deref_trait_did: deref_trait_did,
+        deref_mut_trait_did: deref_mut_trait_did,
         typarams: external_typarams,
     };
 
@@ -2603,7 +2607,13 @@ impl<'a> AssocItemLink<'a> {
 
 enum AssocItemRender<'a> {
     All,
-    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type },
+    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type, deref_mut_: bool }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+enum RenderMode {
+    Normal,
+    ForDeref { mut_: bool },
 }
 
 fn render_assoc_items(w: &mut fmt::Formatter,
@@ -2620,19 +2630,19 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         i.inner_impl().trait_.is_none()
     });
     if !non_trait.is_empty() {
-        let render_header = match what {
+        let render_mode = match what {
             AssocItemRender::All => {
                 write!(w, "<h2 id='methods'>Methods</h2>")?;
-                true
+                RenderMode::Normal
             }
-            AssocItemRender::DerefFor { trait_, type_ } => {
+            AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 write!(w, "<h2 id='deref-methods'>Methods from \
                                {}&lt;Target={}&gt;</h2>", trait_, type_)?;
-                false
+                RenderMode::ForDeref { mut_: deref_mut_ }
             }
         };
         for i in &non_trait {
-            render_impl(w, cx, i, AssocItemLink::Anchor(None), render_header,
+            render_impl(w, cx, i, AssocItemLink::Anchor(None), render_mode,
                         containing_item.stable_since())?;
         }
     }
@@ -2644,21 +2654,25 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             t.inner_impl().trait_.def_id() == c.deref_trait_did
         });
         if let Some(impl_) = deref_impl {
-            render_deref_methods(w, cx, impl_, containing_item)?;
+            let has_deref_mut = traits.iter().find(|t| {
+                t.inner_impl().trait_.def_id() == c.deref_mut_trait_did
+            }).is_some();
+            render_deref_methods(w, cx, impl_, containing_item, has_deref_mut)?;
         }
         write!(w, "<h2 id='implementations'>Trait \
                    Implementations</h2>")?;
         for i in &traits {
             let did = i.trait_did().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
-            render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
+            render_impl(w, cx, i, assoc_link,
+                        RenderMode::Normal, containing_item.stable_since())?;
         }
     }
     Ok(())
 }
 
 fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
-                        container_item: &clean::Item) -> fmt::Result {
+                        container_item: &clean::Item, deref_mut: bool) -> fmt::Result {
     let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
     let target = impl_.inner_impl().items.iter().filter_map(|item| {
         match item.inner {
@@ -2666,7 +2680,8 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
             _ => None,
         }
     }).next().expect("Expected associated type binding");
-    let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target };
+    let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target,
+                                           deref_mut_: deref_mut };
     if let Some(did) = target.def_id() {
         render_assoc_items(w, cx, container_item, did, what)
     } else {
@@ -2680,12 +2695,9 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
     }
 }
 
-// Render_header is false when we are rendering a `Deref` impl and true
-// otherwise. If render_header is false, we will avoid rendering static
-// methods, since they are not accessible for the type implementing `Deref`
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
-               render_header: bool, outer_version: Option<&str>) -> fmt::Result {
-    if render_header {
+               render_mode: RenderMode, outer_version: Option<&str>) -> fmt::Result {
+    if render_mode == RenderMode::Normal {
         write!(w, "<h3 class='impl'><span class='in-band'><code>{}</code>", i.inner_impl())?;
         write!(w, "</span><span class='out-of-band'>")?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
@@ -2706,22 +2718,43 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     fn doc_impl_item(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
-                     link: AssocItemLink, render_static: bool,
+                     link: AssocItemLink, render_mode: RenderMode,
                      is_default_item: bool, outer_version: Option<&str>,
                      trait_: Option<&clean::Trait>) -> fmt::Result {
         let item_type = item_type(item);
         let name = item.name.as_ref().unwrap();
 
-        let is_static = match item.inner {
-            clean::MethodItem(ref method) => !method.decl.has_self(),
-            clean::TyMethodItem(ref method) => !method.decl.has_self(),
-            _ => false
+        let render_method_item: bool = match render_mode {
+            RenderMode::Normal => true,
+            RenderMode::ForDeref { mut_: deref_mut_ } => {
+                let self_type_opt = match item.inner {
+                    clean::MethodItem(ref method) => method.decl.self_type(),
+                    clean::TyMethodItem(ref method) => method.decl.self_type(),
+                    _ => None
+                };
+
+                if let Some(self_ty) = self_type_opt {
+                    let by_mut_ref = match self_ty {
+                        SelfTy::SelfBorrowed(_lifetime, mutability) => {
+                            mutability == Mutability::Mutable
+                        },
+                        SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
+                            mutability == Mutability::Mutable
+                        },
+                        _ => false,
+                    };
+
+                    deref_mut_ || !by_mut_ref
+                } else {
+                    false
+                }
+            },
         };
 
         match item.inner {
             clean::MethodItem(..) | clean::TyMethodItem(..) => {
                 // Only render when the method is not static or we allow static methods
-                if !is_static || render_static {
+                if render_method_item {
                     let id = derive_id(format!("{}.{}", item_type, name));
                     let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
                     write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
@@ -2769,7 +2802,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
 
-        if !is_static || render_static {
+        if render_method_item || render_mode == RenderMode::Normal {
             if !is_default_item {
                 if let Some(t) = trait_ {
                     // The trait item may have been stripped so we might not
@@ -2802,7 +2835,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.inner_impl().items {
-        doc_impl_item(w, cx, trait_item, link, render_header,
+        doc_impl_item(w, cx, trait_item, link, render_mode,
                       false, outer_version, trait_)?;
     }
 
@@ -2810,7 +2843,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                             cx: &Context,
                             t: &clean::Trait,
                             i: &clean::Impl,
-                            render_static: bool,
+                            render_mode: RenderMode,
                             outer_version: Option<&str>) -> fmt::Result {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
@@ -2820,7 +2853,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             let did = i.trait_.as_ref().unwrap().def_id().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
-            doc_impl_item(w, cx, trait_item, assoc_link, render_static, true,
+            doc_impl_item(w, cx, trait_item, assoc_link, render_mode, true,
                           outer_version, None)?;
         }
         Ok(())
@@ -2829,7 +2862,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     // If we've implemented a trait, then also emit documentation for all
     // default items which weren't overridden in the implementation block.
     if let Some(t) = trait_ {
-        render_default_items(w, cx, t, &i.inner_impl(), render_header, outer_version)?;
+        render_default_items(w, cx, t, &i.inner_impl(), render_mode, outer_version)?;
     }
     write!(w, "</div>")?;
     Ok(())

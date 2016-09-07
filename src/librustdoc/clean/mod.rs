@@ -134,6 +134,8 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         if let Some(t) = cx.tcx_opt() {
             cx.deref_trait_did.set(t.lang_items.deref_trait());
             cx.renderinfo.borrow_mut().deref_trait_did = cx.deref_trait_did.get();
+            cx.deref_mut_trait_did.set(t.lang_items.deref_mut_trait());
+            cx.renderinfo.borrow_mut().deref_mut_trait_did = cx.deref_mut_trait_did.get();
         }
 
         let mut externs = Vec::new();
@@ -1116,6 +1118,10 @@ pub struct FnDecl {
 impl FnDecl {
     pub fn has_self(&self) -> bool {
         return self.inputs.values.len() > 0 && self.inputs.values[0].name == "self";
+    }
+
+    pub fn self_type(&self) -> Option<SelfTy> {
+        self.inputs.values.get(0).and_then(|v| v.to_self())
     }
 }
 
