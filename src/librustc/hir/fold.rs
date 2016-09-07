@@ -15,8 +15,8 @@ use hir::*;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, Attribute, Attribute_};
 use syntax::ast::{NestedMetaItem, NestedMetaItemKind, MetaItem, MetaItemKind};
 use hir;
-use syntax_pos::Span;
-use syntax::codemap::{respan, Spanned};
+use syntax_pos::{Span, BytePos};
+use syntax::codemap::{spanned, respan, Spanned};
 use syntax::ptr::P;
 use syntax::parse::token::keywords;
 use syntax::util::move_map::MoveMap;
@@ -850,7 +850,7 @@ pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span,
     let config = folder.fold_meta_items(config);
 
     let crate_mod = folder.fold_item(hir::Item {
-        name: keywords::Invalid.name(),
+        name: spanned(BytePos(0), BytePos(0), keywords::Invalid.name()),
         attrs: attrs,
         id: DUMMY_NODE_ID,
         vis: hir::Public,
@@ -894,7 +894,7 @@ pub fn noop_fold_item<T: Folder>(item: Item, folder: &mut T) -> Item {
 
     Item {
         id: id,
-        name: folder.fold_name(name),
+        name: spanned(BytePos(0), BytePos(0), folder.fold_name(name.node)),
         attrs: fold_attrs(attrs, folder),
         node: node,
         vis: vis,
