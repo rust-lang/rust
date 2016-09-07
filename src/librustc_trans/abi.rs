@@ -26,7 +26,6 @@ use cabi_asmjs;
 use machine::{llalign_of_min, llsize_of, llsize_of_real, llsize_of_store};
 use type_::Type;
 use type_of;
-use adt;
 
 use rustc::hir;
 use rustc::ty::{self, Ty};
@@ -36,6 +35,7 @@ use std::cmp;
 
 pub use syntax::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+use rustc::ty::layout::Layout;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum ArgKind {
@@ -318,13 +318,10 @@ impl FnType {
                 if ty.is_integral() {
                     arg.signedness = Some(ty.is_signed());
                 }
-                // Rust enum types that map onto C enums (LLVM integers) also
-                // need to follow the target ABI zero-/sign-extension rules.
-                if let ty::TyEnum(..) = ty.sty {
-                    if arg.ty.kind() == llvm::Integer {
-                        let repr = adt::represent_type(ccx, ty);
-                        arg.signedness = Some(adt::is_discr_signed(&repr));
-                    }
+                // Rust enum types that map onto C enums also need to follow
+                // the target ABI zero-/sign-extension rules.
+                if let Layout::CEnum { signed, .. } = *ccx.layout_of(ty) {
+                    arg.signedness = Some(signed);
                 }
                 if llsize_of_real(ccx, arg.ty) == 0 {
                     // For some forsaken reason, x86_64-pc-windows-gnu
