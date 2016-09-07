@@ -150,6 +150,18 @@ impl Instant {
     /// This function may panic if the current time is earlier than this
     /// instant, which is something that can happen if an `Instant` is
     /// produced synthetically.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::thread::sleep;
+    /// use std::time::{Duration, Instant};
+    ///
+    /// let instant = Instant::now();
+    /// let three_secs = Duration::from_secs(3);
+    /// sleep(three_secs);
+    /// assert!(instant.elapsed() >= three_secs);
+    /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn elapsed(&self) -> Duration {
         Instant::now() - *self
