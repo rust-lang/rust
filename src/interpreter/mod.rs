@@ -255,7 +255,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             let cs = &self.tcx.sess.cstore;
             let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
-                bug!("no mir for `{}`", self.tcx.item_path_str(def_id));
+                panic!("no mir for `{}`", self.tcx.item_path_str(def_id));
             });
             let cached = Rc::new(mir);
             mir_cache.insert(def_id, cached.clone());
