@@ -208,14 +208,23 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
-        let expansion = expansion.fold_with(&mut StripUnconfigured {
-            config: &self.cx.cfg,
-            should_test: self.cx.ecfg.should_test,
-            sess: self.cx.parse_sess,
-            features: self.cx.ecfg.features,
-        });
-        let mut collector = InvocationCollector { cx: self.cx, invocations: Vec::new() };
-        (expansion.fold_with(&mut collector), collector.invocations)
+        let crate_config = mem::replace(&mut self.cx.cfg, Vec::new());
+        let result = {
+            let mut collector = InvocationCollector {
+                cfg: StripUnconfigured {
+                    config: &crate_config,
+                    should_test: self.cx.ecfg.should_test,
+                    sess: self.cx.parse_sess,
+                    features: self.cx.ecfg.features,
+                },
+                cx: self.cx,
+                invocations: Vec::new(),
+            };
+            (expansion.fold_with(&mut collector), collector.invocations)
+        };
+
+        self.cx.cfg = crate_config;
+        result
     }
 
     fn expand_invoc(&mut self, invoc: Invocation) -> Expansion {
@@ -403,7 +412,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
 struct InvocationCollector<'a, 'b: 'a> {
     cx: &'a mut ExtCtxt<'b>,
+    cfg: StripUnconfigured<'a>,
     invocations: Vec<Invocation>,
+}
+
+macro_rules! fully_configure {
+    ($this:ident, $node:ident, $noop_fold:ident) => {
+        match $noop_fold($node, &mut $this.cfg).pop() {
+            Some(node) => node,
+            None => return SmallVector::zero(),
+        }
+    }
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
@@ -475,11 +494,17 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         }
         false
     }
+
+    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
+        self.cfg.configure(node)
+    }
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let expr = expr.unwrap();
+        let mut expr = self.cfg.configure_expr(expr).unwrap();
+        expr.node = self.cfg.configure_expr_kind(expr.node);
+
         if let ast::ExprKind::Mac(mac) = expr.node {
             self.collect_bang(mac, expr.attrs.into(), expr.span, ExpansionKind::Expr).make_expr()
         } else {
@@ -488,7 +513,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        let expr = expr.unwrap();
+        let mut expr = configure!(self, expr).unwrap();
+        expr.node = self.cfg.configure_expr_kind(expr.node);
+
         if let ast::ExprKind::Mac(mac) = expr.node {
             self.collect_bang(mac, expr.attrs.into(), expr.span, ExpansionKind::OptExpr)
                 .make_opt_expr()
@@ -511,6 +538,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
+        let stmt = match self.cfg.configure_stmt(stmt) {
+            Some(stmt) => stmt,
+            None => return SmallVector::zero(),
+        };
+
         let (mac, style, attrs) = match stmt.node {
             StmtKind::Mac(mac) => mac.unwrap(),
             _ => return noop_fold_stmt(stmt, self),
@@ -540,9 +572,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+        let item = configure!(self, item);
+
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            let item = Annotatable::Item(item);
+            let item = Annotatable::Item(fully_configure!(self, item, noop_fold_item));
             return self.collect_attr(attr, item, ExpansionKind::Items).make_items();
         }
 
@@ -610,9 +644,12 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+        let item = configure!(self, item);
+
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            let item = Annotatable::TraitItem(P(item));
+            let item =
+                Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
             return self.collect_attr(attr, item, ExpansionKind::TraitItems).make_trait_items()
         }
 
@@ -626,9 +663,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+        let item = configure!(self, item);
+
         let (item, attr) = self.classify_item(item);
         if let Some(attr) = attr {
-            let item = Annotatable::ImplItem(P(item));
+            let item = Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
             return self.collect_attr(attr, item, ExpansionKind::ImplItems).make_impl_items();
         }
 
@@ -652,6 +691,14 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 self.collect_bang(mac, Vec::new(), ty.span, ExpansionKind::Ty).make_ty(),
             _ => unreachable!(),
         }
+    }
+
+    fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
+        noop_fold_foreign_mod(self.cfg.configure_foreign_mod(foreign_mod), self)
+    }
+
+    fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
+        noop_fold_item_kind(self.cfg.configure_item_kind(item), self)
     }
 }
 

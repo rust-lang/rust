@@ -104,6 +104,7 @@ pub mod abi;
 pub mod ast;
 pub mod attr;
 pub mod codemap;
+#[macro_use]
 pub mod config;
 pub mod entry;
 pub mod feature_gate;
