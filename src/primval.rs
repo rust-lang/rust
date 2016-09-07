@@ -49,7 +49,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 BitOr  => $v($l | $r),
 
                 // these have already been handled
-                Shl | Shr => bug!("`bin_op` operation should already have been handled", bin_op.to_hir_binop().as_str()),
+                Shl | Shr => bug!("`{}` operation should already have been handled", bin_op.to_hir_binop().as_str()),
 
                 Eq => Bool($l == $r),
                 Ne => Bool($l != $r),
