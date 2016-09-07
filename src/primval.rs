@@ -49,8 +49,7 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 BitOr  => $v($l | $r),
 
                 // these have already been handled
-                Shl => bug!("`<<` operation should already have been handled"),
-                Shr => bug!("`>>` operation should already have been handled"),
+                Shl | Shr => bug!("`bin_op` operation should already have been handled", bin_op.to_hir_binop().as_str()),
 
                 Eq => Bool($l == $r),
                 Ne => Bool($l != $r),
@@ -72,11 +71,8 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
                 Rem    => $v($l % $r),
 
                 // invalid float ops
-                BitXor => bug!("`^` is not a valid operation on floats"),
-                BitAnd => bug!("`&` is not a valid operation on floats"),
-                BitOr  => bug!("`|` is not a valid operation on floats"),
-                Shl => bug!("`<<` is not a valid operation on floats"),
-                Shr => bug!("`>>` is not a valid operation on floats"),
+                BitXor | BitAnd | BitOr |
+                Shl | Shr => bug!("`{}` is not a valid operation on floats", bin_op.to_hir_binop().as_str()),
 
                 Eq => Bool($l == $r),
                 Ne => Bool($l != $r),
