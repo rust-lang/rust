@@ -1427,11 +1427,15 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
             match self.tcx.expect_def(id) {
                 Def::Local(_, id) => {
-                    let value = if immut == ast::Mutability::Immutable {
+                    let mut value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
                     } else {
                         "<mutable>".to_string()
                     };
+                    let typ = self.tcx.node_types()
+                                  .get(&id).map(|t| t.to_string()).unwrap_or(String::new());
+                    value.push_str(": ");
+                    value.push_str(&typ);
 
                     assert!(p.segments.len() == 1,
                             "qualified path for local variable def in arm");
@@ -1443,7 +1447,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                             name: path_to_string(p),
                             qualname: format!("{}${}", path_to_string(p), id),
                             value: value,
-                            type_value: String::new(),
+                            type_value: typ,
                             scope: 0,
                             parent: None,
                             visibility: Visibility::Inherited,

@@ -749,7 +749,6 @@ impl Visitor for PathCollector {
     }
 }
 
-
 fn docs_for_attrs(attrs: &[Attribute]) -> String {
     let doc = InternedString::new("doc");
     let mut result = String::new();
