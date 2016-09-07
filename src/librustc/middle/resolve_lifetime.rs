@@ -396,9 +396,9 @@ fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, sha
                                         {} name that is already in scope",
                                        shadower.kind.desc(), name, orig.kind.desc()))
     };
-    err.span_note(orig.span,
-                  &format!("shadowed {} `{}` declared here",
-                           orig.kind.desc(), name));
+    err.span_label(orig.span, &"first declared here");
+    err.span_label(shadower.span,
+                   &format!("lifetime {} already in scope", name));
     err.emit();
 }
 

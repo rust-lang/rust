@@ -272,7 +272,7 @@ pub struct Cache {
     // then the fully qualified name of the structure isn't presented in `paths`
     // yet when its implementation methods are being indexed. Caches such methods
     // and their parent id here and indexes them at the end of crate parsing.
-    orphan_methods: Vec<(DefId, clean::Item)>,
+    orphan_impl_items: Vec<(DefId, clean::Item)>,
 }
 
 /// Temporary storage for data obtained during `RustdocVisitor::clean()`.
@@ -529,7 +529,7 @@ pub fn run(mut krate: clean::Crate,
         seen_mod: false,
         stripped_mod: false,
         access_levels: krate.access_levels.clone(),
-        orphan_methods: Vec::new(),
+        orphan_impl_items: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, FnvHashMap()),
         deref_trait_did: deref_trait_did,
         typarams: external_typarams,
@@ -581,12 +581,12 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut crate_paths = Vec::<Json>::new();
 
     let Cache { ref mut search_index,
-                ref orphan_methods,
+                ref orphan_impl_items,
                 ref mut paths, .. } = *cache;
 
-    // Attach all orphan methods to the type's definition if the type
+    // Attach all orphan items to the type's definition if the type
     // has since been learned.
-    for &(did, ref item) in orphan_methods {
+    for &(did, ref item) in orphan_impl_items {
         if let Some(&(ref fqp, _)) = paths.get(&did) {
             search_index.push(IndexItem {
                 ty: item_type(item),
@@ -1024,7 +1024,7 @@ impl DocFolder for Cache {
 
         // Index this method for searching later on
         if let Some(ref s) = item.name {
-            let (parent, is_method) = match item.inner {
+            let (parent, is_inherent_impl_item) = match item.inner {
                 clean::StrippedItem(..) => ((None, None), false),
                 clean::AssociatedConstItem(..) |
                 clean::TypedefItem(_, true) if self.parent_is_trait_impl => {
@@ -1032,7 +1032,6 @@ impl DocFolder for Cache {
                     ((None, None), false)
                 }
                 clean::AssociatedTypeItem(..) |
-                clean::AssociatedConstItem(..) |
                 clean::TyMethodItem(..) |
                 clean::StructFieldItem(..) |
                 clean::VariantItem(..) => {
@@ -1040,7 +1039,7 @@ impl DocFolder for Cache {
                       Some(&self.stack[..self.stack.len() - 1])),
                      false)
                 }
-                clean::MethodItem(..) => {
+                clean::MethodItem(..) | clean::AssociatedConstItem(..) => {
                     if self.parent_stack.is_empty() {
                         ((None, None), false)
                     } else {
@@ -1066,7 +1065,7 @@ impl DocFolder for Cache {
             };
 
             match parent {
-                (parent, Some(path)) if is_method || (!self.stripped_mod) => {
+                (parent, Some(path)) if is_inherent_impl_item || (!self.stripped_mod) => {
                     debug_assert!(!item.is_stripped());
 
                     // A crate has a module at its root, containing all items,
@@ -1084,10 +1083,10 @@ impl DocFolder for Cache {
                         });
                     }
                 }
-                (Some(parent), None) if is_method => {
+                (Some(parent), None) if is_inherent_impl_item => {
                     // We have a parent, but we don't know where they're
                     // defined yet. Wait for later to index this item.
-                    self.orphan_methods.push((parent, item.clone()));
+                    self.orphan_impl_items.push((parent, item.clone()));
                 }
                 _ => {}
             }

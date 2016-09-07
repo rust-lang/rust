@@ -8,17 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(a: u16, b: &str) {}
+#![feature(pub_restricted, item_like_imports)]
+#![deny(unused)]
 
-fn f2(a: u16) {}
+mod foo {
+    fn f() {}
+
+    mod m1 {
+        pub(super) use super::f; //~ ERROR unused
+    }
+
+    mod m2 {
+        #[allow(unused)]
+        use super::m1::*; // (despite this glob import)
+    }
+
+    mod m3 {
+        pub(super) use super::f; // Check that this is counted as used (c.f. #36249).
+    }
+
+    pub mod m4 {
+        use super::m3::*;
+        pub fn g() { f(); }
+    }
+}
 
 fn main() {
-    f(0);
-    //~^ ERROR E0061
-    //~| NOTE the following parameter types were expected:
-    //~| NOTE u16, &str
-
-    f2();
-    //~^ ERROR E0061
-    //~| NOTE the following parameter type was expected: u16
+    foo::m4::g();
 }

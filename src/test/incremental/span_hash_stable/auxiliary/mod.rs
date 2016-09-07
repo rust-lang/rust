@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for issue #4935
+#[cfg(rpass1)]
+pub mod sub2;
 
-fn foo(a: usize) {}
-fn main() { foo(5, 6) }
-//~^ ERROR this function takes 1 parameter but 2 parameters were supplied
-//~| NOTE the following parameter type was expected
+pub mod sub1;
+
+#[cfg(rpass2)]
+pub mod sub2;

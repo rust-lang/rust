@@ -57,3 +57,9 @@ impl Hasher for FnvHasher {
         self.0
     }
 }
+
+pub fn hash<T: Hash>(v: &T) -> u64 {
+    let mut state = FnvHasher::default();
+    v.hash(&mut state);
+    state.finish()
+}

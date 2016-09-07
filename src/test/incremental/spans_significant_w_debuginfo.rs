@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(a: u16, b: &str) {}
+// This test makes sure that just changing a definition's location in the
+// source file also changes its incr. comp. hash, if debuginfo is enabled.
 
-fn f2(a: u16) {}
+// revisions:rpass1 rpass2
 
-fn main() {
-    f(0);
-    //~^ ERROR E0061
-    //~| NOTE the following parameter types were expected:
-    //~| NOTE u16, &str
+// compile-flags: -g -Z query-dep-graph
 
-    f2();
-    //~^ ERROR E0061
-    //~| NOTE the following parameter type was expected: u16
-}
+#![feature(rustc_attrs)]
+
+#[cfg(rpass1)]
+pub fn main() {}
+
+#[cfg(rpass2)]
+#[rustc_dirty(label="Hir", cfg="rpass2")]
+pub fn main() {}
