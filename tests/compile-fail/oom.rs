@@ -1,5 +1,5 @@
-#![feature(custom_attribute)]
-#![miri(memory_size="0")]
+#![feature(custom_attribute, attr_literals)]
+#![miri(memory_size=0)]
 
 fn bar() {
     let x = 5;

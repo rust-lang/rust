@@ -1,5 +1,5 @@
-#![feature(custom_attribute)]
-#![miri(memory_size="1000")]
+#![feature(custom_attribute, attr_literals)]
+#![miri(memory_size=1000)]
 
 fn bar(i: i32) {
     if i < 1000 {
