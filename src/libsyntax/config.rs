@@ -70,7 +70,7 @@ macro_rules! configure {
 }
 
 impl<'a> StripUnconfigured<'a> {
-    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
+    pub fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
         let node = self.process_cfg_attrs(node);
         if self.in_cfg(node.attrs()) { Some(node) } else { None }
     }
@@ -166,7 +166,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    fn configure_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
+    pub fn configure_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         ast::ForeignMod {
             abi: foreign_mod.abi,
             items: foreign_mod.items.into_iter().filter_map(|item| self.configure(item)).collect(),
@@ -187,7 +187,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    fn configure_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
+    pub fn configure_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
         match item {
             ast::ItemKind::Struct(def, generics) => {
                 ast::ItemKind::Struct(self.configure_variant_data(def), generics)
@@ -217,7 +217,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    fn configure_expr_kind(&mut self, expr_kind: ast::ExprKind) -> ast::ExprKind {
+    pub fn configure_expr_kind(&mut self, expr_kind: ast::ExprKind) -> ast::ExprKind {
         if let ast::ExprKind::Match(m, arms) = expr_kind {
             let arms = arms.into_iter().filter_map(|a| self.configure(a)).collect();
             ast::ExprKind::Match(m, arms)
@@ -226,7 +226,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    fn configure_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
+    pub fn configure_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
         self.visit_stmt_or_expr_attrs(expr.attrs());
 
         // If an expr is valid to cfg away it will have been removed by the
@@ -244,7 +244,7 @@ impl<'a> StripUnconfigured<'a> {
         self.process_cfg_attrs(expr)
     }
 
-    fn configure_stmt(&mut self, stmt: ast::Stmt) -> Option<ast::Stmt> {
+    pub fn configure_stmt(&mut self, stmt: ast::Stmt) -> Option<ast::Stmt> {
         self.visit_stmt_or_expr_attrs(stmt.attrs());
         self.configure(stmt)
     }
