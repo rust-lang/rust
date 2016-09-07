@@ -26,6 +26,7 @@ use cabi_asmjs;
 use machine::{llalign_of_min, llsize_of, llsize_of_real, llsize_of_store};
 use type_::Type;
 use type_of;
+use adt;
 
 use rustc::hir;
 use rustc::ty::{self, Ty};
@@ -316,6 +317,14 @@ impl FnType {
                                            type_of::sizing_type_of(ccx, ty));
                 if ty.is_integral() {
                     arg.signedness = Some(ty.is_signed());
+                }
+                // Rust enum types that map onto C enums (LLVM integers) also
+                // need to follow the target ABI zero-/sign-extension rules.
+                if let ty::TyEnum(..) = ty.sty {
+                    if arg.ty.kind() == llvm::Integer {
+                        let repr = adt::represent_type(ccx, ty);
+                        arg.signedness = Some(adt::is_discr_signed(&repr));
+                    }
                 }
                 if llsize_of_real(ccx, arg.ty) == 0 {
                     // For some forsaken reason, x86_64-pc-windows-gnu
