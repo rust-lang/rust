@@ -12,7 +12,6 @@
 use rustc::ty::{self, TyCtxt, ParameterEnvironment};
 use rustc::mir::repr::*;
 use rustc::util::nodemap::FnvHashMap;
-use rustc::util::common::ErrorReported;
 use rustc_data_structures::indexed_vec::{IndexVec};
 
 use syntax::codemap::DUMMY_SP;
@@ -198,6 +197,11 @@ struct MoveDataBuilder<'a, 'tcx: 'a> {
     data: MoveData<'tcx>,
 }
 
+pub enum MovePathError {
+    IllegalMove,
+    UnionMove { path: MovePathIndex },
+}
+
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn new(mir: &'a Mir<'tcx>,
            tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -256,7 +260,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         move_path
     }
 
-    /// This creates a MovePath for a given lvalue, returning an `ErrorReported`
+    /// This creates a MovePath for a given lvalue, returning an `MovePathError`
     /// if that lvalue can't be moved from.
     ///
     /// NOTE: lvalues behind references *do not* get a move path, which is
@@ -264,7 +268,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     ///
     /// Maybe we should have seperate "borrowck" and "moveck" modes.
     fn move_path_for(&mut self, lval: &Lvalue<'tcx>)
-                     -> Result<MovePathIndex, ErrorReported>
+                     -> Result<MovePathIndex, MovePathError>
     {
         debug!("lookup({:?})", lval);
         match *lval {
@@ -272,7 +276,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             Lvalue::Arg(arg) => Ok(self.data.rev_lookup.args[arg]),
             Lvalue::Temp(temp) => Ok(self.data.rev_lookup.temps[temp]),
             // error: can't move out of a static
-            Lvalue::Static(..) => Err(ErrorReported),
+            Lvalue::Static(..) => Err(MovePathError::IllegalMove),
             Lvalue::ReturnPointer => match self.data.rev_lookup.return_ptr {
                 Some(ptr) => Ok(ptr),
                 ref mut ptr @ None => {
@@ -300,21 +304,28 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn move_path_for_projection(&mut self,
                                 lval: &Lvalue<'tcx>,
                                 proj: &LvalueProjection<'tcx>)
-                                -> Result<MovePathIndex, ErrorReported>
+                                -> Result<MovePathIndex, MovePathError>
     {
         let base = try!(self.move_path_for(&proj.base));
         let lv_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
         match lv_ty.sty {
             // error: can't move out of borrowed content
-            ty::TyRef(..) | ty::TyRawPtr(..) => return Err(ErrorReported),
+            ty::TyRef(..) | ty::TyRawPtr(..) => return Err(MovePathError::IllegalMove),
             // error: can't move out of struct with destructor
-            ty::TyStruct(adt, _) | ty::TyEnum(adt, _) if adt.has_dtor() =>
-                return Err(ErrorReported),
-
-            ty::TyArray(..) | ty::TySlice(..) => match proj.elem {
+            ty::TyAdt(adt, _) if adt.has_dtor() =>
+                return Err(MovePathError::IllegalMove),
+            // move out of union - always move the entire union
+            ty::TyAdt(adt, _) if adt.is_union() =>
+                return Err(MovePathError::UnionMove { path: base }),
+            // error: can't move out of a slice
+            ty::TySlice(..) =>
+                return Err(MovePathError::IllegalMove),
+            ty::TyArray(..) => match proj.elem {
                 // error: can't move out of an array
-                ProjectionElem::Index(..) => return Err(ErrorReported),
-                _ => {}
+                ProjectionElem::Index(..) => return Err(MovePathError::IllegalMove),
+                _ => {
+                    // FIXME: still badly broken
+                }
             },
             _ => {}
         };
@@ -521,13 +532,16 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             return
         }
 
-        let path = self.move_path_for(lval).unwrap_or_else(|_| {
-            // Moving out of a bad path. Eventually, this should be a MIR
-            // borrowck error instead of a bug.
-            span_bug!(self.mir.span,
-                      "Broken MIR: moving out of lvalue {:?}: {:?} at {:?}",
-                      lval, lv_ty, loc);
-        });
+        let path = match self.move_path_for(lval) {
+            Ok(path) | Err(MovePathError::UnionMove { path }) => path,
+            Err(MovePathError::IllegalMove) => {
+                // Moving out of a bad path. Eventually, this should be a MIR
+                // borrowck error instead of a bug.
+                span_bug!(self.mir.span,
+                          "Broken MIR: moving out of lvalue {:?}: {:?} at {:?}",
+                          lval, lv_ty, loc);
+            }
+        };
         let move_out = self.data.moves.push(MoveOut { path: path, source: loc });
 
         debug!("gather_move({:?}, {:?}): adding move {:?} of {:?}",

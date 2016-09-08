@@ -256,12 +256,12 @@ fn lvalue_contents_drop_state_cannot_differ<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
     let ty = lv.ty(mir, tcx).to_ty(tcx);
     match ty.sty {
         ty::TyArray(..) | ty::TySlice(..) | ty::TyRef(..) | ty::TyRawPtr(..) => {
-            debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} refd => false",
+            debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} refd => true",
                    lv, ty);
             true
         }
-        ty::TyAdt(def, _) if def.has_dtor() => {
-            debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} Drop => false",
+        ty::TyAdt(def, _) if def.has_dtor() || def.is_union() => {
+            debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} Drop => true",
                    lv, ty);
             true
         }
