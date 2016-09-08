@@ -300,14 +300,11 @@ fn generate_test_harness(sess: &ParseSess,
         }
     });
 
-    let mut fold = TestHarnessGenerator {
+    TestHarnessGenerator {
         cx: cx,
         tests: Vec::new(),
         tested_submods: Vec::new(),
-    };
-    let res = fold.fold_crate(krate);
-    fold.cx.ext_cx.bt_pop();
-    return res;
+    }.fold_crate(krate)
 }
 
 /// Craft a span that will be ignored by the stability lint's
