@@ -97,9 +97,7 @@ pub trait Write {
     /// This function will return an instance of `Error` on error.
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
-        self.write_str(unsafe {
-            str::from_utf8_unchecked(c.encode_utf8().as_slice())
-        })
+        self.write_str(c.encode_utf8(&mut [0; 4]))
     }
 
     /// Glue for usage of the `write!` macro with implementors of this trait.
@@ -924,9 +922,7 @@ impl<'a> Formatter<'a> {
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |f: &mut Formatter| {
             if let Some(c) = sign {
-                f.buf.write_str(unsafe {
-                    str::from_utf8_unchecked(c.encode_utf8().as_slice())
-                })?;
+                f.buf.write_str(c.encode_utf8(&mut [0; 4]))?;
             }
             if prefixed { f.buf.write_str(prefix) }
             else { Ok(()) }
@@ -1032,10 +1028,8 @@ impl<'a> Formatter<'a> {
             rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
-        let fill = self.fill.encode_utf8();
-        let fill = unsafe {
-            str::from_utf8_unchecked(fill.as_slice())
-        };
+        let mut fill = [0; 4];
+        let fill = self.fill.encode_utf8(&mut fill);
 
         for _ in 0..pre_pad {
             self.buf.write_str(fill)?;
@@ -1435,9 +1429,7 @@ impl Display for char {
         if f.width.is_none() && f.precision.is_none() {
             f.write_char(*self)
         } else {
-            f.pad(unsafe {
-                str::from_utf8_unchecked(self.encode_utf8().as_slice())
-            })
+            f.pad(self.encode_utf8(&mut [0; 4]))
         }
     }
 }

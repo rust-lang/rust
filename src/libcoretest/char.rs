@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::char;
+use std::{char,str};
 use std::convert::TryFrom;
 
 #[test]
@@ -248,10 +248,12 @@ fn test_escape_unicode() {
 #[test]
 fn test_encode_utf8() {
     fn check(input: char, expect: &[u8]) {
-        assert_eq!(input.encode_utf8().as_slice(), expect);
-        for (a, b) in input.encode_utf8().zip(expect) {
-            assert_eq!(a, *b);
-        }
+        let mut buf = [0; 4];
+        let ptr = buf.as_ptr();
+        let s = input.encode_utf8(&mut buf);
+        assert_eq!(s.as_ptr() as usize, ptr as usize);
+        assert!(str::from_utf8(s.as_bytes()).is_ok());
+        assert_eq!(s.as_bytes(), expect);
     }
 
     check('x', &[0x78]);
@@ -263,10 +265,11 @@ fn test_encode_utf8() {
 #[test]
 fn test_encode_utf16() {
     fn check(input: char, expect: &[u16]) {
-        assert_eq!(input.encode_utf16().as_slice(), expect);
-        for (a, b) in input.encode_utf16().zip(expect) {
-            assert_eq!(a, *b);
-        }
+        let mut buf = [0; 2];
+        let ptr = buf.as_mut_ptr();
+        let b = input.encode_utf16(&mut buf);
+        assert_eq!(b.as_mut_ptr() as usize, ptr as usize);
+        assert_eq!(b, expect);
     }
 
     check('x', &[0x0078]);
