@@ -10,5 +10,5 @@
 
 #![feature(optin_builtin_traits)]
 
-trait Magic<T> {} //~ ERROR E0566
+trait Magic<T> {} //~ ERROR E0567
 impl Magic<isize> for .. {}

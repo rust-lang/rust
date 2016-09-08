@@ -10,8 +10,8 @@
 
 #![feature(optin_builtin_traits)]
 
-trait Magic : Sized where Option<Self> : Magic {} //~ ERROR E0565
-impl Magic for .. {} 
+trait Magic : Sized where Option<Self> : Magic {} //~ ERROR E0568
+impl Magic for .. {}
 impl<T:Magic> Magic for T {}
 
 fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
