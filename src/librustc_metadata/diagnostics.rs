@@ -32,8 +32,8 @@ as frameworks are specific to that operating system.
 
 Erroneous code example:
 
-```compile_fail,E0455
-#[link(name = "FooCoreServices",  kind = "framework")] extern {}
+```ignore
+#[link(name = "FooCoreServices", kind = "framework")] extern {}
 // OS used to compile is Linux for example
 ```
 
