@@ -18,7 +18,7 @@
 // system allocator. Do this by linking in jemalloc and making sure that we get
 // an error.
 
-// ignore-emscripten TODO: What "other allocator" should we use for emcc?
+// ignore-emscripten FIXME: What "other allocator" should we use for emcc?
 
 #![feature(alloc_jemalloc)]
 
