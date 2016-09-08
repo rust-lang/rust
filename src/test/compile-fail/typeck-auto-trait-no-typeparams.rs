@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that when a `..` impl applies, we also check that any
-// supertrait conditions are met.
-
 #![feature(optin_builtin_traits)]
 
-trait MyTrait : 'static {}
-
-impl MyTrait for .. {}
-
-fn foo<T:MyTrait>() { }
-
-fn bar<'a>() {
-    foo::<&'a ()>(); //~ ERROR does not fulfill the required lifetime
-}
-
-fn main() {
-}
+trait Magic<T> {} //~ ERROR E0567
+impl Magic<isize> for .. {}

@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that when a `..` impl applies, we also check that any
-// supertrait conditions are met.
-
 #![feature(optin_builtin_traits)]
 
-trait NotImplemented { }
+trait Magic : Sized where Option<Self> : Magic {} //~ ERROR E0568
+impl Magic for .. {}
+impl<T:Magic> Magic for T {}
 
-trait MyTrait : NotImplemented {}
+fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
 
-impl MyTrait for .. {}
-
-fn foo<T:MyTrait>() { bar::<T>() }
-
-fn bar<T:NotImplemented>() { }
+#[derive(Debug)]
+struct NoClone;
 
 fn main() {
-    foo::<i32>(); //~ ERROR `i32: NotImplemented` is not satisfied
-    bar::<i64>(); //~ ERROR `i64: NotImplemented` is not satisfied
+    let (a, b) = copy(NoClone);
+    println!("{:?} {:?}", a, b);
 }

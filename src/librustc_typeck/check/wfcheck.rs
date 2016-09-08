@@ -256,6 +256,76 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         });
     }
 
+    fn check_auto_trait(&mut self,
+                        trait_def_id: DefId,
+                        items: &[hir::TraitItem],
+                        span: Span)
+    {
+        // We want to ensure:
+        //
+        // 1) that there are no items contained within
+        // the trait defintion
+        //
+        // 2) that the definition doesn't violate the no-super trait rule
+        // for auto traits.
+        //
+        // 3) that the trait definition does not have any type parameters
+
+        let predicates = self.tcx().lookup_predicates(trait_def_id);
+
+        // We must exclude the Self : Trait predicate contained by all
+        // traits.
+        let has_predicates =
+            predicates.predicates.iter().any(|predicate| {
+                match predicate {
+                    &ty::Predicate::Trait(ref poly_trait_ref) => {
+                        let self_ty = poly_trait_ref.0.self_ty();
+                        !(self_ty.is_self() && poly_trait_ref.def_id() == trait_def_id)
+                    },
+                    _ => true,
+                }
+            });
+
+        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
+
+        let has_ty_params =
+            trait_def.generics
+                      .types
+                      .len() > 1;
+
+        // We use an if-else here, since the generics will also trigger
+        // an extraneous error message when we find predicates like
+        // `T : Sized` for a trait like: `trait Magic<T>`.
+        //
+        // We also put the check on the number of items here,
+        // as it seems confusing to report an error about
+        // extraneous predicates created by things like
+        // an associated type inside the trait.
+        let mut err = None;
+        if !items.is_empty() {
+            error_380(self.ccx, span);
+        } else if has_ty_params {
+            err = Some(struct_span_err!(self.tcx().sess, span, E0567,
+                "traits with auto impls (`e.g. impl \
+                    Trait for ..`) can not have type parameters"));
+        } else if has_predicates {
+            err = Some(struct_span_err!(self.tcx().sess, span, E0568,
+                "traits with auto impls (`e.g. impl \
+                    Trait for ..`) cannot have predicates"));
+        }
+
+        // Finally if either of the above conditions apply we should add a note
+        // indicating that this error is the result of a recent soundness fix.
+        match err {
+            None => {},
+            Some(mut e) => {
+                e.note("the new auto trait rules are the result of a \
+                          recent soundness fix; see #29859 for more details");
+                e.emit();
+            }
+        }
+    }
+
     fn check_trait(&mut self,
                    item: &hir::Item,
                    items: &[hir::TraitItem])
@@ -263,9 +333,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let trait_def_id = self.tcx().map.local_def_id(item.id);
 
         if self.tcx().trait_has_default_impl(trait_def_id) {
-            if !items.is_empty() {
-                error_380(self.ccx, item.span);
-            }
+            self.check_auto_trait(trait_def_id, items, item.span);
         }
 
         self.for_item(item).with_fcx(|fcx, this| {
@@ -626,7 +694,7 @@ fn error_192(ccx: &CrateCtxt, span: Span) {
 
 fn error_380(ccx: &CrateCtxt, span: Span) {
     span_err!(ccx.tcx.sess, span, E0380,
-              "traits with default impls (`e.g. unsafe impl \
+              "traits with default impls (`e.g. impl \
                Trait for ..`) must have no methods or associated items")
 }
 
