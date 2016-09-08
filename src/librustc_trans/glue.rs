@@ -348,9 +348,20 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             let layout = ccx.layout_of(t);
             debug!("DST {} layout: {:?}", t, layout);
 
+            // Returns size in bytes of all fields except the last one
+            // (we will be recursing on the last one).
+            fn local_prefix_bytes(variant: &ty::layout::Struct) -> u64 {
+                let fields = variant.offset_after_field.len();
+                if fields > 1 {
+                    variant.offset_after_field[fields - 2].bytes()
+                } else {
+                    0
+                }
+            }
+
             let (sized_size, sized_align) = match *layout {
                 ty::layout::Layout::Univariant { ref variant, .. } => {
-                    (variant.min_size().bytes(), variant.align.abi())
+                    (local_prefix_bytes(variant), variant.align.abi())
                 }
                 _ => {
                     bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
