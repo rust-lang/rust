@@ -23,8 +23,8 @@ trait Append {
 #[derive(PartialEq,
          Append,
          Eq)]
-//~^^ ERROR: the semantics of constant patterns is not yet settled
 struct A {
+//~^ ERROR: the semantics of constant patterns is not yet settled
     inner: u32,
 }
 
