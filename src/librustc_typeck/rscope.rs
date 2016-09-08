@@ -243,9 +243,9 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> RegionScope for StaticRscope<'a, 'gcx, 'tcx>
         if !self.tcx.sess.features.borrow().static_in_const {
             self.tcx
                 .sess
-                .struct_span_warn(span,
-                                  "This needs a `'static` lifetime or the \
-                                  `static_in_const` feature, see #35897")
+                .struct_span_err(span,
+                                 "this needs a `'static` lifetime or the \
+                                 `static_in_const` feature, see #35897")
                 .emit();
         }
         ty::ReStatic
