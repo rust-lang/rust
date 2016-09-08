@@ -24,12 +24,14 @@ use parse::parser;
 use parse::token;
 use parse::token::{InternedString, intern, str_to_ident};
 use ptr::P;
+use std_inject;
 use util::small_vector::SmallVector;
 use util::lev_distance::find_best_match_for_name;
 use fold::Folder;
 use feature_gate;
 
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::rc::Rc;
 use tokenstream;
 
@@ -88,16 +90,6 @@ impl Annotatable {
         match self {
             Annotatable::ImplItem(i) => i.unwrap(),
             _ => panic!("expected Item")
-        }
-    }
-
-    pub fn fold_with<F: Folder>(self, folder: &mut F) -> SmallVector<Self> {
-        match self {
-            Annotatable::Item(item) => folder.fold_item(item).map(Annotatable::Item),
-            Annotatable::ImplItem(item) =>
-                folder.fold_impl_item(item.unwrap()).map(|item| Annotatable::ImplItem(P(item))),
-            Annotatable::TraitItem(item) =>
-                folder.fold_trait_item(item.unwrap()).map(|item| Annotatable::TraitItem(P(item))),
         }
     }
 }
@@ -472,19 +464,6 @@ pub enum SyntaxExtension {
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
-pub struct BlockInfo {
-    /// Should macros escape from this scope?
-    pub macros_escape: bool,
-}
-
-impl BlockInfo {
-    pub fn new() -> BlockInfo {
-        BlockInfo {
-            macros_escape: false,
-        }
-    }
-}
-
 /// The base map of methods for expanding syntax extension
 /// AST nodes into full ASTs
 fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
@@ -595,16 +574,11 @@ pub struct ExtCtxt<'a> {
     pub crate_root: Option<&'static str>,
     pub loader: &'a mut MacroLoader,
 
-    pub mod_path: Vec<ast::Ident> ,
     pub exported_macros: Vec<ast::MacroDef>,
 
     pub syntax_env: SyntaxEnv,
     pub derive_modes: HashMap<InternedString, Box<MultiItemModifier>>,
     pub recursion_count: usize,
-
-    pub filename: Option<String>,
-    pub mod_path_stack: Vec<InternedString>,
-    pub in_block: bool,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -612,23 +586,17 @@ impl<'a> ExtCtxt<'a> {
                ecfg: expand::ExpansionConfig<'a>,
                loader: &'a mut MacroLoader)
                -> ExtCtxt<'a> {
-        let env = initial_syntax_expander_table(&ecfg);
         ExtCtxt {
+            syntax_env: initial_syntax_expander_table(&ecfg),
             parse_sess: parse_sess,
             cfg: cfg,
             backtrace: NO_EXPANSION,
-            mod_path: Vec::new(),
             ecfg: ecfg,
             crate_root: None,
             exported_macros: Vec::new(),
             loader: loader,
-            syntax_env: env,
             derive_modes: HashMap::new(),
             recursion_count: 0,
-
-            filename: None,
-            mod_path_stack: Vec::new(),
-            in_block: false,
         }
     }
 
@@ -677,16 +645,7 @@ impl<'a> ExtCtxt<'a> {
         last_macro.expect("missing expansion backtrace")
     }
 
-    pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
-    pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
-    pub fn mod_path(&self) -> Vec<ast::Ident> {
-        let mut v = Vec::new();
-        v.push(token::str_to_ident(&self.ecfg.crate_name));
-        v.extend(self.mod_path.iter().cloned());
-        return v;
-    }
     pub fn bt_push(&mut self, ei: ExpnInfo) {
-        self.recursion_count += 1;
         if self.recursion_count > self.ecfg.recursion_limit {
             self.span_fatal(ei.call_site,
                             &format!("recursion limit reached while expanding the macro `{}`",
@@ -700,17 +659,7 @@ impl<'a> ExtCtxt<'a> {
             callee: ei.callee
         });
     }
-    pub fn bt_pop(&mut self) {
-        match self.backtrace {
-            NO_EXPANSION => self.bug("tried to pop without a push"),
-            expn_id => {
-                self.recursion_count -= 1;
-                self.backtrace = self.codemap().with_expn_info(expn_id, |expn_info| {
-                    expn_info.map_or(NO_EXPANSION, |ei| ei.call_site.expn_id)
-                });
-            }
-        }
-    }
+    pub fn bt_pop(&mut self) {}
 
     pub fn insert_macro(&mut self, def: ast::MacroDef) {
         if def.export {
@@ -829,6 +778,28 @@ impl<'a> ExtCtxt<'a> {
             }
         }
     }
+
+    pub fn initialize(&mut self, user_exts: Vec<NamedSyntaxExtension>, krate: &ast::Crate) {
+        if std_inject::no_core(&krate) {
+            self.crate_root = None;
+        } else if std_inject::no_std(&krate) {
+            self.crate_root = Some("core");
+        } else {
+            self.crate_root = Some("std");
+        }
+
+        for (name, extension) in user_exts {
+            self.syntax_env.insert(name, extension);
+        }
+
+        self.syntax_env.current_module = Module(0);
+        let mut paths = ModulePaths {
+            mod_path: vec![token::str_to_ident(&self.ecfg.crate_name)],
+            directory: PathBuf::from(self.parse_sess.codemap().span_to_filename(krate.span)),
+        };
+        paths.directory.pop();
+        self.syntax_env.module_data[0].paths = Rc::new(paths);
+    }
 }
 
 /// Extract a string literal from the macro expanded version of `expr`,
@@ -915,79 +886,97 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
 ///
 /// This environment maps Names to SyntaxExtensions.
 pub struct SyntaxEnv {
-    chain: Vec<MapChainFrame>,
+    module_data: Vec<ModuleData>,
+    pub current_module: Module,
+
     /// All bang-style macro/extension names
     /// encountered so far; to be used for diagnostics in resolve
     pub names: HashSet<Name>,
 }
 
-// impl question: how to implement it? Initially, the
-// env will contain only macros, so it might be painful
-// to add an empty frame for every context. Let's just
-// get it working, first....
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct Module(u32);
 
-// NB! the mutability of the underlying maps means that
-// if expansion is out-of-order, a deeper scope may be
-// able to refer to a macro that was added to an enclosing
-// scope lexically later than the deeper scope.
+struct ModuleData {
+    parent: Module,
+    paths: Rc<ModulePaths>,
+    macros: HashMap<Name, Rc<SyntaxExtension>>,
+    macros_escape: bool,
+    in_block: bool,
+}
 
-struct MapChainFrame {
-    info: BlockInfo,
-    map: HashMap<Name, Rc<SyntaxExtension>>,
+#[derive(Clone)]
+pub struct ModulePaths {
+    pub mod_path: Vec<ast::Ident>,
+    pub directory: PathBuf,
 }
 
 impl SyntaxEnv {
     fn new() -> SyntaxEnv {
-        let mut map = SyntaxEnv { chain: Vec::new() , names: HashSet::new()};
-        map.push_frame();
-        map
+        let mut env = SyntaxEnv {
+            current_module: Module(0),
+            module_data: Vec::new(),
+            names: HashSet::new(),
+        };
+        let paths = Rc::new(ModulePaths { mod_path: Vec::new(), directory: PathBuf::new() });
+        env.add_module(false, false, paths);
+        env
     }
 
-    pub fn push_frame(&mut self) {
-        self.chain.push(MapChainFrame {
-            info: BlockInfo::new(),
-            map: HashMap::new(),
-        });
+    fn data(&self, module: Module) -> &ModuleData {
+        &self.module_data[module.0 as usize]
     }
 
-    pub fn pop_frame(&mut self) {
-        assert!(self.chain.len() > 1, "too many pops on MapChain!");
-        self.chain.pop();
+    pub fn paths(&self) -> Rc<ModulePaths> {
+        self.data(self.current_module).paths.clone()
     }
 
-    fn find_escape_frame(&mut self) -> &mut MapChainFrame {
-        for (i, frame) in self.chain.iter_mut().enumerate().rev() {
-            if !frame.info.macros_escape || i == 0 {
-                return frame
+    pub fn in_block(&self) -> bool {
+        self.data(self.current_module).in_block
+    }
+
+    pub fn add_module(&mut self, macros_escape: bool, in_block: bool, paths: Rc<ModulePaths>)
+                      -> Module {
+        let data = ModuleData {
+            parent: self.current_module,
+            paths: paths,
+            macros: HashMap::new(),
+            macros_escape: macros_escape,
+            in_block: in_block,
+        };
+
+        self.module_data.push(data);
+        Module(self.module_data.len() as u32 - 1)
+    }
+
+    pub fn find(&self, name: Name) -> Option<Rc<SyntaxExtension>> {
+        let mut module = self.current_module;
+        let mut module_data;
+        loop {
+            module_data = self.data(module);
+            if let Some(ext) = module_data.macros.get(&name) {
+                return Some(ext.clone());
             }
-        }
-        unreachable!()
-    }
-
-    pub fn find(&self, k: Name) -> Option<Rc<SyntaxExtension>> {
-        for frame in self.chain.iter().rev() {
-            if let Some(v) = frame.map.get(&k) {
-                return Some(v.clone());
+            if module == module_data.parent {
+                return None;
             }
+            module = module_data.parent;
         }
-        None
     }
 
-    pub fn insert(&mut self, k: Name, v: SyntaxExtension) {
-        if let NormalTT(..) = v {
-            self.names.insert(k);
+    pub fn insert(&mut self, name: Name, ext: SyntaxExtension) {
+        if let NormalTT(..) = ext {
+            self.names.insert(name);
         }
-        self.find_escape_frame().map.insert(k, Rc::new(v));
-    }
 
-    pub fn info(&mut self) -> &mut BlockInfo {
-        let last_chain_index = self.chain.len() - 1;
-        &mut self.chain[last_chain_index].info
+        let mut module = self.current_module;
+        while self.data(module).macros_escape {
+            module = self.data(module).parent;
+        }
+        self.module_data[module.0 as usize].macros.insert(name, Rc::new(ext));
     }
 
     pub fn is_crate_root(&mut self) -> bool {
-        // The first frame is pushed in `SyntaxEnv::new()` and the second frame is
-        // pushed when folding the crate root pseudo-module (c.f. noop_fold_crate).
-        self.chain.len() <= 2
+        self.current_module == Module(0)
     }
 }

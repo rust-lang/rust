@@ -264,8 +264,7 @@ pub struct Parser<'a> {
     /// extra detail when the same error is seen twice
     pub obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
-    pub filename: Option<String>,
-    pub mod_path_stack: Vec<InternedString>,
+    pub directory: PathBuf,
     /// Stack of open delimiters and their spans. Used for error message.
     pub open_braces: Vec<(token::DelimToken, Span)>,
     /// Flag if this parser "owns" the directory that it is currently parsing
@@ -346,9 +345,11 @@ impl<'a> Parser<'a> {
     {
         let tok0 = rdr.real_token();
         let span = tok0.sp;
-        let filename = if span != syntax_pos::DUMMY_SP {
-            Some(sess.codemap().span_to_filename(span))
-        } else { None };
+        let mut directory = match span {
+            syntax_pos::DUMMY_SP => PathBuf::new(),
+            _ => PathBuf::from(sess.codemap().span_to_filename(span)),
+        };
+        directory.pop();
         let placeholder = TokenAndSpan {
             tok: token::Underscore,
             sp: span,
@@ -377,8 +378,7 @@ impl<'a> Parser<'a> {
             quote_depth: 0,
             parsing_token_tree: false,
             obsolete_set: HashSet::new(),
-            mod_path_stack: Vec::new(),
-            filename: filename,
+            directory: directory,
             open_braces: Vec::new(),
             owns_directory: true,
             root_module_name: None,
@@ -5306,27 +5306,24 @@ impl<'a> Parser<'a> {
             let (m, attrs) = self.eval_src_mod(id, &outer_attrs, id_span)?;
             Ok((id, m, Some(attrs)))
         } else {
-            self.push_mod_path(id, &outer_attrs);
+            let directory = self.directory.clone();
+            self.push_directory(id, &outer_attrs);
             self.expect(&token::OpenDelim(token::Brace))?;
             let mod_inner_lo = self.span.lo;
             let attrs = self.parse_inner_attributes()?;
             let m = self.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo)?;
-            self.pop_mod_path();
+            self.directory = directory;
             Ok((id, ItemKind::Mod(m), Some(attrs)))
         }
     }
 
-    fn push_mod_path(&mut self, id: Ident, attrs: &[Attribute]) {
+    fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
         let default_path = self.id_to_interned_str(id);
         let file_path = match ::attr::first_attr_value_str_by_name(attrs, "path") {
             Some(d) => d,
             None => default_path,
         };
-        self.mod_path_stack.push(file_path)
-    }
-
-    fn pop_mod_path(&mut self) {
-        self.mod_path_stack.pop().unwrap();
+        self.directory.push(&*file_path)
     }
 
     pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {
@@ -5374,18 +5371,11 @@ impl<'a> Parser<'a> {
                    id: ast::Ident,
                    outer_attrs: &[ast::Attribute],
                    id_sp: Span) -> PResult<'a, ModulePathSuccess> {
-        let mut prefix = PathBuf::from(self.filename.as_ref().unwrap());
-        prefix.pop();
-        let mut dir_path = prefix;
-        for part in &self.mod_path_stack {
-            dir_path.push(&**part);
-        }
-
-        if let Some(p) = Parser::submod_path_from_attr(outer_attrs, &dir_path) {
+        if let Some(p) = Parser::submod_path_from_attr(outer_attrs, &self.directory) {
             return Ok(ModulePathSuccess { path: p, owns_directory: true });
         }
 
-        let paths = Parser::default_submod_path(id, &dir_path, self.sess.codemap());
+        let paths = Parser::default_submod_path(id, &self.directory, self.sess.codemap());
 
         if self.restrictions.contains(Restrictions::NO_NONINLINE_MOD) {
             let msg =
@@ -5400,8 +5390,8 @@ impl<'a> Parser<'a> {
         } else if !self.owns_directory {
             let mut err = self.diagnostic().struct_span_err(id_sp,
                 "cannot declare a new module at this location");
-            let this_module = match self.mod_path_stack.last() {
-                Some(name) => name.to_string(),
+            let this_module = match self.directory.file_name() {
+                Some(file_name) => file_name.to_str().unwrap().to_owned(),
                 None => self.root_module_name.as_ref().unwrap().clone(),
             };
             err.span_note(id_sp,

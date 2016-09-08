@@ -555,7 +555,7 @@ pub struct ExpansionResult<'a> {
 /// Returns `None` if we're aborting after handling -W help.
 pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                            cstore: &CStore,
-                                           mut krate: ast::Crate,
+                                           krate: ast::Crate,
                                            registry: Option<Registry>,
                                            crate_name: &'a str,
                                            addl_plugins: Option<Vec<String>>,
@@ -566,21 +566,9 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 {
     let time_passes = sess.time_passes();
 
-    // strip before anything else because crate metadata may use #[cfg_attr]
-    // and so macros can depend on configuration variables, such as
-    //
-    //   #[macro_use] #[cfg(foo)]
-    //   mod bar { macro_rules! baz!(() => {{}}) }
-    //
-    // baz! should not use this definition unless foo is enabled.
-
-    krate = time(time_passes, "configuration", || {
-        let (krate, features) =
-            syntax::config::strip_unconfigured_items(krate, &sess.parse_sess, sess.opts.test);
-        // these need to be set "early" so that expansion sees `quote` if enabled.
-        *sess.features.borrow_mut() = features;
-        krate
-    });
+    let (mut krate, features) = syntax::config::features(krate, &sess.parse_sess, sess.opts.test);
+    // these need to be set "early" so that expansion sees `quote` if enabled.
+    *sess.features.borrow_mut() = features;
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
     *sess.crate_disambiguator.borrow_mut() =

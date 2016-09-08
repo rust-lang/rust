@@ -29,6 +29,12 @@ enum SmallVectorRepr<T> {
     Many(Vec<T>),
 }
 
+impl<T> Default for SmallVector<T> {
+    fn default() -> Self {
+        SmallVector { repr: Zero }
+    }
+}
+
 impl<T> Into<Vec<T>> for SmallVector<T> {
     fn into(self) -> Vec<T> {
         match self.repr {
