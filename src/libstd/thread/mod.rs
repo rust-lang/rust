@@ -1009,12 +1009,12 @@ mod tests {
 
     #[test]
     fn test_thread_id_equal() {
-        assert_eq!(ThreadId::current(), ThreadId::current());
+        assert!(thread::ThreadId::current() == thread::ThreadId::current());
     }
 
     #[test]
     fn test_thread_id_not_equal() {
-        assert!(ThreadId::current() != spawn(|| ThreadId::current()).join());
+        assert!(thread::ThreadId::current() != thread::spawn(|| thread::ThreadId::current()).join().unwrap());
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due
