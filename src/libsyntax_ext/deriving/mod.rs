@@ -338,10 +338,19 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
 
 /// Constructs an expression that calls an intrinsic
 fn call_intrinsic(cx: &ExtCtxt,
-                  span: Span,
+                  mut span: Span,
                   intrinsic: &str,
                   args: Vec<P<ast::Expr>>)
                   -> P<ast::Expr> {
+    span.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
+        call_site: span,
+        callee: codemap::NameAndSpan {
+            format: codemap::MacroAttribute(intern("derive")),
+            span: Some(span),
+            allow_internal_unstable: true,
+        },
+    });
+
     let path = cx.std_path(&["intrinsics", intrinsic]);
     let call = cx.expr_call_global(span, path, args);
 
