@@ -17,8 +17,8 @@
 extern crate derive_unstable;
 
 #[derive(Unstable)]
-//~^ ERROR: use of unstable library feature
 struct A;
+//~^ ERROR: use of unstable library feature
 
 fn main() {
     unsafe { foo(); }
