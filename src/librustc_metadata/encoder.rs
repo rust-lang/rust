@@ -16,7 +16,7 @@
 use astencode::encode_inlined_item;
 use common::*;
 use cstore;
-use index::{self, IndexData};
+use index::IndexData;
 
 use rustc::middle::cstore::{InlinedItemRef, LinkMeta, LinkagePreference};
 use rustc::hir::def;
@@ -30,11 +30,10 @@ use rustc::session::config::{self, CrateTypeRustcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
-use std::cell::RefCell;
+use std::hash::Hash;
 use std::intrinsics;
 use std::io::prelude::*;
 use std::io::Cursor;
-use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::u32;
@@ -58,13 +57,9 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     reachable: &'a NodeSet,
     mir_map: &'a MirMap<'tcx>,
 
-    type_shorthands: RefCell<FnvHashMap<Ty<'tcx>, usize>>,
-    xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
+    type_shorthands: FnvHashMap<Ty<'tcx>, usize>,
+    predicate_shorthands: FnvHashMap<ty::Predicate<'tcx>, usize>,
 }
-
-/// "interned" entries referenced by id
-#[derive(PartialEq, Eq, Hash)]
-enum XRef<'tcx> { Predicate(ty::Predicate<'tcx>) }
 
 impl<'a, 'tcx> Deref for EncodeContext<'a, 'tcx> {
     type Target = rbml::writer::Encoder<'a>;
@@ -117,32 +112,7 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
-        let existing_shorthand = self.type_shorthands.borrow().get(ty).cloned();
-        if let Some(shorthand) = existing_shorthand {
-            return self.emit_usize(shorthand);
-        }
-
-        let start = self.mark_stable_position();
-        ty.sty.encode(self)?;
-        let len = self.mark_stable_position() - start;
-
-        // The shorthand encoding uses the same usize as the
-        // discriminant, with an offset so they can't conflict.
-        let discriminant = unsafe { intrinsics::discriminant_value(&ty.sty) };
-        assert!(discriminant < TYPE_SHORTHAND_OFFSET as u64);
-        let shorthand = start + TYPE_SHORTHAND_OFFSET;
-
-        // Get the number of bits that leb128 could fit
-        // in the same space as the fully encoded type.
-        let leb128_bits = len * 7;
-
-        // Check that the shorthand is a not longer than the
-        // full encoding itself, i.e. it's an obvious win.
-        if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
-            self.type_shorthands.borrow_mut().insert(*ty, shorthand);
-        }
-
-        Ok(())
+        self.encode_with_shorthand(ty, &ty.sty, |ecx| &mut ecx.type_shorthands)
     }
 }
 
@@ -161,6 +131,42 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             Ok(())
         }).unwrap();
+    }
+
+    /// Encode the given value or a previously cached shorthand.
+    fn encode_with_shorthand<T, U, M>(&mut self, value: &T, variant: &U, map: M)
+                                      -> Result<(), <Self as Encoder>::Error>
+    where M: for<'b> Fn(&'b mut Self) -> &'b mut FnvHashMap<T, usize>,
+          T: Clone + Eq + Hash,
+          U: Encodable {
+        let existing_shorthand = map(self).get(value).cloned();
+        if let Some(shorthand) = existing_shorthand {
+            return self.emit_usize(shorthand);
+        }
+
+        let start = self.mark_stable_position();
+        variant.encode(self)?;
+        let len = self.mark_stable_position() - start;
+
+        // The shorthand encoding uses the same usize as the
+        // discriminant, with an offset so they can't conflict.
+        let discriminant = unsafe {
+            intrinsics::discriminant_value(variant)
+        };
+        assert!(discriminant < SHORTHAND_OFFSET as u64);
+        let shorthand = start + SHORTHAND_OFFSET;
+
+        // Get the number of bits that leb128 could fit
+        // in the same space as the fully encoded type.
+        let leb128_bits = len * 7;
+
+        // Check that the shorthand is a not longer than the
+        // full encoding itself, i.e. it's an obvious win.
+        if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
+            map(self).insert(value.clone(), shorthand);
+        }
+
+        Ok(())
     }
 
     /// For every DefId that we create a metadata item for, we include a
@@ -393,7 +399,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.start_tag(tag);
         predicates.parent.encode(self).unwrap();
         self.seq(&predicates.predicates, |ecx, predicate| {
-            ecx.add_xref(XRef::Predicate(predicate.clone()))
+            ecx.encode_with_shorthand(predicate, predicate,
+                                      |ecx| &mut ecx.predicate_shorthands).unwrap()
         });
         self.end_tag();
     }
@@ -575,34 +582,6 @@ fn encode_stability(ecx: &mut EncodeContext, def_id: DefId) {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    fn add_xref(&mut self, xref: XRef<'tcx>) -> u32 {
-        let old_len = self.xrefs.len() as u32;
-        *self.xrefs.entry(xref).or_insert(old_len)
-    }
-
-    fn encode_xrefs(&mut self) {
-        let xrefs = mem::replace(&mut self.xrefs, Default::default());
-        let mut xref_positions = vec![0; xrefs.len()];
-
-        // Encode XRefs sorted by their ID
-        let mut sorted_xrefs: Vec<_> = xrefs.into_iter().collect();
-        sorted_xrefs.sort_by_key(|&(_, id)| id);
-
-        self.start_tag(root_tag::xref_data);
-        for (xref, id) in sorted_xrefs.into_iter() {
-            xref_positions[id as usize] = self.mark_stable_position() as u32;
-            match xref {
-                XRef::Predicate(p) => p.encode(self).unwrap()
-            }
-        }
-        self.mark_stable_position();
-        self.end_tag();
-
-        self.start_tag(root_tag::xref_index);
-        index::write_dense_index(xref_positions, &mut self.opaque.cursor);
-        self.end_tag();
-    }
-
     fn encode_info_for_item(&mut self,
                             (def_id, item): (DefId, &hir::Item)) {
         let tcx = self.tcx;
@@ -1233,7 +1212,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable: reachable,
         mir_map: mir_map,
         type_shorthands: Default::default(),
-        xrefs: Default::default()
+        predicate_shorthands: Default::default()
     });
 
     // RBML compacts the encoded bytes whenever appropriate,
@@ -1345,10 +1324,6 @@ fn encode_metadata_inner(ecx: &mut EncodeContext) {
     encode_item_index(ecx, items);
     let index_bytes = ecx.position() - i;
 
-    i = ecx.position();
-    ecx.encode_xrefs();
-    let xref_bytes = ecx.position() - i;
-
     let total_bytes = ecx.position();
 
     if ecx.tcx.sess.meta_stats() {
@@ -1369,7 +1344,6 @@ fn encode_metadata_inner(ecx: &mut EncodeContext) {
         println!("       reachable bytes: {}", reachable_bytes);
         println!("            item bytes: {}", item_bytes);
         println!("           index bytes: {}", index_bytes);
-        println!("            xref bytes: {}", xref_bytes);
         println!("            zero bytes: {}", zero_bytes);
         println!("           total bytes: {}", total_bytes);
     }

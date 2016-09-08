@@ -72,8 +72,6 @@ pub mod root_tag {
     pub const crate_info: usize = 0x104;
 
     pub const index: usize = 0x110;
-    pub const xref_index: usize = 0x111;
-    pub const xref_data: usize = 0x112;
     pub const crate_deps: usize = 0x102;
     pub const dylib_dependency_formats: usize = 0x106;
     pub const native_libraries: usize = 0x10a;
@@ -202,7 +200,7 @@ pub mod item_tag {
     pub const fn_arg_names: usize = 0x85;
 }
 
-/// The shorthand encoding of `Ty` uses `TypeVariants`' variant `usize`
+/// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
 /// This offset is also chosen so that the first byte is never < 0x80.
-pub const TYPE_SHORTHAND_OFFSET: usize = 0x80;
+pub const SHORTHAND_OFFSET: usize = 0x80;

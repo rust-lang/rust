@@ -108,36 +108,6 @@ impl IndexData {
     }
 }
 
-/// A dense index with integer keys. Different API from IndexData (should
-/// these be merged?)
-pub struct DenseIndex {
-    start: usize,
-    end: usize
-}
-
-impl DenseIndex {
-    pub fn lookup(&self, buf: &[u8], ix: u32) -> Option<u32> {
-        let data = bytes_to_words(&buf[self.start..self.end]);
-        data.get(ix as usize).map(|d| u32::from_le(*d))
-    }
-    pub fn from_buf(buf: &[u8], start: usize, end: usize) -> Self {
-        assert!((end-start)%4 == 0 && start <= end && end <= buf.len());
-        DenseIndex {
-            start: start,
-            end: end
-        }
-    }
-}
-
-pub fn write_dense_index(entries: Vec<u32>, buf: &mut Cursor<Vec<u8>>) {
-    let elen = entries.len();
-    assert!(elen < u32::MAX as usize);
-
-    buf.write_all(words_to_bytes(&entries)).unwrap();
-
-    info!("write_dense_index: {} entries", elen);
-}
-
 fn bytes_to_words(b: &[u8]) -> &[u32] {
     assert!(b.len() % 4 == 0);
     unsafe { slice::from_raw_parts(b.as_ptr() as *const u32, b.len()/4) }
