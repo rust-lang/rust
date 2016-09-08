@@ -232,13 +232,13 @@ extern "C" {
 // Again, I'm not entirely sure what this is describing, it just seems to work.
 #[cfg_attr(not(test), lang = "msvc_try_filter")]
 static mut TYPE_DESCRIPTOR1: _TypeDescriptor = _TypeDescriptor {
-    pVFTable: &TYPE_INFO_VTABLE as *const _ as *const _,
+    pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: 0 as *mut _,
     name: imp::NAME1,
 };
 
 static mut TYPE_DESCRIPTOR2: _TypeDescriptor = _TypeDescriptor {
-    pVFTable: &TYPE_INFO_VTABLE as *const _ as *const _,
+    pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: 0 as *mut _,
     name: imp::NAME2,
 };
