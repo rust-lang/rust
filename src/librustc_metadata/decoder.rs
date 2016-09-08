@@ -243,10 +243,10 @@ impl<'a, 'tcx> SpecializedDecoder<Ty<'tcx>> for DecodeContext<'a, 'tcx> {
         // Handle shorthands first, if we have an usize > 0x80.
         if self.opaque.data[self.opaque.position()] & 0x80 != 0 {
             let pos = self.read_usize()?;
-            assert!(pos >= TYPE_SHORTHAND_OFFSET);
+            assert!(pos >= SHORTHAND_OFFSET);
             let key = ty::CReaderCacheKey {
                 cnum: self.cdata().cnum,
-                pos: pos - TYPE_SHORTHAND_OFFSET
+                pos: pos - SHORTHAND_OFFSET
             };
             if let Some(ty) = tcx.rcache.borrow().get(&key).cloned() {
                 return Ok(ty);
@@ -331,11 +331,6 @@ pub fn crate_rustc_version(data: &[u8]) -> Option<String> {
     reader::maybe_get_doc(doc, root_tag::rustc_version).map(|s| {
         str::from_utf8(&s.data[s.start..s.end]).unwrap().to_string()
     })
-}
-
-pub fn load_xrefs(data: &[u8]) -> index::DenseIndex {
-    let index = rbml::Doc::new(data).get(root_tag::xref_index);
-    index::DenseIndex::from_buf(index.data, index.start, index.end)
 }
 
 // Go through each item in the metadata and create a map from that
@@ -1099,20 +1094,28 @@ fn doc_predicates<'a, 'tcx>(base_doc: rbml::Doc,
 {
     let mut dcx = base_doc.get(tag).decoder();
     dcx.cdata = Some(cdata);
+    dcx.tcx = Some(tcx);
 
     ty::GenericPredicates {
         parent: dcx.decode(),
-        predicates: dcx.seq().map(|offset| {
-            let predicate_pos = cdata.xref_index.lookup(
-                cdata.data(), offset).unwrap() as usize;
-            let mut dcx = rbml::Doc {
-                data: cdata.data(),
-                start: predicate_pos,
-                end: cdata.data().len(),
-            }.decoder();
-            dcx.tcx = Some(tcx);
-            dcx.cdata = Some(cdata);
-            dcx.decode()
+        predicates: (0..dcx.decode::<usize>()).map(|_| {
+            // Handle shorthands first, if we have an usize > 0x80.
+            if dcx.opaque.data[dcx.opaque.position()] & 0x80 != 0 {
+                let pos = dcx.decode::<usize>();
+                assert!(pos >= SHORTHAND_OFFSET);
+                let pos = pos - SHORTHAND_OFFSET;
+
+                let mut dcx = rbml::Doc {
+                    data: cdata.data(),
+                    start: pos,
+                    end: cdata.data().len(),
+                }.decoder();
+                dcx.tcx = Some(tcx);
+                dcx.cdata = Some(cdata);
+                dcx.decode()
+            } else {
+                dcx.decode()
+            }
         }).collect()
     }
 }

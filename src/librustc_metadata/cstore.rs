@@ -80,7 +80,6 @@ pub struct CrateMetadata {
 
     pub info: common::CrateInfo,
     pub index: index::Index,
-    pub xref_index: index::DenseIndex,
 
     /// For each public item in this crate, we encode a key.  When the
     /// crate is loaded, we read all the keys and put them in this
