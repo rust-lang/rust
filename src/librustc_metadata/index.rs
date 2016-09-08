@@ -44,7 +44,7 @@ impl Index {
         debug!("lookup_item: index={:?} words.len={:?}",
                index, words.len());
 
-        let position = u32::from_be(words[index]);
+        let position = u32::from_le(words[index]);
         if position == u32::MAX {
             debug!("lookup_item: position=u32::MAX");
             None
@@ -61,7 +61,7 @@ impl Index {
             if position == u32::MAX {
                 None
             } else {
-                Some((DefIndex::new(index), u32::from_be(position)))
+                Some((DefIndex::new(index), u32::from_le(position)))
             }
         })
     }
@@ -100,13 +100,11 @@ impl IndexData {
                 "recorded position for item {:?} twice, first at {:?} and now at {:?}",
                 item, self.positions[item], position);
 
-        self.positions[item] = position;
+        self.positions[item] = position.to_le();
     }
 
     pub fn write_index(&self, buf: &mut Cursor<Vec<u8>>) {
-        for &position in &self.positions {
-            write_be_u32(buf, position);
-        }
+        buf.write_all(words_to_bytes(&self.positions)).unwrap();
     }
 }
 
@@ -120,7 +118,7 @@ pub struct DenseIndex {
 impl DenseIndex {
     pub fn lookup(&self, buf: &[u8], ix: u32) -> Option<u32> {
         let data = bytes_to_words(&buf[self.start..self.end]);
-        data.get(ix as usize).map(|d| u32::from_be(*d))
+        data.get(ix as usize).map(|d| u32::from_le(*d))
     }
     pub fn from_buf(buf: &[u8], start: usize, end: usize) -> Self {
         assert!((end-start)%4 == 0 && start <= end && end <= buf.len());
@@ -135,23 +133,16 @@ pub fn write_dense_index(entries: Vec<u32>, buf: &mut Cursor<Vec<u8>>) {
     let elen = entries.len();
     assert!(elen < u32::MAX as usize);
 
-    for entry in entries {
-        write_be_u32(buf, entry);
-    }
+    buf.write_all(words_to_bytes(&entries)).unwrap();
 
     info!("write_dense_index: {} entries", elen);
-}
-
-fn write_be_u32<W: Write>(w: &mut W, u: u32) {
-    let _ = w.write_all(&[
-        (u >> 24) as u8,
-        (u >> 16) as u8,
-        (u >>  8) as u8,
-        (u >>  0) as u8,
-    ]);
 }
 
 fn bytes_to_words(b: &[u8]) -> &[u32] {
     assert!(b.len() % 4 == 0);
     unsafe { slice::from_raw_parts(b.as_ptr() as *const u32, b.len()/4) }
+}
+
+fn words_to_bytes(w: &[u32]) -> &[u8] {
+    unsafe { slice::from_raw_parts(w.as_ptr() as *const u8, w.len()*4) }
 }
