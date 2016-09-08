@@ -300,11 +300,11 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         if !items.is_empty() {
             error_380(self.ccx, span);
         } else if has_ty_params {
-            err = Some(struct_span_err!(self.tcx().sess, span, E0566,
+            err = Some(struct_span_err!(self.tcx().sess, span, E0567,
                 "traits with auto impls (`e.g. impl \
                     Trait for ..`) can not have type parameters"));
         } else if has_predicates {
-            err = Some(struct_span_err!(self.tcx().sess, span, E0565,
+            err = Some(struct_span_err!(self.tcx().sess, span, E0568,
                 "traits with auto impls (`e.g. impl \
                     Trait for ..`) cannot have predicates"));
         }

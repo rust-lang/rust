@@ -23,7 +23,7 @@
 // type that contains a mutable reference, enabling
 // mutable aliasing.
 //
-// You can imagine an even more dangerous test, 
+// You can imagine an even more dangerous test,
 // which currently compiles on nightly.
 //
 // fn main() {
@@ -34,8 +34,8 @@
 
 #![feature(optin_builtin_traits)]
 
-trait Magic: Copy {} //~ ERROR E0565
-impl Magic for .. {} 
+trait Magic: Copy {} //~ ERROR E0568
+impl Magic for .. {}
 impl<T:Magic> Magic for T {}
 
 fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
