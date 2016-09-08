@@ -604,16 +604,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Misc => {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
-                        if self.type_is_immediate(src_ty) {
-                            // FIXME: dest_ty should already be monomorphized
-                            let dest_ty = self.monomorphize(dest_ty, self.substs());
-                            assert!(self.type_is_immediate(dest_ty));
-                            let src_val = self.read_primval(src, src_ty)?;
-                            let dest_val = self.cast_primval(src_val, dest_ty)?;
-                            self.memory.write_primval(dest, dest_val)?;
-                        } else {
-                            // Casts from a fat-ptr.
-                            assert!(self.type_is_fat_ptr(src_ty));
+                        if self.type_is_fat_ptr(src_ty) {
                             let (data_ptr, _meta_ptr) = self.get_fat_ptr(src);
                             let ptr_size = self.memory.pointer_size();
                             let dest_ty = self.monomorphize(dest_ty, self.substs());
@@ -626,6 +617,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 // pointer-cast of that pointer to desired pointer type.
                                 self.memory.copy(data_ptr, dest, ptr_size, ptr_size)?;
                             }
+                        } else {
+                            // FIXME: dest_ty should already be monomorphized
+                            let dest_ty = self.monomorphize(dest_ty, self.substs());
+                            let src_val = self.read_primval(src, src_ty)?;
+                            let dest_val = self.cast_primval(src_val, dest_ty)?;
+                            self.memory.write_primval(dest, dest_val)?;
                         }
                     }
 
@@ -654,26 +651,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
 
         Ok(())
-    }
-
-    /// equivalent to rustc_trans::common::type_is_immediate
-    fn type_is_immediate(&self, ty: Ty<'tcx>) -> bool {
-        let simple = ty.is_scalar() ||
-            ty.is_unique() || ty.is_region_ptr() ||
-            ty.is_simd();
-        if simple && !self.type_is_fat_ptr(ty) {
-            return true;
-        }
-        if !self.type_is_sized(ty) {
-            return false;
-        }
-        match ty.sty {
-            ty::TyStruct(..) | ty::TyEnum(..) | ty::TyTuple(..) | ty::TyArray(_, _) |
-            ty::TyClosure(..) => {
-                self.type_size(ty) < self.memory.pointer_size()
-            }
-            _ => self.type_size(ty) == 0
-        }
     }
 
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
