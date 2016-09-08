@@ -5,7 +5,7 @@ use rustc::mir::repr as mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::cell::RefCell;
@@ -247,7 +247,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
         // generics are weird, don't run this function on a generic
-        debug_assert_eq!(self.monomorphize(ty, self.substs()), ty);
+        assert!(!ty.needs_subst());
         ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
