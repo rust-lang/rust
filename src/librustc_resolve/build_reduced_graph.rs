@@ -24,6 +24,7 @@ use {resolve_error, resolve_struct_error, ResolutionError};
 use rustc::middle::cstore::ChildItem;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::map::DefPathData;
 use rustc::ty;
 
 use std::cell::Cell;
@@ -250,8 +251,7 @@ impl<'b> Resolver<'b> {
                 self.define(parent, name, TypeNS, (module, sp, vis));
 
                 for variant in &(*enum_definition).variants {
-                    let item_def_id = self.definitions.local_def_id(item.id);
-                    self.build_reduced_graph_for_variant(variant, item_def_id, module, vis);
+                    self.build_reduced_graph_for_variant(variant, module, vis);
                 }
             }
 
@@ -314,7 +314,7 @@ impl<'b> Resolver<'b> {
                             is_static_method = !sig.decl.has_self();
                             (Def::Method(item_def_id), ValueNS)
                         }
-                        TraitItemKind::Type(..) => (Def::AssociatedTy(def_id, item_def_id), TypeNS),
+                        TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
                         TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
                     };
 
@@ -334,7 +334,6 @@ impl<'b> Resolver<'b> {
     // type and value namespaces.
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
-                                       item_id: DefId,
                                        parent: Module<'b>,
                                        vis: ty::Visibility) {
         let name = variant.node.name.name;
@@ -346,7 +345,7 @@ impl<'b> Resolver<'b> {
 
         // Variants are always treated as importable to allow them to be glob used.
         // All variants are defined in both type and value namespaces as future-proofing.
-        let def = Def::Variant(item_id, self.definitions.local_def_id(variant.node.data.id()));
+        let def = Def::Variant(self.definitions.local_def_id(variant.node.data.id()));
         self.define(parent, name, ValueNS, (def, variant.span, vis));
         self.define(parent, name, TypeNS, (def, variant.span, vis));
     }
@@ -389,20 +388,12 @@ impl<'b> Resolver<'b> {
 
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>, child: ChildItem) {
-        if let Def::ForeignMod(def_id) = child.def {
-            // Foreign modules have no names. Recur and populate eagerly.
-            for child in self.session.cstore.item_children(def_id) {
-                self.build_reduced_graph_for_external_crate_def(parent, child);
-            }
-            return;
-        }
-
         let def = child.def;
         let name = child.name;
         let vis = if parent.is_trait() { ty::Visibility::Public } else { child.vis };
 
         match def {
-            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) => {
+            Def::Mod(_) | Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {:?}",
                        name, vis);
                 let parent_link = ModuleParentLink(parent, name);
@@ -434,7 +425,8 @@ impl<'b> Resolver<'b> {
                 let trait_item_def_ids = self.session.cstore.impl_or_trait_items(def_id);
                 for &trait_item_def in &trait_item_def_ids {
                     let trait_item_name =
-                        self.session.cstore.item_name(trait_item_def);
+                        self.session.cstore.opt_item_name(trait_item_def)
+                            .expect("opt_item_name returned None for trait");
 
                     debug!("(building reduced graph for external crate) ... adding trait item \
                             '{}'",
@@ -452,7 +444,9 @@ impl<'b> Resolver<'b> {
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
             }
             Def::Struct(def_id)
-                if self.session.cstore.tuple_struct_definition_if_ctor(def_id).is_none() => {
+                if self.session.cstore.def_key(def_id).disambiguated_data.data !=
+                   DefPathData::StructCtor
+                => {
                 debug!("(building reduced graph for external crate) building type and value for {}",
                        name);
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));

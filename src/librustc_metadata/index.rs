@@ -53,6 +53,18 @@ impl Index {
             Some(position)
         }
     }
+
+    pub fn iter_enumerated<'a>(&self, bytes: &'a [u8])
+                               -> impl Iterator<Item=(DefIndex, u32)> + 'a {
+        let words = bytes_to_words(&bytes[self.data_start..self.data_end]);
+        words.iter().enumerate().filter_map(|(index, &position)| {
+            if position == u32::MAX {
+                None
+            } else {
+                Some((DefIndex::new(index), u32::from_be(position)))
+            }
+        })
+    }
 }
 
 /// While we are generating the metadata, we also track the position

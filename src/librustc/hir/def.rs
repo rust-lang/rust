@@ -18,15 +18,14 @@ pub enum Def {
     Fn(DefId),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     Mod(DefId),
-    ForeignMod(DefId),
     Static(DefId, bool /* is_mutbl */),
     Const(DefId),
     AssociatedConst(DefId),
     Local(DefId),
-    Variant(DefId /* enum */, DefId /* variant */),
+    Variant(DefId),
     Enum(DefId),
     TyAlias(DefId),
-    AssociatedTy(DefId /* trait */, DefId),
+    AssociatedTy(DefId),
     Trait(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
@@ -101,8 +100,8 @@ pub struct Export {
 impl Def {
     pub fn def_id(&self) -> DefId {
         match *self {
-            Def::Fn(id) | Def::Mod(id) | Def::ForeignMod(id) | Def::Static(id, _) |
-            Def::Variant(_, id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(_, id) |
+            Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
+            Def::Variant(id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(id) |
             Def::TyParam(id) | Def::Struct(id) | Def::Union(id) | Def::Trait(id) |
             Def::Method(id) | Def::Const(id) | Def::AssociatedConst(id) |
             Def::Local(id) | Def::Upvar(id, ..) => {
@@ -122,7 +121,6 @@ impl Def {
         match *self {
             Def::Fn(..) => "function",
             Def::Mod(..) => "module",
-            Def::ForeignMod(..) => "foreign module",
             Def::Static(..) => "static",
             Def::Variant(..) => "variant",
             Def::Enum(..) => "enum",

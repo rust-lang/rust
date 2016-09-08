@@ -135,11 +135,9 @@ pub trait CrateStore<'tcx> {
     fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                       -> ty::ClosureTy<'tcx>;
     fn item_variances(&self, def: DefId) -> Vec<ty::Variance>;
-    fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                      -> Ty<'tcx>;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
-    fn item_name(&self, def: DefId) -> ast::Name;
     fn opt_item_name(&self, def: DefId) -> Option<ast::Name>;
     fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> ty::GenericPredicates<'tcx>;
@@ -150,7 +148,7 @@ pub trait CrateStore<'tcx> {
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef<'tcx>;
     fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>;
-    fn method_arg_names(&self, did: DefId) -> Vec<String>;
+    fn fn_arg_names(&self, did: DefId) -> Vec<String>;
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
 
     // trait info
@@ -211,7 +209,6 @@ pub trait CrateStore<'tcx> {
     fn def_key(&self, def: DefId) -> hir_map::DefKey;
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>;
-    fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<ChildItem>;
 
@@ -297,13 +294,11 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                       -> ty::ClosureTy<'tcx>  { bug!("closure_ty") }
     fn item_variances(&self, def: DefId) -> Vec<ty::Variance> { bug!("item_variances") }
-    fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { bug!("repr_attrs") }
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                      -> Ty<'tcx> { bug!("item_type") }
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
-    fn item_name(&self, def: DefId) -> ast::Name { bug!("item_name") }
     fn opt_item_name(&self, def: DefId) -> Option<ast::Name> { bug!("opt_item_name") }
     fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> ty::GenericPredicates<'tcx> { bug!("item_predicates") }
@@ -316,7 +311,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { bug!("trait_def") }
     fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
         { bug!("adt_def") }
-    fn method_arg_names(&self, did: DefId) -> Vec<String> { bug!("method_arg_names") }
+    fn fn_arg_names(&self, did: DefId) -> Vec<String> { bug!("fn_arg_names") }
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId> { vec![] }
 
     // trait info
@@ -393,8 +388,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     }
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
         { bug!("struct_ctor_def_id") }
-    fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>
-        { bug!("tuple_struct_definition_if_ctor") }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
     fn item_children(&self, did: DefId) -> Vec<ChildItem> { bug!("item_children") }
 

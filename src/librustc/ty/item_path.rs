@@ -303,7 +303,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns the def-id of `def_id`'s parent in the def tree. If
     /// this returns `None`, then `def_id` represents a crate root or
     /// inlined root.
-    fn parent_def_id(&self, def_id: DefId) -> Option<DefId> {
+    pub fn parent_def_id(self, def_id: DefId) -> Option<DefId> {
         let key = self.def_key(def_id);
         key.parent.map(|index| DefId { krate: def_id.krate, index: index })
     }

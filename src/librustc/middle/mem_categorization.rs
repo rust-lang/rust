@@ -529,7 +529,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
 
-          Def::Mod(_) | Def::ForeignMod(_) |
+          Def::Mod(_) |
           Def::Trait(_) | Def::Enum(..) | Def::TyAlias(..) | Def::PrimTy(_) |
           Def::TyParam(..) |
           Def::Label(_) | Def::SelfTy(..) |
@@ -1077,18 +1077,23 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // alone) because PatKind::Struct can also refer to variants.
         let cmt = match self.tcx().expect_def_or_none(pat.id) {
             Some(Def::Err) => return Err(()),
-            Some(Def::Variant(enum_did, variant_did))
+            Some(Def::Variant(variant_did)) => {
                 // univariant enums do not need downcasts
-                if !self.tcx().lookup_adt_def(enum_did).is_univariant() => {
+                let enum_did = self.tcx().parent_def_id(variant_did).unwrap();
+                if !self.tcx().lookup_adt_def(enum_did).is_univariant() {
                     self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
+                } else {
+                    cmt
                 }
+            }
             _ => cmt
         };
 
         match pat.node {
           PatKind::TupleStruct(_, ref subpats, ddpos) => {
             let expected_len = match self.tcx().expect_def(pat.id) {
-                Def::Variant(enum_def, def_id) => {
+                Def::Variant(def_id) => {
+                    let enum_def = self.tcx().parent_def_id(def_id).unwrap();
                     self.tcx().lookup_adt_def(enum_def).variant_with_id(def_id).fields.len()
                 }
                 Def::Struct(..) => {
