@@ -1821,7 +1821,8 @@ impl<T: PartialOrd> PartialOrd for [T] {
 // intermediate trait for specialization of slice's PartialEq
 trait SlicePartialEq<B> {
     fn equal(&self, other: &[B]) -> bool;
-    fn not_equal(&self, other: &[B]) -> bool;
+
+    fn not_equal(&self, other: &[B]) -> bool { !self.equal(other) }
 }
 
 // Generic slice equality
@@ -1841,20 +1842,6 @@ impl<A, B> SlicePartialEq<B> for [A]
 
         true
     }
-
-    default fn not_equal(&self, other: &[B]) -> bool {
-        if self.len() != other.len() {
-            return true;
-        }
-
-        for i in 0..self.len() {
-            if self[i].ne(&other[i]) {
-                return true;
-            }
-        }
-
-        false
-    }
 }
 
 // Use memcmp for bytewise equality when the types allow
@@ -1873,10 +1860,6 @@ impl<A> SlicePartialEq<A> for [A]
             memcmp(self.as_ptr() as *const u8,
                    other.as_ptr() as *const u8, size) == 0
         }
-    }
-
-    fn not_equal(&self, other: &[A]) -> bool {
-        !self.equal(other)
     }
 }
 
