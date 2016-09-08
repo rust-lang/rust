@@ -28,7 +28,7 @@ pub enum EvalError<'tcx> {
     ExecuteMemory,
     ArrayIndexOutOfBounds(Span, u64, u64),
     Math(Span, ConstMathErr),
-    InvalidChar(u32),
+    InvalidChar(u64),
     OutOfMemory {
         allocation_size: usize,
         memory_size: usize,

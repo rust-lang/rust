@@ -5,7 +5,7 @@ use rustc::mir::repr as mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::cell::RefCell;
@@ -22,6 +22,7 @@ use std::collections::HashMap;
 
 mod step;
 mod terminator;
+mod cast;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
@@ -211,9 +212,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let psize = self.memory.pointer_size();
                 let static_ptr = self.memory.allocate(s.len(), 1)?;
                 let ptr = self.memory.allocate(psize * 2, psize)?;
+                let (ptr, extra) = self.get_fat_ptr(ptr);
                 self.memory.write_bytes(static_ptr, s.as_bytes())?;
                 self.memory.write_ptr(ptr, static_ptr)?;
-                self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64)?;
+                self.memory.write_usize(extra, s.len() as u64)?;
                 Ok(ptr)
             }
             ByteStr(ref bs) => {
@@ -244,6 +246,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+        // generics are weird, don't run this function on a generic
+        assert!(!ty.needs_subst());
         ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
@@ -558,12 +562,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Ref(_, _, ref lvalue) => {
                 let lv = self.eval_lvalue(lvalue)?;
-                self.memory.write_ptr(dest, lv.ptr)?;
+                let (ptr, extra) = self.get_fat_ptr(dest);
+                self.memory.write_ptr(ptr, lv.ptr)?;
                 match lv.extra {
                     LvalueExtra::None => {},
                     LvalueExtra::Length(len) => {
-                        let len_ptr = dest.offset(self.memory.pointer_size() as isize);
-                        self.memory.write_usize(len_ptr, len)?;
+                        self.memory.write_usize(extra, len)?;
                     }
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
@@ -583,14 +587,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Unsize => {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
-                        self.move_(src, dest, src_ty)?;
+                        let (ptr, extra) = self.get_fat_ptr(dest);
+                        self.move_(src, ptr, src_ty)?;
                         let src_pointee_ty = pointee_type(src_ty).unwrap();
                         let dest_pointee_ty = pointee_type(dest_ty).unwrap();
 
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                                let len_ptr = dest.offset(self.memory.pointer_size() as isize);
-                                self.memory.write_usize(len_ptr, length as u64)?;
+                                self.memory.write_usize(extra, length as u64)?;
                             }
 
                             _ => return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue))),
@@ -600,20 +604,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Misc => {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
-                        // FIXME(solson): Wrong for almost everything.
-                        warn!("misc cast from {:?} to {:?}", src_ty, dest_ty);
-                        let dest_size = self.type_size(dest_ty);
-                        let src_size = self.type_size(src_ty);
-                        let dest_align = self.type_align(dest_ty);
-
-                        // Hack to support fat pointer -> thin pointer casts to keep tests for
-                        // other things passing for now.
-                        let is_fat_ptr_cast = pointee_type(src_ty).map_or(false, |ty| !self.type_is_sized(ty));
-
-                        if dest_size == src_size || is_fat_ptr_cast {
-                            self.memory.copy(src, dest, dest_size, dest_align)?;
+                        if self.type_is_fat_ptr(src_ty) {
+                            let (data_ptr, _meta_ptr) = self.get_fat_ptr(src);
+                            let ptr_size = self.memory.pointer_size();
+                            let dest_ty = self.monomorphize(dest_ty, self.substs());
+                            if self.type_is_fat_ptr(dest_ty) {
+                                // FIXME: add assertion that the extra part of the src_ty and
+                                // dest_ty is of the same type
+                                self.memory.copy(data_ptr, dest, ptr_size * 2, ptr_size)?;
+                            } else { // cast to thin-ptr
+                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
+                                // pointer-cast of that pointer to desired pointer type.
+                                self.memory.copy(data_ptr, dest, ptr_size, ptr_size)?;
+                            }
                         } else {
-                            return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue)));
+                            // FIXME: dest_ty should already be monomorphized
+                            let dest_ty = self.monomorphize(dest_ty, self.substs());
+                            let src_val = self.read_primval(src, src_ty)?;
+                            let dest_val = self.cast_primval(src_val, dest_ty)?;
+                            self.memory.write_primval(dest, dest_val)?;
                         }
                     }
 
@@ -642,6 +651,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
 
         Ok(())
+    }
+
+    fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
+        match ty.sty {
+            ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
+            ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+            ty::TyBox(ty) => !self.type_is_sized(ty),
+            _ => false,
+        }
     }
 
     fn nonnull_offset(&self, ty: Ty<'tcx>, nndiscr: u64, discrfield: &[u32]) -> EvalResult<'tcx, Size> {
@@ -809,11 +827,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Deref => {
                         let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
+                        self.memory.dump(base.ptr.alloc_id);
                         let ptr = self.memory.read_ptr(base.ptr)?;
                         let extra = match pointee_ty.sty {
                             ty::TySlice(_) | ty::TyStr => {
-                                let len_ptr = base.ptr.offset(self.memory.pointer_size() as isize);
-                                let len = self.memory.read_usize(len_ptr)?;
+                                let (_, extra) = self.get_fat_ptr(base.ptr);
+                                let len = self.memory.read_usize(extra)?;
                                 LvalueExtra::Length(len)
                             }
                             ty::TyTrait(_) => unimplemented!(),
@@ -842,6 +861,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
     }
 
+    fn get_fat_ptr(&self, ptr: Pointer) -> (Pointer, Pointer) {
+        assert_eq!(layout::FAT_PTR_ADDR, 0);
+        assert_eq!(layout::FAT_PTR_EXTRA, 1);
+        (ptr, ptr.offset(self.memory.pointer_size() as isize))
+    }
+
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         self.monomorphize(lvalue.ty(&self.mir(), self.tcx).to_ty(self.tcx), self.substs())
     }
@@ -865,7 +890,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let c = self.memory.read_uint(ptr, 4)? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::Char(ch),
-                    None => return Err(EvalError::InvalidChar(c)),
+                    None => return Err(EvalError::InvalidChar(c as u64)),
                 }
             }
             (_, &ty::TyInt(IntTy::I8))    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
@@ -904,6 +929,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return Err(EvalError::Unimplemented(format!("unimplemented: primitive read of fat pointer type: {:?}", ty)));
                 }
             }
+
+            (_, &ty::TyEnum(..)) => {
+                use rustc::ty::layout::Layout::*;
+                if let CEnum { discr, signed, .. } = *self.type_layout(ty) {
+                    match (discr.size().bytes(), signed) {
+                        (1, true)  => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
+                        (2, true)  => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
+                        (4, true)  => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
+                        (8, true)  => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
+                        (1, false) => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
+                        (2, false) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
+                        (4, false) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
+                        (8, false) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
+                        (size, _) => bug!("CEnum discr size {}", size),
+                    }
+                } else {
+                    bug!("primitive read of non-clike enum: {:?}", ty);
+                }
+            },
 
             _ => bug!("primitive read of non-primitive type: {:?}", ty),
         };

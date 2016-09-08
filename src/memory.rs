@@ -455,8 +455,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, pointer_size),
             PrimVal::F32(f) => self.write_f32(ptr, f),
             PrimVal::F64(f) => self.write_f64(ptr, f),
-            PrimVal::FnPtr(_p) |
-            PrimVal::AbstractPtr(_p) => unimplemented!(),
+            PrimVal::FnPtr(p) |
+            PrimVal::AbstractPtr(p) => self.write_ptr(ptr, p),
         }
     }
 

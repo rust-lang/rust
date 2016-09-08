@@ -47,7 +47,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let discr_val = self.memory.read_uint(discr_ptr, discr_size)?;
                 if let ty::TyChar = discr_ty.sty {
                     if ::std::char::from_u32(discr_val as u32).is_none() {
-                        return Err(EvalError::InvalidChar(discr_val as u32));
+                        return Err(EvalError::InvalidChar(discr_val as u64));
                     }
                 }
 
