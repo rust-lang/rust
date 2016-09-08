@@ -165,6 +165,7 @@ use panic;
 use panicking;
 use str;
 use sync::{Mutex, Condvar, Arc};
+use sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use sys::thread as imp;
 use sys_common::thread_info;
 use sys_common::util;
@@ -522,6 +523,35 @@ pub fn park_timeout(dur: Duration) {
         guard = g;
     }
     *guard = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ThreadId
+////////////////////////////////////////////////////////////////////////////////
+
+/// A unique identifier for a running thread.
+///
+/// A `ThreadId` is an opaque object that has a unique value for each thread
+/// that creates one. `ThreadId`s do not correspond to a thread's system-
+/// designated identifier.
+#[unstable(feature = "thread_id", issue = "21507")]
+#[derive(Eq, PartialEq, Copy, Clone)]
+pub struct ThreadId(usize);
+
+impl ThreadId {
+    /// Returns an identifier unique to the current calling thread.
+    #[unstable(feature = "thread_id", issue = "21507")]
+    pub fn current() -> ThreadId {
+        static THREAD_ID_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+        #[thread_local] static mut THREAD_ID: ThreadId = ThreadId(0);
+
+        unsafe {
+            if THREAD_ID.0 == 0 {
+                THREAD_ID.0 = 1 + THREAD_ID_COUNT.fetch_add(1, Ordering::SeqCst);
+            }
+            THREAD_ID
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -975,6 +1005,16 @@ mod tests {
     #[test]
     fn sleep_ms_smoke() {
         thread::sleep(Duration::from_millis(2));
+    }
+
+    #[test]
+    fn test_thread_id_equal() {
+        assert_eq!(ThreadId::current(), ThreadId::current());
+    }
+
+    #[test]
+    fn test_thread_id_not_equal() {
+        assert!(ThreadId::current() != spawn(|| ThreadId::current()).join());
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due
