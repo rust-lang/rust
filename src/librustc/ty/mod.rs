@@ -193,7 +193,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
         match *self {
             ConstTraitItem(ref associated_const) => Def::AssociatedConst(associated_const.def_id),
             MethodTraitItem(ref method) => Def::Method(method.def_id),
-            TypeTraitItem(ref ty) => Def::AssociatedTy(ty.container.id(), ty.def_id),
+            TypeTraitItem(ref ty) => Def::AssociatedTy(ty.def_id),
         }
     }
 
@@ -1666,7 +1666,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
 
     pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'gcx, 'container> {
         match def {
-            Def::Variant(_, vid) => self.variant_with_id(vid),
+            Def::Variant(vid) => self.variant_with_id(vid),
             Def::Struct(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) => self.struct_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
@@ -2325,7 +2325,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // or variant or their constructors, panics otherwise.
     pub fn expect_variant_def(self, def: Def) -> VariantDef<'tcx> {
         match def {
-            Def::Variant(enum_did, did) => {
+            Def::Variant(did) => {
+                let enum_did = self.parent_def_id(did).unwrap();
                 self.lookup_adt_def(enum_did).variant_with_id(did)
             }
             Def::Struct(did) | Def::Union(did) => {
@@ -2387,7 +2388,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(id) = self.map.as_local_node_id(id) {
             self.map.name(id)
         } else {
-            self.sess.cstore.item_name(id)
+            self.sess.cstore.opt_item_name(id).unwrap_or_else(|| {
+                bug!("item_name: no name for {:?}", self.def_path(id));
+            })
         }
     }
 
@@ -2631,11 +2634,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
 
             // Record the trait->implementation mapping.
-            if let Some(parent) = self.sess.cstore.impl_parent(impl_def_id) {
-                def.record_remote_impl(self, impl_def_id, trait_ref, parent);
-            } else {
-                def.record_remote_impl(self, impl_def_id, trait_ref, trait_id);
-            }
+            let parent = self.sess.cstore.impl_parent(impl_def_id).unwrap_or(trait_id);
+            def.record_remote_impl(self, impl_def_id, trait_ref, parent);
 
             // For any methods that use a default implementation, add them to
             // the map. This is a bit unfortunate.

@@ -51,26 +51,24 @@ extern crate rustc_const_math;
 #[cfg(test)]
 extern crate test;
 
-pub mod rbml {
+mod rbml {
     pub mod writer;
     pub mod reader;
     pub use self::reader::Doc;
 }
 
-pub use rustc::middle;
+mod diagnostics;
 
-pub mod diagnostics;
-
-pub mod astencode;
-pub mod common;
-pub mod def_key;
-pub mod encoder;
+mod astencode;
+mod common;
 mod index_builder;
-pub mod decoder;
+mod index;
+mod encoder;
+mod decoder;
+mod csearch;
+
 pub mod creader;
-pub mod csearch;
 pub mod cstore;
-pub mod index;
 pub mod loader;
 pub mod macro_import;
 

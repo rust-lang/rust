@@ -1003,7 +1003,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // the leaves of the pattern tree structure.
         return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
             match tcx.expect_def_or_none(pat.id) {
-                Some(Def::Variant(enum_did, variant_did)) => {
+                Some(Def::Variant(variant_did)) => {
+                    let enum_did = tcx.parent_def_id(variant_did).unwrap();
                     let downcast_cmt = if tcx.lookup_adt_def(enum_did).is_univariant() {
                         cmt_pat
                     } else {

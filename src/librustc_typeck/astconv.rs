@@ -1373,7 +1373,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             item.expect("missing associated type").def_id()
         };
 
-        (ty, Def::AssociatedTy(trait_did, item_did))
+        (ty, Def::AssociatedTy(item_did))
     }
 
     fn qpath_to_ty(&self,
@@ -1522,8 +1522,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.prohibit_type_params(base_segments);
                 tcx.mk_self_type()
             }
-            Def::AssociatedTy(trait_did, _) => {
+            Def::AssociatedTy(def_id) => {
                 tcx.prohibit_type_params(&base_segments[..base_segments.len()-2]);
+                let trait_did = tcx.parent_def_id(def_id).unwrap();
                 self.qpath_to_ty(rscope,
                                  span,
                                  param_mode,

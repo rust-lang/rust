@@ -801,7 +801,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     match pat.node {
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
             match cx.tcx.expect_def(pat.id) {
-                Def::Variant(_, id) => vec![Variant(id)],
+                Def::Variant(id) => vec![Variant(id)],
                 Def::Struct(..) | Def::Union(..) |
                 Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
                 Def::Const(..) | Def::AssociatedConst(..) =>
@@ -913,7 +913,7 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::Variant(_, id) if *constructor != Variant(id) => None,
+                Def::Variant(id) if *constructor != Variant(id) => None,
                 Def::Variant(..) | Def::Struct(..) => Some(Vec::new()),
                 def => span_bug!(pat_span, "specialize: unexpected \
                                           definition {:?}", def),
@@ -925,7 +925,7 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::Variant(_, id) if *constructor != Variant(id) => None,
+                Def::Variant(id) if *constructor != Variant(id) => None,
                 Def::Variant(..) | Def::Struct(..) => {
                     match ddpos {
                         Some(ddpos) => {

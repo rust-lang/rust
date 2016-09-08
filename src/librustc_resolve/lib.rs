@@ -2757,7 +2757,7 @@ impl<'a> Resolver<'a> {
             if let Some(resolution) = self.def_map.get(&node_id) {
                 match resolution.base_def {
                     Def::Enum(did) | Def::TyAlias(did) | Def::Union(did) |
-                    Def::Struct(did) | Def::Variant(_, did) if resolution.depth == 0 => {
+                    Def::Struct(did) | Def::Variant(did) if resolution.depth == 0 => {
                         if let Some(fields) = self.structs.get(&did) {
                             if fields.iter().any(|&field_name| name == field_name) {
                                 return Field;
@@ -2826,7 +2826,7 @@ impl<'a> Resolver<'a> {
                 if let Some(path_res) = self.resolve_possibly_assoc_item(expr.id,
                                                             maybe_qself.as_ref(), path, ValueNS) {
                     // Check if struct variant
-                    let is_struct_variant = if let Def::Variant(_, variant_id) = path_res.base_def {
+                    let is_struct_variant = if let Def::Variant(variant_id) = path_res.base_def {
                         self.structs.contains_key(&variant_id)
                     } else {
                         false

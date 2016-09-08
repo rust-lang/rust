@@ -17,6 +17,7 @@ use rustc::hir;
 
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::DefPathData;
 use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt, VariantKind};
 use rustc::util::nodemap::FnvHashSet;
@@ -82,7 +83,7 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         Def::Struct(did)
                 // If this is a struct constructor, we skip it
-                if tcx.sess.cstore.tuple_struct_definition_if_ctor(did).is_none() => {
+                if tcx.def_key(did).disambiguated_data.data != DefPathData::StructCtor => {
             record_extern_fqn(cx, did, clean::TypeStruct);
             ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
@@ -497,17 +498,10 @@ fn build_module<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // visit each node at most once.
         let mut visited = FnvHashSet();
         for item in tcx.sess.cstore.item_children(did) {
-            match item.def {
-                Def::ForeignMod(did) => {
-                    fill_in(cx, tcx, did, items);
-                }
-                def => {
-                    if item.vis == ty::Visibility::Public {
-                        if !visited.insert(def) { continue }
-                        if let Some(i) = try_inline_def(cx, tcx, def) {
-                            items.extend(i)
-                        }
-                    }
+            if item.vis == ty::Visibility::Public {
+                if !visited.insert(item.def) { continue }
+                if let Some(i) = try_inline_def(cx, tcx, item.def) {
+                    items.extend(i)
                 }
             }
         }

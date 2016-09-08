@@ -39,9 +39,9 @@ use syntax::attr;
 use syntax::codemap;
 use syntax_pos;
 
-pub use middle::cstore::{NativeLibraryKind, LinkagePreference};
-pub use middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
-pub use middle::cstore::{CrateSource, LinkMeta};
+pub use rustc::middle::cstore::{NativeLibraryKind, LinkagePreference};
+pub use rustc::middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
+pub use rustc::middle::cstore::{CrateSource, LinkMeta};
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -78,6 +78,7 @@ pub struct CrateMetadata {
     pub cnum: CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
 
+    pub info: common::CrateInfo,
     pub index: index::Index,
     pub xref_index: index::DenseIndex,
 
@@ -143,8 +144,7 @@ impl CStore {
     }
 
     pub fn get_crate_hash(&self, cnum: CrateNum) -> Svh {
-        let cdata = self.get_crate_data(cnum);
-        decoder::get_crate_hash(cdata.data())
+        self.get_crate_data(cnum).hash()
     }
 
     pub fn set_crate_data(&self, cnum: CrateNum, data: Rc<CrateMetadata>) {
@@ -299,11 +299,9 @@ impl CStore {
 
 impl CrateMetadata {
     pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
-    pub fn name(&self) -> String { decoder::get_crate_name(self.data()) }
-    pub fn hash(&self) -> Svh { decoder::get_crate_hash(self.data()) }
-    pub fn disambiguator(&self) -> String {
-        decoder::get_crate_disambiguator(self.data())
-    }
+    pub fn name(&self) -> &str { &self.info.name }
+    pub fn hash(&self) -> Svh { self.info.hash }
+    pub fn disambiguator(&self) -> &str { &self.info.disambiguator }
     pub fn imported_filemaps<'a>(&'a self, codemap: &codemap::CodeMap)
                                  -> Ref<'a, Vec<ImportedFileMap>> {
         let filemaps = self.codemap_import_info.borrow();
@@ -352,7 +350,7 @@ impl CrateMetadata {
     }
 
     pub fn panic_strategy(&self) -> PanicStrategy {
-        decoder::get_panic_strategy(self.data())
+        self.info.panic_strategy.clone()
     }
 }
 

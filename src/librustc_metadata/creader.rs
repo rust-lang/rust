@@ -12,6 +12,7 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
+use common::CrateInfo;
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use decoder;
 use loader::{self, CratePaths};
@@ -85,7 +86,7 @@ fn should_link(i: &ast::Item) -> bool {
 }
 
 #[derive(Debug)]
-struct CrateInfo {
+struct ExternCrateInfo {
     ident: String,
     name: String,
     id: ast::NodeId,
@@ -183,7 +184,7 @@ impl<'a> CrateReader<'a> {
         }
     }
 
-    fn extract_crate_info(&self, i: &ast::Item) -> Option<CrateInfo> {
+    fn extract_crate_info(&self, i: &ast::Item) -> Option<ExternCrateInfo> {
         match i.node {
             ast::ItemKind::ExternCrate(ref path_opt) => {
                 debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
@@ -196,7 +197,7 @@ impl<'a> CrateReader<'a> {
                     }
                     None => i.ident.to_string(),
                 };
-                Some(CrateInfo {
+                Some(ExternCrateInfo {
                     ident: i.ident.to_string(),
                     name: name,
                     id: i.id,
@@ -258,32 +259,28 @@ impl<'a> CrateReader<'a> {
 
     fn verify_no_symbol_conflicts(&self,
                                   span: Span,
-                                  metadata: &MetadataBlob) {
-        let disambiguator = decoder::get_crate_disambiguator(metadata.as_slice());
-        let crate_name = decoder::get_crate_name(metadata.as_slice());
-
+                                  info: &CrateInfo) {
         // Check for (potential) conflicts with the local crate
-        if self.local_crate_name == crate_name &&
-           self.sess.local_crate_disambiguator() == &disambiguator[..] {
+        if self.local_crate_name == info.name &&
+           self.sess.local_crate_disambiguator() == &info.disambiguator[..] {
             span_fatal!(self.sess, span, E0519,
                         "the current crate is indistinguishable from one of its \
                          dependencies: it has the same crate-name `{}` and was \
                          compiled with the same `-C metadata` arguments. This \
                          will result in symbol conflicts between the two.",
-                        crate_name)
+                        info.name)
         }
 
-        let svh = decoder::get_crate_hash(metadata.as_slice());
         // Check for conflicts with any crate loaded so far
         self.cstore.iter_crate_data(|_, other| {
-            if other.name() == crate_name && // same crate-name
-               other.disambiguator() == disambiguator &&  // same crate-disambiguator
-               other.hash() != svh { // but different SVH
+            if other.name() == info.name && // same crate-name
+               other.disambiguator() == info.disambiguator &&  // same crate-disambiguator
+               other.hash() != info.hash { // but different SVH
                 span_fatal!(self.sess, span, E0523,
                         "found two different crates with name `{}` that are \
                          not distinguished by differing `-C metadata`. This \
                          will result in symbol conflicts between the two.",
-                        crate_name)
+                        info.name)
             }
         });
     }
@@ -298,7 +295,8 @@ impl<'a> CrateReader<'a> {
                       -> (CrateNum, Rc<cstore::CrateMetadata>,
                           cstore::CrateSource) {
         info!("register crate `extern crate {} as {}`", name, ident);
-        self.verify_no_symbol_conflicts(span, &lib.metadata);
+        let crate_info = decoder::get_crate_info(lib.metadata.as_slice());
+        self.verify_no_symbol_conflicts(span, &crate_info);
 
         // Claim this crate number and cache it
         let cnum = self.next_crate_num;
@@ -321,9 +319,15 @@ impl<'a> CrateReader<'a> {
 
         let cnum_map = self.resolve_crate_deps(root, metadata.as_slice(), cnum, span);
 
+        if crate_info.macro_derive_registrar.is_some() {
+            self.sess.span_err(span, "crates of the `rustc-macro` crate type \
+                                      cannot be linked at runtime");
+        }
+
         let cmeta = Rc::new(cstore::CrateMetadata {
             name: name.to_string(),
             extern_crate: Cell::new(None),
+            info: crate_info,
             index: decoder::load_index(metadata.as_slice()),
             xref_index: decoder::load_xrefs(metadata.as_slice()),
             key_map: decoder::load_key_map(metadata.as_slice()),
@@ -333,11 +337,6 @@ impl<'a> CrateReader<'a> {
             codemap_import_info: RefCell::new(vec![]),
             explicitly_linked: Cell::new(explicitly_linked),
         });
-
-        if decoder::get_derive_registrar_fn(cmeta.data.as_slice()).is_some() {
-            self.sess.span_err(span, "crates of the `rustc-macro` crate type \
-                                      cannot be linked at runtime");
-        }
 
         let source = cstore::CrateSource {
             dylib: dylib,
@@ -416,13 +415,11 @@ impl<'a> CrateReader<'a> {
         // Note that we only do this for target triple crates, though, as we
         // don't want to match a host crate against an equivalent target one
         // already loaded.
+        let crate_info = decoder::get_crate_info(library.metadata.as_slice());
         if loader.triple == self.sess.opts.target_triple {
-            let meta_hash = decoder::get_crate_hash(library.metadata.as_slice());
-            let meta_name = decoder::get_crate_name(library.metadata.as_slice())
-                                    .to_string();
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {
-                if data.name() == meta_name && meta_hash == data.hash() {
+                if data.name() == crate_info.name && crate_info.hash == data.hash() {
                     assert!(loader.hash.is_none());
                     info!("load success, going to previous cnum: {}", cnum);
                     result = LoadResult::Previous(cnum);
@@ -497,7 +494,7 @@ impl<'a> CrateReader<'a> {
         }).collect()
     }
 
-    fn read_extension_crate(&mut self, span: Span, info: &CrateInfo) -> ExtensionCrate {
+    fn read_extension_crate(&mut self, span: Span, info: &ExternCrateInfo) -> ExtensionCrate {
         info!("read extension crate {} `extern crate {} as {}` linked={}",
               info.id, info.name, info.ident, info.should_link);
         let target_triple = &self.sess.opts.target_triple[..];
@@ -570,11 +567,12 @@ impl<'a> CrateReader<'a> {
         let ci = self.extract_crate_info(item).unwrap();
         let ekrate = self.read_extension_crate(item.span, &ci);
 
+        let crate_info = decoder::get_crate_info(ekrate.metadata.as_slice());
         let source_name = format!("<{} macros>", item.ident);
         let mut ret = Macros {
             macro_rules: Vec::new(),
             custom_derive_registrar: None,
-            svh: decoder::get_crate_hash(ekrate.metadata.as_slice()),
+            svh: crate_info.hash,
             dylib: None,
         };
         decoder::each_exported_macro(ekrate.metadata.as_slice(),
@@ -619,7 +617,7 @@ impl<'a> CrateReader<'a> {
             true
         });
 
-        match decoder::get_derive_registrar_fn(ekrate.metadata.as_slice()) {
+        match crate_info.macro_derive_registrar {
             Some(id) => ret.custom_derive_registrar = Some(id),
 
             // If this crate is not a rustc-macro crate then we might be able to
@@ -656,7 +654,7 @@ impl<'a> CrateReader<'a> {
     /// SVH and DefIndex of the registrar function.
     pub fn find_plugin_registrar(&mut self, span: Span, name: &str)
                                  -> Option<(PathBuf, Svh, DefIndex)> {
-        let ekrate = self.read_extension_crate(span, &CrateInfo {
+        let ekrate = self.read_extension_crate(span, &ExternCrateInfo {
              name: name.to_string(),
              ident: name.to_string(),
              id: ast::DUMMY_NODE_ID,
@@ -673,13 +671,10 @@ impl<'a> CrateReader<'a> {
             span_fatal!(self.sess, span, E0456, "{}", &message[..]);
         }
 
-        let svh = decoder::get_crate_hash(ekrate.metadata.as_slice());
-        let registrar =
-            decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice());
-
-        match (ekrate.dylib.as_ref(), registrar) {
+        let crate_info = decoder::get_crate_info(ekrate.metadata.as_slice());
+        match (ekrate.dylib.as_ref(), crate_info.plugin_registrar_fn) {
             (Some(dylib), Some(reg)) => {
-                Some((dylib.to_path_buf(), svh, reg))
+                Some((dylib.to_path_buf(), crate_info.hash, reg))
             }
             (None, Some(_)) => {
                 span_err!(self.sess, span, E0457,

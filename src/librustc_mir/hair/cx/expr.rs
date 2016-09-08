@@ -271,7 +271,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     // Tuple-like ADTs are represented as ExprCall. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def|{
                         match cx.tcx.expect_def(fun.id) {
-                            Def::Variant(_, variant_id) => {
+                            Def::Variant(variant_id) => {
                                 Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                             },
                             Def::Struct(..) => {
@@ -480,8 +480,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     }
                     AdtKind::Enum => {
                         match cx.tcx.expect_def(expr.id) {
-                            Def::Variant(enum_id, variant_id) => {
-                                debug_assert!(adt.did == enum_id);
+                            Def::Variant(variant_id) => {
                                 assert!(base.is_none());
 
                                 let index = adt.variant_index_with_id(variant_id);
@@ -688,13 +687,12 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             },
             ref sty => bug!("unexpected sty: {:?}", sty)
         },
-        Def::Variant(enum_id, variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
+        Def::Variant(variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A variant constructor. Should only be reached if not called in the same
             // expression.
             ty::TyFnDef(..) => variant_id,
             // A unit variant, similar special case to the struct case above.
             ty::TyAdt(adt_def, substs) => {
-                debug_assert!(adt_def.did == enum_id);
                 let index = adt_def.variant_index_with_id(variant_id);
                 return ExprKind::Adt {
                     adt_def: adt_def,

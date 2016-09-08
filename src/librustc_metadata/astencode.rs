@@ -18,7 +18,7 @@ use cstore::CrateMetadata;
 use decoder::DecodeContext;
 use encoder::EncodeContext;
 
-use middle::cstore::{InlinedItem, InlinedItemRef};
+use rustc::middle::cstore::{InlinedItem, InlinedItemRef};
 use rustc::hir::def;
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;

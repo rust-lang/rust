@@ -1404,13 +1404,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Obtain the representation annotation for a struct definition.
     pub fn lookup_repr_hints(self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
         self.repr_hint_cache.memoize(did, || {
-            Rc::new(if did.is_local() {
-                self.get_attrs(did).iter().flat_map(|meta| {
-                    attr::find_repr_attrs(self.sess.diagnostic(), meta).into_iter()
-                }).collect()
-            } else {
-                self.sess.cstore.repr_attrs(did)
-            })
+            Rc::new(self.get_attrs(did).iter().flat_map(|meta| {
+                attr::find_repr_attrs(self.sess.diagnostic(), meta).into_iter()
+            }).collect())
         })
     }
 }

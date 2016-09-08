@@ -293,8 +293,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
         let def = self.tcx.expect_def(ref_id);
         match def {
-            Def::Mod(_) |
-            Def::ForeignMod(_) => {
+            Def::Mod(_) => {
                 self.dumper.mod_ref(ModRefData {
                     span: sub_span.expect("No span found for mod ref"),
                     ref_id: Some(def_id),

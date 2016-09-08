@@ -1161,7 +1161,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
         let mut names = if cx.map.as_local_node_id(did).is_some() {
             vec![].into_iter()
         } else {
-            cx.tcx().sess.cstore.method_arg_names(did).into_iter()
+            cx.tcx().sess.cstore.fn_arg_names(did).into_iter()
         }.peekable();
         FnDecl {
             output: Return(sig.0.output.clean(cx)),
@@ -2757,6 +2757,8 @@ fn resolve_type(cx: &DocContext,
 fn register_def(cx: &DocContext, def: Def) -> DefId {
     debug!("register_def({:?})", def);
 
+    let tcx = cx.tcx();
+
     let (did, kind) = match def {
         Def::Fn(i) => (i, TypeFunction),
         Def::TyAlias(i) => (i, TypeTypedef),
@@ -2766,7 +2768,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Union(i) => (i, TypeUnion),
         Def::Mod(i) => (i, TypeModule),
         Def::Static(i, _) => (i, TypeStatic),
-        Def::Variant(i, _) => (i, TypeEnum),
+        Def::Variant(i) => (tcx.parent_def_id(i).unwrap(), TypeEnum),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeTrait),
         Def::SelfTy(_, Some(impl_def_id)) => {
             return impl_def_id
@@ -2774,10 +2776,6 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         _ => return def.def_id()
     };
     if did.is_local() { return did }
-    let tcx = match cx.tcx_opt() {
-        Some(tcx) => tcx,
-        None => return did
-    };
     inline::record_extern_fqn(cx, did, kind);
     if let TypeTrait = kind {
         let t = inline::build_external_trait(cx, tcx, did);

@@ -511,9 +511,8 @@ impl<'a> Context<'a> {
                     if let Some((ref p, _)) = lib.rlib {
                         err.note(&format!("path: {}", p.display()));
                     }
-                    let data = lib.metadata.as_slice();
-                    let name = decoder::get_crate_name(data);
-                    note_crate_name(&mut err, &name);
+                    let crate_info = decoder::get_crate_info(lib.metadata.as_slice());
+                    note_crate_name(&mut err, &crate_info.name);
                 }
                 err.emit();
                 None
@@ -610,33 +609,27 @@ impl<'a> Context<'a> {
             return None;
         }
 
+        let crate_info = decoder::get_crate_info(crate_data);
         if self.should_match_name {
-            match decoder::maybe_get_crate_name(crate_data) {
-                Some(ref name) if self.crate_name == *name => {}
-                _ => { info!("Rejecting via crate name"); return None }
+            if self.crate_name != crate_info.name {
+                info!("Rejecting via crate name"); return None;
             }
         }
-        let hash = match decoder::maybe_get_crate_hash(crate_data) {
-            None => { info!("Rejecting via lack of crate hash"); return None; }
-            Some(h) => h,
-        };
 
-        let triple = match decoder::get_crate_triple(crate_data) {
-            None => { debug!("triple not present"); return None }
-            Some(t) => t,
-        };
-        if triple != self.triple {
-            info!("Rejecting via crate triple: expected {} got {}", self.triple, triple);
+        if crate_info.triple != self.triple {
+            info!("Rejecting via crate triple: expected {} got {}",
+                  self.triple, crate_info.triple);
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: triple.to_string()
+                got: crate_info.triple
             });
             return None;
         }
 
         if let Some(myhash) = self.hash {
-            if *myhash != hash {
-                info!("Rejecting via hash: expected {} got {}", *myhash, hash);
+            if *myhash != crate_info.hash {
+                info!("Rejecting via hash: expected {} got {}",
+                      *myhash, crate_info.hash);
                 self.rejected_via_hash.push(CrateMismatch {
                     path: libpath.to_path_buf(),
                     got: myhash.to_string()
@@ -645,7 +638,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        Some(hash)
+        Some(crate_info.hash)
     }
 
 

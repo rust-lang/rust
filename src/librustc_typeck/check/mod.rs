@@ -3224,7 +3224,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Def::Variant(type_did, _) | Def::Struct(type_did) | Def::Union(type_did) => {
+            Def::Variant(did) => {
+                let type_did = self.tcx.parent_def_id(did).unwrap();
+                Some((type_did, self.tcx.expect_variant_def(def)))
+            }
+            Def::Struct(type_did) | Def::Union(type_did) => {
                 Some((type_did, self.tcx.expect_variant_def(def)))
             }
             Def::TyAlias(did) => {
@@ -4115,10 +4119,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Case 1 and 1b. Reference to a *type* or *enum variant*.
             Def::Struct(def_id) |
             Def::Union(def_id) |
-            Def::Variant(_, def_id) |
+            Def::Variant(def_id) |
             Def::Enum(def_id) |
             Def::TyAlias(def_id) |
-            Def::AssociatedTy(_, def_id) |
+            Def::AssociatedTy(def_id) |
             Def::Trait(def_id) => {
                 // Everything but the final segment should have no
                 // parameters at all.
@@ -4166,7 +4170,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // here. If they do, an error will have been reported
             // elsewhere. (I hope)
             Def::Mod(..) |
-            Def::ForeignMod(..) |
             Def::PrimTy(..) |
             Def::SelfTy(..) |
             Def::TyParam(..) |

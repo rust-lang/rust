@@ -68,7 +68,6 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
         for item in self.cstore.item_children(did) {
             match item.def {
                 Def::Mod(did) |
-                Def::ForeignMod(did) |
                 Def::Trait(did) |
                 Def::Struct(did) |
                 Def::Union(did) |
@@ -84,9 +83,10 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
     }
 
     fn visit_item(&mut self, did: DefId, item: ChildItem) {
-        let inherited_item_level = match item.def {
-            Def::ForeignMod(..) => self.prev_level,
-            _ => if item.vis == Visibility::Public { self.prev_level } else { None }
+        let inherited_item_level = if item.vis == Visibility::Public {
+            self.prev_level
+        } else {
+            None
         };
 
         let item_level = self.update(did, inherited_item_level);
