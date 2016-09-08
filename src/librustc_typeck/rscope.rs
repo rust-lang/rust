@@ -229,17 +229,9 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> StaticRscope<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> RegionScope for StaticRscope<'a, 'gcx, 'tcx> {
     fn anon_regions(&self,
-                    _span: Span,
+                    span: Span,
                     count: usize)
                     -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
-        Ok(vec![ty::ReStatic; count])
-    }
-
-    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
-        Some(self.base_object_lifetime_default(span))
-    }
-
-    fn base_object_lifetime_default(&self, span: Span) -> ty::Region {
         if !self.tcx.sess.features.borrow().static_in_const {
             self.tcx
                 .sess
@@ -248,6 +240,14 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> RegionScope for StaticRscope<'a, 'gcx, 'tcx>
                                  `static_in_const` feature, see #35897")
                 .emit();
         }
+        Ok(vec![ty::ReStatic; count])
+    }
+
+    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
+        Some(self.base_object_lifetime_default(span))
+    }
+
+    fn base_object_lifetime_default(&self, _span: Span) -> ty::Region {
         ty::ReStatic
     }
 }
