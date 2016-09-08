@@ -1,0 +1,8 @@
+error[E0535]: invalid argument
+  --> $DIR/E0535.rs:11:10
+   |
+11 | #[inline(unknown)] //~ ERROR E0535
+   |          ^^^^^^^
+
+error: aborting due to previous error
+
