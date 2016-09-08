@@ -2441,6 +2441,9 @@ The currently implemented features of the reference compiler are:
             into a Rust program. This capability, especially the signature for the
             annotated function, is subject to change.
 
+* `static_in_const` - Enables lifetime elision with a `'static` default for
+                      `const` and `static` item declarations.
+
 * `thread_local` - The usage of the `#[thread_local]` attribute is experimental
                    and should be seen as unstable. This attribute is used to
                    declare a `static` as being unique per-thread leveraging
