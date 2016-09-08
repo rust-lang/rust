@@ -274,9 +274,20 @@ impl<'a> DiagnosticBuilder<'a> {
                                found: &fmt::Display)
                                -> &mut DiagnosticBuilder<'a>
     {
+        self.note_expected_found_extra(label, expected, found, &"", &"")
+    }
+
+    pub fn note_expected_found_extra(&mut self,
+                                     label: &fmt::Display,
+                                     expected: &fmt::Display,
+                                     found: &fmt::Display,
+                                     expected_extra: &fmt::Display,
+                                     found_extra: &fmt::Display)
+                                     -> &mut DiagnosticBuilder<'a>
+    {
         // For now, just attach these as notes
-        self.note(&format!("expected {} `{}`", label, expected));
-        self.note(&format!("   found {} `{}`", label, found));
+        self.note(&format!("expected {} `{}`{}", label, expected, expected_extra));
+        self.note(&format!("   found {} `{}`{}", label, found, found_extra));
         self
     }
 
