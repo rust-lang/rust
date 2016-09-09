@@ -633,6 +633,7 @@ valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt llvm-root "" "set LLVM root"
 valopt python "" "set path to python"
+valopt nodejs "" "set path to nodejs"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "" "Android NDK standalone path (deprecated)"
@@ -747,6 +748,9 @@ python_version=$($CFG_PYTHON -V 2>&1)
 if [ $(echo $python_version | grep -c '^Python 2\.7') -ne 1 ]; then
     err "Found $python_version, but Python 2.7 is required"
 fi
+
+# Checking for node, but not required
+probe CFG_NODEJS nodejs node
 
 # If we have no git directory then we are probably a tarball distribution
 # and shouldn't attempt to load submodules
