@@ -30,6 +30,7 @@ fn main() {
         impl Deref for Thing {
             //~^ ERROR E0046
             //~| NOTE missing `Target` in implementation
+            //~| NOTE type Target;
             fn deref(&self) -> i8 { self.0 }
         }
 

@@ -1105,7 +1105,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         if !is_implemented {
             if !is_provided {
-                missing_items.push(trait_item.name());
+                missing_items.push(trait_item);
             } else if associated_type_overridden {
                 invalidated_items.push(trait_item.name());
             }
@@ -1113,16 +1113,20 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 
     if !missing_items.is_empty() {
-        struct_span_err!(tcx.sess, impl_span, E0046,
+        let mut err = struct_span_err!(tcx.sess, impl_span, E0046,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
-                  .map(|name| name.to_string())
-                  .collect::<Vec<_>>().join("`, `"))
-            .span_label(impl_span, &format!("missing `{}` in implementation",
+                  .map(|trait_item| trait_item.name().to_string())
+                  .collect::<Vec<_>>().join("`, `"));
+        err.span_label(impl_span, &format!("missing `{}` in implementation",
                 missing_items.iter()
-                    .map(|name| name.to_string())
+                    .map(|name| name.name().to_string())
                     .collect::<Vec<_>>().join("`, `"))
-            ).emit();
+            );
+        for trait_item in missing_items {
+            err.note(&(trait_item.signature(tcx)));
+        }
+        err.emit();
     }
 
     if !invalidated_items.is_empty() {

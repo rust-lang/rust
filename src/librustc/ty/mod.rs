@@ -235,6 +235,40 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
             _ => None,
         }
     }
+
+    pub fn signature<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
+        match *self {
+            MethodTraitItem(ref item) => {
+                match tcx.map.get_if_local(item.def_id) {
+                    Some(node) => {
+                        match node.span() {
+                            Some(span) => match tcx.sess.codemap().span_to_oneline_snippet(span) {
+                                Ok(snippet) => snippet,
+                                Err(_) => item.signature(),
+                            },
+                            None => item.signature(),
+                        }
+                    }
+                    None => item.signature(),
+                }
+            }
+            TypeTraitItem(ref item) => item.signature(),
+            ConstTraitItem(ref item) => {
+                match tcx.map.get_if_local(item.def_id) {
+                    Some(node) => {
+                        match node.span() {
+                            Some(span) => match tcx.sess.codemap().span_to_oneline_snippet(span) {
+                                Ok(snippet) => snippet,
+                                Err(_) => item.signature(),
+                            },
+                            None => item.signature(),
+                        }
+                    }
+                    None => item.signature(),
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable)]
@@ -327,6 +361,34 @@ impl<'tcx> Method<'tcx> {
             ImplContainer(id) => id,
         }
     }
+
+    pub fn signature(&self) -> String {
+        let name = self.name.to_string();
+        let unsafety = match self.fty.unsafety {
+            hir::Unsafety::Unsafe => "unsafe ",
+            hir::Unsafety::Normal => "",
+        };
+        let has_gen_types = !self.generics.types.is_empty();
+        let type_args = if has_gen_types {
+            format!("<{}>", self.generics.types.clone().into_iter()
+                .map(|t| t.name.as_str().to_string())
+                .collect::<Vec<String>>()
+                .join(", "))
+        } else {
+            String::new()
+        };
+        let args = self.fty.sig.inputs().0.iter()
+            .map(|t| format!("{:?}", t)).collect::<Vec<_>>().join(", ");
+        let return_type = format!("{:?}", self.fty.sig.output().0);
+        let return_signature = if &return_type == "()" {
+            "".to_string()
+        } else {
+            format!(" -> {}", return_type)
+        };
+
+        // unsafe fn name<'a, T>(args) -> ReturnType
+        format!("{}fn {}{}({}){};", unsafety, name, type_args, args, return_signature)
+    }
 }
 
 impl<'tcx> PartialEq for Method<'tcx> {
@@ -354,6 +416,18 @@ pub struct AssociatedConst<'tcx> {
     pub has_value: bool
 }
 
+impl<'tcx> AssociatedConst<'tcx> {
+    pub fn signature(&self) -> String {
+        // const FOO: Type = DEFAULT;
+        let value = if self.has_value {
+            " = <DEFAULT>"
+        } else {
+            ""
+        };
+        format!("const {}: {:?}{};", self.name.to_string(), self.ty, value)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AssociatedType<'tcx> {
     pub name: Name,
@@ -362,6 +436,13 @@ pub struct AssociatedType<'tcx> {
     pub defaultness: hir::Defaultness,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
+}
+
+impl<'tcx> AssociatedType<'tcx> {
+    pub fn signature(&self) -> String {
+        //// type Type;
+        format!("type {};", self.name.to_string())
+    }
 }
 
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Copy)]

@@ -670,6 +670,63 @@ impl CodeMap {
         }
     }
 
+    /// Reformat `sp`'s snippet to oneline if it is available
+    ///
+    /// Given a snippet like:
+    ///
+    /// ```text
+    /// fn foo< 'lifetime, T >(
+    ///     &self,
+    ///     bar : &Type< 'lifetime, T>)
+    ///     -> std::result::Result<(),
+    ///         Error>;
+    /// ```
+    ///
+    /// it'll return:
+    ///
+    /// ```text
+    /// fn foo<'lifetime, T>(&self, bar: &Type<'lifetime, T>) -> std::result::Result<(), Error>;
+    /// ```
+    pub fn span_to_oneline_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
+        let no_space_after = ["<", "("];
+        let no_space_before = [">", ")", ",", ":", ";"];
+
+        let snippet = self.span_to_snippet(sp);
+        match snippet {
+            Ok(snippet) => {
+                let mut it = snippet.split_whitespace();
+                let mut next = it.next();
+                let mut result = String::new();
+
+                loop {  // Remove spaces after `<` and `(` and before `>`, `)` `:` and `,`
+                    match next {
+                        Some(c) => {
+                            let peek = it.next();
+                            match peek {
+                                Some(n) => {
+                                    result.push_str(c);
+
+                                    if !(no_space_after.into_iter().any(|x| c.ends_with(x)) ||
+                                         no_space_before.into_iter().any(|x| n.starts_with(x))) {
+                                        result.push_str(" ");
+                                    }
+                                    next = peek;
+                                }
+                                None => {  // last item, don't skip
+                                    result.push_str(c);
+                                    next = peek;
+                                }
+                            }
+                        }
+                        None => break,  // end of iter
+                    }
+                }
+                Ok(result)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
         for fm in self.files.borrow().iter() {
             if filename == fm.name {
