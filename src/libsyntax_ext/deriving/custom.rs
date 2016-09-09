@@ -10,12 +10,14 @@
 
 use std::panic;
 
+use errors::FatalError;
 use rustc_macro::{TokenStream, __internal};
 use syntax::ast::{self, ItemKind};
-use syntax::codemap::Span;
+use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan, Span};
 use syntax::ext::base::*;
 use syntax::fold::{self, Folder};
-use errors::FatalError;
+use syntax::parse::token::intern;
+use syntax::print::pprust;
 
 pub struct CustomDerive {
     inner: fn(TokenStream) -> TokenStream,
@@ -31,7 +33,7 @@ impl MultiItemModifier for CustomDerive {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              _meta_item: &ast::MetaItem,
+              meta_item: &ast::MetaItem,
               item: Annotatable)
               -> Vec<Annotatable> {
         let item = match item {
@@ -53,7 +55,17 @@ impl MultiItemModifier for CustomDerive {
             }
         }
 
-        let input_span = item.span;
+        let input_span = Span {
+            expn_id: ecx.codemap().record_expansion(ExpnInfo {
+                call_site: span,
+                callee: NameAndSpan {
+                    format: MacroAttribute(intern(&pprust::meta_item_to_string(meta_item))),
+                    span: Some(span),
+                    allow_internal_unstable: true,
+                },
+            }),
+            ..item.span
+        };
         let input = __internal::new_token_stream(item);
         let res = __internal::set_parse_sess(&ecx.parse_sess, || {
             let inner = self.inner;
