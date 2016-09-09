@@ -1560,13 +1560,19 @@ impl<'a> fmt::Display for Item<'a> {
                 } else {
                     write!(fmt, "Module ")?;
                 },
-            clean::FunctionItem(..) => write!(fmt, "Function ")?,
+            clean::FunctionItem(..) | clean::ForeignFunctionItem(..) =>
+                write!(fmt, "Function ")?,
             clean::TraitItem(..) => write!(fmt, "Trait ")?,
             clean::StructItem(..) => write!(fmt, "Struct ")?,
             clean::UnionItem(..) => write!(fmt, "Union ")?,
             clean::EnumItem(..) => write!(fmt, "Enum ")?,
+            clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
+            clean::MacroItem(..) => write!(fmt, "Macro ")?,
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
-            _ => {}
+            clean::StaticItem(..) | clean::ForeignStaticItem(..) =>
+                write!(fmt, "Static ")?,
+            clean::ConstantItem(..) => write!(fmt, "Constant ")?,
+            _ => unreachable!(),
         }
         if !self.item.is_primitive() {
             let cur = &self.cx.current;
