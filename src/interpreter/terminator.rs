@@ -528,8 +528,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             traits::VtableObject(ref data) => {
                 let idx = self.tcx.get_vtable_index_of_object_method(data, def_id);
                 if let Some(&mut(first_arg, ref mut first_ty)) = first_arg {
-                    self.memory.dump(first_arg.alloc_id);
-                    println!("idx: {}", idx);
                     let (_, vtable) = self.get_fat_ptr(first_arg);
                     let vtable = self.memory.read_ptr(vtable)?;
                     let idx = idx + 3;

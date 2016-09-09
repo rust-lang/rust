@@ -46,7 +46,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         substs,
                         nested: _ }) => {
                     let closure_type = self.tcx.closure_type(closure_def_id, substs);
-                    vec![Some(self.memory.create_closure_ptr(closure_def_id, substs, closure_type))].into_iter()
+                    let fn_ty = ty::BareFnTy {
+                        unsafety: closure_type.unsafety,
+                        abi: closure_type.abi,
+                        sig: closure_type.sig,
+                    };
+                    let fn_ty = self.tcx.mk_bare_fn(fn_ty);
+                    unimplemented!()
+                    //vec![Some(self.memory.create_fn_ptr(closure_def_id, substs.func_substs, fn_ty))].into_iter()
                 }
                 traits::VtableFnPointer(
                     traits::VtableFnPointerData {
