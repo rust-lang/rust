@@ -433,7 +433,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize, align: usize) -> EvalResult<'tcx, ()> {
         self.check_relocation_edges(src, size)?;
 
-        let src_bytes = self.get_bytes_unchecked_mut(src, size)?.as_mut_ptr();
+        let src_bytes = self.get_bytes_unchecked(src, size)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size, align)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
