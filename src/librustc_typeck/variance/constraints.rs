@@ -344,9 +344,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyEnum(def, substs) |
-            ty::TyStruct(def, substs) |
-            ty::TyUnion(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 let item_type = self.tcx().lookup_item_type(def.did);
 
                 // This edge is actually implied by the call to

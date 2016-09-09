@@ -467,8 +467,7 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         // This can be extended to enums and tuples in the future.
-        // (&ty::TyEnum(def_id_a, _), &ty::TyEnum(def_id_b, _)) |
-        (&ty::TyStruct(def_a, _), &ty::TyStruct(def_b, _)) => {
+        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             let src_repr = adt::represent_type(bcx.ccx(), src_ty);

@@ -468,21 +468,21 @@ impl LateLintPass for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
-                (def, cx.tcx.mk_struct(def, Substs::empty(cx.tcx)))
+                (def, cx.tcx.mk_adt(def, Substs::empty(cx.tcx)))
             }
             hir::ItemUnion(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
-                (def, cx.tcx.mk_union(def, Substs::empty(cx.tcx)))
+                (def, cx.tcx.mk_adt(def, Substs::empty(cx.tcx)))
             }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
-                (def, cx.tcx.mk_enum(def, Substs::empty(cx.tcx)))
+                (def, cx.tcx.mk_adt(def, Substs::empty(cx.tcx)))
             }
             _ => return,
         };

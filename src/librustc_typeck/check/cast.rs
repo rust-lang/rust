@@ -79,7 +79,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match t.sty {
             ty::TySlice(_) | ty::TyStr => Some(UnsizeKind::Length),
             ty::TyTrait(ref tty) => Some(UnsizeKind::Vtable(tty.principal.def_id())),
-            ty::TyStruct(def, substs) => {
+            ty::TyAdt(def, substs) if def.is_struct() => {
                 // FIXME(arielb1): do some kind of normalization
                 match def.struct_variant().fields.last() {
                     None => None,

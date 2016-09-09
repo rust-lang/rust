@@ -198,8 +198,8 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
             PatKind::TupleStruct(_, ref subpatterns, ddpos) => {
                 let pat_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
-                    ty::TyStruct(adt_def, _) | ty::TyEnum(adt_def, _) => adt_def,
-                    _ => span_bug!(pat.span, "tuple struct pattern not applied to struct or enum"),
+                    ty::TyAdt(adt_def, _) => adt_def,
+                    _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT"),
                 };
                 let variant_def = adt_def.variant_of_def(self.cx.tcx.expect_def(pat.id));
 
@@ -217,13 +217,11 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
             PatKind::Struct(_, ref fields, _) => {
                 let pat_ty = self.cx.tcx.node_id_to_type(pat.id);
                 let adt_def = match pat_ty.sty {
-                    ty::TyStruct(adt_def, _) |
-                    ty::TyUnion(adt_def, _) |
-                    ty::TyEnum(adt_def, _) => adt_def,
+                    ty::TyAdt(adt_def, _) => adt_def,
                     _ => {
                         span_bug!(
                             pat.span,
-                            "struct pattern not applied to struct or enum");
+                            "struct pattern not applied to an ADT");
                     }
                 };
                 let variant_def = adt_def.variant_of_def(self.cx.tcx.expect_def(pat.id));

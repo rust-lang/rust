@@ -414,11 +414,11 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(a)
         }
 
-        (&ty::TyEnum(a_def, a_substs), &ty::TyEnum(b_def, b_substs))
+        (&ty::TyAdt(a_def, a_substs), &ty::TyAdt(b_def, b_substs))
             if a_def == b_def =>
         {
             let substs = relate_item_substs(relation, a_def.did, a_substs, b_substs)?;
-            Ok(tcx.mk_enum(a_def, substs))
+            Ok(tcx.mk_adt(a_def, substs))
         }
 
         (&ty::TyTrait(ref a_obj), &ty::TyTrait(ref b_obj)) =>
@@ -438,20 +438,6 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                 builtin_bounds: nb,
                 projection_bounds: pb
             }))
-        }
-
-        (&ty::TyStruct(a_def, a_substs), &ty::TyStruct(b_def, b_substs))
-            if a_def == b_def =>
-        {
-            let substs = relate_item_substs(relation, a_def.did, a_substs, b_substs)?;
-            Ok(tcx.mk_struct(a_def, substs))
-        }
-
-        (&ty::TyUnion(a_def, a_substs), &ty::TyUnion(b_def, b_substs))
-            if a_def == b_def =>
-        {
-            let substs = relate_item_substs(relation, a_def.did, a_substs, b_substs)?;
-            Ok(tcx.mk_union(a_def, substs))
         }
 
         (&ty::TyClosure(a_id, a_substs),

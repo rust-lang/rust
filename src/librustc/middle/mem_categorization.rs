@@ -223,8 +223,7 @@ fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
             Ok(deref_ptr(UnsafePtr(mt.mutbl)))
         }
 
-        ty::TyEnum(..) |
-        ty::TyStruct(..) => { // newtype
+        ty::TyAdt(..) => { // newtype
             Ok(deref_interior(InteriorField(PositionalField(0))))
         }
 
@@ -1154,7 +1153,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 }
                 Def::Struct(..) => {
                     match self.pat_ty(&pat)?.sty {
-                        ty::TyStruct(adt_def, _) => {
+                        ty::TyAdt(adt_def, _) => {
                             adt_def.struct_variant().fields.len()
                         }
                         ref ty => {

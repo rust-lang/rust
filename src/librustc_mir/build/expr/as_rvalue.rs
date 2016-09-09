@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Adt {
                 adt_def, variant_index, substs, fields, base
             } => { // see (*) above
-                let is_union = adt_def.adt_kind() == ty::AdtKind::Union;
+                let is_union = adt_def.is_union();
                 let active_field_index = if is_union { Some(fields[0].name.index()) } else { None };
 
                 // first process the set of fields that were provided

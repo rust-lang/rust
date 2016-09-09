@@ -431,7 +431,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 };
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
-                    ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                    ty::TyAdt(def, _) if !def.is_enum() => {
                         let f = def.struct_variant().field_named(ident.node.name);
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
                         filter!(self.span_utils, sub_span, expr.span, None);
@@ -443,14 +443,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         }));
                     }
                     _ => {
-                        debug!("Expected struct type, found {:?}", ty);
+                        debug!("Expected struct or union type, found {:?}", ty);
                         None
                     }
                 }
             }
             ast::ExprKind::Struct(ref path, ..) => {
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
-                    ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                    ty::TyAdt(def, _) if !def.is_enum() => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         filter!(self.span_utils, sub_span, path.span, None);
                         Some(Data::TypeRefData(TypeRefData {
@@ -461,9 +461,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         }))
                     }
                     _ => {
-                        // FIXME ty could legitimately be a TyEnum, but then we will fail
+                        // FIXME ty could legitimately be an enum, but then we will fail
                         // later if we try to look up the fields.
-                        debug!("expected TyStruct, found {:?}", ty);
+                        debug!("expected struct or union, found {:?}", ty);
                         None
                     }
                 }
