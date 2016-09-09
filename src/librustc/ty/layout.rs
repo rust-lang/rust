@@ -555,7 +555,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             }
 
             // Is this the NonZero lang item wrapping a pointer or integer type?
-            (&Univariant { non_zero: true, .. }, &ty::TyStruct(def, substs)) => {
+            (&Univariant { non_zero: true, .. }, &ty::TyAdt(def, substs)) => {
                 let fields = &def.struct_variant().fields;
                 assert_eq!(fields.len(), 1);
                 match *fields[0].ty(tcx, substs).layout(infcx)? {
@@ -573,7 +573,7 @@ impl<'a, 'gcx, 'tcx> Struct {
 
             // Perhaps one of the fields of this struct is non-zero
             // let's recurse and find out
-            (_, &ty::TyStruct(def, substs)) => {
+            (_, &ty::TyAdt(def, substs)) if def.is_struct() => {
                 Struct::non_zero_field_path(infcx, def.struct_variant().fields
                                                       .iter().map(|field| {
                     field.ty(tcx, substs)
@@ -694,7 +694,7 @@ pub enum Layout {
         non_zero: bool
     },
 
-    /// SIMD vectors, from TyStruct marked with #[repr(simd)].
+    /// SIMD vectors, from structs marked with #[repr(simd)].
     Vector {
         element: Primitive,
         count: u64
@@ -715,7 +715,7 @@ pub enum Layout {
         non_zero: bool
     },
 
-    // Remaining variants are all ADTs such as TyStruct, TyEnum or TyTuple.
+    // Remaining variants are all ADTs such as structs, enums or tuples.
 
     /// C-like enums; basically an integer.
     CEnum {
@@ -918,47 +918,26 @@ impl<'a, 'gcx, 'tcx> Layout {
                 Univariant { variant: st, non_zero: false }
             }
 
-            // ADTs.
-            ty::TyStruct(def, substs) => {
-                if ty.is_simd() {
-                    // SIMD vector types.
-                    let element = ty.simd_type(tcx);
-                    match *element.layout(infcx)? {
-                        Scalar { value, .. } => {
-                            return success(Vector {
-                                element: value,
-                                count: ty.simd_size(tcx) as u64
-                            });
-                        }
-                        _ => {
-                            tcx.sess.fatal(&format!("monomorphising SIMD type `{}` with \
-                                                     a non-machine element type `{}`",
-                                                    ty, element));
-                        }
+            // SIMD vector types.
+            ty::TyAdt(def, ..) if def.is_simd() => {
+                let element = ty.simd_type(tcx);
+                match *element.layout(infcx)? {
+                    Scalar { value, .. } => {
+                        return success(Vector {
+                            element: value,
+                            count: ty.simd_size(tcx) as u64
+                        });
+                    }
+                    _ => {
+                        tcx.sess.fatal(&format!("monomorphising SIMD type `{}` with \
+                                                a non-machine element type `{}`",
+                                                ty, element));
                     }
                 }
-                let fields = def.struct_variant().fields.iter().map(|field| {
-                    field.ty(tcx, substs).layout(infcx)
-                });
-                let packed = tcx.lookup_packed(def.did);
-                let mut st = Struct::new(dl, packed);
-                st.extend(dl, fields, ty)?;
+            }
 
-                Univariant {
-                    variant: st,
-                    non_zero: Some(def.did) == tcx.lang_items.non_zero()
-                }
-            }
-            ty::TyUnion(def, substs) => {
-                let fields = def.struct_variant().fields.iter().map(|field| {
-                    field.ty(tcx, substs).layout(infcx)
-                });
-                let packed = tcx.lookup_packed(def.did);
-                let mut un = Union::new(dl, packed);
-                un.extend(dl, fields, ty)?;
-                UntaggedUnion { variants: un }
-            }
-            ty::TyEnum(def, substs) => {
+            // ADTs.
+            ty::TyAdt(def, substs) => {
                 let hint = *tcx.lookup_repr_hints(def.did).get(0)
                     .unwrap_or(&attr::ReprAny);
 
@@ -973,7 +952,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
-                if def.variants.iter().all(|v| v.fields.is_empty()) {
+                if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
                     let (mut min, mut max) = (i64::MAX, i64::MIN);
                     for v in &def.variants {
@@ -991,26 +970,35 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
+                if def.variants.len() == 1 {
+                    // Struct, or union, or univariant enum equivalent to a struct.
+                    // (Typechecking will reject discriminant-sizing attrs.)
+                    assert!(!def.is_enum() || hint == attr::ReprAny);
+                    let fields = def.variants[0].fields.iter().map(|field| {
+                        field.ty(tcx, substs).layout(infcx)
+                    });
+                    let packed = tcx.lookup_packed(def.did);
+                    let layout = if def.is_union() {
+                        let mut un = Union::new(dl, packed);
+                        un.extend(dl, fields, ty)?;
+                        UntaggedUnion { variants: un }
+                    } else {
+                        let mut st = Struct::new(dl, packed);
+                        st.extend(dl, fields, ty)?;
+                        let non_zero = Some(def.did) == tcx.lang_items.non_zero();
+                        Univariant { variant: st, non_zero: non_zero }
+                    };
+                    return success(layout);
+                }
+
                 // Since there's at least one
                 // non-empty body, explicit discriminants should have
                 // been rejected by a checker before this point.
                 for (i, v) in def.variants.iter().enumerate() {
                     if i as u64 != v.disr_val.to_u64_unchecked() {
                         bug!("non-C-like enum {} with specified discriminants",
-                             tcx.item_path_str(def.did));
+                            tcx.item_path_str(def.did));
                     }
-                }
-
-                if def.variants.len() == 1 {
-                    // Equivalent to a struct/tuple/newtype.
-                    // (Typechecking will reject discriminant-sizing attrs.)
-                    assert_eq!(hint, attr::ReprAny);
-                    let fields = def.variants[0].fields.iter().map(|field| {
-                        field.ty(tcx, substs).layout(infcx)
-                    });
-                    let mut st = Struct::new(dl, false);
-                    st.extend(dl, fields, ty)?;
-                    return success(Univariant { variant: st, non_zero: false });
                 }
 
                 // Cache the substituted and normalized variant field types.
@@ -1042,8 +1030,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                                 }
                                 _ => {
                                     bug!("Layout::compute: `{}`'s non-zero \
-                                          `{}` field not scalar?!",
-                                         ty, variants[discr][0])
+                                        `{}` field not scalar?!",
+                                        ty, variants[discr][0])
                                 }
                             }
                         }
@@ -1317,9 +1305,9 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
                 }
             }
 
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
-                if def.variants.is_empty() || def.variants.len() > 2 {
+                if def.is_union() || def.variants.is_empty() || def.variants.len() > 2 {
                     return Err(err);
                 }
 

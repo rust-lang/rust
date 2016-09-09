@@ -86,8 +86,6 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_definition(&mut self, id: ast::NodeId) {
-        use ty::TypeVariants::{TyEnum, TyStruct, TyUnion};
-
         let def = self.tcx.expect_def(id);
 
         // If `bar` is a trait item, make sure to mark Foo as alive in `Foo::bar`
@@ -95,11 +93,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_)
             if self.tcx.trait_of_item(def.def_id()).is_some() => {
                 if let Some(substs) = self.tcx.tables.borrow().item_substs.get(&id) {
-                    match substs.substs.type_at(0).sty {
-                        TyEnum(tyid, _) | TyStruct(tyid, _) | TyUnion(tyid, _) => {
-                            self.check_def_id(tyid.did)
-                        }
-                        _ => {}
+                    if let ty::TyAdt(tyid, _) = substs.substs.type_at(0).sty {
+                        self.check_def_id(tyid.did);
                     }
                 }
             }
@@ -133,23 +128,27 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
         match self.tcx.expr_ty_adjusted(lhs).sty {
-            ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+            ty::TyAdt(def, _) => {
                 self.insert_def_id(def.struct_variant().field_named(name).did);
             }
-            _ => span_bug!(lhs.span, "named field access on non-struct/union"),
+            _ => span_bug!(lhs.span, "named field access on non-ADT"),
         }
     }
 
     fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
-        if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
-            self.insert_def_id(def.struct_variant().fields[idx].did);
+        match self.tcx.expr_ty_adjusted(lhs).sty {
+            ty::TyAdt(def, _) => {
+                self.insert_def_id(def.struct_variant().fields[idx].did);
+            }
+            ty::TyTuple(..) => {}
+            _ => span_bug!(lhs.span, "numeric field access on non-ADT"),
         }
     }
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat,
                                   pats: &[codemap::Spanned<hir::FieldPat>]) {
         let variant = match self.tcx.node_id_to_type(lhs.id).sty {
-            ty::TyStruct(adt, _) | ty::TyUnion(adt, _) | ty::TyEnum(adt, _) => {
+            ty::TyAdt(adt, _) => {
                 adt.variant_of_def(self.tcx.expect_def(lhs.id))
             }
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")

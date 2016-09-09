@@ -488,10 +488,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
                 match (&exp_found.expected.sty, &exp_found.found.sty) {
-                    (&ty::TyEnum(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) |
-                    (&ty::TyStruct(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
-                    (&ty::TyEnum(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
-                    (&ty::TyStruct(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) => {
+                    (&ty::TyAdt(exp_adt, _), &ty::TyAdt(found_adt, _)) => {
                         report_path_match(err, exp_adt.did, found_adt.did);
                     },
                     _ => ()

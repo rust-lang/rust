@@ -1356,7 +1356,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                 };
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
-                    ty::TyStruct(def, _) => {
+                    ty::TyAdt(def, _) => {
                         let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);
                         if !self.span.filter_generated(sub_span, ex.span) {
                             self.dumper.variable_ref(VariableRefData {

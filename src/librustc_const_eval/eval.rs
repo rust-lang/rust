@@ -257,8 +257,11 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 span,
                 format!("floating point constants cannot be used in patterns"));
         }
-        ty::TyEnum(adt_def, _) |
-        ty::TyStruct(adt_def, _) => {
+        ty::TyAdt(adt_def, _) if adt_def.is_union() => {
+            // Matching on union fields is unsafe, we can't hide it in constants
+            tcx.sess.span_err(span, "cannot use unions in constant patterns");
+        }
+        ty::TyAdt(adt_def, _) => {
             if !tcx.has_attr(adt_def.did, "structural_match") {
                 tcx.sess.add_lint(
                     lint::builtin::ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
@@ -270,10 +273,6 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             tcx.item_path_str(adt_def.did),
                             tcx.item_path_str(adt_def.did)));
             }
-        }
-        ty::TyUnion(..) => {
-            // Matching on union fields is unsafe, we can't hide it in constants
-            tcx.sess.span_err(span, "cannot use unions in constant patterns");
         }
         _ => { }
     }
@@ -1039,7 +1038,7 @@ fn infer<'a, 'tcx>(i: ConstInt,
         (&ty::TyInt(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
         (&ty::TyUint(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
 
-        (&ty::TyEnum(ref adt, _), i) => {
+        (&ty::TyAdt(adt, _), i) if adt.is_enum() => {
             let hints = tcx.lookup_repr_hints(adt.did);
             let int_ty = tcx.enum_repr_type(hints.iter().next());
             infer(i, tcx, &int_ty.to_ty(tcx).sty)
@@ -1230,7 +1229,7 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
                     infer(Infer(n), tcx, &ty::TyUint(uty)).map(Integral)
                 },
                 None => Ok(Integral(Infer(n))),
-                Some(&ty::TyEnum(ref adt, _)) => {
+                Some(&ty::TyAdt(adt, _)) => {
                     let hints = tcx.lookup_repr_hints(adt.did);
                     let int_ty = tcx.enum_repr_type(hints.iter().next());
                     infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty).map(Integral)

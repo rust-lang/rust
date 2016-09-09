@@ -136,9 +136,7 @@ impl LateLintPass for UnusedResults {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
             ty::TyBool => return,
-            ty::TyStruct(def, _) |
-            ty::TyUnion(def, _) |
-            ty::TyEnum(def, _) => {
+            ty::TyAdt(def, _) => {
                 let attrs = cx.tcx.get_attrs(def.did);
                 check_must_use(cx, &attrs[..], s.span)
             }

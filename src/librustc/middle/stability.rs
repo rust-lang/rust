@@ -20,7 +20,7 @@ use lint;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
-use ty::{self, TyCtxt};
+use ty::{self, TyCtxt, AdtKind};
 use middle::privacy::AccessLevels;
 use syntax::parse::token::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
@@ -561,17 +561,19 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
+                ty::TyAdt(def, _) => {
                     def.struct_variant().field_named(field.node).did
                 }
                 _ => span_bug!(e.span,
-                               "stability::check_expr: named field access on non-struct/union")
+                               "stability::check_expr: named field access on non-ADT")
             }
         }
         hir::ExprTupField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) => def.struct_variant().fields[field.node].did,
+                ty::TyAdt(def, _) => {
+                    def.struct_variant().fields[field.node].did
+                }
                 ty::TyTuple(..) => return,
                 _ => span_bug!(e.span,
                                "stability::check_expr: unnamed field access on \
@@ -579,31 +581,28 @@ pub fn check_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, e: &hir::Expr,
             }
         }
         hir::ExprStruct(_, ref expr_fields, _) => {
-            let type_ = tcx.expr_ty(e);
-            match type_.sty {
-                ty::TyStruct(def, _) | ty::TyUnion(def, _) => {
-                    // check the stability of each field that appears
-                    // in the construction expression.
-                    for field in expr_fields {
-                        let did = def.struct_variant()
-                            .field_named(field.name.node)
-                            .did;
-                        maybe_do_stability_check(tcx, did, field.span, cb);
-                    }
+            match tcx.expr_ty(e).sty {
+                ty::TyAdt(adt, ..) => match adt.adt_kind() {
+                    AdtKind::Struct | AdtKind::Union => {
+                        // check the stability of each field that appears
+                        // in the construction expression.
+                        for field in expr_fields {
+                            let did = adt.struct_variant().field_named(field.name.node).did;
+                            maybe_do_stability_check(tcx, did, field.span, cb);
+                        }
 
-                    // we're done.
-                    return
-                }
-                // we don't look at stability attributes on
-                // struct-like enums (yet...), but it's definitely not
-                // a bug to have construct one.
-                ty::TyEnum(..) => return,
-                _ => {
-                    span_bug!(e.span,
-                              "stability::check_expr: struct construction \
-                               of non-struct/union, type {:?}",
-                              type_);
-                }
+                        // we're done.
+                        return
+                    }
+                    AdtKind::Enum => {
+                        // we don't look at stability attributes on
+                        // struct-like enums (yet...), but it's definitely not
+                        // a bug to have construct one.
+                        return
+                    }
+                },
+                ref ty => span_bug!(e.span, "stability::check_expr: struct \
+                                         construction of non-ADT type: {:?}", ty)
             }
         }
         _ => return
@@ -648,10 +647,9 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
-    let v = match tcx.pat_ty_opt(pat) {
-        Some(&ty::TyS { sty: ty::TyStruct(def, _), .. }) |
-        Some(&ty::TyS { sty: ty::TyUnion(def, _), .. }) => def.struct_variant(),
-        Some(_) | None => return,
+    let v = match tcx.pat_ty_opt(pat).map(|ty| &ty.sty) {
+        Some(&ty::TyAdt(adt, _)) if !adt.is_enum() => adt.struct_variant(),
+        _ => return,
     };
     match pat.node {
         // Foo(a, b, c)

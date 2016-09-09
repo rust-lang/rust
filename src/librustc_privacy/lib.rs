@@ -384,11 +384,9 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 
     // Checks that a field is in scope.
     fn check_field(&mut self, span: Span, def: ty::AdtDef<'tcx>, field: ty::FieldDef<'tcx>) {
-        if def.adt_kind() != ty::AdtKind::Enum &&
-           !field.vis.is_accessible_from(self.curitem, &self.tcx.map) {
-            let kind_descr = if def.adt_kind() == ty::AdtKind::Union { "union" } else { "struct" };
+        if !def.is_enum() && !field.vis.is_accessible_from(self.curitem, &self.tcx.map) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
-                      field.name, kind_descr, self.tcx.item_path_str(def.did))
+                      field.name, def.variant_descr(), self.tcx.item_path_str(def.did))
                 .span_label(span, &format!("field `{}` is private", field.name))
                 .emit();
         }
@@ -438,7 +436,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 // (i.e. `all_fields - fields`), just check them all,
                 // unless the ADT is a union, then unmentioned fields
                 // are not checked.
-                if adt.adt_kind() == ty::AdtKind::Union {
+                if adt.is_union() {
                     for expr_field in expr_fields {
                         self.check_field(expr.span, adt, variant.field_named(expr_field.name.node));
                     }
@@ -511,7 +509,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             PatKind::TupleStruct(_, ref fields, ddpos) => {
                 match self.tcx.pat_ty(pattern).sty {
-                    ty::TyStruct(def, _) => {
+                    // enum fields have no privacy at this time
+                    ty::TyAdt(def, _) if !def.is_enum() => {
                         let expected_len = def.struct_variant().fields.len();
                         for (i, field) in fields.iter().enumerate_and_adjust(expected_len, ddpos) {
                             if let PatKind::Wild = field.node {
@@ -519,9 +518,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                             }
                             self.check_field(field.span, def, &def.struct_variant().fields[i]);
                         }
-                    }
-                    ty::TyEnum(..) => {
-                        // enum fields have no privacy at this time
                     }
                     _ => {}
                 }

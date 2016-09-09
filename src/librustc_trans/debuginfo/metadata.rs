@@ -30,7 +30,7 @@ use rustc::hir;
 use {type_of, adt, machine, monomorphize};
 use common::CrateContext;
 use type_::Type;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, AdtKind, Ty};
 use session::config;
 use util::nodemap::FnvHashMap;
 use util::common::path2cstr;
@@ -176,18 +176,10 @@ impl<'tcx> TypeMap<'tcx> {
             ty::TyFloat(_) => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
-            ty::TyEnum(def, substs) => {
-                unique_type_id.push_str("enum ");
+            ty::TyAdt(def, substs) => {
+                unique_type_id.push_str(&(String::from(def.descr()) + " "));
                 from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
-            },
-            ty::TyStruct(def, substs) => {
-                unique_type_id.push_str("struct ");
-                from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
-            },
-            ty::TyUnion(def, substs) => {
-                unique_type_id.push_str("union ");
-                from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
-            },
+            }
             ty::TyTuple(component_types) if component_types.is_empty() => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
@@ -705,13 +697,6 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyTuple(ref elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::TyEnum(def, _) => {
-            prepare_enum_metadata(cx,
-                                  t,
-                                  def.did,
-                                  unique_type_id,
-                                  usage_site_span).finalize(cx)
-        }
         ty::TyArray(typ, len) => {
             fixed_vec_metadata(cx, unique_type_id, typ, Some(len as u64), usage_site_span)
         }
@@ -779,18 +764,27 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }
-        ty::TyStruct(..) => {
-            prepare_struct_metadata(cx,
+        ty::TyAdt(def, ..) => match def.adt_kind() {
+            AdtKind::Struct => {
+                prepare_struct_metadata(cx,
+                                        t,
+                                        unique_type_id,
+                                        usage_site_span).finalize(cx)
+            }
+            AdtKind::Union => {
+                prepare_union_metadata(cx,
                                     t,
                                     unique_type_id,
                                     usage_site_span).finalize(cx)
-        }
-        ty::TyUnion(..) => {
-            prepare_union_metadata(cx,
-                                   t,
-                                   unique_type_id,
-                                   usage_site_span).finalize(cx)
-        }
+            }
+            AdtKind::Enum => {
+                prepare_enum_metadata(cx,
+                                    t,
+                                    def.did,
+                                    unique_type_id,
+                                    usage_site_span).finalize(cx)
+            }
+        },
         ty::TyTuple(ref elements) => {
             prepare_tuple_metadata(cx,
                                    t,
@@ -1134,8 +1128,8 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let struct_llvm_type = type_of::in_memory_type_of(cx, struct_type);
 
     let (struct_def_id, variant, substs) = match struct_type.sty {
-        ty::TyStruct(def, substs) => (def.did, def.struct_variant(), substs),
-        _ => bug!("prepare_struct_metadata on a non-struct")
+        ty::TyAdt(def, substs) => (def.did, def.struct_variant(), substs),
+        _ => bug!("prepare_struct_metadata on a non-ADT")
     };
 
     let (containing_scope, _) = get_namespace_and_span_for_item(cx, struct_def_id);
@@ -1250,8 +1244,8 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let union_llvm_type = type_of::in_memory_type_of(cx, union_type);
 
     let (union_def_id, variant, substs) = match union_type.sty {
-        ty::TyUnion(def, substs) => (def.did, def.struct_variant(), substs),
-        _ => bug!("prepare_union_metadata on a non-union")
+        ty::TyAdt(def, substs) => (def.did, def.struct_variant(), substs),
+        _ => bug!("prepare_union_metadata on a non-ADT")
     };
 
     let (containing_scope, _) = get_namespace_and_span_for_item(cx, union_def_id);

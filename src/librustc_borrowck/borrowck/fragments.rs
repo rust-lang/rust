@@ -21,7 +21,7 @@ use borrowck::LoanPathElem::{LpDeref, LpInterior};
 use borrowck::move_data::InvalidMovePathIndex;
 use borrowck::move_data::{MoveData, MovePathIndex};
 use rustc::hir::def_id::{DefId};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, AdtKind, TyCtxt};
 use rustc::middle::mem_categorization as mc;
 
 use std::mem;
@@ -422,8 +422,8 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
             variant_did);
     };
 
-    match (&parent_ty.sty, enum_variant_info) {
-        (&ty::TyTuple(ref v), None) => {
+    match parent_ty.sty {
+        ty::TyTuple(ref v) => {
             let tuple_idx = match *origin_field_name {
                 mc::PositionalField(tuple_idx) => tuple_idx,
                 mc::NamedField(_) =>
@@ -438,69 +438,68 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
             }
         }
 
-        (&ty::TyStruct(def, _), None) => {
-            match *origin_field_name {
-                mc::NamedField(ast_name) => {
-                    for f in &def.struct_variant().fields {
-                        if f.name == ast_name {
-                            continue;
+        ty::TyAdt(def, ..) => match def.adt_kind() {
+            AdtKind::Struct => {
+                match *origin_field_name {
+                    mc::NamedField(ast_name) => {
+                        for f in &def.struct_variant().fields {
+                            if f.name == ast_name {
+                                continue;
+                            }
+                            let field_name = mc::NamedField(f.name);
+                            add_fragment_sibling_local(field_name, None);
                         }
-                        let field_name = mc::NamedField(f.name);
-                        add_fragment_sibling_local(field_name, None);
                     }
-                }
-                mc::PositionalField(tuple_idx) => {
-                    for (i, _f) in def.struct_variant().fields.iter().enumerate() {
-                        if i == tuple_idx {
-                            continue
+                    mc::PositionalField(tuple_idx) => {
+                        for (i, _f) in def.struct_variant().fields.iter().enumerate() {
+                            if i == tuple_idx {
+                                continue
+                            }
+                            let field_name = mc::PositionalField(i);
+                            add_fragment_sibling_local(field_name, None);
                         }
-                        let field_name = mc::PositionalField(i);
-                        add_fragment_sibling_local(field_name, None);
-                    }
-                }
-            }
-        }
-
-        (&ty::TyUnion(..), None) => {
-            // Do nothing, all union fields are moved/assigned together.
-        }
-
-        (&ty::TyEnum(def, _), ref enum_variant_info) => {
-            let variant = match *enum_variant_info {
-                Some((vid, ref _lp2)) => def.variant_with_id(vid),
-                None => {
-                    assert!(def.is_univariant());
-                    &def.variants[0]
-                }
-            };
-            match *origin_field_name {
-                mc::NamedField(ast_name) => {
-                    for field in &variant.fields {
-                        if field.name == ast_name {
-                            continue;
-                        }
-                        let field_name = mc::NamedField(field.name);
-                        add_fragment_sibling_local(field_name, Some(variant.did));
-                    }
-                }
-                mc::PositionalField(tuple_idx) => {
-                    for (i, _f) in variant.fields.iter().enumerate() {
-                        if tuple_idx == i {
-                            continue;
-                        }
-                        let field_name = mc::PositionalField(i);
-                        add_fragment_sibling_local(field_name, None);
                     }
                 }
             }
-        }
+            AdtKind::Union => {
+                // Do nothing, all union fields are moved/assigned together.
+            }
+            AdtKind::Enum => {
+                let variant = match enum_variant_info {
+                    Some((vid, ref _lp2)) => def.variant_with_id(vid),
+                    None => {
+                        assert!(def.is_univariant());
+                        &def.variants[0]
+                    }
+                };
+                match *origin_field_name {
+                    mc::NamedField(ast_name) => {
+                        for field in &variant.fields {
+                            if field.name == ast_name {
+                                continue;
+                            }
+                            let field_name = mc::NamedField(field.name);
+                            add_fragment_sibling_local(field_name, Some(variant.did));
+                        }
+                    }
+                    mc::PositionalField(tuple_idx) => {
+                        for (i, _f) in variant.fields.iter().enumerate() {
+                            if tuple_idx == i {
+                                continue;
+                            }
+                            let field_name = mc::PositionalField(i);
+                            add_fragment_sibling_local(field_name, None);
+                        }
+                    }
+                }
+            }
+        },
 
-        ref sty_and_variant_info => {
+        ref ty => {
             let opt_span = origin_id.and_then(|id|tcx.map.opt_span(id));
             span_bug!(opt_span.unwrap_or(DUMMY_SP),
                       "type {:?} ({:?}) is not fragmentable",
-                      parent_ty,
-                      sty_and_variant_info);
+                      parent_ty, ty);
         }
     }
 }

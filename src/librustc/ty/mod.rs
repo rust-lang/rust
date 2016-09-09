@@ -952,9 +952,7 @@ impl<'tcx> TraitPredicate<'tcx> {
             self.input_types()
                 .flat_map(|t| t.walk())
                 .filter_map(|t| match t.sty {
-                    ty::TyStruct(adt_def, _) |
-                    ty::TyUnion(adt_def, _) |
-                    ty::TyEnum(adt_def, _) =>
+                    ty::TyAdt(adt_def, _) =>
                         Some(adt_def.did),
                     _ =>
                         None
@@ -1573,15 +1571,46 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
         self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK_VALID)
     }
 
+    #[inline]
+    pub fn is_struct(&self) -> bool {
+        !self.is_union() && !self.is_enum()
+    }
+
+    #[inline]
+    pub fn is_union(&self) -> bool {
+        self.flags.get().intersects(AdtFlags::IS_UNION)
+    }
+
+    #[inline]
+    pub fn is_enum(&self) -> bool {
+        self.flags.get().intersects(AdtFlags::IS_ENUM)
+    }
+
     /// Returns the kind of the ADT - Struct or Enum.
     #[inline]
     pub fn adt_kind(&self) -> AdtKind {
-        if self.flags.get().intersects(AdtFlags::IS_ENUM) {
+        if self.is_enum() {
             AdtKind::Enum
-        } else if self.flags.get().intersects(AdtFlags::IS_UNION) {
+        } else if self.is_union() {
             AdtKind::Union
         } else {
             AdtKind::Struct
+        }
+    }
+
+    pub fn descr(&self) -> &'static str {
+        match self.adt_kind() {
+            AdtKind::Struct => "struct",
+            AdtKind::Union => "union",
+            AdtKind::Enum => "enum",
+        }
+    }
+
+    pub fn variant_descr(&self) -> &'static str {
+        match self.adt_kind() {
+            AdtKind::Struct => "struct",
+            AdtKind::Union => "union",
+            AdtKind::Enum => "variant",
         }
     }
 
@@ -1622,8 +1651,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     /// Asserts this is a struct and returns the struct's unique
     /// variant.
     pub fn struct_variant(&self) -> &VariantDefData<'gcx, 'container> {
-        let adt_kind = self.adt_kind();
-        assert!(adt_kind == AdtKind::Struct || adt_kind == AdtKind::Union);
+        assert!(!self.is_enum());
         &self.variants[0]
     }
 
@@ -1832,7 +1860,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
                 }
             }
 
-            TyEnum(adt, substs) | TyStruct(adt, substs) | TyUnion(adt, substs) => {
+            TyAdt(adt, substs) => {
                 // recursive case
                 let adt = tcx.lookup_adt_def_master(adt.did);
                 adt.calculate_sized_constraint_inner(tcx, stack);

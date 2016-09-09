@@ -261,7 +261,7 @@ fn lvalue_contents_drop_state_cannot_differ<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                    lv, ty);
             true
         }
-        ty::TyStruct(def, _) | ty::TyUnion(def, _) | ty::TyEnum(def, _) if def.has_dtor() => {
+        ty::TyAdt(def, _) if def.has_dtor() => {
             debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} Drop => false",
                    lv, ty);
             true

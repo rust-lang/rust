@@ -19,7 +19,7 @@ use rustc::hir::def::Def;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
-use rustc::ty::{self, VariantDef, Ty};
+use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::mir::repr::*;
 use rustc::hir;
@@ -459,48 +459,50 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprStruct(_, ref fields, ref base) => {
             match expr_ty.sty {
-                ty::TyStruct(adt, substs) | ty::TyUnion(adt, substs) => {
-                    let field_refs = field_refs(&adt.variants[0], fields);
-                    ExprKind::Adt {
-                        adt_def: adt,
-                        variant_index: 0,
-                        substs: substs,
-                        fields: field_refs,
-                        base: base.as_ref().map(|base| {
-                            FruInfo {
-                                base: base.to_ref(),
-                                field_types: cx.tcx.tables
-                                    .borrow()
-                                    .fru_field_types[&expr.id]
-                                    .clone()
-                            }
-                        })
+                ty::TyAdt(adt, substs) => match adt.adt_kind() {
+                    AdtKind::Struct | AdtKind::Union => {
+                        let field_refs = field_refs(&adt.variants[0], fields);
+                        ExprKind::Adt {
+                            adt_def: adt,
+                            variant_index: 0,
+                            substs: substs,
+                            fields: field_refs,
+                            base: base.as_ref().map(|base| {
+                                FruInfo {
+                                    base: base.to_ref(),
+                                    field_types: cx.tcx.tables
+                                        .borrow()
+                                        .fru_field_types[&expr.id]
+                                        .clone()
+                                }
+                            })
+                        }
                     }
-                }
-                ty::TyEnum(adt, substs) => {
-                    match cx.tcx.expect_def(expr.id) {
-                        Def::Variant(enum_id, variant_id) => {
-                            debug_assert!(adt.did == enum_id);
-                            assert!(base.is_none());
+                    AdtKind::Enum => {
+                        match cx.tcx.expect_def(expr.id) {
+                            Def::Variant(enum_id, variant_id) => {
+                                debug_assert!(adt.did == enum_id);
+                                assert!(base.is_none());
 
-                            let index = adt.variant_index_with_id(variant_id);
-                            let field_refs = field_refs(&adt.variants[index], fields);
-                            ExprKind::Adt {
-                                adt_def: adt,
-                                variant_index: index,
-                                substs: substs,
-                                fields: field_refs,
-                                base: None
+                                let index = adt.variant_index_with_id(variant_id);
+                                let field_refs = field_refs(&adt.variants[index], fields);
+                                ExprKind::Adt {
+                                    adt_def: adt,
+                                    variant_index: index,
+                                    substs: substs,
+                                    fields: field_refs,
+                                    base: None
+                                }
+                            }
+                            ref def => {
+                                span_bug!(
+                                    expr.span,
+                                    "unexpected def: {:?}",
+                                    def);
                             }
                         }
-                        ref def => {
-                            span_bug!(
-                                expr.span,
-                                "unexpected def: {:?}",
-                                def);
-                        }
                     }
-                }
+                },
                 _ => {
                     span_bug!(
                         expr.span,
@@ -579,13 +581,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                              body: block::to_expr_ref(cx, body) },
         hir::ExprField(ref source, name) => {
             let index = match cx.tcx.expr_ty_adjusted(source).sty {
-                ty::TyStruct(adt_def, _) | ty::TyUnion(adt_def, _) =>
+                ty::TyAdt(adt_def, _) =>
                     adt_def.variants[0].index_of_field_named(name.node),
                 ref ty =>
-                    span_bug!(
-                        expr.span,
-                        "field of non-struct: {:?}",
-                        ty),
+                    span_bug!(expr.span, "field of non-ADT: {:?}", ty),
             };
             let index = index.unwrap_or_else(|| {
                 span_bug!(
@@ -680,7 +679,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ty::TyFnDef(..) => def_id,
             // A unit struct which is used as a value. We return a completely different ExprKind
             // here to account for this special case.
-            ty::TyStruct(adt_def, substs) => return ExprKind::Adt {
+            ty::TyAdt(adt_def, substs) => return ExprKind::Adt {
                 adt_def: adt_def,
                 variant_index: 0,
                 substs: substs,
@@ -694,7 +693,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // expression.
             ty::TyFnDef(..) => variant_id,
             // A unit variant, similar special case to the struct case above.
-            ty::TyEnum(adt_def, substs) => {
+            ty::TyAdt(adt_def, substs) => {
                 debug_assert!(adt_def.did == enum_id);
                 let index = adt_def.variant_index_with_id(variant_id);
                 return ExprKind::Adt {

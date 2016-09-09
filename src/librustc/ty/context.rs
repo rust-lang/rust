@@ -27,7 +27,7 @@ use ty::subst::Substs;
 use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants};
-use ty::{AdtDef, ClosureSubsts, Region};
+use ty::{AdtKind, AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
 use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitObject};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
@@ -620,7 +620,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn intern_adt_def(self,
                           did: DefId,
-                          kind: ty::AdtKind,
+                          kind: AdtKind,
                           variants: Vec<ty::VariantDefData<'gcx, 'gcx>>)
                           -> ty::AdtDefMaster<'gcx> {
         let def = ty::AdtDefData::new(self, did, kind, variants);
@@ -1032,8 +1032,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
-            TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr, TyTrait,
-            TyStruct, TyUnion, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
+            TyAdt, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
+            TyTrait, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("BareFnTy interner: #{}", self.interners.bare_fn.borrow().len());
@@ -1227,9 +1227,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_imm_ref(self.mk_region(ty::ReStatic), self.mk_str())
     }
 
-    pub fn mk_enum(self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_adt(self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
-        self.mk_ty(TyEnum(def, substs))
+        self.mk_ty(TyAdt(def, substs))
     }
 
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -1314,16 +1314,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // take a copy of substs so that we own the vectors inside
         let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
         self.mk_ty(TyProjection(inner))
-    }
-
-    pub fn mk_struct(self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-        // take a copy of substs so that we own the vectors inside
-        self.mk_ty(TyStruct(def, substs))
-    }
-
-    pub fn mk_union(self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-        // take a copy of substs so that we own the vectors inside
-        self.mk_ty(TyUnion(def, substs))
     }
 
     pub fn mk_closure(self,

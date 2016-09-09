@@ -67,7 +67,7 @@ use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
-use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
+use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use rustc::ty::{VariantKind};
 use rustc::ty::util::IntTypeExt;
 use rscope::*;
@@ -1062,7 +1062,7 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ctor_id = if !def.is_struct() { Some(ccx.tcx.map.local_def_id(def.id())) } else { None };
     let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name,
                                                ConstInt::Infer(0), def)];
-    let adt = ccx.tcx.intern_adt_def(did, ty::AdtKind::Struct, variants);
+    let adt = ccx.tcx.intern_adt_def(did, AdtKind::Struct, variants);
     if let Some(ctor_id) = ctor_id {
         // Make adt definition available through constructor id as well.
         ccx.tcx.insert_adt_def(ctor_id, adt);
@@ -1077,7 +1077,7 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 {
     let did = ccx.tcx.map.local_def_id(it.id);
     let variants = vec![convert_struct_variant(ccx, did, it.name, ConstInt::Infer(0), def)];
-    ccx.tcx.intern_adt_def(did, ty::AdtKind::Union, variants)
+    ccx.tcx.intern_adt_def(did, AdtKind::Union, variants)
 }
 
     fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, e: &hir::Expr)
@@ -1157,7 +1157,7 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let did = tcx.map.local_def_id(v.node.data.id());
         convert_struct_variant(ccx, did, v.node.name, disr, &v.node.data)
     }).collect();
-    tcx.intern_adt_def(tcx.map.local_def_id(it.id), ty::AdtKind::Enum, variants)
+    tcx.intern_adt_def(tcx.map.local_def_id(it.id), AdtKind::Enum, variants)
 }
 
 /// Ensures that the super-predicates of the trait with def-id
@@ -1581,17 +1581,17 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     ItemEnum(ref ei, ref generics) => {
                         let def = convert_enum_def(ccx, item, ei);
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
-                        ccx.tcx.mk_enum(def, substs)
+                        ccx.tcx.mk_adt(def, substs)
                     }
                     ItemStruct(ref si, ref generics) => {
                         let def = convert_struct_def(ccx, item, si);
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
-                        ccx.tcx.mk_struct(def, substs)
+                        ccx.tcx.mk_adt(def, substs)
                     }
                     ItemUnion(ref un, ref generics) => {
                         let def = convert_union_def(ccx, item, un);
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
-                        ccx.tcx.mk_union(def, substs)
+                        ccx.tcx.mk_adt(def, substs)
                     }
                     ItemDefaultImpl(..) |
                     ItemTrait(..) |

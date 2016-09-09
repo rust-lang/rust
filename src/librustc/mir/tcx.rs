@@ -40,7 +40,7 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
             LvalueTy::Ty { ty } =>
                 ty,
             LvalueTy::Downcast { adt_def, substs, variant_index: _ } =>
-                tcx.mk_enum(adt_def, substs),
+                tcx.mk_adt(adt_def, substs),
         }
     }
 
@@ -75,7 +75,8 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
             }
             ProjectionElem::Downcast(adt_def1, index) =>
                 match self.to_ty(tcx).sty {
-                    ty::TyEnum(adt_def, substs) => {
+                    ty::TyAdt(adt_def, substs) => {
+                        assert!(adt_def.is_enum());
                         assert!(index < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
                         LvalueTy::Downcast { adt_def: adt_def,
@@ -83,7 +84,7 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                                              variant_index: index }
                     }
                     _ => {
-                        bug!("cannot downcast non-enum type: `{:?}`", self)
+                        bug!("cannot downcast non-ADT type: `{:?}`", self)
                     }
                 },
             ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }

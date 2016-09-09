@@ -27,7 +27,7 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use hir::def_id::DefId;
 use infer::{self, InferCtxt, TypeOrigin};
-use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
 use ty::fold::TypeFolder;
@@ -151,32 +151,30 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::TyBool => Some(0),
                 ty::TyChar => Some(1),
                 ty::TyStr => Some(2),
-                ty::TyInt(..) | ty::TyUint(..) |
-                ty::TyInfer(ty::IntVar(..)) => Some(3),
+                ty::TyInt(..) | ty::TyUint(..) | ty::TyInfer(ty::IntVar(..)) => Some(3),
                 ty::TyFloat(..) | ty::TyInfer(ty::FloatVar(..)) => Some(4),
-                ty::TyEnum(..) => Some(5),
-                ty::TyStruct(..) => Some(6),
-                ty::TyBox(..) | ty::TyRef(..) | ty::TyRawPtr(..) => Some(7),
-                ty::TyArray(..) | ty::TySlice(..) => Some(8),
-                ty::TyFnDef(..) | ty::TyFnPtr(..) => Some(9),
-                ty::TyTrait(..) => Some(10),
-                ty::TyClosure(..) => Some(11),
-                ty::TyTuple(..) => Some(12),
-                ty::TyProjection(..) => Some(13),
-                ty::TyParam(..) => Some(14),
-                ty::TyAnon(..) => Some(15),
-                ty::TyNever => Some(16),
-                ty::TyUnion(..) => Some(17),
+                ty::TyBox(..) | ty::TyRef(..) | ty::TyRawPtr(..) => Some(5),
+                ty::TyArray(..) | ty::TySlice(..) => Some(6),
+                ty::TyFnDef(..) | ty::TyFnPtr(..) => Some(7),
+                ty::TyTrait(..) => Some(8),
+                ty::TyClosure(..) => Some(9),
+                ty::TyTuple(..) => Some(10),
+                ty::TyProjection(..) => Some(11),
+                ty::TyParam(..) => Some(12),
+                ty::TyAnon(..) => Some(13),
+                ty::TyNever => Some(14),
+                ty::TyAdt(adt, ..) => match adt.adt_kind() {
+                    AdtKind::Struct => Some(15),
+                    AdtKind::Union => Some(16),
+                    AdtKind::Enum => Some(17),
+                },
                 ty::TyInfer(..) | ty::TyError => None
             }
         }
 
         match (type_category(a), type_category(b)) {
             (Some(cat_a), Some(cat_b)) => match (&a.sty, &b.sty) {
-                (&ty::TyStruct(def_a, _), &ty::TyStruct(def_b, _)) |
-                (&ty::TyUnion(def_a, _), &ty::TyUnion(def_b, _)) |
-                (&ty::TyEnum(def_a, _), &ty::TyEnum(def_b, _)) =>
-                    def_a == def_b,
+                (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => def_a == def_b,
                 _ => cat_a == cat_b
             },
             // infer and error can be equated to all types

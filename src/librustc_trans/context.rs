@@ -223,13 +223,9 @@ impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
         let def_ids: Vec<DefId> =
             key.walk()
                .filter_map(|t| match t.sty {
-                   ty::TyStruct(adt_def, _) |
-                   ty::TyEnum(adt_def, _) =>
-                       Some(adt_def.did),
-                   ty::TyProjection(ref proj) =>
-                       Some(proj.trait_ref.def_id),
-                   _ =>
-                       None
+                   ty::TyAdt(adt_def, _) => Some(adt_def.did),
+                   ty::TyProjection(ref proj) => Some(proj.trait_ref.def_id),
+                   _ => None,
                })
                .collect();
         DepNode::TraitSelect(def_ids)
