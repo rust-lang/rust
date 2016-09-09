@@ -285,3 +285,16 @@ fn complex_if_else() {
         yo();
     }
 }
+
+fn issue1106() {
+    {
+    if let hir::ItemEnum(ref enum_def, ref generics) = self.ast_map.expect_item(enum_node_id).node {
+    }
+    }
+
+    for entry in
+    WalkDir::new(path)
+        .into_iter()
+        .filter_entry(|entry| exclusions.filter_entry(entry)) {
+    }
+}

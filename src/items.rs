@@ -568,7 +568,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                             split_at_for: bool)
                             -> Option<String> {
     if let ast::ItemKind::Impl(unsafety, polarity, ref generics, ref trait_ref, ref self_ty, _) =
-           item.node {
+        item.node {
         let mut result = String::new();
 
         result.push_str(&*format_visibility(&item.vis));
@@ -670,7 +670,7 @@ pub fn format_struct(context: &RewriteContext,
 
 pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
     if let ast::ItemKind::Trait(unsafety, ref generics, ref type_param_bounds, ref trait_items) =
-           item.node {
+        item.node {
         let mut result = String::new();
         let header = format!("{}{}trait {}",
                              format_visibility(&item.vis),

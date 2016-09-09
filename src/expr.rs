@@ -1307,20 +1307,28 @@ fn rewrite_pat_expr(context: &RewriteContext,
                                         offset + extra_offset + spacer.len());
 
         if let Some(expr_string) = expr_rewrite {
-            result.push_str(spacer);
-            result.push_str(&expr_string);
-            return Some(result);
+            let pat_simple =
+                pat.and_then(|p| p.rewrite(context, context.config.max_width, Indent::empty()))
+                    .map(|s| pat_is_simple(&s));
+
+            if pat.is_none() || pat_simple.unwrap_or(false) || !expr_string.contains('\n') {
+                result.push_str(spacer);
+                result.push_str(&expr_string);
+                return Some(result);
+            }
         }
     }
 
+    let nested = context.nested_context();
+
     // The expression won't fit on the current line, jump to next.
     result.push('\n');
-    result.push_str(&pat_offset.to_string(context.config));
+    result.push_str(&nested.block_indent.to_string(context.config));
 
     let expr_rewrite =
-        expr.rewrite(context,
-                     try_opt!(context.config.max_width.checked_sub(pat_offset.width())),
-                     pat_offset);
+        expr.rewrite(&nested,
+                     try_opt!(context.config.max_width.checked_sub(nested.block_indent.width())),
+                     nested.block_indent);
     result.push_str(&try_opt!(expr_rewrite));
 
     Some(result)
