@@ -35,6 +35,7 @@ use std::cmp;
 
 pub use syntax::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+use rustc::ty::layout::Layout;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum ArgKind {
@@ -316,6 +317,11 @@ impl FnType {
                                            type_of::sizing_type_of(ccx, ty));
                 if ty.is_integral() {
                     arg.signedness = Some(ty.is_signed());
+                }
+                // Rust enum types that map onto C enums also need to follow
+                // the target ABI zero-/sign-extension rules.
+                if let Layout::CEnum { signed, .. } = *ccx.layout_of(ty) {
+                    arg.signedness = Some(signed);
                 }
                 if llsize_of_real(ccx, arg.ty) == 0 {
                     // For some forsaken reason, x86_64-pc-windows-gnu
