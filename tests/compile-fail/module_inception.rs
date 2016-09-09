@@ -14,4 +14,11 @@ mod foo {
     }
 }
 
+// No warning. See <https://github.com/Manishearth/rust-clippy/issues/1220>.
+mod bar {
+    #[allow(module_inception)]
+    mod bar {
+    }
+}
+
 fn main() {}
