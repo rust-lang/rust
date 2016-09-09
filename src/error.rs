@@ -42,6 +42,7 @@ pub enum EvalError<'tcx> {
     },
     CalledClosureAsFunction,
     VtableForArgumentlessMethod,
+    ModifiedConstantMemory,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -94,6 +95,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to call a closure through a function pointer",
             EvalError::VtableForArgumentlessMethod =>
                 "tried to call a vtable function without arguments",
+            EvalError::ModifiedConstantMemory =>
+                "tried to modify constant memory",
         }
     }
 

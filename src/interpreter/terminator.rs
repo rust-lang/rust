@@ -10,7 +10,7 @@ use std::iter;
 use syntax::{ast, attr};
 use syntax::codemap::{DUMMY_SP, Span};
 
-use super::{EvalContext, IntegerExt};
+use super::{EvalContext, IntegerExt, StackPopCleanup};
 use error::{EvalError, EvalResult};
 use memory::Pointer;
 
@@ -27,7 +27,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, ()> {
         use rustc::mir::repr::TerminatorKind::*;
         match terminator.kind {
-            Return => self.pop_stack_frame(),
+            Return => self.pop_stack_frame()?,
 
             Goto { target } => self.goto_block(target),
 
@@ -210,8 +210,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let mir = self.load_mir(resolved_def_id);
                 let (return_ptr, return_to_block) = match destination {
-                    Some((ptr, block)) => (Some(ptr), Some(block)),
-                    None => (None, None),
+                    Some((ptr, block)) => (Some(ptr), StackPopCleanup::Goto(block)),
+                    None => (None, StackPopCleanup::None),
                 };
                 self.push_stack_frame(def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
 

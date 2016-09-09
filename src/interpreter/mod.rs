@@ -15,7 +15,7 @@ use std::iter;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
-use memory::{Memory, Pointer};
+use memory::{Memory, Pointer, AllocId};
 use primval::{self, PrimVal};
 
 use std::collections::HashMap;
@@ -74,7 +74,7 @@ pub struct Frame<'a, 'tcx: 'a> {
     pub return_ptr: Option<Pointer>,
 
     /// The block to return to when returning from the current stack frame
-    pub return_to_block: Option<mir::BasicBlock>,
+    pub return_to_block: StackPopCleanup,
 
     /// The list of locals for the current function, stored in order as
     /// `[arguments..., variables..., temporaries...]`. The variables begin at `self.var_offset`
@@ -137,6 +137,18 @@ enum ConstantKind {
     Promoted(mir::Promoted),
     /// Statics, constants and associated constants
     Global,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub enum StackPopCleanup {
+    /// The stackframe existed to compute the initial value of a static/constant, make sure the
+    /// static isn't modifyable afterwards
+    Freeze(AllocId),
+    /// A regular stackframe added due to a function call will need to get forwarded to the next
+    /// block
+    Goto(mir::BasicBlock),
+    /// The main function and diverging functions have nowhere to return to
+    None,
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -313,7 +325,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         mir: CachedMir<'a, 'tcx>,
         substs: &'tcx Substs<'tcx>,
         return_ptr: Option<Pointer>,
-        return_to_block: Option<mir::BasicBlock>,
+        return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx, ()> {
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
@@ -350,13 +362,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn pop_stack_frame(&mut self) {
+    fn pop_stack_frame(&mut self) -> EvalResult<'tcx, ()> {
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
-        if let Some(target) = frame.return_to_block {
-            self.goto_block(target);
+        match frame.return_to_block {
+            StackPopCleanup::Freeze(alloc_id) => self.memory.freeze(alloc_id)?,
+            StackPopCleanup::Goto(target) => self.goto_block(target),
+            StackPopCleanup::None => {},
         }
         // TODO(solson): Deallocate local variables.
+        Ok(())
     }
 
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
@@ -1036,7 +1051,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     let return_ptr = ecx.alloc_ret_ptr(mir.return_ty, substs)
         .expect("should at least be able to allocate space for the main function's return value");
 
-    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr), None)
+    ecx.push_stack_frame(def_id, mir.span, CachedMir::Ref(mir), substs, Some(return_ptr), StackPopCleanup::None)
         .expect("could not allocate first stack frame");
 
     if mir.arg_decls.len() == 2 {

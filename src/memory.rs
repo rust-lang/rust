@@ -36,6 +36,10 @@ pub struct Allocation {
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: usize,
+    /// Whether the allocation may be modified.
+    /// Use the `freeze` method of `Memory` to ensure that an error occurs, if the memory of this
+    /// allocation is modified in the future.
+    pub immutable: bool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -117,6 +121,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(0),
             align: 1,
+            immutable: false, // must be mutable, because sometimes we "move out" of a ZST
         };
         mem.alloc_map.insert(ZST_ALLOC_ID, alloc);
         // check that additional zst allocs work
@@ -185,6 +190,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
             align: align,
+            immutable: false,
         };
         let id = self.next_id;
         self.next_id.0 += 1;
@@ -293,6 +299,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
         match self.alloc_map.get_mut(&id) {
+            Some(ref alloc) if alloc.immutable => Err(EvalError::ModifiedConstantMemory),
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
@@ -436,6 +443,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
+
+    pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx, ()> {
+        self.get_mut(alloc_id)?.immutable = true;
+        Ok(())
+    }
+
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize, align: usize) -> EvalResult<'tcx, ()> {
         self.check_relocation_edges(src, size)?;
 

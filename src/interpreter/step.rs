@@ -7,11 +7,13 @@ use super::{
     ConstantId,
     EvalContext,
     ConstantKind,
+    StackPopCleanup,
 };
 use error::EvalResult;
 use rustc::mir::repr as mir;
 use rustc::ty::{subst, self};
 use rustc::hir::def_id::DefId;
+use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use syntax::codemap::Span;
 use std::rc::Rc;
@@ -110,7 +112,7 @@ struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
-    fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span) {
+    fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span, immutable: bool) {
         let cid = ConstantId {
             def_id: def_id,
             substs: substs,
@@ -123,7 +125,12 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         self.try(|this| {
             let ptr = this.ecx.alloc_ret_ptr(mir.return_ty, substs)?;
             this.ecx.statics.insert(cid.clone(), ptr);
-            this.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr), None)
+            let cleanup = if immutable && !mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe() {
+                StackPopCleanup::Freeze(ptr.alloc_id)
+            } else {
+                StackPopCleanup::None
+            };
+            this.ecx.push_stack_frame(def_id, span, mir, substs, Some(ptr), cleanup)
         });
     }
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, ()>>(&mut self, f: F) {
@@ -150,7 +157,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                     // because the type is the actual function, not the signature of the function.
                     // Thus we can simply create a zero sized allocation in `evaluate_operand`
                 } else {
-                    self.global_item(def_id, substs, constant.span);
+                    self.global_item(def_id, substs, constant.span, true);
                 }
             },
             mir::Literal::Promoted { index } => {
@@ -168,7 +175,12 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                     let return_ptr = this.ecx.alloc_ret_ptr(return_ty, cid.substs)?;
                     let mir = CachedMir::Owned(Rc::new(mir));
                     this.ecx.statics.insert(cid.clone(), return_ptr);
-                    this.ecx.push_stack_frame(this.def_id, constant.span, mir, this.substs, Some(return_ptr), None)
+                    this.ecx.push_stack_frame(this.def_id,
+                                              constant.span,
+                                              mir,
+                                              this.substs,
+                                              Some(return_ptr),
+                                              StackPopCleanup::Freeze(return_ptr.alloc_id))
                 });
             }
         }
@@ -179,7 +191,17 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
         if let mir::Lvalue::Static(def_id) = *lvalue {
             let substs = subst::Substs::empty(self.ecx.tcx);
             let span = self.span;
-            self.global_item(def_id, substs, span);
+            if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = self.ecx.tcx.map.get_if_local(def_id).expect("static not found") {
+                if let hir::ItemStatic(_, m, _) = *node {
+                    self.global_item(def_id, substs, span, m == hir::MutImmutable);
+                    return;
+                } else {
+                    bug!("static def id doesn't point to static");
+                }
+            } else {
+                bug!("static def id doesn't point to item");
+            }
+            self.global_item(def_id, substs, span, false);
         }
     }
 }
