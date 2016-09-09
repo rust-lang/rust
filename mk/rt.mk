@@ -272,14 +272,8 @@ COMPRT_OBJS_$(1) := \
   fixunsxfdi.o \
   fixunsxfsi.o \
   fixxfdi.o \
-  floatdidf.o \
-  floatdisf.o \
-  floatdixf.o \
   floatsidf.o \
   floatsisf.o \
-  floatundidf.o \
-  floatundisf.o \
-  floatundixf.o \
   floatunsidf.o \
   floatunsisf.o \
   int_util.o \
@@ -401,9 +395,7 @@ COMPRT_OBJS_$(1) += \
       x86_64/floatundidf.o \
       x86_64/floatundisf.o \
       x86_64/floatundixf.o
-endif
-
-ifeq ($$(findstring i686,$$(patsubts i%86,i686,$(1))),i686)
+else ifeq ($$(findstring i686,$$(patsubts i%86,i686,$(1))),i686)
 COMPRT_OBJS_$(1) += \
       i386/ashldi3.o \
       i386/ashrdi3.o \
@@ -421,6 +413,14 @@ COMPRT_OBJS_$(1) += \
       i386/muldi3.o \
       i386/udivdi3.o \
       i386/umoddi3.o
+else
+COMPRT_OBJS_$(1) += \
+  floatdidf.o \
+  floatdisf.o \
+  floatdixf.o \
+  floatundidf.o \
+  floatundisf.o \
+  floatundixf.o \
 endif
 
 else
@@ -429,7 +429,10 @@ ifeq ($$(findstring x86_64,$(1)),x86_64)
 COMPRT_OBJS_$(1) += \
       x86_64/floatdidf.o \
       x86_64/floatdisf.o \
-      x86_64/floatdixf.o
+      x86_64/floatdixf.o \
+      floatundidf.o \
+      floatundisf.o \
+      floatundixf.o \
 endif
 
 endif

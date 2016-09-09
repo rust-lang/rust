@@ -226,14 +226,8 @@ pub fn compiler_rt(build: &Build, target: &str) {
         "fixunsxfdi.c",
         "fixunsxfsi.c",
         "fixxfdi.c",
-        "floatdidf.c",
-        "floatdisf.c",
-        "floatdixf.c",
         "floatsidf.c",
         "floatsisf.c",
-        "floatundidf.c",
-        "floatundisf.c",
-        "floatundixf.c",
         "floatunsidf.c",
         "floatunsisf.c",
         "int_util.c",
@@ -345,6 +339,18 @@ pub fn compiler_rt(build: &Build, target: &str) {
                 "x86_64/floatdidf.c",
                 "x86_64/floatdisf.c",
                 "x86_64/floatdixf.c",
+                "floatundidf.c",
+                "floatundisf.c",
+                "floatundixf.c",
+            ]);
+        } else {
+            sources.extend(vec![
+                "floatdidf.c",
+                "floatdisf.c",
+                "floatdixf.c",
+                "floatundidf.c",
+                "floatundisf.c",
+                "floatundixf.c",
             ]);
         }
     } else {
@@ -363,9 +369,7 @@ pub fn compiler_rt(build: &Build, target: &str) {
                 "x86_64/floatundisf.S",
                 "x86_64/floatundixf.S",
             ]);
-        }
-
-        if target.contains("i386") ||
+        } else if target.contains("i386") ||
            target.contains("i586") ||
            target.contains("i686") {
             sources.extend(vec![
@@ -385,6 +389,15 @@ pub fn compiler_rt(build: &Build, target: &str) {
                 "i386/muldi3.S",
                 "i386/udivdi3.S",
                 "i386/umoddi3.S",
+            ]);
+        } else {
+            sources.extend(vec![
+                "floatdidf.c",
+                "floatdisf.c",
+                "floatdixf.c",
+                "floatundidf.c",
+                "floatundisf.c",
+                "floatundixf.c",
             ]);
         }
     }
