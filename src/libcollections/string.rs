@@ -1567,6 +1567,7 @@ impl_eq! { Cow<'a, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
+    /// Create an empty `String`.
     #[inline]
     fn default() -> String {
         String::new()
