@@ -134,6 +134,7 @@ pub struct EnumData {
     pub scope: NodeId,
     pub variants: Vec<NodeId>,
     pub visibility: Visibility,
+    pub docs: String,
 }
 
 /// Data for extern crates.
@@ -167,6 +168,7 @@ pub struct FunctionData {
     pub value: String,
     pub visibility: Visibility,
     pub parent: Option<NodeId>,
+    pub docs: String,
 }
 
 /// Data about a function call.
@@ -213,6 +215,7 @@ pub struct MacroData {
     pub span: Span,
     pub name: String,
     pub qualname: String,
+    pub docs: String,
 }
 
 /// Data about a macro use.
@@ -248,6 +251,7 @@ pub struct MethodData {
     pub value: String,
     pub decl_id: Option<DefId>,
     pub visibility: Visibility,
+    pub docs: String,
 }
 
 /// Data for modules.
@@ -261,6 +265,7 @@ pub struct ModData {
     pub filename: String,
     pub items: Vec<NodeId>,
     pub visibility: Visibility,
+    pub docs: String,
 }
 
 /// Data for a reference to a module.
@@ -283,6 +288,7 @@ pub struct StructData {
     pub value: String,
     pub fields: Vec<NodeId>,
     pub visibility: Visibility,
+    pub docs: String,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -295,6 +301,7 @@ pub struct StructVariantData {
     pub value: String,
     pub scope: NodeId,
     pub parent: Option<NodeId>,
+    pub docs: String,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -307,6 +314,7 @@ pub struct TraitData {
     pub value: String,
     pub items: Vec<NodeId>,
     pub visibility: Visibility,
+    pub docs: String,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -319,6 +327,7 @@ pub struct TupleVariantData {
     pub value: String,
     pub scope: NodeId,
     pub parent: Option<NodeId>,
+    pub docs: String,
 }
 
 /// Data for a typedef.
@@ -331,6 +340,7 @@ pub struct TypeDefData {
     pub value: String,
     pub visibility: Visibility,
     pub parent: Option<NodeId>,
+    pub docs: String,
 }
 
 /// Data for a reference to a type or trait.
@@ -374,6 +384,7 @@ pub struct VariableData {
     pub value: String,
     pub type_value: String,
     pub visibility: Visibility,
+    pub docs: String,
 }
 
 #[derive(Debug, RustcEncodable)]
