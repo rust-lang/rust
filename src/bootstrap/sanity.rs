@@ -77,8 +77,8 @@ pub fn check(build: &mut Build) {
 
     // If a manual nodejs was added to the config,
     // of if a nodejs install is detected through config, use it.
-    if build.config.nodejs.is_some() {
-        need_cmd("nodejs".as_ref())
+    if let Some(ref s) = build.config.nodejs {
+        need_cmd(s.as_ref());
     }
 
     // We're gonna build some custom C code here and there, host triples
