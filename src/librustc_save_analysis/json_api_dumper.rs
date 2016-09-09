@@ -16,6 +16,8 @@ use rustc_serialize::json::as_json;
 use external_data::*;
 use data::{VariableKind, Visibility};
 use dump::Dump;
+use super::Format;
+
 
 // A dumper to dump a restricted set of JSON information, designed for use with
 // libraries distributed without their source. Clients are likely to use type
@@ -81,17 +83,25 @@ impl<'b, W: Write + 'b> Dump for JsonApiDumper<'b, W> {
 
 #[derive(Debug, RustcEncodable)]
 struct Analysis {
+    kind: Format,
     prelude: Option<CratePreludeData>,
     imports: Vec<Import>,
     defs: Vec<Def>,
+    // These two fields are dummies so that clients can parse the two kinds of
+    // JSON data in the same way.
+    refs: Vec<()>,
+    macro_refs: Vec<()>,
 }
 
 impl Analysis {
     fn new() -> Analysis {
         Analysis {
+            kind: Format::JsonApi,
             prelude: None,
             imports: vec![],
             defs: vec![],
+            refs: vec![],
+            macro_refs: vec![],
         }
     }
 }
@@ -168,6 +178,7 @@ struct Def {
     parent: Option<Id>,
     children: Vec<Id>,
     decl_id: Option<Id>,
+    docs: String,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -209,6 +220,7 @@ impl From<EnumData> for Option<Def> {
                 parent: None,
                 children: data.variants.into_iter().map(|id| From::from(id)).collect(),
                 decl_id: None,
+                docs: data.docs,
             }),
             _ => None,
         }
@@ -227,6 +239,7 @@ impl From<TupleVariantData> for Option<Def> {
             parent: data.parent.map(|id| From::from(id)),
             children: vec![],
             decl_id: None,
+            docs: data.docs,
         })
     }
 }
@@ -242,6 +255,7 @@ impl From<StructVariantData> for Option<Def> {
             parent: data.parent.map(|id| From::from(id)),
             children: vec![],
             decl_id: None,
+            docs: data.docs,
         })
     }
 }
@@ -258,6 +272,7 @@ impl From<StructData> for Option<Def> {
             parent: None,
             children: data.fields.into_iter().map(|id| From::from(id)).collect(),
             decl_id: None,
+            docs: data.docs,
         }),
             _ => None,
         }
@@ -276,6 +291,7 @@ impl From<TraitData> for Option<Def> {
                 children: data.items.into_iter().map(|id| From::from(id)).collect(),
                 parent: None,
                 decl_id: None,
+                docs: data.docs,
             }),
             _ => None,
         }
@@ -294,6 +310,7 @@ impl From<FunctionData> for Option<Def> {
                 children: vec![],
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
+                docs: data.docs,
             }),
             _ => None,
         }
@@ -312,6 +329,7 @@ impl From<MethodData> for Option<Def> {
                 children: vec![],
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: data.decl_id.map(|id| From::from(id)),
+                docs: data.docs,
             }),
             _ => None,
         }
@@ -329,6 +347,7 @@ impl From<MacroData> for Option<Def> {
             children: vec![],
             parent: None,
             decl_id: None,
+            docs: data.docs,
         })
     }
 }
@@ -345,6 +364,7 @@ impl From<ModData> for Option<Def> {
                 children: data.items.into_iter().map(|id| From::from(id)).collect(),
                 parent: None,
                 decl_id: None,
+                docs: data.docs,
             }),
             _ => None,
         }
@@ -363,6 +383,7 @@ impl From<TypeDefData> for Option<Def> {
                 children: vec![],
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
+                docs: String::new(),
             }),
             _ => None,
         }
@@ -386,6 +407,7 @@ impl From<VariableData> for Option<Def> {
                 children: vec![],
                 parent: data.parent.map(|id| From::from(id)),
                 decl_id: None,
+                docs: data.docs,
             }),
             _ => None,
         }

@@ -36,7 +36,7 @@ use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
 use std::collections::HashSet;
 use std::hash::*;
 
-use syntax::ast::{self, NodeId, PatKind};
+use syntax::ast::{self, NodeId, PatKind, Attribute};
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string, bounds_to_string, generics_to_string};
@@ -44,7 +44,7 @@ use syntax::ptr::P;
 use syntax::codemap::Spanned;
 use syntax_pos::*;
 
-use super::{escape, generated_code, SaveContext, PathCollector};
+use super::{escape, generated_code, SaveContext, PathCollector, docs_for_attrs};
 use super::data::*;
 use super::dump::Dump;
 use super::external_data::Lower;
@@ -368,6 +368,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         scope: 0,
                         parent: None,
                         visibility: Visibility::Inherited,
+                        docs: String::new(),
                     }.lower(self.tcx));
                 }
             }
@@ -380,6 +381,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                       id: ast::NodeId,
                       name: ast::Name,
                       vis: Visibility,
+                      attrs: &[Attribute],
                       span: Span) {
         debug!("process_method: {}:{}", id, name);
 
@@ -421,6 +423,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     value: sig_str,
                     decl_id: decl_id,
                     visibility: vis,
+                    docs: docs_for_attrs(attrs),
                 }.lower(self.tcx));
             }
 
@@ -491,6 +494,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     value: String::new(),
                     visibility: Visibility::Inherited,
                     parent: None,
+                    docs: String::new(),
                 }.lower(self.tcx));
             }
         }
@@ -541,7 +545,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                            typ: &ast::Ty,
                            expr: &ast::Expr,
                            parent_id: NodeId,
-                           vis: Visibility) {
+                           vis: Visibility,
+                           attrs: &[Attribute]) {
         let qualname = format!("::{}", self.tcx.node_path_str(id));
 
         let sub_span = self.span.sub_span_after_keyword(span, keywords::Const);
@@ -558,6 +563,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 scope: self.cur_scope,
                 parent: Some(parent_id),
                 visibility: vis,
+                docs: docs_for_attrs(attrs),
             }.lower(self.tcx));
         }
 
@@ -600,6 +606,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 value: val,
                 fields: fields,
                 visibility: From::from(&item.vis),
+                docs: docs_for_attrs(&item.attrs),
             }.lower(self.tcx));
         }
 
@@ -653,6 +660,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             value: val,
                             scope: enum_data.scope,
                             parent: Some(item.id),
+                            docs: docs_for_attrs(&variant.node.attrs),
                         }.lower(self.tcx));
                     }
                 }
@@ -677,6 +685,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             value: val,
                             scope: enum_data.scope,
                             parent: Some(item.id),
+                            docs: docs_for_attrs(&variant.node.attrs),
                         }.lower(self.tcx));
                     }
                 }
@@ -759,6 +768,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 value: val,
                 items: methods.iter().map(|i| i.id).collect(),
                 visibility: From::from(&item.vis),
+                docs: docs_for_attrs(&item.attrs),
             }.lower(self.tcx));
         }
 
@@ -1015,6 +1025,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     scope: 0,
                     parent: None,
                     visibility: Visibility::Inherited,
+                    docs: String::new(),
                 }.lower(self.tcx));
             }
         }
@@ -1044,7 +1055,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 self.dumper.macro_data(MacroData {
                     span: sub_span,
                     name: data.name.clone(),
-                    qualname: qualname.clone()
+                    qualname: qualname.clone(),
+                    // FIXME where do macro docs come from?
+                    docs: String::new(),
                 }.lower(self.tcx));
             }
         }
@@ -1057,7 +1070,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     qualname: qualname,
                     scope: data.scope,
                     callee_span: data.callee_span,
-                    imported: data.imported
+                    imported: data.imported,
                 }.lower(self.tcx));
             }
         }
@@ -1073,7 +1086,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                          &ty,
                                          &expr,
                                          trait_id,
-                                         Visibility::Public);
+                                         Visibility::Public,
+                                         &trait_item.attrs);
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
                 self.process_method(sig,
@@ -1081,6 +1095,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                     trait_item.id,
                                     trait_item.ident.name,
                                     Visibility::Public,
+                                    &trait_item.attrs,
                                     trait_item.span);
             }
             ast::TraitItemKind::Const(_, None) |
@@ -1099,7 +1114,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                          &ty,
                                          &expr,
                                          impl_id,
-                                         From::from(&impl_item.vis));
+                                         From::from(&impl_item.vis),
+                                         &impl_item.attrs);
             }
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.process_method(sig,
@@ -1107,6 +1123,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                     impl_item.id,
                                     impl_item.ident.name,
                                     From::from(&impl_item.vis),
+                                    &impl_item.attrs,
                                     impl_item.span);
             }
             ast::ImplItemKind::Type(_) |
@@ -1248,6 +1265,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                         value: value,
                         visibility: From::from(&item.vis),
                         parent: None,
+                        docs: docs_for_attrs(&item.attrs),
                     }.lower(self.tcx));
                 }
 
@@ -1417,11 +1435,15 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
             match self.tcx.expect_def(id) {
                 Def::Local(_, id) => {
-                    let value = if immut == ast::Mutability::Immutable {
+                    let mut value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
                     } else {
                         "<mutable>".to_string()
                     };
+                    let typ = self.tcx.node_types()
+                                  .get(&id).map(|t| t.to_string()).unwrap_or(String::new());
+                    value.push_str(": ");
+                    value.push_str(&typ);
 
                     assert!(p.segments.len() == 1,
                             "qualified path for local variable def in arm");
@@ -1433,10 +1455,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                             name: path_to_string(p),
                             qualname: format!("{}${}", path_to_string(p), id),
                             value: value,
-                            type_value: String::new(),
+                            type_value: typ,
                             scope: 0,
                             parent: None,
                             visibility: Visibility::Inherited,
+                            docs: String::new(),
                         }.lower(self.tcx));
                     }
                 }
