@@ -796,7 +796,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
     fn may_slice(cx: &LateContext, ty: ty::Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
-            ty::TyStruct(..) => match_type(cx, ty, &paths::VEC),
+            ty::TyAdt(..) => match_type(cx, ty, &paths::VEC),
             ty::TyArray(_, size) => size < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) |
             ty::TyBox(inner) => may_slice(cx, inner),
@@ -1081,12 +1081,12 @@ fn lint_single_char_pattern(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr)
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
-    if !match_type(cx, ty, &paths::RESULT) {
-        return None;
-    }
-
-    if let ty::TyEnum(_, substs) = ty.sty {
-        substs.types().nth(1)
+    if let ty::TyAdt(_, substs) = ty.sty {
+        if match_type(cx, ty, &paths::RESULT) {
+            substs.types().nth(1)
+        } else {
+            None
+        }
     } else {
         None
     }

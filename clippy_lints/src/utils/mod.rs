@@ -152,11 +152,10 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
     apb.names == path
 }
 
-/// Check if type is struct or enum type with given def path.
+/// Check if type is struct, enum or union type with given def path.
 pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
     match ty.sty {
-        ty::TyEnum(adt, _) |
-        ty::TyStruct(adt, _) => match_def_path(cx, adt.did, path),
+        ty::TyAdt(adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }
 }

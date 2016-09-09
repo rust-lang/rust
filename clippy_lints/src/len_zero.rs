@@ -214,9 +214,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
               .map_or(false, |ids| ids.iter().any(|i| is_is_empty(cx, i)))
         }
         ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, |id| has_is_empty_impl(cx, &id)),
-        ty::TyEnum(id, _) |
-        ty::TyStruct(id, _) |
-        ty::TyUnion(id, _) => has_is_empty_impl(cx, &id.did),
+        ty::TyAdt(id, _) => has_is_empty_impl(cx, &id.did),
         ty::TyArray(..) | ty::TyStr => true,
         _ => false,
     }

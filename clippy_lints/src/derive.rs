@@ -141,11 +141,10 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
         }
 
         match ty.sty {
-            TypeVariants::TyUnion(..) => return,
+            TypeVariants::TyAdt(def, _) if def.is_union() => return,
 
             // Some types are not Clone by default but could be cloned “by hand” if necessary
-            TypeVariants::TyEnum(def, substs) |
-            TypeVariants::TyStruct(def, substs) => {
+            TypeVariants::TyAdt(def, substs) => {
                 for variant in &def.variants {
                     for field in &variant.fields {
                         match field.ty(cx.tcx, substs).sty {
