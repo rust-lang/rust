@@ -29,6 +29,7 @@ const TAG_FOUR_B: u8  = 0b1111_0000;
 const MAX_ONE_B: u32   =     0x80;
 const MAX_TWO_B: u32   =    0x800;
 const MAX_THREE_B: u32 =  0x10000;
+const UTF8_BUF_SIZE: usize = 4;
 
 /*
     Lu  Uppercase_Letter        an uppercase letter
@@ -709,15 +710,27 @@ impl FusedIterator for EscapeDebug {}
 #[unstable(feature = "unicode", issue = "27784")]
 #[derive(Debug)]
 pub struct EncodeUtf8 {
-    buf: [u8; 4],
+    buf: [u8; UTF8_BUF_SIZE],
     pos: usize,
 }
 
 impl EncodeUtf8 {
     /// Returns the remaining bytes of this iterator as a slice.
     #[unstable(feature = "unicode", issue = "27784")]
+    #[inline(always)]
     pub fn as_slice(&self) -> &[u8] {
-        &self.buf[self.pos..]
+        // We know for sure this method cannot slice out-of-bounds because:
+        // * 0 ≤ self.pos ≤ 3
+        // * self.buf.len() = 4
+        //
+        // This way the slicing will always succeed, but LLVM is incapable of figuring out both
+        // these conditions hold, resulting in suboptimal code, especially after inlining.
+        // Ideally there would be a `slice_unchecked` method for slices, but there isn’t any,
+        // therefore we construct the slice manually.
+        unsafe {
+            ::slice::from_raw_parts(self.buf.as_ptr().offset(self.pos as isize),
+                                    UTF8_BUF_SIZE.wrapping_sub(self.pos))
+        }
     }
 }
 

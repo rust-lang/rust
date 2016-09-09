@@ -1915,9 +1915,24 @@ impl<'a> From<&'a [char]> for String {
 
 #[stable(feature = "stringfromchars", since = "1.12.0")]
 impl From<Vec<char>> for String {
-    #[inline]
-    fn from(v: Vec<char>) -> String {
-        String::from(v.as_slice())
+    fn from(mut v: Vec<char>) -> String {
+        unsafe {
+            let cap = v.capacity();
+            let ptr = v.as_mut_ptr() as *mut u8;
+            let mut bytes = 0usize;
+
+            for chr in v.iter() {
+                // Regular loop instead of copy_nonoverlapping, because LLVM insists on having a
+                // memcpy for slices shorter than 4 bytes.
+                for b in chr.encode_utf8().as_slice() {
+                    // Neither bytes nor ptr can overflow.
+                    *ptr.offset(bytes as isize) = *b;
+                    bytes = bytes.wrapping_add(1);
+                }
+            }
+            mem::forget(v);
+            String::from_raw_parts(ptr, bytes, cap * mem::size_of::<char>())
+        }
     }
 }
 
