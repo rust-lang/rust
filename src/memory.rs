@@ -26,9 +26,15 @@ impl fmt::Display for AllocId {
 
 #[derive(Debug)]
 pub struct Allocation {
+    /// The actual bytes of the allocation.
+    /// Note that the bytes of a pointer represent the offset of the pointer
     pub bytes: Vec<u8>,
+    /// Maps from byte addresses to allocations.
+    /// Only the first byte of a pointer is inserted into the map.
     pub relocations: BTreeMap<usize, AllocId>,
+    /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
     pub undef_mask: UndefMask,
+    /// The alignment of the allocation to detect unaligned reads.
     pub align: usize,
 }
 
