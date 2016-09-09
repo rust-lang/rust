@@ -31,7 +31,7 @@ fn ok_box_trait(boxed_trait: &Box<Z>) {
 
 fn warn_call() {
     let x = box A; //~ ERROR local variable
-    x.foo(); 
+    x.foo();
 }
 
 fn warn_arg(x: Box<A>) { //~ ERROR local variable
