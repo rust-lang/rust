@@ -80,6 +80,7 @@ pub struct Config {
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<String>,
     pub codegen_tests: bool,
+    pub nodejs: Option<PathBuf>,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -394,6 +395,9 @@ impl Config {
                 "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {
                     self.rustc = Some(PathBuf::from(value).join("bin/rustc"));
                     self.cargo = Some(PathBuf::from(value).join("bin/cargo"));
+                }
+                "CFG_NODEJS" if value.len() > 0 => {
+                    self.nodejs = Some(PathBuf::from(value));
                 }
                 _ => {}
             }

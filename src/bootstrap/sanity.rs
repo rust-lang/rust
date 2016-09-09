@@ -75,6 +75,12 @@ pub fn check(build: &mut Build) {
 
     need_cmd("python".as_ref());
 
+    // If a manual nodejs was added to the config,
+    // of if a nodejs install is detected through config, use it.
+    if let Some(ref s) = build.config.nodejs {
+        need_cmd(s.as_ref());
+    }
+
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in build.config.target.iter() {
