@@ -40,6 +40,8 @@ pub enum EvalError<'tcx> {
         required: usize,
         has: usize,
     },
+    CalledClosureAsFunction,
+    VtableForArgumentlessMethod,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -88,6 +90,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "reached the configured maximum number of stack frames",
             EvalError::AlignmentCheckFailed{..} =>
                 "tried to execute a misaligned read or write",
+            EvalError::CalledClosureAsFunction =>
+                "tried to call a closure through a function pointer",
+            EvalError::VtableForArgumentlessMethod =>
+                "tried to call a vtable function without arguments",
         }
     }
 
