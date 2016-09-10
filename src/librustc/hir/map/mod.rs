@@ -260,7 +260,7 @@ impl<'ast> Map<'ast> {
                     EntryVariant(p, _) |
                     EntryExpr(p, _) |
                     EntryStmt(p, _) |
-                EntryTy(p, _) |
+                    EntryTy(p, _) |
                     EntryLocal(p, _) |
                     EntryPat(p, _) |
                     EntryBlock(p, _) |
