@@ -26,4 +26,5 @@ on_success:
 
 branches:
   only:
-    - master
+    - auto
+    - try
