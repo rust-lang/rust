@@ -425,10 +425,10 @@ impl<'a> Iterator for UngroupedCommentCodeSlices<'a> {
             None => &self.slice[start_idx..],
         };
         Some((if kind.is_comment() {
-            CodeCharKind::Comment
-        } else {
-            CodeCharKind::Normal
-        },
+                  CodeCharKind::Comment
+              } else {
+                  CodeCharKind::Normal
+              },
               start_idx,
               slice))
     }

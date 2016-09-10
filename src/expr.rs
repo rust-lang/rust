@@ -1716,11 +1716,16 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
           <I::Item as Deref>::Target: Rewrite + Spanned + 'a
 {
     let indent = offset + 1;
+    let aligned = RewriteContext { block_indent: indent, ..context.clone() };
+
     // In case of length 1, need a trailing comma
     if items.len() == 1 {
         // 3 = "(" + ",)"
         let budget = try_opt!(width.checked_sub(3));
-        return items.next().unwrap().rewrite(context, budget, indent).map(|s| format!("({},)", s));
+        return items.next()
+            .unwrap()
+            .rewrite(&aligned, budget, indent)
+            .map(|s| format!("({},)", s));
     }
 
     let list_lo = context.codemap.span_after(span, "(");
@@ -1733,7 +1738,7 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
                                  let inner_width = try_opt!(context.config
                                      .max_width
                                      .checked_sub(indent.width() + 1));
-                                 item.rewrite(context, inner_width, indent)
+                                 item.rewrite(&aligned, inner_width, indent)
                              },
                              list_lo,
                              span.hi - BytePos(1));
