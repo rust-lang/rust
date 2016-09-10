@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    static foo: Fn() -> u32 = || -> u32 {
-        //~^ ERROR: mismatched types
-        //~| ERROR: `std::ops::Fn() -> u32 + 'static: std::marker::Sized` is not satisfied
-        0
-    };
-}
+static FOO: &str = "this will work once static_in_const is stable";
+//~^ ERROR: this needs a `'static` lifetime or the `static_in_const` feature
+
+fn main() {}
