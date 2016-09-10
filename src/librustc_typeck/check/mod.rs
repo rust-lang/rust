@@ -1015,13 +1015,15 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         _ => span_bug!(impl_item.span, "non-method impl-item for method")
                     };
 
+                    let trait_span = tcx.map.span_if_local(ty_trait_item.def_id());
                     if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
                         compare_impl_method(ccx,
                                             &impl_method,
                                             impl_item.span,
                                             body.id,
                                             &trait_method,
-                                            &impl_trait_ref);
+                                            &impl_trait_ref,
+                                            trait_span);
                     } else {
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                                   "item `{}` is an associated method, \
