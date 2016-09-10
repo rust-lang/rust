@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.90 — 2016-09-09
+* Rustup to *rustc 1.13.0-dev (f1f40f850 2016-09-09)*
+
 ## 0.0.89 — 2016-09-06
 * Rustup to *rustc 1.13.0-nightly (cbe4de78e 2016-09-05)*
 

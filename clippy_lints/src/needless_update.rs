@@ -1,5 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::ty::TyStruct;
+use rustc::ty::TyAdt;
 use rustc::hir::{Expr, ExprStruct};
 use utils::span_lint;
 
@@ -34,7 +34,7 @@ impl LateLintPass for Pass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprStruct(_, ref fields, Some(ref base)) = expr.node {
             let ty = cx.tcx.expr_ty(expr);
-            if let TyStruct(def, _) = ty.sty {
+            if let TyAdt(def, _) = ty.sty {
                 if fields.len() == def.struct_variant().fields.len() {
                     span_lint(cx,
                               NEEDLESS_UPDATE,
