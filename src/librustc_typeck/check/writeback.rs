@@ -319,7 +319,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             let outside_ty = gcx.fold_regions(&inside_ty, &mut false, |r, _| {
                 match *r {
                     // 'static is valid everywhere.
-                    ty::ReStatic => gcx.mk_region(ty::ReStatic),
+                    ty::ReStatic |
+                    ty::ReEmpty => gcx.mk_region(*r),
 
                     // Free regions that come from early-bound regions are valid.
                     ty::ReFree(ty::FreeRegion {
@@ -341,7 +342,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     }
 
                     ty::ReVar(_) |
-                    ty::ReEmpty |
                     ty::ReErased => {
                         let span = reason.span(self.tcx());
                         span_bug!(span, "invalid region in impl Trait: {:?}", r);
