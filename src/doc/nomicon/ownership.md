@@ -52,7 +52,7 @@ let mut data = vec![1, 2, 3];
 let x = &data[0];
 
 // OH NO! `push` causes the backing storage of `data` to be reallocated.
-// Dangling pointer! User after free! Alas!
+// Dangling pointer! Use after free! Alas!
 // (this does not compile in Rust)
 data.push(4);
 
