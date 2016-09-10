@@ -96,6 +96,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }
 
+        self.memory.freeze(vtable.alloc_id)?;
+
         Ok(vtable)
     }
 
