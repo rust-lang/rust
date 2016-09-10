@@ -116,8 +116,10 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     llfn
 }
 
-/// Creates a returns a dynamic vtable for the given type and vtable origin.
+/// Creates a dynamic vtable for the given type and vtable origin.
 /// This is used only for objects.
+///
+/// The vtables are cached instead of created on every call.
 ///
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
