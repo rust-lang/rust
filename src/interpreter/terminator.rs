@@ -464,7 +464,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub (super) fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
+    pub(super) fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
         self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
@@ -575,14 +575,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-pub (super) struct ImplMethod<'tcx> {
-    pub (super) method: Rc<ty::Method<'tcx>>,
-    pub (super) substs: &'tcx Substs<'tcx>,
-    pub (super) is_provided: bool,
+pub(super) struct ImplMethod<'tcx> {
+    pub(super) method: Rc<ty::Method<'tcx>>,
+    pub(super) substs: &'tcx Substs<'tcx>,
+    pub(super) is_provided: bool,
 }
 
 /// Locates the applicable definition of a method, given its name.
-pub (super) fn get_impl_method<'a, 'tcx>(
+pub(super) fn get_impl_method<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     substs: &'tcx Substs<'tcx>,
     impl_def_id: DefId,
