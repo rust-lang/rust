@@ -207,8 +207,8 @@ pub fn double(input: TokenStream) -> TokenStream {
     let source = input.to_string();
 
     // Parse `source` for struct/enum declaration, and then build up some new
-    // source code representing representing a number of items in the
-    // implementation of the `Double` trait for the struct/enum in question.
+    // source code representing a number of items in the implementation of
+    // the `Double` trait for the struct/enum in question.
     let source = derive_double(&source);
 
     // Parse this back to a token stream and return it
