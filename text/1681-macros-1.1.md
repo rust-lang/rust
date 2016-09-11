@@ -27,7 +27,7 @@ been enough to push the nightly users to stable as well.
 
 These large projects, however, are often the face of Rust to external users.
 Common knowledge is that fast serialization is done using serde, but to others
-this just sounds likes "fast Rust needs nightly". Over time this persistent
+this just sounds like "fast Rust needs nightly". Over time this persistent
 thought process creates a culture of "well to be serious you require nightly"
 and a general feeling that Rust is not "production ready".
 
