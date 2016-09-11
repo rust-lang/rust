@@ -4,7 +4,7 @@ use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr};
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::BareFnTy;
+use rustc::ty::{BareFnTy, ClosureTy, ClosureSubsts};
 use rustc::ty::subst::Substs;
 use rustc::ty::layout::{self, TargetDataLayout};
 
@@ -53,11 +53,22 @@ impl Pointer {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
-pub struct FunctionDefinition<'tcx> {
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+struct FunctionDefinition<'tcx> {
     pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
-    pub fn_ty: &'tcx BareFnTy<'tcx>,
+    pub kind: FunctionKind<'tcx>,
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+enum FunctionKind<'tcx> {
+    Closure {
+        substs: ClosureSubsts<'tcx>,
+        ty: ClosureTy<'tcx>,
+    },
+    Function {
+        substs: &'tcx Substs<'tcx>,
+        ty: &'tcx BareFnTy<'tcx>,
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,12 +123,27 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.alloc_map.iter()
     }
 
-    pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
-        let def = FunctionDefinition {
+    pub fn create_closure_ptr(&mut self, def_id: DefId, substs: ClosureSubsts<'tcx>, fn_ty: ClosureTy<'tcx>) -> Pointer {
+        self.create_fn_alloc(FunctionDefinition {
             def_id: def_id,
-            substs: substs,
-            fn_ty: fn_ty,
-        };
+            kind: FunctionKind::Closure {
+                substs: substs,
+                ty: fn_ty,
+            }
+        })
+    }
+
+    pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
+        self.create_fn_alloc(FunctionDefinition {
+            def_id: def_id,
+            kind: FunctionKind::Function {
+                substs: substs,
+                ty: fn_ty,
+            }
+        })
+    }
+
+    fn create_fn_alloc(&mut self, def: FunctionDefinition<'tcx>) -> Pointer {
         if let Some(&alloc_id) = self.function_alloc_cache.get(&def) {
             return Pointer {
                 alloc_id: alloc_id,
@@ -127,7 +153,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let id = self.next_id;
         debug!("creating fn ptr: {}", id);
         self.next_id.0 += 1;
-        self.functions.insert(id, def);
+        self.functions.insert(id, def.clone());
         self.function_alloc_cache.insert(def, id);
         Pointer {
             alloc_id: id,
@@ -269,10 +295,33 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, FunctionDefinition<'tcx>> {
+    pub fn get_closure(&self, id: AllocId) -> EvalResult<'tcx, (DefId, ClosureSubsts<'tcx>, ClosureTy<'tcx>)> {
+        debug!("reading closure fn ptr: {}", id);
+        match self.functions.get(&id) {
+            Some(&FunctionDefinition {
+                def_id,
+                kind: FunctionKind::Closure { ref substs, ref ty }
+            }) => Ok((def_id, substs.clone(), ty.clone())),
+            Some(&FunctionDefinition {
+                kind: FunctionKind::Function { .. }, ..
+            }) => Err(EvalError::CalledClosureAsFunction),
+            None => match self.alloc_map.get(&id) {
+                Some(_) => Err(EvalError::ExecuteMemory),
+                None => Err(EvalError::InvalidFunctionPointer),
+            }
+        }
+    }
+
+    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>, &'tcx BareFnTy<'tcx>)> {
         debug!("reading fn ptr: {}", id);
         match self.functions.get(&id) {
-            Some(&fn_id) => Ok(fn_id),
+            Some(&FunctionDefinition {
+                def_id,
+                kind: FunctionKind::Function { substs, ty }
+            }) => Ok((def_id, substs, ty)),
+            Some(&FunctionDefinition {
+                kind: FunctionKind::Closure { .. }, ..
+            }) => Err(EvalError::CalledClosureAsFunction),
             None => match self.alloc_map.get(&id) {
                 Some(_) => Err(EvalError::ExecuteMemory),
                 None => Err(EvalError::InvalidFunctionPointer),

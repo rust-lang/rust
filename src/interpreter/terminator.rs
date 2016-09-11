@@ -12,7 +12,7 @@ use syntax::codemap::{DUMMY_SP, Span};
 
 use super::{EvalContext, IntegerExt};
 use error::{EvalError, EvalResult};
-use memory::{Pointer, FunctionDefinition};
+use memory::Pointer;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
@@ -90,7 +90,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyFnPtr(bare_fn_ty) => {
                         let ptr = self.eval_operand(func)?;
                         let fn_ptr = self.memory.read_ptr(ptr)?;
-                        let FunctionDefinition { def_id, substs, fn_ty } = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        let (def_id, substs, fn_ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
                         if fn_ty != bare_fn_ty {
                             return Err(EvalError::FunctionPointerTyMismatch(fn_ty, bare_fn_ty));
                         }
@@ -172,20 +172,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // TODO(solson): Adjust the first argument when calling a Fn or
                 // FnMut closure via FnOnce::call_once.
 
-                // Only trait methods can have a Self parameter.
-                let (resolved_def_id, resolved_substs) =
-                    if let Some(trait_id) = self.tcx.trait_of_item(def_id) {
-                        self.trait_method(trait_id, def_id, substs)
-                    } else {
-                        (def_id, substs)
-                    };
-
                 let mut arg_srcs = Vec::new();
                 for arg in args {
                     let src = self.eval_operand(arg)?;
                     let src_ty = self.operand_ty(arg);
                     arg_srcs.push((src, src_ty));
                 }
+
+                // Only trait methods can have a Self parameter.
+                let (resolved_def_id, resolved_substs) =
+                    if let Some(trait_id) = self.tcx.trait_of_item(def_id) {
+                        self.trait_method(trait_id, def_id, substs, arg_srcs.get_mut(0))?
+                    } else {
+                        (def_id, substs)
+                    };
 
                 if fn_ty.abi == Abi::RustCall && !args.is_empty() {
                     arg_srcs.pop();
@@ -464,7 +464,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
+    pub(super) fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
         self.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
@@ -491,8 +491,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self,
         trait_id: DefId,
         def_id: DefId,
-        substs: &'tcx Substs<'tcx>
-    ) -> (DefId, &'tcx Substs<'tcx>) {
+        substs: &'tcx Substs<'tcx>,
+        first_arg: Option<&mut (Pointer, Ty<'tcx>)>,
+    ) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>)> {
         let trait_ref = ty::TraitRef::from_method(self.tcx, trait_id, substs);
         let trait_ref = self.tcx.normalize_associated_type(&ty::Binder(trait_ref));
 
@@ -504,11 +505,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // and those from the method:
                 let mth = get_impl_method(self.tcx, substs, impl_did, vtable_impl.substs, mname);
 
-                (mth.method.def_id, mth.substs)
+                Ok((mth.method.def_id, mth.substs))
             }
 
             traits::VtableClosure(vtable_closure) =>
-                (vtable_closure.closure_def_id, vtable_closure.substs.func_substs),
+                Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs)),
 
             traits::VtableFnPointer(_fn_ty) => {
                 let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
@@ -524,14 +525,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
             }
 
-            traits::VtableObject(ref _data) => {
-                unimplemented!()
-                // Callee {
-                //     data: Virtual(traits::get_vtable_index_of_object_method(
-                //                   tcx, data, def_id)),
-                //                   ty: def_ty(tcx, def_id, substs)
-                // }
-            }
+            traits::VtableObject(ref data) => {
+                let idx = self.tcx.get_vtable_index_of_object_method(data, def_id);
+                if let Some(&mut(first_arg, ref mut first_ty)) = first_arg {
+                    let (_, vtable) = self.get_fat_ptr(first_arg);
+                    let vtable = self.memory.read_ptr(vtable)?;
+                    let idx = idx + 3;
+                    let offset = idx * self.memory.pointer_size();
+                    let fn_ptr = self.memory.read_ptr(vtable.offset(offset as isize))?;
+                    let (def_id, substs, ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
+                    // FIXME: skip_binder is wrong for HKL
+                    *first_ty = ty.sig.skip_binder().inputs[0];
+                    Ok((def_id, substs))
+                } else {
+                    Err(EvalError::VtableForArgumentlessMethod)
+                }
+            },
             vtable => bug!("resolved vtable bad vtable {:?} in trans", vtable),
         }
     }
@@ -566,14 +575,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-struct ImplMethod<'tcx> {
-    method: Rc<ty::Method<'tcx>>,
-    substs: &'tcx Substs<'tcx>,
-    is_provided: bool,
+pub(super) struct ImplMethod<'tcx> {
+    pub(super) method: Rc<ty::Method<'tcx>>,
+    pub(super) substs: &'tcx Substs<'tcx>,
+    pub(super) is_provided: bool,
 }
 
 /// Locates the applicable definition of a method, given its name.
-fn get_impl_method<'a, 'tcx>(
+pub(super) fn get_impl_method<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     substs: &'tcx Substs<'tcx>,
     impl_def_id: DefId,

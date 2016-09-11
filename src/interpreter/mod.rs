@@ -23,6 +23,7 @@ use std::collections::HashMap;
 mod step;
 mod terminator;
 mod cast;
+mod vtable;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
@@ -108,7 +109,7 @@ struct Lvalue {
 enum LvalueExtra {
     None,
     Length(u64),
-    // TODO(solson): Vtable(memory::AllocId),
+    Vtable(Pointer),
     DowncastVariant(usize),
 }
 
@@ -569,6 +570,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     LvalueExtra::Length(len) => {
                         self.memory.write_usize(extra, len)?;
                     }
+                    LvalueExtra::Vtable(ptr) => {
+                        self.memory.write_ptr(extra, ptr)?;
+                    },
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 }
@@ -587,6 +591,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Unsize => {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
+                        let dest_ty = self.monomorphize(dest_ty, self.substs());
+                        assert!(self.type_is_fat_ptr(dest_ty));
                         let (ptr, extra) = self.get_fat_ptr(dest);
                         self.move_(src, ptr, src_ty)?;
                         let src_pointee_ty = pointee_type(src_ty).unwrap();
@@ -596,8 +602,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                                 self.memory.write_usize(extra, length as u64)?;
                             }
+                            (&ty::TyTrait(_), &ty::TyTrait(_)) => {
+                                // For now, upcasts are limited to changes in marker
+                                // traits, and hence never actually require an actual
+                                // change to the vtable.
+                                let (_, src_extra) = self.get_fat_ptr(src);
+                                let src_extra = self.memory.read_ptr(src_extra)?;
+                                self.memory.write_ptr(extra, src_extra)?;
+                            },
+                            (_, &ty::TyTrait(ref data)) => {
+                                let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
+                                let trait_ref = self.tcx.erase_regions(&trait_ref);
+                                let vtable = self.get_vtable(trait_ref)?;
+                                self.memory.write_ptr(extra, vtable)?;
+                            },
 
-                            _ => return Err(EvalError::Unimplemented(format!("can't handle cast: {:?}", rvalue))),
+                            _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
                         }
                     }
 
@@ -638,8 +658,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ty::TyFnPtr(unsafe_fn_ty) => {
                             let src = self.eval_operand(operand)?;
                             let ptr = self.memory.read_ptr(src)?;
-                            let fn_def = self.memory.get_fn(ptr.alloc_id)?;
-                            let fn_ptr = self.memory.create_fn_ptr(fn_def.def_id, fn_def.substs, unsafe_fn_ty);
+                            let (def_id, substs, _) = self.memory.get_fn(ptr.alloc_id)?;
+                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs, unsafe_fn_ty);
                             self.memory.write_ptr(dest, fn_ptr)?;
                         },
                         ref other => bug!("fn to unsafe fn cast on {:?}", other),
@@ -827,7 +847,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Deref => {
                         let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
-                        self.memory.dump(base.ptr.alloc_id);
                         let ptr = self.memory.read_ptr(base.ptr)?;
                         let extra = match pointee_ty.sty {
                             ty::TySlice(_) | ty::TyStr => {
@@ -835,7 +854,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let len = self.memory.read_usize(extra)?;
                                 LvalueExtra::Length(len)
                             }
-                            ty::TyTrait(_) => unimplemented!(),
+                            ty::TyTrait(_) => {
+                                let (_, extra) = self.get_fat_ptr(base.ptr);
+                                let vtable = self.memory.read_ptr(extra)?;
+                                LvalueExtra::Vtable(vtable)
+                            },
                             _ => LvalueExtra::None,
                         };
                         return Ok(Lvalue { ptr: ptr, extra: extra });
