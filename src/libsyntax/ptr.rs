@@ -154,6 +154,7 @@ impl<T> P<[T]> {
 }
 
 impl<T> Default for P<[T]> {
+    /// Creates a new `P`, with the `Default` value for T.
     fn default() -> P<[T]> {
         P::new()
     }

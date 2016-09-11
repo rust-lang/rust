@@ -674,6 +674,7 @@ impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BTreeSet<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Default for BTreeSet<T> {
+    /// Creates a new `BTreeSet<T>`.
     fn default() -> BTreeSet<T> {
         BTreeSet::new()
     }
