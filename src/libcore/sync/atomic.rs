@@ -118,7 +118,7 @@ pub struct AtomicPtr<T> {
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for AtomicPtr<T> {
-    /// Creates an `AtomicPtr<T>` with an initial mutable null pointer.
+    /// Creates a null `AtomicPtr<T>`.
     fn default() -> AtomicPtr<T> {
         AtomicPtr::new(::ptr::null_mut())
     }

@@ -18,7 +18,6 @@ struct MyHasher {
 }
 
 impl Default for MyHasher {
-    /// Constructs a `MyHasher` with initial value zero.
     fn default() -> MyHasher {
         MyHasher { hash: 0 }
     }
@@ -91,7 +90,6 @@ impl Hasher for CustomHasher {
 }
 
 impl Default for CustomHasher {
-    /// Constructs a `CustomHasher` with initial value zero.
     fn default() -> CustomHasher {
         CustomHasher { output: 0 }
     }

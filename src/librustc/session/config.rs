@@ -84,7 +84,6 @@ pub enum ErrorOutputType {
 }
 
 impl Default for ErrorOutputType {
-    /// Creates an `HumanReadble`, initialised with `ColorConfig` enum type `Auto`.
     fn default() -> ErrorOutputType {
         ErrorOutputType::HumanReadable(ColorConfig::Auto)
     }

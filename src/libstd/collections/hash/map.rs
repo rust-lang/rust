@@ -1218,7 +1218,7 @@ impl<K, V, S> Default for HashMap<K, V, S>
     where K: Eq + Hash,
           S: BuildHasher + Default,
 {
-    /// Creates a `HashMap<K, V, S>`, with initial `Default` hasher.
+    /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
     fn default() -> HashMap<K, V, S> {
         HashMap::with_hasher(Default::default())
     }
