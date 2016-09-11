@@ -51,15 +51,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         abi: closure_type.abi,
                         sig: closure_type.sig,
                     };
-                    let fn_ty = self.tcx.mk_bare_fn(fn_ty);
+                    let _fn_ty = self.tcx.mk_bare_fn(fn_ty);
                     unimplemented!()
                     //vec![Some(self.memory.create_fn_ptr(closure_def_id, substs.func_substs, fn_ty))].into_iter()
                 }
                 traits::VtableFnPointer(
                     traits::VtableFnPointerData {
-                        fn_ty: bare_fn_ty,
+                        fn_ty: _bare_fn_ty,
                         nested: _ }) => {
-                    let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
+                    let _trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
                     //vec![trans_fn_pointer_shim(ccx, trait_closure_kind, bare_fn_ty)].into_iter()
                     unimplemented!()
                 }

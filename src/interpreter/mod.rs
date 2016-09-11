@@ -688,7 +688,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         // Handle the field index for the outer non-null variant.
         let inner_ty = match ty.sty {
-            ty::TyEnum(adt_def, substs) => {
+            ty::TyAdt(adt_def, substs) => {
                 let variant = &adt_def.variants[nndiscr as usize];
                 let index = path.next().unwrap();
                 let field = &variant.fields[index];
@@ -715,7 +715,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
         match ty.sty {
-            ty::TyStruct(adt_def, substs) => {
+            ty::TyAdt(adt_def, substs) => {
                 Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
             }
 
@@ -953,7 +953,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            (_, &ty::TyEnum(..)) => {
+            (_, &ty::TyAdt(..)) => {
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty) {
                     match (discr.size().bytes(), signed) {
