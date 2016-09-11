@@ -25,5 +25,8 @@ pub fn main() { }
 #[cfg(target_arch = "powerpc64")]
 pub fn main() { }
 
+#[cfg(target_arch = "s390x")]
+pub fn main() { }
+
 #[cfg(target_arch = "asmjs")]
 pub fn main() { }

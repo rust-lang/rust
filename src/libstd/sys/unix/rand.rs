@@ -45,7 +45,8 @@ mod imp {
                   target_arch = "arm",
                   target_arch = "aarch64",
                   target_arch = "powerpc",
-                  target_arch = "powerpc64")))]
+                  target_arch = "powerpc64",
+                  target_arch = "s390x")))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
         #[cfg(target_arch = "x86_64")]
         const NR_GETRANDOM: libc::c_long = 318;
@@ -53,6 +54,8 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 355;
         #[cfg(target_arch = "arm")]
         const NR_GETRANDOM: libc::c_long = 384;
+        #[cfg(target_arch = "s390x")]
+        const NR_GETRANDOM: libc::c_long = 349;
         #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
         const NR_GETRANDOM: libc::c_long = 359;
         #[cfg(target_arch = "aarch64")]
@@ -71,7 +74,8 @@ mod imp {
                       target_arch = "arm",
                       target_arch = "aarch64",
                       target_arch = "powerpc",
-                      target_arch = "powerpc64"))))]
+                      target_arch = "powerpc64",
+                      target_arch = "s390x"))))]
     fn getrandom(_buf: &mut [u8]) -> libc::c_long { -1 }
 
     fn getrandom_fill_bytes(v: &mut [u8]) {
@@ -110,7 +114,8 @@ mod imp {
                   target_arch = "arm",
                   target_arch = "aarch64",
                   target_arch = "powerpc",
-                  target_arch = "powerpc64")))]
+                  target_arch = "powerpc64",
+                  target_arch = "s390x")))]
     fn is_getrandom_available() -> bool {
         use sync::atomic::{AtomicBool, Ordering};
         use sync::Once;
@@ -139,7 +144,8 @@ mod imp {
                       target_arch = "arm",
                       target_arch = "aarch64",
                       target_arch = "powerpc",
-                      target_arch = "powerpc64"))))]
+                      target_arch = "powerpc64",
+                      target_arch = "s390x"))))]
     fn is_getrandom_available() -> bool { false }
 
     pub struct OsRng {

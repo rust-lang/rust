@@ -10,6 +10,9 @@
 
 // aux-build:union.rs
 
+// FIXME: This test case makes little-endian assumptions.
+// ignore-s390x
+
 #![feature(untagged_unions)]
 
 extern crate union;

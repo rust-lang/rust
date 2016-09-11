@@ -662,6 +662,7 @@ pub mod consts {
     /// - mips64
     /// - powerpc
     /// - powerpc64
+    /// - s390x
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &'static str = super::arch::ARCH;
 
@@ -940,6 +941,11 @@ mod arch {
 #[cfg(target_arch = "powerpc64")]
 mod arch {
     pub const ARCH: &'static str = "powerpc64";
+}
+
+#[cfg(target_arch = "s390x")]
+mod arch {
+    pub const ARCH: &'static str = "s390x";
 }
 
 #[cfg(target_arch = "le32")]
