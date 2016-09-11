@@ -27,4 +27,6 @@ ifeq ($(UNAME),Linux)
 	nm "$(TMPDIR)/libatomic_lock_free.rlib" | grep -vq __atomic_fetch_add
 	$(RUSTC) --target=powerpc64le-unknown-linux-gnu atomic_lock_free.rs
 	nm "$(TMPDIR)/libatomic_lock_free.rlib" | grep -vq __atomic_fetch_add
+	$(RUSTC) --target=s390x-unknown-linux-gnu atomic_lock_free.rs
+	nm "$(TMPDIR)/libatomic_lock_free.rlib" | grep -vq __atomic_fetch_add
 endif

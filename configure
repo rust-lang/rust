@@ -524,6 +524,10 @@ case $CFG_CPUTYPE in
         CFG_CPUTYPE=powerpc64le
         ;;
 
+    s390x)
+        CFG_CPUTYPE=s390x
+        ;;
+
     x86_64 | x86-64 | x64 | amd64)
         CFG_CPUTYPE=x86_64
         ;;

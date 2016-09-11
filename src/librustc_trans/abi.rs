@@ -20,6 +20,7 @@ use cabi_arm;
 use cabi_aarch64;
 use cabi_powerpc;
 use cabi_powerpc64;
+use cabi_s390x;
 use cabi_mips;
 use cabi_mips64;
 use cabi_asmjs;
@@ -301,6 +302,9 @@ impl FnType {
         let win_x64_gnu = target.target_os == "windows"
                        && target.arch == "x86_64"
                        && target.target_env == "gnu";
+        let linux_s390x = target.target_os == "linux"
+                       && target.arch == "s390x"
+                       && target.target_env == "gnu";
         let rust_abi = match abi {
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
             _ => false
@@ -326,7 +330,9 @@ impl FnType {
                 if llsize_of_real(ccx, arg.ty) == 0 {
                     // For some forsaken reason, x86_64-pc-windows-gnu
                     // doesn't ignore zero-sized struct arguments.
-                    if is_return || rust_abi || !win_x64_gnu {
+                    // The same is true for s390x-unknown-linux-gnu.
+                    if is_return || rust_abi ||
+                       (!win_x64_gnu && !linux_s390x) {
                         arg.ignore();
                     }
                 }
@@ -511,6 +517,7 @@ impl FnType {
             "mips64" => cabi_mips64::compute_abi_info(ccx, self),
             "powerpc" => cabi_powerpc::compute_abi_info(ccx, self),
             "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, self),
+            "s390x" => cabi_s390x::compute_abi_info(ccx, self),
             "asmjs" => cabi_asmjs::compute_abi_info(ccx, self),
             a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
         }
