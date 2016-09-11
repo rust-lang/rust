@@ -170,6 +170,7 @@ impl ops::Deref for OsString {
 
 #[stable(feature = "osstring_default", since = "1.9.0")]
 impl Default for OsString {
+    /// Constructs an empty `OsString`.
     #[inline]
     fn default() -> OsString {
         OsString::new()
@@ -342,6 +343,7 @@ impl OsStr {
 
 #[stable(feature = "osstring_default", since = "1.9.0")]
 impl<'a> Default for &'a OsStr {
+    /// Creates an empty `OsStr`.
     #[inline]
     fn default() -> &'a OsStr {
         OsStr::new("")

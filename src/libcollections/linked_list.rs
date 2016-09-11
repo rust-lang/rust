@@ -164,6 +164,7 @@ impl<T> LinkedList<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for LinkedList<T> {
+    /// Creates an empty `LinkedList<T>`.
     #[inline]
     fn default() -> Self {
         Self::new()
