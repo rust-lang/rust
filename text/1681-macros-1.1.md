@@ -27,7 +27,7 @@ been enough to push the nightly users to stable as well.
 
 These large projects, however, are often the face of Rust to external users.
 Common knowledge is that fast serialization is done using serde, but to others
-this just sounds likes "fast Rust needs nightly". Over time this persistent
+this just sounds like "fast Rust needs nightly". Over time this persistent
 thought process creates a culture of "well to be serious you require nightly"
 and a general feeling that Rust is not "production ready".
 
@@ -207,8 +207,8 @@ pub fn double(input: TokenStream) -> TokenStream {
     let source = input.to_string();
 
     // Parse `source` for struct/enum declaration, and then build up some new
-    // source code representing representing a number of items in the
-    // implementation of the `Double` trait for the struct/enum in question.
+    // source code representing a number of items in the implementation of
+    // the `Double` trait for the struct/enum in question.
     let source = derive_double(&source);
 
     // Parse this back to a token stream and return it
