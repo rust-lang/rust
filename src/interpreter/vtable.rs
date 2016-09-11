@@ -9,8 +9,8 @@ use memory::Pointer;
 use super::terminator::{get_impl_method, ImplMethod};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    /// Creates a returns a dynamic vtable for the given type and vtable origin.
-    /// This is used only for objects.
+    /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
+    /// objects.
     ///
     /// The `trait_ref` encodes the erased self type. Hence if we are
     /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
