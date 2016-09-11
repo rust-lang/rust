@@ -718,7 +718,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
-    /// Creates a new `Weak<T>`.
+    /// Constructs a new `Weak<T>` without an accompanying instance of T.
     fn default() -> Weak<T> {
         Weak::new()
     }

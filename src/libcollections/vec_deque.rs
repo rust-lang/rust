@@ -84,7 +84,7 @@ impl<T> Drop for VecDeque<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for VecDeque<T> {
-    /// Creates a `VecDeque<T>` with a constant initial capacity.
+    /// Creates an empty `VecDeque<T>`.
     #[inline]
     fn default() -> VecDeque<T> {
         VecDeque::new()
