@@ -134,7 +134,7 @@ pub enum Constructor {
 #[derive(Clone, PartialEq)]
 enum Usefulness {
     Useful,
-    UsefulWithWitness(Vec<P<Pat>>),
+    UsefulWithWitness(Vec<Pat>),
     NotUseful
 }
 
@@ -403,7 +403,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
             let witnesses = if pats.is_empty() {
                 vec![DUMMY_WILD_PAT]
             } else {
-                pats.iter().map(|w| &**w).collect()
+                pats.iter().collect()
             };
             match source {
                 hir::MatchSource::ForLoopDesugar => {
@@ -577,7 +577,7 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
 /// left_ty: struct X { a: (bool, &'static str), b: usize}
 /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
 fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
-                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> P<Pat> {
+                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> Pat {
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match left_ty.sty {
@@ -636,11 +636,11 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         }
     };
 
-    P(hir::Pat {
+    hir::Pat {
         id: DUMMY_NODE_ID,
         node: pat,
         span: DUMMY_SP
-    })
+    }
 }
 
 impl Constructor {
@@ -737,9 +737,8 @@ fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
                     UsefulWithWitness(pats) => UsefulWithWitness({
                         let arity = constructor_arity(cx, &c, left_ty);
                         let mut result = {
-                            let pat_slice = &pats[..];
                             let subpats: Vec<_> = (0..arity).map(|i| {
-                                pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
+                                pats.get(i).map_or(DUMMY_WILD_PAT, |p| &*p)
                             }).collect();
                             vec![construct_witness(cx, &c, subpats, left_ty)]
                         };
