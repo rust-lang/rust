@@ -1046,21 +1046,27 @@ impl<T: Clone> Vec<T> {
         self.reserve(n);
 
         unsafe {
-            let len = self.len();
-            let mut ptr = self.as_mut_ptr().offset(len as isize);
+            let mut ptr = self.as_mut_ptr().offset(self.len() as isize);
+            // Use SetLenOnDrop to work around bug where compiler
+            // may not realize the store through `ptr` trough self.set_len()
+            // don't alias.
+            let mut local_len = SetLenOnDrop::new(&mut self.len);
+
             // Write all elements except the last one
-            for i in 1..n {
+            for _ in 1..n {
                 ptr::write(ptr, value.clone());
                 ptr = ptr.offset(1);
                 // Increment the length in every step in case clone() panics
-                self.set_len(len + i);
+                local_len.increment_len(1);
             }
 
             if n > 0 {
                 // We can write the last element directly without cloning needlessly
                 ptr::write(ptr, value);
-                self.set_len(len + n);
+                local_len.increment_len(1);
             }
+
+            // len set by scope guard
         }
     }
 
@@ -1085,17 +1091,53 @@ impl<T: Clone> Vec<T> {
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.reserve(other.len());
 
-        for i in 0..other.len() {
+        // Unsafe code so this can be optimised to a memcpy (or something
+        // similarly fast) when T is Copy. LLVM is easily confused, so any
+        // extra operations during the loop can prevent this optimisation.
+        unsafe {
             let len = self.len();
+            let ptr = self.get_unchecked_mut(len) as *mut T;
+            // Use SetLenOnDrop to work around bug where compiler
+            // may not realize the store through `ptr` trough self.set_len()
+            // don't alias.
+            let mut local_len = SetLenOnDrop::new(&mut self.len);
 
-            // Unsafe code so this can be optimised to a memcpy (or something
-            // similarly fast) when T is Copy. LLVM is easily confused, so any
-            // extra operations during the loop can prevent this optimisation.
-            unsafe {
-                ptr::write(self.get_unchecked_mut(len), other.get_unchecked(i).clone());
-                self.set_len(len + 1);
+            for i in 0..other.len() {
+                ptr::write(ptr.offset(i as isize), other.get_unchecked(i).clone());
+                local_len.increment_len(1);
             }
+
+            // len set by scope guard
         }
+    }
+}
+
+// Set the length of the vec when the `SetLenOnDrop` value goes out of scope.
+//
+// The idea is: The length field in SetLenOnDrop is a local variable
+// that the optimizer will see does not alias with any stores through the Vec's data
+// pointer. This is a workaround for alias analysis issue #32155
+struct SetLenOnDrop<'a> {
+    len: &'a mut usize,
+    local_len: usize,
+}
+
+impl<'a> SetLenOnDrop<'a> {
+    #[inline]
+    fn new(len: &'a mut usize) -> Self {
+        SetLenOnDrop { local_len: *len, len: len }
+    }
+
+    #[inline]
+    fn increment_len(&mut self, increment: usize) {
+        self.local_len += increment;
+    }
+}
+
+impl<'a> Drop for SetLenOnDrop<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        *self.len = self.local_len;
     }
 }
 
