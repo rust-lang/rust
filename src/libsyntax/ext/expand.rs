@@ -173,19 +173,12 @@ impl Invocation {
 
 pub struct MacroExpander<'a, 'b:'a> {
     pub cx: &'a mut ExtCtxt<'b>,
-    pub single_step: bool,
-    pub keep_macs: bool,
     monotonic: bool, // c.f. `cx.monotonic_expander()`
 }
 
 impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
-        MacroExpander {
-            cx: cx,
-            monotonic: monotonic,
-            single_step: false,
-            keep_macs: false,
-        }
+        MacroExpander { cx: cx, monotonic: monotonic }
     }
 
     fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
@@ -238,7 +231,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 expansions.push(Vec::new());
             }
             expansions[depth].push((mark.as_u32(), expansion));
-            if !self.single_step {
+            if !self.cx.ecfg.single_step {
                 invocations.extend(new_invocations.into_iter().rev());
             }
         }
@@ -417,7 +410,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 self.cx.insert_macro(def.clone());
 
                 // If keep_macs is true, expands to a MacEager::items instead.
-                if self.keep_macs {
+                if self.cx.ecfg.keep_macs {
                     Some(placeholders::reconstructed_macro_rules(&def, &path))
                 } else {
                     Some(placeholders::macro_scope_placeholder())
@@ -726,6 +719,8 @@ pub struct ExpansionConfig<'feat> {
     pub recursion_limit: usize,
     pub trace_mac: bool,
     pub should_test: bool, // If false, strip `#[test]` nodes
+    pub single_step: bool,
+    pub keep_macs: bool,
 }
 
 macro_rules! feature_tests {
@@ -749,6 +744,8 @@ impl<'feat> ExpansionConfig<'feat> {
             recursion_limit: 64,
             trace_mac: false,
             should_test: false,
+            single_step: false,
+            keep_macs: false,
         }
     }
 
