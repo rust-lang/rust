@@ -170,7 +170,7 @@ fetch snapshots, and an OS that can execute the available snapshot binaries.
 
 Snapshot binaries are currently built and tested on several platforms:
 
-| Platform \ Architecture        | x86 | x86_64 |
+| Platform / Architecture        | x86 | x86_64 |
 |--------------------------------|-----|--------|
 | Windows (7, 8, Server 2008 R2) | ✓   | ✓      |
 | Linux (2.6.18 or later)        | ✓   | ✓      |
