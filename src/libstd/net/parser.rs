@@ -370,7 +370,7 @@ impl FromStr for SocketAddr {
 
 /// An error returned when parsing an IP address or a socket address.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AddrParseError(());
 
 #[stable(feature = "addr_parse_error_error", since = "1.4.0")]

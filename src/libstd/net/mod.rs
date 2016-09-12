@@ -38,7 +38,7 @@ mod parser;
 ///
 /// [`shutdown`]: struct.TcpStream.html#method.shutdown
 /// [`TcpStream`]: struct.TcpStream.html
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
     /// Indicates that the reading portion of this stream/socket should be shut
