@@ -12,7 +12,8 @@ RUN_INSTALLER = cd tmp/empty_dir && \
 	sh ../../tmp/dist/$(1)/install.sh \
 		--prefix="$(DESTDIR)$(CFG_PREFIX)" \
 		--libdir="$(DESTDIR)$(CFG_LIBDIR)" \
-		--mandir="$(DESTDIR)$(CFG_MANDIR)"
+		--mandir="$(DESTDIR)$(CFG_MANDIR)" \
+		--docdir="$(DESTDIR)$(CFG_DOCDIR)"
 
 install:
 ifeq (root user, $(USER) $(patsubst %,user,$(SUDO_USER)))
