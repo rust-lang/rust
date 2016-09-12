@@ -325,8 +325,7 @@ pub unsafe fn uninitialized<T>() -> T {
     intrinsics::uninit()
 }
 
-/// Swap the values at two mutable locations of the same type, without deinitializing or copying
-/// either one.
+/// Swap the values at two mutable locations. Each value is moved to the other's location.
 ///
 /// # Examples
 ///
@@ -360,8 +359,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
-/// Replaces the value at a mutable location with a new one, returning the old value, without
-/// deinitializing or copying either one.
+/// Move out the value at a mutable location and return it, and move the new value in to replace
+/// it.
 ///
 /// This is primarily used for transferring and swapping ownership of a value in a mutable
 /// location.
