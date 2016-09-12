@@ -1303,7 +1303,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_trait(self, mut obj: TraitObject<'tcx>) -> Ty<'tcx> {
-        obj.projection_bounds.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
+        obj.projection_bounds.sort_by_key(|b| b.sort_key(self));
         self.mk_ty(TyTrait(box obj))
     }
 
