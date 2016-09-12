@@ -17,8 +17,10 @@
 //! runtime impact. Therefore, it is largely compiled out if
 //! debug-assertions are not enabled.
 //!
-//! The basic sanity check, always enabled, is that there is always a
-//! task (or ignore) on the stack when you do read/write.
+//! The basic sanity check, enabled if you have debug assertions
+//! enabled, is that there is always a task (or ignore) on the stack
+//! when you do read/write, and that the tasks are pushed/popped
+//! according to a proper stack discipline.
 //!
 //! Optionally, if you specify RUST_FORBID_DEP_GRAPH_EDGE, you can
 //! specify an edge filter to be applied to each edge as it is
@@ -81,13 +83,23 @@ impl ShadowGraph {
                 DepMessage::Write(ref n) => self.check_edge(top(&stack), Some(Some(n))),
                 DepMessage::PushTask(ref n) => stack.push(Some(n.clone())),
                 DepMessage::PushIgnore => stack.push(None),
-                DepMessage::PopTask(_) |
+                DepMessage::PopTask(ref n) => {
+                    match stack.pop() {
+                        Some(Some(m)) => {
+                            if *n != m {
+                                bug!("stack mismatch: found {:?} expected {:?}", m, n)
+                            }
+                        }
+                        Some(None) => bug!("stack mismatch: found Ignore expected {:?}", n),
+                        None => bug!("stack mismatch: found empty stack, expected {:?}", n),
+                    }
+                }
                 DepMessage::PopIgnore => {
-                    // we could easily check that the stack is
-                    // well-formed here, but since we use closures and
-                    // RAII accessors, this bug basically never
-                    // happens, so it seems not worth the overhead
-                    stack.pop();
+                    match stack.pop() {
+                        Some(Some(m)) => bug!("stack mismatch: found {:?} expected ignore", m),
+                        Some(None) => (),
+                        None => bug!("stack mismatch: found empty stack, expected ignore"),
+                    }
                 }
                 DepMessage::Query => (),
             }
