@@ -676,6 +676,7 @@ valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
+valopt_nosave docdir "${CFG_PREFIX}/share/doc/rust" "install man pages in PATH"
 
 # On Windows this determines root of the subtree for target libraries.
 # Host runtime libs always go to 'bin'.
@@ -1124,6 +1125,7 @@ putvar CFG_STDCPP_NAME
 # a little post-processing of various config values
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
+CFG_DOCDIR=${CFG_DOCDIR%/}
 CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
 CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
 CFG_SUPPORTED_TARGET=""
@@ -1805,6 +1807,7 @@ putvar CFG_ARMV7_LINUX_ANDROIDEABI_NDK
 putvar CFG_I686_LINUX_ANDROID_NDK
 putvar CFG_NACL_CROSS_PATH
 putvar CFG_MANDIR
+putvar CFG_DOCDIR
 putvar CFG_USING_LIBCPP
 
 # Avoid spurious warnings from clang by feeding it original source on
