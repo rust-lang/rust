@@ -287,28 +287,20 @@ pub fn char_lit(lit: &str) -> (char, isize) {
     use std::char;
 
     let mut chars = lit.chars();
-    let c = match (chars.next(), chars.next()) {
+    match (chars.next(), chars.next()) {
         (Some(c), None) if c != '\\' => return (c, 1),
         (Some('\\'), Some(c)) => match c {
-            '"' => Some('"'),
-            'n' => Some('\n'),
-            'r' => Some('\r'),
-            't' => Some('\t'),
-            '\\' => Some('\\'),
-            '\'' => Some('\''),
-            '0' => Some('\0'),
-            _ => { None }
+            '"' => return ('"', 2),
+            'n' => return ('\n', 2),
+            'r' => return ('\r', 2),
+            't' => return ('\t', 2),
+            '\\' => return ('\\', 2),
+            '\'' => return ('\'', 2),
+            '0' => return ('\0', 2),
+            _ => {}
         },
         _ => panic!("lexer accepted invalid char escape `{}`", lit)
     };
-
-    match c {
-        Some(x) => return (x, 2),
-        None => { }
-    }
-
-    let msg = format!("lexer should have rejected a bad character escape {}", lit);
-    let msg2 = &msg[..];
 
     fn esc(len: usize, lit: &str) -> Option<(char, isize)> {
         u32::from_str_radix(&lit[2..len], 16).ok()
@@ -318,7 +310,10 @@ pub fn char_lit(lit: &str) -> (char, isize) {
 
     let unicode_escape = || -> Option<(char, isize)> {
         if lit.as_bytes()[2] == b'{' {
-            let idx = lit.find('}').expect(msg2);
+            let idx = lit.find('}').unwrap_or_else(|| {
+                panic!("lexer should have rejected a bad character escape {}", lit)
+            });
+
             let subslice = &lit[3..idx];
             u32::from_str_radix(subslice, 16).ok()
                 .and_then(char::from_u32)
@@ -334,7 +329,9 @@ pub fn char_lit(lit: &str) -> (char, isize) {
         'u' => unicode_escape(),
         'U' => esc(10, lit),
         _ => None,
-    }.expect(msg2);
+    }.unwrap_or_else(|| {
+        panic!("lexer should have rejected a bad character escape {}", lit)
+    })
 }
 
 /// Parse a string representing a string literal into its final form. Does
