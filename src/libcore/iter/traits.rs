@@ -587,7 +587,6 @@ macro_rules! integer_sum_product {
     ($($a:ident)*) => ($(
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Sum for $a {
-            #[rustc_inherit_overflow_checks]
             fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
                 iter.fold(0, Add::add)
             }
