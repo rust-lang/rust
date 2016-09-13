@@ -19,3 +19,19 @@ fn main() {
     let y = (5, diverge(), 6); //~ ERROR sub-expression diverges
     println!("{}", y.1);
 }
+
+#[allow(dead_code, unused_variables)]
+fn foobar() {
+    loop {
+        let x = match 5 {
+            4 => return,
+            5 => continue,
+            6 => (println!("foo"), return), //~ ERROR sub-expression diverges
+            7 => (println!("bar"), continue), //~ ERROR sub-expression diverges
+            8 => break,
+            9 => diverge(),
+            3 => (println!("moo"), diverge()), //~ ERROR sub-expression diverges
+            _ => (println!("boo"), break), //~ ERROR sub-expression diverges
+        };
+    }
+}
