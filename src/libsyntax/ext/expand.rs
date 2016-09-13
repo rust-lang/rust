@@ -12,7 +12,7 @@ use ast::{Block, Crate, Ident, Mac_, PatKind};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use ast;
 use ext::hygiene::Mark;
-use ext::placeholders::{self, placeholder, PlaceholderExpander};
+use ext::placeholders::{placeholder, PlaceholderExpander};
 use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use syntax_pos::{self, Span, ExpnId};
@@ -375,46 +375,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 });
 
                 kind.make_from(expander.expand(self.cx, span, ident, marked_tts, attrs))
-            }
-
-            MacroRulesTT => {
-                if ident.name == keywords::Invalid.name() {
-                    self.cx.span_err(path.span,
-                                    &format!("macro {}! expects an ident argument", extname));
-                    return kind.dummy(span);
-                };
-
-                self.cx.bt_push(ExpnInfo {
-                    call_site: span,
-                    callee: NameAndSpan {
-                        format: MacroBang(extname),
-                        span: None,
-                        // `macro_rules!` doesn't directly allow unstable
-                        // (this is orthogonal to whether the macro it creates allows it)
-                        allow_internal_unstable: false,
-                    }
-                });
-
-                let def = ast::MacroDef {
-                    ident: ident,
-                    id: ast::DUMMY_NODE_ID,
-                    span: span,
-                    imported_from: None,
-                    use_locally: true,
-                    body: marked_tts,
-                    export: attr::contains_name(&attrs, "macro_export"),
-                    allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
-                    attrs: attrs,
-                };
-
-                self.cx.insert_macro(def.clone());
-
-                // If keep_macs is true, expands to a MacEager::items instead.
-                if self.cx.ecfg.keep_macs {
-                    Some(placeholders::reconstructed_macro_rules(&def, &path))
-                } else {
-                    Some(placeholders::macro_scope_placeholder())
-                }
             }
 
             MultiDecorator(..) | MultiModifier(..) => {
