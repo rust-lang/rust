@@ -410,10 +410,13 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
                         },
                         _ => bug!(),
                     };
-                    span_err!(cx.tcx.sess, sp, E0297,
+                    let pattern_string = pat_to_string(witness);
+                    struct_span_err!(cx.tcx.sess, sp, E0297,
                         "refutable pattern in `for` loop binding: \
                                 `{}` not covered",
-                                pat_to_string(witness));
+                                pattern_string)
+                        .span_label(sp, &format!("pattern `{}` not covered", pattern_string))
+                        .emit();
                 },
                 _ => {
                     let pattern_strings: Vec<_> = witnesses.iter().map(|w| {
