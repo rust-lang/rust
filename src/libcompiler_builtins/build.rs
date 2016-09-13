@@ -50,10 +50,12 @@ impl Sources {
     }
 
     fn extend(&mut self, sources: &[&'static str]) {
-        // NOTE Some intrinsics have both a generic implementation (e.g. `floatdidf.c`) and an arch
-        // optimized implementation (`x86_64/floatdidf.c`). In those cases, we keep the arch
-        // optimized implementation and discard the generic implementation. If we don't and keep
-        // both implementations, the linker will yell at us about duplicate symbols!
+        // NOTE Some intrinsics have both a generic implementation (e.g.
+        // `floatdidf.c`) and an arch optimized implementation
+        // (`x86_64/floatdidf.c`). In those cases, we keep the arch optimized
+        // implementation and discard the generic implementation. If we don't
+        // and keep both implementations, the linker will yell at us about
+        // duplicate symbols!
         for &src in sources {
             let symbol = Path::new(src).file_stem().unwrap().to_str().unwrap();
             if src.contains("/") {
