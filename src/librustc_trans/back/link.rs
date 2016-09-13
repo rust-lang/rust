@@ -573,10 +573,6 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
                   tempdir: &Path) {
     let mut ab = link_rlib(sess, None, objects, out_filename, tempdir);
-    if !sess.target.target.options.no_compiler_rt {
-        ab.add_native_library("compiler-rt");
-    }
-
     let mut all_native_libs = vec![];
 
     each_linked_rlib(sess, &mut |cnum, path| {
@@ -640,9 +636,6 @@ fn link_natively(sess: &Session,
         let mut linker = trans.linker_info.to_linker(&mut cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
                   objects, out_filename, outputs);
-        if !sess.target.target.options.no_compiler_rt {
-            linker.link_staticlib("compiler-rt");
-        }
     }
     cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {
@@ -933,22 +926,36 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // crates.
     let deps = sess.cstore.used_crates(LinkagePreference::RequireDynamic);
 
+    let mut compiler_builtins = None;
+
     for &(cnum, _) in &deps {
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum as usize - 1] {
+            // compiler-builtins are always placed last to ensure that they're
+            // linked correctly.
+            _ if sess.cstore.is_compiler_builtins(cnum) => {
+                assert!(compiler_builtins.is_none());
+                compiler_builtins = Some(cnum);
+            }
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                add_static_crate(cmd, sess, tmpdir, crate_type,
-                                 &src.rlib.unwrap().0, sess.cstore.is_no_builtins(cnum))
+                add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
             }
             Linkage::Dynamic => {
                 add_dynamic_crate(cmd, sess, &src.dylib.unwrap().0)
             }
         }
+    }
+
+    // We must always link the `compiler_builtins` crate statically. Even if it
+    // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
+    // is used)
+    if let Some(cnum) = compiler_builtins {
+        add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
     }
 
     // Converts a library file-stem into a cc -l argument
@@ -996,8 +1003,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                         sess: &Session,
                         tmpdir: &Path,
                         crate_type: config::CrateType,
-                        cratepath: &Path,
-                        is_a_no_builtins_crate: bool) {
+                        cnum: ast::CrateNum) {
+        let src = sess.cstore.used_crate_source(cnum);
+        let cratepath = &src.rlib.unwrap().0;
         if !sess.lto() && crate_type != config::CrateTypeDylib {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
             return
@@ -1021,7 +1029,13 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 }
                 let canonical = f.replace("-", "_");
                 let canonical_name = name.replace("-", "_");
-                if sess.lto() && !is_a_no_builtins_crate &&
+
+                // If we're performing LTO and this is a rust-generated object
+                // file, then we don't need the object file as it's part of the
+                // LTO module. Note that `#![no_builtins]` is excluded from LTO,
+                // though, so we let that object file slide.
+                if sess.lto() &&
+                   !sess.cstore.is_no_builtins(cnum) &&
                    canonical.starts_with(&canonical_name) &&
                    canonical.ends_with(".o") {
                     let num = &f[name.len()..f.len() - 2];
@@ -1033,13 +1047,23 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 any_objects = true;
             }
 
-            if any_objects {
-                archive.build();
-                if crate_type == config::CrateTypeDylib {
-                    cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
-                } else {
-                    cmd.link_rlib(&fix_windows_verbatim_for_gcc(&dst));
-                }
+            if !any_objects {
+                return
+            }
+            archive.build();
+
+            // If we're creating a dylib, then we need to include the
+            // whole of each object in our archive into that artifact. This is
+            // because a `dylib` can be reused as an intermediate artifact.
+            //
+            // Note, though, that we don't want to include the whole of a
+            // compiler-builtins crate (e.g. compiler-rt) because it'll get
+            // repeatedly linked anyway.
+            if crate_type == config::CrateTypeDylib &&
+               !sess.cstore.is_compiler_builtins(cnum) {
+                cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
+            } else {
+                cmd.link_rlib(&fix_windows_verbatim_for_gcc(&dst));
             }
         });
     }

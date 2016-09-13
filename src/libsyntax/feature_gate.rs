@@ -298,6 +298,10 @@ declare_features! (
 
     // elide `'static` lifetimes in `static`s and `const`s
     (active, static_in_const, "1.13.0", Some(35897)),
+
+    // Used to identify the `compiler_builtins` crate
+    // rustc internal
+    (active, compiler_builtins, "1.13.0", None),
 );
 
 declare_features! (
@@ -537,6 +541,12 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                                           libcore functions that are inlined \
                                                           across crates and will never be stable",
                                                           cfg_fn!(rustc_attrs))),
+    ("compiler_builtins", Whitelisted, Gated("compiler_builtins",
+                                             "the `#[compiler_builtins]` attribute is used to \
+                                              identify the `compiler_builtins` crate which \
+                                              contains compiler-rt intrinsics and will never be \
+                                              stable",
+                                          cfg_fn!(compiler_builtins))),
 
     ("allow_internal_unstable", Normal, Gated("allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE,

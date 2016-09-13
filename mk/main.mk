@@ -455,7 +455,10 @@ endif
 TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
 	$$(foreach obj,$$(REQUIRED_OBJECTS_$(2)),\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj))
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj)) \
+	$$(TLIB0_T_$(2)_H_$(3))/$$(call CFG_STATIC_LIB_NAME_$(2),compiler-rt)
+# ^ This copies `libcompiler-rt.a` to the stage0 sysroot
+# ^ TODO(stage0) update this to not copy `libcompiler-rt.a` to stage0
 
 # Prerequisites for a working stageN compiler and libraries, for a specific
 # target

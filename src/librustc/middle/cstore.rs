@@ -210,6 +210,7 @@ pub trait CrateStore<'tcx> {
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
     fn is_panic_runtime(&self, cnum: ast::CrateNum) -> bool;
+    fn is_compiler_builtins(&self, cnum: ast::CrateNum) -> bool;
     fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy;
     fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate>;
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
@@ -405,6 +406,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool { bug!("is_explicitly_linked") }
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool { bug!("is_allocator") }
     fn is_panic_runtime(&self, cnum: ast::CrateNum) -> bool { bug!("is_panic_runtime") }
+    fn is_compiler_builtins(&self, cnum: ast::CrateNum) -> bool { bug!("is_compiler_builtins") }
     fn panic_strategy(&self, cnum: ast::CrateNum) -> PanicStrategy {
         bug!("panic_strategy")
     }
