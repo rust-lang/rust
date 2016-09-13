@@ -262,21 +262,24 @@ extern "rust-intrinsic" {
     /// Moves a value out of scope without running drop glue.
     pub fn forget<T>(_: T) -> ();
 
-    /// Reinterprets the bits of a value of one type as another type; both types
-    /// must have the same size. Neither the original, nor the result, may be an
-    /// [invalid value] (../../nomicon/meet-safe-and-unsafe.html).
+    /// Reinterprets the bits of a value of one type as another type.
+    ///
+    /// Both types must have the same size. Neither the original, nor the result,
+    /// may be an [invalid value](../../nomicon/meet-safe-and-unsafe.html).
     ///
     /// `transmute` is semantically equivalent to a bitwise move of one type
-    /// into another. It copies the bits from the destination type into the
-    /// source type, then forgets the original. It's equivalent to C's `memcpy`
-    /// under the hood, just like `transmute_copy`.
+    /// into another. It copies the bits from the source value into the
+    /// destination value, then forgets the original. It's equivalent to C's
+    /// `memcpy` under the hood, just like `transmute_copy`.
     ///
-    /// `transmute` is incredibly unsafe. There are a vast number of ways to
-    /// cause undefined behavior with this function. `transmute` should be
+    /// `transmute` is **incredibly** unsafe. There are a vast number of ways to
+    /// cause [undefined behavior][ub] with this function. `transmute` should be
     /// the absolute last resort.
     ///
     /// The [nomicon](../../nomicon/transmutes.html) has additional
     /// documentation.
+    ///
+    /// [ub]: ../../reference.html#behavior-considered-undefined
     ///
     /// # Examples
     ///
@@ -292,7 +295,8 @@ extern "rust-intrinsic" {
     /// assert_eq!(bitpattern, 0x3F800000);
     /// ```
     ///
-    /// Turning a pointer into a function pointer:
+    /// Turning a pointer into a function pointer. This is *not* portable to
+    /// machines where function pointers and data pointers have different sizes.
     ///
     /// ```
     /// fn foo() -> i32 {
@@ -305,8 +309,8 @@ extern "rust-intrinsic" {
     /// assert_eq!(function(), 0);
     /// ```
     ///
-    /// Extending a lifetime, or shortening an invariant lifetime; this is
-    /// advanced, very unsafe rust:
+    /// Extending a lifetime, or shortening an invariant lifetime. This is
+    /// advanced, very unsafe Rust!
     ///
     /// ```
     /// struct R<'a>(&'a i32);
@@ -322,11 +326,9 @@ extern "rust-intrinsic" {
     ///
     /// # Alternatives
     ///
-    /// However, many uses of `transmute` can be achieved through other means.
-    /// `transmute` can transform any type into any other, with just the caveat
-    /// that they're the same size, and often interesting results occur. Below
-    /// are common applications of `transmute` which can be replaced with safe
-    /// applications of `as`:
+    /// Don't despair: many uses of `transmute` can be achieved through other means.
+    /// Below are common applications of `transmute` which can be replaced with safer
+    /// constructs.
     ///
     /// Turning a pointer into a `usize`:
     ///
@@ -335,6 +337,7 @@ extern "rust-intrinsic" {
     /// let ptr_num_transmute = unsafe {
     ///     std::mem::transmute::<&i32, usize>(ptr)
     /// };
+    ///
     /// // Use an `as` cast instead
     /// let ptr_num_cast = ptr as *const i32 as usize;
     /// ```
@@ -346,6 +349,7 @@ extern "rust-intrinsic" {
     /// let ref_transmuted = unsafe {
     ///     std::mem::transmute::<*mut i32, &mut i32>(ptr)
     /// };
+    ///
     /// // Use a reborrow instead
     /// let ref_casted = unsafe { &mut *ptr };
     /// ```
@@ -357,6 +361,7 @@ extern "rust-intrinsic" {
     /// let val_transmuted = unsafe {
     ///     std::mem::transmute::<&mut i32, &mut u32>(ptr)
     /// };
+    ///
     /// // Now, put together `as` and reborrowing - note the chaining of `as`
     /// // `as` is not transitive
     /// let val_casts = unsafe { &mut *(ptr as *mut i32 as *mut u32) };
@@ -368,9 +373,11 @@ extern "rust-intrinsic" {
     /// // this is not a good way to do this.
     /// let slice = unsafe { std::mem::transmute::<&str, &[u8]>("Rust") };
     /// assert_eq!(slice, &[82, 117, 115, 116]);
+    ///
     /// // You could use `str::as_bytes`
     /// let slice = "Rust".as_bytes();
     /// assert_eq!(slice, &[82, 117, 115, 116]);
+    ///
     /// // Or, just use a byte string, if you have control over the string
     /// // literal
     /// assert_eq!(b"Rust", &[82, 117, 115, 116]);
@@ -381,18 +388,21 @@ extern "rust-intrinsic" {
     /// ```
     /// let store = [0, 1, 2, 3];
     /// let mut v_orig = store.iter().collect::<Vec<&i32>>();
+    ///
     /// // Using transmute: this is Undefined Behavior, and a bad idea.
     /// // However, it is no-copy.
     /// let v_transmuted = unsafe {
     ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(
     ///         v_orig.clone())
     /// };
+    ///
     /// // This is the suggested, safe way.
-    /// // It does copy the entire Vector, though, into a new array.
+    /// // It does copy the entire vector, though, into a new array.
     /// let v_collected = v_orig.clone()
     ///                         .into_iter()
     ///                         .map(|r| Some(r))
     ///                         .collect::<Vec<Option<&i32>>>();
+    ///
     /// // The no-copy, unsafe way, still using transmute, but not UB.
     /// // This is equivalent to the original, but safer, and reuses the
     /// // same Vec internals. Therefore the new inner type must have the
@@ -412,6 +422,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// use std::{slice, mem};
+    ///
     /// // There are multiple ways to do this; and there are multiple problems
     /// // with the following, transmute, way.
     /// fn split_at_mut_transmute<T>(slice: &mut [T], mid: usize)
@@ -426,6 +437,7 @@ extern "rust-intrinsic" {
     ///         (&mut slice[0..mid], &mut slice2[mid..len])
     ///     }
     /// }
+    ///
     /// // This gets rid of the typesafety problems; `&mut *` will *only* give
     /// // you an `&mut T` from an `&mut T` or `*mut T`.
     /// fn split_at_mut_casts<T>(slice: &mut [T], mid: usize)
@@ -439,6 +451,7 @@ extern "rust-intrinsic" {
     ///         (&mut slice[0..mid], &mut slice2[mid..len])
     ///     }
     /// }
+    ///
     /// // This is how the standard library does it. This is the best method, if
     /// // you need to do something like this
     /// fn split_at_stdlib<T>(slice: &mut [T], mid: usize)
