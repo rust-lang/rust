@@ -145,7 +145,7 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &cstore::CrateMetadata,
                                        decode_ast(ast_doc),
                                        dcx);
     let name = match *ii {
-        InlinedItem::Item(_, ref i) => i.name,
+        InlinedItem::Item(_, ref i) => i.name.node,
         InlinedItem::TraitItem(_, ref ti) => ti.name,
         InlinedItem::ImplItem(_, ref ii) => ii.name
     };

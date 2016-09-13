@@ -741,7 +741,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
       hir::ItemImpl(.., ref impl_items) => {
-          debug!("ItemImpl {} with id {}", it.name, it.id);
+          debug!("ItemImpl {} with id {}", it.name.node, it.id);
           let impl_def_id = ccx.tcx.map.local_def_id(it.id);
           match ccx.tcx.impl_trait_ref(impl_def_id) {
               Some(impl_trait_ref) => {
@@ -811,7 +811,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_bare_fn(ccx, &decl, &body, it.id);
       }
       hir::ItemImpl(.., ref impl_items) => {
-        debug!("ItemImpl {} with id {}", it.name, it.id);
+        debug!("ItemImpl {} with id {}", it.name.node, it.id);
 
         for impl_item in impl_items {
             match impl_item.node {

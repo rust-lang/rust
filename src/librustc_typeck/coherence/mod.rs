@@ -129,7 +129,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         if let Some(trait_ref) = self.crate_context.tcx.impl_trait_ref(impl_did) {
             debug!("(checking implementation) adding impl for trait '{:?}', item '{}'",
                    trait_ref,
-                   item.name);
+                   item.name.node);
 
             // Skip impls where one of the self type is an error type.
             // This occurs with e.g. resolve failures (#30589).
