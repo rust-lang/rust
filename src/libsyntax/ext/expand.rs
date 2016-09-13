@@ -374,7 +374,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 });
 
-                kind.make_from(expander.expand(self.cx, span, ident, marked_tts))
+                kind.make_from(expander.expand(self.cx, span, ident, marked_tts, attrs))
             }
 
             MacroRulesTT => {
