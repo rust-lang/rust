@@ -242,10 +242,28 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let lvalue = self.trans_lvalue(&bcx, location);
                 let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
                 let drop_ty = glue::get_drop_glue_type(bcx.tcx(), ty);
-                let llvalue = if drop_ty != ty {
-                    bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                let is_sized = common::type_is_sized(bcx.tcx(), ty);
+                let llvalue = if is_sized {
+                    if drop_ty != ty {
+                        bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                    } else {
+                        lvalue.llval
+                    }
                 } else {
-                    lvalue.llval
+                    // FIXME(#36457) Currently drop glue takes sized
+                    // values as a `*(data, meta)`, but elsewhere in
+                    // MIR we pass `(data, meta)` as two separate
+                    // arguments. It would be better to fix drop glue,
+                    // but I am shooting for a quick fix to #35546
+                    // here that can be cleanly backported to beta, so
+                    // I want to avoid touching all of trans.
+                    bcx.with_block(|bcx| {
+                        let scratch = base::alloc_ty(bcx, ty, "drop");
+                        base::call_lifetime_start(bcx, scratch);
+                        build::Store(bcx, lvalue.llval, base::get_dataptr(bcx, scratch));
+                        build::Store(bcx, lvalue.llextra, base::get_meta(bcx, scratch));
+                        scratch
+                    })
                 };
                 if let Some(unwind) = unwind {
                     bcx.invoke(drop_fn,
