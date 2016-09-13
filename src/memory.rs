@@ -314,7 +314,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(&FunctionDefinition {
                 def_id,
                 kind: FunctionKind::Closure { ref substs, ref ty }
-            }) => Ok((def_id, substs.clone(), ty.clone())),
+            }) => Ok((def_id, *substs, ty.clone())),
             Some(&FunctionDefinition {
                 kind: FunctionKind::Function { .. }, ..
             }) => Err(EvalError::CalledClosureAsFunction),

@@ -20,8 +20,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         debug!("get_vtable(trait_ref={:?})", trait_ref);
 
-        let methods: Vec<_> = traits::supertraits(tcx, trait_ref.clone()).flat_map(|trait_ref| {
-            match self.fulfill_obligation(trait_ref.clone()) {
+        let methods: Vec<_> = traits::supertraits(tcx, trait_ref).flat_map(|trait_ref| {
+            match self.fulfill_obligation(trait_ref) {
                 // Should default trait error here?
                 traits::VtableDefaultImpl(_) |
                 traits::VtableBuiltin(_) => {
