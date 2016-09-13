@@ -165,6 +165,7 @@ struct TomlTarget {
 impl Config {
     pub fn parse(build: &str, file: Option<PathBuf>) -> Config {
         let mut config = Config::default();
+        config.lld = true;
         config.llvm_optimize = true;
         config.use_jemalloc = true;
         config.backtrace = true;
