@@ -457,9 +457,6 @@ pub enum SyntaxExtension {
     /// the block.
     ///
     IdentTT(Box<IdentMacroExpander + 'static>, Option<Span>, bool),
-
-    /// Represents `macro_rules!` itself.
-    MacroRulesTT,
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
