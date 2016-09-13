@@ -441,17 +441,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 self.hash(f.sig.variadic());
             }
             TyTrait(ref data) => {
-                // Trait objects have a list of projection bounds
-                // that are not guaranteed to be sorted in an order
-                // that gets preserved across crates, so we need
-                // to sort them again by the name, in string form.
-
-                // Hash the whole principal trait ref.
                 self.def_id(data.principal.def_id());
-                data.principal.visit_with(self);
-
-                // Hash region and builtin bounds.
-                data.region_bound.visit_with(self);
                 self.hash(data.builtin_bounds);
             }
             TyTuple(tys) => {
