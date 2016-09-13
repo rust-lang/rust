@@ -47,8 +47,32 @@ declare_lint! {
     "type names prefixed/postfixed with their containing module's name"
 }
 
+/// **What it does:** Checks for modules that have the same name as their parent module
+///
+/// **Why is this bad?** A typical beginner mistake is to have `mod foo;` and again `mod foo { .. }` in `foo.rs`.
+///                      The expectation is that items inside the inner `mod foo { .. }` are then available
+///                      through `foo::x`, but they are only available through `foo::foo::x`.
+///                      If this is done on purpose, it would be better to choose a more representative module name.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// // lib.rs
+/// mod foo;
+/// // foo.rs
+/// mod foo {
+///     ...
+/// }
+/// ```
+declare_lint! {
+    pub MODULE_INCEPTION,
+    Warn,
+    "modules that have the same name as their parent module"
+}
+
 pub struct EnumVariantNames {
-    modules: Vec<String>,
+    modules: Vec<(InternedString, String)>,
     threshold: u64,
 }
 
@@ -60,7 +84,7 @@ impl EnumVariantNames {
 
 impl LintPass for EnumVariantNames {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ENUM_VARIANT_NAMES, STUTTER)
+        lint_array!(ENUM_VARIANT_NAMES, STUTTER, MODULE_INCEPTION)
     }
 }
 
@@ -170,18 +194,25 @@ impl EarlyLintPass for EnumVariantNames {
         let item_name = item.ident.name.as_str();
         let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);
-        if item.vis == Visibility::Public && !in_macro(cx, item.span) {
-            if let Some(mod_camel) = self.modules.last() {
+        if !in_macro(cx, item.span) {
+            if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
-                    let matching = partial_match(mod_camel, &item_camel);
-                    let rmatching = partial_rmatch(mod_camel, &item_camel);
-                    let nchars = mod_camel.chars().count();
-                    if matching == nchars {
-                        span_lint(cx, STUTTER, item.span, &format!("Item name ({}) starts with its containing module's name ({})", item_camel, mod_camel));
+                    if mod_name == &item_name {
+                        if let ItemKind::Mod(..) = item.node {
+                            span_lint(cx, MODULE_INCEPTION, item.span, "module has the same name as its containing module");
+                        }
                     }
-                    if rmatching == nchars {
-                        span_lint(cx, STUTTER, item.span, &format!("Item name ({}) ends with its containing module's name ({})", item_camel, mod_camel));
+                    if item.vis == Visibility::Public {
+                        let matching = partial_match(mod_camel, &item_camel);
+                        let rmatching = partial_rmatch(mod_camel, &item_camel);
+                        let nchars = mod_camel.chars().count();
+                        if matching == nchars {
+                            span_lint(cx, STUTTER, item.span, "item name starts with its containing module's name");
+                        }
+                        if rmatching == nchars {
+                            span_lint(cx, STUTTER, item.span, "item name ends with its containing module's name");
+                        }
                     }
                 }
             }
@@ -189,6 +220,6 @@ impl EarlyLintPass for EnumVariantNames {
         if let ItemKind::Enum(ref def, _) = item.node {
             check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span);
         }
-        self.modules.push(item_camel);
+        self.modules.push((item_name, item_camel));
     }
 }

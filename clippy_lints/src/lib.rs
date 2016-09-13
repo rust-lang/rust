@@ -96,7 +96,6 @@ pub mod minmax;
 pub mod misc;
 pub mod misc_early;
 pub mod missing_doc;
-pub mod module_inception;
 pub mod mut_mut;
 pub mod mut_reference;
 pub mod mutex_atomic;
@@ -175,7 +174,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box utils::internal_lints::LintWithoutLintPass::default());
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box booleans::NonminimalBool);
-    reg.register_early_lint_pass(box module_inception::Pass);
     reg.register_late_lint_pass(box eq_op::EqOp);
     reg.register_early_lint_pass(box enum_variants::EnumVariantNames::new(conf.enum_variant_name_threshold));
     reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
@@ -329,6 +327,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         entry::MAP_ENTRY,
         enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
         enum_variants::ENUM_VARIANT_NAMES,
+        enum_variants::MODULE_INCEPTION,
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
@@ -391,7 +390,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc_early::REDUNDANT_CLOSURE_CALL,
         misc_early::UNNEEDED_FIELD_PATTERN,
         misc_early::ZERO_PREFIXED_LITERAL,
-        module_inception::MODULE_INCEPTION,
         mut_reference::UNNECESSARY_MUT_PASSED,
         mutex_atomic::MUTEX_ATOMIC,
         needless_bool::BOOL_COMPARISON,
