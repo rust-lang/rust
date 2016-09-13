@@ -453,17 +453,6 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 // Hash region and builtin bounds.
                 data.region_bound.visit_with(self);
                 self.hash(data.builtin_bounds);
-
-                // Only projection bounds are left, hash them.
-                self.hash(data.projection_bounds.len());
-                for bound in &data.projection_bounds {
-                    self.def_id(bound.0.trait_ref.def_id);
-                    self.hash(bound.0.item_name);
-                    bound.visit_with(self);
-                }
-
-                // Bypass super_visit_with, we've visited everything.
-                return false;
             }
             TyTuple(tys) => {
                 self.hash(tys.len());
