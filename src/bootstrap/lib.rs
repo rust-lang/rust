@@ -556,12 +556,18 @@ impl Build {
                 continue
             }
 
+            if !submodule.path.exists() {
+                t!(fs::create_dir_all(&submodule.path));
+            }
+
             match submodule.state {
                 State::MaybeDirty => {
                     // drop staged changes
-                    self.run(git().arg("-C").arg(submodule.path).args(&["reset", "--hard"]));
+                    self.run(git().current_dir(submodule.path)
+                                  .args(&["reset", "--hard"]));
                     // drops unstaged changes
-                    self.run(git().arg("-C").arg(submodule.path).args(&["clean", "-fdx"]));
+                    self.run(git().current_dir(submodule.path)
+                                  .args(&["clean", "-fdx"]));
                 },
                 State::NotInitialized => {
                     self.run(git_submodule().arg("init").arg(submodule.path));
@@ -570,8 +576,10 @@ impl Build {
                 State::OutOfSync => {
                     // drops submodule commits that weren't reported to the (outer) git repository
                     self.run(git_submodule().arg("update").arg(submodule.path));
-                    self.run(git().arg("-C").arg(submodule.path).args(&["reset", "--hard"]));
-                    self.run(git().arg("-C").arg(submodule.path).args(&["clean", "-fdx"]));
+                    self.run(git().current_dir(submodule.path)
+                                  .args(&["reset", "--hard"]));
+                    self.run(git().current_dir(submodule.path)
+                                  .args(&["clean", "-fdx"]));
                 },
             }
         }
