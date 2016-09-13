@@ -164,7 +164,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // method could then never be called, so we do not want to
                 // try and trans it, in that case. Issue #23435.
                 if mth.is_provided {
-                    let predicates = mth.method.predicates.predicates.subst(self.tcx, &mth.substs);
+                    let predicates = mth.method.predicates.predicates.subst(self.tcx, mth.substs);
                     if !self.normalize_and_test_predicates(predicates) {
                         debug!("get_vtable_methods: predicates do not hold");
                         return None;
