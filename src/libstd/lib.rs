@@ -224,6 +224,7 @@
 #![feature(char_internals)]
 #![feature(collections)]
 #![feature(collections_bound)]
+#![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]

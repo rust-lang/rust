@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, libc)]
+#![feature(lang_items, libc, compiler_builtins_lib)]
 #![no_std]
 #![crate_type = "dylib"]
 
 extern crate libc;
+extern crate compiler_builtins;
 
 #[no_mangle]
 pub extern fn foo() {}
