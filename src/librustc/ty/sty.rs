@@ -929,16 +929,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_uninhabited(&self, _cx: TyCtxt) -> bool {
+    pub fn is_uninhabited(&self, cx: TyCtxt) -> bool {
         // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
         // more complete.
         match self.sty {
             TyAdt(def, _) => def.is_empty(),
 
-            // FIXME(canndrew): There's no reason why these can't be uncommented, they're tested
-            // and they don't break anything. But I'm keeping my changes small for now.
-            //TyNever => true,
-            //TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
+            TyNever => true,
+            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
 
             // FIXME(canndrew): this line breaks core::fmt
             //TyRef(_, ref tm) => tm.ty.is_uninhabited(cx),
