@@ -296,6 +296,7 @@ fn trans_custom_dtor<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         sized_args = [v0];
         &sized_args
     } else {
+        // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
         unsized_args = [
             Load(bcx, get_dataptr(bcx, v0)),
             Load(bcx, get_meta(bcx, v0))
@@ -440,7 +441,9 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     }
 }
 
-fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueKind<'tcx>)
+fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              v0: ValueRef,
+                              g: DropGlueKind<'tcx>)
                               -> Block<'blk, 'tcx> {
     let t = g.ty();
 
@@ -463,6 +466,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 let llval = get_dataptr(bcx, v0);
                 let llbox = Load(bcx, llval);
                 let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
+                // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
                 let info = get_meta(bcx, v0);
                 let info = Load(bcx, info);
                 let (llsize, llalign) =
@@ -488,6 +492,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             // No support in vtable for distinguishing destroying with
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.
+            // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
             assert!(!skip_dtor);
             let data_ptr = get_dataptr(bcx, v0);
             let vtable_ptr = Load(bcx, get_meta(bcx, v0));
@@ -543,6 +548,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let value = if type_is_sized(cx.tcx(), t) {
         adt::MaybeSizedValue::sized(av)
     } else {
+        // FIXME(#36457) -- we should pass unsized values as two arguments
         let data = Load(cx, get_dataptr(cx, av));
         let info = Load(cx, get_meta(cx, av));
         adt::MaybeSizedValue::unsized_(data, info)
@@ -586,6 +592,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                     let val = if type_is_sized(cx.tcx(), field_ty) {
                         llfld_a
                     } else {
+                        // FIXME(#36457) -- we should pass unsized values as two arguments
                         let scratch = alloc_ty(cx, field_ty, "__fat_ptr_iter");
                         Store(cx, llfld_a, get_dataptr(cx, scratch));
                         Store(cx, value.meta, get_meta(cx, scratch));
