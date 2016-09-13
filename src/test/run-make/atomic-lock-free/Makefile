@@ -40,3 +40,4 @@ ifeq ($(filter powerpc,$(LLVM_COMPONENTS)),powerpc)
 	nm "$(TMPDIR)/libatomic_lock_free.rlib" | grep -vq __atomic_fetch_add
 endif
 endif
+endif
