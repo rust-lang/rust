@@ -927,6 +927,8 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           ii: InlinedItem,
                                           fold_ops: F)
                                           -> &'ast InlinedItem {
+    let _ignore = map.forest.dep_graph.in_ignore();
+
     let mut fld = IdAndSpanUpdater::new(fold_ops);
     let ii = match ii {
         II::Item(d, i) => II::Item(fld.fold_ops.new_def_id(d),

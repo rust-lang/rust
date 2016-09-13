@@ -58,19 +58,14 @@ impl fmt::Debug for DefId {
         write!(f, "DefId {{ krate: {:?}, node: {:?}",
                self.krate, self.index)?;
 
-        // Unfortunately, there seems to be no way to attempt to print
-        // a path for a def-id, so I'll just make a best effort for now
-        // and otherwise fallback to just printing the crate/node pair
-        if self.is_local() { // (1)
-            // (1) side-step fact that not all external things have paths at
-            // the moment, such as type parameters
-            ty::tls::with_opt(|opt_tcx| {
-                if let Some(tcx) = opt_tcx {
-                    write!(f, " => {}", tcx.item_path_str(*self))?;
+        ty::tls::with_opt(|opt_tcx| {
+            if let Some(tcx) = opt_tcx {
+                if let Some(def_path) = tcx.opt_def_path(*self) {
+                    write!(f, " => {}", def_path.to_string(tcx))?;
                 }
-                Ok(())
-            })?;
-        }
+            }
+            Ok(())
+        })?;
 
         write!(f, " }}")
     }

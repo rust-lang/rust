@@ -32,10 +32,7 @@ use rustc::ty::util::CopyImplementationError;
 use middle::free_region::FreeRegionMap;
 use CrateCtxt;
 use rustc::infer::{self, InferCtxt, TypeOrigin};
-use std::cell::RefCell;
-use std::rc::Rc;
 use syntax_pos::Span;
-use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use rustc::hir::intravisit;
@@ -49,7 +46,6 @@ mod unsafety;
 struct CoherenceChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     crate_context: &'a CrateCtxt<'a, 'gcx>,
     inference_context: InferCtxt<'a, 'gcx, 'tcx>,
-    inherent_impls: RefCell<DefIdMap<Rc<RefCell<Vec<DefId>>>>>,
 }
 
 struct CoherenceCheckVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -106,15 +102,6 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         self.crate_context.tcx.visit_all_items_in_krate(
             DepNode::CoherenceCheckImpl,
             &mut CoherenceCheckVisitor { cc: self });
-
-        // Copy over the inherent impls we gathered up during the walk into
-        // the tcx.
-        let mut tcx_inherent_impls =
-            self.crate_context.tcx.inherent_impls.borrow_mut();
-        for (k, v) in self.inherent_impls.borrow().iter() {
-            tcx_inherent_impls.insert((*k).clone(),
-                                      Rc::new((*v.borrow()).clone()));
-        }
 
         // Populate the table of destructors. It might seem a bit strange to
         // do this here, but it's actually the most convenient place, since
@@ -173,14 +160,8 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
     }
 
     fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
-        if let Some(implementation_list) = self.inherent_impls.borrow().get(&base_def_id) {
-            implementation_list.borrow_mut().push(impl_def_id);
-            return;
-        }
-
-        self.inherent_impls.borrow_mut().insert(
-            base_def_id,
-            Rc::new(RefCell::new(vec!(impl_def_id))));
+        let tcx = self.crate_context.tcx;
+        tcx.inherent_impls.borrow_mut().push(base_def_id, impl_def_id);
     }
 
     fn add_trait_impl(&self, impl_trait_ref: ty::TraitRef<'gcx>, impl_def_id: DefId) {
@@ -553,7 +534,6 @@ pub fn check_coherence(ccx: &CrateCtxt) {
         CoherenceChecker {
             crate_context: ccx,
             inference_context: infcx,
-            inherent_impls: RefCell::new(FnvHashMap()),
         }.check();
     });
     unsafety::check(ccx.tcx);

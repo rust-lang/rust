@@ -233,7 +233,7 @@ pub trait CrateStore<'tcx> {
                              def: DefKey)
                              -> Option<DefIndex>;
     fn def_key(&self, def: DefId) -> hir_map::DefKey;
-    fn relative_def_path(&self, def: DefId) -> hir_map::DefPath;
+    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
     fn variant_kind(&self, def_id: DefId) -> Option<VariantKind>;
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>;
     fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>;
@@ -430,7 +430,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 
     // resolve
     fn def_key(&self, def: DefId) -> hir_map::DefKey { bug!("def_key") }
-    fn relative_def_path(&self, def: DefId) -> hir_map::DefPath { bug!("relative_def_path") }
+    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
+        bug!("relative_def_path")
+    }
     fn variant_kind(&self, def_id: DefId) -> Option<VariantKind> { bug!("variant_kind") }
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
         { bug!("struct_ctor_def_id") }
