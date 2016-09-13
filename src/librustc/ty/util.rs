@@ -411,15 +411,11 @@ impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
     }
 
     fn def_id(&mut self, did: DefId) {
-        // Hash the crate identification information.
-        let name = self.tcx.crate_name(did.krate);
-        let disambiguator = self.tcx.crate_disambiguator(did.krate);
-        self.hash((name, disambiguator));
-
-        // Hash the item path within that crate.
-        // FIXME(#35379) This should use a deterministic
-        // DefPath hashing mechanism, not the DefIndex.
-        self.hash(did.index);
+        // Hash the DefPath corresponding to the DefId, which is independent
+        // of compiler internal state.
+        let tcx = self.tcx;
+        let def_path = tcx.def_path(did);
+        def_path.deterministic_hash_to(tcx, &mut self.state);
     }
 }
 
