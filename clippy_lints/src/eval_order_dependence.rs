@@ -133,7 +133,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DivergenceVisitor<'a, 'tcx> {
                 },
                 _ => {},
             },
-            ExprMethodCall(..) => { /* TODO */ },
+            ExprMethodCall(..) => {
+                let method_call = ty::MethodCall::expr(e.id);
+                let borrowed_table = self.0.tcx.tables.borrow();
+                let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
+                let result_ty = method_type.ty.fn_ret();
+                if let ty::TyNever = self.0.tcx.erase_late_bound_regions(&result_ty).sty {
+                    self.report_diverging_sub_expr(e);
+                }
+            },
             _ => {
                 // do not lint expressions referencing objects of type `!`, as that required a diverging expression to begin with
             },
