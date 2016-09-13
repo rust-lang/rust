@@ -194,21 +194,25 @@ impl EarlyLintPass for EnumVariantNames {
         let item_name = item.ident.name.as_str();
         let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);
-        if item.vis == Visibility::Public && !in_macro(cx, item.span) {
+        if !in_macro(cx, item.span) {
             if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
                     if mod_name == &item_name {
-                        span_lint(cx, MODULE_INCEPTION, item.span, "item has the same name as its containing module");
+                        if let ItemKind::Mod(..) = item.node {
+                            span_lint(cx, MODULE_INCEPTION, item.span, "module has the same name as its containing module");
+                        }
                     }
-                    let matching = partial_match(mod_camel, &item_camel);
-                    let rmatching = partial_rmatch(mod_camel, &item_camel);
-                    let nchars = mod_camel.chars().count();
-                    if matching == nchars {
-                        span_lint(cx, STUTTER, item.span, &format!("Item name ({}) starts with its containing module's name ({})", item_camel, mod_camel));
-                    }
-                    if rmatching == nchars {
-                        span_lint(cx, STUTTER, item.span, &format!("Item name ({}) ends with its containing module's name ({})", item_camel, mod_camel));
+                    if item.vis == Visibility::Public {
+                        let matching = partial_match(mod_camel, &item_camel);
+                        let rmatching = partial_rmatch(mod_camel, &item_camel);
+                        let nchars = mod_camel.chars().count();
+                        if matching == nchars {
+                            span_lint(cx, STUTTER, item.span, "item name starts with its containing module's name");
+                        }
+                        if rmatching == nchars {
+                            span_lint(cx, STUTTER, item.span, "item name ends with its containing module's name");
+                        }
                     }
                 }
             }
