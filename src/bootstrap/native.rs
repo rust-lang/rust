@@ -27,7 +27,7 @@ use cmake;
 use gcc;
 
 use Build;
-use util::{cp_r, up_to_date};
+use util::up_to_date;
 
 /// Compile LLVM for `target`.
 pub fn llvm(build: &Build, target: &str) {
@@ -75,22 +75,9 @@ pub fn llvm(build: &Build, target: &str) {
        .define("LLVM_ENABLE_LIBEDIT", "OFF")
        .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string());
 
-    // FIXME figure out how to build lld as a external project
-    // if build.config.lld {
-    //     cfg.define("LLVM_EXTERNAL_PROJECTS", "lld");
-    //     cfg.define("LLVM_EXTERNAL_LLD_SOURCE_DIR", "../lld");
-    // }
-
-    let src_lld = &build.src.join("src/lld");
-    let src_llvm_tools_lld = &build.src.join("src/llvm/tools/lld");
-
-    if src_llvm_tools_lld.exists() {
-        fs::remove_dir_all(src_llvm_tools_lld).unwrap();
-    }
-
     if build.config.lld {
-        fs::create_dir(src_llvm_tools_lld).unwrap();
-        cp_r(src_lld, src_llvm_tools_lld);
+        cfg.define("LLVM_EXTERNAL_LLD_SOURCE_DIR", build.src.join("src/lld"));
+        cfg.define("LLVM_EXTERNAL_PROJECTS", "lld");
     }
 
     if target.starts_with("i686") {
