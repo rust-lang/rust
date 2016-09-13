@@ -926,17 +926,19 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // crates.
     let deps = sess.cstore.used_crates(LinkagePreference::RequireDynamic);
 
+    let mut compiler_builtins = None;
+
     for &(cnum, _) in &deps {
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum as usize - 1] {
-            // We must always link the `compiler_builtins` crate statically. Even if it was already
-            // "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic` is used)
+            // compiler-builtins are always placed last to ensure that they're
+            // linked correctly.
             _ if sess.cstore.is_compiler_builtins(cnum) => {
-                add_static_crate(cmd, sess, tmpdir, crate_type,
-                                 &src.rlib.unwrap().0, sess.cstore.is_no_builtins(cnum))
+                assert!(compiler_builtins.is_none());
+                compiler_builtins = Some(cnum);
             }
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
@@ -948,6 +950,15 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 add_dynamic_crate(cmd, sess, &src.dylib.unwrap().0)
             }
         }
+    }
+
+    // We must always link the `compiler_builtins` crate statically. Even if it
+    // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
+    // is used)
+    if let Some(cnum) = compiler_builtins {
+        let src = sess.cstore.used_crate_source(cnum);
+        add_static_crate(cmd, sess, tmpdir, crate_type,
+                         &src.rlib.unwrap().0, sess.cstore.is_no_builtins(cnum));
     }
 
     // Converts a library file-stem into a cc -l argument
