@@ -37,6 +37,16 @@
 ################################################################################
 NATIVE_LIBS := hoedown miniz rust_test_helpers
 
+# A macro to add a generic implementation of intrinsics iff a arch optimized implementation is not
+# already in the list.
+# $(1) is the target
+# $(2) is the intrinsic
+define ADD_INTRINSIC
+  ifeq ($$(findstring X,$$(foreach intrinsic,$$(COMPRT_OBJS_$(1)),$$(if $$(findstring $(2),$$(intrinsic)),X,))),)
+    COMPRT_OBJS_$(1) += $(2)
+  endif
+endef
+
 # $(1) is the target triple
 define NATIVE_LIBRARIES
 
@@ -230,167 +240,15 @@ COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
 COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
 COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 
-# GENERIC_SOURCES in CMakeLists.txt
-COMPRT_OBJS_$(1) := \
-  absvdi2.o \
-  absvsi2.o \
-  adddf3.o \
-  addsf3.o \
-  addvdi3.o \
-  addvsi3.o \
-  apple_versioning.o \
-  ashldi3.o \
-  ashrdi3.o \
-  clear_cache.o \
-  clzdi2.o \
-  clzsi2.o \
-  cmpdi2.o \
-  comparedf2.o \
-  comparesf2.o \
-  ctzdi2.o \
-  ctzsi2.o \
-  divdc3.o \
-  divdf3.o \
-  divdi3.o \
-  divmoddi4.o \
-  divmodsi4.o \
-  divsc3.o \
-  divsf3.o \
-  divsi3.o \
-  divxc3.o \
-  extendsfdf2.o \
-  extendhfsf2.o \
-  ffsdi2.o \
-  fixdfdi.o \
-  fixdfsi.o \
-  fixsfdi.o \
-  fixsfsi.o \
-  fixunsdfdi.o \
-  fixunsdfsi.o \
-  fixunssfdi.o \
-  fixunssfsi.o \
-  fixunsxfdi.o \
-  fixunsxfsi.o \
-  fixxfdi.o \
-  floatdidf.o \
-  floatdisf.o \
-  floatdixf.o \
-  floatsidf.o \
-  floatsisf.o \
-  floatundidf.o \
-  floatundisf.o \
-  floatundixf.o \
-  floatunsidf.o \
-  floatunsisf.o \
-  int_util.o \
-  lshrdi3.o \
-  moddi3.o \
-  modsi3.o \
-  muldc3.o \
-  muldf3.o \
-  muldi3.o \
-  mulodi4.o \
-  mulosi4.o \
-  muloti4.o \
-  mulsc3.o \
-  mulsf3.o \
-  mulvdi3.o \
-  mulvsi3.o \
-  mulxc3.o \
-  negdf2.o \
-  negdi2.o \
-  negsf2.o \
-  negvdi2.o \
-  negvsi2.o \
-  paritydi2.o \
-  paritysi2.o \
-  popcountdi2.o \
-  popcountsi2.o \
-  powidf2.o \
-  powisf2.o \
-  powixf2.o \
-  subdf3.o \
-  subsf3.o \
-  subvdi3.o \
-  subvsi3.o \
-  truncdfhf2.o \
-  truncdfsf2.o \
-  truncsfhf2.o \
-  ucmpdi2.o \
-  udivdi3.o \
-  udivmoddi4.o \
-  udivmodsi4.o \
-  udivsi3.o \
-  umoddi3.o \
-  umodsi3.o
+# We must avoid compiling both a generic implementation (e.g. `floatdidf.c) and an arch optimized
+# implementation (e.g. `x86_64/floatdidf.S) of the same symbol (e.g. `floatdidf) because that causes
+# linker errors. To avoid that, we first add all the arch optimized implementations and then add the
+# generic implementations if and only if its arch optimized version is not already in the list. This
+# last part is handled by the ADD_INTRINSIC macro.
 
-ifeq ($$(findstring ios,$(1)),)
-COMPRT_OBJS_$(1) += \
-  absvti2.o \
-  addtf3.o \
-  addvti3.o \
-  ashlti3.o \
-  ashrti3.o \
-  clzti2.o \
-  cmpti2.o \
-  ctzti2.o \
-  divtf3.o \
-  divti3.o \
-  ffsti2.o \
-  fixdfti.o \
-  fixsfti.o \
-  fixunsdfti.o \
-  fixunssfti.o \
-  fixunsxfti.o \
-  fixxfti.o \
-  floattidf.o \
-  floattisf.o \
-  floattixf.o \
-  floatuntidf.o \
-  floatuntisf.o \
-  floatuntixf.o \
-  lshrti3.o \
-  modti3.o \
-  multf3.o \
-  multi3.o \
-  mulvti3.o \
-  negti2.o \
-  negvti2.o \
-  parityti2.o \
-  popcountti2.o \
-  powitf2.o \
-  subtf3.o \
-  subvti3.o \
-  trampoline_setup.o \
-  ucmpti2.o \
-  udivmodti4.o \
-  udivti3.o \
-  umodti3.o
-endif
-
-ifeq ($$(findstring apple,$(1)),apple)
-COMPRT_OBJS_$(1) +=  \
-	    atomic_flag_clear.o \
-	    atomic_flag_clear_explicit.o \
-	    atomic_flag_test_and_set.o \
-	    atomic_flag_test_and_set_explicit.o \
-	    atomic_signal_fence.o \
-	    atomic_thread_fence.o
-endif
-
-
-ifeq ($$(findstring windows,$(1)),)
-COMPRT_OBJS_$(1) += emutls.o
-endif
+COMPRT_OBJS_$(1) :=
 
 ifeq ($$(findstring msvc,$(1)),)
-
-ifeq ($$(findstring freebsd,$(1)),)
-COMPRT_OBJS_$(1) += gcc_personality_v0.o
-endif
-
-COMPRT_OBJS_$(1) += emutls.o
-
 ifeq ($$(findstring x86_64,$(1)),x86_64)
 COMPRT_OBJS_$(1) += \
       x86_64/chkstk.o \
@@ -540,9 +398,166 @@ COMPRT_OBJS_$(1) += \
   arm/unordsf2vfp.o
 endif
 
+$(foreach intrinsic,absvdi2.o \
+  absvsi2.o \
+  adddf3.o \
+  addsf3.o \
+  addvdi3.o \
+  addvsi3.o \
+  apple_versioning.o \
+  ashldi3.o \
+  ashrdi3.o \
+  clear_cache.o \
+  clzdi2.o \
+  clzsi2.o \
+  cmpdi2.o \
+  comparedf2.o \
+  comparesf2.o \
+  ctzdi2.o \
+  ctzsi2.o \
+  divdc3.o \
+  divdf3.o \
+  divdi3.o \
+  divmoddi4.o \
+  divmodsi4.o \
+  divsc3.o \
+  divsf3.o \
+  divsi3.o \
+  divxc3.o \
+  extendsfdf2.o \
+  extendhfsf2.o \
+  ffsdi2.o \
+  fixdfdi.o \
+  fixdfsi.o \
+  fixsfdi.o \
+  fixsfsi.o \
+  fixunsdfdi.o \
+  fixunsdfsi.o \
+  fixunssfdi.o \
+  fixunssfsi.o \
+  fixunsxfdi.o \
+  fixunsxfsi.o \
+  fixxfdi.o \
+  floatdidf.o \
+  floatdisf.o \
+  floatdixf.o \
+  floatsidf.o \
+  floatsisf.o \
+  floatundidf.o \
+  floatundisf.o \
+  floatundixf.o \
+  floatunsidf.o \
+  floatunsisf.o \
+  int_util.o \
+  lshrdi3.o \
+  moddi3.o \
+  modsi3.o \
+  muldc3.o \
+  muldf3.o \
+  muldi3.o \
+  mulodi4.o \
+  mulosi4.o \
+  muloti4.o \
+  mulsc3.o \
+  mulsf3.o \
+  mulvdi3.o \
+  mulvsi3.o \
+  mulxc3.o \
+  negdf2.o \
+  negdi2.o \
+  negsf2.o \
+  negvdi2.o \
+  negvsi2.o \
+  paritydi2.o \
+  paritysi2.o \
+  popcountdi2.o \
+  popcountsi2.o \
+  powidf2.o \
+  powisf2.o \
+  powixf2.o \
+  subdf3.o \
+  subsf3.o \
+  subvdi3.o \
+  subvsi3.o \
+  truncdfhf2.o \
+  truncdfsf2.o \
+  truncsfhf2.o \
+  ucmpdi2.o \
+  udivdi3.o \
+  udivmoddi4.o \
+  udivmodsi4.o \
+  udivsi3.o \
+  umoddi3.o \
+  umodsi3.o,
+  $(call ADD_INTRINSIC,$(1),$(intrinsic)))
+
+ifeq ($$(findstring ios,$(1)),)
+$(foreach intrinsic,absvti2.o \
+  addtf3.o \
+  addvti3.o \
+  ashlti3.o \
+  ashrti3.o \
+  clzti2.o \
+  cmpti2.o \
+  ctzti2.o \
+  divtf3.o \
+  divti3.o \
+  ffsti2.o \
+  fixdfti.o \
+  fixsfti.o \
+  fixunsdfti.o \
+  fixunssfti.o \
+  fixunsxfti.o \
+  fixxfti.o \
+  floattidf.o \
+  floattisf.o \
+  floattixf.o \
+  floatuntidf.o \
+  floatuntisf.o \
+  floatuntixf.o \
+  lshrti3.o \
+  modti3.o \
+  multf3.o \
+  multi3.o \
+  mulvti3.o \
+  negti2.o \
+  negvti2.o \
+  parityti2.o \
+  popcountti2.o \
+  powitf2.o \
+  subtf3.o \
+  subvti3.o \
+  trampoline_setup.o \
+  ucmpti2.o \
+  udivmodti4.o \
+  udivti3.o \
+  umodti3.o,
+  $(call ADD_INTRINSIC,$(1),$(intrinsic)))
+endif
+
+ifeq ($$(findstring apple,$(1)),apple)
+$(foreach intrinsic,atomic_flag_clear.o \
+  atomic_flag_clear_explicit.o \
+  atomic_flag_test_and_set.o \
+  atomic_flag_test_and_set_explicit.o \
+  atomic_signal_fence.o \
+  atomic_thread_fence.o,
+  $(call ADD_INTRINSIC,$(1),$(intrinsic)))
+endif
+
+ifeq ($$(findstring windows,$(1)),)
+$(call ADD_INTRINSIC,$(1),emutls.o)
+endif
+
+ifeq ($$(findstring msvc,$(1)),)
+
+ifeq ($$(findstring freebsd,$(1)),)
+$(call ADD_INTRINSIC,$(1),gcc_personality_v0.o)
+endif
+endif
+
 ifeq ($$(findstring aarch64,$(1)),aarch64)
-COMPRT_OBJS_$(1) += \
-  comparetf2.o \
+$(foreach intrinsic,comparetf2.o \
   extenddftf2.o \
   extendsftf2.o \
   fixtfdi.o \
@@ -557,7 +572,8 @@ COMPRT_OBJS_$(1) += \
   floatunsitf.o \
   multc3.o \
   trunctfdf2.o \
-  trunctfsf2.o
+  trunctfsf2.o,
+  $(call ADD_INTRINSIC,$(1),$(intrinsic)))
 endif
 
 ifeq ($$(findstring msvc,$(1)),msvc)

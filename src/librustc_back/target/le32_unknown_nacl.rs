@@ -22,7 +22,6 @@ pub fn target() -> TargetResult {
         dynamic_linking: false,
         executables: true,
         exe_suffix: ".pexe".to_string(),
-        no_compiler_rt: false,
         linker_is_gnu: true,
         allow_asm: false,
         max_atomic_width: 32,

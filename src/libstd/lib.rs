@@ -224,6 +224,7 @@
 #![feature(char_internals)]
 #![feature(collections)]
 #![feature(collections_bound)]
+#![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
@@ -321,6 +322,9 @@ extern crate unwind;
 
 #[cfg(stage0)]
 extern crate alloc_system;
+
+// compiler-rt intrinsics
+extern crate compiler_builtins;
 
 // Make std testable by not duplicating lang items and other globals. See #2912
 #[cfg(test)] extern crate std as realstd;

@@ -82,7 +82,6 @@ macro_rules! targets {
             // There aren't really any parameters to this, but empty structs
             // with braces are unstable so we just pick something that works.
             (llvm, Llvm { _dummy: () }),
-            (compiler_rt, CompilerRt { _dummy: () }),
             (test_helpers, TestHelpers { _dummy: () }),
             (debugger_scripts, DebuggerScripts { stage: u32 }),
 
@@ -334,8 +333,7 @@ impl<'a> Step<'a> {
                 vec![self.libstd(compiler)]
             }
             Source::Libstd { compiler } => {
-                vec![self.compiler_rt(()),
-                     self.rustc(compiler.stage).target(compiler.host)]
+                vec![self.rustc(compiler.stage).target(compiler.host)]
             }
             Source::LibrustcLink { compiler, host } => {
                 vec![self.librustc(compiler),
@@ -348,7 +346,6 @@ impl<'a> Step<'a> {
                 vec![self.libstd(compiler),
                      self.target(host).rustc(compiler.stage)]
             }
-            Source::CompilerRt { _dummy } => Vec::new(),
             Source::Llvm { _dummy } => Vec::new(),
             Source::TestHelpers { _dummy } => Vec::new(),
             Source::DebuggerScripts { stage: _ } => Vec::new(),

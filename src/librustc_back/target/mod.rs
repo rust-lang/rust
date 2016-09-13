@@ -306,9 +306,6 @@ pub struct TargetOptions {
     pub allows_weak_linkage: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
     pub has_rpath: bool,
-    /// Whether to disable linking to compiler-rt. Defaults to false, as LLVM
-    /// will emit references to the functions that compiler-rt provides.
-    pub no_compiler_rt: bool,
     /// Whether to disable linking to the default libraries, typically corresponds
     /// to `-nodefaultlibs`. Defaults to true.
     pub no_default_libraries: bool,
@@ -381,7 +378,6 @@ impl Default for TargetOptions {
             linker_is_gnu: false,
             allows_weak_linkage: true,
             has_rpath: false,
-            no_compiler_rt: false,
             no_default_libraries: true,
             position_independent_executables: false,
             pre_link_objects_exe: Vec::new(),
@@ -524,7 +520,6 @@ impl Target {
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
-        key!(no_compiler_rt, bool);
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
         key!(archive_format);
@@ -667,7 +662,6 @@ impl ToJson for Target {
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
-        target_option_val!(no_compiler_rt);
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
         target_option_val!(archive_format);

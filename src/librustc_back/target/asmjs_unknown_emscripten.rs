@@ -18,7 +18,6 @@ pub fn target() -> Result<Target, String> {
         dynamic_linking: false,
         executables: true,
         exe_suffix: ".js".to_string(),
-        no_compiler_rt: true,
         linker_is_gnu: true,
         allow_asm: false,
         obj_is_bitcode: true,
