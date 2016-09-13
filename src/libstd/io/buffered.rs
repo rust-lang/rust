@@ -468,8 +468,7 @@ impl<W: Write> Write for BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            let amt = cmp::min(buf.len(), self.buf.capacity());
-            Write::write(&mut self.buf, &buf[..amt])
+            Write::write(&mut self.buf, buf)
         }
     }
     fn flush(&mut self) -> io::Result<()> {
