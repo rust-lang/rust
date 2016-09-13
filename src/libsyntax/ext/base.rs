@@ -177,7 +177,8 @@ pub trait IdentMacroExpander {
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
-                   token_tree: Vec<tokenstream::TokenTree> )
+                   token_tree: Vec<tokenstream::TokenTree>,
+                   attrs: Vec<ast::Attribute>)
                    -> Box<MacResult+'cx>;
 }
 
@@ -193,7 +194,8 @@ impl<F> IdentMacroExpander for F
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    ident: ast::Ident,
-                   token_tree: Vec<tokenstream::TokenTree> )
+                   token_tree: Vec<tokenstream::TokenTree>,
+                   _attrs: Vec<ast::Attribute>)
                    -> Box<MacResult+'cx>
     {
         (*self)(cx, sp, ident, token_tree)
