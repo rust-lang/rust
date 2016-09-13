@@ -458,15 +458,11 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 data.region_bound.visit_with(self);
                 self.hash(data.builtin_bounds);
 
-                // Only projection bounds are left, sort and hash them.
-                let mut projection_bounds: Vec<_> = data.projection_bounds
-                                                        .iter()
-                                                        .map(|b| (b.item_name().as_str(), b))
-                                                        .collect();
-                projection_bounds.sort_by_key(|&(ref name, _)| name.clone());
-                for (name, bound) in projection_bounds {
+                // Only projection bounds are left, hash them.
+                self.hash(data.projection_bounds.len());
+                for bound in &data.projection_bounds {
                     self.def_id(bound.0.trait_ref.def_id);
-                    self.hash(name);
+                    self.hash(bound.0.item_name);
                     bound.visit_with(self);
                 }
 
