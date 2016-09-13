@@ -122,9 +122,6 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'v Expr) {
-        // this match can be replaced by just the default arm, once
-        // https://github.com/rust-lang/rust/issues/35121 makes sure that
-        // ! is propagated properly
         match e.node {
             ExprAgain(_) |
             ExprBreak(_) |
@@ -137,8 +134,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DivergenceVisitor<'a, 'tcx> {
                 _ => {},
             },
             ExprMethodCall(..) => { /* TODO */ },
-            _ => if let ty::TyNever = self.0.tcx.expr_ty(e).sty {
-                self.report_diverging_sub_expr(e);
+            _ => {
+                // do not lint expressions referencing objects of type `!`, as that required a diverging expression to begin with
             },
         }
         self.maybe_walk_expr(e);

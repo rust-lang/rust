@@ -10,5 +10,5 @@ fn main() {
     let b = true;
     b || diverge(); //~ ERROR sub-expression diverges
     let y = (5, diverge(), 6); //~ ERROR sub-expression diverges
-    println!("{}", y.1); //~ ERROR sub-expression diverges
+    println!("{}", y.1);
 }
