@@ -20,13 +20,13 @@
 
 use hir::def_id::DefId;
 use rustc_data_structures::veccell::VecCell;
-use std::cell::Cell;
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::thread;
 
 use super::DepGraphQuery;
 use super::DepNode;
 use super::edges::DepGraphEdges;
+use super::shadow::ShadowGraph;
 
 #[derive(Debug)]
 pub enum DepMessage {
@@ -42,12 +42,16 @@ pub enum DepMessage {
 pub struct DepGraphThreadData {
     enabled: bool,
 
-    // Local counter that just tracks how many tasks are pushed onto the
-    // stack, so that we still get an error in the case where one is
-    // missing. If dep-graph construction is enabled, we'd get the same
-    // error when processing tasks later on, but that's annoying because
-    // it lacks precision about the source of the error.
-    tasks_pushed: Cell<usize>,
+    // The "shadow graph" is a debugging aid. We give it each message
+    // in real time as it arrives and it checks for various errors
+    // (for example, a read/write when there is no current task; it
+    // can also apply user-defined filters; see `shadow` module for
+    // details). This only occurs if debug-assertions are enabled.
+    //
+    // Note that in some cases the same errors will occur when the
+    // data is processed off the main thread, but that's annoying
+    // because it lacks precision about the source of the error.
+    shadow_graph: ShadowGraph,
 
     // current buffer, where we accumulate messages
     messages: VecCell<DepMessage>,
@@ -76,7 +80,7 @@ impl DepGraphThreadData {
 
         DepGraphThreadData {
             enabled: enabled,
-            tasks_pushed: Cell::new(0),
+            shadow_graph: ShadowGraph::new(),
             messages: VecCell::with_capacity(INITIAL_CAPACITY),
             swap_in: rx2,
             swap_out: tx1,
@@ -118,21 +122,7 @@ impl DepGraphThreadData {
     /// the buffer is full, this may swap.)
     #[inline]
     pub fn enqueue(&self, message: DepMessage) {
-        // Regardless of whether dep graph construction is enabled, we
-        // still want to check that we always have a valid task on the
-        // stack when a read/write/etc event occurs.
-        match message {
-            DepMessage::Read(_) | DepMessage::Write(_) =>
-                if self.tasks_pushed.get() == 0 {
-                    self.invalid_message("read/write but no current task")
-                },
-            DepMessage::PushTask(_) | DepMessage::PushIgnore =>
-                self.tasks_pushed.set(self.tasks_pushed.get() + 1),
-            DepMessage::PopTask(_) | DepMessage::PopIgnore =>
-                self.tasks_pushed.set(self.tasks_pushed.get() - 1),
-            DepMessage::Query =>
-                (),
-        }
+        self.shadow_graph.enqueue(&message);
 
         if self.enabled {
             self.enqueue_enabled(message);
@@ -146,11 +136,6 @@ impl DepGraphThreadData {
         if len == INITIAL_CAPACITY {
             self.swap();
         }
-    }
-
-    // Outline this too.
-    fn invalid_message(&self, string: &str) {
-        bug!("{}; see src/librustc/dep_graph/README.md for more information", string)
     }
 }
 

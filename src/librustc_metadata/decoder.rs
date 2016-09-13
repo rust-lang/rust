@@ -23,6 +23,7 @@ use index;
 use tls_context;
 use tydecode::TyDecoder;
 
+use rustc::hir::def_id::CRATE_DEF_INDEX;
 use rustc::hir::svh::Svh;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::DefKey;
@@ -727,15 +728,7 @@ pub fn each_top_level_item_of_crate<F, G>(cdata: Cmd, get_crate_data: G, callbac
     where F: FnMut(DefLike, ast::Name, ty::Visibility),
           G: FnMut(ast::CrateNum) -> Rc<CrateMetadata>,
 {
-    let root_doc = rbml::Doc::new(cdata.data());
-    let misc_info_doc = reader::get_doc(root_doc, tag_misc_info);
-    let crate_items_doc = reader::get_doc(misc_info_doc,
-                                          tag_misc_info_crate_items);
-
-    each_child_of_item_or_crate(cdata,
-                                crate_items_doc,
-                                get_crate_data,
-                                callback)
+    each_child_of_item(cdata, CRATE_DEF_INDEX, get_crate_data, callback)
 }
 
 pub fn get_item_name(cdata: Cmd, id: DefIndex) -> ast::Name {
@@ -761,7 +754,7 @@ pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id:
         krate: cdata.cnum,
         index: def_key(cdata, id).parent.unwrap()
     };
-    let mut parent_def_path = def_path(cdata, id);
+    let mut parent_def_path = def_path(cdata, id).unwrap();
     parent_def_path.data.pop();
     if let Some(ast_doc) = reader::maybe_get_doc(item_doc, tag_ast as usize) {
         let ii = decode_inlined_item(cdata,
@@ -1628,9 +1621,16 @@ fn item_def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
     }
 }
 
-pub fn def_path(cdata: Cmd, id: DefIndex) -> hir_map::DefPath {
+// Returns the path leading to the thing with this `id`. Note that
+// some def-ids don't wind up in the metadata, so `def_path` sometimes
+// returns `None`
+pub fn def_path(cdata: Cmd, id: DefIndex) -> Option<hir_map::DefPath> {
     debug!("def_path(id={:?})", id);
-    hir_map::DefPath::make(cdata.cnum, id, |parent| def_key(cdata, parent))
+    if cdata.get_item(id).is_some() {
+        Some(hir_map::DefPath::make(cdata.cnum, id, |parent| def_key(cdata, parent)))
+    } else {
+        None
+    }
 }
 
 pub fn get_panic_strategy(data: &[u8]) -> PanicStrategy {

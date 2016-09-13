@@ -425,13 +425,21 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
     fn def_key(&self, def: DefId) -> hir_map::DefKey {
-        self.dep_graph.read(DepNode::MetaData(def));
+        // Note: loading the def-key (or def-path) for a def-id is not
+        // a *read* of its metadata. This is because the def-id is
+        // really just an interned shorthand for a def-path, which is the
+        // canonical name for an item.
+        //
+        // self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
         decoder::def_key(&cdata, def.index)
     }
 
-    fn relative_def_path(&self, def: DefId) -> hir_map::DefPath {
-        self.dep_graph.read(DepNode::MetaData(def));
+    fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
+        // See `Note` above in `def_key()` for why this read is
+        // commented out:
+        //
+        // self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
         decoder::def_path(&cdata, def.index)
     }

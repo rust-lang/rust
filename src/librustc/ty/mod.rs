@@ -2465,12 +2465,41 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns the `DefPath` of an item. Note that if `id` is not
-    /// local to this crate -- or is inlined into this crate -- the
-    /// result will be a non-local `DefPath`.
+    /// Convert a `DefId` into its fully expanded `DefPath` (every
+    /// `DefId` is really just an interned def-path).
+    ///
+    /// Note that if `id` is not local to this crate -- or is
+    /// inlined into this crate -- the result will be a non-local
+    /// `DefPath`.
+    ///
+    /// This function is only safe to use when you are sure that the
+    /// full def-path is accessible. Examples that are known to be
+    /// safe are local def-ids or items; see `opt_def_path` for more
+    /// details.
     pub fn def_path(self, id: DefId) -> ast_map::DefPath {
+        self.opt_def_path(id).unwrap_or_else(|| {
+            bug!("could not load def-path for {:?}", id)
+        })
+    }
+
+    /// Convert a `DefId` into its fully expanded `DefPath` (every
+    /// `DefId` is really just an interned def-path).
+    ///
+    /// When going across crates, we do not save the full info for
+    /// every cross-crate def-id, and hence we may not always be able
+    /// to create a def-path. Therefore, this returns
+    /// `Option<DefPath>` to cover that possibility. It will always
+    /// return `Some` for local def-ids, however, as well as for
+    /// items. The problems arise with "minor" def-ids like those
+    /// associated with a pattern, `impl Trait`, or other internal
+    /// detail to a fn.
+    ///
+    /// Note that if `id` is not local to this crate -- or is
+    /// inlined into this crate -- the result will be a non-local
+    /// `DefPath`.
+    pub fn opt_def_path(self, id: DefId) -> Option<ast_map::DefPath> {
         if id.is_local() {
-            self.map.def_path(id)
+            Some(self.map.def_path(id))
         } else {
             self.sess.cstore.relative_def_path(id)
         }
@@ -2693,7 +2722,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.impl_items.borrow_mut().insert(impl_def_id, impl_items);
         }
 
-        self.inherent_impls.borrow_mut().insert(type_id, Rc::new(inherent_impls));
+        self.inherent_impls.borrow_mut().insert(type_id, inherent_impls);
         self.populated_external_types.borrow_mut().insert(type_id);
     }
 
