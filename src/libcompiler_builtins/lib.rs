@@ -11,6 +11,9 @@
 #![cfg_attr(not(stage0), feature(compiler_builtins))]
 #![no_std]
 #![cfg_attr(not(stage0), compiler_builtins)]
-
+#![unstable(feature = "compiler_builtins_lib",
+            reason = "internal implementation detail of rustc right now",
+            issue = "0")]
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
+#![feature(staged_api)]
