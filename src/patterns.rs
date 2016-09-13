@@ -13,10 +13,14 @@ use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, format_mutability};
 use lists::{format_item_list, itemize_list};
-use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
+use expr::{rewrite_unary_prefix, rewrite_pair};
 use types::rewrite_path;
+use super::Spanned;
+use comment::FindUncommented;
 
-use syntax::ast::{BindingMode, Pat, PatKind, FieldPat};
+use syntax::ast::{self, BindingMode, Pat, PatKind, FieldPat};
+use syntax::ptr;
+use syntax::codemap::{self, BytePos, Span};
 
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
@@ -60,49 +64,19 @@ impl Rewrite for Pat {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, width, offset)
             }
-            // FIXME(#1021): Handle `..` in tuple / tuple struct patterns (RFC 1492)
             PatKind::Tuple(ref items, dotdot_pos) => {
-                if dotdot_pos.is_some() {
-                    return None;
-                }
-                rewrite_tuple(context,
-                              items.iter().map(|x| &**x),
-                              self.span,
-                              width,
-                              offset)
+                rewrite_tuple_pat(items, dotdot_pos, None, self.span, context, width, offset)
             }
             PatKind::Path(ref path) => rewrite_path(context, true, None, path, width, offset),
             PatKind::TupleStruct(ref path, ref pat_vec, dotdot_pos) => {
                 let path_str = try_opt!(rewrite_path(context, true, None, path, width, offset));
-
-                // FIXME(#1021): Handle `..` in tuple / tuple struct patterns (RFC 1492)
-                match dotdot_pos {
-                    Some(_) => Some(format!("{}(..)", path_str)),
-                    None => {
-                        if pat_vec.is_empty() {
-                            Some(path_str)
-                        } else {
-                            // 2 = "()".len()
-                            let width = try_opt!(width.checked_sub(path_str.len() + 2));
-                            // 1 = "(".len()
-                            let offset = offset + path_str.len() + 1;
-                            let items = itemize_list(context.codemap,
-                                                     pat_vec.iter(),
-                                                     ")",
-                                                     |item| item.span.lo,
-                                                     |item| item.span.hi,
-                                                     |item| item.rewrite(context, width, offset),
-                                                     context.codemap.span_after(self.span, "("),
-                                                     self.span.hi);
-                            Some(format!("{}({})",
-                                         path_str,
-                                         try_opt!(format_item_list(items,
-                                                                   width,
-                                                                   offset,
-                                                                   context.config))))
-                        }
-                    }
-                }
+                rewrite_tuple_pat(pat_vec,
+                                  dotdot_pos,
+                                  Some(path_str),
+                                  self.span,
+                                  context,
+                                  width,
+                                  offset)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, width, offset),
             PatKind::Vec(ref prefix, ref slice_pat, ref suffix) => {
@@ -187,6 +161,85 @@ impl Rewrite for FieldPat {
                      context.config.max_width,
                      width,
                      offset)
+        }
+    }
+}
+
+
+enum TuplePatField<'a> {
+    Pat(&'a ptr::P<ast::Pat>),
+    Dotdot(Span),
+}
+
+impl<'a> Rewrite for TuplePatField<'a> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
+        match *self {
+            TuplePatField::Pat(ref p) => p.rewrite(context, width, offset),
+            TuplePatField::Dotdot(_) => Some("..".to_string()),
+        }
+    }
+}
+
+impl<'a> Spanned for TuplePatField<'a> {
+    fn span(&self) -> Span {
+        match *self {
+            TuplePatField::Pat(ref p) => p.span(),
+            TuplePatField::Dotdot(span) => span,
+        }
+    }
+}
+
+fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
+                     dotdot_pos: Option<usize>,
+                     path_str: Option<String>,
+                     span: Span,
+                     context: &RewriteContext,
+                     width: usize,
+                     offset: Indent)
+                     -> Option<String> {
+    let mut pat_vec: Vec<_> = pats.into_iter().map(|x| TuplePatField::Pat(x)).collect();
+
+    if let Some(pos) = dotdot_pos {
+        let snippet = context.snippet(span);
+        let lo = span.lo + BytePos(snippet.find_uncommented("..").unwrap() as u32);
+        let span = Span {
+            lo: lo,
+            // 2 == "..".len()
+            hi: lo + BytePos(2),
+            expn_id: codemap::NO_EXPANSION,
+        };
+        let dotdot = TuplePatField::Dotdot(span);
+        pat_vec.insert(pos, dotdot);
+    }
+
+    if pat_vec.is_empty() {
+        path_str
+    } else {
+        // add comma if `(x,)`
+        let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
+
+        let path_len = path_str.as_ref().map(|p| p.len()).unwrap_or(0);
+        // 2 = "()".len(), 3 = "(,)".len()
+        let width = try_opt!(width.checked_sub(path_len + if add_comma { 3 } else { 2 }));
+        // 1 = "(".len()
+        let offset = offset + path_len + 1;
+        let items = itemize_list(context.codemap,
+                                 pat_vec.iter(),
+                                 if add_comma { ",)" } else { ")" },
+                                 |item| item.span().lo,
+                                 |item| item.span().hi,
+                                 |item| item.rewrite(context, width, offset),
+                                 context.codemap.span_after(span, "("),
+                                 span.hi - BytePos(1));
+
+        let list = try_opt!(format_item_list(items, width, offset, context.config));
+
+        match path_str {
+            Some(path_str) => Some(format!("{}({})", path_str, list)),
+            None => {
+                let comma = if add_comma { "," } else { "" };
+                Some(format!("({}{})", list, comma))
+            }
         }
     }
 }
