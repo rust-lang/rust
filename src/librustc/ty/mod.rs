@@ -1393,7 +1393,7 @@ impl<'tcx> serialize::UseSpecializedDecodable for AdtDef<'tcx> {}
 impl<'a, 'gcx, 'tcx> AdtDefData<'tcx, 'static> {
     #[inline]
     pub fn is_uninhabited_recurse(&'tcx self,
-                                  visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>, 
+                                  visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
                                   cx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>) -> bool {
         match visited.entry((self.did, substs)) {
