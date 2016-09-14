@@ -14,7 +14,6 @@ use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation};
-use lint;
 use util::nodemap::FnvHashMap;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -557,17 +556,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_pat(&pat, tcx.types.err);
             }
         };
-        let report_unexpected_def = |def: Def, is_lint| {
+        let report_unexpected_def = |def: Def| {
             let msg = format!("expected tuple struct/variant, found {} `{}`",
                               def.kind_name(), path);
-            if is_lint {
-                tcx.sess.add_lint(lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
-                                  pat.id, pat.span, msg);
-            } else {
-                struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
-                    .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
-                on_error();
-            }
+            struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
+                .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
+            on_error();
         };
 
         // Resolve the path and check the definition for errors.
@@ -579,15 +573,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 return tcx.types.err;
             }
             Def::AssociatedConst(..) | Def::Method(..) => {
-                report_unexpected_def(def, false);
+                report_unexpected_def(def);
                 return tcx.types.err;
             }
-            Def::VariantCtor(_, ctor_kind) | Def::StructCtor(_, ctor_kind) => {
-                if ctor_kind == CtorKind::Const {
-                    // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
-                    // is allowed for backward compatibility.
-                    report_unexpected_def(def, true);
-                }
+            Def::VariantCtor(_, CtorKind::Fn) |
+            Def::StructCtor(_, CtorKind::Fn) => {
                 tcx.expect_variant_def(def)
             }
             _ => bug!("unexpected pattern definition: {:?}", def)
@@ -595,13 +585,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
-        let pat_ty = if pat_ty.is_fn() {
-            // Replace constructor type with constructed type for tuple struct patterns.
-            tcx.no_late_bound_regions(&pat_ty.fn_ret()).unwrap()
-        } else {
-            // Leave the type as is for unit structs (backward compatibility).
-            pat_ty
-        };
+        // Replace constructor type with constructed type for tuple struct patterns.
+        let pat_ty = tcx.no_late_bound_regions(&pat_ty.fn_ret()).expect("expected fn type");
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.

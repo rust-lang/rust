@@ -44,8 +44,9 @@ use hir;
 use hir::map::Definitions;
 use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
-use hir::def::{Def, PathResolution};
+use hir::def::{Def, CtorKind, PathResolution};
 use session::Session;
+use lint;
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -855,10 +856,23 @@ impl<'a> LoweringContext<'a> {
                     })
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
-                PatKind::TupleStruct(ref pth, ref pats, ddpos) => {
-                    hir::PatKind::TupleStruct(self.lower_path(pth),
-                                              pats.iter().map(|x| self.lower_pat(x)).collect(),
-                                              ddpos)
+                PatKind::TupleStruct(ref path, ref pats, ddpos) => {
+                    match self.resolver.get_resolution(p.id).map(|d| d.base_def) {
+                        Some(def @ Def::StructCtor(_, CtorKind::Const)) |
+                        Some(def @ Def::VariantCtor(_, CtorKind::Const)) => {
+                            // Temporarily lower `UnitVariant(..)` into `UnitVariant`
+                            // for backward compatibility.
+                            let msg = format!("expected tuple struct/variant, found {} `{}`",
+                                            def.kind_name(), path);
+                            self.sess.add_lint(
+                                lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
+                                p.id, p.span, msg
+                            );
+                            hir::PatKind::Path(None, self.lower_path(path))
+                        }
+                        _ => hir::PatKind::TupleStruct(self.lower_path(path),
+                                        pats.iter().map(|x| self.lower_pat(x)).collect(), ddpos)
+                    }
                 }
                 PatKind::Path(ref opt_qself, ref path) => {
                     let opt_qself = opt_qself.as_ref().map(|qself| {

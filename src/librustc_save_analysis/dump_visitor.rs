@@ -271,12 +271,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
     }
 
-    // looks up anything, not just a type
-    fn lookup_type_ref(&self, ref_id: NodeId) -> Option<DefId> {
+    fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
         self.tcx.expect_def_or_none(ref_id).and_then(|def| {
             match def {
-                Def::PrimTy(..) => None,
-                Def::SelfTy(..) => None,
+                Def::PrimTy(..) | Def::SelfTy(..) => None,
                 def => Some(def.def_id()),
             }
         })
@@ -303,11 +301,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 }.lower(self.tcx));
             }
             Def::Struct(..) |
-            Def::StructCtor(..) |
+            Def::Variant(..) |
             Def::Union(..) |
             Def::Enum(..) |
             Def::TyAlias(..) |
-            Def::AssociatedTy(..) |
             Def::Trait(_) => {
                 self.dumper.type_ref(TypeRefData {
                     span: sub_span.expect("No span found for type ref"),
@@ -317,12 +314,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 }.lower(self.tcx));
             }
             Def::Static(..) |
-            Def::Const(_) |
-            Def::AssociatedConst(..) |
-            Def::Local(..) |
-            Def::Variant(..) |
-            Def::VariantCtor(..) |
-            Def::Upvar(..) => {
+            Def::Const(..) |
+            Def::StructCtor(..) |
+            Def::VariantCtor(..) => {
                 self.dumper.variable_ref(VariableRefData {
                     span: sub_span.expect("No span found for var ref"),
                     ref_id: def_id,
@@ -337,10 +331,14 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     scope: scope
                 }.lower(self.tcx));
             }
+            Def::Local(..) |
+            Def::Upvar(..) |
             Def::SelfTy(..) |
             Def::Label(_) |
             Def::TyParam(..) |
             Def::Method(..) |
+            Def::AssociatedTy(..) |
+            Def::AssociatedConst(..) |
             Def::PrimTy(_) |
             Def::Err => {
                span_bug!(span,
@@ -424,7 +422,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             None => {
                                 if let Some(NodeItem(item)) = self.tcx.map.get_if_local(id) {
                                     if let hir::ItemImpl(_, _, _, _, ref ty, _) = item.node {
-                                        trait_id = self.lookup_type_ref(ty.id);
+                                        trait_id = self.lookup_def_id(ty.id);
                                     }
                                 }
                             }
@@ -807,7 +805,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             };
 
             let trait_ref = &trait_ref.trait_ref;
-            if let Some(id) = self.lookup_type_ref(trait_ref.ref_id) {
+            if let Some(id) = self.lookup_def_id(trait_ref.ref_id) {
                 let sub_span = self.span.sub_span_for_type_name(trait_ref.path.span);
                 if !self.span.filter_generated(sub_span, trait_ref.path.span) {
                     self.dumper.type_ref(TypeRefData {
@@ -926,15 +924,19 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     }
                 }
             }
-            Def::Local(..) |
-            Def::Static(..) |
+            Def::Fn(..) |
             Def::Const(..) |
-            Def::AssociatedConst(..) |
-            Def::Struct(..) |
+            Def::Static(..) |
             Def::StructCtor(..) |
-            Def::Variant(..) |
             Def::VariantCtor(..) |
-            Def::Fn(..) => self.write_sub_paths_truncated(path, false),
+            Def::AssociatedConst(..) |
+            Def::Local(..) |
+            Def::Upvar(..) |
+            Def::Struct(..) |
+            Def::Union(..) |
+            Def::Variant(..) |
+            Def::TyAlias(..) |
+            Def::AssociatedTy(..) => self.write_sub_paths_truncated(path, false),
             _ => {}
         }
     }
@@ -1167,7 +1169,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                 match use_item.node {
                     ast::ViewPathSimple(ident, ref path) => {
                         let sub_span = self.span.span_for_last_ident(path.span);
-                        let mod_id = match self.lookup_type_ref(item.id) {
+                        let mod_id = match self.lookup_def_id(item.id) {
                             Some(def_id) => {
                                 let scope = self.cur_scope;
                                 self.process_def_kind(item.id, path.span, sub_span, def_id, scope);
@@ -1225,7 +1227,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                         for plid in list {
                             let scope = self.cur_scope;
                             let id = plid.node.id;
-                            if let Some(def_id) = self.lookup_type_ref(id) {
+                            if let Some(def_id) = self.lookup_def_id(id) {
                                 let span = plid.span;
                                 self.process_def_kind(id, span, Some(span), def_id, scope);
                             }
@@ -1320,7 +1322,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         self.process_macro_use(t.span, t.id);
         match t.node {
             ast::TyKind::Path(_, ref path) => {
-                if let Some(id) = self.lookup_type_ref(t.id) {
+                if let Some(id) = self.lookup_def_id(t.id) {
                     let sub_span = self.span.sub_span_for_type_name(t.span);
                     if !self.span.filter_generated(sub_span, t.span) {
                         self.dumper.type_ref(TypeRefData {
@@ -1490,14 +1492,12 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                         }.lower(self.tcx));
                     }
                 }
-                Def::Variant(..) | Def::VariantCtor(..) | Def::Enum(..) |
-                Def::TyAlias(..) | Def::Struct(..) | Def::StructCtor(..) => {
+                Def::StructCtor(..) | Def::VariantCtor(..) |
+                Def::Const(..) | Def::AssociatedConst(..) |
+                Def::Struct(..) | Def::Variant(..) |
+                Def::TyAlias(..) | Def::AssociatedTy(..) => {
                     paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
-                // FIXME(nrc) what are these doing here?
-                Def::Static(..) |
-                Def::Const(..) |
-                Def::AssociatedConst(..) => {}
                 def => error!("unexpected definition kind when processing collected paths: {:?}",
                               def),
             }

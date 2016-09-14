@@ -617,12 +617,8 @@ pub fn check_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            &Option<DeprecationEntry>)) {
     // Paths in import prefixes may have no resolution.
     match tcx.expect_def_or_none(id) {
-        Some(Def::PrimTy(..)) => {}
-        Some(Def::SelfTy(..)) => {}
-        Some(def) => {
-            maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
-        }
-        None => {}
+        None | Some(Def::PrimTy(..)) | Some(Def::SelfTy(..)) => {}
+        Some(def) => maybe_do_stability_check(tcx, def.def_id(), path.span, cb)
     }
 }
 
@@ -631,12 +627,7 @@ pub fn check_path_list_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       cb: &mut FnMut(DefId, Span,
                                                      &Option<&Stability>,
                                                      &Option<DeprecationEntry>)) {
-    match tcx.expect_def(item.node.id) {
-        Def::PrimTy(..) => {}
-        def => {
-            maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
-        }
-    }
+    maybe_do_stability_check(tcx, tcx.expect_def(item.node.id).def_id(), item.span, cb);
 }
 
 pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,

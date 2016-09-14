@@ -74,7 +74,7 @@ use hir::def_id::DefId;
 use hir::map as ast_map;
 use infer::InferCtxt;
 use middle::const_qualif::ConstQualif;
-use hir::def::Def;
+use hir::def::{Def, CtorKind};
 use ty::adjustment;
 use ty::{self, Ty, TyCtxt};
 
@@ -524,20 +524,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                id, expr_ty, def);
 
         match def {
-          Def::StructCtor(..) | Def::Union(..) | Def::VariantCtor(..) | Def::Const(..) |
+          Def::StructCtor(..) | Def::VariantCtor(..) | Def::Const(..) |
           Def::AssociatedConst(..) | Def::Fn(..) | Def::Method(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
-          }
-
-          Def::Mod(_) |
-          Def::Trait(_) | Def::Enum(..) | Def::TyAlias(..) | Def::PrimTy(_) |
-          Def::TyParam(..) |
-          Def::Label(_) | Def::SelfTy(..) |
-          Def::Variant(..) |
-          Def::Struct(..) |
-          Def::AssociatedTy(..) => {
-              span_bug!(span, "Unexpected definition in \
-                               memory categorization: {:?}", def);
           }
 
           Def::Static(_, mutbl) => {
@@ -600,7 +589,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }))
           }
 
-          Def::Err => bug!("Def::Err in memory categorization")
+          def => span_bug!(span, "unexpected definition in memory categorization: {:?}", def)
         }
     }
 
@@ -1095,11 +1084,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         match pat.node {
           PatKind::TupleStruct(_, ref subpats, ddpos) => {
             let expected_len = match self.tcx().expect_def(pat.id) {
-                Def::VariantCtor(def_id, ..) => {
+                Def::VariantCtor(def_id, CtorKind::Fn) => {
                     let enum_def = self.tcx().parent_def_id(def_id).unwrap();
                     self.tcx().lookup_adt_def(enum_def).variant_with_id(def_id).fields.len()
                 }
-                Def::StructCtor(..) => {
+                Def::StructCtor(_, CtorKind::Fn) => {
                     match self.pat_ty(&pat)?.sty {
                         ty::TyAdt(adt_def, _) => {
                             adt_def.struct_variant().fields.len()

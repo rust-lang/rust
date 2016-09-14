@@ -17,7 +17,6 @@ use rustc::hir;
 
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::DefPathData;
 use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::FnvHashSet;
@@ -81,9 +80,7 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             record_extern_fqn(cx, did, clean::TypeKind::Function);
             clean::FunctionItem(build_external_function(cx, tcx, did))
         }
-        Def::Struct(did)
-                // If this is a struct constructor, we skip it
-                if tcx.def_key(did).disambiguated_data.data != DefPathData::StructCtor => {
+        Def::Struct(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Struct);
             ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
@@ -105,7 +102,10 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         // Assume that the enum type is reexported next to the variant, and
         // variants don't show up in documentation specially.
-        Def::Variant(..) => return Some(Vec::new()),
+        // Similarly, consider that struct type is reexported next to its constructor.
+        Def::Variant(..) |
+        Def::VariantCtor(..) |
+        Def::StructCtor(..) => return Some(Vec::new()),
         Def::Mod(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Module);
             clean::ModuleItem(build_module(cx, tcx, did))
@@ -114,7 +114,7 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             record_extern_fqn(cx, did, clean::TypeKind::Static);
             clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
-        Def::Const(did) | Def::AssociatedConst(did) => {
+        Def::Const(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Const);
             clean::ConstantItem(build_const(cx, tcx, did))
         }
@@ -501,10 +501,8 @@ fn build_module<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let def_id = item.def.def_id();
             if tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }
-                if let Some(def) = tcx.sess.cstore.describe_def(def_id) {
-                    if let Some(i) = try_inline_def(cx, tcx, def) {
-                        items.extend(i)
-                    }
+                if let Some(i) = try_inline_def(cx, tcx, item.def) {
+                    items.extend(i)
                 }
             }
         }

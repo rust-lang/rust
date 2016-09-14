@@ -25,29 +25,34 @@ pub enum CtorKind {
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
-    Fn(DefId),
-    SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
+    // Type namespace
     Mod(DefId),
-    Static(DefId, bool /* is_mutbl */),
-    Const(DefId),
-    AssociatedConst(DefId),
-    Local(DefId),
-    Variant(DefId),
-    VariantCtor(DefId, CtorKind),
+    Struct(DefId), // DefId refers to NodeId of the struct itself
+    Union(DefId),
     Enum(DefId),
+    Variant(DefId),
+    Trait(DefId),
     TyAlias(DefId),
     AssociatedTy(DefId),
-    Trait(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
+    SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
+
+    // Value namespace
+    Fn(DefId),
+    Const(DefId),
+    Static(DefId, bool /* is_mutbl */),
+    StructCtor(DefId, CtorKind), // DefId refers to NodeId of the struct's constructor
+    VariantCtor(DefId, CtorKind),
+    Method(DefId),
+    AssociatedConst(DefId),
+    Local(DefId),
     Upvar(DefId,        // def id of closed over local
           usize,        // index in the freevars list of the closure
           ast::NodeId), // expr node that creates the closure
-    Struct(DefId), // DefId refers to NodeId of the struct itself
-    StructCtor(DefId, CtorKind), // DefId refers to NodeId of the struct's constructor
-    Union(DefId),
     Label(ast::NodeId),
-    Method(DefId),
+
+    // Both namespaces
     Err,
 }
 
