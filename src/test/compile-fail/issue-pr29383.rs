@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(match_of_unit_variant_via_paren_dotdot)]
-
 enum E {
     A,
     B,
@@ -18,7 +16,7 @@ enum E {
 fn main() {
     match None {
         None => {}
-        Some(E::A(..)) => {}
-        Some(E::B(..)) => {}
+        Some(E::A(..)) => {} //~ ERROR expected tuple struct/variant, found unit variant `E::A`
+        Some(E::B(..)) => {} //~ ERROR expected tuple struct/variant, found unit variant `E::B`
     }
 }
