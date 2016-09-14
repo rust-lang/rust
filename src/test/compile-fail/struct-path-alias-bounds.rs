@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main () {
-    let x = Foo { x: 1, y: 2 };
-    //~^ ERROR E0422
-    //~| NOTE not a structure
+// issue #36286
+
+struct S<T: Clone> { a: T }
+
+struct NoClone;
+type A = S<NoClone>;
+
+fn main() {
+    let s = A { a: NoClone };
+    //~^ ERROR the trait bound `NoClone: std::clone::Clone` is not satisfied
 }

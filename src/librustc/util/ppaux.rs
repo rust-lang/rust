@@ -14,7 +14,7 @@ use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
-use ty::TyClosure;
+use ty::{TyClosure, TyProjection, TyAnon};
 use ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::{TypeFolder, TypeVisitor};
@@ -802,6 +802,34 @@ impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     }
 }
 
+impl<'tcx> ty::TypeVariants<'tcx> {
+    pub fn descr(&self) -> &'static str {
+        match *self {
+            TyInt(..) | TyUint(..) | TyFloat(..) |
+            TyBool | TyChar | TyStr => "builtin type",
+            TyRawPtr(..) => "pointer",
+            TyRef(..) => "reference",
+            TyTuple(..) => "tuple",
+            TyFnDef(..) => "function type",
+            TyFnPtr(..) => "function pointer",
+            TyArray(..) => "array",
+            TySlice(..) => "slice",
+            TyParam(..) => "type parameter",
+            TyProjection(..) => "associated type",
+            TyTrait(..) => "trait type",
+            TyClosure(..) => "closure type",
+            TyBox(..) => "struct",
+            TyAdt(def, ..) => match def.adt_kind() {
+                ty::AdtKind::Struct => "struct",
+                ty::AdtKind::Union => "union",
+                ty::AdtKind::Enum => "enum",
+            },
+            TyInfer(..) | TyAnon(..) |
+            TyNever | TyError => "type",
+        }
+    }
+}
+
 impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -879,8 +907,8 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 })
             }
             TyTrait(ref data) => write!(f, "{}", data),
-            ty::TyProjection(ref data) => write!(f, "{}", data),
-            ty::TyAnon(def_id, substs) => {
+            TyProjection(ref data) => write!(f, "{}", data),
+            TyAnon(def_id, substs) => {
                 ty::tls::with(|tcx| {
                     // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                     // by looking up the projections associated with the def_id.

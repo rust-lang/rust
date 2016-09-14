@@ -1484,7 +1484,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                       def: Def,
                       opt_self_ty: Option<Ty<'tcx>>,
                       base_path_ref_id: ast::NodeId,
-                      base_segments: &[hir::PathSegment])
+                      base_segments: &[hir::PathSegment],
+                      permit_variants: bool)
                       -> Ty<'tcx> {
         let tcx = self.tcx();
 
@@ -1514,6 +1515,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                     param_mode,
                                     did,
                                     base_segments.last().unwrap())
+            }
+            Def::Variant(did) if permit_variants => {
+                // Convert "variant type" as if it were a real type.
+                // The resulting `Ty` is type of the variant's enum for now.
+                tcx.prohibit_type_params(base_segments.split_last().unwrap().1);
+                let mut ty = self.ast_path_to_ty(rscope,
+                                                 span,
+                                                 param_mode,
+                                                 tcx.parent_def_id(did).unwrap(),
+                                                 base_segments.last().unwrap());
+                if ty.is_fn() {
+                    // Tuple variants have fn type even in type namespace,
+                    // extract true variant type from it.
+                    ty = tcx.no_late_bound_regions(&ty.fn_ret()).unwrap();
+                }
+                ty
             }
             Def::TyParam(did) => {
                 tcx.prohibit_type_params(base_segments);
@@ -1604,7 +1621,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                       opt_self_ty: Option<Ty<'tcx>>,
                                       base_path_ref_id: ast::NodeId,
                                       base_segments: &[hir::PathSegment],
-                                      assoc_segments: &[hir::PathSegment])
+                                      assoc_segments: &[hir::PathSegment],
+                                      permit_variants: bool)
                                       -> (Ty<'tcx>, Def) {
         // Convert the base type.
         debug!("finish_resolving_def_to_ty(base_def={:?}, \
@@ -1619,7 +1637,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                           base_def,
                                           opt_self_ty,
                                           base_path_ref_id,
-                                          base_segments);
+                                          base_segments,
+                                          permit_variants);
         debug!("finish_resolving_def_to_ty: base_def_to_ty returned {:?}", base_ty);
 
         // If any associated type segments remain, attempt to resolve them.
@@ -1775,7 +1794,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                                 opt_self_ty,
                                                                 ast_ty.id,
                                                                 &path.segments[..base_ty_end],
-                                                                &path.segments[base_ty_end..]);
+                                                                &path.segments[base_ty_end..],
+                                                                false);
 
                 // Write back the new resolution.
                 if path_res.depth != 0 {

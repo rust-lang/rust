@@ -8,30 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S;
+struct S<T, U = u16> {
+    a: T,
+    b: U,
+}
 
 trait Tr {
     type A;
 }
-
-impl Tr for S {
-    type A = S;
+impl Tr for u8 {
+    type A = S<u8, u16>;
 }
 
-fn f<T: Tr>() {
-    match S {
-        T::A {} => {} //~ ERROR `T::A` does not name a struct or a struct variant
-    }
-}
-
-fn g<T: Tr<A = S>>() {
-    match S {
-        T::A {} => {} //~ ERROR `T::A` does not name a struct or a struct variant
+fn f<T: Tr<A = S<u8>>>() {
+    let s = T::A { a: 0, b: 1 };
+    match s {
+        T::A { a, b } => {
+            assert_eq!(a, 0);
+            assert_eq!(b, 1);
+        }
     }
 }
 
 fn main() {
-    match S {
-        S::A {} => {} //~ ERROR ambiguous associated type
-    }
+    f::<u8>();
 }
