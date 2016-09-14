@@ -80,8 +80,8 @@ pub struct StringReader<'a> {
     pub next_pos: BytePos,
     /// The absolute offset within the codemap of the current character
     pub curr_pos: BytePos,
-    /// The column of the next character to read
-    pub col: CharPos,
+    /// The column of the current character
+    pub curr_col: CharPos,
     /// The current character (which has been read from curr_pos)
     pub curr: Option<char>,
     pub filemap: Rc<syntax_pos::FileMap>,
@@ -176,7 +176,7 @@ impl<'a> StringReader<'a> {
             span_diagnostic: span_diagnostic,
             next_pos: filemap.start_pos,
             curr_pos: filemap.start_pos,
-            col: CharPos(0),
+            curr_col: CharPos(0),
             curr: Some('\n'),
             filemap: filemap,
             // dummy values; not read
@@ -403,10 +403,10 @@ impl<'a> StringReader<'a> {
             let byte_offset_diff = next - current_byte_offset;
             self.next_pos = self.next_pos + Pos::from_usize(byte_offset_diff);
             self.curr = Some(ch);
-            self.col = self.col + CharPos(1);
+            self.curr_col = self.curr_col + CharPos(1);
             if last_char == '\n' {
                 self.filemap.next_line(self.curr_pos);
-                self.col = CharPos(0);
+                self.curr_col = CharPos(0);
             }
 
             if byte_offset_diff > 1 {

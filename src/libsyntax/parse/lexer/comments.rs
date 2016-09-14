@@ -155,7 +155,7 @@ fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
 
 fn consume_whitespace_counting_blank_lines(rdr: &mut StringReader, comments: &mut Vec<Comment>) {
     while is_pattern_whitespace(rdr.curr) && !rdr.is_eof() {
-        if rdr.col == CharPos(0) && rdr.curr_is('\n') {
+        if rdr.curr_col == CharPos(0) && rdr.curr_is('\n') {
             push_blank_line_comment(rdr, &mut *comments);
         }
         rdr.bump();
@@ -242,7 +242,7 @@ fn read_block_comment(rdr: &mut StringReader,
     debug!(">>> block comment");
     let p = rdr.curr_pos;
     let mut lines: Vec<String> = Vec::new();
-    let col = rdr.col;
+    let curr_col = rdr.curr_col;
     rdr.bump();
     rdr.bump();
 
@@ -272,7 +272,7 @@ fn read_block_comment(rdr: &mut StringReader,
                 panic!(rdr.fatal("unterminated block comment"));
             }
             if rdr.curr_is('\n') {
-                trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
+                trim_whitespace_prefix_and_push_line(&mut lines, curr_line, curr_col);
                 curr_line = String::new();
                 rdr.bump();
             } else {
@@ -295,7 +295,7 @@ fn read_block_comment(rdr: &mut StringReader,
             }
         }
         if !curr_line.is_empty() {
-            trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
+            trim_whitespace_prefix_and_push_line(&mut lines, curr_line, curr_col);
         }
     }
 
