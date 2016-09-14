@@ -31,6 +31,7 @@ use std::rc::Rc;
 
 use syntax::ast::Name;
 use syntax::attr;
+use syntax::parse::token;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
