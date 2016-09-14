@@ -718,6 +718,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
+    /// Constructs a new `Weak<T>` without an accompanying instance of T.
     fn default() -> Weak<T> {
         Weak::new()
     }
@@ -923,6 +924,7 @@ impl<T: ?Sized> fmt::Pointer for Arc<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Arc<T> {
+    /// Creates a new `Arc<T>`, with the `Default` value for T.
     fn default() -> Arc<T> {
         Arc::new(Default::default())
     }

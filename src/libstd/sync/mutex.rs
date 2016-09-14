@@ -287,6 +287,7 @@ impl<T: ?Sized> Drop for Mutex<T> {
 
 #[stable(feature = "mutex_default", since = "1.9.0")]
 impl<T: ?Sized + Default> Default for Mutex<T> {
+    /// Creates a `Mutex<T>`, with the `Default` value for T.
     fn default() -> Mutex<T> {
         Mutex::new(Default::default())
     }
