@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dotdot_in_tuple_patterns)]
-
 fn tuple() {
     let x = (1, 2, 3);
     let branch = match x {
