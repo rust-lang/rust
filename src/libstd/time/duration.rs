@@ -106,8 +106,10 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
+    /// use std::time::Duration;
+    ///
     /// assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)), Some(Duration::new(0, 1)));
-    /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(::u64::MAX, 0)), None);
+    /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(std::u64::MAX, 0)), None);
     /// ```
     #[unstable(feature = "duration_checked_ops", issue = "35774")]
     #[inline]
@@ -140,6 +142,8 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
+    /// use std::time::Duration;
+    ///
     /// assert_eq!(Duration::new(0, 1).checked_sub(Duration::new(0, 0)), Some(Duration::new(0, 1)));
     /// assert_eq!(Duration::new(0, 0).checked_sub(Duration::new(0, 1)), None);
     /// ```
@@ -172,8 +176,10 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
+    /// use std::time::Duration;
+    ///
     /// assert_eq!(Duration::new(0, 500_000_001).checked_mul(2), Some(Duration::new(1, 2)));
-    /// assert_eq!(Duration::new(::u64::MAX - 1, 0).checked_mul(2), None);
+    /// assert_eq!(Duration::new(std::u64::MAX - 1, 0).checked_mul(2), None);
     /// ```
     #[unstable(feature = "duration_checked_ops", issue = "35774")]
     #[inline]
@@ -203,6 +209,8 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
+    /// use std::time::Duration;
+    ///
     /// assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
     /// assert_eq!(Duration::new(1, 0).checked_div(2), Some(Duration::new(0, 500_000_000)));
     /// assert_eq!(Duration::new(2, 0).checked_div(0), None);
