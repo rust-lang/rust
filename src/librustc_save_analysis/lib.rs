@@ -507,7 +507,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Def::Static(..) |
             Def::Const(..) |
             Def::AssociatedConst(..) |
-            Def::Variant(..) => {
+            Def::Variant(..) |
+            Def::VariantCtor(..) => {
                 Some(Data::VariableRefData(VariableRefData {
                     name: self.span_utils.snippet(sub_span.unwrap()),
                     span: sub_span.unwrap(),
@@ -516,6 +517,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             Def::Struct(def_id) |
+            Def::StructCtor(def_id, ..) |
             Def::Union(def_id) |
             Def::Enum(def_id) |
             Def::TyAlias(def_id) |

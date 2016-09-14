@@ -454,7 +454,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprPath(..) => {
-                if let Def::Struct(..) = self.tcx.expect_def(expr.id) {
+                if let Def::StructCtor(..) = self.tcx.expect_def(expr.id) {
                     let expr_ty = self.tcx.expr_ty(expr);
                     let def = match expr_ty.sty {
                         ty::TyFnDef(.., &ty::BareFnTy { sig: ty::Binder(ty::FnSig {

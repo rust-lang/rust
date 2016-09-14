@@ -303,6 +303,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 }.lower(self.tcx));
             }
             Def::Struct(..) |
+            Def::StructCtor(..) |
             Def::Union(..) |
             Def::Enum(..) |
             Def::TyAlias(..) |
@@ -320,6 +321,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Def::AssociatedConst(..) |
             Def::Local(..) |
             Def::Variant(..) |
+            Def::VariantCtor(..) |
             Def::Upvar(..) => {
                 self.dumper.variable_ref(VariableRefData {
                     span: sub_span.expect("No span found for var ref"),
@@ -929,7 +931,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Def::Const(..) |
             Def::AssociatedConst(..) |
             Def::Struct(..) |
+            Def::StructCtor(..) |
             Def::Variant(..) |
+            Def::VariantCtor(..) |
             Def::Fn(..) => self.write_sub_paths_truncated(path, false),
             _ => {}
         }
@@ -1486,8 +1490,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                         }.lower(self.tcx));
                     }
                 }
-                Def::Variant(..) | Def::Enum(..) |
-                Def::TyAlias(..) | Def::Struct(..) => {
+                Def::Variant(..) | Def::VariantCtor(..) | Def::Enum(..) |
+                Def::TyAlias(..) | Def::Struct(..) | Def::StructCtor(..) => {
                     paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
                 // FIXME(nrc) what are these doing here?

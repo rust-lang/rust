@@ -20,7 +20,7 @@ pub use self::fold::TypeFoldable;
 use dep_graph::{self, DepNode};
 use hir::map as ast_map;
 use middle;
-use hir::def::{Def, PathResolution, ExportMap};
+use hir::def::{Def, CtorKind, PathResolution, ExportMap};
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
@@ -1496,6 +1496,13 @@ impl VariantKind {
             hir::VariantData::Unit(..) => VariantKind::Unit,
         }
     }
+    pub fn ctor_kind(self) -> CtorKind {
+        match self {
+            VariantKind::Tuple => CtorKind::Fn,
+            VariantKind::Unit => CtorKind::Const,
+            VariantKind::Struct => CtorKind::Fictive,
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
@@ -1673,8 +1680,8 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
 
     pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'gcx, 'container> {
         match def {
-            Def::Variant(vid) => self.variant_with_id(vid),
-            Def::Struct(..) | Def::Union(..) |
+            Def::Variant(vid) | Def::VariantCtor(vid, ..) => self.variant_with_id(vid),
+            Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) => self.struct_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
@@ -2332,11 +2339,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // or variant or their constructors, panics otherwise.
     pub fn expect_variant_def(self, def: Def) -> VariantDef<'tcx> {
         match def {
-            Def::Variant(did) => {
+            Def::Variant(did) | Def::VariantCtor(did, ..) => {
                 let enum_did = self.parent_def_id(did).unwrap();
                 self.lookup_adt_def(enum_did).variant_with_id(did)
             }
-            Def::Struct(did) | Def::Union(did) => {
+            Def::Struct(did) | Def::StructCtor(did, ..) | Def::Union(did) => {
                 self.lookup_adt_def(did).struct_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)

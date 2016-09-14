@@ -534,7 +534,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 report_unexpected_def();
                 return tcx.types.err;
             }
-            Def::Variant(..) | Def::Struct(..) => {
+            Def::VariantCtor(..) | Def::StructCtor(..) => {
                 let variant = tcx.expect_variant_def(def);
                 if variant.kind != VariantKind::Unit {
                     report_unexpected_def();
@@ -589,7 +589,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 report_unexpected_def(false);
                 return tcx.types.err;
             }
-            Def::Variant(..) | Def::Struct(..) => {
+            Def::VariantCtor(..) | Def::StructCtor(..) => {
                 tcx.expect_variant_def(def)
             }
             _ => bug!("unexpected pattern definition {:?}", def)

@@ -301,7 +301,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                        subpatterns: Vec<FieldPattern<'tcx>>)
                        -> PatternKind<'tcx> {
         match self.cx.tcx.expect_def(pat.id) {
-            Def::Variant(variant_id) => {
+            Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 let enum_id = self.cx.tcx.parent_def_id(variant_id).unwrap();
                 let adt_def = self.cx.tcx.lookup_adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
@@ -315,7 +315,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 }
             }
 
-            Def::Struct(..) | Def::Union(..) |
+            Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
