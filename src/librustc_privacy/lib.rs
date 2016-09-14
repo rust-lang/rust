@@ -286,7 +286,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         if self.prev_level.is_some() {
             if let Some(exports) = self.export_map.get(&id) {
                 for export in exports {
-                    if let Some(node_id) = self.tcx.map.as_local_node_id(export.def_id) {
+                    if let Some(node_id) = self.tcx.map.as_local_node_id(export.def.def_id()) {
                         self.update(node_id, Some(AccessLevel::Exported));
                     }
                 }

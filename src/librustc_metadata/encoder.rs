@@ -406,7 +406,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId))
                           -> Entry<'tcx> {
-        let variant = self.tcx.lookup_adt_def(adt_def_id).struct_variant();
+        let tcx = self.tcx;
+        let variant = tcx.lookup_adt_def(adt_def_id).struct_variant();
 
         let data = VariantData {
             kind: variant.kind,
@@ -414,9 +415,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             struct_ctor: Some(def_id.index)
         };
 
+        let struct_id = tcx.map.as_local_node_id(adt_def_id).unwrap();
+        let struct_vis = &tcx.map.expect_item(struct_id).vis;
+
         Entry {
             kind: EntryKind::Struct(self.lazy(&data)),
-            visibility: ty::Visibility::Public,
+            visibility: struct_vis.simplify(),
             def_key: self.encode_def_key(def_id),
             attributes: LazySeq::empty(),
             children: LazySeq::empty(),

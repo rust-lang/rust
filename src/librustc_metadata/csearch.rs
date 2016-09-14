@@ -149,7 +149,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
-            .each_child_of_item(def_id.index, |child| result.push(child.def_id));
+            .each_child_of_item(def_id.index, |child| result.push(child.def.def_id()));
         result
     }
 
@@ -566,7 +566,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
             let mut bfs_queue = &mut VecDeque::new();
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: def::Export, parent: DefId| {
-                let child = child.def_id;
+                let child = child.def.def_id();
 
                 if self.visibility(child) != ty::Visibility::Public {
                     return;

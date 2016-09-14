@@ -66,7 +66,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
 
     pub fn visit_mod(&mut self, def_id: DefId) {
         for item in self.cstore.item_children(def_id) {
-            self.visit_item(item.def_id);
+            self.visit_item(item.def.def_id());
         }
     }
 
