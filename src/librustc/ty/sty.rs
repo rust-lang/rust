@@ -21,6 +21,7 @@ use util::common::ErrorReported;
 use collections::enum_set::{self, EnumSet, CLike};
 use std::fmt;
 use std::ops;
+use std::collections::HashMap;
 use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::symbol::{keywords, InternedString};
@@ -929,14 +930,24 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_uninhabited(&self, cx: TyCtxt) -> bool {
+    pub fn is_uninhabited(&self, cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        let mut visited = HashMap::new();
+        self.is_uninhabited_recurse(&mut visited, cx)
+    }
+
+    pub fn is_uninhabited_recurse(&self,
+                                  visited: &mut HashMap<(DefId, &'tcx Substs<'tcx>), ()>,
+                                  cx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         // FIXME(#24885): be smarter here, the AdtDefData::is_empty method could easily be made
         // more complete.
         match self.sty {
-            TyAdt(def, _) => def.is_empty(),
+            TyAdt(def, substs) => {
+                def.is_uninhabited_recurse(visited, cx, substs)
+            },
 
             TyNever => true,
             TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
+            TyArray(ty, len) => len > 0 && ty.is_uninhabited(cx),
 
             // FIXME(canndrew): this line breaks core::fmt
             //TyRef(_, ref tm) => tm.ty.is_uninhabited(cx),
