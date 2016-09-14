@@ -946,11 +946,10 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             },
 
             TyNever => true,
-            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited(cx)),
-            TyArray(ty, len) => len > 0 && ty.is_uninhabited(cx),
+            TyTuple(ref tys) => tys.iter().any(|ty| ty.is_uninhabited_recurse(visited, cx)),
+            TyArray(ty, len) => len > 0 && ty.is_uninhabited_recurse(visited, cx),
+            TyRef(_, ref tm) => tm.ty.is_uninhabited_recurse(visited, cx),
 
-            // FIXME(canndrew): this line breaks core::fmt
-            //TyRef(_, ref tm) => tm.ty.is_uninhabited(cx),
             _ => false,
         }
     }
