@@ -77,7 +77,7 @@ pub struct TokenAndSpan {
 pub struct StringReader<'a> {
     pub span_diagnostic: &'a Handler,
     /// The absolute offset within the codemap of the next character to read
-    pub pos: BytePos,
+    pub next_pos: BytePos,
     /// The absolute offset within the codemap of the current character
     pub curr_pos: BytePos,
     /// The column of the next character to read
@@ -174,7 +174,7 @@ impl<'a> StringReader<'a> {
 
         let mut sr = StringReader {
             span_diagnostic: span_diagnostic,
-            pos: filemap.start_pos,
+            next_pos: filemap.start_pos,
             curr_pos: filemap.start_pos,
             col: CharPos(0),
             curr: Some('\n'),
@@ -393,15 +393,15 @@ impl<'a> StringReader<'a> {
     /// Advance the StringReader by one character. If a newline is
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
-        self.curr_pos = self.pos;
-        let current_byte_offset = self.byte_offset(self.pos).to_usize();
+        self.curr_pos = self.next_pos;
+        let current_byte_offset = self.byte_offset(self.next_pos).to_usize();
         if current_byte_offset < self.source_text.len() {
             assert!(self.curr.is_some());
             let last_char = self.curr.unwrap();
             let ch = char_at(&self.source_text, current_byte_offset);
             let next = current_byte_offset + ch.len_utf8();
             let byte_offset_diff = next - current_byte_offset;
-            self.pos = self.pos + Pos::from_usize(byte_offset_diff);
+            self.next_pos = self.next_pos + Pos::from_usize(byte_offset_diff);
             self.curr = Some(ch);
             self.col = self.col + CharPos(1);
             if last_char == '\n' {
@@ -418,7 +418,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.pos).to_usize();
+        let offset = self.byte_offset(self.next_pos).to_usize();
         if offset < self.source_text.len() {
             Some(char_at(&self.source_text, offset))
         } else {
@@ -431,7 +431,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextnextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.pos).to_usize();
+        let offset = self.byte_offset(self.next_pos).to_usize();
         let s = &self.source_text[..];
         if offset >= s.len() {
             return None;
@@ -487,7 +487,7 @@ impl<'a> StringReader<'a> {
                     // line comments starting with "///" or "//!" are doc-comments
                     let doc_comment = self.curr_is('/') || self.curr_is('!');
                     let start_bpos = if doc_comment {
-                        self.pos - BytePos(3)
+                        self.next_pos - BytePos(3)
                     } else {
                         self.curr_pos - BytePos(2)
                     };
@@ -501,7 +501,7 @@ impl<'a> StringReader<'a> {
                                     break;
                                 } else if doc_comment {
                                     self.err_span_(self.curr_pos,
-                                                   self.pos,
+                                                   self.next_pos,
                                                    "bare CR not allowed in doc-comment");
                                 }
                             }
@@ -677,7 +677,7 @@ impl<'a> StringReader<'a> {
                     // in range for the true radix
                     if c.unwrap().to_digit(real_radix).is_none() {
                         self.err_span_(self.curr_pos,
-                                       self.pos,
+                                       self.next_pos,
                                        &format!("invalid digit for a base {} literal", real_radix));
                     }
                     len += 1;
@@ -789,7 +789,7 @@ impl<'a> StringReader<'a> {
             accum_int *= 16;
             accum_int += c.to_digit(16).unwrap_or_else(|| {
                 self.err_span_char(self.curr_pos,
-                                   self.pos,
+                                   self.next_pos,
                                    "invalid character in numeric character escape",
                                    c);
 
@@ -957,11 +957,11 @@ impl<'a> StringReader<'a> {
             accum_int += c.to_digit(16).unwrap_or_else(|| {
                 if c == delim {
                     panic!(self.fatal_span_(self.curr_pos,
-                                            self.pos,
+                                            self.next_pos,
                                             "unterminated unicode escape (needed a `}`)"));
                 } else {
                     self.err_span_char(self.curr_pos,
-                                       self.pos,
+                                       self.next_pos,
                                        "invalid character in unicode escape",
                                        c);
                 }
@@ -999,7 +999,7 @@ impl<'a> StringReader<'a> {
             }
             if self.scan_digits(10, 10) == 0 {
                 self.err_span_(self.curr_pos,
-                               self.pos,
+                               self.next_pos,
                                "expected at least one digit in exponent")
             }
         }
@@ -1236,7 +1236,7 @@ impl<'a> StringReader<'a> {
                     // if we find one, then this is an invalid character literal
                     if self.curr_is('\'') {
                         panic!(self.fatal_span_verbose(
-                               start_with_quote, self.pos,
+                               start_with_quote, self.next_pos,
                                String::from("character literal may only contain one codepoint")));
 
                     }
@@ -1437,9 +1437,8 @@ impl<'a> StringReader<'a> {
                 return Ok(self.binop(token::Percent));
             }
             c => {
-                let bpos = self.pos;
                 let mut err = self.struct_fatal_span_char(self.curr_pos,
-                                                          bpos,
+                                                          self.next_pos,
                                                           "unknown start of token",
                                                           c);
                 unicode_chars::check_for_substitution(&self, c, &mut err);
