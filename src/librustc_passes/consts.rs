@@ -489,11 +489,11 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         }
         hir::ExprPath(..) => {
             match v.tcx.expect_def(e.id) {
-                Def::Variant(..) => {
+                Def::VariantCtor(..) => {
                     // Count the discriminator or function pointer.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
-                Def::Struct(..) => {
+                Def::StructCtor(..) => {
                     if let ty::TyFnDef(..) = node_ty.sty {
                         // Count the function pointer.
                         v.add_qualif(ConstQualif::NON_ZERO_SIZED);
@@ -539,8 +539,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
             // The callee is an arbitrary expression, it doesn't necessarily have a definition.
             let is_const = match v.tcx.expect_def_or_none(callee.id) {
-                Some(Def::Struct(..)) => true,
-                Some(Def::Variant(..)) => {
+                Some(Def::StructCtor(..)) => true,
+                Some(Def::VariantCtor(..)) => {
                     // Count the discriminator.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     true

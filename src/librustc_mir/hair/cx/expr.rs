@@ -15,7 +15,7 @@ use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::hir::map;
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
@@ -271,10 +271,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     // Tuple-like ADTs are represented as ExprCall. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def|{
                         match cx.tcx.expect_def(fun.id) {
-                            Def::Variant(variant_id) => {
+                            Def::VariantCtor(variant_id, ..) => {
                                 Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                             },
-                            Def::Struct(..) => {
+                            Def::StructCtor(..) => {
                                 Some((adt_def, 0))
                             },
                             _ => None
@@ -672,10 +672,9 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let def_id = match def {
         // A regular function.
         Def::Fn(def_id) | Def::Method(def_id) => def_id,
-        Def::Struct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
-            // A tuple-struct constructor. Should only be reached if not called in the same
-            // expression.
-            ty::TyFnDef(..) => def_id,
+        Def::StructCtor(def_id, CtorKind::Fn) |
+        Def::VariantCtor(def_id, CtorKind::Fn) => def_id,
+        Def::StructCtor(_, CtorKind::Const) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A unit struct which is used as a value. We return a completely different ExprKind
             // here to account for this special case.
             ty::TyAdt(adt_def, substs) => return ExprKind::Adt {
@@ -687,13 +686,10 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             },
             ref sty => bug!("unexpected sty: {:?}", sty)
         },
-        Def::Variant(variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
-            // A variant constructor. Should only be reached if not called in the same
-            // expression.
-            ty::TyFnDef(..) => variant_id,
+        Def::VariantCtor(def_id, CtorKind::Const) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A unit variant, similar special case to the struct case above.
             ty::TyAdt(adt_def, substs) => {
-                let index = adt_def.variant_index_with_id(variant_id);
+                let index = adt_def.variant_index_with_id(def_id);
                 return ExprKind::Adt {
                     adt_def: adt_def,
                     substs: substs,

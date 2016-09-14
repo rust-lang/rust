@@ -801,8 +801,8 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     match pat.node {
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
             match cx.tcx.expect_def(pat.id) {
-                Def::Variant(id) => vec![Variant(id)],
-                Def::Struct(..) | Def::Union(..) |
+                Def::Variant(id) | Def::VariantCtor(id, ..) => vec![Variant(id)],
+                Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
                 Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat.span, "const pattern should've been rewritten"),
@@ -913,8 +913,8 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::Variant(id) if *constructor != Variant(id) => None,
-                Def::Variant(..) | Def::Struct(..) => Some(Vec::new()),
+                Def::VariantCtor(id, ..) if *constructor != Variant(id) => None,
+                Def::VariantCtor(..) | Def::StructCtor(..) => Some(Vec::new()),
                 def => span_bug!(pat_span, "specialize: unexpected \
                                           definition {:?}", def),
             }
@@ -925,8 +925,8 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::Variant(id) if *constructor != Variant(id) => None,
-                Def::Variant(..) | Def::Struct(..) => {
+                Def::VariantCtor(id, ..) if *constructor != Variant(id) => None,
+                Def::VariantCtor(..) | Def::StructCtor(..) => {
                     match ddpos {
                         Some(ddpos) => {
                             let mut pats: Vec<_> = args[..ddpos].iter().map(|p| {

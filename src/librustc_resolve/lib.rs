@@ -924,7 +924,8 @@ impl<'a> NameBinding<'a> {
 
     fn is_variant(&self) -> bool {
         match self.kind {
-            NameBindingKind::Def(Def::Variant(..)) => true,
+            NameBindingKind::Def(Def::Variant(..)) |
+            NameBindingKind::Def(Def::VariantCtor(..)) => true,
             _ => false,
         }
     }
@@ -2373,14 +2374,14 @@ impl<'a> Resolver<'a> {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
                         match def {
-                            Def::Struct(..) | Def::Variant(..) |
+                            Def::StructCtor(..) | Def::VariantCtor(..) |
                             Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
                                 // A constant, unit variant, etc pattern.
                                 let name = ident.node.name;
                                 self.record_use(name, ValueNS, binding.unwrap(), ident.span);
                                 Some(PathResolution::new(def))
                             }
-                            Def::Struct(..) | Def::Variant(..) |
+                            Def::StructCtor(..) | Def::VariantCtor(..) |
                             Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
                                 // A fresh binding that shadows something unacceptable.
                                 resolve_error(
@@ -2411,7 +2412,7 @@ impl<'a> Resolver<'a> {
                 PatKind::TupleStruct(ref path, ..) => {
                     self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
                         match def {
-                            Def::Struct(..) | Def::Variant(..) => true,
+                            Def::StructCtor(..) | Def::VariantCtor(..) => true,
                             _ => false,
                         }
                     }, "variant or struct");
@@ -2420,7 +2421,7 @@ impl<'a> Resolver<'a> {
                 PatKind::Path(ref qself, ref path) => {
                     self.resolve_pattern_path(pat.id, qself.as_ref(), path, ValueNS, |def| {
                         match def {
-                            Def::Struct(..) | Def::Variant(..) |
+                            Def::StructCtor(..) | Def::VariantCtor(..) |
                             Def::Const(..) | Def::AssociatedConst(..) => true,
                             _ => false,
                         }
@@ -2846,10 +2847,9 @@ impl<'a> Resolver<'a> {
                 if let Some(path_res) = self.resolve_possibly_assoc_item(expr.id,
                                                             maybe_qself.as_ref(), path, ValueNS) {
                     // Check if struct variant
-                    let is_struct_variant = if let Def::Variant(variant_id) = path_res.base_def {
-                        self.structs.contains_key(&variant_id)
-                    } else {
-                        false
+                    let is_struct_variant = match path_res.base_def {
+                        Def::VariantCtor(_, CtorKind::Fictive) => true,
+                        _ => false,
                     };
                     if is_struct_variant {
                         let _ = self.structs.contains_key(&path_res.base_def.def_id());

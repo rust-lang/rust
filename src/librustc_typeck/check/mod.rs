@@ -4131,9 +4131,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut fn_segment = None;
         match def {
             // Case 1 and 1b. Reference to a *type* or *enum variant*.
-            Def::Struct(def_id) |
+            Def::StructCtor(def_id, ..) |
             Def::Union(def_id) |
-            Def::Variant(def_id) |
+            Def::VariantCtor(def_id, ..) |
             Def::Enum(def_id) |
             Def::TyAlias(def_id) |
             Def::AssociatedTy(def_id) |
@@ -4190,6 +4190,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Local(..) |
             Def::Label(..) |
             Def::Upvar(..) |
+            Def::Variant(..) |
+            Def::Struct(..) |
             Def::Err => {}
         }
 

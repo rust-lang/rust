@@ -287,8 +287,8 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                entry.insert(PathResolution::new(def));
             }
             let path = match def {
-                Def::Struct(def_id) => def_to_path(tcx, def_id),
-                Def::Variant(variant_did) => def_to_path(tcx, variant_did),
+                Def::StructCtor(def_id, ..) => def_to_path(tcx, def_id),
+                Def::VariantCtor(variant_did, ..) => def_to_path(tcx, variant_did),
                 Def::Fn(..) | Def::Method(..) => return Ok(P(hir::Pat {
                     id: expr.id,
                     node: PatKind::Lit(P(expr.clone())),
@@ -326,7 +326,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         hir::ExprPath(_, ref path) => {
             match tcx.expect_def(expr.id) {
-                Def::Struct(..) | Def::Variant(..) => PatKind::Path(None, path.clone()),
+                Def::StructCtor(..) | Def::VariantCtor(..) => PatKind::Path(None, path.clone()),
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                     let substs = Some(tcx.node_id_item_substs(expr.id).substs);
                     let (expr, _ty) = lookup_const_by_id(tcx, def_id, substs).unwrap();
@@ -807,7 +807,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       signal!(e, NonConstPath);
                   }
               },
-              Def::Variant(variant_def) => {
+              Def::VariantCtor(variant_def, ..) => {
                   if let Some(const_expr) = lookup_variant_by_id(tcx, variant_def) {
                       match eval_const_expr_partial(tcx, const_expr, ty_hint, None) {
                           Ok(val) => val,
@@ -820,7 +820,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       signal!(e, UnimplementedConstVal("enum variants"));
                   }
               }
-              Def::Struct(..) => {
+              Def::StructCtor(..) => {
                   ConstVal::Struct(e.id)
               }
               Def::Local(def_id) => {

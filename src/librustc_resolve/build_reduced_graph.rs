@@ -297,8 +297,9 @@ impl<'b> Resolver<'b> {
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
                 if !struct_def.is_struct() {
-                    let def = Def::Struct(self.definitions.local_def_id(struct_def.id()));
-                    self.define(parent, name, ValueNS, (def, sp, vis));
+                    let ctor_def = Def::StructCtor(self.definitions.local_def_id(struct_def.id()),
+                                                   CtorKind::from_vdata(struct_def));
+                    self.define(parent, name, ValueNS, (ctor_def, sp, vis));
                 }
 
                 // Record the def ID and fields of this struct.
@@ -347,17 +348,19 @@ impl<'b> Resolver<'b> {
                                        parent: Module<'b>,
                                        vis: ty::Visibility) {
         let name = variant.node.name.name;
+        let ctor_kind = CtorKind::from_vdata(&variant.node.data);
         if variant.node.data.is_struct() {
             // Not adding fields for variants as they are not accessed with a self receiver
             let variant_def_id = self.definitions.local_def_id(variant.node.data.id());
             self.structs.insert(variant_def_id, Vec::new());
         }
 
-        // Variants are always treated as importable to allow them to be glob used.
         // All variants are defined in both type and value namespaces as future-proofing.
         let def = Def::Variant(self.definitions.local_def_id(variant.node.data.id()));
-        self.define(parent, name, ValueNS, (def, variant.span, vis));
+        let ctor_def = Def::VariantCtor(self.definitions.local_def_id(variant.node.data.id()),
+                                        ctor_kind);
         self.define(parent, name, TypeNS, (def, variant.span, vis));
+        self.define(parent, name, ValueNS, (ctor_def, variant.span, vis));
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -417,15 +420,16 @@ impl<'b> Resolver<'b> {
                 let module = self.new_module(parent, ModuleKind::Def(def, name), false);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
-            Def::Variant(variant_id) => {
+            Def::Variant(..) => {
                 debug!("(building reduced graph for external crate) building variant {}", name);
-                // Variants are always treated as importable to allow them to be glob used.
                 // All variants are defined in both type and value namespaces as future-proofing.
+                let vkind = self.session.cstore.variant_kind(def_id).unwrap();
+                let ctor_def = Def::VariantCtor(def_id, vkind.ctor_kind());
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
-                let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
-                if self.session.cstore.variant_kind(variant_id) == Some(ty::VariantKind::Struct) {
+                let _ = self.try_define(parent, name, ValueNS, (ctor_def, DUMMY_SP, vis));
+                if vkind == ty::VariantKind::Struct {
                     // Not adding fields for variants as they are not accessed with a self receiver
-                    self.structs.insert(variant_id, Vec::new());
+                    self.structs.insert(def_id, Vec::new());
                 }
             }
             Def::Fn(..) |
@@ -464,7 +468,7 @@ impl<'b> Resolver<'b> {
                 debug!("(building reduced graph for external crate) building type {}", name);
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
             }
-            Def::Struct(_)
+            Def::Struct(..)
                 if self.session.cstore.def_key(def_id).disambiguated_data.data !=
                    DefPathData::StructCtor
                 => {
@@ -472,8 +476,9 @@ impl<'b> Resolver<'b> {
                        name);
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
                 if let Some(ctor_def_id) = self.session.cstore.struct_ctor_def_id(def_id) {
-                    let def = Def::Struct(ctor_def_id);
-                    let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
+                    let vkind = self.session.cstore.variant_kind(def_id).unwrap();
+                    let ctor_def = Def::StructCtor(ctor_def_id, vkind.ctor_kind());
+                    let _ = self.try_define(parent, name, ValueNS, (ctor_def, DUMMY_SP, vis));
                 }
 
                 // Record the def ID and fields of this struct.
@@ -488,6 +493,8 @@ impl<'b> Resolver<'b> {
                 self.structs.insert(def_id, fields);
             }
             Def::Struct(..) => {}
+            Def::VariantCtor(..) |
+            Def::StructCtor(..) |
             Def::Local(..) |
             Def::PrimTy(..) |
             Def::TyParam(..) |
