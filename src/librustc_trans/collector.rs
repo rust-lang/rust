@@ -497,7 +497,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                           self.output);
                 }
             }
-            mir::Rvalue::Box(_) => {
+            mir::Rvalue::Box(..) => {
                 let exchange_malloc_fn_def_id =
                     self.scx
                         .tcx()
@@ -1072,14 +1072,15 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                         });
 
                     output.extend(items);
-
-                    // Also add the destructor
-                    let dg_type = glue::get_drop_glue_type(scx.tcx(),
-                                                           trait_ref.self_ty());
-                    output.push(TransItem::DropGlue(DropGlueKind::Ty(dg_type)));
                 }
                 _ => { /* */ }
             }
+        }
+
+        // Also add the destructor
+        let dg_type = glue::get_drop_glue_type(scx.tcx(), impl_ty);
+        if glue::type_needs_drop(scx.tcx(), dg_type) {
+            output.push(TransItem::DropGlue(DropGlueKind::Ty(dg_type)));
         }
     }
 }
