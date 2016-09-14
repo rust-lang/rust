@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def::Def;
+use rustc::hir::{self, PatKind};
+use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer::{self, InferOk, TypeOrigin};
-use hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference, VariantKind};
+use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation};
 use lint;
 use util::nodemap::FnvHashMap;
@@ -22,9 +23,6 @@ use syntax::ast;
 use syntax::codemap::Spanned;
 use syntax::ptr::P;
 use syntax_pos::Span;
-
-use rustc::hir::{self, PatKind};
-use rustc::hir::print as pprust;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_pat(&self, pat: &'gcx hir::Pat, expected: Ty<'tcx>) {
@@ -516,10 +514,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       expected: Ty<'tcx>) -> Ty<'tcx>
     {
         let tcx = self.tcx;
-        let report_unexpected_def = || {
+        let report_unexpected_def = |def: Def| {
             span_err!(tcx.sess, pat.span, E0533,
-                      "`{}` does not name a unit variant, unit struct or a constant",
-                      pprust::path_to_string(path));
+                      "expected unit struct/variant or constant, found {} `{}`",
+                      def.kind_name(), path);
         };
 
         // Resolve the path and check the definition for errors.
@@ -531,18 +529,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 return tcx.types.err;
             }
             Def::Method(..) => {
-                report_unexpected_def();
+                report_unexpected_def(def);
                 return tcx.types.err;
             }
-            Def::VariantCtor(..) | Def::StructCtor(..) => {
-                let variant = tcx.expect_variant_def(def);
-                if variant.kind != VariantKind::Unit {
-                    report_unexpected_def();
-                    return tcx.types.err;
-                }
-            }
+            Def::VariantCtor(_, CtorKind::Const) |
+            Def::StructCtor(_, CtorKind::Const) |
             Def::Const(..) | Def::AssociatedConst(..) => {} // OK
-            _ => bug!("unexpected pattern definition {:?}", def)
+            _ => bug!("unexpected pattern definition: {:?}", def)
         }
 
         // Type check the path.
@@ -564,9 +557,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_pat(&pat, tcx.types.err);
             }
         };
-        let report_unexpected_def = |is_lint| {
-            let msg = format!("`{}` does not name a tuple variant or a tuple struct",
-                              pprust::path_to_string(path));
+        let report_unexpected_def = |def: Def, is_lint| {
+            let msg = format!("expected tuple struct/variant, found {} `{}`",
+                              def.kind_name(), path);
             if is_lint {
                 tcx.sess.add_lint(lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
                                   pat.id, pat.span, msg);
@@ -585,23 +578,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 on_error();
                 return tcx.types.err;
             }
-            Def::Const(..) | Def::AssociatedConst(..) | Def::Method(..) => {
-                report_unexpected_def(false);
+            Def::AssociatedConst(..) | Def::Method(..) => {
+                report_unexpected_def(def, false);
                 return tcx.types.err;
             }
-            Def::VariantCtor(..) | Def::StructCtor(..) => {
+            Def::VariantCtor(_, ctor_kind) | Def::StructCtor(_, ctor_kind) => {
+                if ctor_kind == CtorKind::Const {
+                    // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
+                    // is allowed for backward compatibility.
+                    report_unexpected_def(def, true);
+                }
                 tcx.expect_variant_def(def)
             }
-            _ => bug!("unexpected pattern definition {:?}", def)
+            _ => bug!("unexpected pattern definition: {:?}", def)
         };
-        if variant.kind == VariantKind::Unit && subpats.is_empty() && ddpos.is_some() {
-            // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
-            // is allowed for backward compatibility.
-            report_unexpected_def(true);
-        } else if variant.kind != VariantKind::Tuple {
-            report_unexpected_def(false);
-            return tcx.types.err;
-        }
 
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
@@ -626,16 +616,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_pat(&subpat, field_ty);
             }
         } else {
-            let subpats_ending = if subpats.len() == 1 {
-                ""
-            } else {
-                "s"
-            };
-            let fields_ending = if variant.fields.len() == 1 {
-                ""
-            } else {
-                "s"
-            };
+            let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
+            let fields_ending = if variant.fields.len() == 1 { "" } else { "s" };
             struct_span_err!(tcx.sess, pat.span, E0023,
                              "this pattern has {} field{}, but the corresponding {} has {} field{}",
                              subpats.len(), subpats_ending, def.kind_name(),

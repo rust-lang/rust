@@ -485,7 +485,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              E0531,
                              "unresolved {} `{}`",
                              expected_what,
-                             path.segments.last().unwrap().identifier)
+                             path)
         }
         ResolutionError::PatPathUnexpected(expected_what, found_what, path) => {
             struct_span_err!(resolver.session,
@@ -494,7 +494,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "expected {}, found {} `{}`",
                              expected_what,
                              found_what,
-                             path.segments.last().unwrap().identifier)
+                             path)
         }
     }
 }
@@ -2376,15 +2376,16 @@ impl<'a> Resolver<'a> {
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
                                              bmode != BindingMode::ByValue(Mutability::Immutable);
                         match def {
-                            Def::StructCtor(..) | Def::VariantCtor(..) |
-                            Def::Const(..) | Def::AssociatedConst(..) if !always_binding => {
-                                // A constant, unit variant, etc pattern.
+                            Def::StructCtor(_, CtorKind::Const) |
+                            Def::VariantCtor(_, CtorKind::Const) |
+                            Def::Const(..) if !always_binding => {
+                                // A unit struct/variant or constant pattern.
                                 let name = ident.node.name;
                                 self.record_use(name, ValueNS, binding.unwrap(), ident.span);
                                 Some(PathResolution::new(def))
                             }
                             Def::StructCtor(..) | Def::VariantCtor(..) |
-                            Def::Const(..) | Def::AssociatedConst(..) | Def::Static(..) => {
+                            Def::Const(..) | Def::Static(..) => {
                                 // A fresh binding that shadows something unacceptable.
                                 resolve_error(
                                     self,
@@ -2401,7 +2402,7 @@ impl<'a> Resolver<'a> {
                             }
                             def => {
                                 span_bug!(ident.span, "unexpected definition for an \
-                                                       identifier in pattern {:?}", def);
+                                                       identifier in pattern: {:?}", def);
                             }
                         }
                     }).unwrap_or_else(|| {
@@ -2411,23 +2412,29 @@ impl<'a> Resolver<'a> {
                     self.record_def(pat.id, resolution);
                 }
 
-                PatKind::TupleStruct(ref path, ..) => {
+                PatKind::TupleStruct(ref path, ref pats, ddpos) => {
                     self.resolve_pattern_path(pat.id, None, path, ValueNS, |def| {
                         match def {
-                            Def::StructCtor(..) | Def::VariantCtor(..) => true,
+                            Def::StructCtor(_, CtorKind::Fn) |
+                            Def::VariantCtor(_, CtorKind::Fn) => true,
+                            // `UnitVariant(..)` is accepted for backward compatibility.
+                            Def::StructCtor(_, CtorKind::Const) |
+                            Def::VariantCtor(_, CtorKind::Const)
+                                if pats.is_empty() && ddpos.is_some() => true,
                             _ => false,
                         }
-                    }, "variant or struct");
+                    }, "tuple struct/variant");
                 }
 
                 PatKind::Path(ref qself, ref path) => {
                     self.resolve_pattern_path(pat.id, qself.as_ref(), path, ValueNS, |def| {
                         match def {
-                            Def::StructCtor(..) | Def::VariantCtor(..) |
+                            Def::StructCtor(_, CtorKind::Const) |
+                            Def::VariantCtor(_, CtorKind::Const) |
                             Def::Const(..) | Def::AssociatedConst(..) => true,
                             _ => false,
                         }
-                    }, "variant, struct or constant");
+                    }, "unit struct/variant or constant");
                 }
 
                 PatKind::Struct(ref path, ..) => {

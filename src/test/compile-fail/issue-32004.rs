@@ -18,12 +18,12 @@ struct S;
 fn main() {
     match Foo::Baz {
         Foo::Bar => {}
-        //~^ ERROR `Foo::Bar` does not name a unit variant, unit struct or a constant
+        //~^ ERROR expected unit struct/variant or constant, found tuple variant `Foo::Bar`
         _ => {}
     }
 
     match S {
         S(()) => {}
-        //~^ ERROR `S` does not name a tuple variant or a tuple struct
+        //~^ ERROR expected tuple struct/variant, found unit struct `S`
     }
 }
