@@ -802,34 +802,6 @@ impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> ty::TypeVariants<'tcx> {
-    pub fn descr(&self) -> &'static str {
-        match *self {
-            TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyBool | TyChar | TyStr => "builtin type",
-            TyRawPtr(..) => "pointer",
-            TyRef(..) => "reference",
-            TyTuple(..) => "tuple",
-            TyFnDef(..) => "function type",
-            TyFnPtr(..) => "function pointer",
-            TyArray(..) => "array",
-            TySlice(..) => "slice",
-            TyParam(..) => "type parameter",
-            TyProjection(..) => "associated type",
-            TyTrait(..) => "trait type",
-            TyClosure(..) => "closure type",
-            TyBox(..) => "struct",
-            TyAdt(def, ..) => match def.adt_kind() {
-                ty::AdtKind::Struct => "struct",
-                ty::AdtKind::Union => "union",
-                ty::AdtKind::Enum => "enum",
-            },
-            TyInfer(..) | TyAnon(..) |
-            TyNever | TyError => "type",
-        }
-    }
-}
-
 impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

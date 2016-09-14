@@ -20,13 +20,13 @@ impl Tr for S {
 
 fn f<T: Tr>() {
     let s = T::A {};
-    //~^ ERROR expected struct, variant or union type, found associated type `<T as Tr>::A`
+    //~^ ERROR expected struct, variant or union type, found associated type
     let z = T::A::<u8> {};
-    //~^ ERROR expected struct, variant or union type, found associated type `<T as Tr>::A`
+    //~^ ERROR expected struct, variant or union type, found associated type
     //~| ERROR type parameters are not allowed on this type
     match S {
         T::A {} => {}
-        //~^ ERROR expected struct, variant or union type, found associated type `<T as Tr>::A`
+        //~^ ERROR expected struct, variant or union type, found associated type
     }
 }
 
