@@ -3234,7 +3234,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             Def::Struct(..) | Def::Union(..) | Def::TyAlias(..) |
-            Def::AssociatedTy(..) => {
+            Def::AssociatedTy(..) | Def::SelfTy(..) => {
                 match ty.sty {
                     ty::TyAdt(adt, substs) if !adt.is_enum() => {
                         Some((adt.struct_variant(), adt.did, substs))
@@ -3242,8 +3242,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => None,
                 }
             }
-            // Self is not supported yet.
-            Def::SelfTy(..) => None,
             _ => bug!("unexpected definition: {:?}", def)
         };
 
