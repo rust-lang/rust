@@ -733,9 +733,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         })
     })?;
 
-    // Collect defintions for def ids.
-    time(sess.time_passes(), "collecting defs", || resolver.definitions.collect(&krate));
-
     time(sess.time_passes(),
          "early lint checks",
          || lint::check_ast_crate(sess, &krate));

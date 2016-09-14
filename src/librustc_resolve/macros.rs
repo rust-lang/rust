@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use Resolver;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, DefIndex};
+use rustc::hir::map::DefCollector;
 use rustc::middle::cstore::LoadedMacro;
 use rustc::util::nodemap::FnvHashMap;
 use std::cell::RefCell;
@@ -27,9 +29,19 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ExpansionData {
     module: Rc<ModuleData>,
+    def_index: DefIndex,
+}
+
+impl ExpansionData {
+    pub fn root() -> Self {
+        ExpansionData {
+            module: Default::default(),
+            def_index: CRATE_DEF_INDEX,
+        }
+    }
 }
 
 // FIXME(jseyfried): merge with `::ModuleS`.
@@ -46,10 +58,10 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
-        expansion.visit_with(&mut ExpansionVisitor {
-            current_module: self.expansion_data[&mark.as_u32()].module.clone(),
-            resolver: self,
-        });
+        let module = self.expansion_data[&mark.as_u32()].module.clone();
+        let mut visitor = ExpansionVisitor { current_module: module, resolver: self };
+        visitor.collect_def_ids(mark, expansion);
+        expansion.visit_with(&mut visitor);
     }
 
     fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
@@ -166,9 +178,8 @@ struct ExpansionVisitor<'b, 'a: 'b> {
 
 impl<'a, 'b> ExpansionVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) {
-        self.resolver.expansion_data.insert(id.as_u32(), ExpansionData {
-            module: self.current_module.clone(),
-        });
+        self.resolver.expansion_data.get_mut(&id.as_u32()).unwrap().module =
+            self.current_module.clone();
     }
 
     // does this attribute list contain "macro_use"?
@@ -194,6 +205,22 @@ impl<'a, 'b> ExpansionVisitor<'a, 'b> {
         }
 
         false
+    }
+
+    fn collect_def_ids(&mut self, mark: Mark, expansion: &Expansion) {
+        let expansion_data = &mut self.resolver.expansion_data;
+        let module = &self.current_module;
+        let def_index = expansion_data[&mark.as_u32()].def_index;
+        let visit_macro_invoc = &mut |id: ast::NodeId, def_index| {
+            expansion_data.insert(id.as_u32(), ExpansionData {
+                def_index: def_index,
+                module: module.clone(),
+            });
+        };
+
+        let mut def_collector = DefCollector::new(&mut self.resolver.definitions);
+        def_collector.visit_macro_invoc = Some(visit_macro_invoc);
+        def_collector.with_parent(def_index, |def_collector| expansion.visit_with(def_collector));
     }
 }
 

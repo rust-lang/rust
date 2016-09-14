@@ -42,7 +42,7 @@ use self::RibKind::*;
 use self::UseLexicalScopeFlag::*;
 use self::ModulePrefixResult::*;
 
-use rustc::hir::map::Definitions;
+use rustc::hir::map::{Definitions, DefCollector};
 use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
 use rustc::middle::cstore::CrateLoader;
 use rustc::session::Session;
@@ -1188,13 +1188,16 @@ impl<'a> Resolver<'a> {
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
 
+        let mut definitions = Definitions::new();
+        DefCollector::new(&mut definitions).collect_root();
+
         let mut expansion_data = FnvHashMap();
-        expansion_data.insert(0, macros::ExpansionData::default()); // Crate root expansion
+        expansion_data.insert(0, macros::ExpansionData::root()); // Crate root expansion
 
         Resolver {
             session: session,
 
-            definitions: Definitions::new(),
+            definitions: definitions,
             macros_at_scope: FnvHashMap(),
 
             // The outermost module has def ID 0; this is not reflected in the
@@ -1264,6 +1267,13 @@ impl<'a> Resolver<'a> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
+        // Collect `DefId`s for exported macro defs.
+        for def in &krate.exported_macros {
+            DefCollector::new(&mut self.definitions).with_parent(CRATE_DEF_INDEX, |collector| {
+                collector.visit_macro_def(def)
+            })
+        }
+
         self.current_module = self.graph_root;
         visit::walk_crate(self, krate);
 
