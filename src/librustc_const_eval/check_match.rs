@@ -247,7 +247,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                 if edef.is_enum() {
                     if let Def::Local(..) = cx.tcx.expect_def(p.id) {
                         if edef.variants.iter().any(|variant| {
-                            variant.name == name.node && variant.kind == ty::VariantKind::Unit
+                            variant.name == name.node && variant.ctor_kind == CtorKind::Const
                         }) {
                             let ty_path = cx.tcx.item_path_str(edef.did);
                             let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
@@ -577,8 +577,8 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 
         ty::TyAdt(adt, _) => {
             let v = ctor.variant_for_adt(adt);
-            match v.kind {
-                ty::VariantKind::Struct => {
+            match v.ctor_kind {
+                CtorKind::Fictive => {
                     let field_pats: hir::HirVec<_> = v.fields.iter()
                         .zip(pats)
                         .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
@@ -593,10 +593,10 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     let has_more_fields = field_pats.len() < pats_len;
                     PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
                 }
-                ty::VariantKind::Tuple => {
+                CtorKind::Fn => {
                     PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
                 }
-                ty::VariantKind::Unit => {
+                CtorKind::Const => {
                     PatKind::Path(None, def_to_path(cx.tcx, v.did))
                 }
             }

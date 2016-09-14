@@ -32,7 +32,7 @@ use syntax_pos::{self, DUMMY_SP, Pos};
 use rustc_trans::back::link;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime::DefRegion::*;
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{self, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::print as pprust;
 use rustc::ty::subst::Substs;
@@ -2032,14 +2032,14 @@ impl Clean<Item> for doctree::Variant {
 
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        let kind = match self.kind {
-            ty::VariantKind::Unit => VariantKind::CLike,
-            ty::VariantKind::Tuple => {
+        let kind = match self.ctor_kind {
+            CtorKind::Const => VariantKind::CLike,
+            CtorKind::Fn => {
                 VariantKind::Tuple(
                     self.fields.iter().map(|f| f.unsubst_ty().clean(cx)).collect()
                 )
             }
-            ty::VariantKind::Struct => {
+            CtorKind::Fictive => {
                 VariantKind::Struct(VariantStruct {
                     struct_type: doctree::Plain,
                     fields_stripped: false,

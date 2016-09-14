@@ -68,7 +68,6 @@ use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
-use rustc::ty::{VariantKind};
 use rustc::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
@@ -87,7 +86,7 @@ use syntax::parse::token::keywords;
 use syntax_pos::Span;
 
 use rustc::hir::{self, intravisit, map as hir_map, print as pprust};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -987,9 +986,9 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let tcx = ccx.tcx;
     let def_id = tcx.map.local_def_id(ctor_id);
     generics_of_def_id(ccx, def_id);
-    let ctor_ty = match variant.kind {
-        VariantKind::Unit | VariantKind::Struct => scheme.ty,
-        VariantKind::Tuple => {
+    let ctor_ty = match variant.ctor_kind {
+        CtorKind::Fictive | CtorKind::Const => scheme.ty,
+        CtorKind::Fn => {
             let inputs: Vec<_> =
                 variant.fields
                 .iter()
@@ -1066,7 +1065,7 @@ fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         name: name,
         disr_val: disr_val,
         fields: fields,
-        kind: VariantKind::from_variant_data(def),
+        ctor_kind: CtorKind::from_hir(def),
     }
 }
 

@@ -258,7 +258,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let def_id = variant.did;
 
         let data = VariantData {
-            kind: variant.kind,
+            ctor_kind: variant.ctor_kind,
             disr: variant.disr_val.to_u64_unchecked(),
             struct_ctor: None
         };
@@ -410,7 +410,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let variant = tcx.lookup_adt_def(adt_def_id).struct_variant();
 
         let data = VariantData {
-            kind: variant.kind,
+            ctor_kind: variant.ctor_kind,
             disr: variant.disr_val.to_u64_unchecked(),
             struct_ctor: Some(def_id.index)
         };
@@ -675,7 +675,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     None
                 };
                 EntryKind::Struct(self.lazy(&VariantData {
-                    kind: variant.kind,
+                    ctor_kind: variant.ctor_kind,
                     disr: variant.disr_val.to_u64_unchecked(),
                     struct_ctor: struct_ctor
                 }))
@@ -684,7 +684,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
 
                 EntryKind::Union(self.lazy(&VariantData {
-                    kind: variant.kind,
+                    ctor_kind: variant.ctor_kind,
                     disr: variant.disr_val.to_u64_unchecked(),
                     struct_ctor: None
                 }))
@@ -889,19 +889,12 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemStruct(ref struct_def, _) => {
                 self.encode_fields(def_id);
 
-                // If this is a tuple-like struct, encode the type of the constructor.
-                match self.tcx.lookup_adt_def(def_id).struct_variant().kind {
-                    ty::VariantKind::Struct => {
-                        // no value for structs like struct Foo { ... }
-                    }
-                    ty::VariantKind::Tuple | ty::VariantKind::Unit => {
-                        // there is a value for structs like `struct
-                        // Foo()` and `struct Foo`
-                        let ctor_def_id = self.tcx.map.local_def_id(struct_def.id());
-                        self.record(ctor_def_id,
-                                    EncodeContext::encode_struct_ctor,
-                                    (def_id, ctor_def_id));
-                    }
+                // If the struct has a constructor, encode it.
+                if !struct_def.is_struct() {
+                    let ctor_def_id = self.tcx.map.local_def_id(struct_def.id());
+                    self.record(ctor_def_id,
+                                EncodeContext::encode_struct_ctor,
+                                (def_id, ctor_def_id));
                 }
             }
             hir::ItemUnion(..) => {

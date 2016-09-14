@@ -22,7 +22,7 @@ use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
 use rustc::middle::cstore::{InlinedItem, LinkagePreference};
-use rustc::hir::def::{self, Def};
+use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -534,7 +534,7 @@ impl<'a, 'tcx> CrateMetadata {
             name: self.item_name(item),
             fields: fields,
             disr_val: ConstInt::Infer(data.disr),
-            kind: data.kind,
+            ctor_kind: data.ctor_kind,
         }, data.struct_ctor)
     }
 
@@ -693,16 +693,16 @@ impl<'a, 'tcx> CrateMetadata {
                     match def {
                         Def::Struct(..) => {
                             if let Some(ctor_def_id) = self.get_struct_ctor_def_id(child_index) {
-                                let vkind = self.get_variant_kind(child_index).unwrap();
-                                let ctor_def = Def::StructCtor(ctor_def_id, vkind.ctor_kind());
+                                let ctor_kind = self.get_ctor_kind(child_index);
+                                let ctor_def = Def::StructCtor(ctor_def_id, ctor_kind);
                                 callback(def::Export { def: ctor_def, name: name });
                             }
                         }
                         Def::Variant(def_id) => {
                             // Braced variants, unlike structs, generate unusable names in
                             // value namespace, they are reserved for possible future use.
-                            let vkind = self.get_variant_kind(child_index).unwrap();
-                            let ctor_def = Def::VariantCtor(def_id, vkind.ctor_kind());
+                            let ctor_kind = self.get_ctor_kind(child_index);
+                            let ctor_def = Def::VariantCtor(def_id, ctor_kind);
                             callback(def::Export { def: ctor_def, name: name });
                         }
                         _ => {}
@@ -806,12 +806,12 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id).variances.decode(self).collect()
     }
 
-    pub fn get_variant_kind(&self, node_id: DefIndex) -> Option<ty::VariantKind> {
+    pub fn get_ctor_kind(&self, node_id: DefIndex) -> CtorKind {
         match self.entry(node_id).kind {
             EntryKind::Struct(data) |
             EntryKind::Union(data) |
-            EntryKind::Variant(data) => Some(data.decode(self).kind),
-            _ => None
+            EntryKind::Variant(data) => data.decode(self).ctor_kind,
+            _ => CtorKind::Fictive,
         }
     }
 

@@ -105,11 +105,18 @@ pub struct Export {
 }
 
 impl CtorKind {
-    pub fn from_vdata(vdata: &ast::VariantData) -> CtorKind {
+    pub fn from_ast(vdata: &ast::VariantData) -> CtorKind {
         match *vdata {
             ast::VariantData::Tuple(..) => CtorKind::Fn,
             ast::VariantData::Unit(..) => CtorKind::Const,
             ast::VariantData::Struct(..) => CtorKind::Fictive,
+        }
+    }
+    pub fn from_hir(vdata: &hir::VariantData) -> CtorKind {
+        match *vdata {
+            hir::VariantData::Tuple(..) => CtorKind::Fn,
+            hir::VariantData::Unit(..) => CtorKind::Const,
+            hir::VariantData::Struct(..) => CtorKind::Fictive,
         }
     }
 }

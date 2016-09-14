@@ -24,6 +24,7 @@ use session::Session;
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType, DILexicalBlock};
 
+use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::hir;
@@ -1076,10 +1077,6 @@ struct StructMemberDescriptionFactory<'tcx> {
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
-        if self.variant.kind == ty::VariantKind::Unit {
-            return Vec::new();
-        }
-
         let field_size = if self.is_simd {
             let fty = monomorphize::field_ty(cx.tcx(),
                                              self.substs,
@@ -1093,7 +1090,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
         };
 
         self.variant.fields.iter().enumerate().map(|(i, f)| {
-            let name = if self.variant.kind == ty::VariantKind::Tuple {
+            let name = if self.variant.ctor_kind == CtorKind::Fn {
                 format!("__{}", i)
             } else {
                 f.name.to_string()
@@ -1387,12 +1384,12 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // For the metadata of the wrapper struct, we need to create a
                 // MemberDescription of the struct's single field.
                 let sole_struct_member_description = MemberDescription {
-                    name: match non_null_variant.kind {
-                        ty::VariantKind::Tuple => "__0".to_string(),
-                        ty::VariantKind::Struct => {
+                    name: match non_null_variant.ctor_kind {
+                        CtorKind::Fn => "__0".to_string(),
+                        CtorKind::Fictive => {
                             non_null_variant.fields[0].name.to_string()
                         }
-                        ty::VariantKind::Unit => bug!()
+                        CtorKind::Const => bug!()
                     },
                     llvm_type: non_null_llvm_type,
                     type_metadata: non_null_type_metadata,
@@ -1579,16 +1576,16 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                            containing_scope);
 
     // Get the argument names from the enum variant info
-    let mut arg_names: Vec<_> = match variant.kind {
-        ty::VariantKind::Unit => vec![],
-        ty::VariantKind::Tuple => {
+    let mut arg_names: Vec<_> = match variant.ctor_kind {
+        CtorKind::Const => vec![],
+        CtorKind::Fn => {
             variant.fields
                    .iter()
                    .enumerate()
                    .map(|(i, _)| format!("__{}", i))
                    .collect()
         }
-        ty::VariantKind::Struct => {
+        CtorKind::Fictive => {
             variant.fields
                    .iter()
                    .map(|f| f.name.to_string())
