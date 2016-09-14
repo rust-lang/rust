@@ -20,7 +20,7 @@
 #![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
 #![feature(core_intrinsics)]
-#![feature(dotdot_in_tuple_patterns)]
+#![cfg_attr(stage0, feature(dotdot_in_tuple_patterns))]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_lib)]
 #![cfg_attr(stage0, feature(question_mark))]
