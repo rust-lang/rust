@@ -144,12 +144,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
-    Deny,
-    "unit struct or enum variant erroneously allowed to match via path::ident(..)"
-}
-
-declare_lint! {
     pub RAW_POINTER_DERIVE,
     Warn,
     "uses of #[derive] with raw pointers are rarely correct"
@@ -226,7 +220,6 @@ impl LintPass for HardwiredLints {
             INVALID_TYPE_PARAM_DEFAULT,
             ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
             ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
-            MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
             CONST_ERR,
             RAW_POINTER_DERIVE,
             TRANSMUTE_FROM_FN_ITEM_TYPES,

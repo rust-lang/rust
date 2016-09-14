@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Can't use unit struct as enum pattern
+// Can't use unit struct as tuple struct pattern
 
 // aux-build:empty-struct.rs
 
@@ -23,7 +23,6 @@ enum E {
     Empty4
 }
 
-// remove attribute after warning cycle and promoting warnings to errors
 fn main() {
     let e2 = Empty2;
     let e4 = E::Empty4;
@@ -31,22 +30,32 @@ fn main() {
     let xe4 = XE::XEmpty4;
 
     match e2 {
+        Empty2() => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
+    }
+    match xe2 {
+        XEmpty2() => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
+    }
+    match e2 {
         Empty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
-            //~^ WARNING hard error
     }
     match xe2 {
         XEmpty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
-            //~^ WARNING hard error
     }
 
     match e4 {
+        E::Empty4() => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
+    }
+    match xe4 {
+        XE::XEmpty4() => (),
+        //~^ ERROR expected tuple struct/variant, found unit variant `XE::XEmpty4`
+        _ => {},
+    }
+    match e4 {
         E::Empty4(..) => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
-            //~^ WARNING hard error
     }
     match xe4 {
         XE::XEmpty4(..) => (),
-            //~^ ERROR expected tuple struct/variant, found unit variant `XE::XEmpty4`
-            //~| WARNING hard error
+        //~^ ERROR expected tuple struct/variant, found unit variant `XE::XEmpty4`
         _ => {},
     }
 }
