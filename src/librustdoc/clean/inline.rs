@@ -15,11 +15,11 @@ use std::iter::once;
 use syntax::ast;
 use rustc::hir;
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::hir::print as pprust;
-use rustc::ty::{self, TyCtxt, VariantKind};
+use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::FnvHashSet;
 
 use rustc_const_eval::lookup_const_by_id;
@@ -219,10 +219,10 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let variant = tcx.lookup_adt_def(did).struct_variant();
 
     clean::Struct {
-        struct_type: match variant.kind {
-            VariantKind::Struct => doctree::Plain,
-            VariantKind::Tuple => doctree::Tuple,
-            VariantKind::Unit => doctree::Unit,
+        struct_type: match variant.ctor_kind {
+            CtorKind::Fictive => doctree::Plain,
+            CtorKind::Fn => doctree::Tuple,
+            CtorKind::Const => doctree::Unit,
         },
         generics: (t.generics, &predicates).clean(cx),
         fields: variant.fields.clean(cx),

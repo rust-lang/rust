@@ -1420,7 +1420,7 @@ pub struct VariantDefData<'tcx, 'container: 'tcx> {
     pub name: Name, // struct's name if this is a struct
     pub disr_val: Disr,
     pub fields: Vec<FieldDefData<'tcx, 'container>>,
-    pub kind: VariantKind,
+    pub ctor_kind: CtorKind,
 }
 
 pub struct FieldDefData<'tcx, 'container: 'tcx> {
@@ -1484,26 +1484,6 @@ impl<'tcx> serialize::UseSpecializedDecodable for AdtDef<'tcx> {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub enum VariantKind { Struct, Tuple, Unit }
-
-impl VariantKind {
-    pub fn from_variant_data(vdata: &hir::VariantData) -> Self {
-        match *vdata {
-            hir::VariantData::Struct(..) => VariantKind::Struct,
-            hir::VariantData::Tuple(..) => VariantKind::Tuple,
-            hir::VariantData::Unit(..) => VariantKind::Unit,
-        }
-    }
-    pub fn ctor_kind(self) -> CtorKind {
-        match self {
-            VariantKind::Tuple => CtorKind::Fn,
-            VariantKind::Unit => CtorKind::Const,
-            VariantKind::Struct => CtorKind::Fictive,
-        }
-    }
-}
 
 impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,

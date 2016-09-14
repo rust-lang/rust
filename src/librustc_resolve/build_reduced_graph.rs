@@ -302,7 +302,7 @@ impl<'b> Resolver<'b> {
                 // in the value namespace as well.
                 if !struct_def.is_struct() {
                     let ctor_def = Def::StructCtor(self.definitions.local_def_id(struct_def.id()),
-                                                   CtorKind::from_vdata(struct_def));
+                                                   CtorKind::from_ast(struct_def));
                     self.define(parent, name, ValueNS, (ctor_def, sp, vis));
                 }
 
@@ -359,7 +359,7 @@ impl<'b> Resolver<'b> {
         // Define a constructor name in the value namespace.
         // Braced variants, unlike structs, generate unusable names in
         // value namespace, they are reserved for possible future use.
-        let ctor_kind = CtorKind::from_vdata(&variant.node.data);
+        let ctor_kind = CtorKind::from_ast(&variant.node.data);
         let ctor_def = Def::VariantCtor(def_id, ctor_kind);
         self.define(parent, name, ValueNS, (ctor_def, variant.span, vis));
     }
