@@ -33,7 +33,7 @@ use syntax::parse::token;
 
 use syntax::ast::{Block, Crate};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
-use syntax::ast::{Mutability, StmtKind, TraitItemKind};
+use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::parse::token::keywords;
 use syntax::visit::{self, Visitor};
@@ -289,32 +289,14 @@ impl<'b> Resolver<'b> {
 
             ItemKind::DefaultImpl(..) | ItemKind::Impl(..) => {}
 
-            ItemKind::Trait(.., ref items) => {
+            ItemKind::Trait(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.
                 let kind = ModuleKind::Def(Def::Trait(def_id), name);
-                let module_parent = self.new_module(parent, kind, parent.normal_ancestor_id);
-                self.define(parent, name, TypeNS, (module_parent, sp, vis));
-
-                // Add the names of all the items to the trait info.
-                for item in items {
-                    let item_def_id = self.definitions.local_def_id(item.id);
-                    let mut is_static_method = false;
-                    let (def, ns) = match item.node {
-                        TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS),
-                        TraitItemKind::Method(ref sig, _) => {
-                            is_static_method = !sig.decl.has_self();
-                            (Def::Method(item_def_id), ValueNS)
-                        }
-                        TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
-                        TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
-                    };
-
-                    self.define(module_parent, item.ident.name, ns, (def, item.span, vis));
-
-                    self.trait_item_map.insert((item.ident.name, def_id), is_static_method);
-                }
+                let module = self.new_module(parent, kind, parent.normal_ancestor_id);
+                self.define(parent, name, TypeNS, (module, sp, vis));
+                self.current_module = module;
             }
             ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
         }
@@ -513,5 +495,32 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_block(&mut self, block: &Block) {
         self.resolver.build_reduced_graph_for_block(block);
+    }
+
+    fn visit_trait_item(&mut self, item: &TraitItem) {
+        let parent = self.resolver.current_module;
+        let def_id = parent.def_id().unwrap();
+
+        // Add the item to the trait info.
+        let item_def_id = self.resolver.definitions.local_def_id(item.id);
+        let mut is_static_method = false;
+        let (def, ns) = match item.node {
+            TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS),
+            TraitItemKind::Method(ref sig, _) => {
+                is_static_method = !sig.decl.has_self();
+                (Def::Method(item_def_id), ValueNS)
+            }
+            TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
+            TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
+        };
+
+        self.resolver.trait_item_map.insert((item.ident.name, def_id), is_static_method);
+
+        let vis = ty::Visibility::Public;
+        self.resolver.define(parent, item.ident.name, ns, (def, item.span, vis));
+
+        self.resolver.current_module = parent.parent.unwrap(); // nearest normal ancestor
+        visit::walk_trait_item(self, item);
+        self.resolver.current_module = parent;
     }
 }
