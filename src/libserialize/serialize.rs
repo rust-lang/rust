@@ -511,10 +511,10 @@ macro_rules! tuple {
                 let len: usize = count_idents!($($name,)*);
                 d.read_tuple(len, |d| {
                     let mut i = 0;
-                    let ret = ($(try!(d.read_tuple_arg({ i+=1; i-1 },
-                                                       |d| -> Result<$name,D::Error> {
+                    let ret = ($(d.read_tuple_arg({ i+=1; i-1 },
+                                                  |d| -> Result<$name,D::Error> {
                         Decodable::decode(d)
-                    })),)*);
+                    })?,)*);
                     Ok(ret)
                 })
             }
@@ -527,7 +527,7 @@ macro_rules! tuple {
                 $(let $name = $name; n += 1;)*
                 s.emit_tuple(n, |s| {
                     let mut i = 0;
-                    $(try!(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s)));)*
+                    $(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s))?;)*
                     Ok(())
                 })
             }

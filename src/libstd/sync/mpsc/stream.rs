@@ -187,8 +187,7 @@ impl<T> Packet<T> {
             if let Some(deadline) = deadline {
                 let timed_out = !wait_token.wait_max_until(deadline);
                 if timed_out {
-                    try!(self.abort_selection(/* was_upgrade = */ false)
-                             .map_err(Upgraded));
+                    self.abort_selection(/* was_upgrade = */ false).map_err(Upgraded)?;
                 }
             } else {
                 wait_token.wait();

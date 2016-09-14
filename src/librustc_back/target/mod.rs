@@ -77,12 +77,12 @@ macro_rules! supported_targets {
             match target {
                 $(
                     $triple => {
-                        let mut t = try!($module::target());
+                        let mut t = $module::target()?;
                         t.options.is_builtin = true;
 
                         // round-trip through the JSON parser to ensure at
                         // run-time that the parser works correctly
-                        t = try!(Target::from_json(t.to_json()));
+                        t = Target::from_json(t.to_json())?;
                         debug!("Got builtin target: {:?}", t);
                         Ok(t)
                     },
@@ -438,12 +438,12 @@ impl Target {
         };
 
         let mut base = Target {
-            llvm_target: try!(get_req_field("llvm-target")),
-            target_endian: try!(get_req_field("target-endian")),
-            target_pointer_width: try!(get_req_field("target-pointer-width")),
-            data_layout: try!(get_req_field("data-layout")),
-            arch: try!(get_req_field("arch")),
-            target_os: try!(get_req_field("os")),
+            llvm_target: get_req_field("llvm-target")?,
+            target_endian: get_req_field("target-endian")?,
+            target_pointer_width: get_req_field("target-pointer-width")?,
+            data_layout: get_req_field("data-layout")?,
+            arch: get_req_field("arch")?,
+            target_os: get_req_field("os")?,
             target_env: get_opt_field("env", ""),
             target_vendor: get_opt_field("vendor", "unknown"),
             options: Default::default(),
