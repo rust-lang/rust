@@ -89,5 +89,3 @@ fn main() {
     //~ TRANS_ITEM fn vtable_through_const::mod1[0]::id[0]<char> @@ vtable_through_const[Internal]
     mod1::ID_CHAR('x');
 }
-
-//~ TRANS_ITEM drop-glue i8
