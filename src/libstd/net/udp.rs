@@ -353,7 +353,7 @@ impl fmt::Debug for UdpSocket {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::ErrorKind;
     use net::*;
@@ -378,7 +378,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn bind_error() {
         match UdpSocket::bind("1.1.1.1:9999") {
             Ok(..) => panic!(),
@@ -389,7 +388,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn socket_smoke_test_ip4() {
         each_ip(&mut |server_ip, client_ip| {
             let (tx1, rx1) = channel();
@@ -414,7 +412,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn socket_name_ip4() {
         each_ip(&mut |addr, _| {
             let server = t!(UdpSocket::bind(&addr));
@@ -423,7 +420,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn udp_clone_smoke() {
         each_ip(&mut |addr1, addr2| {
             let sock1 = t!(UdpSocket::bind(&addr1));
@@ -453,7 +449,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn udp_clone_two_read() {
         each_ip(&mut |addr1, addr2| {
             let sock1 = t!(UdpSocket::bind(&addr1));
@@ -486,7 +481,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn udp_clone_two_write() {
         each_ip(&mut |addr1, addr2| {
             let sock1 = t!(UdpSocket::bind(&addr1));
@@ -525,7 +519,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn debug() {
         let name = if cfg!(windows) {"socket"} else {"fd"};
         let socket_addr = next_test_ip4();
@@ -541,7 +534,6 @@ mod tests {
     //        no longer has rounding errors.
     #[cfg_attr(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"), ignore)]
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn timeouts() {
         let addr = next_test_ip4();
 
@@ -566,7 +558,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_read_timeout() {
         let addr = next_test_ip4();
 
@@ -582,7 +573,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_read_with_timeout() {
         let addr = next_test_ip4();
 
@@ -602,7 +592,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn connect_send_recv() {
         let addr = next_test_ip4();
 
@@ -617,7 +606,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn ttl() {
         let ttl = 100;
 
@@ -630,7 +618,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn set_nonblocking() {
         let addr = next_test_ip4();
 

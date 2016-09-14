@@ -428,7 +428,7 @@ impl fmt::Debug for TcpListener {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use io::ErrorKind;
     use io::prelude::*;
@@ -454,7 +454,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn bind_error() {
         match TcpListener::bind("1.1.1.1:9999") {
             Ok(..) => panic!(),
@@ -464,7 +463,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn connect_error() {
         match TcpStream::connect("0.0.0.0:1") {
             Ok(..) => panic!(),
@@ -477,7 +475,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn listen_localhost() {
         let socket_addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&socket_addr));
@@ -495,7 +492,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn connect_loopback() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -517,7 +513,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn smoke_test() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -538,7 +533,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn read_eof() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -558,7 +552,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn write_close() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -585,7 +578,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn multiple_connect_serial() {
         each_ip(&mut |addr| {
             let max = 10;
@@ -608,7 +600,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn multiple_connect_interleaved_greedy_schedule() {
         const MAX: usize = 10;
         each_ip(&mut |addr| {
@@ -644,7 +635,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn multiple_connect_interleaved_lazy_schedule() {
         const MAX: usize = 10;
         each_ip(&mut |addr| {
@@ -678,7 +668,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn socket_and_peer_name() {
         each_ip(&mut |addr| {
             let listener = t!(TcpListener::bind(&addr));
@@ -694,7 +683,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn partial_read() {
         each_ip(&mut |addr| {
             let (tx, rx) = channel();
@@ -716,7 +704,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn double_bind() {
         each_ip(&mut |addr| {
             let _listener = t!(TcpListener::bind(&addr));
@@ -733,7 +720,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn fast_rebind() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -749,7 +735,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn tcp_clone_smoke() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -781,7 +766,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn tcp_clone_two_read() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -816,7 +800,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn tcp_clone_two_write() {
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
@@ -844,7 +827,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn shutdown_smoke() {
         each_ip(&mut |addr| {
             let a = t!(TcpListener::bind(&addr));
@@ -865,7 +847,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn close_readwrite_smoke() {
         each_ip(&mut |addr| {
             let a = t!(TcpListener::bind(&addr));
@@ -904,7 +885,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn close_read_wakes_up() {
         each_ip(&mut |addr| {
             let a = t!(TcpListener::bind(&addr));
@@ -932,7 +912,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn clone_while_reading() {
         each_ip(&mut |addr| {
             let accept = t!(TcpListener::bind(&addr));
@@ -973,7 +952,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn clone_accept_smoke() {
         each_ip(&mut |addr| {
             let a = t!(TcpListener::bind(&addr));
@@ -992,7 +970,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn clone_accept_concurrent() {
         each_ip(&mut |addr| {
             let a = t!(TcpListener::bind(&addr));
@@ -1021,7 +998,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn debug() {
         let name = if cfg!(windows) {"socket"} else {"fd"};
         let socket_addr = next_test_ip4();
@@ -1048,7 +1024,6 @@ mod tests {
     //        no longer has rounding errors.
     #[cfg_attr(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"), ignore)]
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn timeouts() {
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
@@ -1075,7 +1050,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_read_timeout() {
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
@@ -1092,7 +1066,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_read_with_timeout() {
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
@@ -1115,7 +1088,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn nodelay() {
         let addr = next_test_ip4();
         let _listener = t!(TcpListener::bind(&addr));
@@ -1130,7 +1102,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn ttl() {
         let ttl = 100;
 
@@ -1147,7 +1118,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn set_nonblocking() {
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
