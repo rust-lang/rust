@@ -8,30 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(more_struct_aliases)]
-
-struct S<T, U = u16> {
-    a: T,
-    b: U,
-}
+struct S;
 
 trait Tr {
     type A;
 }
-impl Tr for u8 {
-    type A = S<u8, u16>;
+
+fn f<T: Tr<A = S>>() {
+    let _ = T::A {};
+    //~^ ERROR `Self` and associated types in struct expressions and patterns are unstable
 }
 
-fn f<T: Tr<A = S<u8>>>() {
-    let s = T::A { a: 0, b: 1 };
-    match s {
-        T::A { a, b } => {
-            assert_eq!(a, 0);
-            assert_eq!(b, 1);
-        }
+impl S {
+    fn f() {
+        let _ = Self {};
+        //~^ ERROR `Self` and associated types in struct expressions and patterns are unstable
     }
 }
 
-fn main() {
-    f::<u8>();
-}
+fn main() {}
