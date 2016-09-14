@@ -32,6 +32,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(dotdot_in_tuple_patterns)]
+#![feature(item_like_imports)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -143,7 +144,9 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  PluginAsLibrary,
                  MutableTransmutes,
                  UnionsWithDropFields,
+                 NonPortable1632,
                  NonPortable3264,
+                 NonPortable64128,
                  );
 
     add_builtin_with_new!(sess,
