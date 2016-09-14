@@ -43,6 +43,7 @@ pub enum EvalError<'tcx> {
     CalledClosureAsFunction,
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
+    AssumptionNotHeld,
 }
 
 pub type EvalResult<'tcx, T> = Result<T, EvalError<'tcx>>;
@@ -97,6 +98,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to call a vtable function without arguments",
             EvalError::ModifiedConstantMemory =>
                 "tried to modify constant memory",
+            EvalError::AssumptionNotHeld =>
+                "`assume` argument was false"
         }
     }
 

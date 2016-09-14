@@ -284,8 +284,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "sub_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Sub, &args[0], &args[1], dest, dest_layout)?,
             "mul_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Mul, &args[0], &args[1], dest, dest_layout)?,
 
-            // FIXME: turn into an assertion to catch wrong `assume` that would cause UB in llvm
-            "assume" => {}
+            "assume" => {
+                if !self.memory.read_bool(args_ptrs[0])? {
+                    return Err(EvalError::AssumptionNotHeld);
+                }
+            }
 
             "copy_nonoverlapping" => {
                 let elem_ty = substs.type_at(0);

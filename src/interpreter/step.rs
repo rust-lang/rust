@@ -30,7 +30,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let mir = self.mir();
         let basic_block = &mir.basic_blocks()[block];
 
-        if let Some(ref stmt) = basic_block.statements.get(stmt_id) {
+        if let Some(stmt) = basic_block.statements.get(stmt_id) {
             let mut new = Ok(0);
             ConstantExtractor {
                 span: stmt.source_info.span,
