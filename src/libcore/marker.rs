@@ -126,7 +126,7 @@ pub trait Unsize<T: ?Sized> {
 /// }
 /// ```
 ///
-/// The `PointList` `struct` cannot implement `Copy`, because `Vec<T>` is not `Copy`. If we
+/// The `PointList` `struct` cannot implement `Copy`, because [`Vec<T>`] is not `Copy`. If we
 /// attempt to derive a `Copy` implementation, we'll get an error:
 ///
 /// ```text
@@ -136,10 +136,10 @@ pub trait Unsize<T: ?Sized> {
 /// ## When can my type _not_ be `Copy`?
 ///
 /// Some types can't be copied safely. For example, copying `&mut T` would create an aliased
-/// mutable reference, and copying `String` would result in two attempts to free the same buffer.
+/// mutable reference, and copying [`String`] would result in two attempts to free the same buffer.
 ///
-/// Generalizing the latter case, any type implementing `Drop` can't be `Copy`, because it's
-/// managing some resource besides its own `size_of::<T>()` bytes.
+/// Generalizing the latter case, any type implementing [`Drop`] can't be `Copy`, because it's
+/// managing some resource besides its own [`size_of::<T>()`] bytes.
 ///
 /// ## What if I derive `Copy` on a type that can't?
 ///
@@ -156,8 +156,7 @@ pub trait Unsize<T: ?Sized> {
 ///
 /// ## Derivable
 ///
-/// This trait can be used with `#[derive]` if all of its components implement `Copy` and the type
-/// implements `Clone`. The implementation will copy the bytes of each field using `memcpy`.
+/// This trait can be used with `#[derive]` if all of its components implement `Copy` and the type.
 ///
 /// ## How can I implement `Copy`?
 ///
@@ -178,6 +177,11 @@ pub trait Unsize<T: ?Sized> {
 ///
 /// There is a small difference between the two: the `derive` strategy will also place a `Copy`
 /// bound on type parameters, which isn't always desired.
+///
+/// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+/// [`String`]: ../../std/string/struct.String.html
+/// [`Drop`]: ../../std/ops/trait.Drop.html
+/// [`size_of::<T>()`]: ../../std/mem/fn.size_of.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
 pub trait Copy : Clone {
@@ -190,11 +194,11 @@ pub trait Copy : Clone {
 /// thread-safe. In other words, there is no possibility of data races
 /// when passing `&T` references between threads.
 ///
-/// As one would expect, primitive types like `u8` and `f64` are all
+/// As one would expect, primitive types like [`u8`] and [`f64`] are all
 /// `Sync`, and so are simple aggregate types containing them (like
 /// tuples, structs and enums). More instances of basic `Sync` types
 /// include "immutable" types like `&T` and those with simple
-/// inherited mutability, such as `Box<T>`, `Vec<T>` and most other
+/// inherited mutability, such as [`Box<T>`], [`Vec<T>`] and most other
 /// collection types. (Generic parameters need to be `Sync` for their
 /// container to be `Sync`.)
 ///
@@ -206,27 +210,42 @@ pub trait Copy : Clone {
 /// race.
 ///
 /// Types that are not `Sync` are those that have "interior
-/// mutability" in a non-thread-safe way, such as `Cell` and `RefCell`
-/// in `std::cell`. These types allow for mutation of their contents
+/// mutability" in a non-thread-safe way, such as [`Cell`] and [`RefCell`]
+/// in [`std::cell`]. These types allow for mutation of their contents
 /// even when in an immutable, aliasable slot, e.g. the contents of
-/// `&Cell<T>` can be `.set`, and do not ensure data races are
+/// [`&Cell<T>`][`Cell`] can be [`.set`], and do not ensure data races are
 /// impossible, hence they cannot be `Sync`. A higher level example
 /// of a non-`Sync` type is the reference counted pointer
-/// `std::rc::Rc`, because any reference `&Rc<T>` can clone a new
+/// [`std::rc::Rc`][`Rc`], because any reference [`&Rc<T>`][`Rc`] can clone a new
 /// reference, which modifies the reference counts in a non-atomic
 /// way.
 ///
 /// For cases when one does need thread-safe interior mutability,
-/// types like the atomics in `std::sync` and `Mutex` & `RWLock` in
-/// the `sync` crate do ensure that any mutation cannot cause data
+/// types like the atomics in [`std::sync`][`sync`] and [`Mutex`] / [`RwLock`] in
+/// the [`sync`] crate do ensure that any mutation cannot cause data
 /// races.  Hence these types are `Sync`.
 ///
-/// Any types with interior mutability must also use the `std::cell::UnsafeCell`
+/// Any types with interior mutability must also use the [`std::cell::UnsafeCell`]
 /// wrapper around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behavior (for example,
-/// `transmute`-ing from `&T` to `&mut T` is invalid).
+/// [`transmute`]-ing from `&T` to `&mut T` is invalid).
 ///
 /// This trait is automatically derived when the compiler determines it's appropriate.
+///
+/// [`u8`]: ../../std/primitive.u8.html
+/// [`f64`]: ../../std/primitive.f64.html
+/// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+/// [`Cell`]: ../../std/cell/struct.Cell.html
+/// [`RefCell`]: ../../std/cell/struct.RefCell.html
+/// [`std::cell`]: ../../std/cell/index.html
+/// [`.set`]: ../../std/cell/struct.Cell.html#method.set
+/// [`Rc`]: ../../std/rc/struct.Rc.html
+/// [`sync`]: ../../std/sync/index.html
+/// [`Mutex`]: ../../std/sync/struct.Mutex.html
+/// [`RwLock`]: ../../std/sync/struct.RwLock.html
+/// [`std::cell::UnsafeCell`]: ../../std/cell/struct.UnsafeCell.html
+/// [`transmute`]: ../../std/mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
