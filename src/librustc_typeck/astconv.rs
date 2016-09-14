@@ -1520,17 +1520,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Convert "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 tcx.prohibit_type_params(base_segments.split_last().unwrap().1);
-                let mut ty = self.ast_path_to_ty(rscope,
-                                                 span,
-                                                 param_mode,
-                                                 tcx.parent_def_id(did).unwrap(),
-                                                 base_segments.last().unwrap());
-                if ty.is_fn() {
-                    // Tuple variants have fn type even in type namespace,
-                    // extract true variant type from it.
-                    ty = tcx.no_late_bound_regions(&ty.fn_ret()).unwrap();
-                }
-                ty
+                self.ast_path_to_ty(rscope,
+                                    span,
+                                    param_mode,
+                                    tcx.parent_def_id(did).unwrap(),
+                                    base_segments.last().unwrap())
             }
             Def::TyParam(did) => {
                 tcx.prohibit_type_params(base_segments);

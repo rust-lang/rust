@@ -54,4 +54,7 @@ fn main() {
     if let None::<u8> { .. } = Some(8) {
         panic!();
     }
+    if let Option::None::<u8> { .. } = Some(8) {
+        panic!();
+    }
 }

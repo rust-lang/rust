@@ -3216,9 +3216,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_struct_path(&self,
-                         path: &hir::Path,
-                         node_id: ast::NodeId)
-                         -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
+                             path: &hir::Path,
+                             node_id: ast::NodeId)
+                             -> Option<(ty::VariantDef<'tcx>,  Ty<'tcx>)> {
         let (def, ty) = self.finish_resolving_struct_path(path, node_id);
         let variant = match def {
             Def::Err => {
@@ -3263,8 +3263,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Some((variant, ty))
         } else {
             struct_span_err!(self.tcx.sess, path.span, E0071,
-                             "expected struct, variant or union type, found {} `{}`",
-                             ty.sty.descr(), ty)
+                             "expected struct, variant or union type, found {}",
+                             ty.sort_string(self.tcx))
                 .span_label(path.span, &format!("not a struct"))
                 .emit();
             None
