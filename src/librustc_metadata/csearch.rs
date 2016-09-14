@@ -342,12 +342,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def.krate).def_path(def.index)
     }
 
-    fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
-    {
-        self.dep_graph.read(DepNode::MetaData(struct_def_id));
-        self.get_crate_data(struct_def_id.krate).get_struct_ctor_def_id(struct_def_id.index)
-    }
-
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
     {
         self.dep_graph.read(DepNode::MetaData(def));
