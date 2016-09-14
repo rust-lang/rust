@@ -1756,9 +1756,9 @@ impl<'a> State<'a> {
                         self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p))?;
                     }
                 } else {
-                    try!(self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p)));
+                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p))?;
                 }
-                try!(self.pclose());
+                self.pclose()?;
             }
             PatKind::Path(None, ref path) => {
                 self.print_path(path, true, 0)?;

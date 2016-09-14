@@ -194,7 +194,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
         // Load up the hashes for the def-ids from this crate.
         let mut decoder = Decoder::new(data, 0);
-        let svh_in_hashes_file = try!(Svh::decode(&mut decoder));
+        let svh_in_hashes_file = Svh::decode(&mut decoder)?;
 
         if svh_in_hashes_file != expected_svh {
             // We should not be able to get here. If we do, then
@@ -202,7 +202,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             bug!("mismatch between SVH in crate and SVH in incr. comp. hashes")
         }
 
-        let serialized_hashes = try!(SerializedMetadataHashes::decode(&mut decoder));
+        let serialized_hashes = SerializedMetadataHashes::decode(&mut decoder)?;
         for serialized_hash in serialized_hashes.hashes {
             // the hashes are stored with just a def-index, which is
             // always relative to the old crate; convert that to use

@@ -150,7 +150,7 @@ impl<T> Packet<T> {
                     let timed_out = !wait_token.wait_max_until(deadline);
                     // Try to reset the state
                     if timed_out {
-                        try!(self.abort_selection().map_err(Upgraded));
+                        self.abort_selection().map_err(Upgraded)?;
                     }
                 } else {
                     wait_token.wait();

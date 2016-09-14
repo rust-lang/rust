@@ -153,11 +153,11 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
                     macro_rules! demangle {
                         ($($pat:expr => $demangled:expr),*) => ({
                             $(if rest.starts_with($pat) {
-                                try!(writer.write_all($demangled));
+                                writer.write_all($demangled)?;
                                 rest = &rest[$pat.len()..];
                               } else)*
                             {
-                                try!(writer.write_all(rest.as_bytes()));
+                                writer.write_all(rest.as_bytes())?;
                                 break;
                             }
 

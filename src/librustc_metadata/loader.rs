@@ -809,7 +809,7 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
             None => Err(format!("failed to read rlib metadata: '{}'",
                                 filename.display())),
             Some(blob) => {
-                try!(verify_decompressed_encoding_version(&blob, filename));
+                verify_decompressed_encoding_version(&blob, filename)?;
                 Ok(blob)
             }
         };
@@ -858,7 +858,7 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
                 match flate::inflate_bytes(bytes) {
                     Ok(inflated) => {
                         let blob = MetadataVec(inflated);
-                        try!(verify_decompressed_encoding_version(&blob, filename));
+                        verify_decompressed_encoding_version(&blob, filename)?;
                         return Ok(blob);
                     }
                     Err(_) => {}

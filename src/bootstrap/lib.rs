@@ -45,7 +45,7 @@ use util::{exe, mtime, libdir, add_lib_path};
 /// * The error itself
 ///
 /// This is currently used judiciously throughout the build system rather than
-/// using a `Result` with `try!`, but this may change on day...
+/// using a `Result` with `try!`, but this may change one day...
 macro_rules! t {
     ($e:expr) => (match $e {
         Ok(e) => e,

@@ -475,15 +475,14 @@ impl<'a> Encoder<'a> {
 }
 
 macro_rules! emit_enquoted_if_mapkey {
-    ($enc:ident,$e:expr) => {
+    ($enc:ident,$e:expr) => ({
         if $enc.is_emitting_map_key {
-            try!(write!($enc.writer, "\"{}\"", $e));
-            Ok(())
+            write!($enc.writer, "\"{}\"", $e)?;
         } else {
-            try!(write!($enc.writer, "{}", $e));
-            Ok(())
+            write!($enc.writer, "{}", $e)?;
         }
-    }
+        Ok(())
+    })
 }
 
 impl<'a> ::Encoder for Encoder<'a> {

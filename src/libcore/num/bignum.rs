@@ -474,9 +474,9 @@ macro_rules! define_bignum {
                 let sz = if self.size < 1 {1} else {self.size};
                 let digitlen = mem::size_of::<$ty>() * 2;
 
-                try!(write!(f, "{:#x}", self.base[sz-1]));
+                write!(f, "{:#x}", self.base[sz-1])?;
                 for &v in self.base[..sz-1].iter().rev() {
-                    try!(write!(f, "_{:01$x}", v, digitlen));
+                    write!(f, "_{:01$x}", v, digitlen)?;
                 }
                 ::result::Result::Ok(())
             }
