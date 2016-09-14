@@ -164,7 +164,7 @@ impl Duration {
         }
     }
 
-    /// Checked integer multiplication. Computes `self * other`, returning
+    /// Checked duration multiplication. Computes `self * other`, returning
     /// `None` if underflow or overflow occurred.
     ///
     /// # Examples
