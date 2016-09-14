@@ -2786,8 +2786,7 @@ impl<'a> Resolver<'a> {
             // Look for a field with the same name in the current self_type.
             if let Some(resolution) = self.def_map.get(&node_id) {
                 match resolution.base_def {
-                    Def::Enum(did) | Def::TyAlias(did) | Def::Union(did) |
-                    Def::Struct(did) | Def::Variant(did) if resolution.depth == 0 => {
+                    Def::Struct(did) | Def::Union(did) if resolution.depth == 0 => {
                         if let Some(field_names) = self.field_names.get(&did) {
                             if field_names.iter().any(|&field_name| name == field_name) {
                                 return Field;

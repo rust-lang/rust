@@ -913,10 +913,10 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::VariantCtor(id, ..) if *constructor != Variant(id) => None,
-                Def::VariantCtor(..) | Def::StructCtor(..) => Some(Vec::new()),
-                def => span_bug!(pat_span, "specialize: unexpected \
-                                          definition {:?}", def),
+                Def::VariantCtor(id, CtorKind::Const) if *constructor != Variant(id) => None,
+                Def::VariantCtor(_, CtorKind::Const) |
+                Def::StructCtor(_, CtorKind::Const) => Some(Vec::new()),
+                def => span_bug!(pat_span, "specialize: unexpected definition: {:?}", def),
             }
         }
 
@@ -925,8 +925,9 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::VariantCtor(id, ..) if *constructor != Variant(id) => None,
-                Def::VariantCtor(..) | Def::StructCtor(..) => {
+                Def::VariantCtor(id, CtorKind::Fn) if *constructor != Variant(id) => None,
+                Def::VariantCtor(_, CtorKind::Fn) |
+                Def::StructCtor(_, CtorKind::Fn) => {
                     match ddpos {
                         Some(ddpos) => {
                             let mut pats: Vec<_> = args[..ddpos].iter().map(|p| {
@@ -939,7 +940,7 @@ pub fn specialize<'a, 'b, 'tcx>(
                         None => Some(args.iter().map(|p| wpat(p)).collect())
                     }
                 }
-                _ => None
+                def => span_bug!(pat_span, "specialize: unexpected definition: {:?}", def),
             }
         }
 

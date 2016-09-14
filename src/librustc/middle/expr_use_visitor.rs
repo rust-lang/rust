@@ -1021,7 +1021,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     debug!("struct cmt_pat={:?} pat={:?}", cmt_pat, pat);
                     delegate.matched_pat(pat, cmt_pat, match_mode);
                 }
-                _ => {}
+                None | Some(Def::Local(..)) |
+                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {}
+                def => bug!("unexpected definition: {:?}", def)
             }
         }));
     }
