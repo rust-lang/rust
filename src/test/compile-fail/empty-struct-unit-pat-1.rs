@@ -31,21 +31,22 @@ fn main() {
     let xe4 = XE::XEmpty4;
 
     match e2 {
-        Empty2(..) => () //~ ERROR `Empty2` does not name a tuple variant or a tuple struct
+        Empty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
             //~^ WARNING hard error
     }
     match xe2 {
-        XEmpty2(..) => () //~ ERROR `XEmpty2` does not name a tuple variant or a tuple struct
+        XEmpty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
             //~^ WARNING hard error
     }
 
     match e4 {
-        E::Empty4(..) => () //~ ERROR `E::Empty4` does not name a tuple variant or a tuple struct
+        E::Empty4(..) => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
             //~^ WARNING hard error
     }
     match xe4 {
-        XE::XEmpty4(..) => (), //~ ERROR `XE::XEmpty4` does not name a tuple variant or a tuple
-            //~^ WARNING hard error
+        XE::XEmpty4(..) => (),
+            //~^ ERROR expected tuple struct/variant, found unit variant `XE::XEmpty4`
+            //~| WARNING hard error
         _ => {},
     }
 }

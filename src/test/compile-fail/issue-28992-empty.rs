@@ -21,6 +21,7 @@ impl S {
 }
 
 fn main() {
-    if let C1(..) = 0 {} //~ ERROR expected variant or struct, found constant `C1`
-    if let S::C2(..) = 0 {} //~ ERROR `S::C2` does not name a tuple variant or a tuple struct
+    if let C1(..) = 0 {} //~ ERROR expected tuple struct/variant, found constant `C1`
+    if let S::C2(..) = 0 {}
+    //~^ ERROR expected tuple struct/variant, found associated constant `S::C2`
 }

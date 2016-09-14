@@ -31,17 +31,19 @@ fn main() {
     let xe5 = XE::XEmpty5();
 
     match e2 {
-        Empty2 => () //~ ERROR `Empty2` does not name a unit variant, unit struct or a constant
+        Empty2 => () //~ ERROR match bindings cannot shadow tuple structs
     }
     match xe6 {
-        XEmpty6 => () //~ ERROR `XEmpty6` does not name a unit variant, unit struct or a constant
+        XEmpty6 => () //~ ERROR match bindings cannot shadow tuple structs
     }
 
     match e4 {
-        E::Empty4 => () //~ ERROR `E::Empty4` does not name a unit variant, unit struct or a
+        E::Empty4 => ()
+        //~^ ERROR expected unit struct/variant or constant, found tuple variant `E::Empty4`
     }
     match xe5 {
-        XE::XEmpty5 => (), //~ ERROR `XE::XEmpty5` does not name a unit variant, unit struct or a
+        XE::XEmpty5 => (),
+        //~^ ERROR expected unit struct/variant or constant, found tuple variant `XE::XEmpty5`
         _ => {},
     }
 }
