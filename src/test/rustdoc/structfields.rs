@@ -48,3 +48,13 @@ pub enum Qux {
         // @has - //pre "// some fields omitted"
     },
 }
+
+// @has structfields/struct.Baz.html //pre "pub struct Baz { /* fields omitted */ }"
+pub struct Baz {
+    x: u8,
+    #[doc(hidden)]
+    pub y: u8,
+}
+
+// @has structfields/struct.Quux.html //pre "pub struct Quux {}"
+pub struct Quux {}
