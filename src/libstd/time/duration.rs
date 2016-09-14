@@ -228,15 +228,7 @@ impl Add for Duration {
     type Output = Duration;
 
     fn add(self, rhs: Duration) -> Duration {
-        let mut secs = self.secs.checked_add(rhs.secs)
-                           .expect("overflow when adding durations");
-        let mut nanos = self.nanos + rhs.nanos;
-        if nanos >= NANOS_PER_SEC {
-            nanos -= NANOS_PER_SEC;
-            secs = secs.checked_add(1).expect("overflow when adding durations");
-        }
-        debug_assert!(nanos < NANOS_PER_SEC);
-        Duration { secs: secs, nanos: nanos }
+        self.checked_add(rhs).expect("overflow when adding durations")
     }
 }
 
@@ -252,17 +244,7 @@ impl Sub for Duration {
     type Output = Duration;
 
     fn sub(self, rhs: Duration) -> Duration {
-        let mut secs = self.secs.checked_sub(rhs.secs)
-                           .expect("overflow when subtracting durations");
-        let nanos = if self.nanos >= rhs.nanos {
-            self.nanos - rhs.nanos
-        } else {
-            secs = secs.checked_sub(1)
-                       .expect("overflow when subtracting durations");
-            self.nanos + NANOS_PER_SEC - rhs.nanos
-        };
-        debug_assert!(nanos < NANOS_PER_SEC);
-        Duration { secs: secs, nanos: nanos }
+        self.checked_sub(rhs).expect("overflow when subtracting durations")
     }
 }
 
@@ -278,15 +260,7 @@ impl Mul<u32> for Duration {
     type Output = Duration;
 
     fn mul(self, rhs: u32) -> Duration {
-        // Multiply nanoseconds as u64, because it cannot overflow that way.
-        let total_nanos = self.nanos as u64 * rhs as u64;
-        let extra_secs = total_nanos / (NANOS_PER_SEC as u64);
-        let nanos = (total_nanos % (NANOS_PER_SEC as u64)) as u32;
-        let secs = self.secs.checked_mul(rhs as u64)
-                       .and_then(|s| s.checked_add(extra_secs))
-                       .expect("overflow when multiplying duration");
-        debug_assert!(nanos < NANOS_PER_SEC);
-        Duration { secs: secs, nanos: nanos }
+        self.checked_mul(rhs).expect("overflow when multiplying duration by scalar")
     }
 }
 
@@ -302,12 +276,7 @@ impl Div<u32> for Duration {
     type Output = Duration;
 
     fn div(self, rhs: u32) -> Duration {
-        let secs = self.secs / (rhs as u64);
-        let carry = self.secs - secs * (rhs as u64);
-        let extra_nanos = carry * (NANOS_PER_SEC as u64) / (rhs as u64);
-        let nanos = self.nanos / rhs + (extra_nanos as u32);
-        debug_assert!(nanos < NANOS_PER_SEC);
-        Duration { secs: secs, nanos: nanos }
+        self.checked_div(rhs).expect("divide by zero error when dividing duration by scalar")
     }
 }
 
