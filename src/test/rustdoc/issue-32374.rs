@@ -13,7 +13,7 @@
 
 #![unstable(feature="test", issue = "32374")]
 
-// @has issue_32374/index.html '//*[@class="docblock short"]' \
+// @has issue_32374/index.html '//*[@class="docblock-short"]' \
 //      '[Deprecated] [Unstable]'
 
 // @has issue_32374/struct.T.html '//*[@class="stab deprecated"]' \
