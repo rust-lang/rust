@@ -1987,5 +1987,6 @@ impl AsRef<[u8]> for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Default for &'a str {
+    /// Creates an empty str
     fn default() -> &'a str { "" }
 }

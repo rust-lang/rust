@@ -45,6 +45,7 @@ pub struct TargetDataLayout {
 }
 
 impl Default for TargetDataLayout {
+    /// Creates an instance of `TargetDataLayout`.
     fn default() -> TargetDataLayout {
         TargetDataLayout {
             endian: Endian::Big,

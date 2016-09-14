@@ -665,6 +665,7 @@ impl<T, S> Default for HashSet<T, S>
     where T: Eq + Hash,
           S: BuildHasher + Default,
 {
+    /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     fn default() -> HashSet<T, S> {
         HashSet::with_hasher(Default::default())
     }

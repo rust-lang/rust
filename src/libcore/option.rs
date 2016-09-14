@@ -714,6 +714,7 @@ fn expect_failed(msg: &str) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
+    /// Returns None.
     #[inline]
     fn default() -> Option<T> { None }
 }

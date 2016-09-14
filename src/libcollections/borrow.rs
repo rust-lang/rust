@@ -249,6 +249,7 @@ impl<'a, B: ?Sized> Default for Cow<'a, B>
     where B: ToOwned,
           <B as ToOwned>::Owned: Default
 {
+    /// Creates an owned Cow<'a, B> with the default value for the contained owned value.
     fn default() -> Cow<'a, B> {
         Owned(<B as ToOwned>::Owned::default())
     }

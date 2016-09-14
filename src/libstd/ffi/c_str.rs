@@ -361,6 +361,7 @@ impl<'a> Default for &'a CStr {
 
 #[stable(feature = "cstr_default", since = "1.10.0")]
 impl Default for CString {
+    /// Creates an empty `CString`.
     fn default() -> CString {
         let a: &CStr = Default::default();
         a.to_owned()
