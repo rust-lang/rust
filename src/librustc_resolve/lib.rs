@@ -1006,7 +1006,9 @@ pub struct Resolver<'a> {
 
     trait_item_map: FnvHashMap<(Name, DefId), bool /* is static method? */>,
 
-    structs: FnvHashMap<DefId, Vec<Name>>,
+    // Names of fields of an item `DefId` accessible with dot syntax.
+    // Used for hints during error reporting.
+    field_names: FnvHashMap<DefId, Vec<Name>>,
 
     // All imports known to succeed or fail.
     determined_imports: Vec<&'a ImportDirective<'a>>,
@@ -1218,7 +1220,7 @@ impl<'a> Resolver<'a> {
             prelude: None,
 
             trait_item_map: FnvHashMap(),
-            structs: FnvHashMap(),
+            field_names: FnvHashMap(),
 
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
@@ -2779,8 +2781,8 @@ impl<'a> Resolver<'a> {
                 match resolution.base_def {
                     Def::Enum(did) | Def::TyAlias(did) | Def::Union(did) |
                     Def::Struct(did) | Def::Variant(did) if resolution.depth == 0 => {
-                        if let Some(fields) = self.structs.get(&did) {
-                            if fields.iter().any(|&field_name| name == field_name) {
+                        if let Some(field_names) = self.field_names.get(&did) {
+                            if field_names.iter().any(|&field_name| name == field_name) {
                                 return Field;
                             }
                         }
@@ -2852,7 +2854,6 @@ impl<'a> Resolver<'a> {
                         _ => false,
                     };
                     if is_struct_variant {
-                        let _ = self.structs.contains_key(&path_res.base_def.def_id());
                         let path_name = path_names_to_string(path, 0);
 
                         let mut err = resolve_struct_error(self,
@@ -2885,9 +2886,6 @@ impl<'a> Resolver<'a> {
                     }
                 } else {
                     // Be helpful if the name refers to a struct
-                    // (The pattern matching def_tys where the id is in self.structs
-                    // matches on regular structs while excluding tuple- and enum-like
-                    // structs, which wouldn't result in this error.)
                     let path_name = path_names_to_string(path, 0);
                     let type_res = self.with_no_errors(|this| {
                         this.resolve_path(expr.id, path, 0, TypeNS)
