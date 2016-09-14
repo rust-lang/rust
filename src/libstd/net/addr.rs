@@ -519,7 +519,7 @@ impl<'a, T: ToSocketAddrs + ?Sized> ToSocketAddrs for &'a T {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use net::*;
     use net::test::{tsa, sa6, sa4};

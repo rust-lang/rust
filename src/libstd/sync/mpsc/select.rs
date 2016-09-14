@@ -366,7 +366,7 @@ impl<'rx, T:Send+'rx> fmt::Debug for Handle<'rx, T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 #[allow(unused_imports)]
 mod tests {
     use thread;
@@ -444,7 +444,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn unblocks() {
         let (tx1, rx1) = channel::<i32>();
         let (_tx2, rx2) = channel::<i32>();
@@ -469,7 +468,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn both_ready() {
         let (tx1, rx1) = channel::<i32>();
         let (tx2, rx2) = channel::<i32>();
@@ -496,7 +494,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress() {
         const AMT: i32 = 10000;
         let (tx1, rx1) = channel::<i32>();
@@ -524,7 +521,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn cloning() {
         let (tx1, rx1) = channel::<i32>();
         let (_tx2, rx2) = channel::<i32>();
@@ -547,7 +543,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn cloning2() {
         let (tx1, rx1) = channel::<i32>();
         let (_tx2, rx2) = channel::<i32>();
@@ -570,7 +565,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn cloning3() {
         let (tx1, rx1) = channel::<()>();
         let (tx2, rx2) = channel::<()>();
@@ -688,7 +682,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn oneshot_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
@@ -705,7 +698,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stream_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
@@ -726,7 +718,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn shared_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
@@ -755,7 +746,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn sync2() {
         let (tx, rx) = sync_channel::<i32>(0);
         let _t = thread::spawn(move|| {
@@ -768,7 +758,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn sync3() {
         let (tx1, rx1) = sync_channel::<i32>(0);
         let (tx2, rx2): (Sender<i32>, Receiver<i32>) = channel();
