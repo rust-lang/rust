@@ -37,4 +37,4 @@ syntax_pos = { path = "../libsyntax_pos" }
 proc_macro = { path = "../libproc_macro" }
 
 [features]
-lld = ["rustc_trans/lld"]
+lld = ["rustc_llvm/lld", "rustc_trans/lld"]

@@ -17,6 +17,9 @@ use std::process::Command;
 
 use build_helper::output;
 
+// NOTE This pretty much looks the same as librustc_llvm build.rs. Refer to that file for an
+// explanation of what this function does.
+
 fn main() {
     let target = env::var("TARGET").unwrap();
     let host = env::var("HOST").unwrap();
@@ -40,6 +43,8 @@ fn main() {
             PathBuf::from("llvm-config")
         });
 
+    println!("cargo:rerun-if-changed={}", llvm_config.display());
+
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--cxxflags");
     let cxxflags = output(&mut cmd);
@@ -58,10 +63,6 @@ fn main() {
         .cpp_link_stdlib(None)
         .compile("librustlld.a");
 
-    // If we're a cross-compile of LLVM then unfortunately we can't trust these
-    // ldflags (largely where all the LLVM libs are located). Currently just
-    // hack around this by replacing the host triple with the target and pray
-    // that those -L directories are the same!
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
@@ -79,7 +80,6 @@ fn main() {
         }
     }
 
-    // C++ runtime library
     if !target.contains("msvc") {
         if let Some(s) = env::var_os("LLVM_STATIC_STDCPP") {
             assert!(!cxxflags.contains("stdlib=libc++"));
@@ -94,11 +94,22 @@ fn main() {
         }
     }
 
-    // FIXME can we get these from llvm-config?
-    println!("cargo:rustc-link-lib=static=lldELF");
+    // NOTE After this point comes LLD specific stuff
+    //
+    // We need to link to these libraries to be able to use lld functions via ffi
+    // These libraries depend on llvm libraries but we don't link this crate to those libraries
+    // because that can result in duplicate linking to static libraries, instead rustc_llvm will
+    // link to those libraries for us.
+    //
+    // To elaborate on this last point: which libraries we must link to come from the output of
+    // llvm-config. llvm-config maps "components" to -l flags. rustc_llvm is already using this
+    // method to figure out which -l flags we need to use llvm via ffi. If we do the same thing here
+    // we risk ending up static llvm libraries being linked up more than once in the final rustc
+    // binary -- and this last part can cause runtime failures of rustc like
+    //
+    //     : CommandLine Error: Option 'color' registered more than once!
+    //     LLVM ERROR: inconsistency in registered CommandLine options
+    //
     println!("cargo:rustc-link-lib=static=lldConfig");
-    println!("cargo:rustc-link-lib=static=LLVMOption");
-    println!("cargo:rustc-link-lib=static=LLVMPasses");
-    println!("cargo:rustc-link-lib=static=LLVMLTO");
-    println!("cargo:rustc-link-lib=static=LLVMObjCARCOpts");
+    println!("cargo:rustc-link-lib=static=lldELF");
 }

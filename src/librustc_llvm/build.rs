@@ -70,20 +70,24 @@ fn main() {
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit
     //        or interpreter the compiler itself never uses.
-    let required_components = &["ipo",
-                                "bitreader",
-                                "bitwriter",
-                                "linker",
-                                "asmparser",
-                                "mcjit",
-                                "interpreter",
-                                "instrumentation"];
+    let mut required_components = vec!["ipo",
+                                       "bitreader",
+                                       "bitwriter",
+                                       "linker",
+                                       "asmparser",
+                                       "mcjit",
+                                       "interpreter",
+                                       "instrumentation"];
+
+    if env::var_os("CARGO_FEATURE_LLD").is_some() {
+        required_components.extend(&["lto", "option", "passes"]);
+    }
 
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
     components.retain(|c| optional_components.contains(c) || required_components.contains(c));
 
-    for component in required_components {
+    for component in &required_components {
         if !components.contains(component) {
             panic!("require llvm component {} but wasn't found", component);
         }
