@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct TS ( //~ ERROR empty tuple structs and enum variants are unstable
-    #[cfg(untrue)]
-    i32,
-);
-
-enum E {
-    TV ( //~ ERROR empty tuple structs and enum variants are unstable
-        #[cfg(untrue)]
-        i32,
-    )
-}
+struct S(u8);
 
 fn main() {
-    let s = TS;
-    let tv = E::TV;
+    let s = S{0: 10}; //~ ERROR numeric fields in struct expressions are unstable
+    match s {
+        S{0: a, ..} => {} //~ ERROR numeric fields in struct patterns are unstable
+    }
 }

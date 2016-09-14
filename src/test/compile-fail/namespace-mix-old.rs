@@ -12,8 +12,6 @@
 
 // aux-build:namespace-mix-old.rs
 
-#![feature(relaxed_adts)]
-
 extern crate namespace_mix_old;
 use namespace_mix_old::{xm1, xm2, xm3, xm4, xm5, xm6, xm7, xm8, xm9, xmA, xmB, xmC};
 
