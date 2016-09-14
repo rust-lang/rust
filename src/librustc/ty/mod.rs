@@ -1397,7 +1397,7 @@ impl<'a, 'gcx, 'tcx> AdtDefData<'tcx, 'static> {
                                   cx: TyCtxt<'a, 'gcx, 'tcx>,
                                   substs: &'tcx Substs<'tcx>) -> bool {
         match visited.entry((self.did, substs)) {
-            hash_map::Entry::Occupied(_) => return true,
+            hash_map::Entry::Occupied(_) => return false,
             hash_map::Entry::Vacant(ve) => ve.insert(()),
         };
         self.variants.iter().all(|v| v.is_uninhabited_recurse(visited, cx, substs, self.is_union()))
