@@ -12,8 +12,6 @@
 
 // aux-build:empty-struct.rs
 
-#![feature(relaxed_adts)]
-
 extern crate empty_struct;
 use empty_struct::*;
 
