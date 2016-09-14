@@ -173,10 +173,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn allocate(&mut self, size: usize, align: usize) -> EvalResult<'tcx, Pointer> {
-        assert!(align != 0);
         if size == 0 {
             return Ok(Pointer::zst_ptr());
         }
+        assert!(align != 0);
+
         if self.memory_size - self.memory_usage < size {
             return Err(EvalError::OutOfMemory {
                 allocation_size: size,
