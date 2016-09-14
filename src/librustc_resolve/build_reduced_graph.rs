@@ -24,7 +24,6 @@ use {resolve_error, resolve_struct_error, ResolutionError};
 use rustc::middle::cstore::LoadedMacroKind;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
-use rustc::hir::map::DefPathData;
 use rustc::ty;
 
 use std::cell::Cell;
@@ -398,15 +397,9 @@ impl<'b> Resolver<'b> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>,
                                                   child: Export) {
-        let def_id = child.def_id;
         let name = child.name;
-
-        let def = if let Some(def) = self.session.cstore.describe_def(def_id) {
-            def
-        } else {
-            return;
-        };
-
+        let def = child.def;
+        let def_id = def.def_id();
         let vis = if parent.is_trait() {
             ty::Visibility::Public
         } else {
@@ -424,13 +417,14 @@ impl<'b> Resolver<'b> {
                 debug!("(building reduced graph for external crate) building variant {}", name);
                 // All variants are defined in both type and value namespaces as future-proofing.
                 let vkind = self.session.cstore.variant_kind(def_id).unwrap();
-                let ctor_def = Def::VariantCtor(def_id, vkind.ctor_kind());
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
-                let _ = self.try_define(parent, name, ValueNS, (ctor_def, DUMMY_SP, vis));
                 if vkind == ty::VariantKind::Struct {
                     // Not adding fields for variants as they are not accessed with a self receiver
                     self.structs.insert(def_id, Vec::new());
                 }
+            }
+            Def::VariantCtor(..) => {
+                let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
             }
             Def::Fn(..) |
             Def::Static(..) |
@@ -468,22 +462,17 @@ impl<'b> Resolver<'b> {
                 debug!("(building reduced graph for external crate) building type {}", name);
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
             }
-            Def::Struct(..)
-                if self.session.cstore.def_key(def_id).disambiguated_data.data !=
-                   DefPathData::StructCtor
-                => {
+            Def::Struct(..) => {
                 debug!("(building reduced graph for external crate) building type and value for {}",
                        name);
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
-                if let Some(ctor_def_id) = self.session.cstore.struct_ctor_def_id(def_id) {
-                    let vkind = self.session.cstore.variant_kind(def_id).unwrap();
-                    let ctor_def = Def::StructCtor(ctor_def_id, vkind.ctor_kind());
-                    let _ = self.try_define(parent, name, ValueNS, (ctor_def, DUMMY_SP, vis));
-                }
 
                 // Record the def ID and fields of this struct.
                 let fields = self.session.cstore.struct_field_names(def_id);
                 self.structs.insert(def_id, fields);
+            }
+            Def::StructCtor(..) => {
+                let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
             }
             Def::Union(_) => {
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
@@ -492,9 +481,6 @@ impl<'b> Resolver<'b> {
                 let fields = self.session.cstore.struct_field_names(def_id);
                 self.structs.insert(def_id, fields);
             }
-            Def::Struct(..) => {}
-            Def::VariantCtor(..) |
-            Def::StructCtor(..) |
             Def::Local(..) |
             Def::PrimTy(..) |
             Def::TyParam(..) |

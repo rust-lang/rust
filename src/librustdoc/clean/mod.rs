@@ -237,7 +237,7 @@ impl Clean<ExternalCrate> for CrateNum {
         let root = DefId { krate: self.0, index: CRATE_DEF_INDEX };
         cx.tcx_opt().map(|tcx| {
             for item in tcx.sess.cstore.item_children(root) {
-                let attrs = inline::load_attrs(cx, tcx, item.def_id);
+                let attrs = inline::load_attrs(cx, tcx, item.def.def_id());
                 PrimitiveType::find(&attrs).map(|prim| primitives.push(prim));
             }
         });

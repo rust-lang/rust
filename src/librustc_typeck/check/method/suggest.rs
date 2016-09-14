@@ -461,7 +461,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                         return;
                     }
                     for child in ccx.tcx.sess.cstore.item_children(def_id) {
-                        handle_external_def(ccx, traits, external_mods, child.def_id)
+                        handle_external_def(ccx, traits, external_mods, child.def.def_id())
                     }
                 }
                 _ => {}
