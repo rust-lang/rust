@@ -10,9 +10,9 @@
 
 //! Error handling with the `Result` type.
 //!
-//! `Result<T, E>` is the type used for returning and propagating
-//! errors. It is an enum with the variants, `Ok(T)`, representing
-//! success and containing a value, and `Err(E)`, representing error
+//! [`Result<T, E>`][`Result`] is the type used for returning and propagating
+//! errors. It is an enum with the variants, [`Ok(T)`], representing
+//! success and containing a value, and [`Err(E)`], representing error
 //! and containing an error value.
 //!
 //! ```
@@ -23,11 +23,11 @@
 //! }
 //! ```
 //!
-//! Functions return `Result` whenever errors are expected and
-//! recoverable. In the `std` crate `Result` is most prominently used
+//! Functions return [`Result`] whenever errors are expected and
+//! recoverable. In the `std` crate, [`Result`] is most prominently used
 //! for [I/O](../../std/io/index.html).
 //!
-//! A simple function returning `Result` might be
+//! A simple function returning [`Result`] might be
 //! defined and used like so:
 //!
 //! ```
@@ -50,8 +50,8 @@
 //! }
 //! ```
 //!
-//! Pattern matching on `Result`s is clear and straightforward for
-//! simple cases, but `Result` comes with some convenience methods
+//! Pattern matching on [`Result`]s is clear and straightforward for
+//! simple cases, but [`Result`] comes with some convenience methods
 //! that make working with it more succinct.
 //!
 //! ```
@@ -80,14 +80,14 @@
 //!
 //! A common problem with using return values to indicate errors is
 //! that it is easy to ignore the return value, thus failing to handle
-//! the error. Result is annotated with the #[must_use] attribute,
+//! the error. [`Result`] is annotated with the `#[must_use]` attribute,
 //! which will cause the compiler to issue a warning when a Result
-//! value is ignored. This makes `Result` especially useful with
+//! value is ignored. This makes [`Result`] especially useful with
 //! functions that may encounter errors but don't otherwise return a
 //! useful value.
 //!
-//! Consider the `write_all` method defined for I/O types
-//! by the [`Write`](../../std/io/trait.Write.html) trait:
+//! Consider the [`write_all`] method defined for I/O types
+//! by the [`Write`] trait:
 //!
 //! ```
 //! use std::io;
@@ -97,8 +97,8 @@
 //! }
 //! ```
 //!
-//! *Note: The actual definition of `Write` uses `io::Result`, which
-//! is just a synonym for `Result<T, io::Error>`.*
+//! *Note: The actual definition of [`Write`] uses [`io::Result`], which
+//! is just a synonym for [`Result`]`<T, `[`io::Error`]`>`.*
 //!
 //! This method doesn't produce a value, but the write may
 //! fail. It's crucial to handle the error case, and *not* write
@@ -119,7 +119,7 @@
 //! warning (by default, controlled by the `unused_must_use` lint).
 //!
 //! You might instead, if you don't want to handle the error, simply
-//! assert success with `expect`. This will panic if the
+//! assert success with [`expect`]. This will panic if the
 //! write fails, providing a marginally useful message indicating why:
 //!
 //! ```{.no_run}
@@ -139,7 +139,7 @@
 //! assert!(file.write_all(b"important message").is_ok());
 //! ```
 //!
-//! Or propagate the error up the call stack with `try!`:
+//! Or propagate the error up the call stack with [`try!`]:
 //!
 //! ```
 //! # use std::fs::File;
@@ -156,7 +156,7 @@
 //! # The `try!` macro
 //!
 //! When writing code that calls many functions that return the
-//! `Result` type, the error handling can be tedious.  The `try!`
+//! [`Result`] type, the error handling can be tedious. The [`try!`]
 //! macro hides some of the boilerplate of propagating errors up the
 //! call stack.
 //!
@@ -219,9 +219,9 @@
 //!
 //! *It's much nicer!*
 //!
-//! Wrapping an expression in `try!` will result in the unwrapped
-//! success (`Ok`) value, unless the result is `Err`, in which case
-//! `Err` is returned early from the enclosing function. Its simple definition
+//! Wrapping an expression in [`try!`] will result in the unwrapped
+//! success ([`Ok`]) value, unless the result is [`Err`], in which case
+//! [`Err`] is returned early from the enclosing function. Its simple definition
 //! makes it clear:
 //!
 //! ```
@@ -230,9 +230,21 @@
 //! }
 //! ```
 //!
-//! `try!` is imported by the prelude and is available everywhere, but it can only
-//! be used in functions that return `Result` because of the early return of
-//! `Err` that it provides.
+//! [`try!`] is imported by the prelude and is available everywhere, but it can only
+//! be used in functions that return [`Result`] because of the early return of
+//! [`Err`] that it provides.
+//!
+//! [`expect`]: enum.Result.html#method.expect
+//! [`Write`]: ../../std/io/trait.Write.html
+//! [`write_all`]: ../../std/io/trait.Write.html#method.write_all
+//! [`io::Result`]: ../../std/io/type.Result.html
+//! [`try!`]: ../../std/macro.try.html
+//! [`Result`]: enum.Result.html
+//! [`Ok(T)`]: enum.Result.html#variant.Ok
+//! [`Err(E)`]: enum.Result.html#variant.Err
+//! [`io::Error`]: ../../std/io/struct.Error.html
+//! [`Ok`]: enum.Result.html#variant.Ok
+//! [`Err`]: enum.Result.html#variant.Err
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -264,7 +276,7 @@ impl<T, E> Result<T, E> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Returns true if the result is `Ok`
+    /// Returns true if the result is `Ok`.
     ///
     /// # Examples
     ///
@@ -286,7 +298,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns true if the result is `Err`
+    /// Returns true if the result is `Err`.
     ///
     /// # Examples
     ///
@@ -309,10 +321,12 @@ impl<T, E> Result<T, E> {
     // Adapter for each variant
     /////////////////////////////////////////////////////////////////////////
 
-    /// Converts from `Result<T, E>` to `Option<T>`
+    /// Converts from `Result<T, E>` to [`Option<T>`].
     ///
-    /// Converts `self` into an `Option<T>`, consuming `self`,
+    /// Converts `self` into an [`Option<T>`], consuming `self`,
     /// and discarding the error, if any.
+    ///
+    /// [`Option<T>`]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -334,10 +348,12 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Converts from `Result<T, E>` to `Option<E>`
+    /// Converts from `Result<T, E>` to [`Option<E>`].
     ///
-    /// Converts `self` into an `Option<E>`, consuming `self`,
+    /// Converts `self` into an [`Option<E>`], consuming `self`,
     /// and discarding the success value, if any.
+    ///
+    /// [`Option<E>`]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -363,7 +379,7 @@ impl<T, E> Result<T, E> {
     // Adapter for working with references
     /////////////////////////////////////////////////////////////////////////
 
-    /// Converts from `Result<T, E>` to `Result<&T, &E>`
+    /// Converts from `Result<T, E>` to `Result<&T, &E>`.
     ///
     /// Produces a new `Result`, containing a reference
     /// into the original, leaving the original in place.
@@ -388,7 +404,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Converts from `Result<T, E>` to `Result<&mut T, &mut E>`
+    /// Converts from `Result<T, E>` to `Result<&mut T, &mut E>`.
     ///
     /// # Examples
     ///
@@ -563,7 +579,7 @@ impl<T, E> Result<T, E> {
 
     /// Calls `op` if the result is `Ok`, otherwise returns the `Err` value of `self`.
     ///
-    /// This function can be used for control flow based on result values.
+    /// This function can be used for control flow based on `Result` values.
     ///
     /// # Examples
     ///
@@ -646,7 +662,7 @@ impl<T, E> Result<T, E> {
     }
 
     /// Unwraps a result, yielding the content of an `Ok`.
-    /// Else it returns `optb`.
+    /// Else, it returns `optb`.
     ///
     /// # Examples
     ///
@@ -837,7 +853,10 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
 // The Result Iterators
 /////////////////////////////////////////////////////////////////////////////
 
-/// An iterator over a reference to the `Ok` variant of a `Result`.
+/// An iterator over a reference to the [`Ok`] variant of a [`Result`].
+///
+/// [`Ok`]: enum.Result.html#variant.Ok
+/// [`Result`]: enum.Result.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> { inner: Option<&'a T> }
@@ -872,7 +891,10 @@ impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { inner: self.inner } }
 }
 
-/// An iterator over a mutable reference to the `Ok` variant of a `Result`.
+/// An iterator over a mutable reference to the [`Ok`] variant of a [`Result`].
+///
+/// [`Ok`]: enum.Result.html#variant.Ok
+/// [`Result`]: enum.Result.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> { inner: Option<&'a mut T> }
@@ -902,10 +924,11 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
-/// An iterator over the value in a `Ok` variant of a `Result`. This struct is
+/// An iterator over the value in a [`Ok`] variant of a [`Result`]. This struct is
 /// created by the [`into_iter`] method on [`Result`][`Result`] (provided by
 /// the [`IntoIterator`] trait).
 ///
+/// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Result`]: enum.Result.html
 /// [`into_iter`]: ../iter/trait.IntoIterator.html#tymethod.into_iter
 /// [`IntoIterator`]: ../iter/trait.IntoIterator.html
