@@ -565,9 +565,11 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprStruct(..) => {
-            // unsafe_cell_type doesn't necessarily exist with no_core
-            if Some(v.tcx.expect_def(e.id).def_id()) == v.tcx.lang_items.unsafe_cell_type() {
-                v.add_qualif(ConstQualif::MUTABLE_MEM);
+            if let ty::TyAdt(adt, ..) = v.tcx.expr_ty(e).sty {
+                // unsafe_cell_type doesn't necessarily exist with no_core
+                if Some(adt.did) == v.tcx.lang_items.unsafe_cell_type() {
+                    v.add_qualif(ConstQualif::MUTABLE_MEM);
+                }
             }
         }
 
