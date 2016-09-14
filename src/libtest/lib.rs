@@ -1200,8 +1200,8 @@ pub fn run_test(opts: &TestOpts,
 
                 let result_guard = cfg.spawn(move || {
                     if !nocapture {
-                        io::set_print(box Sink(data2.clone()));
-                        io::set_panic(box Sink(data2));
+                        io::set_print(Some(box Sink(data2.clone())));
+                        io::set_panic(Some(box Sink(data2)));
                     }
                     testfn()
                 })
@@ -1213,8 +1213,8 @@ pub fn run_test(opts: &TestOpts,
         } else {
             let oldio = if !nocapture {
                 Some((
-                    io::set_print(box Sink(data2.clone())),
-                    io::set_panic(box Sink(data2))
+                    io::set_print(Some(box Sink(data2.clone()))),
+                    io::set_panic(Some(box Sink(data2)))
                 ))
             } else {
                 None
@@ -1227,12 +1227,8 @@ pub fn run_test(opts: &TestOpts,
             }));
 
             if let Some((printio, panicio)) = oldio {
-                if let Some(printio) = printio {
-                    io::set_print(printio);
-                }
-                if let Some(panicio) = panicio {
-                    io::set_panic(panicio);
-                }
+                io::set_print(printio);
+                io::set_panic(panicio);
             };
 
             let test_result = calc_result(&desc, result);
