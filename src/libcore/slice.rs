@@ -755,11 +755,13 @@ impl<T> ops::IndexMut<ops::RangeToInclusive<usize>> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Default for &'a [T] {
+    /// Creates an empty slice.
     fn default() -> &'a [T] { &[] }
 }
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
 impl<'a, T> Default for &'a mut [T] {
+    /// Creates a mutable empty slice.
     fn default() -> &'a mut [T] { &mut [] }
 }
 

@@ -1218,6 +1218,7 @@ impl<K, V, S> Default for HashMap<K, V, S>
     where K: Eq + Hash,
           S: BuildHasher + Default,
 {
+    /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
     fn default() -> HashMap<K, V, S> {
         HashMap::with_hasher(Default::default())
     }
@@ -2026,6 +2027,7 @@ impl Hasher for DefaultHasher {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for RandomState {
+    /// Constructs a new `RandomState`.
     #[inline]
     fn default() -> RandomState {
         RandomState::new()

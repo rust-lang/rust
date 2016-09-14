@@ -362,6 +362,7 @@ impl Generics {
 }
 
 impl Default for Generics {
+    /// Creates an instance of `Generics`.
     fn default() ->  Generics {
         Generics {
             lifetimes: Vec::new(),

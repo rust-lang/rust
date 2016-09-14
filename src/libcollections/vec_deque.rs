@@ -84,6 +84,7 @@ impl<T> Drop for VecDeque<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for VecDeque<T> {
+    /// Creates an empty `VecDeque<T>`.
     #[inline]
     fn default() -> VecDeque<T> {
         VecDeque::new()
