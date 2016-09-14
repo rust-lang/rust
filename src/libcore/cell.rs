@@ -317,6 +317,7 @@ impl<T:Copy> Clone for Cell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default + Copy> Default for Cell<T> {
+    /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Cell<T> {
         Cell::new(Default::default())
@@ -758,6 +759,7 @@ impl<T: Clone> Clone for RefCell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default> Default for RefCell<T> {
+    /// Creates a `RefCell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> RefCell<T> {
         RefCell::new(Default::default())
@@ -1139,6 +1141,7 @@ impl<T: ?Sized> UnsafeCell<T> {
 
 #[stable(feature = "unsafe_cell_default", since = "1.9.0")]
 impl<T: Default> Default for UnsafeCell<T> {
+    /// Creates an `UnsafeCell`, with the `Default` value for T.
     fn default() -> UnsafeCell<T> {
         UnsafeCell::new(Default::default())
     }

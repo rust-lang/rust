@@ -870,6 +870,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
+    /// Creates a new `Weak<T>`.
     fn default() -> Weak<T> {
         Weak::new()
     }

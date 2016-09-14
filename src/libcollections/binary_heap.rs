@@ -263,6 +263,7 @@ impl<T: Clone> Clone for BinaryHeap<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Default for BinaryHeap<T> {
+    /// Creates an empty `BinaryHeap<T>`.
     #[inline]
     fn default() -> BinaryHeap<T> {
         BinaryHeap::new()

@@ -109,6 +109,7 @@ enum SingleImports<'a> {
 }
 
 impl<'a> Default for SingleImports<'a> {
+    /// Creates a `SingleImports<'a>` of None type.
     fn default() -> Self {
         SingleImports::None
     }

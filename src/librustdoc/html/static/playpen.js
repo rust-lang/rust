@@ -27,9 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            var a = document.createElement('a');
-            a.setAttribute('class', 'test-arrow');
-            a.textContent = 'Run';
+            var a = el.querySelectorAll('a.test-arrow')[0];
 
             var code = el.previousElementSibling.textContent;
 
@@ -40,17 +38,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             a.setAttribute('href', window.playgroundUrl + '?code=' +
                            encodeURIComponent(code) + channel);
-            a.setAttribute('target', '_blank');
-
-            el.appendChild(a);
-        };
-
-        el.onmouseout = function(e) {
-            if (el.contains(e.relatedTarget)) {
-                return;
-            }
-
-            el.removeChild(el.querySelectorAll('a.test-arrow')[0]);
         };
     });
 });

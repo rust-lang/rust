@@ -113,6 +113,7 @@ impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for ReseedWithDefault {
+    /// Creates an instance of `ReseedWithDefault`.
     fn default() -> ReseedWithDefault {
         ReseedWithDefault
     }
@@ -137,6 +138,7 @@ mod tests {
         }
     }
     impl Default for Counter {
+    /// Constructs a `Counter` with initial value zero.
         fn default() -> Counter {
             Counter { i: 0 }
         }
