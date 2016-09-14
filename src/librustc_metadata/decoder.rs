@@ -699,6 +699,8 @@ impl<'a, 'tcx> CrateMetadata {
                             }
                         }
                         Def::Variant(def_id) => {
+                            // Braced variants, unlike structs, generate unusable names in
+                            // value namespace, they are reserved for possible future use.
                             let vkind = self.get_variant_kind(child_index).unwrap();
                             let ctor_def = Def::VariantCtor(def_id, vkind.ctor_kind());
                             callback(def::Export { def: ctor_def, name: name });
