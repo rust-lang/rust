@@ -1,3 +1,13 @@
+// FIXME: The normal `vec!` macro is currently broken in Miri because it hits the
+// std::vec::SetLenOnDrop code and Miri doesn't call destructors yet.
+macro_rules! miri_vec {
+    ($($e:expr),*) => ({
+        let mut v = Vec::new();
+        $(v.push($e);)*
+        v
+    });
+}
+
 fn make_vec() -> Vec<u8> {
     let mut v = Vec::with_capacity(4);
     v.push(1);
@@ -6,22 +16,22 @@ fn make_vec() -> Vec<u8> {
 }
 
 fn make_vec_macro() -> Vec<u8> {
-    vec![1, 2]
+    miri_vec![1, 2]
 }
 
 fn make_vec_macro_repeat() -> Vec<u8> {
-    vec![42; 5]
+    miri_vec![42, 42, 42, 42, 42]
 }
 
 fn vec_into_iter() -> u8 {
-    vec![1, 2, 3, 4]
+    miri_vec![1, 2, 3, 4]
         .into_iter()
         .map(|x| x * x)
         .fold(0, |x, y| x + y)
 }
 
 fn vec_reallocate() -> Vec<u8> {
-    let mut v = vec![1, 2];
+    let mut v = miri_vec![1, 2];
     v.push(3);
     v.push(4);
     v.push(5);
