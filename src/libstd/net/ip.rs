@@ -22,6 +22,24 @@ use sys::net::netc as c;
 use sys_common::{AsInner, FromInner};
 
 /// An IP address, either an IPv4 or IPv6 address.
+///
+/// # Examples
+///
+/// Constructing an IPv4 address:
+///
+/// ```
+/// use std::net::{IpAddr, Ipv4Addr};
+///
+/// IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+/// ```
+///
+/// Constructing an IPv6 address:
+///
+/// ```
+/// use std::net::{IpAddr, Ipv6Addr};
+///
+/// IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+/// ```
 #[stable(feature = "ip_addr", since = "1.7.0")]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
