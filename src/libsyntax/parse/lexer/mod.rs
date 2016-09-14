@@ -393,24 +393,29 @@ impl<'a> StringReader<'a> {
     /// Advance the StringReader by one character. If a newline is
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
-        self.curr_pos = self.next_pos;
-        let current_byte_offset = self.byte_offset(self.next_pos).to_usize();
-        if current_byte_offset < self.source_text.len() {
-            let last_char = self.curr.unwrap();
-            let ch = char_at(&self.source_text, current_byte_offset);
-            let byte_offset_diff = ch.len_utf8();
-            self.next_pos = self.next_pos + Pos::from_usize(byte_offset_diff);
-            self.curr = Some(ch);
-            self.curr_col = self.curr_col + CharPos(1);
-            if last_char == '\n' {
+        // In this function the "old next" char and the "new curr" char are the same char.
+        let old_next_pos = self.next_pos;
+        let new_curr_byte_offset = self.byte_offset(old_next_pos).to_usize();
+        if new_curr_byte_offset < self.source_text.len() {
+            let old_curr = self.curr.unwrap();
+            let new_curr = char_at(&self.source_text, new_curr_byte_offset);
+            let new_curr_len = new_curr.len_utf8();
+
+            self.curr = Some(new_curr);
+            self.curr_pos = old_next_pos;
+            self.next_pos = old_next_pos + Pos::from_usize(new_curr_len);
+            if old_curr == '\n' {
                 self.filemap.next_line(self.curr_pos);
                 self.curr_col = CharPos(0);
+            } else {
+                self.curr_col = self.curr_col + CharPos(1);
             }
 
-            if byte_offset_diff > 1 {
-                self.filemap.record_multibyte_char(self.curr_pos, byte_offset_diff);
+            if new_curr_len > 1 {
+                self.filemap.record_multibyte_char(self.curr_pos, new_curr_len);
             }
         } else {
+            self.curr_pos = old_next_pos;
             self.curr = None;
         }
     }
