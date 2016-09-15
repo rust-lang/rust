@@ -14,7 +14,6 @@
 
 use common::CrateInfo;
 use cstore::{self, CStore, CrateSource, MetadataBlob};
-use decoder;
 use loader::{self, CratePaths};
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
@@ -28,6 +27,7 @@ use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
 use rustc::hir::map as hir_map;
 
 use std::cell::{RefCell, Cell};
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::fs;
@@ -143,11 +143,13 @@ enum PMDSource {
     Owned(loader::Library),
 }
 
-impl PMDSource {
-    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
+impl Deref for PMDSource {
+    type Target = MetadataBlob;
+
+    fn deref(&self) -> &MetadataBlob {
         match *self {
-            PMDSource::Registered(ref cmd) => cmd.data(),
-            PMDSource::Owned(ref lib) => lib.metadata.as_slice(),
+            PMDSource::Registered(ref cmd) => &cmd.data,
+            PMDSource::Owned(ref lib) => &lib.metadata
         }
     }
 }
@@ -295,7 +297,7 @@ impl<'a> CrateReader<'a> {
                       -> (CrateNum, Rc<cstore::CrateMetadata>,
                           cstore::CrateSource) {
         info!("register crate `extern crate {} as {}`", name, ident);
-        let crate_info = decoder::get_crate_info(lib.metadata.as_slice());
+        let crate_info = lib.metadata.get_crate_info();
         self.verify_no_symbol_conflicts(span, &crate_info);
 
         // Claim this crate number and cache it
@@ -317,7 +319,7 @@ impl<'a> CrateReader<'a> {
 
         let loader::Library { dylib, rlib, metadata } = lib;
 
-        let cnum_map = self.resolve_crate_deps(root, metadata.as_slice(), cnum, span);
+        let cnum_map = self.resolve_crate_deps(root, &metadata, cnum, span);
 
         if crate_info.macro_derive_registrar.is_some() {
             self.sess.span_err(span, "crates of the `rustc-macro` crate type \
@@ -328,8 +330,8 @@ impl<'a> CrateReader<'a> {
             name: name.to_string(),
             extern_crate: Cell::new(None),
             info: crate_info,
-            index: decoder::load_index(metadata.as_slice()),
-            key_map: decoder::load_key_map(metadata.as_slice()),
+            index: metadata.load_index(),
+            key_map: metadata.load_key_map(),
             data: metadata,
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,
@@ -414,7 +416,7 @@ impl<'a> CrateReader<'a> {
         // Note that we only do this for target triple crates, though, as we
         // don't want to match a host crate against an equivalent target one
         // already loaded.
-        let crate_info = decoder::get_crate_info(library.metadata.as_slice());
+        let crate_info = library.metadata.get_crate_info();
         if loader.triple == self.sess.opts.target_triple {
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {
@@ -465,14 +467,14 @@ impl<'a> CrateReader<'a> {
     // Go through the crate metadata and load any crates that it references
     fn resolve_crate_deps(&mut self,
                           root: &Option<CratePaths>,
-                          cdata: &[u8],
+                          metadata: &MetadataBlob,
                           krate: CrateNum,
                           span: Span)
                           -> cstore::CrateNumMap {
         debug!("resolving deps of external crate");
         // The map from crate numbers in the crate we're resolving to local crate
         // numbers
-        let map: FnvHashMap<_, _> = decoder::get_crate_deps(cdata).iter().map(|dep| {
+        let map: FnvHashMap<_, _> = metadata.get_crate_deps().iter().map(|dep| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
             let (local_cnum, ..) = self.resolve_crate(root,
                                                         &dep.name,
@@ -566,7 +568,7 @@ impl<'a> CrateReader<'a> {
         let ci = self.extract_crate_info(item).unwrap();
         let ekrate = self.read_extension_crate(item.span, &ci);
 
-        let crate_info = decoder::get_crate_info(ekrate.metadata.as_slice());
+        let crate_info = ekrate.metadata.get_crate_info();
         let source_name = format!("<{} macros>", item.ident);
         let mut ret = Macros {
             macro_rules: Vec::new(),
@@ -574,8 +576,7 @@ impl<'a> CrateReader<'a> {
             svh: crate_info.hash,
             dylib: None,
         };
-        decoder::each_exported_macro(ekrate.metadata.as_slice(),
-                                     |name, attrs, span, body| {
+        ekrate.metadata.each_exported_macro(|name, attrs, span, body| {
             // NB: Don't use parse::parse_tts_from_source_str because it parses with
             // quote_depth > 0.
             let mut p = parse::new_parser_from_source_str(&self.sess.parse_sess,
@@ -670,7 +671,7 @@ impl<'a> CrateReader<'a> {
             span_fatal!(self.sess, span, E0456, "{}", &message[..]);
         }
 
-        let crate_info = decoder::get_crate_info(ekrate.metadata.as_slice());
+        let crate_info = ekrate.metadata.get_crate_info();
         match (ekrate.dylib.as_ref(), crate_info.plugin_registrar_fn) {
             (Some(dylib), Some(reg)) => {
                 Some((dylib.to_path_buf(), crate_info.hash, reg))
@@ -1111,7 +1112,7 @@ pub fn read_local_crates(sess: & Session,
 pub fn import_codemap(local_codemap: &codemap::CodeMap,
                       metadata: &MetadataBlob)
                       -> Vec<cstore::ImportedFileMap> {
-    let external_codemap = decoder::get_imported_filemaps(metadata.as_slice());
+    let external_codemap = metadata.get_imported_filemaps();
 
     let imported_filemaps = external_codemap.into_iter().map(|filemap_to_import| {
         // Try to find an existing FileMap that can be reused for the filemap to

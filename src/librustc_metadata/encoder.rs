@@ -11,7 +11,6 @@
 // Metadata encoding
 
 #![allow(unused_must_use)] // everything is just a MemWriter, can't fail
-#![allow(non_camel_case_types)]
 
 use astencode::encode_inlined_item;
 use common::*;
@@ -226,9 +225,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             struct_ctor: struct_ctor
         })
     }
-}
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// Encode data for the given variant of the given ADT. The
     /// index of the variant is untracked: this is ok because we
     /// will have to lookup the adt-def by its id, and that gives us
@@ -249,8 +246,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_visibility(enum_vis);
 
         let attrs = tcx.get_attrs(vid);
-        encode_attributes(self, &attrs);
-        encode_stability(self, vid);
+        self.encode_attributes(&attrs);
+        self.encode_stability(vid);
 
         let data = self.encode_variant(variant, None);
 
@@ -264,9 +261,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         self.encode_bounds_and_type_for_item(vid);
     }
-}
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_mod(&mut self,
                            FromId(id, (md, attrs, vis)):
                            FromId<(&hir::Mod, &[ast::Attribute], &hir::Visibility)>) {
@@ -276,8 +271,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_def_key(def_id);
         self.encode_family(Family::Mod);
         self.encode_visibility(vis);
-        encode_stability(self, def_id);
-        encode_attributes(self, attrs);
+        self.encode_stability(def_id);
+        self.encode_attributes(attrs);
         debug!("(encoding info for module) encoding info for module ID {}", id);
 
         // Encode info about all the module children.
@@ -371,8 +366,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let variant_id = tcx.map.as_local_node_id(variant.did).unwrap();
         let variant_data = tcx.map.expect_variant_data(variant_id);
-        encode_attributes(self, &variant_data.fields()[field_index].attrs);
-        encode_stability(self, field.did);
+        self.encode_attributes(&variant_data.fields()[field_index].attrs);
+        self.encode_stability(field.did);
     }
 
     fn encode_struct_ctor(&mut self, ctor_def_id: DefId) {
@@ -380,7 +375,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_family(Family::Struct);
         self.encode_bounds_and_type_for_item(ctor_def_id);
 
-        encode_stability(self, ctor_def_id);
+        self.encode_stability(ctor_def_id);
     }
 
     fn encode_generics(&mut self,
@@ -445,8 +440,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_family(family);
         self.encode_visibility(trait_item.vis());
 
-        encode_stability(self, def_id);
-        encode_attributes(self, &ast_item.attrs);
+        self.encode_stability(def_id);
+        self.encode_attributes(&ast_item.attrs);
         if let hir::MethodTraitItem(ref sig, _) = ast_item.node {
             self.encode_fn_arg_names(&sig.decl);
         };
@@ -499,8 +494,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_def_key(def_id);
         self.encode_family(family);
         self.encode_visibility(impl_item.vis());
-        encode_attributes(self, &ast_item.attrs);
-        encode_stability(self, def_id);
+        self.encode_attributes(&ast_item.attrs);
+        self.encode_stability(def_id);
 
         let constness = if let hir::ImplItemKind::Method(ref sig, _) = ast_item.node {
             if sig.constness == hir::Constness::Const {
@@ -555,33 +550,30 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.end_tag();
         }
     }
-}
 
-// Encodes the inherent implementations of a structure, enumeration, or trait.
-fn encode_inherent_implementations(ecx: &mut EncodeContext,
-                                   def_id: DefId) {
-    ecx.start_tag(item_tag::inherent_impls);
-    match ecx.tcx.inherent_impls.borrow().get(&def_id) {
-        None => <[DefId]>::encode(&[], ecx).unwrap(),
-        Some(implementations) => implementations.encode(ecx).unwrap()
+    // Encodes the inherent implementations of a structure, enumeration, or trait.
+    fn encode_inherent_implementations(&mut self, def_id: DefId) {
+        self.start_tag(item_tag::inherent_impls);
+        match self.tcx.inherent_impls.borrow().get(&def_id) {
+            None => <[DefId]>::encode(&[], self).unwrap(),
+            Some(implementations) => implementations.encode(self).unwrap()
+        }
+        self.end_tag();
     }
-    ecx.end_tag();
-}
 
-fn encode_stability(ecx: &mut EncodeContext, def_id: DefId) {
-    ecx.tcx.lookup_stability(def_id).map(|stab| {
-        ecx.start_tag(item_tag::stability);
-        stab.encode(ecx).unwrap();
-        ecx.end_tag();
-    });
-    ecx.tcx.lookup_deprecation(def_id).map(|depr| {
-        ecx.start_tag(item_tag::deprecation);
-        depr.encode(ecx).unwrap();
-        ecx.end_tag();
-    });
-}
+    fn encode_stability(&mut self, def_id: DefId) {
+        self.tcx.lookup_stability(def_id).map(|stab| {
+            self.start_tag(item_tag::stability);
+            stab.encode(self).unwrap();
+            self.end_tag();
+        });
+        self.tcx.lookup_deprecation(def_id).map(|depr| {
+            self.start_tag(item_tag::deprecation);
+            depr.encode(self).unwrap();
+            self.end_tag();
+        });
+    }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_item(&mut self,
                             (def_id, item): (DefId, &hir::Item)) {
         let tcx = self.tcx;
@@ -652,7 +644,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.end_tag();
 
                 // Encode inherent implementations for self enumeration.
-                encode_inherent_implementations(self, def_id);
+                self.encode_inherent_implementations(def_id);
 
                 (Family::Enum, EntryData::Other, EntryTypedData::Other)
             }
@@ -675,7 +667,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = self.encode_variant(variant, struct_ctor);
 
                 // Encode inherent implementations for self structure.
-                encode_inherent_implementations(self, def_id);
+                self.encode_inherent_implementations(def_id);
 
                 (Family::Struct, data, EntryTypedData::Other)
             }
@@ -691,7 +683,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = self.encode_variant(def.struct_variant(), None);
 
                 // Encode inherent implementations for self union.
-                encode_inherent_implementations(self, def_id);
+                self.encode_inherent_implementations(def_id);
 
                 (Family::Union, data, EntryTypedData::Other)
             }
@@ -752,7 +744,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.end_tag();
 
                 // Encode inherent implementations for self trait.
-                encode_inherent_implementations(self, def_id);
+                self.encode_inherent_implementations(def_id);
 
                 (Family::Trait,
                  EntryData::Trait(TraitData {
@@ -772,8 +764,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_family(family);
         self.encode_def_key(def_id);
         self.encode_visibility(&item.vis);
-        encode_attributes(self, &item.attrs);
-        encode_stability(self, def_id);
+        self.encode_attributes(&item.attrs);
+        self.encode_stability(def_id);
 
         self.start_tag(item_tag::data);
         data.encode(self).unwrap();
@@ -883,8 +875,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         EntryTypedData::Other.encode(self).unwrap();
         self.end_tag();
 
-        encode_attributes(self, &nitem.attrs);
-        encode_stability(self, def_id);
+        self.encode_attributes(&nitem.attrs);
+        self.encode_stability(def_id);
     }
 }
 
@@ -970,152 +962,153 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert!(self.mir_map.map.contains_key(&def_id));
         self.encode_mir(def_id);
     }
-}
 
-fn encode_info_for_items(ecx: &mut EncodeContext) -> IndexData {
-    let krate = ecx.tcx.map.krate();
+    fn encode_info_for_items(&mut self) -> IndexData {
+        let krate = self.tcx.map.krate();
 
-    // FIXME(eddyb) Avoid wrapping the items in a doc.
-    ecx.start_tag(0).unwrap();
+        // FIXME(eddyb) Avoid wrapping the items in a doc.
+        self.start_tag(0).unwrap();
 
-    let items = {
-        let mut index = IndexBuilder::new(ecx);
-        index.record(DefId::local(CRATE_DEF_INDEX),
-                     EncodeContext::encode_info_for_mod,
-                     FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &hir::Public)));
-        let mut visitor = EncodeVisitor {
-            index: index,
+        let items = {
+            let mut index = IndexBuilder::new(self);
+            index.record(DefId::local(CRATE_DEF_INDEX),
+                        EncodeContext::encode_info_for_mod,
+                        FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &hir::Public)));
+            let mut visitor = EncodeVisitor {
+                index: index,
+            };
+            krate.visit_all_items(&mut visitor);
+            visitor.index.into_items()
         };
-        krate.visit_all_items(&mut visitor);
-        visitor.index.into_items()
-    };
 
-    ecx.end_tag();
+        self.end_tag();
 
-    items
-}
-
-fn encode_item_index(ecx: &mut EncodeContext, index: IndexData) {
-    ecx.start_tag(root_tag::index);
-    index.write_index(&mut ecx.opaque.cursor);
-    ecx.end_tag();
-}
-
-fn encode_attributes(ecx: &mut EncodeContext, attrs: &[ast::Attribute]) {
-    ecx.start_tag(item_tag::attributes);
-    attrs.encode(ecx).unwrap();
-    ecx.end_tag();
-}
-
-fn encode_crate_deps(ecx: &mut EncodeContext, cstore: &cstore::CStore) {
-    fn get_ordered_deps(cstore: &cstore::CStore)
-                        -> Vec<(CrateNum, Rc<cstore::CrateMetadata>)> {
-        // Pull the cnums and name,vers,hash out of cstore
-        let mut deps = Vec::new();
-        cstore.iter_crate_data(|cnum, val| {
-            deps.push((cnum, val.clone()));
-        });
-
-        // Sort by cnum
-        deps.sort_by(|kv1, kv2| kv1.0.cmp(&kv2.0));
-
-        // Sanity-check the crate numbers
-        let mut expected_cnum = 1;
-        for &(n, _) in &deps {
-            assert_eq!(n, CrateNum::new(expected_cnum));
-            expected_cnum += 1;
-        }
-
-        deps
+        items
     }
 
-    // We're just going to write a list of crate 'name-hash-version's, with
-    // the assumption that they are numbered 1 to n.
-    // FIXME (#2166): This is not nearly enough to support correct versioning
-    // but is enough to get transitive crate dependencies working.
-    ecx.start_tag(root_tag::crate_deps);
-    ecx.seq(&get_ordered_deps(cstore), |_, &(_, ref dep)| {
-        (dep.name(), dep.hash(), dep.explicitly_linked.get())
-    });
-    ecx.end_tag();
-}
+    fn encode_item_index(&mut self, index: IndexData) {
+        self.start_tag(root_tag::index);
+        index.write_index(&mut self.opaque.cursor);
+        self.end_tag();
+    }
 
-fn encode_lang_items(ecx: &mut EncodeContext) {
-    let tcx = ecx.tcx;
-    let lang_items = || {
-        tcx.lang_items.items().iter().enumerate().filter_map(|(i, &opt_def_id)| {
-            if let Some(def_id) = opt_def_id {
-                if def_id.is_local() {
-                    return Some((def_id.index, i));
-                }
+    fn encode_attributes(&mut self, attrs: &[ast::Attribute]) {
+        self.start_tag(item_tag::attributes);
+        attrs.encode(self).unwrap();
+        self.end_tag();
+    }
+
+    fn encode_crate_deps(&mut self) {
+        fn get_ordered_deps(cstore: &cstore::CStore)
+                            -> Vec<(CrateNum, Rc<cstore::CrateMetadata>)> {
+            // Pull the cnums and name,vers,hash out of cstore
+            let mut deps = Vec::new();
+            cstore.iter_crate_data(|cnum, val| {
+                deps.push((cnum, val.clone()));
+            });
+
+            // Sort by cnum
+            deps.sort_by(|kv1, kv2| kv1.0.cmp(&kv2.0));
+
+            // Sanity-check the crate numbers
+            let mut expected_cnum = 1;
+            for &(n, _) in &deps {
+                assert_eq!(n, CrateNum::new(expected_cnum));
+                expected_cnum += 1;
             }
-            None
-        })
-    };
 
-    let count = lang_items().count();
-    let mut lang_items = lang_items();
+            deps
+        }
 
-    ecx.start_tag(root_tag::lang_items);
-    ecx.seq(0..count, |_, _| lang_items.next().unwrap());
-    ecx.end_tag();
+        // We're just going to write a list of crate 'name-hash-version's, with
+        // the assumption that they are numbered 1 to n.
+        // FIXME (#2166): This is not nearly enough to support correct versioning
+        // but is enough to get transitive crate dependencies working.
+        self.start_tag(root_tag::crate_deps);
+        let deps = get_ordered_deps(self.cstore);
+        self.seq(&deps, |_, &(_, ref dep)| {
+            (dep.name(), dep.hash(), dep.explicitly_linked.get())
+        });
+        self.end_tag();
+    }
 
-    ecx.start_tag(root_tag::lang_items_missing);
-    tcx.lang_items.missing.encode(ecx).unwrap();
-    ecx.end_tag();
-}
-
-fn encode_native_libraries(ecx: &mut EncodeContext) {
-    let used_libraries = ecx.tcx.sess.cstore.used_libraries();
-    let libs = || {
-        used_libraries.iter().filter_map(|&(ref lib, kind)| {
-            match kind {
-                cstore::NativeStatic => None, // these libraries are not propagated
-                cstore::NativeFramework | cstore::NativeUnknown => {
-                    Some((kind, lib))
+    fn encode_lang_items(&mut self) {
+        let tcx = self.tcx;
+        let lang_items = || {
+            tcx.lang_items.items().iter().enumerate().filter_map(|(i, &opt_def_id)| {
+                if let Some(def_id) = opt_def_id {
+                    if def_id.is_local() {
+                        return Some((def_id.index, i));
+                    }
                 }
-            }
-        })
-    };
+                None
+            })
+        };
 
-    let count = libs().count();
-    let mut libs = libs();
+        let count = lang_items().count();
+        let mut lang_items = lang_items();
 
-    ecx.start_tag(root_tag::native_libraries);
-    ecx.seq(0..count, |_, _| libs.next().unwrap());
-    ecx.end_tag();
-}
+        self.start_tag(root_tag::lang_items);
+        self.seq(0..count, |_, _| lang_items.next().unwrap());
+        self.end_tag();
 
-fn encode_codemap(ecx: &mut EncodeContext) {
-    let codemap = ecx.tcx.sess.codemap();
-    let all_filemaps = codemap.files.borrow();
-    let filemaps = || {
-        // No need to export empty filemaps, as they can't contain spans
-        // that need translation.
-        // Also no need to re-export imported filemaps, as any downstream
-        // crate will import them from their original source.
-        all_filemaps.iter().filter(|filemap| {
-            !filemap.lines.borrow().is_empty() && !filemap.is_imported()
-        })
-    };
+        self.start_tag(root_tag::lang_items_missing);
+        tcx.lang_items.missing.encode(self).unwrap();
+        self.end_tag();
+    }
 
-    let count = filemaps().count();
-    let mut filemaps = filemaps();
+    fn encode_native_libraries(&mut self) {
+        let used_libraries = self.tcx.sess.cstore.used_libraries();
+        let libs = || {
+            used_libraries.iter().filter_map(|&(ref lib, kind)| {
+                match kind {
+                    cstore::NativeStatic => None, // these libraries are not propagated
+                    cstore::NativeFramework | cstore::NativeUnknown => {
+                        Some((kind, lib))
+                    }
+                }
+            })
+        };
 
-    ecx.start_tag(root_tag::codemap);
-    ecx.seq(0..count, |_, _| filemaps.next().unwrap());
-    ecx.end_tag();
-}
+        let count = libs().count();
+        let mut libs = libs();
 
-/// Serialize the text of the exported macros
-fn encode_macro_defs(ecx: &mut EncodeContext) {
-    let tcx = ecx.tcx;
-    ecx.start_tag(root_tag::macro_defs);
-    ecx.seq(&tcx.map.krate().exported_macros, |_, def| {
-        let body = ::syntax::print::pprust::tts_to_string(&def.body);
-        (def.name, &def.attrs, def.span, body)
-    });
-    ecx.end_tag();
+        self.start_tag(root_tag::native_libraries);
+        self.seq(0..count, |_, _| libs.next().unwrap());
+        self.end_tag();
+    }
+
+    fn encode_codemap(&mut self) {
+        let codemap = self.tcx.sess.codemap();
+        let all_filemaps = codemap.files.borrow();
+        let filemaps = || {
+            // No need to export empty filemaps, as they can't contain spans
+            // that need translation.
+            // Also no need to re-export imported filemaps, as any downstream
+            // crate will import them from their original source.
+            all_filemaps.iter().filter(|filemap| {
+                !filemap.lines.borrow().is_empty() && !filemap.is_imported()
+            })
+        };
+
+        let count = filemaps().count();
+        let mut filemaps = filemaps();
+
+        self.start_tag(root_tag::codemap);
+        self.seq(0..count, |_, _| filemaps.next().unwrap());
+        self.end_tag();
+    }
+
+    /// Serialize the text of the exported macros
+    fn encode_macro_defs(&mut self) {
+        let tcx = self.tcx;
+        self.start_tag(root_tag::macro_defs);
+        self.seq(&tcx.map.krate().exported_macros, |_, def| {
+            let body = ::syntax::print::pprust::tts_to_string(&def.body);
+            (def.name, &def.attrs, def.span, body)
+        });
+        self.end_tag();
+    }
 }
 
 struct ImplVisitor<'a, 'tcx:'a> {
@@ -1136,59 +1129,61 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
     }
 }
 
-/// Encodes an index, mapping each trait to its (local) implementations.
-fn encode_impls(ecx: &mut EncodeContext) {
-    let mut visitor = ImplVisitor {
-        tcx: ecx.tcx,
-        impls: FnvHashMap()
-    };
-    ecx.tcx.map.krate().visit_all_items(&mut visitor);
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    /// Encodes an index, mapping each trait to its (local) implementations.
+    fn encode_impls(&mut self) {
+        let mut visitor = ImplVisitor {
+            tcx: self.tcx,
+            impls: FnvHashMap()
+        };
+        self.tcx.map.krate().visit_all_items(&mut visitor);
 
-    ecx.start_tag(root_tag::impls);
-    for (trait_def_id, trait_impls) in visitor.impls {
-        // FIXME(eddyb) Avoid wrapping the entries in docs.
-        ecx.start_tag(0);
-        (trait_def_id.krate.as_u32(), trait_def_id.index).encode(ecx).unwrap();
-        trait_impls.encode(ecx).unwrap();
-        ecx.end_tag();
-    }
-    ecx.end_tag();
-}
-
-// Encodes all reachable symbols in this crate into the metadata.
-//
-// This pass is seeded off the reachability list calculated in the
-// middle::reachable module but filters out items that either don't have a
-// symbol associated with them (they weren't translated) or if they're an FFI
-// definition (as that's not defined in this crate).
-fn encode_reachable(ecx: &mut EncodeContext) {
-    ecx.start_tag(root_tag::reachable_ids);
-
-    let reachable = ecx.reachable;
-    ecx.seq(reachable, |ecx, &id| ecx.tcx.map.local_def_id(id).index);
-
-    ecx.end_tag();
-}
-
-fn encode_dylib_dependency_formats(ecx: &mut EncodeContext) {
-    ecx.start_tag(root_tag::dylib_dependency_formats);
-    match ecx.tcx.sess.dependency_formats.borrow().get(&config::CrateTypeDylib) {
-        Some(arr) => {
-            ecx.seq(arr, |_, slot| {
-                match *slot {
-                    Linkage::NotLinked |
-                    Linkage::IncludedFromDylib => None,
-
-                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
-                    Linkage::Static => Some(LinkagePreference::RequireStatic),
-                }
-            });
+        self.start_tag(root_tag::impls);
+        for (trait_def_id, trait_impls) in visitor.impls {
+            // FIXME(eddyb) Avoid wrapping the entries in docs.
+            self.start_tag(0);
+            (trait_def_id.krate.as_u32(), trait_def_id.index).encode(self).unwrap();
+            trait_impls.encode(self).unwrap();
+            self.end_tag();
         }
-        None => {
-            <[Option<LinkagePreference>]>::encode(&[], ecx).unwrap();
-        }
+        self.end_tag();
     }
-    ecx.end_tag();
+
+    // Encodes all reachable symbols in this crate into the metadata.
+    //
+    // This pass is seeded off the reachability list calculated in the
+    // middle::reachable module but filters out items that either don't have a
+    // symbol associated with them (they weren't translated) or if they're an FFI
+    // definition (as that's not defined in this crate).
+    fn encode_reachable(&mut self) {
+        self.start_tag(root_tag::reachable_ids);
+
+        let reachable = self.reachable;
+        self.seq(reachable, |ecx, &id| ecx.tcx.map.local_def_id(id).index);
+
+        self.end_tag();
+    }
+
+    fn encode_dylib_dependency_formats(&mut self) {
+        self.start_tag(root_tag::dylib_dependency_formats);
+        match self.tcx.sess.dependency_formats.borrow().get(&config::CrateTypeDylib) {
+            Some(arr) => {
+                self.seq(arr, |_, slot| {
+                    match *slot {
+                        Linkage::NotLinked |
+                        Linkage::IncludedFromDylib => None,
+
+                        Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
+                        Linkage::Static => Some(LinkagePreference::RequireStatic),
+                    }
+                });
+            }
+            None => {
+                <[Option<LinkagePreference>]>::encode(&[], self).unwrap();
+            }
+        }
+        self.end_tag();
+    }
 }
 
 pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1281,47 +1276,47 @@ fn encode_metadata_inner(ecx: &mut EncodeContext) {
     ecx.end_tag();
 
     let mut i = ecx.position();
-    encode_crate_deps(ecx, ecx.cstore);
-    encode_dylib_dependency_formats(ecx);
+    ecx.encode_crate_deps();
+    ecx.encode_dylib_dependency_formats();
     let dep_bytes = ecx.position() - i;
 
     // Encode the language items.
     i = ecx.position();
-    encode_lang_items(ecx);
+    ecx.encode_lang_items();
     let lang_item_bytes = ecx.position() - i;
 
     // Encode the native libraries used
     i = ecx.position();
-    encode_native_libraries(ecx);
+    ecx.encode_native_libraries();
     let native_lib_bytes = ecx.position() - i;
 
     // Encode codemap
     i = ecx.position();
-    encode_codemap(ecx);
+    ecx.encode_codemap();
     let codemap_bytes = ecx.position() - i;
 
     // Encode macro definitions
     i = ecx.position();
-    encode_macro_defs(ecx);
+    ecx.encode_macro_defs();
     let macro_defs_bytes = ecx.position() - i;
 
     // Encode the def IDs of impls, for coherence checking.
     i = ecx.position();
-    encode_impls(ecx);
+    ecx.encode_impls();
     let impl_bytes = ecx.position() - i;
 
     // Encode reachability info.
     i = ecx.position();
-    encode_reachable(ecx);
+    ecx.encode_reachable();
     let reachable_bytes = ecx.position() - i;
 
     // Encode and index the items.
     i = ecx.position();
-    let items = encode_info_for_items(ecx);
+    let items = ecx.encode_info_for_items();
     let item_bytes = ecx.position() - i;
 
     i = ecx.position();
-    encode_item_index(ecx, items);
+    ecx.encode_item_index(items);
     let index_bytes = ecx.position() - i;
 
     let total_bytes = ecx.position();

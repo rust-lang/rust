@@ -188,7 +188,6 @@ pub trait CrateStore<'tcx> {
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
-    fn crate_attrs(&self, cnum: CrateNum) -> Vec<ast::Attribute>;
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
     fn crate_name(&self, cnum: CrateNum) -> InternedString;
@@ -365,8 +364,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         bug!("panic_strategy")
     }
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
-    fn crate_attrs(&self, cnum: CrateNum) -> Vec<ast::Attribute>
-        { bug!("crate_attrs") }
     fn crate_name(&self, cnum: CrateNum) -> InternedString { bug!("crate_name") }
     fn original_crate_name(&self, cnum: CrateNum) -> InternedString {
         bug!("original_crate_name")

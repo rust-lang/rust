@@ -214,7 +214,6 @@
 
 use cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use common::{metadata_encoding_version, rustc_version};
-use decoder;
 
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
@@ -511,7 +510,7 @@ impl<'a> Context<'a> {
                     if let Some((ref p, _)) = lib.rlib {
                         err.note(&format!("path: {}", p.display()));
                     }
-                    let crate_info = decoder::get_crate_info(lib.metadata.as_slice());
+                    let crate_info = lib.metadata.get_crate_info();
                     note_crate_name(&mut err, &crate_info.name);
                 }
                 err.emit();
@@ -550,7 +549,7 @@ impl<'a> Context<'a> {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let (hash, metadata) = match get_metadata_section(self.target, flavor, &lib) {
                 Ok(blob) => {
-                    if let Some(h) = self.crate_matches(blob.as_slice(), &lib) {
+                    if let Some(h) = self.crate_matches(&blob, &lib) {
                         (h, blob)
                     } else {
                         info!("metadata mismatch");
@@ -597,8 +596,8 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> Option<Svh> {
-        let crate_rustc_version = decoder::crate_rustc_version(crate_data);
+    fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
+        let crate_rustc_version = metadata.crate_rustc_version();
         if crate_rustc_version != Some(rustc_version()) {
             let message = crate_rustc_version.unwrap_or(format!("an unknown compiler"));
             info!("Rejecting via version: expected {} got {}", rustc_version(), message);
@@ -609,7 +608,7 @@ impl<'a> Context<'a> {
             return None;
         }
 
-        let crate_info = decoder::get_crate_info(crate_data);
+        let crate_info = metadata.get_crate_info();
         if self.should_match_name {
             if self.crate_name != crate_info.name {
                 info!("Rejecting via crate name"); return None;
@@ -895,7 +894,7 @@ pub fn list_file_metadata(target: &Target, path: &Path,
     let filename = path.file_name().unwrap().to_str().unwrap();
     let flavor = if filename.ends_with(".rlib") { CrateFlavor::Rlib } else { CrateFlavor::Dylib };
     match get_metadata_section(target, flavor, path) {
-        Ok(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
+        Ok(metadata) => metadata.list_crate_metadata(out),
         Err(msg) => {
             write!(out, "{}\n", msg)
         }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
-
 use rustc::hir::map as ast_map;
 
 use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange};
@@ -64,9 +62,7 @@ pub fn decode_inlined_item<'a, 'tcx>(cdata: &CrateMetadata,
                                      orig_did: DefId)
                                      -> &'tcx InlinedItem {
     debug!("> Decoding inlined fn: {:?}", tcx.item_path_str(orig_did));
-    let dcx = &mut ast_doc.decoder();
-    dcx.tcx = Some(tcx);
-    dcx.cdata = Some(cdata);
+    let dcx = &mut DecodeContext::new(ast_doc, Some(cdata)).typed(tcx);
     dcx.from_id_range = IdRange::decode(dcx).unwrap();
     let cnt = dcx.from_id_range.max.as_usize() - dcx.from_id_range.min.as_usize();
     dcx.to_id_range.min = tcx.sess.reserve_node_ids(cnt);

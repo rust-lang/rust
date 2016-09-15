@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
-
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
@@ -17,7 +15,6 @@ pub use self::MetadataBlob::*;
 
 use common;
 use creader;
-use decoder;
 use index;
 use loader;
 
@@ -297,7 +294,6 @@ impl CStore {
 }
 
 impl CrateMetadata {
-    pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
     pub fn name(&self) -> &str { &self.info.name }
     pub fn hash(&self) -> Svh { self.info.hash }
     pub fn disambiguator(&self) -> &str { &self.info.disambiguator }
@@ -317,35 +313,39 @@ impl CrateMetadata {
     }
 
     pub fn is_staged_api(&self) -> bool {
-        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
-        attrs.iter().any(|attr| {
+        self.get_item_attrs(CRATE_DEF_INDEX).iter().any(|attr| {
             attr.name() == "stable" || attr.name() == "unstable"
         })
     }
 
     pub fn is_allocator(&self) -> bool {
-        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "allocator")
     }
 
     pub fn needs_allocator(&self) -> bool {
-        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "needs_allocator")
     }
 
     pub fn is_panic_runtime(&self) -> bool {
-        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "panic_runtime")
     }
 
     pub fn needs_panic_runtime(&self) -> bool {
-        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "needs_panic_runtime")
     }
 
     pub fn is_compiler_builtins(&self) -> bool {
-        let attrs = decoder::get_crate_attributes(self.data());
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "compiler_builtins")
+    }
+
+    pub fn is_no_builtins(&self) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+        attr::contains_name(&attrs, "no_builtins")
     }
 
     pub fn panic_strategy(&self) -> PanicStrategy {
