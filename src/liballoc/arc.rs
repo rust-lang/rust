@@ -331,6 +331,33 @@ impl<T: ?Sized> Arc<T> {
             deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
         }
     }
+
+    #[inline]
+    #[unstable(feature = "ptr_eq",
+               reason = "newly added",
+               issue = "36497")]
+    /// Return whether two `Arc` references point to the same value
+    /// (not just values that compare equal).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_eq)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let five = Arc::new(5);
+    /// let same_five = five.clone();
+    /// let other_five = Arc::new(5);
+    ///
+    /// assert!(Arc::ptr_eq(&five, &same_five));
+    /// assert!(!Arc::ptr_eq(&five, &other_five));
+    /// ```
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
+        let this_ptr: *const ArcInner<T> = *this.ptr;
+        let other_ptr: *const ArcInner<T> = *other.ptr;
+        this_ptr == other_ptr
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1199,6 +1226,16 @@ mod tests {
     fn test_new_weak() {
         let foo: Weak<usize> = Weak::new();
         assert!(foo.upgrade().is_none());
+    }
+
+    #[test]
+    fn test_ptr_eq() {
+        let five = Arc::new(5);
+        let same_five = five.clone();
+        let other_five = Arc::new(5);
+
+        assert!(Arc::ptr_eq(&five, &same_five));
+        assert!(!Arc::ptr_eq(&five, &other_five));
     }
 }
 
