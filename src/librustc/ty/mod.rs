@@ -1018,10 +1018,6 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     pub fn item_name(&self) -> Name {
         self.0.projection_ty.item_name // safe to skip the binder to access a name
     }
-
-    pub fn sort_key(&self) -> (DefId, Name) {
-        self.0.projection_ty.sort_key()
-    }
 }
 
 pub trait ToPolyTraitRef<'tcx> {

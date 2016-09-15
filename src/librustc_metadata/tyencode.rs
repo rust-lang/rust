@@ -104,14 +104,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
 
             enc_region(w, cx, obj.region_bound);
 
-            // Encode projection_bounds in a stable order
-            let mut projection_bounds: Vec<_> = obj.projection_bounds
-                                                .iter()
-                                                .map(|b| (b.item_name().as_str(), b))
-                                                .collect();
-            projection_bounds.sort_by_key(|&(ref name, _)| name.clone());
-
-            for tp in projection_bounds.iter().map(|&(_, tp)| tp) {
+            for tp in &obj.projection_bounds {
                 write!(w, "P");
                 enc_existential_projection(w, cx, &tp.0);
             }

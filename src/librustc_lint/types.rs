@@ -569,7 +569,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::TyTuple(_) => {
                 FfiUnsafe("found Rust tuple type in foreign module; \
-                           consider using a struct instead`")
+                           consider using a struct instead")
             }
 
             ty::TyRawPtr(ref m) | ty::TyRef(_, ref m) => {

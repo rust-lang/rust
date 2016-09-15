@@ -21,7 +21,7 @@ use util::nodemap::{NodeMap, FnvHashMap};
 use util::common::duration_to_secs_str;
 use mir::transform as mir_pass;
 
-use syntax::ast::{NodeId, Name};
+use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder};
 use errors::emitter::{Emitter, EmitterWriter};
 use syntax::json::JsonEmitter;
@@ -39,7 +39,7 @@ use llvm;
 
 use std::path::{Path, PathBuf};
 use std::cell::{self, Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::env;
 use std::ffi::CString;
 use std::rc::Rc;
@@ -95,10 +95,6 @@ pub struct Session {
     /// injected.
     pub injected_allocator: Cell<Option<ast::CrateNum>>,
     pub injected_panic_runtime: Cell<Option<ast::CrateNum>>,
-
-    /// Names of all bang-style macros and syntax extensions
-    /// available in this crate
-    pub available_macros: RefCell<HashSet<Name>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -552,7 +548,6 @@ pub fn build_session_(sopts: config::Options,
         next_node_id: Cell::new(1),
         injected_allocator: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
-        available_macros: RefCell::new(HashSet::new()),
         imported_macro_spans: RefCell::new(HashMap::new()),
         incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
         perf_stats: PerfStats {

@@ -23,7 +23,7 @@ use std::mem;
 use std::ops;
 use syntax::abi;
 use syntax::ast::{self, Name};
-use syntax::parse::token::keywords;
+use syntax::parse::token::{keywords, InternedString};
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 
@@ -440,12 +440,6 @@ pub struct ProjectionTy<'tcx> {
     pub item_name: Name,
 }
 
-impl<'tcx> ProjectionTy<'tcx> {
-    pub fn sort_key(&self) -> (DefId, Name) {
-        (self.trait_ref.def_id, self.item_name)
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct BareFnTy<'tcx> {
     pub unsafety: hir::Unsafety,
@@ -738,8 +732,17 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
         self.0.item_name // safe to skip the binder to access a name
     }
 
-    pub fn sort_key(&self) -> (DefId, Name) {
-        (self.0.trait_ref.def_id, self.0.item_name)
+    pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (u64, InternedString) {
+        // We want something here that is stable across crate boundaries.
+        // The DefId isn't but the `deterministic_hash` of the corresponding
+        // DefPath is.
+        let trait_def = tcx.lookup_trait_def(self.0.trait_ref.def_id);
+        let def_path_hash = trait_def.def_path_hash;
+
+        // An `ast::Name` is also not stable (it's just an index into an
+        // interning table), so map to the corresponding `InternedString`.
+        let item_name = self.0.item_name.as_str();
+        (def_path_hash, item_name)
     }
 
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
