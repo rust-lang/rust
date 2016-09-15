@@ -97,6 +97,146 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn subsec_nanos(&self) -> u32 { self.nanos }
+
+    /// Checked duration addition. Computes `self + other`, returning `None`
+    /// if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(duration_checked_ops)]
+    ///
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)), Some(Duration::new(0, 1)));
+    /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(std::u64::MAX, 0)), None);
+    /// ```
+    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[inline]
+    pub fn checked_add(self, rhs: Duration) -> Option<Duration> {
+        if let Some(mut secs) = self.secs.checked_add(rhs.secs) {
+            let mut nanos = self.nanos + rhs.nanos;
+            if nanos >= NANOS_PER_SEC {
+                nanos -= NANOS_PER_SEC;
+                if let Some(new_secs) = secs.checked_add(1) {
+                    secs = new_secs;
+                } else {
+                    return None;
+                }
+            }
+            debug_assert!(nanos < NANOS_PER_SEC);
+            Some(Duration {
+                secs: secs,
+                nanos: nanos,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Checked duration subtraction. Computes `self + other`, returning `None`
+    /// if the result would be negative or if underflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(duration_checked_ops)]
+    ///
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 1).checked_sub(Duration::new(0, 0)), Some(Duration::new(0, 1)));
+    /// assert_eq!(Duration::new(0, 0).checked_sub(Duration::new(0, 1)), None);
+    /// ```
+    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[inline]
+    pub fn checked_sub(self, rhs: Duration) -> Option<Duration> {
+        if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
+            let nanos = if self.nanos >= rhs.nanos {
+                self.nanos - rhs.nanos
+            } else {
+                if let Some(sub_secs) = secs.checked_sub(1) {
+                    secs = sub_secs;
+                    self.nanos + NANOS_PER_SEC - rhs.nanos
+                } else {
+                    return None;
+                }
+            };
+            debug_assert!(nanos < NANOS_PER_SEC);
+            Some(Duration { secs: secs, nanos: nanos })
+        } else {
+            None
+        }
+    }
+
+    /// Checked duration multiplication. Computes `self * other`, returning
+    /// `None` if underflow or overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(duration_checked_ops)]
+    ///
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 500_000_001).checked_mul(2), Some(Duration::new(1, 2)));
+    /// assert_eq!(Duration::new(std::u64::MAX - 1, 0).checked_mul(2), None);
+    /// ```
+    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[inline]
+    pub fn checked_mul(self, rhs: u32) -> Option<Duration> {
+        // Multiply nanoseconds as u64, because it cannot overflow that way.
+        let total_nanos = self.nanos as u64 * rhs as u64;
+        let extra_secs = total_nanos / (NANOS_PER_SEC as u64);
+        let nanos = (total_nanos % (NANOS_PER_SEC as u64)) as u32;
+        if let Some(secs) = self.secs
+            .checked_mul(rhs as u64)
+            .and_then(|s| s.checked_add(extra_secs)) {
+            debug_assert!(nanos < NANOS_PER_SEC);
+            Some(Duration {
+                secs: secs,
+                nanos: nanos,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Checked duration division. Computes `self / other`, returning `None`
+    /// if `other == 0` or the operation results in underflow or overflow.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(duration_checked_ops)]
+    ///
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
+    /// assert_eq!(Duration::new(1, 0).checked_div(2), Some(Duration::new(0, 500_000_000)));
+    /// assert_eq!(Duration::new(2, 0).checked_div(0), None);
+    /// ```
+    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[inline]
+    pub fn checked_div(self, rhs: u32) -> Option<Duration> {
+        if rhs != 0 {
+            let secs = self.secs / (rhs as u64);
+            let carry = self.secs - secs * (rhs as u64);
+            let extra_nanos = carry * (NANOS_PER_SEC as u64) / (rhs as u64);
+            let nanos = self.nanos / rhs + (extra_nanos as u32);
+            debug_assert!(nanos < NANOS_PER_SEC);
+            Some(Duration { secs: secs, nanos: nanos })
+        } else {
+            None
+        }
+    }
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
@@ -104,15 +244,7 @@ impl Add for Duration {
     type Output = Duration;
 
     fn add(self, rhs: Duration) -> Duration {
-        let mut secs = self.secs.checked_add(rhs.secs)
-                           .expect("overflow when adding durations");
-        let mut nanos = self.nanos + rhs.nanos;
-        if nanos >= NANOS_PER_SEC {
-            nanos -= NANOS_PER_SEC;
-            secs = secs.checked_add(1).expect("overflow when adding durations");
-        }
-        debug_assert!(nanos < NANOS_PER_SEC);
-        Duration { secs: secs, nanos: nanos }
+        self.checked_add(rhs).expect("overflow when adding durations")
     }
 }
 
@@ -128,17 +260,7 @@ impl Sub for Duration {
     type Output = Duration;
 
     fn sub(self, rhs: Duration) -> Duration {
-        let mut secs = self.secs.checked_sub(rhs.secs)
-                           .expect("overflow when subtracting durations");
-        let nanos = if self.nanos >= rhs.nanos {
-            self.nanos - rhs.nanos
-        } else {
-            secs = secs.checked_sub(1)
-                       .expect("overflow when subtracting durations");
-            self.nanos + NANOS_PER_SEC - rhs.nanos
-        };
-        debug_assert!(nanos < NANOS_PER_SEC);
-        Duration { secs: secs, nanos: nanos }
+        self.checked_sub(rhs).expect("overflow when subtracting durations")
     }
 }
 
@@ -154,15 +276,7 @@ impl Mul<u32> for Duration {
     type Output = Duration;
 
     fn mul(self, rhs: u32) -> Duration {
-        // Multiply nanoseconds as u64, because it cannot overflow that way.
-        let total_nanos = self.nanos as u64 * rhs as u64;
-        let extra_secs = total_nanos / (NANOS_PER_SEC as u64);
-        let nanos = (total_nanos % (NANOS_PER_SEC as u64)) as u32;
-        let secs = self.secs.checked_mul(rhs as u64)
-                       .and_then(|s| s.checked_add(extra_secs))
-                       .expect("overflow when multiplying duration");
-        debug_assert!(nanos < NANOS_PER_SEC);
-        Duration { secs: secs, nanos: nanos }
+        self.checked_mul(rhs).expect("overflow when multiplying duration by scalar")
     }
 }
 
@@ -178,12 +292,7 @@ impl Div<u32> for Duration {
     type Output = Duration;
 
     fn div(self, rhs: u32) -> Duration {
-        let secs = self.secs / (rhs as u64);
-        let carry = self.secs - secs * (rhs as u64);
-        let extra_nanos = carry * (NANOS_PER_SEC as u64) / (rhs as u64);
-        let nanos = self.nanos / rhs + (extra_nanos as u32);
-        debug_assert!(nanos < NANOS_PER_SEC);
-        Duration { secs: secs, nanos: nanos }
+        self.checked_div(rhs).expect("divide by zero error when dividing duration by scalar")
     }
 }
 
@@ -235,6 +344,15 @@ mod tests {
     }
 
     #[test]
+    fn checked_add() {
+        assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)),
+                   Some(Duration::new(0, 1)));
+        assert_eq!(Duration::new(0, 500_000_000).checked_add(Duration::new(0, 500_000_001)),
+                   Some(Duration::new(1, 1)));
+        assert_eq!(Duration::new(1, 0).checked_add(Duration::new(::u64::MAX, 0)), None);
+    }
+
+    #[test]
     fn sub() {
         assert_eq!(Duration::new(0, 1) - Duration::new(0, 0),
                    Duration::new(0, 1));
@@ -242,6 +360,18 @@ mod tests {
                    Duration::new(0, 1));
         assert_eq!(Duration::new(1, 0) - Duration::new(0, 1),
                    Duration::new(0, 999_999_999));
+    }
+
+    #[test]
+    fn checked_sub() {
+        let zero = Duration::new(0, 0);
+        let one_nano = Duration::new(0, 1);
+        let one_sec = Duration::new(1, 0);
+        assert_eq!(one_nano.checked_sub(zero), Some(Duration::new(0, 1)));
+        assert_eq!(one_sec.checked_sub(one_nano),
+                   Some(Duration::new(0, 999_999_999)));
+        assert_eq!(zero.checked_sub(one_nano), None);
+        assert_eq!(zero.checked_sub(one_sec), None);
     }
 
     #[test] #[should_panic]
@@ -264,10 +394,27 @@ mod tests {
     }
 
     #[test]
+    fn checked_mul() {
+        assert_eq!(Duration::new(0, 1).checked_mul(2), Some(Duration::new(0, 2)));
+        assert_eq!(Duration::new(1, 1).checked_mul(3), Some(Duration::new(3, 3)));
+        assert_eq!(Duration::new(0, 500_000_001).checked_mul(4), Some(Duration::new(2, 4)));
+        assert_eq!(Duration::new(0, 500_000_001).checked_mul(4000),
+                   Some(Duration::new(2000, 4000)));
+        assert_eq!(Duration::new(::u64::MAX - 1, 0).checked_mul(2), None);
+    }
+
+    #[test]
     fn div() {
         assert_eq!(Duration::new(0, 1) / 2, Duration::new(0, 0));
         assert_eq!(Duration::new(1, 1) / 3, Duration::new(0, 333_333_333));
         assert_eq!(Duration::new(99, 999_999_000) / 100,
                    Duration::new(0, 999_999_990));
+    }
+
+    #[test]
+    fn checked_div() {
+        assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
+        assert_eq!(Duration::new(1, 0).checked_div(2), Some(Duration::new(0, 500_000_000)));
+        assert_eq!(Duration::new(2, 0).checked_div(0), None);
     }
 }
