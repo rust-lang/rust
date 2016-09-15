@@ -4,7 +4,7 @@ error: cannot apply unary operator `!` to type `&'static str`
 12 |     assert!("foo");
    |     ^^^^^^^^^^^^^^^
    |
-   = note: this error originates in a macro from the standard library
+   = note: this error originates in a macro outside of the current crate
 
 error: aborting due to previous error
 
