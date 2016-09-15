@@ -106,6 +106,8 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(duration_checked_ops)]
+    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)), Some(Duration::new(0, 1)));
@@ -142,6 +144,8 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(duration_checked_ops)]
+    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).checked_sub(Duration::new(0, 0)), Some(Duration::new(0, 1)));
@@ -176,6 +180,8 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(duration_checked_ops)]
+    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).checked_mul(2), Some(Duration::new(1, 2)));
@@ -209,6 +215,8 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(duration_checked_ops)]
+    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
