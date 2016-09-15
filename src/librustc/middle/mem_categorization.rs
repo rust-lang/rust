@@ -67,7 +67,6 @@ pub use self::ElementKind::*;
 pub use self::MutabilityCategory::*;
 pub use self::AliasableReason::*;
 pub use self::Note::*;
-pub use self::deref_kind::*;
 
 use self::Aliasability::*;
 
@@ -194,51 +193,6 @@ pub struct cmt_<'tcx> {
 }
 
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
-
-// We pun on *T to mean both actual deref of a ptr as well
-// as accessing of components:
-#[derive(Copy, Clone)]
-pub enum deref_kind<'tcx> {
-    deref_ptr(PointerKind<'tcx>),
-    deref_interior(InteriorKind),
-}
-
-type DerefKindContext = Option<InteriorOffsetKind>;
-
-// Categorizes a derefable type.  Note that we include vectors and strings as
-// derefable (we model an index as the combination of a deref and then a
-// pointer adjustment).
-fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
-    match t.sty {
-        ty::TyBox(_) => {
-            Ok(deref_ptr(Unique))
-        }
-
-        ty::TyRef(r, mt) => {
-            let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
-            Ok(deref_ptr(BorrowedPtr(kind, r)))
-        }
-
-        ty::TyRawPtr(ref mt) => {
-            Ok(deref_ptr(UnsafePtr(mt.mutbl)))
-        }
-
-        ty::TyAdt(..) => { // newtype
-            Ok(deref_interior(InteriorField(PositionalField(0))))
-        }
-
-        ty::TyArray(..) | ty::TySlice(_) => {
-            // no deref of indexed content without supplying InteriorOffsetKind
-            if let Some(context) = context {
-                Ok(deref_interior(InteriorElement(context, ElementKind::VecElement)))
-            } else {
-                Err(())
-            }
-        }
-
-        _ => Err(()),
-    }
-}
 
 pub trait ast_node {
     fn id(&self) -> ast::NodeId;
@@ -476,7 +430,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                autoderefs,
                cmt);
         for deref in 1..autoderefs + 1 {
-            cmt = self.cat_deref(expr, cmt, deref, None)?;
+            cmt = self.cat_deref(expr, cmt, deref)?;
         }
         return Ok(cmt);
     }
@@ -488,7 +442,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         match expr.node {
           hir::ExprUnary(hir::UnDeref, ref e_base) => {
             let base_cmt = self.cat_expr(&e_base)?;
-            self.cat_deref(expr, base_cmt, 0, None)
+            self.cat_deref(expr, base_cmt, 0)
           }
 
           hir::ExprField(ref base, f_name) => {
@@ -507,7 +461,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
           hir::ExprIndex(ref base, _) => {
             let method_call = ty::MethodCall::expr(expr.id());
-            let context = InteriorOffsetKind::Index;
             match self.infcx.node_method_ty(method_call) {
                 Some(method_ty) => {
                     // If this is an index implemented by a method call, then it
@@ -529,10 +482,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     // is an rvalue. That is what we will be
                     // dereferencing.
                     let base_cmt = self.cat_rvalue_node(expr.id(), expr.span(), ret_ty);
-                    self.cat_deref_common(expr, base_cmt, 1, elem_ty, Some(context), true)
+                    Ok(self.cat_deref_common(expr, base_cmt, 1, elem_ty, true))
                 }
                 None => {
-                    self.cat_index(expr, self.cat_expr(&base)?, context)
+                    self.cat_index(expr, self.cat_expr(&base)?, InteriorOffsetKind::Index)
                 }
             }
           }
@@ -907,8 +860,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     fn cat_deref<N:ast_node>(&self,
                              node: &N,
                              base_cmt: cmt<'tcx>,
-                             deref_cnt: usize,
-                             deref_context: DerefKindContext)
+                             deref_cnt: usize)
                              -> McResult<cmt<'tcx>> {
         let method_call = ty::MethodCall {
             expr_id: node.id(),
@@ -930,12 +882,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let base_cmt_ty = base_cmt.ty;
         match base_cmt_ty.builtin_deref(true, ty::NoPreference) {
             Some(mt) => {
-                let ret = self.cat_deref_common(node, base_cmt, deref_cnt,
-                                              mt.ty,
-                                              deref_context,
-                                                /* implicit: */ false);
+                let ret = self.cat_deref_common(node, base_cmt, deref_cnt, mt.ty, false);
                 debug!("cat_deref ret {:?}", ret);
-                ret
+                Ok(ret)
             }
             None => {
                 debug!("Explicit deref of non-derefable type: {:?}",
@@ -950,40 +899,29 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                                     base_cmt: cmt<'tcx>,
                                     deref_cnt: usize,
                                     deref_ty: Ty<'tcx>,
-                                    deref_context: DerefKindContext,
                                     implicit: bool)
-                                    -> McResult<cmt<'tcx>>
+                                    -> cmt<'tcx>
     {
-        let (m, cat) = match deref_kind(base_cmt.ty, deref_context)? {
-            deref_ptr(ptr) => {
-                let ptr = if implicit {
-                    match ptr {
-                        BorrowedPtr(bk, r) => Implicit(bk, r),
-                        _ => span_bug!(node.span(),
-                            "Implicit deref of non-borrowed pointer")
-                    }
-                } else {
-                    ptr
-                };
-                // for unique ptrs, we inherit mutability from the
-                // owning reference.
-                (MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr),
-                 Categorization::Deref(base_cmt, deref_cnt, ptr))
+        let ptr = match base_cmt.ty.sty {
+            ty::TyBox(..) => Unique,
+            ty::TyRawPtr(ref mt) => UnsafePtr(mt.mutbl),
+            ty::TyRef(r, mt) => {
+                let bk = ty::BorrowKind::from_mutbl(mt.mutbl);
+                if implicit { Implicit(bk, r) } else { BorrowedPtr(bk, r) }
             }
-            deref_interior(interior) => {
-                (base_cmt.mutbl.inherit(), Categorization::Interior(base_cmt, interior))
-            }
+            ref ty => bug!("unexpected type in cat_deref_common: {:?}", ty)
         };
         let ret = Rc::new(cmt_ {
             id: node.id(),
             span: node.span(),
-            cat: cat,
-            mutbl: m,
+            // For unique ptrs, we inherit mutability from the owning reference.
+            mutbl: MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr),
+            cat: Categorization::Deref(base_cmt, deref_cnt, ptr),
             ty: deref_ty,
             note: NoteNone
         });
         debug!("cat_deref_common ret {:?}", ret);
-        Ok(ret)
+        ret
     }
 
     pub fn cat_index<N:ast_node>(&self,
@@ -1206,7 +1144,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // box p1, &p1, &mut p1.  we can ignore the mutability of
             // PatKind::Ref since that information is already contained
             // in the type.
-            let subcmt = self.cat_deref(pat, cmt, 0, None)?;
+            let subcmt = self.cat_deref(pat, cmt, 0)?;
             self.cat_pattern_(subcmt, &subpat, op)?;
           }
 
