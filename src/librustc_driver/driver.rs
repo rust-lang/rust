@@ -50,6 +50,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
+use syntax::ext::base::ExtCtxt;
 use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
 use syntax;
@@ -638,6 +639,13 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     }
     sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
+    let mut macro_loader =
+        macro_import::MacroLoader::new(sess, &cstore, crate_name, krate.config.clone());
+
+    let resolver_arenas = Resolver::arenas();
+    let mut resolver = Resolver::new(sess, make_glob_map, &mut macro_loader, &resolver_arenas);
+    syntax_ext::register_builtins(&mut resolver, sess.features.borrow().quote);
+
     krate = time(time_passes, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
@@ -672,25 +680,17 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
         };
-        let mut loader = macro_import::MacroLoader::new(sess,
-                                                        &cstore,
-                                                        crate_name,
-                                                        krate.config.clone());
-        let mut ecx = syntax::ext::base::ExtCtxt::new(&sess.parse_sess,
-                                                      krate.config.clone(),
-                                                      cfg,
-                                                      &mut loader);
-        syntax_ext::register_builtins(&mut ecx.syntax_env);
+        let mut ecx = ExtCtxt::new(&sess.parse_sess, krate.config.clone(), cfg, &mut resolver);
         let ret = syntax::ext::expand::expand_crate(&mut ecx, syntax_exts, krate);
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
-        *sess.available_macros.borrow_mut() = ecx.syntax_env.names;
         ret
     });
 
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess,
+                                         &mut resolver,
                                          sess.opts.test,
                                          krate,
                                          sess.diagnostic())
@@ -701,17 +701,13 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
         let num_crate_types = crate_types.len();
         syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
+                                                  &mut resolver,
                                                   krate,
                                                   is_rustc_macro_crate,
                                                   num_crate_types,
                                                   sess.diagnostic(),
                                                   &sess.features.borrow())
     });
-
-    let resolver_arenas = Resolver::arenas();
-    let mut resolver = Resolver::new(sess, make_glob_map, &resolver_arenas);
-
-    let krate = time(sess.time_passes(), "assigning node ids", || resolver.assign_node_ids(krate));
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
