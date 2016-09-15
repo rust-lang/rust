@@ -1,6 +1,6 @@
 - Feature Name: discriminant
 - Start Date: 2016-08-01
-- RFC PR: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1696
 - Rust Issue: [#24263](https://github.com/rust-lang/rust/pull/24263), [#34785](https://github.com/rust-lang/rust/pull/34785)
 
 # Summary
