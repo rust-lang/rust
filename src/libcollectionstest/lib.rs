@@ -21,6 +21,7 @@
 #![feature(rand)]
 #![feature(step_by)]
 #![feature(str_escape)]
+#![feature(str_replacen)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
