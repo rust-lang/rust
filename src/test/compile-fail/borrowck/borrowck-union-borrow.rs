@@ -12,15 +12,11 @@
 
 #![feature(untagged_unions)]
 
+#[derive(Clone, Copy)]
 union U {
     a: u8,
     b: u64,
 }
-
-impl Clone for U {
-    fn clone(&self) -> Self { *self }
-}
-impl Copy for U {}
 
 fn main() {
     unsafe {

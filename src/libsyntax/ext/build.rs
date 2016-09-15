@@ -97,6 +97,7 @@ pub trait AstBuilder {
                       typ: P<ast::Ty>,
                       ex: P<ast::Expr>)
                       -> P<ast::Stmt>;
+    fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt;
     fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt;
 
     // blocks
@@ -575,6 +576,23 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             node: ast::StmtKind::Local(local),
             span: sp,
         })
+    }
+
+    // Generate `let _: Type;`, usually used for type assertions.
+    fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt {
+        let local = P(ast::Local {
+            pat: self.pat_wild(span),
+            ty: Some(ty),
+            init: None,
+            id: ast::DUMMY_NODE_ID,
+            span: span,
+            attrs: ast::ThinVec::new(),
+        });
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::StmtKind::Local(local),
+            span: span,
+        }
     }
 
     fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
