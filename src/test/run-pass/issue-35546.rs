@@ -8,14 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
+// Regression test for #35546. Check that we are able to codegen
+// this. Before we had problems because of the drop glue signature
+// around dropping a trait object (specifically, when dropping the
+// `value` field of `Node<Send>`).
 
-trait Bar {}
-
-impl Bar for i32 {
-    const BAR: bool = true; //~ ERROR E0438
-        //~| NOTE not a member of trait `Bar`
+struct Node<T: ?Sized + Send> {
+    next: Option<Box<Node<Send>>>,
+    value: T,
 }
 
-fn main () {
+fn clear(head: &mut Option<Box<Node<Send>>>) {
+    match head.take() {
+        Some(node) => *head = node.next,
+        None => (),
+    }
 }
+
+fn main() {}

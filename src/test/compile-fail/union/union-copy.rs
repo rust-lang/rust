@@ -10,16 +10,16 @@
 
 #![feature(untagged_unions)]
 
+#[derive(Clone)]
 union U {
     a: u8
 }
 
+#[derive(Clone)]
 union W {
     a: String
 }
 
-impl Clone for U { fn clone(&self) { panic!(); } }
-impl Clone for W { fn clone(&self) { panic!(); } }
 impl Copy for U {} // OK
 impl Copy for W {} //~ ERROR the trait `Copy` may not be implemented for this type
 

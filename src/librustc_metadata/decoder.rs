@@ -385,12 +385,14 @@ pub fn get_trait_def<'a, 'tcx>(cdata: Cmd,
     let unsafety = parse_unsafety(item_doc);
     let associated_type_names = parse_associated_type_names(item_doc);
     let paren_sugar = parse_paren_sugar(item_doc);
+    let def_path = def_path(cdata, item_id).unwrap();
 
     ty::TraitDef::new(unsafety,
                       paren_sugar,
                       generics,
                       item_trait_ref(item_doc, tcx, cdata),
-                      associated_type_names)
+                      associated_type_names,
+                      def_path.deterministic_hash(tcx))
 }
 
 pub fn get_adt_def<'a, 'tcx>(cdata: Cmd,

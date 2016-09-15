@@ -1290,12 +1290,15 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }
     }).collect();
 
+    let def_path_hash = tcx.def_path(def_id).deterministic_hash(tcx);
+
     let trait_ref = ty::TraitRef::new(def_id, substs);
     let trait_def = ty::TraitDef::new(unsafety,
                                       paren_sugar,
                                       ty_generics,
                                       trait_ref,
-                                      associated_type_names);
+                                      associated_type_names,
+                                      def_path_hash);
 
     tcx.intern_trait_def(trait_def)
 }

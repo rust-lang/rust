@@ -520,8 +520,8 @@ impl<T> ops::Index<usize> for [T] {
     type Output = T;
 
     fn index(&self, index: usize) -> &T {
-        assert!(index < self.len());
-        unsafe { self.get_unchecked(index) }
+        // NB built-in indexing
+        &(*self)[index]
     }
 }
 
@@ -530,8 +530,8 @@ impl<T> ops::Index<usize> for [T] {
 impl<T> ops::IndexMut<usize> for [T] {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
-        assert!(index < self.len());
-        unsafe { self.get_unchecked_mut(index) }
+        // NB built-in indexing
+        &mut (*self)[index]
     }
 }
 

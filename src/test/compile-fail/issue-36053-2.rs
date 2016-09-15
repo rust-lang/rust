@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
+// Regression test for #36053. ICE was caused due to obligations
+// being added to a special, dedicated fulfillment cx during
+// a probe.
 
-trait Bar {}
-
-impl Bar for i32 {
-    const BAR: bool = true; //~ ERROR E0438
-        //~| NOTE not a member of trait `Bar`
-}
-
-fn main () {
+use std::iter::once;
+fn main() {
+    once::<&str>("str").fuse().filter(|a: &str| true).count();
+    //~^ ERROR no method named `count`
+    //~| ERROR E0281
+    //~| ERROR E0281
 }

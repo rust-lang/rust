@@ -113,10 +113,23 @@ pub trait Clone : Sized {
     }
 }
 
-// FIXME(aburka): this method is used solely by #[derive] to
-// assert that every component of a type implements Clone.
+// FIXME(aburka): these structs are used solely by #[derive] to
+// assert that every component of a type implements Clone or Copy.
 //
-// This should never be called by user code.
+// These structs should never appear in user code.
+#[doc(hidden)]
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "derive_clone_copy",
+           reason = "deriving hack, should not be public",
+           issue = "0")]
+pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: ::marker::PhantomData<T> }
+#[doc(hidden)]
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "derive_clone_copy",
+           reason = "deriving hack, should not be public",
+           issue = "0")]
+pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T> }
+#[cfg(stage0)]
 #[doc(hidden)]
 #[inline(always)]
 #[unstable(feature = "derive_clone_copy",

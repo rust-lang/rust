@@ -194,6 +194,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let ptr = if is_sized {
                 llargs[0]
             } else {
+                // FIXME(#36457) -- we should pass unsized values as two arguments
                 let scratch = alloc_ty(bcx, tp_ty, "drop");
                 call_lifetime_start(bcx, scratch);
                 Store(bcx, llargs[0], get_dataptr(bcx, scratch));

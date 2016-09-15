@@ -45,6 +45,7 @@ use self::ParentLink::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
+use rustc::middle::cstore::MacroLoader;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
@@ -79,10 +80,10 @@ use resolve_imports::{ImportDirective, NameResolution};
 // registered before they are used.
 mod diagnostics;
 
+mod macros;
 mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
-mod assign_ids;
 
 enum SuggestionType {
     Macro(String),
@@ -247,7 +248,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            "method `{}` is not a member of trait `{}`",
                                            method,
                                            trait_);
-            err.span_label(span, &format!("not a member of `{}`", trait_));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
@@ -257,7 +258,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "type `{}` is not a member of trait `{}`",
                              type_,
                              trait_);
-            err.span_label(span, &format!("not a member of trait `Foo`"));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
@@ -267,7 +268,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "const `{}` is not a member of trait `{}`",
                              const_,
                              trait_);
-            err.span_label(span, &format!("not a member of trait `Foo`"));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::VariableNotBoundInPattern(variable_name, from, to) => {
@@ -1068,6 +1069,12 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
     new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
+
+    macro_loader: &'a mut MacroLoader,
+    macro_names: FnvHashSet<Name>,
+
+    // Maps the `Mark` of an expansion to its containing module or block.
+    expansion_data: Vec<macros::ExpansionData>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1166,7 +1173,10 @@ impl Named for hir::PathSegment {
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new(session: &'a Session, make_glob_map: MakeGlobMap, arenas: &'a ResolverArenas<'a>)
+    pub fn new(session: &'a Session,
+               make_glob_map: MakeGlobMap,
+               macro_loader: &'a mut MacroLoader,
+               arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let graph_root =
@@ -1227,6 +1237,10 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
             new_import_semantics: session.features.borrow().item_like_imports,
+
+            macro_loader: macro_loader,
+            macro_names: FnvHashSet(),
+            expansion_data: vec![macros::ExpansionData::default()],
         }
     }
 
@@ -2768,8 +2782,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_best_match(&mut self, name: &str) -> SuggestionType {
-        if let Some(macro_name) = self.session.available_macros
-                                  .borrow().iter().find(|n| n.as_str() == name) {
+        if let Some(macro_name) = self.macro_names.iter().find(|n| n.as_str() == name) {
             return SuggestionType::Macro(format!("{}!", macro_name));
         }
 

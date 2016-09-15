@@ -78,4 +78,13 @@ pub fn main() {
     b.hash(&mut s2);
 
     assert_eq!(s1.finish(), s2.finish());
+
+    // Check projections
+
+    assert_eq!(TypeId::of::<other1::I32Iterator>(), other1::id_i32_iterator());
+    assert_eq!(TypeId::of::<other1::U32Iterator>(), other1::id_u32_iterator());
+    assert_eq!(other1::id_i32_iterator(), other2::id_i32_iterator());
+    assert_eq!(other1::id_u32_iterator(), other2::id_u32_iterator());
+    assert!(other1::id_i32_iterator() != other1::id_u32_iterator());
+    assert!(TypeId::of::<other1::I32Iterator>() != TypeId::of::<other1::U32Iterator>());
 }

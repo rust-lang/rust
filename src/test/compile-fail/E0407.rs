@@ -18,7 +18,7 @@ impl Foo for Bar {
     fn a() {}
     fn b() {}
     //~^ ERROR E0407
-    //~| NOTE not a member of `Foo`
+    //~| NOTE not a member of trait `Foo`
 }
 
 fn main() {

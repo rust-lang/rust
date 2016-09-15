@@ -39,6 +39,7 @@ use std::rc::Rc;
 use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
+use syntax::ext::base::LoadedMacro;
 use syntax::ptr::P;
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
@@ -492,6 +493,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 
+pub trait MacroLoader {
+     fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro>;
+}
 
 /// Metadata encoding and decoding can make use of thread-local encoding and
 /// decoding contexts. These allow implementers of serialize::Encodable and
