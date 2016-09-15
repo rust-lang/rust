@@ -170,7 +170,7 @@ impl Linker for LldLinker {
     }
 
     fn position_independent_executable(&mut self) {
-        self.args.push(cstring("--pie"));
+        // TODO --pie support disabled. Raise a warning
     }
 
     fn args(&mut self, args: &[String]) {
