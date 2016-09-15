@@ -300,6 +300,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
             }
 
+            "ctpop" => {
+                let elem_ty = substs.type_at(0);
+                let elem_size = self.type_size(elem_ty);
+                let num = self.memory.read_uint(args_ptrs[0], elem_size)?.count_ones();
+                self.memory.write_uint(dest, num.into(), elem_size)?;
+            }
+
+            "ctlz" => {
+                let elem_ty = substs.type_at(0);
+                let elem_size = self.type_size(elem_ty);
+                let num = self.memory.read_uint(args_ptrs[0], elem_size)?.leading_zeros();
+                self.memory.write_uint(dest, num.into(), elem_size)?;
+            }
+
             "discriminant_value" => {
                 let ty = substs.type_at(0);
                 let adt_ptr = self.memory.read_ptr(args_ptrs[0])?;
