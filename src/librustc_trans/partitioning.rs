@@ -261,12 +261,6 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
 {
     let tcx = scx.tcx();
 
-    if let PartitioningStrategy::FixedUnitCount(1) = strategy {
-        // If there is only a single codegen-unit, we can use a very simple
-        // scheme and don't have to bother with doing much analysis.
-        return vec![single_codegen_unit(tcx, trans_items, reachable)];
-    }
-
     // In the first step, we place all regular translation items into their
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
@@ -320,7 +314,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     let mut codegen_units = FnvHashMap();
 
     for trans_item in trans_items {
-        let is_root = !trans_item.is_instantiated_only_on_demand();
+        let is_root = !trans_item.is_instantiated_only_on_demand(tcx);
 
         if is_root {
             let characteristic_def_id = characteristic_def_id_of_trans_item(scx, trans_item);
@@ -454,7 +448,6 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
                 // reliably in that case.
                 new_codegen_unit.items.insert(trans_item, llvm::InternalLinkage);
             } else {
-                assert!(trans_item.is_instantiated_only_on_demand());
                 // We can't be sure if this will also be instantiated
                 // somewhere else, so we add an instance here with
                 // InternalLinkage so we don't get any conflicts.
@@ -548,68 +541,6 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     return token::intern_and_get_ident(&mod_path[..]);
-}
-
-fn single_codegen_unit<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    trans_items: I,
-                                    reachable: &NodeSet)
-                                    -> CodegenUnit<'tcx>
-    where I: Iterator<Item = TransItem<'tcx>>
-{
-    let mut items = FnvHashMap();
-
-    for trans_item in trans_items {
-        let linkage = trans_item.explicit_linkage(tcx).unwrap_or_else(|| {
-            match trans_item {
-                TransItem::Static(node_id) => {
-                    if reachable.contains(&node_id) {
-                        llvm::ExternalLinkage
-                    } else {
-                        llvm::PrivateLinkage
-                    }
-                }
-                TransItem::DropGlue(_) => {
-                    llvm::InternalLinkage
-                }
-                TransItem::Fn(instance) => {
-                    if trans_item.is_generic_fn() {
-                        // FIXME(mw): Assigning internal linkage to all
-                        // monomorphizations is potentially a waste of space
-                        // since monomorphizations could be shared between
-                        // crates. The main reason for making them internal is
-                        // a limitation in MingW's binutils that cannot deal
-                        // with COFF object that have more than 2^15 sections,
-                        // which is something that can happen for large programs
-                        // when every function gets put into its own COMDAT
-                        // section.
-                        llvm::InternalLinkage
-                    } else if trans_item.is_from_extern_crate() {
-                        // FIXME(mw): It would be nice if we could mark these as
-                        // `AvailableExternallyLinkage`, since they should have
-                        // been instantiated in the extern crate. But this
-                        // sometimes leads to crashes on Windows because LLVM
-                        // does not handle exception handling table instantiation
-                        // reliably in that case.
-                        llvm::InternalLinkage
-                    } else if reachable.contains(&tcx.map
-                                                     .as_local_node_id(instance.def)
-                                                     .unwrap()) {
-                        llvm::ExternalLinkage
-                    } else {
-                        // Functions that are not visible outside this crate can
-                        // be marked as internal.
-                        llvm::InternalLinkage
-                    }
-                }
-            }
-        });
-
-        items.insert(trans_item, linkage);
-    }
-
-    CodegenUnit::new(
-        numbered_codegen_unit_name(&tcx.crate_name[..], 0),
-        items)
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
