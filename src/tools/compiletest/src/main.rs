@@ -109,6 +109,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "cflags", "flags for the C compiler", "FLAGS"),
           reqopt("", "llvm-components", "list of LLVM components built in", "LIST"),
           reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS"),
+          optopt("", "nodejs", "the name of nodejs", "PATH"),
           optflag("h", "help", "show this message"));
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -190,6 +191,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         cflags: matches.opt_str("cflags").unwrap(),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         llvm_cxxflags: matches.opt_str("llvm-cxxflags").unwrap(),
+        nodejs: matches.opt_str("nodejs"),
     }
 }
 

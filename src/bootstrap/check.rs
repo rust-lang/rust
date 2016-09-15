@@ -108,6 +108,10 @@ pub fn compiletest(build: &Build,
     cmd.arg("--host").arg(compiler.host);
     cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.config.build));
 
+    if let Some(nodejs) = build.config.nodejs.as_ref() {
+        cmd.arg("--nodejs").arg(nodejs);
+    }
+
     let mut flags = vec!["-Crpath".to_string()];
     if build.config.rust_optimize_tests {
         flags.push("-O".to_string());
@@ -386,7 +390,8 @@ fn krate_emscripten(build: &Build,
      for test in tests {
          let test_file_name = test.to_string_lossy().into_owned();
          println!("running {}", test_file_name);
-         let output = Command::new("node")
+         let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
+         let output = Command::new(nodejs)
              .arg(&test_file_name)
              .stderr(::std::process::Stdio::inherit())
              .output();
