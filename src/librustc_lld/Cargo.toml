@@ -12,3 +12,6 @@ crate-type = ["dylib"]
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 gcc = "0.3.27"
+
+[dependencies]
+rustc_llvm = { path = "../librustc_llvm" }

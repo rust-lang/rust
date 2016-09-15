@@ -9,5 +9,9 @@
 // except according to those terms.
 
 #![feature(linked_from)]
+#![feature(rustc_private)]
+
+// NOTE Used to "inherit" the static llvm libraries that rustc_llvm links to
+extern crate rustc_llvm;
 
 pub mod ffi;
