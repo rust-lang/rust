@@ -10,11 +10,11 @@
 
 #![feature(associated_consts)]
 
-trait Foo {}
+trait Bar {}
 
-impl Foo for i32 {
+impl Bar for i32 {
     const BAR: bool = true; //~ ERROR E0438
-        //~| NOTE not a member of trait `Foo`
+        //~| NOTE not a member of trait `Bar`
 }
 
 fn main () {
