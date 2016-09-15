@@ -52,6 +52,15 @@ use test::Bencher;
 use std::fmt;
 use std::str;
 
+macro_rules! try_or {
+    ($e:expr, $r:expr) => (
+        match $e {
+            Ok(x) => x,
+            Err(_) => return $r
+        }
+    )
+}
+
 #[derive(Clone, Copy)]
 pub struct Doc<'a> {
     pub data: &'a [u8],
@@ -79,17 +88,34 @@ impl<'doc> Doc<'doc> {
         }
     }
 
-    pub fn get(&self, tag: usize) -> Doc<'doc> {
-        match maybe_get_doc(*self, tag) {
+    pub fn maybe_child(&self, tag: usize) -> Option<Doc<'doc>> {
+        let mut pos = self.start;
+        while pos < self.end {
+            let elt_tag = try_or!(tag_at(self.data, pos), None);
+            let elt_size = try_or!(tag_len_at(self.data, elt_tag.next), None);
+            pos = elt_size.next + elt_size.val;
+            if elt_tag.val == tag {
+                return Some(Doc {
+                    data: self.data,
+                    start: elt_size.next,
+                    end: pos,
+                });
+            }
+        }
+        None
+    }
+
+    pub fn child(&self, tag: usize) -> Doc<'doc> {
+        match self.maybe_child(tag) {
             Some(d) => d,
             None => {
-                bug!("failed to find block with tag {:?}", tag);
+                bug!("failed to find child with tag {:?}", tag);
             }
         }
     }
 
-    pub fn children(self) -> DocsIterator<'doc> {
-        DocsIterator { d: self }
+    pub fn children_of(&self, tag: usize) -> DocsIterator<'doc> {
+        DocsIterator { d: self.child(tag) }
     }
 }
 
@@ -106,24 +132,10 @@ impl fmt::Display for Error {
     }
 }
 
-// rbml reading
-
-macro_rules! try_or {
-    ($e:expr, $r:expr) => (
-        match $e {
-            Ok(e) => e,
-            Err(e) => {
-                debug!("ignored error: {:?}", e);
-                return $r
-            }
-        }
-    )
-}
-
 #[derive(Copy, Clone)]
-pub struct Res {
-    pub val: usize,
-    pub next: usize,
+struct Res {
+    val: usize,
+    next: usize,
 }
 
 fn tag_at(data: &[u8], start: usize) -> Result<Res, Error> {
@@ -233,23 +245,6 @@ fn vuint_at(data: &[u8], start: usize) -> Result<Res, Error> {
 
 fn tag_len_at(data: &[u8], next: usize) -> Result<Res, Error> {
     vuint_at(data, next)
-}
-
-pub fn maybe_get_doc<'a>(d: Doc<'a>, tg: usize) -> Option<Doc<'a>> {
-    let mut pos = d.start;
-    while pos < d.end {
-        let elt_tag = try_or!(tag_at(d.data, pos), None);
-        let elt_size = try_or!(tag_len_at(d.data, elt_tag.next), None);
-        pos = elt_size.next + elt_size.val;
-        if elt_tag.val == tg {
-            return Some(Doc {
-                data: d.data,
-                start: elt_size.next,
-                end: pos,
-            });
-        }
-    }
-    None
 }
 
 pub struct DocsIterator<'a> {

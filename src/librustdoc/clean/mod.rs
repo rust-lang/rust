@@ -237,8 +237,8 @@ pub struct ExternalCrate {
 impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &DocContext) -> ExternalCrate {
         let mut primitives = Vec::new();
+        let root = DefId { krate: self.0, index: CRATE_DEF_INDEX };
         cx.tcx_opt().map(|tcx| {
-            let root = DefId { krate: self.0, index: CRATE_DEF_INDEX };
             for item in tcx.sess.cstore.item_children(root) {
                 let did = match item.def {
                     Def::Mod(did) => did,
@@ -250,7 +250,7 @@ impl Clean<ExternalCrate> for CrateNum {
         });
         ExternalCrate {
             name: (&cx.sess().cstore.crate_name(self.0)[..]).to_owned(),
-            attrs: cx.sess().cstore.crate_attrs(self.0).clean(cx),
+            attrs: cx.sess().cstore.item_attrs(root).clean(cx),
             primitives: primitives,
         }
     }

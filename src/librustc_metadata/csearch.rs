@@ -10,7 +10,6 @@
 
 use cstore;
 use common;
-use decoder;
 use encoder;
 use loader;
 
@@ -40,101 +39,87 @@ use rustc::hir;
 impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn stability(&self, def: DefId) -> Option<attr::Stability> {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_stability(&cdata, def.index)
+        self.get_crate_data(def.krate).get_stability(def.index)
     }
 
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_deprecation(&cdata, def.index)
+        self.get_crate_data(def.krate).get_deprecation(def.index)
     }
 
     fn visibility(&self, def: DefId) -> ty::Visibility {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_visibility(&cdata, def.index)
+        self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
     fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind
     {
         assert!(!def_id.is_local());
         self.dep_graph.read(DepNode::MetaData(def_id));
-        let cdata = self.get_crate_data(def_id.krate);
-        decoder::closure_kind(&cdata, def_id.index)
+        self.get_crate_data(def_id.krate).closure_kind(def_id.index)
     }
 
     fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::ClosureTy<'tcx> {
         assert!(!def_id.is_local());
         self.dep_graph.read(DepNode::MetaData(def_id));
-        let cdata = self.get_crate_data(def_id.krate);
-        decoder::closure_ty(&cdata, def_id.index, tcx)
+        self.get_crate_data(def_id.krate).closure_ty(def_id.index, tcx)
     }
 
     fn item_variances(&self, def: DefId) -> Vec<ty::Variance> {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_item_variances(&cdata, def.index)
+        self.get_crate_data(def.krate).get_item_variances(def.index)
     }
 
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                      -> Ty<'tcx>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_type(&cdata, def.index, tcx)
+        self.get_crate_data(def.krate).get_type(def.index, tcx)
     }
 
     fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> ty::GenericPredicates<'tcx>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_predicates(&cdata, def.index, tcx)
+        self.get_crate_data(def.krate).get_predicates(def.index, tcx)
     }
 
     fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                                  -> ty::GenericPredicates<'tcx>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_super_predicates(&cdata, def.index, tcx)
+        self.get_crate_data(def.krate).get_super_predicates(def.index, tcx)
     }
 
     fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                          -> &'tcx ty::Generics<'tcx>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_generics(&cdata, def.index, tcx)
+        self.get_crate_data(def.krate).get_generics(def.index, tcx)
     }
 
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>
     {
         self.dep_graph.read(DepNode::MetaData(def_id));
-        let cdata = self.get_crate_data(def_id.krate);
-        decoder::get_item_attrs(&cdata, def_id.index)
+        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index)
     }
 
     fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::TraitDef<'tcx>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_trait_def(&cdata, def.index, tcx)
+        self.get_crate_data(def.krate).get_trait_def(def.index, tcx)
     }
 
     fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_adt_def(&cdata, def.index, tcx)
+        self.get_crate_data(def.krate).get_adt_def(def.index, tcx)
     }
 
     fn fn_arg_names(&self, did: DefId) -> Vec<String>
     {
         self.dep_graph.read(DepNode::MetaData(did));
-        let cdata = self.get_crate_data(did.krate);
-        decoder::get_fn_arg_names(&cdata, did.index)
+        self.get_crate_data(did.krate).get_fn_arg_names(did.index)
     }
 
     fn opt_item_name(&self, def: DefId) -> Option<ast::Name> {
@@ -143,7 +128,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         if def.index == CRATE_DEF_INDEX {
             Some(token::intern(&cdata.name()))
         } else {
-            decoder::maybe_get_item_name(&cdata, def.index)
+            cdata.maybe_get_item_name(def.index)
         }
     }
 
@@ -151,9 +136,8 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
-        let cdata = self.get_crate_data(def_id.krate);
-        decoder::each_inherent_implementation_for_type(&cdata, def_id.index,
-                                                       |iid| result.push(iid));
+        self.get_crate_data(def_id.krate)
+            .each_inherent_implementation_for_type(def_id.index, |iid| result.push(iid));
         result
     }
 
@@ -164,7 +148,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         }
         let mut result = vec![];
         self.iter_crate_data(|_, cdata| {
-            decoder::each_implementation_for_trait(cdata, filter, &mut |iid| {
+            cdata.each_implementation_for_trait(filter, &mut |iid| {
                 result.push(iid)
             })
         });
@@ -174,85 +158,74 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn impl_or_trait_items(&self, def_id: DefId) -> Vec<DefId> {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
-        let crate_data = self.get_crate_data(def_id.krate);
         let get_crate_data = &mut |cnum| self.get_crate_data(cnum);
-        decoder::each_child_of_item(&crate_data, def_id.index, get_crate_data,
-                                    &mut |def, _, _| result.push(def.def_id()));
+        self.get_crate_data(def_id.krate)
+            .each_child_of_item(def_id.index, get_crate_data,
+                                &mut |def, _, _| result.push(def.def_id()));
         result
     }
 
     fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_impl_polarity(&cdata, def.index)
+        self.get_crate_data(def.krate).get_impl_polarity(def.index)
     }
 
     fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                           -> Option<ty::TraitRef<'tcx>>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_impl_trait(&cdata, def.index, tcx)
+        self.get_crate_data(def.krate).get_impl_trait(def.index, tcx)
     }
 
     fn custom_coerce_unsized_kind(&self, def: DefId)
                                   -> Option<ty::adjustment::CustomCoerceUnsized>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_custom_coerce_unsized_kind(&cdata, def.index)
+        self.get_crate_data(def.krate).get_custom_coerce_unsized_kind(def.index)
     }
 
     fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
         self.dep_graph.read(DepNode::MetaData(impl_def));
-        let cdata = self.get_crate_data(impl_def.krate);
-        decoder::get_parent_impl(&*cdata, impl_def.index)
+        self.get_crate_data(impl_def.krate).get_parent_impl(impl_def.index)
     }
 
     fn trait_of_item(&self, def_id: DefId) -> Option<DefId> {
         self.dep_graph.read(DepNode::MetaData(def_id));
-        let cdata = self.get_crate_data(def_id.krate);
-        decoder::get_trait_of_item(&cdata, def_id.index)
+        self.get_crate_data(def_id.krate).get_trait_of_item(def_id.index)
     }
 
     fn impl_or_trait_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                               -> Option<ty::ImplOrTraitItem<'tcx>>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_impl_or_trait_item(&cdata, def.index, tcx)
+        self.get_crate_data(def.krate).get_impl_or_trait_item(def.index, tcx)
     }
 
     fn is_const_fn(&self, did: DefId) -> bool
     {
         self.dep_graph.read(DepNode::MetaData(did));
-        let cdata = self.get_crate_data(did.krate);
-        decoder::is_const_fn(&cdata, did.index)
+        self.get_crate_data(did.krate).is_const_fn(did.index)
     }
 
     fn is_defaulted_trait(&self, trait_def_id: DefId) -> bool
     {
         self.dep_graph.read(DepNode::MetaData(trait_def_id));
-        let cdata = self.get_crate_data(trait_def_id.krate);
-        decoder::is_defaulted_trait(&cdata, trait_def_id.index)
+        self.get_crate_data(trait_def_id.krate).is_defaulted_trait(trait_def_id.index)
     }
 
     fn is_default_impl(&self, impl_did: DefId) -> bool {
         self.dep_graph.read(DepNode::MetaData(impl_did));
-        let cdata = self.get_crate_data(impl_did.krate);
-        decoder::is_default_impl(&cdata, impl_did.index)
+        self.get_crate_data(impl_did.krate).is_default_impl(impl_did.index)
     }
 
     fn is_extern_item<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId) -> bool {
         self.dep_graph.read(DepNode::MetaData(did));
-        let cdata = self.get_crate_data(did.krate);
-        decoder::is_extern_item(&cdata, did.index, tcx)
+        self.get_crate_data(did.krate).is_extern_item(did.index, tcx)
     }
 
     fn is_foreign_item(&self, did: DefId) -> bool {
-        let cdata = self.get_crate_data(did.krate);
-        decoder::is_foreign_item(&cdata, did.index)
+        self.get_crate_data(did.krate).is_foreign_item(did.index)
     }
 
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool
@@ -263,21 +236,18 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn dylib_dependency_formats(&self, cnum: CrateNum)
                                 -> Vec<(CrateNum, LinkagePreference)>
     {
-        let cdata = self.get_crate_data(cnum);
-        decoder::get_dylib_dependency_formats(&cdata)
+        self.get_crate_data(cnum).get_dylib_dependency_formats()
     }
 
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
     {
-        let crate_data = self.get_crate_data(cnum);
-        decoder::get_lang_items(&crate_data)
+        self.get_crate_data(cnum).get_lang_items()
     }
 
     fn missing_lang_items(&self, cnum: CrateNum)
                           -> Vec<lang_items::LangItem>
     {
-        let cdata = self.get_crate_data(cnum);
-        decoder::get_missing_lang_items(&cdata)
+        self.get_crate_data(cnum).get_missing_lang_items()
     }
 
     fn is_staged_api(&self, cnum: CrateNum) -> bool
@@ -306,11 +276,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         self.get_crate_data(cnum).panic_strategy()
-    }
-
-    fn crate_attrs(&self, cnum: CrateNum) -> Vec<ast::Attribute>
-    {
-        decoder::get_item_attrs(&self.get_crate_data(cnum), CRATE_DEF_INDEX)
     }
 
     fn crate_name(&self, cnum: CrateNum) -> token::InternedString
@@ -348,18 +313,16 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn native_libraries(&self, cnum: CrateNum) -> Vec<(NativeLibraryKind, String)>
     {
-        let cdata = self.get_crate_data(cnum);
-        decoder::get_native_libraries(&cdata)
+        self.get_crate_data(cnum).get_native_libraries()
     }
 
     fn reachable_ids(&self, cnum: CrateNum) -> Vec<DefId>
     {
-        let cdata = self.get_crate_data(cnum);
-        decoder::get_reachable_ids(&cdata)
+        self.get_crate_data(cnum).get_reachable_ids()
     }
 
     fn is_no_builtins(&self, cnum: CrateNum) -> bool {
-        attr::contains_name(&self.crate_attrs(cnum), "no_builtins")
+        self.get_crate_data(cnum).is_no_builtins()
     }
 
     fn def_index_for_def_key(&self,
@@ -380,8 +343,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         // canonical name for an item.
         //
         // self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::def_key(&cdata, def.index)
+        self.get_crate_data(def.krate).def_key(def.index)
     }
 
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
@@ -389,34 +351,35 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         // commented out:
         //
         // self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::def_path(&cdata, def.index)
+        self.get_crate_data(def.krate).def_path(def.index)
     }
 
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
     {
         self.dep_graph.read(DepNode::MetaData(struct_def_id));
-        let cdata = self.get_crate_data(struct_def_id.krate);
-        decoder::get_struct_ctor_def_id(&cdata, struct_def_id.index)
+        self.get_crate_data(struct_def_id.krate).get_struct_ctor_def_id(struct_def_id.index)
     }
 
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
     {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_struct_field_names(&cdata, def.index)
+        self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
     fn item_children(&self, def_id: DefId) -> Vec<ChildItem>
     {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
-        let crate_data = self.get_crate_data(def_id.krate);
         let get_crate_data = &mut |cnum| self.get_crate_data(cnum);
-        decoder::each_child_of_item(&crate_data, def_id.index, get_crate_data,
-                                    &mut |def, name, vis| {
-            result.push(ChildItem { def: def, name: name, vis: vis });
-        });
+        self.get_crate_data(def_id.krate)
+            .each_child_of_item(def_id.index, get_crate_data,
+                                &mut |def, name, vis| {
+                result.push(ChildItem {
+                    def: def,
+                    name: name,
+                    vis: vis
+                });
+            });
         result
     }
 
@@ -445,8 +408,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
         debug!("maybe_get_item_ast({}): inlining item", tcx.item_path_str(def_id));
 
-        let cdata = self.get_crate_data(def_id.krate);
-        let inlined = decoder::maybe_get_item_ast(&cdata, tcx, def_id.index);
+        let inlined = self.get_crate_data(def_id.krate).maybe_get_item_ast(tcx, def_id.index);
 
         let cache_inlined_item = |original_def_id, inlined_item_id, inlined_root_node_id| {
             let cache_entry = cstore::CachedInlinedItem {
@@ -534,14 +496,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn maybe_get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                               -> Option<Mir<'tcx>> {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::maybe_get_item_mir(&cdata, tcx, def.index)
+        self.get_crate_data(def.krate).maybe_get_item_mir(tcx, def.index)
     }
 
     fn is_item_mir_available(&self, def: DefId) -> bool {
         self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::is_item_mir_available(&cdata, def.index)
+        self.get_crate_data(def.krate).is_item_mir_available(def.index)
     }
 
     fn crates(&self) -> Vec<CrateNum>
