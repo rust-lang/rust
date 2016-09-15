@@ -411,15 +411,11 @@ impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
     }
 
     fn def_id(&mut self, did: DefId) {
-        // Hash the crate identification information.
-        let name = self.tcx.crate_name(did.krate);
-        let disambiguator = self.tcx.crate_disambiguator(did.krate);
-        self.hash((name, disambiguator));
-
-        // Hash the item path within that crate.
-        // FIXME(#35379) This should use a deterministic
-        // DefPath hashing mechanism, not the DefIndex.
-        self.hash(did.index);
+        // Hash the DefPath corresponding to the DefId, which is independent
+        // of compiler internal state.
+        let tcx = self.tcx;
+        let def_path = tcx.def_path(did);
+        def_path.deterministic_hash_to(tcx, &mut self.state);
     }
 }
 
@@ -445,33 +441,8 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 self.hash(f.sig.variadic());
             }
             TyTrait(ref data) => {
-                // Trait objects have a list of projection bounds
-                // that are not guaranteed to be sorted in an order
-                // that gets preserved across crates, so we need
-                // to sort them again by the name, in string form.
-
-                // Hash the whole principal trait ref.
                 self.def_id(data.principal.def_id());
-                data.principal.visit_with(self);
-
-                // Hash region and builtin bounds.
-                data.region_bound.visit_with(self);
                 self.hash(data.builtin_bounds);
-
-                // Only projection bounds are left, sort and hash them.
-                let mut projection_bounds: Vec<_> = data.projection_bounds
-                                                        .iter()
-                                                        .map(|b| (b.item_name().as_str(), b))
-                                                        .collect();
-                projection_bounds.sort_by_key(|&(ref name, _)| name.clone());
-                for (name, bound) in projection_bounds {
-                    self.def_id(bound.0.trait_ref.def_id);
-                    self.hash(name);
-                    bound.visit_with(self);
-                }
-
-                // Bypass super_visit_with, we've visited everything.
-                return false;
             }
             TyTuple(tys) => {
                 self.hash(tys.len());
