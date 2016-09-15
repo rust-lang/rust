@@ -830,6 +830,33 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
+    // Clear the "obligations in snapshot" flag, invoke the closure,
+    // then restore the flag to its original value. This flag is a
+    // debugging measure designed to detect cases where we start a
+    // snapshot, create type variables, register obligations involving
+    // those type variables in the fulfillment cx, and then have to
+    // unroll the snapshot, leaving "dangling type variables" behind.
+    // In such cases, the flag will be set by the fulfillment cx, and
+    // an assertion will fail when rolling the snapshot back.  Very
+    // useful, much better than grovelling through megabytes of
+    // RUST_LOG output.
+    //
+    // HOWEVER, in some cases the flag is wrong. In particular, we
+    // sometimes create a "mini-fulfilment-cx" in which we enroll
+    // obligations. As long as this fulfillment cx is fully drained
+    // before we return, this is not a problem, as there won't be any
+    // escaping obligations in the main cx. In those cases, you can
+    // use this function.
+    pub fn save_and_restore_obligations_in_snapshot_flag<F, R>(&self, func: F) -> R
+        where F: FnOnce(&Self) -> R
+    {
+        let flag = self.obligations_in_snapshot.get();
+        self.obligations_in_snapshot.set(false);
+        let result = func(self);
+        self.obligations_in_snapshot.set(flag);
+        result
+    }
+
     fn start_snapshot(&self) -> CombinedSnapshot {
         debug!("start_snapshot()");
 
