@@ -96,13 +96,6 @@ pub enum InlinedItemRef<'a> {
     ImplItem(DefId, &'a hir::ImplItem)
 }
 
-#[derive(Copy, Clone)]
-pub struct ChildItem {
-    pub def: Def,
-    pub name: ast::Name,
-    pub vis: ty::Visibility,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct ExternCrate {
     /// def_id of an `extern crate` in the current crate that caused
@@ -128,6 +121,7 @@ pub struct ExternCrate {
 /// can be accessed.
 pub trait CrateStore<'tcx> {
     // item info
+    fn describe_def(&self, def: DefId) -> Option<Def>;
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn visibility(&self, def: DefId) -> ty::Visibility;
@@ -209,7 +203,7 @@ pub trait CrateStore<'tcx> {
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children(&self, did: DefId) -> Vec<ChildItem>;
+    fn item_children(&self, did: DefId) -> Vec<def::Export>;
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -286,6 +280,7 @@ pub struct DummyCrateStore;
 #[allow(unused_variables)]
 impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // item info
+    fn describe_def(&self, def: DefId) -> Option<Def> { bug!("describe_def") }
     fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
@@ -386,7 +381,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
         { bug!("struct_ctor_def_id") }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
-    fn item_children(&self, did: DefId) -> Vec<ChildItem> { bug!("item_children") }
+    fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }
 
     // misc. metadata
     fn maybe_get_item_ast<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
