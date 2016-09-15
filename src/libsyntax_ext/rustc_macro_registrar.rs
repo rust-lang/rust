@@ -13,12 +13,13 @@ use std::mem;
 use errors;
 use syntax::ast::{self, Ident, NodeId};
 use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute};
-use syntax::ext::base::{ExtCtxt, DummyMacroLoader};
+use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::parse::ParseSess;
 use syntax::parse::token::{self, InternedString};
 use syntax::feature_gate::Features;
+use syntax::fold::Folder;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::visit::{self, Visitor};
@@ -39,16 +40,14 @@ struct CollectCustomDerives<'a> {
 }
 
 pub fn modify(sess: &ParseSess,
+              resolver: &mut ::syntax::ext::base::Resolver,
               mut krate: ast::Crate,
               is_rustc_macro_crate: bool,
               num_crate_types: usize,
               handler: &errors::Handler,
               features: &Features) -> ast::Crate {
-    let mut loader = DummyMacroLoader;
-    let mut cx = ExtCtxt::new(sess,
-                              Vec::new(),
-                              ExpansionConfig::default("rustc_macro".to_string()),
-                              &mut loader);
+    let ecfg = ExpansionConfig::default("rustc_macro".to_string());
+    let mut cx = ExtCtxt::new(sess, Vec::new(), ecfg, resolver);
 
     let mut collect = CollectCustomDerives {
         derives: Vec::new(),
@@ -268,13 +267,11 @@ fn mk_registrar(cx: &mut ExtCtxt,
         i.vis = ast::Visibility::Public;
         i
     });
-    let module = cx.item_mod(span,
-                             span,
-                             ast::Ident::with_empty_ctxt(token::gensym("registrar")),
-                             Vec::new(),
-                             vec![krate, func]);
-    module.map(|mut i| {
+    let ident = ast::Ident::with_empty_ctxt(token::gensym("registrar"));
+    let module = cx.item_mod(span, span, ident, Vec::new(), vec![krate, func]).map(|mut i| {
         i.vis = ast::Visibility::Public;
         i
-    })
+    });
+
+    cx.monotonic_expander().fold_item(module).pop().unwrap()
 }

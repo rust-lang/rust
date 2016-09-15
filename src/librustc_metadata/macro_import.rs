@@ -18,6 +18,7 @@ use creader::{CrateReader, Macros};
 use cstore::CStore;
 
 use rustc::hir::def_id::DefIndex;
+use rustc::middle;
 use rustc::session::Session;
 use rustc::util::nodemap::FnvHashMap;
 use rustc_back::dynamic_lib::DynamicLibrary;
@@ -26,7 +27,6 @@ use rustc_macro::__internal::Registry;
 use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::LoadedMacro;
-use syntax::ext;
 use syntax::parse::token;
 use syntax_ext::deriving::custom::CustomDerive;
 use syntax_pos::Span;
@@ -55,7 +55,7 @@ pub fn call_bad_macro_reexport(a: &Session, b: Span) {
 
 pub type MacroSelection = FnvHashMap<token::InternedString, Span>;
 
-impl<'a> ext::base::MacroLoader for MacroLoader<'a> {
+impl<'a> middle::cstore::MacroLoader for MacroLoader<'a> {
     fn load_crate(&mut self,
                   extern_crate: &ast::Item,
                   allows_macros: bool) -> Vec<LoadedMacro> {

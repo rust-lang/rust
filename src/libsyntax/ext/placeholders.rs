@@ -10,13 +10,16 @@
 
 use ast;
 use codemap::{DUMMY_SP, dummy_spanned};
+use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
 use fold::*;
 use parse::token::keywords;
 use ptr::P;
+use util::move_map::MoveMap;
 use util::small_vector::SmallVector;
 
 use std::collections::HashMap;
+use std::mem;
 
 pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     fn mac_placeholder() -> ast::Mac {
@@ -69,14 +72,18 @@ pub fn macro_scope_placeholder() -> Expansion {
     placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
 }
 
-pub struct PlaceholderExpander {
+pub struct PlaceholderExpander<'a, 'b: 'a> {
     expansions: HashMap<ast::NodeId, Expansion>,
+    cx: &'a mut ExtCtxt<'b>,
+    monotonic: bool,
 }
 
-impl PlaceholderExpander {
-    pub fn new() -> Self {
+impl<'a, 'b> PlaceholderExpander<'a, 'b> {
+    pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
         PlaceholderExpander {
+            cx: cx,
             expansions: HashMap::new(),
+            monotonic: monotonic,
         }
     }
 
@@ -89,7 +96,7 @@ impl PlaceholderExpander {
     }
 }
 
-impl Folder for PlaceholderExpander {
+impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         match item.node {
             // Scope placeholder
@@ -154,6 +161,56 @@ impl Folder for PlaceholderExpander {
             ast::TyKind::Mac(_) => self.remove(ty.id).make_ty(),
             _ => noop_fold_ty(ty, self),
         }
+    }
+
+    fn fold_block(&mut self, block: P<ast::Block>) -> P<ast::Block> {
+        noop_fold_block(block, self).map(|mut block| {
+            let mut macros = Vec::new();
+            let mut remaining_stmts = block.stmts.len();
+
+            block.stmts = block.stmts.move_flat_map(|mut stmt| {
+                remaining_stmts -= 1;
+
+                // Scope placeholder
+                if let ast::StmtKind::Item(ref item) = stmt.node {
+                    if let ast::ItemKind::Mac(..) = item.node {
+                        macros.push(item.ident.ctxt.data().outer_mark);
+                        return None;
+                    }
+                }
+
+                match stmt.node {
+                    // Avoid wasting a node id on a trailing expression statement,
+                    // which shares a HIR node with the expression itself.
+                    ast::StmtKind::Expr(ref expr) if remaining_stmts == 0 => stmt.id = expr.id,
+
+                    _ if self.monotonic => {
+                        assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
+                        stmt.id = self.cx.resolver.next_node_id();
+                    }
+
+                    _ => {}
+                }
+
+                if self.monotonic && !macros.is_empty() {
+                    let macros = mem::replace(&mut macros, Vec::new());
+                    self.cx.resolver.add_expansions_at_stmt(stmt.id, macros);
+                }
+
+                Some(stmt)
+            });
+
+            block
+        })
+    }
+
+    fn fold_mod(&mut self, module: ast::Mod) -> ast::Mod {
+        let mut module = noop_fold_mod(module, self);
+        module.items = module.items.move_flat_map(|item| match item.node {
+            ast::ItemKind::Mac(_) => None, // remove scope placeholders from modules
+            _ => Some(item),
+        });
+        module
     }
 }
 

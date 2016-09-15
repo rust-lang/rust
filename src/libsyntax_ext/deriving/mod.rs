@@ -11,8 +11,7 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
 use syntax::ast::{self, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxEnv};
-use syntax::ext::base::MultiModifier;
+use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
 use syntax::codemap;
@@ -89,7 +88,7 @@ fn allow_unstable(cx: &mut ExtCtxt, span: Span, attr_name: &str) -> Span {
     }
 }
 
-fn expand_derive(cx: &mut ExtCtxt,
+pub fn expand_derive(cx: &mut ExtCtxt,
                  span: Span,
                  mitem: &MetaItem,
                  annotatable: Annotatable)
@@ -243,10 +242,6 @@ fn expand_derive(cx: &mut ExtCtxt,
 
 macro_rules! derive_traits {
     ($( $name:expr => $func:path, )+) => {
-        pub fn register_all(env: &mut SyntaxEnv) {
-            env.insert(intern("derive"), MultiModifier(Box::new(expand_derive)));
-        }
-
         pub fn is_builtin_trait(name: &str) -> bool {
             match name {
                 $( $name )|+ => true,
