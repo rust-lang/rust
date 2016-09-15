@@ -579,6 +579,8 @@ impl Build {
         if mtime(&stamp) < mtime(input) {
             self.verbose(&format!("Dirty - {}", dir.display()));
             let _ = fs::remove_dir_all(dir);
+        } else if stamp.exists() {
+            return
         }
         t!(fs::create_dir_all(dir));
         t!(File::create(stamp));
