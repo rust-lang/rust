@@ -261,8 +261,8 @@ impl<'b> Resolver<'b> {
                 let def = Def::Struct(self.definitions.local_def_id(item.id));
                 self.define(parent, name, TypeNS, (def, sp, vis));
 
-                // If this is a newtype or unit-like struct, define a name
-                // in the value namespace as well
+                // If this is a tuple or unit struct, define a name
+                // in the value namespace as well.
                 if !struct_def.is_struct() {
                     let def = Def::Struct(self.definitions.local_def_id(struct_def.id()));
                     self.define(parent, name, ValueNS, (def, sp, vis));

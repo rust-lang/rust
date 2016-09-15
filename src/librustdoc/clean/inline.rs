@@ -19,7 +19,7 @@ use rustc::middle::cstore;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::print as pprust;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, VariantKind};
 use rustc::util::nodemap::FnvHashSet;
 
 use rustc_const_eval::lookup_const_by_id;
@@ -207,11 +207,10 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let variant = tcx.lookup_adt_def(did).struct_variant();
 
     clean::Struct {
-        struct_type: match &variant.fields[..] {
-            &[] => doctree::Unit,
-            &[_] if variant.kind == ty::VariantKind::Tuple => doctree::Newtype,
-            &[..] if variant.kind == ty::VariantKind::Tuple => doctree::Tuple,
-            _ => doctree::Plain,
+        struct_type: match variant.kind {
+            VariantKind::Struct => doctree::Plain,
+            VariantKind::Tuple => doctree::Tuple,
+            VariantKind::Unit => doctree::Unit,
         },
         generics: (t.generics, &predicates).clean(cx),
         fields: variant.fields.clean(cx),

@@ -2546,7 +2546,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             }
             write!(w, "}}")?;
         }
-        doctree::Tuple | doctree::Newtype => {
+        doctree::Tuple => {
             write!(w, "(")?;
             for (i, field) in fields.iter().enumerate() {
                 if i > 0 {

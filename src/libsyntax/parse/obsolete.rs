@@ -19,8 +19,7 @@ use parse::parser;
 /// The specific types of unsupported syntax
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
-    ClosureKind,
-    ExternCrateString,
+    // Nothing here at the moment
 }
 
 pub trait ParserObsoleteMethods {
@@ -36,18 +35,10 @@ pub trait ParserObsoleteMethods {
 
 impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
     /// Reports an obsolete syntax non-fatal error.
+    #[allow(unused_variables)]
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc, error) = match kind {
-            ObsoleteSyntax::ClosureKind => (
-                "`:`, `&mut:`, or `&:`",
-                "rely on inference instead",
-                true,
-            ),
-            ObsoleteSyntax::ExternCrateString => (
-                "\"crate-name\"",
-                "use an identifier not in quotes instead",
-                false, // warning for now
-            ),
+            // Nothing here at the moment
         };
 
         self.report(sp, kind, kind_str, desc, error);
