@@ -49,6 +49,7 @@ version = "0.0.0"
 dependencies = [
  "core 0.0.0",
  "gcc 0.3.27 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-cfg 0.1.2 (git+https://github.com/japaric/rustc-cfg?branch=llvm-target)",
 ]
 
 [[package]]
@@ -93,6 +94,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc-cfg"
+version = "0.1.2"
+source = "git+https://github.com/japaric/rustc-cfg?branch=llvm-target#7eb668fcf13e2730e9cf8b33389aadbcdfbb0abc"
+
+[[package]]
 name = "rustc_unicode"
 version = "0.0.0"
 dependencies = [
@@ -129,3 +135,4 @@ dependencies = [
 
 [metadata]
 "checksum gcc 0.3.27 (registry+https://github.com/rust-lang/crates.io-index)" = "806e63121fbf30760b060a5fc2d1e9f47e1bd356d183e8870367c6c12cc9d5ed"
+"checksum rustc-cfg 0.1.2 (git+https://github.com/japaric/rustc-cfg?branch=llvm-target)" = "<none>"
