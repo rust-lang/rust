@@ -643,7 +643,9 @@ impl<A, B> FusedIterator for Chain<A, B>
 pub struct Zip<A, B> {
     a: A,
     b: B,
-    spec: <(A, B) as ZipImplData>::Data,
+    // index and len are only used by the specialized version of zip
+    index: usize,
+    len: usize,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -685,17 +687,6 @@ trait ZipImpl<A, B> {
               B: DoubleEndedIterator + ExactSizeIterator;
 }
 
-// Zip specialization data members
-#[doc(hidden)]
-trait ZipImplData {
-    type Data: 'static + Clone + Default + fmt::Debug;
-}
-
-#[doc(hidden)]
-impl<T> ZipImplData for T {
-    default type Data = ();
-}
-
 // General Zip impl
 #[doc(hidden)]
 impl<A, B> ZipImpl<A, B> for Zip<A, B>
@@ -706,7 +697,8 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         Zip {
             a: a,
             b: b,
-            spec: Default::default(), // unused
+            index: 0, // unused
+            len: 0, // unused
         }
     }
 
@@ -760,20 +752,6 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
 }
 
 #[doc(hidden)]
-#[derive(Default, Debug, Clone)]
-struct ZipImplFields {
-    index: usize,
-    len: usize,
-}
-
-#[doc(hidden)]
-impl<A, B> ZipImplData for (A, B)
-    where A: TrustedRandomAccess, B: TrustedRandomAccess
-{
-    type Data = ZipImplFields;
-}
-
-#[doc(hidden)]
 impl<A, B> ZipImpl<A, B> for Zip<A, B>
     where A: TrustedRandomAccess, B: TrustedRandomAccess
 {
@@ -782,18 +760,16 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         Zip {
             a: a,
             b: b,
-            spec: ZipImplFields {
-                index: 0,
-                len: len,
-            }
+            index: 0,
+            len: len,
         }
     }
 
     #[inline]
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
-        if self.spec.index < self.spec.len {
-            let i = self.spec.index;
-            self.spec.index += 1;
+        if self.index < self.len {
+            let i = self.index;
+            self.index += 1;
             unsafe {
                 Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
             }
@@ -804,7 +780,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.spec.len - self.spec.index;
+        let len = self.len - self.index;
         (len, Some(len))
     }
 
@@ -813,9 +789,9 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         where A: DoubleEndedIterator + ExactSizeIterator,
               B: DoubleEndedIterator + ExactSizeIterator
     {
-        if self.spec.index < self.spec.len {
-            self.spec.len -= 1;
-            let i = self.spec.len;
+        if self.index < self.len {
+            self.len -= 1;
+            let i = self.len;
             unsafe {
                 Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
             }
