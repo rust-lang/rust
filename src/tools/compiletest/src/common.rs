@@ -183,4 +183,5 @@ pub struct Config {
     pub cflags: String,
     pub llvm_components: String,
     pub llvm_cxxflags: String,
+    pub nodejs: Option<String>,
 }
