@@ -498,10 +498,12 @@ fn build_module<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // visit each node at most once.
         let mut visited = FnvHashSet();
         for item in tcx.sess.cstore.item_children(did) {
-            if item.vis == ty::Visibility::Public {
-                if !visited.insert(item.def) { continue }
-                if let Some(i) = try_inline_def(cx, tcx, item.def) {
-                    items.extend(i)
+            if tcx.sess.cstore.visibility(item.def_id) == ty::Visibility::Public {
+                if !visited.insert(item.def_id) { continue }
+                if let Some(def) = tcx.sess.cstore.describe_def(item.def_id) {
+                    if let Some(i) = try_inline_def(cx, tcx, def) {
+                        items.extend(i)
+                    }
                 }
             }
         }

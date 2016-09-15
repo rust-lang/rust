@@ -13,9 +13,9 @@ use common;
 use encoder;
 use loader;
 
-use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, ChildItem, ExternCrate};
+use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, ExternCrate};
 use rustc::middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
-use rustc::hir::def;
+use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
@@ -37,6 +37,11 @@ use rustc_back::target::Target;
 use rustc::hir;
 
 impl<'tcx> CrateStore<'tcx> for cstore::CStore {
+    fn describe_def(&self, def: DefId) -> Option<Def> {
+        self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).get_def(def.index)
+    }
+
     fn stability(&self, def: DefId) -> Option<attr::Stability> {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_stability(def.index)
@@ -158,10 +163,8 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn impl_or_trait_items(&self, def_id: DefId) -> Vec<DefId> {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
-        let get_crate_data = &mut |cnum| self.get_crate_data(cnum);
         self.get_crate_data(def_id.krate)
-            .each_child_of_item(def_id.index, get_crate_data,
-                                &mut |def, _, _| result.push(def.def_id()));
+            .each_child_of_item(def_id.index, |child| result.push(child.def_id));
         result
     }
 
@@ -366,20 +369,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
-    fn item_children(&self, def_id: DefId) -> Vec<ChildItem>
+    fn item_children(&self, def_id: DefId) -> Vec<def::Export>
     {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
-        let get_crate_data = &mut |cnum| self.get_crate_data(cnum);
         self.get_crate_data(def_id.krate)
-            .each_child_of_item(def_id.index, get_crate_data,
-                                &mut |def, name, vis| {
-                result.push(ChildItem {
-                    def: def,
-                    name: name,
-                    vis: vis
-                });
-            });
+            .each_child_of_item(def_id.index, |child| result.push(child));
         result
     }
 
@@ -567,7 +562,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let mut visible_parent_map = self.visible_parent_map.borrow_mut();
         if !visible_parent_map.is_empty() { return visible_parent_map; }
 
-        use rustc::middle::cstore::ChildItem;
         use std::collections::vec_deque::VecDeque;
         use std::collections::hash_map::Entry;
         for cnum in (1 .. self.next_crate_num().as_usize()).map(CrateNum::new) {
@@ -580,12 +574,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
             }
 
             let mut bfs_queue = &mut VecDeque::new();
-            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: ChildItem, parent: DefId| {
-                let child = if child.vis == ty::Visibility::Public {
-                    child.def.def_id()
-                } else {
+            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: def::Export, parent: DefId| {
+                let child = child.def_id;
+
+                if self.visibility(child) != ty::Visibility::Public {
                     return;
-                };
+                }
 
                 match visible_parent_map.entry(child) {
                     Entry::Occupied(mut entry) => {

@@ -21,7 +21,6 @@ use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
-use rustc::middle::cstore::ChildItem;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::map::DefPathData;
@@ -387,10 +386,22 @@ impl<'b> Resolver<'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>, child: ChildItem) {
-        let def = child.def;
+    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>,
+                                                  child: Export) {
+        let def_id = child.def_id;
         let name = child.name;
-        let vis = if parent.is_trait() { ty::Visibility::Public } else { child.vis };
+
+        let def = if let Some(def) = self.session.cstore.describe_def(def_id) {
+            def
+        } else {
+            return;
+        };
+
+        let vis = if parent.is_trait() {
+            ty::Visibility::Public
+        } else {
+            self.session.cstore.visibility(def_id)
+        };
 
         match def {
             Def::Mod(_) | Def::Enum(..) => {
@@ -416,7 +427,7 @@ impl<'b> Resolver<'b> {
                        name);
                 let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
             }
-            Def::Trait(def_id) => {
+            Def::Trait(_) => {
                 debug!("(building reduced graph for external crate) building type {}", name);
 
                 // If this is a trait, add all the trait item names to the trait
@@ -443,7 +454,7 @@ impl<'b> Resolver<'b> {
                 debug!("(building reduced graph for external crate) building type {}", name);
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
             }
-            Def::Struct(def_id)
+            Def::Struct(_)
                 if self.session.cstore.def_key(def_id).disambiguated_data.data !=
                    DefPathData::StructCtor
                 => {
@@ -459,7 +470,7 @@ impl<'b> Resolver<'b> {
                 let fields = self.session.cstore.struct_field_names(def_id);
                 self.structs.insert(def_id, fields);
             }
-            Def::Union(def_id) => {
+            Def::Union(_) => {
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
 
                 // Record the def ID and fields of this union.

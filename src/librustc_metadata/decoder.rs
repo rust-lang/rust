@@ -23,7 +23,7 @@ use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
 use rustc::middle::cstore::{InlinedItem, LinkagePreference};
-use rustc::hir::def::Def;
+use rustc::hir::def::{self, Def};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc::middle::lang_items;
 use rustc::ty::{ImplContainer, TraitContainer};
@@ -505,6 +505,10 @@ impl<'a, 'tcx> CrateMetadata {
         self.maybe_get(doc, item_tag::ty).map(|dcx| dcx.typed(tcx).decode())
     }
 
+    pub fn get_def(&self, index: DefIndex) -> Option<Def> {
+        self.item_family(self.entry(index)).to_def(self.local_def_id(index))
+    }
+
     pub fn get_trait_def(&self,
                          item_id: DefIndex,
                          tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::TraitDef<'tcx> {
@@ -664,11 +668,8 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over each child of the given item.
-    pub fn each_child_of_item<F, G>(&self, id: DefIndex,
-                                    mut get_crate_data: &mut G,
-                                    mut callback: &mut F)
-        where F: FnMut(Def, ast::Name, ty::Visibility),
-              G: FnMut(CrateNum) -> Rc<CrateMetadata>,
+    pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F)
+        where F: FnMut(def::Export)
     {
         // Find the item.
         let item_doc = match self.maybe_entry(id) {
@@ -682,15 +683,31 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         // Iterate over all children.
-        for child_index in dcx.seq::<DefIndex>() {
+        for child_index in dcx.seq() {
             // Get the item.
             if let Some(child) = self.maybe_entry(child_index) {
                 // Hand off the item to the callback.
-                let family = self.item_family(child);
-                if let Family::ForeignMod = family {
-                    self.each_child_of_item(child_index, get_crate_data, callback);
-                } else if let Some(def) = family.to_def(self.local_def_id(child_index)) {
-                    callback(def, self.item_name(child), self.item_visibility(child));
+                match self.item_family(child) {
+                    // FIXME(eddyb) Don't encode these in children.
+                    Family::ForeignMod => {
+                        for child_index in self.get(child, item_tag::children).seq() {
+                            callback(def::Export {
+                                def_id: self.local_def_id(child_index),
+                                name: self.item_name(self.entry(child_index))
+                            });
+                        }
+                        continue;
+                    }
+                    Family::Impl | Family::DefaultImpl => continue,
+
+                    _ => {}
+                }
+
+                if let Some(name) = self.maybe_item_name(child) {
+                    callback(def::Export {
+                        def_id: self.local_def_id(child_index),
+                        name: name
+                    });
                 }
             }
         }
@@ -700,26 +717,7 @@ impl<'a, 'tcx> CrateMetadata {
             _ => return
         };
         for exp in reexports {
-            // This reexport may be in yet another crate.
-            let crate_data = if exp.def_id.krate == self.cnum {
-                None
-            } else {
-                Some(get_crate_data(exp.def_id.krate))
-            };
-            let crate_data = match crate_data {
-                Some(ref cdata) => &**cdata,
-                None => self
-            };
-
-            // Get the item.
-            if let Some(child) = crate_data.maybe_entry(exp.def_id.index) {
-                // Hand off the item to the callback.
-                if let Some(def) = self.item_family(child).to_def(exp.def_id) {
-                    // These items have a public visibility because they're part of
-                    // a public re-export.
-                    callback(def, exp.name, ty::Visibility::Public);
-                }
-            }
+            callback(exp);
         }
     }
 

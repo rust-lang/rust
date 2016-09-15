@@ -373,6 +373,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_struct_ctor(&mut self, ctor_def_id: DefId) {
         self.encode_def_key(ctor_def_id);
         self.encode_family(Family::Struct);
+        self.encode_visibility(ty::Visibility::Public);
         self.encode_bounds_and_type_for_item(ctor_def_id);
 
         self.encode_stability(ctor_def_id);
