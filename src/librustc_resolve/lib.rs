@@ -247,7 +247,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                                            "method `{}` is not a member of trait `{}`",
                                            method,
                                            trait_);
-            err.span_label(span, &format!("not a member of `{}`", trait_));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
@@ -257,7 +257,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "type `{}` is not a member of trait `{}`",
                              type_,
                              trait_);
-            err.span_label(span, &format!("not a member of trait `Foo`"));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
@@ -267,7 +267,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'c>(resolver: &'b Resolver<'a>,
                              "const `{}` is not a member of trait `{}`",
                              const_,
                              trait_);
-            err.span_label(span, &format!("not a member of trait `Foo`"));
+            err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::VariableNotBoundInPattern(variable_name, from, to) => {
