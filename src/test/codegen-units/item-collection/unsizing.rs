@@ -78,5 +78,3 @@ fn main()
     //~ TRANS_ITEM fn unsizing::{{impl}}[3]::foo[0]
     let _wrapper_sized = wrapper_sized as Wrapper<Trait>;
 }
-
-//~ TRANS_ITEM drop-glue i8

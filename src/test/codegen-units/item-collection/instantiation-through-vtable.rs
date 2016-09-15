@@ -40,5 +40,3 @@ fn main() {
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::bar[0]<u64>
     let _ = &s1 as &Trait;
 }
-
-//~ TRANS_ITEM drop-glue i8
