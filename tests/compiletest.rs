@@ -22,6 +22,8 @@ fn run_pass() {
     let mut config = compiletest::default_config();
     config.mode = "run-pass".parse().expect("Invalid mode");
     config.src_base = PathBuf::from("tests/run-pass".to_string());
+    config.target_rustcflags = Some("-Dwarnings".to_string());
+    config.host_rustcflags = Some("-Dwarnings".to_string());
     compiletest::run_tests(&config);
 }
 
@@ -67,7 +69,6 @@ fn compile_test() {
             write!(stderr.lock(), "test [miri-pass] {} ... ", path.display()).unwrap();
             let mut cmd = std::process::Command::new("target/debug/miri");
             cmd.arg(path);
-            cmd.arg("-Dwarnings");
             cmd.arg(format!("--target={}", target));
             let libs = Path::new(&sysroot).join("lib");
             let sysroot = libs.join("rustlib").join(&target).join("lib");
