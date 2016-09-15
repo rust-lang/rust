@@ -57,6 +57,7 @@ fn main() {
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
         "src/jemalloc",
+        "src/lld",
         "src/llvm",
         "src/libbacktrace",
         "src/compiler-rt",
