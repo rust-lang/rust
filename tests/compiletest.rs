@@ -57,7 +57,17 @@ fn compile_test() {
     compile_fail(&sysroot);
     run_pass();
     for_all_targets(&sysroot, |target| {
-        for file in std::fs::read_dir("tests/run-pass").unwrap() {
+        let files = std::fs::read_dir("tests/run-pass").unwrap();
+        let files: Box<Iterator<Item=_>> = if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
+            Box::new(files.chain(std::fs::read_dir(path).unwrap()))
+        } else {
+            Box::new(files)
+        };
+        let mut mir_not_found = 0;
+        let mut crate_not_found = 0;
+        let mut success = 0;
+        let mut failed = 0;
+        for file in files {
             let file = file.unwrap();
             let path = file.path();
 
@@ -76,20 +86,34 @@ fn compile_test() {
             cmd.env(compiletest::procsrv::dylib_env_var(), paths);
 
             match cmd.output() {
-                Ok(ref output) if output.status.success() => writeln!(stderr.lock(), "ok").unwrap(),
+                Ok(ref output) if output.status.success() => {
+                    success += 1;
+                    writeln!(stderr.lock(), "ok").unwrap()
+                },
                 Ok(output) => {
-                    writeln!(stderr.lock(), "FAILED with exit code {:?}", output.status.code()).unwrap();
-                    writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
-                    writeln!(stderr.lock(), "stderr: \n {}", std::str::from_utf8(&output.stderr).unwrap()).unwrap();
-                    panic!("some tests failed");
+                    let output_err = std::str::from_utf8(&output.stderr).unwrap();
+                    if let Some(text) = output_err.splitn(2, "thread 'main' panicked at 'no mir for `").nth(1) {
+                        mir_not_found += 1;
+                        let end = text.find('`').unwrap();
+                        writeln!(stderr.lock(), "NO MIR FOR `{}`", &text[..end]).unwrap();
+                    } else if let Some(text) = output_err.splitn(2, "can't find crate for `").nth(1) {
+                        crate_not_found += 1;
+                        let end = text.find('`').unwrap();
+                        writeln!(stderr.lock(), "CAN'T FIND CRATE FOR `{}`", &text[..end]).unwrap();
+                    } else {
+                        failed += 1;
+                        writeln!(stderr.lock(), "FAILED with exit code {:?}", output.status.code()).unwrap();
+                        writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+                        writeln!(stderr.lock(), "stderr: \n {}", output_err).unwrap();
+                    }
                 }
                 Err(e) => {
                     writeln!(stderr.lock(), "FAILED: {}", e).unwrap();
-                    panic!("some tests failed");
+                    panic!("failed to execute miri");
                 },
             }
         }
         let stderr = std::io::stderr();
-        writeln!(stderr.lock(), "").unwrap();
+        writeln!(stderr.lock(), "{} success, {} mir not found, {} crate not found, {} failed", success, mir_not_found, crate_not_found, failed).unwrap();
     });
 }
