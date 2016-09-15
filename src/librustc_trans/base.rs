@@ -1591,7 +1591,11 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.map.local_def_id(id);
                 let generics = tcx.lookup_generics(def_id);
-                generics.parent_types == 0 && generics.types.is_empty()
+                let attributes = tcx.get_attrs(def_id);
+                (generics.parent_types == 0 && generics.types.is_empty()) &&
+                // Functions marked with #[inline] are only ever translated
+                // with "internal" linkage and are never exported.
+                !attr::requests_inline(&attributes[..])
             }
 
             _ => false
