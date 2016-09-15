@@ -18,15 +18,11 @@ struct S {
     b: u16,
 }
 
+#[derive(Clone, Copy)]
 union U {
     s: S,
     c: u32,
 }
-
-impl Clone for U {
-    fn clone(&self) -> Self { *self }
-}
-impl Copy for U {}
 
 fn main() {
     unsafe {
