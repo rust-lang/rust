@@ -1054,7 +1054,8 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
-    const STACK_SIZE: usize = 8 * 1024 * 1024; // 8MB
+    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
+    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
     struct Sink(Arc<Mutex<Vec<u8>>>);
     impl Write for Sink {
