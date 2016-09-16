@@ -66,11 +66,12 @@ mod netbsd_base;
 mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
+mod thumb_base;
 
 pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
-    ( $(($triple:expr, $module:ident)),+ ) => (
+    ( $(($triple:expr, $module:ident),)+ ) => (
         $(mod $module;)*
 
         /// List of supported targets
@@ -191,7 +192,12 @@ supported_targets! {
 
     ("le32-unknown-nacl", le32_unknown_nacl),
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
-    ("wasm32-unknown-emscripten", wasm32_unknown_emscripten)
+    ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
+
+    ("thumbv6m-none-eabi", thumbv6m_none_eabi),
+    ("thumbv7m-none-eabi", thumbv7m_none_eabi),
+    ("thumbv7em-none-eabi", thumbv7em_none_eabi),
+    ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -401,6 +407,9 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
+            // NOTE 0 is *not* the real default value of max_atomic_width. The default value is
+            // actually the pointer_width of the target. This default is injected in the
+            // Target::from_json function.
             max_atomic_width: 0,
             panic_strategy: PanicStrategy::Unwind,
         }
@@ -698,6 +707,10 @@ impl ToJson for Target {
         target_option_val!(obj_is_bitcode);
         target_option_val!(max_atomic_width);
         target_option_val!(panic_strategy);
+
+        if self.options.max_atomic_width.to_string() != self.target_pointer_width {
+            d.insert("max-atomic-width".to_string(), self.options.max_atomic_width.to_json());
+        }
 
         Json::Object(d)
     }
