@@ -56,7 +56,9 @@
 //! easily control precisely what data is given to that fn.
 
 use encoder::EncodeContext;
-use index::IndexData;
+use index::Index;
+use schema::*;
+
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -68,7 +70,7 @@ use std::ops::{Deref, DerefMut};
 /// Builder that can encode new items, adding them into the index.
 /// Item encoding cannot be nested.
 pub struct IndexBuilder<'a, 'b: 'a, 'tcx: 'b> {
-    items: IndexData,
+    items: Index,
     pub ecx: &'a mut EncodeContext<'b, 'tcx>,
 }
 
@@ -88,16 +90,16 @@ impl<'a, 'b, 'tcx> DerefMut for IndexBuilder<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
         IndexBuilder {
-            items: IndexData::new(ecx.tcx.map.num_local_def_ids()),
+            items: Index::new(ecx.tcx.map.num_local_def_ids()),
             ecx: ecx,
         }
     }
 
     /// Emit the data for a def-id to the metadata. The function to
     /// emit the data is `op`, and it will be given `data` as
-    /// arguments. This `record` function will start/end an RBML tag
-    /// and record the current offset for use in the index, calling
-    /// `op` to generate the data in the RBML tag.
+    /// arguments. This `record` function will call `op` to generate
+    /// the `Entry` (which may point to other encoded information)
+    /// and will then record the `Lazy<Entry>` for use in the index.
     ///
     /// In addition, it will setup a dep-graph task to track what data
     /// `op` accesses to generate the metadata, which is later used by
@@ -112,21 +114,17 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// content system.
     pub fn record<DATA>(&mut self,
                         id: DefId,
-                        op: fn(&mut EncodeContext<'b, 'tcx>, DATA),
+                        op: fn(&mut EncodeContext<'b, 'tcx>, DATA) -> Entry<'tcx>,
                         data: DATA)
         where DATA: DepGraphRead
     {
-        let position = self.ecx.mark_stable_position();
-        self.items.record(id, position);
         let _task = self.tcx.dep_graph.in_task(DepNode::MetaData(id));
-        // FIXME(eddyb) Avoid wrapping the entries in docs.
-        self.ecx.start_tag(0).unwrap();
         data.read(self.tcx);
-        op(&mut self.ecx, data);
-        self.ecx.end_tag().unwrap();
+        let entry = op(&mut self.ecx, data);
+        self.items.record(id, self.ecx.lazy(&entry));
     }
 
-    pub fn into_items(self) -> IndexData {
+    pub fn into_items(self) -> Index {
         self.items
     }
 }

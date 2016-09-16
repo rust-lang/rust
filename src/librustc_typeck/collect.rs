@@ -674,6 +674,13 @@ fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      defaultness: hir::Defaultness,
                                      ty: Option<Ty<'tcx>>)
 {
+    let predicates = ty::GenericPredicates {
+        parent: Some(container.id()),
+        predicates: vec![]
+    };
+    ccx.tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(id),
+                                           predicates);
+
     let associated_type = Rc::new(ty::AssociatedType {
         name: name,
         vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
@@ -831,6 +838,9 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             // Convert all the associated types.
             for impl_item in impl_items {
                 if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
+                    let type_def_id = ccx.tcx.map.local_def_id(impl_item.id);
+                    generics_of_def_id(ccx, type_def_id);
+
                     if opt_trait_ref.is_none() {
                         span_err!(tcx.sess, impl_item.span, E0202,
                                   "associated types are not allowed in inherent impls");
@@ -898,6 +908,9 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             // Convert all the associated types.
             for trait_item in trait_items {
                 if let hir::TypeTraitItem(_, ref opt_ty) = trait_item.node {
+                    let type_def_id = ccx.tcx.map.local_def_id(trait_item.id);
+                    generics_of_def_id(ccx, type_def_id);
+
                     let typ = opt_ty.as_ref().map({
                         |ty| ccx.icx(&trait_predicates).to_ty(&ExplicitRscope, &ty)
                     });
