@@ -11,6 +11,8 @@
 use core::num::flt2dec::estimator::*;
 
 #[test]
+// FIXME https://github.com/kripken/emscripten/issues/4563
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn test_estimate_scaling_factor() {
     macro_rules! assert_almost_eq {
         ($actual:expr, $expected:expr) => ({
