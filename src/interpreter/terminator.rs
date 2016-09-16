@@ -531,7 +531,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     args.remove(0);
                     Ok((did, substs))
                 } else {
-                    bug!("VtableFnPointer did not contain a concrete function: {:?}", fn_ty)
+                    bug!("VtableFnPointer did not contain a concrete function: {:?}", vtable_fn_ptr)
                 }
             }
 
