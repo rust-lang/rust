@@ -210,7 +210,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 }
 
 impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
-    fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> String {
+    pub fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> String {
         match self.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr | ty::TyNever => self.to_string(),
