@@ -547,7 +547,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             };
 
             if !is_simple_error {
-                diag.note_expected_found(&"type", &expected, &found);
+                if expected == found {
+                    if let &TypeError::Sorts(ref values) = terr {
+                        diag.note_expected_found_extra(
+                            &"type", &expected, &found,
+                            &format!(" ({})", values.expected.sort_string(self.tcx)),
+                            &format!(" ({})", values.found.sort_string(self.tcx)));
+                    } else {
+                        diag.note_expected_found(&"type", &expected, &found);
+                    }
+                } else {
+                    diag.note_expected_found(&"type", &expected, &found);
+                }
             }
         }
 
