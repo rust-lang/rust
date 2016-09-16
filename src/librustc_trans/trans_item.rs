@@ -251,7 +251,11 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     /// True if the translation item should only be translated to LLVM IR if
     /// it is referenced somewhere (like inline functions, for example).
-    pub fn is_instantiated_only_on_demand(&self, tcx: TyCtxt) -> bool {
+    pub fn is_instantiated_only_on_demand(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        if self.explicit_linkage(tcx).is_some() {
+            return false;
+        }
+
         match *self {
             TransItem::Fn(ref instance) => {
                 !instance.def.is_local() ||

@@ -1421,21 +1421,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
             .iter()
             .cloned()
             .filter(|trans_item|{
-                let def_id = match *trans_item {
-                    TransItem::DropGlue(..) => {
-                        return false
-                    },
-                    TransItem::Fn(ref instance) => {
-                        instance.def
-                    }
-                    TransItem::Static(node_id) => {
-                        tcx.map.local_def_id(node_id)
-                    }
-                };
-
-                trans_item.explicit_linkage(tcx).is_some() ||
-                attr::contains_extern_indicator(tcx.sess.diagnostic(),
-                                                &tcx.get_attrs(def_id))
+                trans_item.explicit_linkage(tcx).is_some()
             })
             .map(|trans_item| symbol_map.get_or_compute(scx, trans_item))
             .collect();
@@ -1900,8 +1886,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         partitioning::partition(scx,
                                 items.iter().cloned(),
                                 strategy,
-                                &inlining_map,
-                                scx.reachable())
+                                &inlining_map)
     });
 
     assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||
