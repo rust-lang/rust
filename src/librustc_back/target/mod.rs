@@ -397,12 +397,12 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
-            /// NOTE this is *not* the real default value. The default value of max_atomic_width is
-            /// actually the pointer width of the target. This default is injected in the
-            /// Target::from_json function. Still, we have to pick some value to put here. We'll pick
-            /// an impossible value: u64::max_value() because using a valid value like 0 or 8 as the
-            /// default would cause the max-atomic-width field to be "lost" (it would get replaced
-            /// by target_pointer_width) during the Target <-> JSON round trip
+            // NOTE this is *not* the real default value. The default value of max_atomic_width is
+            // actually the pointer width of the target. This default is injected in the
+            // Target::from_json function. Still, we have to pick some value to put here. We'll pick
+            // an impossible value: u64::max_value() because using a valid value like 0 or 8 as the
+            // default would cause the max-atomic-width field to be "lost" (it would get replaced
+            // by target_pointer_width) during the Target <-> JSON round trip
             max_atomic_width: u64::max_value(),
         }
     }
