@@ -203,7 +203,7 @@ impl<'b> Resolver<'b> {
                                 let ext = macro_rules::compile(&self.session.parse_sess, &def);
                                 let shadowing =
                                     self.resolve_macro_name(Mark::root(), name, false).is_some();
-                                self.expansion_data[&Mark::root()].module.macros.borrow_mut()
+                                self.expansion_data[&Mark::root()].module.get().macros.borrow_mut()
                                     .insert(name, macros::NameBinding {
                                         ext: Rc::new(ext),
                                         expansion: expansion,
@@ -525,8 +525,8 @@ pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) {
-        self.resolver.expansion_data.get_mut(&Mark::from_placeholder_id(id)).unwrap().module =
-            self.resolver.current_module;
+        let mark = Mark::from_placeholder_id(id);
+        self.resolver.expansion_data[&mark].module.set(self.resolver.current_module);
     }
 }
 
