@@ -20,7 +20,7 @@ The motivation for this is mostly identical to [RFC 639](https://github.com/rust
 
 The proposed design has been implemented at [#34785](https://github.com/rust-lang/rust/pull/34785) (after some back-and-forth). That implementation is copied at the end of this section for reference.
 
-A struct `Discriminant<T>` and a free function `fn discriminant<T: Reflect>(v: &T) -> Discriminant<T>` are added to `std::mem` (for lack of a better home, and noting that `std::mem` already contains similar parametricity escape hatches such as `size_of`). For now, the `Discriminant` struct is simply a newtype over `u64`, because that's what the `discriminant_value` intrinsic returns, and a `PhantomData` to allow it to be generic over `T`.
+A struct `Discriminant<T>` and a free function `fn discriminant<T>(v: &T) -> Discriminant<T>` are added to `std::mem` (for lack of a better home, and noting that `std::mem` already contains similar parametricity escape hatches such as `size_of`). For now, the `Discriminant` struct is simply a newtype over `u64`, because that's what the `discriminant_value` intrinsic returns, and a `PhantomData` to allow it to be generic over `T`.
 
 Making `Discriminant` generic provides several benefits:
 
