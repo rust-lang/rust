@@ -523,7 +523,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
     fn visit_lvalue(&mut self,
                     lvalue: &mir::Lvalue<'tcx>,
-                    context: mir_visit::LvalueContext,
+                    context: mir_visit::LvalueContext<'tcx>,
                     location: Location) {
         debug!("visiting lvalue {:?}", *lvalue);
 
