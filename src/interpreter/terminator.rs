@@ -526,8 +526,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             traits::VtableClosure(vtable_closure) =>
                 Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs)),
 
-            traits::VtableFnPointer(fn_ty) => {
-                if let ty::TyFnDef(did, ref substs, _) = fn_ty.fn_ty.sty {
+            traits::VtableFnPointer(vtable_fn_ptr) => {
+                if let ty::TyFnDef(did, ref substs, _) = vtable_fn_ptr.fn_ty.sty {
                     args.remove(0);
                     Ok((did, substs))
                 } else {
