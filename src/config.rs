@@ -410,7 +410,12 @@ create_config! {
                                                block indented. -1 means never use block indent.";
     space_before_type_annotation: bool, false,
         "Leave a space before the colon in a type annotation";
+    space_after_type_annotation_colon: bool, true,
+        "Leave a space after the colon in a type annotation";
     space_before_bound: bool, false, "Leave a space before the colon in a trait or lifetime bound";
+    space_after_bound_colon: bool, true,
+        "Leave a space after the colon in a trait or lifetime bound";
+    spaces_around_ranges: bool, false, "Put spaces around the  .. and ... range operators";
     use_try_shorthand: bool, false, "Replace uses of the try! macro by the ? shorthand";
     write_mode: WriteMode, WriteMode::Replace,
         "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
