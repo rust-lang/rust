@@ -92,6 +92,22 @@ pub trait AsRef<T: ?Sized> {
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 ///
+/// # Examples
+///
+/// [`Box<T>`] implements `AsMut<T>`:
+///
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+///
+/// ```
+/// fn add_one<T: AsMut<u64>>(num: &mut T) {
+///     *num.as_mut() += 1;
+/// }
+///
+/// let mut boxed_num = Box::new(0);
+/// add_one(&mut boxed_num);
+/// assert_eq!(*boxed_num, 1);
+/// ```
+///
 /// # Generic Impls
 ///
 /// - `AsMut` auto-dereferences if the inner type is a reference or a mutable

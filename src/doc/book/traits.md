@@ -291,7 +291,7 @@ let result = f.write(buf);
 
 We need to `use` the `Write` trait first:
 
-```rust,ignore
+```rust,no_run
 use std::io::Write;
 
 let mut f = std::fs::File::create("foo.txt").expect("Couldn’t create foo.txt");
