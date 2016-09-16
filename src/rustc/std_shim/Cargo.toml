@@ -41,6 +41,7 @@ debug-assertions = false
 
 [dependencies]
 std = { path = "../../libstd" }
+core = { path = "../../libcore" }
 
 # Reexport features from std
 [features]

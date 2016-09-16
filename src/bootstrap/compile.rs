@@ -128,14 +128,16 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
         return
     }
     let compiler = Compiler::new(0, &build.config.build);
-    let compiler = build.compiler_path(&compiler);
+    let compiler_path = build.compiler_path(&compiler);
 
     for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
         let file = t!(file);
-        build.run(Command::new(&compiler)
-                          .arg("--emit=obj")
-                          .arg("--out-dir").arg(into)
-                          .arg(file.path()));
+        let mut cmd = Command::new(&compiler_path);
+        build.add_bootstrap_key(&compiler, &mut cmd);
+        build.run(cmd.arg("--target").arg(target)
+                     .arg("--emit=obj")
+                     .arg("--out-dir").arg(into)
+                     .arg(file.path()));
     }
 
     for obj in ["crt2.o", "dllcrt2.o"].iter() {
