@@ -72,6 +72,12 @@ impl Sources {
             }
         }
     }
+
+    fn remove(&mut self, symbols: &[&str]) {
+        for symbol in symbols {
+            self.map.remove(*symbol).unwrap();
+        }
+    }
 }
 
 fn main() {
@@ -105,6 +111,25 @@ fn main() {
         cfg.flag("-fvisibility=hidden");
         cfg.flag("-fomit-frame-pointer");
         cfg.flag("-ffreestanding");
+    }
+
+    // NOTE Most of the ARM intrinsics are written in assembly. Tell gcc which arch we are going to
+    // target to make sure that the assembly implementations really work for the target. If the
+    // implementation is not valid for the arch, then gcc will error when compiling it.
+    if llvm_target[0].starts_with("thumb") {
+        cfg.flag("-mthumb");
+    }
+
+    if llvm_target[0] == "thumbv6m" {
+        cfg.flag("-march=armv6-m");
+    }
+
+    if llvm_target[0] == "thumbv7m" {
+        cfg.flag("-march=armv7-m");
+    }
+
+    if llvm_target[0] == "thumbv7em" {
+        cfg.flag("-march=armv7e-m");
     }
 
     let mut sources = Sources::new();
@@ -252,7 +277,7 @@ fn main() {
                          "atomic_thread_fence.c"]);
     }
 
-    if target_os != "windows" {
+    if target_os != "windows" && target_os != "none" {
         sources.extend(&["emutls.c"]);
     }
 
@@ -356,42 +381,43 @@ fn main() {
     }
 
     if llvm_target.last().unwrap().ends_with("eabihf") {
-        sources.extend(&["arm/adddf3vfp.S",
-                         "arm/addsf3vfp.S",
-                         "arm/divdf3vfp.S",
-                         "arm/divsf3vfp.S",
-                         "arm/eqdf2vfp.S",
-                         "arm/eqsf2vfp.S",
-                         "arm/extendsfdf2vfp.S",
-                         "arm/fixdfsivfp.S",
-                         "arm/fixsfsivfp.S",
-                         "arm/fixunsdfsivfp.S",
-                         "arm/fixunssfsivfp.S",
-                         "arm/floatsidfvfp.S",
-                         "arm/floatsisfvfp.S",
-                         "arm/floatunssidfvfp.S",
-                         "arm/floatunssisfvfp.S",
-                         "arm/gedf2vfp.S",
-                         "arm/gesf2vfp.S",
-                         "arm/gtdf2vfp.S",
-                         "arm/gtsf2vfp.S",
-                         "arm/ledf2vfp.S",
-                         "arm/lesf2vfp.S",
-                         "arm/ltdf2vfp.S",
-                         "arm/ltsf2vfp.S",
-                         "arm/muldf3vfp.S",
-                         "arm/mulsf3vfp.S",
-                         "arm/negdf2vfp.S",
-                         "arm/negsf2vfp.S",
-                         "arm/nedf2vfp.S",
-                         "arm/nesf2vfp.S",
-                         "arm/restore_vfp_d8_d15_regs.S",
-                         "arm/save_vfp_d8_d15_regs.S",
-                         "arm/subdf3vfp.S",
-                         "arm/subsf3vfp.S",
-                         "arm/truncdfsf2vfp.S",
-                         "arm/unorddf2vfp.S",
-                         "arm/unordsf2vfp.S"]);
+        if !llvm_target[0].starts_with("thumbv7em") {
+            sources.extend(&["arm/adddf3vfp.S",
+                             "arm/addsf3vfp.S",
+                             "arm/divdf3vfp.S",
+                             "arm/divsf3vfp.S",
+                             "arm/eqdf2vfp.S",
+                             "arm/eqsf2vfp.S",
+                             "arm/extendsfdf2vfp.S",
+                             "arm/fixdfsivfp.S",
+                             "arm/fixsfsivfp.S",
+                             "arm/fixunsdfsivfp.S",
+                             "arm/fixunssfsivfp.S",
+                             "arm/floatsidfvfp.S",
+                             "arm/floatsisfvfp.S",
+                             "arm/floatunssidfvfp.S",
+                             "arm/floatunssisfvfp.S",
+                             "arm/gedf2vfp.S",
+                             "arm/gesf2vfp.S",
+                             "arm/gtdf2vfp.S",
+                             "arm/gtsf2vfp.S",
+                             "arm/ledf2vfp.S",
+                             "arm/lesf2vfp.S",
+                             "arm/ltdf2vfp.S",
+                             "arm/ltsf2vfp.S",
+                             "arm/muldf3vfp.S",
+                             "arm/mulsf3vfp.S",
+                             "arm/nedf2vfp.S",
+                             "arm/nesf2vfp.S",
+                             "arm/restore_vfp_d8_d15_regs.S",
+                             "arm/save_vfp_d8_d15_regs.S",
+                             "arm/subdf3vfp.S",
+                             "arm/subsf3vfp.S",
+            ]);
+        }
+
+        sources.extend(&["arm/negdf2vfp.S", "arm/negsf2vfp.S"]);
+
     }
 
     if target_arch == "aarch64" {
@@ -411,6 +437,18 @@ fn main() {
                          "multc3.c",
                          "trunctfdf2.c",
                          "trunctfsf2.c"]);
+    }
+
+    // Remove the assembly implementations that won't compile for the target
+    if llvm_target[0] == "thumbv6m" {
+        sources.remove(&["aeabi_cdcmp", "aeabi_cfcmp", "aeabi_dcmp", "aeabi_fcmp", "aeabi_ldivmod",
+                         "aeabi_memset", "aeabi_uldivmod", "clzdi2", "clzsi2", "comparesf2",
+                         "divmodsi4", "divsi3", "modsi3", "switch16", "switch32", "switch8",
+                         "switchu8", "udivmodsi4", "udivsi3", "umodsi3"]);
+    }
+
+    if llvm_target[0] == "thumbv7m" || llvm_target[0] == "thumbv7em" {
+        sources.remove(&["aeabi_cdcmp", "aeabi_cfcmp"]);
     }
 
     for src in sources.map.values() {
