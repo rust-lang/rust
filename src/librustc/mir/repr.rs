@@ -187,6 +187,14 @@ impl<'tcx> Mir<'tcx> {
         self.var_decls.len() +
         self.temp_decls.len() + 1
     }
+
+    /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
+    /// invalidating statement indices in `Location`s.
+    pub fn make_statement_nop(&mut self, location: Location) {
+        let block = &mut self[location.block];
+        debug_assert!(location.statement_index < block.statements.len());
+        block.statements[location.statement_index].make_nop()
+    }
 }
 
 impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
@@ -686,6 +694,14 @@ pub struct Statement<'tcx> {
     pub kind: StatementKind<'tcx>,
 }
 
+impl<'tcx> Statement<'tcx> {
+    /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
+    /// invalidating statement indices in `Location`s.
+    pub fn make_nop(&mut self) {
+        self.kind = StatementKind::Nop
+    }
+}
+
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Lvalue.
@@ -699,6 +715,9 @@ pub enum StatementKind<'tcx> {
 
     /// End the current live range for the storage of the local.
     StorageDead(Lvalue<'tcx>),
+
+    /// No-op. Useful for deleting instructions without affecting statement indices.
+    Nop,
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
@@ -711,6 +730,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
                 write!(fmt, "discriminant({:?}) = {:?}", lv, index)
             }
+            Nop => write!(fmt, "nop"),
         }
     }
 }

@@ -389,7 +389,8 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
                                        |moi| callback(moi, DropFlagState::Present))
             }
             repr::StatementKind::StorageLive(_) |
-            repr::StatementKind::StorageDead(_) => {}
+            repr::StatementKind::StorageDead(_) |
+            repr::StatementKind::Nop => {}
         },
         None => {
             debug!("drop_flag_effects: replace {:?}", block.terminator());

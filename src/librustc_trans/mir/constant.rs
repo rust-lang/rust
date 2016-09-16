@@ -292,7 +292,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
                     mir::StatementKind::StorageLive(_) |
-                    mir::StatementKind::StorageDead(_) => {}
+                    mir::StatementKind::StorageDead(_) |
+                    mir::StatementKind::Nop => {}
                     mir::StatementKind::SetDiscriminant{ .. } => {
                         span_bug!(span, "SetDiscriminant should not appear in constants?");
                     }
