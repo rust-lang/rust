@@ -1093,12 +1093,20 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
         use rustc::util::ppaux;
         use std::fmt;
         struct Instance<'tcx>(DefId, &'tcx subst::Substs<'tcx>);
+        impl<'tcx> ::std::panic::UnwindSafe for Instance<'tcx> {}
+        impl<'tcx> ::std::panic::RefUnwindSafe for Instance<'tcx> {}
         impl<'tcx> fmt::Display for Instance<'tcx> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[])
             }
         }
-        err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
+        let inst = Instance(def_id, substs);
+        match ::std::panic::catch_unwind(|| {
+            format!("inside call to {}", inst)
+        }) {
+            Ok(msg) => err.span_note(span, &msg),
+            Err(_) => err.span_note(span, &format!("ppaux::parameterized failed: {:?}, {:?}", def_id, substs)),
+        };
     }
     err.emit();
 }

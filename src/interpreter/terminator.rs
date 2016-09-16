@@ -182,29 +182,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // Only trait methods can have a Self parameter.
                 let (resolved_def_id, resolved_substs) =
                     if let Some(trait_id) = self.tcx.trait_of_item(def_id) {
-                        self.trait_method(trait_id, def_id, substs, arg_srcs.get_mut(0))?
+                        self.trait_method(trait_id, def_id, substs, &mut arg_srcs)?
                     } else {
                         (def_id, substs)
                     };
 
-                if fn_ty.abi == Abi::RustCall && !args.is_empty() {
-                    arg_srcs.pop();
-                    let last_arg = args.last().unwrap();
-                    let last = self.eval_operand(last_arg)?;
-                    let last_ty = self.operand_ty(last_arg);
-                    let last_layout = self.type_layout(last_ty);
-                    match (&last_ty.sty, last_layout) {
-                        (&ty::TyTuple(fields),
-                         &Layout::Univariant { ref variant, .. }) => {
-                            let offsets = iter::once(0)
-                                .chain(variant.offset_after_field.iter()
-                                    .map(|s| s.bytes()));
-                            for (offset, ty) in offsets.zip(fields) {
-                                let src = last.offset(offset as isize);
-                                arg_srcs.push((src, ty));
+                if fn_ty.abi == Abi::RustCall {
+                    if let Some((last, last_ty)) = arg_srcs.pop() {
+                        let last_layout = self.type_layout(last_ty);
+                        match (&last_ty.sty, last_layout) {
+                            (&ty::TyTuple(fields),
+                             &Layout::Univariant { ref variant, .. }) => {
+                                let offsets = iter::once(0)
+                                    .chain(variant.offset_after_field.iter()
+                                        .map(|s| s.bytes()));
+                                for (offset, ty) in offsets.zip(fields) {
+                                    let src = last.offset(offset as isize);
+                                    arg_srcs.push((src, ty));
+                                }
                             }
+                            ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
                         }
-                        ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
                     }
                 }
 
@@ -298,6 +296,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let dest = self.memory.read_ptr(args_ptrs[1])?;
                 let count = self.memory.read_isize(args_ptrs[2])?;
                 self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
+            }
+
+            "ctpop" => {
+                let elem_ty = substs.type_at(0);
+                let elem_size = self.type_size(elem_ty);
+                let num = self.memory.read_uint(args_ptrs[0], elem_size)?.count_ones();
+                self.memory.write_uint(dest, num.into(), elem_size)?;
+            }
+
+            "ctlz" => {
+                let elem_ty = substs.type_at(0);
+                let elem_size = self.type_size(elem_ty);
+                let num = self.memory.read_uint(args_ptrs[0], elem_size)?.leading_zeros();
+                self.memory.write_uint(dest, num.into(), elem_size)?;
             }
 
             "discriminant_value" => {
@@ -495,7 +507,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         trait_id: DefId,
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
-        first_arg: Option<&mut (Pointer, Ty<'tcx>)>,
+        args: &mut Vec<(Pointer, Ty<'tcx>)>,
     ) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>)> {
         let trait_ref = ty::TraitRef::from_method(self.tcx, trait_id, substs);
         let trait_ref = self.tcx.normalize_associated_type(&ty::Binder(trait_ref));
@@ -514,23 +526,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             traits::VtableClosure(vtable_closure) =>
                 Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs)),
 
-            traits::VtableFnPointer(_fn_ty) => {
-                let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-                unimplemented!()
-                // let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
-
-                // let method_ty = def_ty(tcx, def_id, substs);
-                // let fn_ptr_ty = match method_ty.sty {
-                //     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
-                //     _ => unreachable!("expected fn item type, found {}",
-                //                       method_ty)
-                // };
-                // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
+            traits::VtableFnPointer(vtable_fn_ptr) => {
+                if let ty::TyFnDef(did, ref substs, _) = vtable_fn_ptr.fn_ty.sty {
+                    args.remove(0);
+                    Ok((did, substs))
+                } else {
+                    bug!("VtableFnPointer did not contain a concrete function: {:?}", vtable_fn_ptr)
+                }
             }
 
             traits::VtableObject(ref data) => {
                 let idx = self.tcx.get_vtable_index_of_object_method(data, def_id);
-                if let Some(&mut(first_arg, ref mut first_ty)) = first_arg {
+                if let Some(&mut(first_arg, ref mut first_ty)) = args.get_mut(0) {
                     let (_, vtable) = self.get_fat_ptr(first_arg);
                     let vtable = self.memory.read_ptr(vtable)?;
                     let idx = idx + 3;
