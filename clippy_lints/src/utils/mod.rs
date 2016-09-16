@@ -721,7 +721,43 @@ pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     }
 }
 
-pub fn is_copy<'a, 'ctx>(cx: &LateContext<'a, 'ctx>, ty: ty::Ty<'ctx>, env: NodeId) -> bool {
+pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: NodeId) -> bool {
     let env = ty::ParameterEnvironment::for_item(cx.tcx, env);
     !ty.subst(cx.tcx, env.free_substs).moves_by_default(cx.tcx.global_tcx(), &env, DUMMY_SP)
+}
+
+/// Return whether a pattern is refutable.
+pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
+    fn is_enum_variant(cx: &LateContext, did: NodeId) -> bool {
+        matches!(cx.tcx.def_map.borrow().get(&did).map(|d| d.full_def()), Some(def::Def::Variant(..)))
+    }
+
+    fn are_refutable<'a, I: Iterator<Item=&'a Pat>>(cx: &LateContext, mut i: I) -> bool {
+        i.any(|pat| is_refutable(cx, pat))
+    }
+
+    match pat.node {
+        PatKind::Binding(..) | PatKind::Wild => false,
+        PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => is_refutable(cx, pat),
+        PatKind::Lit(..) | PatKind::Range(..) => true,
+        PatKind::Path(..) => is_enum_variant(cx, pat.id),
+        PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
+        PatKind::Struct(_, ref fields, _) => {
+            if is_enum_variant(cx, pat.id) {
+                true
+            } else {
+                are_refutable(cx, fields.iter().map(|field| &*field.node.pat))
+            }
+        }
+        PatKind::TupleStruct(_, ref pats, _) => {
+            if is_enum_variant(cx, pat.id) {
+                true
+            } else {
+                are_refutable(cx, pats.iter().map(|pat| &**pat))
+            }
+        }
+        PatKind::Vec(ref head, ref middle, ref tail) => {
+            are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
+        }
+    }
 }

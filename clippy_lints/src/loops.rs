@@ -14,9 +14,9 @@ use std::collections::HashMap;
 use syntax::ast;
 use utils::sugg;
 
-use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg, in_external_macro,
-            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
-            walk_ptrs_ty};
+use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg,
+            in_external_macro, is_refutable, span_help_and_lint, is_integer_literal,
+            get_enclosing_block, span_lint_and_then, higher, walk_ptrs_ty};
 use utils::paths;
 
 /// **What it does:** Checks for looping over the range of `0..len` of some
@@ -354,6 +354,7 @@ impl LateLintPass for Pass {
                     if method_name.node.as_str() == "next" &&
                        match_trait_method(cx, match_expr, &paths::ITERATOR) &&
                        lhs_constructor.name.as_str() == "Some" &&
+                       !is_refutable(cx, &pat_args[0]) &&
                        !is_iterator_used_after_while_let(cx, iter_expr) {
                         let iterator = snippet(cx, method_args[0].span, "_");
                         let loop_var = snippet(cx, pat_args[0].span, "_");
