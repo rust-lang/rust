@@ -57,6 +57,7 @@ use syntax::ext::base::MultiItemModifier;
 use syntax::ext::hygiene::Mark;
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, IntTy, UintTy};
+use syntax::ext::base::SyntaxExtension;
 use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -72,9 +73,9 @@ use syntax_pos::{Span, DUMMY_SP};
 use errors::DiagnosticBuilder;
 
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
 use std::fmt;
 use std::mem::replace;
+use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, NameResolution};
 
@@ -786,6 +787,9 @@ pub struct ModuleS<'a> {
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
+
+    macros: RefCell<FnvHashMap<Name, Rc<SyntaxExtension>>>,
+    macros_escape: bool,
 }
 
 pub type Module<'a> = &'a ModuleS<'a>;
@@ -803,6 +807,8 @@ impl<'a> ModuleS<'a> {
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(true),
+            macros: RefCell::new(FnvHashMap()),
+            macros_escape: false,
         }
     }
 

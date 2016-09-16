@@ -20,12 +20,14 @@ use {NameBinding, NameBindingKind, ToNameBinding};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
+use rustc::middle::cstore::LoadedMacro;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::map::DefPathData;
 use rustc::ty;
 
 use std::cell::Cell;
+use std::rc::Rc;
 
 use syntax::ast::Name;
 use syntax::attr;
@@ -34,6 +36,9 @@ use syntax::parse::token;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::ext::base::{MultiItemModifier, Resolver as SyntaxResolver};
+use syntax::ext::hygiene::Mark;
+use syntax::feature_gate::{self, emit_feature_err};
 use syntax::parse::token::keywords;
 use syntax::visit::{self, Visitor};
 
@@ -73,8 +78,6 @@ impl<'b> Resolver<'b> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item) {
-        self.crate_loader.process_item(item, &self.definitions);
-
         let parent = self.current_module;
         let name = item.ident.name;
         let sp = item.span;
@@ -182,8 +185,20 @@ impl<'b> Resolver<'b> {
             }
 
             ItemKind::ExternCrate(_) => {
-                // n.b. we don't need to look at the path option here, because cstore already
-                // did
+                // We need to error on `#[macro_use] extern crate` when it isn't at the
+                // crate root, because `$crate` won't work properly.
+                let is_crate_root = self.current_module.parent.is_none();
+                for def in self.crate_loader.load_macros(item, is_crate_root) {
+                    match def {
+                        LoadedMacro::Def(def) => self.add_macro(Mark::root(), def),
+                        LoadedMacro::CustomDerive(name, ext) => {
+                            self.insert_custom_derive(&name, ext, item.span);
+                        }
+                    }
+                }
+                self.crate_loader.process_item(item, &self.definitions);
+
+                // n.b. we don't need to look at the path option here, because cstore already did
                 if let Some(crate_id) = self.session.cstore.extern_mod_stmt_cnum(item.id) {
                     let def_id = DefId {
                         krate: crate_id,
@@ -209,6 +224,7 @@ impl<'b> Resolver<'b> {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
                     },
                     normal_ancestor_id: Some(item.id),
+                    macros_escape: self.contains_macro_use(&item.attrs),
                     ..ModuleS::new(Some(parent), ModuleKind::Def(def, name))
                 });
                 self.define(parent, name, TypeNS, (module, sp, vis));
@@ -218,7 +234,7 @@ impl<'b> Resolver<'b> {
                 self.current_module = module;
             }
 
-            ItemKind::ForeignMod(..) => {}
+            ItemKind::ForeignMod(..) => self.crate_loader.process_item(item, &self.definitions),
 
             // These items live in the value namespace.
             ItemKind::Static(_, m, _) => {
@@ -472,6 +488,41 @@ impl<'b> Resolver<'b> {
         }
         module.populated.set(true)
     }
+
+    // does this attribute list contain "macro_use"?
+    fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
+        for attr in attrs {
+            if attr.check_name("macro_escape") {
+                let msg = "macro_escape is a deprecated synonym for macro_use";
+                let mut err = self.session.struct_span_warn(attr.span, msg);
+                if let ast::AttrStyle::Inner = attr.node.style {
+                    err.help("consider an outer attribute, #[macro_use] mod ...").emit();
+                } else {
+                    err.emit();
+                }
+            } else if !attr.check_name("macro_use") {
+                continue;
+            }
+
+            if !attr.is_word() {
+                self.session.span_err(attr.span, "arguments to macro_use are not allowed here");
+            }
+            return true;
+        }
+
+        false
+    }
+
+    fn insert_custom_derive(&mut self, name: &str, ext: Rc<MultiItemModifier>, sp: Span) {
+        if !self.session.features.borrow().rustc_macro {
+            let sess = &self.session.parse_sess;
+            let msg = "loading custom derive macro crates is experimentally supported";
+            emit_feature_err(sess, "rustc_macro", sp, feature_gate::GateIssue::Language, msg);
+        }
+        if self.derive_modes.insert(token::intern(name), ext).is_some() {
+            self.session.span_err(sp, &format!("cannot shadow existing derive mode `{}`", name));
+        }
+    }
 }
 
 pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
@@ -480,7 +531,7 @@ pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) {
-        self.resolver.expansion_data.get_mut(&id.as_u32()).unwrap().module2 =
+        self.resolver.expansion_data.get_mut(&id.as_u32()).unwrap().module =
             self.resolver.current_module;
     }
 }

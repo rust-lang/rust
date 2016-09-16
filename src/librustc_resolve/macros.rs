@@ -12,47 +12,30 @@ use {Module, Resolver};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::map::DefCollector;
-use rustc::middle::cstore::LoadedMacro;
-use rustc::util::nodemap::FnvHashMap;
-use std::cell::RefCell;
-use std::mem;
 use std::rc::Rc;
-use syntax::ast::{self, Name};
+use syntax::ast;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, MultiModifier, MultiDecorator, MultiItemModifier};
-use syntax::ext::base::{NormalTT, Resolver as SyntaxResolver, SyntaxExtension};
+use syntax::ext::base::{NormalTT, SyntaxExtension};
 use syntax::ext::expand::{Expansion, Invocation, InvocationKind};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{self, emit_feature_err};
-use syntax::parse::token::{self, intern};
+use syntax::parse::token::intern;
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::visit::{self, Visitor};
-use syntax_pos::Span;
 
 #[derive(Clone)]
 pub struct ExpansionData<'a> {
-    module: Rc<ModuleData>,
+    pub module: Module<'a>,
     def_index: DefIndex,
-    pub module2: Module<'a>,
 }
 
 impl<'a> ExpansionData<'a> {
     pub fn root(graph_root: Module<'a>) -> Self {
         ExpansionData {
-            module: Default::default(),
+            module: graph_root,
             def_index: CRATE_DEF_INDEX,
-            module2: graph_root,
         }
     }
-}
-
-// FIXME(jseyfried): merge with `::ModuleS`.
-#[derive(Default)]
-struct ModuleData {
-    parent: Option<Rc<ModuleData>>,
-    macros: RefCell<FnvHashMap<Name, Rc<SyntaxExtension>>>,
-    macros_escape: bool,
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
@@ -61,14 +44,9 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
-        let expansion_data = self.expansion_data[&mark.as_u32()].clone();
-        self.current_module = expansion_data.module2;
-        let mut visitor =
-            ExpansionVisitor { current_module: expansion_data.module, resolver: self };
-
-        visitor.collect_def_ids(mark, expansion);
-        expansion.visit_with(&mut visitor);
-        expansion.visit_with(&mut BuildReducedGraphVisitor { resolver: visitor.resolver });
+        self.collect_def_ids(mark, expansion);
+        self.current_module = self.expansion_data[&mark.as_u32()].module;
+        expansion.visit_with(&mut BuildReducedGraphVisitor { resolver: self });
     }
 
     fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
@@ -90,9 +68,9 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.macro_names.insert(ident.name);
         }
 
-        let mut module = self.expansion_data[&scope.as_u32()].module.clone();
+        let mut module = self.expansion_data[&scope.as_u32()].module;
         while module.macros_escape {
-            module = module.parent.clone().unwrap();
+            module = module.parent.unwrap();
         }
         module.macros.borrow_mut().insert(ident.name, ext);
     }
@@ -132,12 +110,12 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { ref attr, .. } => (intern(&*attr.name()), attr.span),
         };
 
-        let mut module = self.expansion_data[&scope.as_u32()].module.clone();
+        let mut module = self.expansion_data[&scope.as_u32()].module;
         loop {
             if let Some(ext) = module.macros.borrow().get(&name) {
                 return Some(ext.clone());
             }
-            match module.parent.clone() {
+            match module.parent {
                 Some(parent) => module = parent,
                 None => break,
             }
@@ -166,133 +144,19 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn insert_custom_derive(&mut self, name: &str, ext: Rc<MultiItemModifier>, sp: Span) {
-        if !self.session.features.borrow().rustc_macro {
-            let sess = &self.session.parse_sess;
-            let msg = "loading custom derive macro crates is experimentally supported";
-            emit_feature_err(sess, "rustc_macro", sp, feature_gate::GateIssue::Language, msg);
-        }
-        if self.derive_modes.insert(token::intern(name), ext).is_some() {
-            self.session.span_err(sp, &format!("cannot shadow existing derive mode `{}`", name));
-        }
-    }
-}
-
-struct ExpansionVisitor<'b, 'a: 'b> {
-    resolver: &'b mut Resolver<'a>,
-    current_module: Rc<ModuleData>,
-}
-
-impl<'a, 'b> ExpansionVisitor<'a, 'b> {
-    fn visit_invoc(&mut self, id: ast::NodeId) {
-        self.resolver.expansion_data.get_mut(&id.as_u32()).unwrap().module =
-            self.current_module.clone();
-    }
-
-    // does this attribute list contain "macro_use"?
-    fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
-        for attr in attrs {
-            if attr.check_name("macro_escape") {
-                let msg = "macro_escape is a deprecated synonym for macro_use";
-                let mut err = self.resolver.session.struct_span_warn(attr.span, msg);
-                if let ast::AttrStyle::Inner = attr.node.style {
-                    err.help("consider an outer attribute, #[macro_use] mod ...").emit();
-                } else {
-                    err.emit();
-                }
-            } else if !attr.check_name("macro_use") {
-                continue;
-            }
-
-            if !attr.is_word() {
-                self.resolver.session.span_err(attr.span,
-                                               "arguments to macro_use are not allowed here");
-            }
-            return true;
-        }
-
-        false
-    }
-
     fn collect_def_ids(&mut self, mark: Mark, expansion: &Expansion) {
-        let expansion_data = &mut self.resolver.expansion_data;
-        let module = &self.current_module;
-        let module2 = self.resolver.current_module;
+        let expansion_data = &mut self.expansion_data;
+        let module = self.current_module;
         let def_index = expansion_data[&mark.as_u32()].def_index;
         let visit_macro_invoc = &mut |id: ast::NodeId, def_index| {
             expansion_data.insert(id.as_u32(), ExpansionData {
                 def_index: def_index,
-                module: module.clone(),
-                module2: module2,
+                module: module,
             });
         };
 
-        let mut def_collector = DefCollector::new(&mut self.resolver.definitions);
+        let mut def_collector = DefCollector::new(&mut self.definitions);
         def_collector.visit_macro_invoc = Some(visit_macro_invoc);
         def_collector.with_parent(def_index, |def_collector| expansion.visit_with(def_collector));
-    }
-}
-
-macro_rules! method {
-    ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
-        fn $visit(&mut self, node: &$ty) {
-            match node.node {
-                $invoc(..) => self.visit_invoc(node.id),
-                _ => visit::$walk(self, node),
-            }
-        }
-    }
-}
-
-impl<'a, 'b> Visitor for ExpansionVisitor<'a, 'b>  {
-    method!(visit_trait_item: ast::TraitItem, ast::TraitItemKind::Macro, walk_trait_item);
-    method!(visit_impl_item:  ast::ImplItem,  ast::ImplItemKind::Macro,  walk_impl_item);
-    method!(visit_stmt:       ast::Stmt,      ast::StmtKind::Mac,        walk_stmt);
-    method!(visit_expr:       ast::Expr,      ast::ExprKind::Mac,        walk_expr);
-    method!(visit_pat:        ast::Pat,       ast::PatKind::Mac,         walk_pat);
-    method!(visit_ty:         ast::Ty,        ast::TyKind::Mac,          walk_ty);
-
-    fn visit_item(&mut self, item: &ast::Item) {
-        match item.node {
-            ast::ItemKind::Mac(..) if item.id == ast::DUMMY_NODE_ID => {} // Scope placeholder
-            ast::ItemKind::Mac(..) => self.visit_invoc(item.id),
-            ast::ItemKind::Mod(..) => {
-                let module_data = ModuleData {
-                    parent: Some(self.current_module.clone()),
-                    macros: RefCell::new(FnvHashMap()),
-                    macros_escape: self.contains_macro_use(&item.attrs),
-                };
-                let orig_module = mem::replace(&mut self.current_module, Rc::new(module_data));
-                visit::walk_item(self, item);
-                self.current_module = orig_module;
-            }
-            ast::ItemKind::ExternCrate(..) => {
-                // We need to error on `#[macro_use] extern crate` when it isn't at the
-                // crate root, because `$crate` won't work properly.
-                // FIXME(jseyfried): This will be nicer once `ModuleData` is merged with `ModuleS`.
-                let is_crate_root = self.current_module.parent.as_ref().unwrap().parent.is_none();
-                for def in self.resolver.crate_loader.load_macros(item, is_crate_root) {
-                    match def {
-                        LoadedMacro::Def(def) => self.resolver.add_macro(Mark::root(), def),
-                        LoadedMacro::CustomDerive(name, ext) => {
-                            self.resolver.insert_custom_derive(&name, ext, item.span);
-                        }
-                    }
-                }
-                visit::walk_item(self, item);
-            }
-            _ => visit::walk_item(self, item),
-        }
-    }
-
-    fn visit_block(&mut self, block: &ast::Block) {
-        let module_data = ModuleData {
-            parent: Some(self.current_module.clone()),
-            macros: RefCell::new(FnvHashMap()),
-            macros_escape: false,
-        };
-        let orig_module = mem::replace(&mut self.current_module, Rc::new(module_data));
-        visit::walk_block(self, block);
-        self.current_module = orig_module;
     }
 }
