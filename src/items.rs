@@ -13,7 +13,7 @@
 use Indent;
 use codemap::SpanUtils;
 use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
-            last_line_width, semicolon_for_expr, format_unsafety, trim_newlines};
+            last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annotation_separator};
@@ -240,7 +240,7 @@ impl<'a> FmtVisitor<'a> {
                                                        &sig.decl,
                                                        &sig.generics,
                                                        sig.unsafety,
-                                                       sig.constness,
+                                                       sig.constness.node,
                                                        ast::Defaultness::Final,
                                                        sig.abi,
                                                        &ast::Visibility::Inherited,
@@ -268,18 +268,23 @@ impl<'a> FmtVisitor<'a> {
 
         if self.config.fn_single_line && is_simple_block_stmt(block, codemap) {
             let rewrite = {
-                if let Some(ref e) = block.expr {
-                    let suffix = if semicolon_for_expr(e) { ";" } else { "" };
+                if let Some(ref stmt) = block.stmts.first() {
+                    match stmt_expr(stmt) {
+                        Some(e) => {
+                            let suffix = if semicolon_for_expr(e) { ";" } else { "" };
 
-                    e.rewrite(&self.get_context(),
-                                 self.config.max_width - self.block_indent.width(),
-                                 self.block_indent)
-                        .map(|s| s + suffix)
-                        .or_else(|| Some(self.snippet(e.span)))
-                } else if let Some(stmt) = block.stmts.first() {
-                    stmt.rewrite(&self.get_context(),
-                                 self.config.max_width - self.block_indent.width(),
-                                 self.block_indent)
+                            e.rewrite(&self.get_context(),
+                                         self.config.max_width - self.block_indent.width(),
+                                         self.block_indent)
+                                .map(|s| s + suffix)
+                                .or_else(|| Some(self.snippet(e.span)))
+                        }
+                        None => {
+                            stmt.rewrite(&self.get_context(),
+                                         self.config.max_width - self.block_indent.width(),
+                                         self.block_indent)
+                        }
+                    }
                 } else {
                     None
                 }
@@ -1153,13 +1158,6 @@ impl Rewrite for ast::FunctionRetTy {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match *self {
             ast::FunctionRetTy::Default(_) => Some(String::new()),
-            ast::FunctionRetTy::None(_) => {
-                if width >= 4 {
-                    Some("-> !".to_owned())
-                } else {
-                    None
-                }
-            }
             ast::FunctionRetTy::Ty(ref ty) => {
                 let inner_width = try_opt!(width.checked_sub(3));
                 ty.rewrite(context, inner_width, offset + 3).map(|r| format!("-> {}", r))
@@ -1259,7 +1257,6 @@ pub fn is_named_arg(arg: &ast::Arg) -> bool {
 
 fn span_for_return(ret: &ast::FunctionRetTy) -> Span {
     match *ret {
-        ast::FunctionRetTy::None(ref span) |
         ast::FunctionRetTy::Default(ref span) => span.clone(),
         ast::FunctionRetTy::Ty(ref ty) => ty.span,
     }

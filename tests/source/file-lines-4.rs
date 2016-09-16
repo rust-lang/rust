@@ -18,7 +18,6 @@ fn floaters() {
     {
         match x {
             PushParam => {
-                // params are 1-indexed
                 stack.push(mparams[match cur.to_digit(10) {
                                             Some(d) => d as usize - 1,
                                             None => return Err("bad param number".to_owned()),

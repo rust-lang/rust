@@ -13,7 +13,8 @@ use std::cmp::Ordering;
 
 use itertools::Itertools;
 
-use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind, Path};
+use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind, NestedMetaItem,
+                  NestedMetaItemKind, Path};
 use syntax::codemap::BytePos;
 use syntax::abi;
 
@@ -101,8 +102,18 @@ pub fn trimmed_last_line_width(s: &str) -> usize {
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
         MetaItemKind::Word(ref s) => *s == SKIP_ANNOTATION,
-        MetaItemKind::List(ref s, ref l) => *s == "cfg_attr" && l.len() == 2 && is_skip(&l[1]),
+        MetaItemKind::List(ref s, ref l) => {
+            *s == "cfg_attr" && l.len() == 2 && is_skip_nested(&l[1])
+        }
         _ => false,
+    }
+}
+
+#[inline]
+fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
+    match meta_item.node {
+        NestedMetaItemKind::MetaItem(ref mi) => is_skip(mi),
+        NestedMetaItemKind::Literal(_) => false,
     }
 }
 
@@ -129,7 +140,7 @@ pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
 pub fn semicolon_for_expr(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Ret(..) |
-        ast::ExprKind::Again(..) |
+        ast::ExprKind::Continue(..) |
         ast::ExprKind::Break(..) => true,
         _ => false,
     }
@@ -138,7 +149,7 @@ pub fn semicolon_for_expr(expr: &ast::Expr) -> bool {
 #[inline]
 pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
     match stmt.node {
-        ast::StmtKind::Semi(ref expr, _) => {
+        ast::StmtKind::Semi(ref expr) => {
             match expr.node {
                 ast::ExprKind::While(..) |
                 ast::ExprKind::WhileLet(..) |
@@ -149,6 +160,27 @@ pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
         }
         ast::StmtKind::Expr(..) => false,
         _ => true,
+    }
+}
+
+#[inline]
+pub fn stmt_block(stmt: &ast::Stmt) -> Option<&ast::Block> {
+    match stmt.node {
+        ast::StmtKind::Expr(ref expr) => {
+            match expr.node {
+                ast::ExprKind::Block(ref inner) => Some(inner),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
+    match stmt.node {
+        ast::StmtKind::Expr(ref expr) => Some(expr),
+        _ => None,
     }
 }
 
@@ -330,9 +362,8 @@ pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
         ast::ExprKind::Field(ref e, _) |
         ast::ExprKind::TupField(ref e, _) |
         ast::ExprKind::Index(ref e, _) |
-        ast::ExprKind::Range(Some(ref e), _, _) => left_most_sub_expr(e),
-        // FIXME needs Try in Syntex
-        // ast::ExprKind::Try(ref f) => left_most_sub_expr(e),
+        ast::ExprKind::Range(Some(ref e), _, _) |
+        ast::ExprKind::Try(ref e) => left_most_sub_expr(e),
         _ => e,
     }
 }

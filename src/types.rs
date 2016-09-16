@@ -302,7 +302,6 @@ fn format_function_type<'a, I>(inputs: I,
             let type_str = try_opt!(ty.rewrite(context, budget, offset + 4));
             format!(" -> {}", type_str)
         }
-        FunctionRetTy::None(..) => " -> !".to_owned(),
         FunctionRetTy::Default(..) => String::new(),
     };
 
@@ -594,9 +593,14 @@ impl Rewrite for ast::Ty {
             ast::TyKind::BareFn(ref bare_fn) => {
                 rewrite_bare_fn(bare_fn, self.span, context, width, offset)
             }
+            ast::TyKind::Never => Some(String::from("!")),
             ast::TyKind::Mac(..) |
             ast::TyKind::Typeof(..) => unreachable!(),
             ast::TyKind::ImplicitSelf => Some(String::from("")),
+            ast::TyKind::ImplTrait(..) => {
+                // FIXME(#1154) Implement impl Trait
+                Some(String::from("impl TODO"))
+            }
         }
     }
 }

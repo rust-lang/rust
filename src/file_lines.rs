@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! This module contains types and functions to support formatting specific line ranges.
+
 use std::{cmp, iter, path, str};
 
 use itertools::Itertools;

@@ -22,7 +22,7 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
             DefinitiveListTactic, definitive_tactic, ListItem, format_item_list};
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
-            semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr};
+            semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_block, stmt_expr};
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle, ElseIfBraceStyle, ControlBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -150,7 +150,7 @@ fn format_expr(expr: &ast::Expr,
         ast::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
             rewrite_assignment(context, lhs, rhs, Some(op), width, offset)
         }
-        ast::ExprKind::Again(ref opt_ident) => {
+        ast::ExprKind::Continue(ref opt_ident) => {
             let id_str = match *opt_ident {
                 Some(ident) => format!(" {}", ident.node),
                 None => String::new(),
@@ -400,7 +400,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
         prefix.push_str(&ret_str);
     }
 
-    if body.expr.is_none() && body.stmts.is_empty() {
+    if body.stmts.is_empty() {
         return Some(format!("{} {{}}", prefix));
     }
 
@@ -412,10 +412,17 @@ fn rewrite_closure(capture: ast::CaptureBy,
     let mut had_braces = true;
     let mut inner_block = body;
 
+    let mut trailing_expr = stmt_expr(&inner_block.stmts[inner_block.stmts.len() - 1]);
+
     // If there is an inner block and we can ignore it, do so.
-    if body.stmts.is_empty() {
-        if let ast::ExprKind::Block(ref inner) = inner_block.expr.as_ref().unwrap().node {
+    if body.stmts.len() == 1 && trailing_expr.is_some() {
+        if let Some(ref inner) = stmt_block(&inner_block.stmts[0]) {
             inner_block = inner;
+            trailing_expr = if inner_block.stmts.is_empty() {
+                None
+            } else {
+                stmt_expr(&inner_block.stmts[inner_block.stmts.len() - 1])
+            };
         } else if !force_block {
             had_braces = false;
         }
@@ -426,14 +433,13 @@ fn rewrite_closure(capture: ast::CaptureBy,
 
     if try_single_line && !force_block {
         let must_preserve_braces =
-            !classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(inner_block.expr
-                .as_ref()
-                .unwrap()));
+            trailing_expr.is_none() ||
+            !classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(trailing_expr.unwrap()));
         if !(must_preserve_braces && had_braces) &&
            (must_preserve_braces || !prefix.contains('\n')) {
             // If we got here, then we can try to format without braces.
 
-            let inner_expr = inner_block.expr.as_ref().unwrap();
+            let inner_expr = &inner_block.stmts[0];
             let mut rewrite = inner_expr.rewrite(context, budget, offset + extra_offset);
 
             if must_preserve_braces {
@@ -456,7 +462,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
     // still prefer a one-liner (we might also have fallen through because of
     // lack of space).
     if try_single_line && !prefix.contains('\n') {
-        let inner_expr = inner_block.expr.as_ref().unwrap();
+        let inner_expr = &inner_block.stmts[0];
         // 4 = braces and spaces.
         let mut rewrite = inner_expr.rewrite(context,
                                              try_opt!(budget.checked_sub(4)),
@@ -538,15 +544,11 @@ impl Rewrite for ast::Block {
                 };
 
                 if is_simple_block(self, context.codemap) && prefix.len() < width {
-                    let body = self.expr
-                        .as_ref()
-                        .unwrap()
-                        .rewrite(context, width - prefix.len(), offset);
-                    if let Some(ref expr_str) = body {
-                        let result = format!("{}{{ {} }}", prefix, expr_str);
-                        if result.len() <= width && !result.contains('\n') {
-                            return Some(result);
-                        }
+                    let expr_str = self.stmts[0].rewrite(context, width - prefix.len(), offset);
+                    let expr_str = try_opt!(expr_str);
+                    let result = format!("{}{{ {} }}", prefix, expr_str);
+                    if result.len() <= width && !result.contains('\n') {
+                        return Some(result);
                     }
                 }
 
@@ -568,25 +570,26 @@ impl Rewrite for ast::Block {
 impl Rewrite for ast::Stmt {
     fn rewrite(&self, context: &RewriteContext, _width: usize, offset: Indent) -> Option<String> {
         let result = match self.node {
-            ast::StmtKind::Decl(ref decl, _) => {
-                if let ast::DeclKind::Local(ref local) = decl.node {
-                    local.rewrite(context, context.config.max_width, offset)
-                } else {
-                    None
-                }
+            ast::StmtKind::Local(ref local) => {
+                local.rewrite(context, context.config.max_width, offset)
             }
-            ast::StmtKind::Expr(ref ex, _) |
-            ast::StmtKind::Semi(ref ex, _) => {
+            ast::StmtKind::Expr(ref ex) |
+            ast::StmtKind::Semi(ref ex) => {
                 let suffix = if semicolon_for_stmt(self) { ";" } else { "" };
 
                 format_expr(ex,
-                            ExprType::Statement,
+                            match self.node {
+                                ast::StmtKind::Expr(_) => ExprType::SubExpression,
+                                ast::StmtKind::Semi(_) => ExprType::Statement,
+                                _ => unreachable!(),
+                            },
                             context,
                             context.config.max_width - offset.width() - suffix.len(),
                             offset)
                     .map(|s| s + suffix)
             }
-            ast::StmtKind::Mac(..) => None,
+            ast::StmtKind::Mac(..) |
+            ast::StmtKind::Item(..) => None,
         };
         result.and_then(|res| recover_comment_removed(res, self.span, context, _width, offset))
     }
@@ -876,11 +879,11 @@ fn single_line_if_else(context: &RewriteContext,
         }
 
         let new_width = try_opt!(width.checked_sub(pat_expr_str.len() + fixed_cost));
-        let if_expr = if_node.expr.as_ref().unwrap();
+        let if_expr = &if_node.stmts[0];
         let if_str = try_opt!(if_expr.rewrite(context, new_width, Indent::empty()));
 
         let new_width = try_opt!(new_width.checked_sub(if_str.len()));
-        let else_expr = else_node.expr.as_ref().unwrap();
+        let else_expr = &else_node.stmts[0];
         let else_str = try_opt!(else_expr.rewrite(context, new_width, Indent::empty()));
 
         // FIXME: this check shouldn't be necessary. Rewrites should either fail
@@ -907,18 +910,25 @@ fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
 // FIXME: incorrectly returns false when comment is contained completely within
 // the expression.
 pub fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
-    block.stmts.is_empty() && block.expr.is_some() && !block_contains_comment(block, codemap)
+    block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0]) &&
+    !block_contains_comment(block, codemap)
 }
 
 /// Checks whether a block contains at most one statement or expression, and no comments.
 pub fn is_simple_block_stmt(block: &ast::Block, codemap: &CodeMap) -> bool {
-    (block.stmts.is_empty() || (block.stmts.len() == 1 && block.expr.is_none())) &&
-    !block_contains_comment(block, codemap)
+    block.stmts.len() <= 1 && !block_contains_comment(block, codemap)
 }
 
 /// Checks whether a block contains no statements, expressions, or comments.
 pub fn is_empty_block(block: &ast::Block, codemap: &CodeMap) -> bool {
-    block.stmts.is_empty() && block.expr.is_none() && !block_contains_comment(block, codemap)
+    block.stmts.is_empty() && !block_contains_comment(block, codemap)
+}
+
+pub fn stmt_is_expr(stmt: &ast::Stmt) -> bool {
+    match stmt.node {
+        ast::StmtKind::Expr(..) => true,
+        _ => false,
+    }
 }
 
 fn is_unsafe_block(block: &ast::Block) -> bool {
@@ -1138,14 +1148,20 @@ impl Rewrite for ast::Arm {
             line_start += offset.width();
         }
 
-        let body = match **body {
-            ast::Expr { node: ast::ExprKind::Block(ref block), .. }
-                if !is_unsafe_block(block) && is_simple_block(block, context.codemap) &&
-                   context.config.wrap_match_arms => block.expr.as_ref().map(|e| &**e).unwrap(),
-            ref x => x,
+        let body = match body.node {
+            ast::ExprKind::Block(ref block) if !is_unsafe_block(block) &&
+                                               is_simple_block(block, context.codemap) &&
+                                               context.config.wrap_match_arms => {
+                if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
+                    expr
+                } else {
+                    &**body
+                }
+            }
+            _ => &**body,
         };
 
-        let comma = arm_comma(context.config, self, body);
+        let comma = arm_comma(&context.config, self, body);
         let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
 
         // Let's try and get the arm body on the same line as the condition.

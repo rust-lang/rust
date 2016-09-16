@@ -16,6 +16,7 @@
 extern crate log;
 
 extern crate syntex_syntax as syntax;
+extern crate syntex_errors as errors;
 extern crate rustc_serialize;
 
 extern crate strings;
@@ -27,10 +28,10 @@ extern crate term;
 extern crate itertools;
 extern crate multimap;
 
+use errors::{Handler, DiagnosticBuilder};
+use errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::ast;
 use syntax::codemap::{mk_sp, CodeMap, Span};
-use syntax::errors::{Handler, DiagnosticBuilder};
-use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::parse::{self, ParseSess};
 
 use strings::string_buffer::StringBuffer;
@@ -419,7 +420,7 @@ pub fn format_input<T: Write>(input: Input,
     let codemap = Rc::new(CodeMap::new());
 
     let tty_handler =
-        Handler::with_tty_emitter(ColorConfig::Auto, None, true, false, codemap.clone());
+        Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
     let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
 
     let main_file = match input {
@@ -443,7 +444,7 @@ pub fn format_input<T: Write>(input: Input,
     }
 
     // Suppress error output after parsing.
-    let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
+    let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), Some(codemap.clone())));
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
     let mut report = FormatReport::new();

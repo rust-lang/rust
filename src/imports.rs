@@ -43,34 +43,30 @@ fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {
 }
 
 fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Ordering {
-    let name_ordering = match a.node.name() {
-        Some(a_name) => {
-            match b.node.name() {
-                Some(b_name) => a_name.name.as_str().cmp(&b_name.name.as_str()),
-                None => Ordering::Greater,
-            }
+    let a_name_str = a.node.name.name.as_str();
+    let b_name_str = b.node.name.name.as_str();
+    let name_ordering = if a_name_str == "self" {
+        if b_name_str == "self" {
+            Ordering::Equal
+        } else {
+            Ordering::Less
         }
-        None => {
-            match b.node.name() {
-                Some(_) => Ordering::Less,
-                None => Ordering::Equal,
-            }
+    } else {
+        if b_name_str == "self" {
+            Ordering::Greater
+        } else {
+            a_name_str.cmp(&b_name_str)
         }
     };
     if name_ordering == Ordering::Equal {
-        match a.node.rename() {
+        match a.node.rename {
             Some(a_rename) => {
-                match b.node.rename() {
+                match b.node.rename {
                     Some(b_rename) => a_rename.name.as_str().cmp(&b_rename.name.as_str()),
                     None => Ordering::Greater,
                 }
             }
-            None => {
-                match b.node.name() {
-                    Some(_) => Ordering::Less,
-                    None => Ordering::Equal,
-                }
-            }
+            None => Ordering::Less,
         }
     } else {
         name_ordering
@@ -241,41 +237,23 @@ impl<'a> FmtVisitor<'a> {
 }
 
 fn rewrite_single_use_list(path_str: Option<String>, vpi: &ast::PathListItem) -> String {
-    let path_item_str = if let ast::PathListItemKind::Ident { name, .. } = vpi.node {
-        // A name.
-        match path_str {
-            Some(path_str) => format!("{}::{}", path_str, name),
-            None => name.to_string(),
-        }
-    } else {
-        // `self`.
-        match path_str {
-            Some(path_str) => path_str,
-            // This catches the import: use {self}, which is a compiler error, so we just
-            // leave it alone.
-            None => "{self}".to_owned(),
-        }
+    let path_item_str = match path_str {
+        Some(ref path_str) if vpi.node.name.to_string() == "self" => path_str.to_owned(),
+        Some(path_str) => format!("{}::{}", path_str, vpi.node.name),
+        None => vpi.node.name.to_string(),
     };
 
     append_alias(path_item_str, vpi)
 }
 
 fn rewrite_path_item(vpi: &&ast::PathListItem) -> Option<String> {
-    let path_item_str = match vpi.node {
-        ast::PathListItemKind::Ident { name, .. } => name.to_string(),
-        ast::PathListItemKind::Mod { .. } => "self".to_owned(),
-    };
-
-    Some(append_alias(path_item_str, vpi))
+    Some(append_alias(vpi.node.name.to_string(), vpi))
 }
 
 fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
-    match vpi.node {
-        ast::PathListItemKind::Ident { rename: Some(rename), .. } |
-        ast::PathListItemKind::Mod { rename: Some(rename), .. } => {
-            format!("{} as {}", path_item_str, rename)
-        }
-        _ => path_item_str,
+    match vpi.node.rename {
+        Some(rename) => format!("{} as {}", path_item_str, rename),
+        None => path_item_str,
     }
 }
 

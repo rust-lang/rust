@@ -23,6 +23,7 @@ use syntax::ast;
 use syntax::parse::token::Token;
 use syntax::parse::tts_to_parser;
 use syntax::codemap::{mk_sp, BytePos};
+use syntax::util::ThinVec;
 
 use Indent;
 use codemap::SpanUtils;
@@ -159,7 +160,7 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
             id: 0, // dummy value
             node: ast::ExprKind::Try(try_opt!(parser.parse_expr().ok())),
             span: mac.span, // incorrect span, but shouldn't matter too much
-            attrs: None,
+            attrs: ThinVec::new(),
         })
     } else {
         None

@@ -52,17 +52,10 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match stmt.node {
-            ast::StmtKind::Decl(ref decl, _) => {
-                if let ast::DeclKind::Item(ref item) = decl.node {
-                    self.visit_item(item);
-                } else {
-                    let rewrite = stmt.rewrite(&self.get_context(),
-                                               self.config.max_width - self.block_indent.width(),
-                                               self.block_indent);
-
-                    self.push_rewrite(stmt.span, rewrite);
-                }
+            ast::StmtKind::Item(ref item) => {
+                self.visit_item(item);
             }
+            ast::StmtKind::Local(..) |
             ast::StmtKind::Expr(..) |
             ast::StmtKind::Semi(..) => {
                 let rewrite = stmt.rewrite(&self.get_context(),
@@ -71,7 +64,8 @@ impl<'a> FmtVisitor<'a> {
 
                 self.push_rewrite(stmt.span, rewrite);
             }
-            ast::StmtKind::Mac(ref mac, _macro_style, _) => {
+            ast::StmtKind::Mac(ref mac) => {
+                let (ref mac, _macro_style, _) = **mac;
                 self.format_missing_with_indent(source!(self, stmt.span).lo);
                 self.visit_mac(mac, None);
             }
@@ -96,18 +90,11 @@ impl<'a> FmtVisitor<'a> {
             self.visit_stmt(stmt)
         }
 
-        if let Some(ref e) = b.expr {
-            self.format_missing_with_indent(source!(self, e.span).lo);
-            let rewrite = e.rewrite(&self.get_context(),
-                         self.config.max_width - self.block_indent.width(),
-                         self.block_indent)
-                .unwrap_or_else(|| self.snippet(e.span));
-
-            self.buffer.push_str(&rewrite);
-            self.last_pos = source!(self, e.span).hi;
-
-            if utils::semicolon_for_expr(e) {
-                self.buffer.push_str(";");
+        if !b.stmts.is_empty() {
+            if let Some(expr) = utils::stmt_expr(&b.stmts[b.stmts.len() - 1]) {
+                if utils::semicolon_for_expr(expr) {
+                    self.buffer.push_str(";");
+                }
             }
         }
 
@@ -150,7 +137,7 @@ impl<'a> FmtVisitor<'a> {
                                 fd,
                                 generics,
                                 unsafety,
-                                constness,
+                                constness.node,
                                 defaultness,
                                 abi,
                                 vis,
@@ -163,7 +150,7 @@ impl<'a> FmtVisitor<'a> {
                                 fd,
                                 &sig.generics,
                                 sig.unsafety,
-                                sig.constness,
+                                sig.constness.node,
                                 defaultness,
                                 sig.abi,
                                 vis.unwrap_or(&ast::Visibility::Inherited),
@@ -347,6 +334,9 @@ impl<'a> FmtVisitor<'a> {
                                                  item.span);
                 self.push_rewrite(item.span, rewrite);
             }
+            ast::ItemKind::Union(..) => {
+                // FIXME(#1157): format union definitions.
+            }
         }
     }
 
@@ -386,6 +376,9 @@ impl<'a> FmtVisitor<'a> {
                                                       &self.get_context(),
                                                       self.block_indent);
                 self.push_rewrite(ti.span, rewrite);
+            }
+            ast::TraitItemKind::Macro(..) => {
+                // FIXME(#1158) Macros in trait item position
             }
         }
     }
