@@ -300,9 +300,6 @@ impl<'b> Resolver<'b> {
             }
             ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
         }
-
-        visit::walk_item(&mut BuildReducedGraphVisitor { resolver: self }, item);
-        self.current_module = parent;
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
@@ -356,9 +353,6 @@ impl<'b> Resolver<'b> {
             self.module_map.insert(block_id, new_module);
             self.current_module = new_module; // Descend into the block.
         }
-
-        visit::walk_block(&mut BuildReducedGraphVisitor { resolver: self }, block);
-        self.current_module = parent;
     }
 
     /// Builds the reduced graph for a single item in an external crate.
@@ -486,7 +480,10 @@ struct BuildReducedGraphVisitor<'a, 'b: 'a> {
 
 impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &Item) {
+        let parent = self.resolver.current_module;
         self.resolver.build_reduced_graph_for_item(item);
+        visit::walk_item(self, item);
+        self.resolver.current_module = parent;
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
@@ -494,7 +491,10 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_block(&mut self, block: &Block) {
+        let parent = self.resolver.current_module;
         self.resolver.build_reduced_graph_for_block(block);
+        visit::walk_block(self, block);
+        self.resolver.current_module = parent;
     }
 
     fn visit_trait_item(&mut self, item: &TraitItem) {
