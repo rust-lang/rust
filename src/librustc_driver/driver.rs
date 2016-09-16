@@ -28,8 +28,7 @@ use rustc_back::sha2::{Sha256, Digest};
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
-use rustc_metadata::macro_import;
-use rustc_metadata::creader::read_local_crates;
+use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use rustc_trans::back::{link, write};
 use rustc_trans as trans;
@@ -639,12 +638,10 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     }
     sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
-    let mut macro_loader =
-        macro_import::MacroLoader::new(sess, &cstore, crate_name, krate.config.clone());
-
+    let mut crate_loader = CrateLoader::new(sess, &cstore, &krate, crate_name);
     let resolver_arenas = Resolver::arenas();
     let mut resolver =
-        Resolver::new(sess, &krate, make_glob_map, &mut macro_loader, &resolver_arenas);
+        Resolver::new(sess, &krate, make_glob_map, &mut crate_loader, &resolver_arenas);
     syntax_ext::register_builtins(&mut resolver, sess.features.borrow().quote);
 
     krate = time(time_passes, "expansion", || {
@@ -735,11 +732,6 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 
     // Collect defintions for def ids.
     time(sess.time_passes(), "collecting defs", || resolver.definitions.collect(&krate));
-
-    time(sess.time_passes(), "external crate/lib resolution", || {
-        let defs = &resolver.definitions;
-        read_local_crates(sess, &cstore, defs, &krate, crate_name, &sess.dep_graph)
-    });
 
     time(sess.time_passes(),
          "early lint checks",
