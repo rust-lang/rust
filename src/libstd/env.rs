@@ -83,7 +83,7 @@ pub struct VarsOs { inner: os_imp::Env }
 /// environment variables of the current process.
 ///
 /// The returned iterator contains a snapshot of the process's environment
-/// variables at the time of this invocation, modifications to environment
+/// variables at the time of this invocation. Modifications to environment
 /// variables afterwards will not be reflected in the returned iterator.
 ///
 /// # Panics
@@ -112,7 +112,7 @@ pub fn vars() -> Vars {
 /// environment variables of the current process.
 ///
 /// The returned iterator contains a snapshot of the process's environment
-/// variables at the time of this invocation, modifications to environment
+/// variables at the time of this invocation. Modifications to environment
 /// variables afterwards will not be reflected in the returned iterator.
 ///
 /// # Examples
