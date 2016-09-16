@@ -721,7 +721,7 @@ pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     }
 }
 
-pub fn is_copy<'a, 'ctx>(cx: &LateContext<'a, 'ctx>, ty: ty::Ty<'ctx>, env: NodeId) -> bool {
+pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: NodeId) -> bool {
     let env = ty::ParameterEnvironment::for_item(cx.tcx, env);
     !ty.subst(cx.tcx, env.free_substs).moves_by_default(cx.tcx.global_tcx(), &env, DUMMY_SP)
 }
