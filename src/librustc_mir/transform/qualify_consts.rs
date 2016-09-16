@@ -910,7 +910,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
                 StatementKind::SetDiscriminant { .. } |
                 StatementKind::StorageLive(_) |
-                StatementKind::StorageDead(_) => {}
+                StatementKind::StorageDead(_) |
+                StatementKind::Nop => {}
             }
         });
     }

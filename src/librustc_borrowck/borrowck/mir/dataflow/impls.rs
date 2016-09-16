@@ -455,7 +455,8 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
                                      });
             }
             repr::StatementKind::StorageLive(_) |
-            repr::StatementKind::StorageDead(_) => {}
+            repr::StatementKind::StorageDead(_) |
+            repr::StatementKind::Nop => {}
         }
     }
 

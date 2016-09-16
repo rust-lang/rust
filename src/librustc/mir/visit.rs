@@ -346,6 +346,7 @@ macro_rules! make_mir_visitor {
                     StatementKind::StorageDead(ref $($mutability)* lvalue) => {
                         self.visit_lvalue(lvalue, LvalueContext::StorageDead, location);
                     }
+                    StatementKind::Nop => {}
                 }
             }
 
