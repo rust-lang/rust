@@ -1479,7 +1479,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.ir.tcx.region_maps.call_site_extent(id, body.id),
                 &self.fn_ret(id));
 
-        if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
+        if fn_ret.is_never() {
+            // FIXME(durka) this rejects code like `fn foo(x: !) -> ! { x }`
+            if self.live_on_entry(entry_ln, self.s.clean_exit_var).is_some() {
+                span_err!(self.ir.tcx.sess, sp, E0270,
+                          "computation may converge in a function marked as diverging");
+            }
+        } else if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
             let t_ret_subst = fn_ret.subst(self.ir.tcx, &param_env.free_substs);
             let is_nil = self.ir.tcx.infer_ctxt(None, Some(param_env),
