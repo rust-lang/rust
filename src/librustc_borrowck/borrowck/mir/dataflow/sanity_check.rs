@@ -16,7 +16,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::{self, Mir};
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::super::gather_moves::{MovePathIndex};
+use super::super::gather_moves::{MovePathIndex, LookupResult};
 use super::super::MoveDataParamEnv;
 use super::BitDenotation;
 use super::DataflowResults;
@@ -116,20 +116,26 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      repr::BorrowKind::Shared,
                                      ref peeking_at_lval) = *rvalue {
                 // Okay, our search is over.
-                let peek_mpi = move_data.rev_lookup.find(peeking_at_lval);
-                let bit_state = sets.on_entry.contains(&peek_mpi);
-                debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
-                       lvalue, peeking_at_lval, bit_state);
-                if !bit_state {
-                    tcx.sess.span_err(span, &format!("rustc_peek: bit not set"));
+                match move_data.rev_lookup.find(peeking_at_lval) {
+                    LookupResult::Exact(peek_mpi) => {
+                        let bit_state = sets.on_entry.contains(&peek_mpi);
+                        debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
+                               lvalue, peeking_at_lval, bit_state);
+                        if !bit_state {
+                            tcx.sess.span_err(span, "rustc_peek: bit not set");
+                        }
+                    }
+                    LookupResult::Parent(..) => {
+                        tcx.sess.span_err(span, "rustc_peek: argument untracked");
+                    }
                 }
                 return;
             } else {
                 // Our search should have been over, but the input
                 // does not match expectations of `rustc_peek` for
                 // this sanity_check.
-                let msg = &format!("rustc_peek: argument expression \
-                                    must be immediate borrow of form `&expr`");
+                let msg = "rustc_peek: argument expression \
+                           must be immediate borrow of form `&expr`";
                 tcx.sess.span_err(span, msg);
             }
         }
