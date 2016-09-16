@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use cstore;
-use common;
 use encoder;
 use loader;
+use schema;
 
 use rustc::middle::cstore::{InlinedItem, CrateStore, CrateSource, ExternCrate};
 use rustc::middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
@@ -97,7 +97,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     }
 
     fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                         -> &'tcx ty::Generics<'tcx>
+                         -> ty::Generics<'tcx>
     {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_generics(def.index, tcx)
@@ -121,7 +121,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def.krate).get_adt_def(def.index, tcx)
     }
 
-    fn fn_arg_names(&self, did: DefId) -> Vec<String>
+    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>
     {
         self.dep_graph.read(DepNode::MetaData(did));
         self.get_crate_data(did.krate).get_fn_arg_names(did.index)
@@ -140,10 +140,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>
     {
         self.dep_graph.read(DepNode::MetaData(def_id));
-        let mut result = vec![];
-        self.get_crate_data(def_id.krate)
-            .each_inherent_implementation_for_type(def_id.index, |iid| result.push(iid));
-        result
+        self.get_crate_data(def_id.krate).get_inherent_implementations_for_type(def_id.index)
     }
 
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
@@ -153,9 +150,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         }
         let mut result = vec![];
         self.iter_crate_data(|_, cdata| {
-            cdata.each_implementation_for_trait(filter, &mut |iid| {
-                result.push(iid)
-            })
+            cdata.get_implementations_for_trait(filter, &mut result)
         });
         result
     }
@@ -308,7 +303,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
     {
-        self.get_crate_data(cnum).info.plugin_registrar_fn.map(|index| DefId {
+        self.get_crate_data(cnum).root.plugin_registrar_fn.map(|index| DefId {
             krate: cnum,
             index: index
         })
@@ -552,7 +547,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn metadata_encoding_version(&self) -> &[u8]
     {
-        common::metadata_encoding_version
+        schema::METADATA_HEADER
     }
 
     /// Returns a map from a sufficiently visible external item (i.e. an external item that is

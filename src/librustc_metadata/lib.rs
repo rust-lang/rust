@@ -29,11 +29,9 @@
 #![feature(rustc_private)]
 #![feature(specialization)]
 #![feature(staged_api)]
-#![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-#[macro_use] #[no_link] extern crate rustc_bitflags;
 extern crate syntax_pos;
 extern crate flate;
 extern crate serialize as rustc_serialize; // used by deriving
@@ -48,24 +46,15 @@ extern crate rustc_llvm;
 extern crate rustc_macro;
 extern crate rustc_const_math;
 
-#[cfg(test)]
-extern crate test;
-
-mod rbml {
-    pub mod writer;
-    pub mod reader;
-    pub use self::reader::Doc;
-}
-
 mod diagnostics;
 
 mod astencode;
-mod common;
 mod index_builder;
 mod index;
 mod encoder;
 mod decoder;
 mod csearch;
+mod schema;
 
 pub mod creader;
 pub mod cstore;

@@ -1168,7 +1168,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
                     Argument {
                         type_: t.clean(cx),
                         id: ast::CRATE_NODE_ID,
-                        name: names.next().unwrap_or("".to_string()),
+                        name: names.next().map_or("".to_string(), |name| name.to_string()),
                     }
                 }).collect(),
             },

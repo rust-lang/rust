@@ -11,12 +11,8 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-pub use self::MetadataBlob::*;
-
-use common;
-use creader;
-use index;
 use loader;
+use schema;
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, DefId};
@@ -27,13 +23,12 @@ use rustc::session::config::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap, FnvHashSet};
 
-use std::cell::{RefCell, Ref, Cell};
+use std::cell::{RefCell, Cell};
 use std::rc::Rc;
 use std::path::PathBuf;
 use flate::Bytes;
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::codemap;
 use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibraryKind, LinkagePreference};
@@ -47,12 +42,12 @@ pub use rustc::middle::cstore::{CrateSource, LinkMeta};
 pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
 pub enum MetadataBlob {
-    MetadataVec(Bytes),
-    MetadataArchive(loader::ArchiveMetadata),
+    Inflated(Bytes),
+    Archive(loader::ArchiveMetadata),
 }
 
 /// Holds information about a syntax_pos::FileMap imported from another crate.
-/// See creader::import_codemap() for more information.
+/// See `imported_filemaps()` for more information.
 pub struct ImportedFileMap {
     /// This FileMap's byte-offset within the codemap of its original crate
     pub original_start_pos: syntax_pos::BytePos,
@@ -70,13 +65,12 @@ pub struct CrateMetadata {
     /// (e.g., by the allocator)
     pub extern_crate: Cell<Option<ExternCrate>>,
 
-    pub data: MetadataBlob,
+    pub blob: MetadataBlob,
     pub cnum_map: RefCell<CrateNumMap>,
     pub cnum: CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
 
-    pub info: common::CrateInfo,
-    pub index: index::Index,
+    pub root: schema::CrateRoot,
 
     /// For each public item in this crate, we encode a key.  When the
     /// crate is loaded, we read all the keys and put them in this
@@ -294,23 +288,9 @@ impl CStore {
 }
 
 impl CrateMetadata {
-    pub fn name(&self) -> &str { &self.info.name }
-    pub fn hash(&self) -> Svh { self.info.hash }
-    pub fn disambiguator(&self) -> &str { &self.info.disambiguator }
-    pub fn imported_filemaps<'a>(&'a self, codemap: &codemap::CodeMap)
-                                 -> Ref<'a, Vec<ImportedFileMap>> {
-        let filemaps = self.codemap_import_info.borrow();
-        if filemaps.is_empty() {
-            drop(filemaps);
-            let filemaps = creader::import_codemap(codemap, &self.data);
-
-            // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
-            *self.codemap_import_info.borrow_mut() = filemaps;
-            self.codemap_import_info.borrow()
-        } else {
-            filemaps
-        }
-    }
+    pub fn name(&self) -> &str { &self.root.name }
+    pub fn hash(&self) -> Svh { self.root.hash }
+    pub fn disambiguator(&self) -> &str { &self.root.disambiguator }
 
     pub fn is_staged_api(&self) -> bool {
         self.get_item_attrs(CRATE_DEF_INDEX).iter().any(|attr| {
@@ -349,33 +329,6 @@ impl CrateMetadata {
     }
 
     pub fn panic_strategy(&self) -> PanicStrategy {
-        self.info.panic_strategy.clone()
-    }
-}
-
-impl MetadataBlob {
-    pub fn as_slice_raw<'a>(&'a self) -> &'a [u8] {
-        match *self {
-            MetadataVec(ref vec) => &vec[..],
-            MetadataArchive(ref ar) => ar.as_slice(),
-        }
-    }
-
-    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-        let slice = self.as_slice_raw();
-        let len_offset = 4 + common::metadata_encoding_version.len();
-        if slice.len() < len_offset+4 {
-            &[] // corrupt metadata
-        } else {
-            let len = (((slice[len_offset+0] as u32) << 24) |
-                       ((slice[len_offset+1] as u32) << 16) |
-                       ((slice[len_offset+2] as u32) << 8) |
-                       ((slice[len_offset+3] as u32) << 0)) as usize;
-            if len <= slice.len() - 4 - len_offset {
-                &slice[len_offset + 4..len_offset + len + 4]
-            } else {
-                &[] // corrupt or old metadata
-            }
-        }
+        self.root.panic_strategy.clone()
     }
 }

@@ -212,8 +212,8 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::loader or metadata::creader for all the juicy details!
 
-use cstore::{MetadataBlob, MetadataVec, MetadataArchive};
-use common::{metadata_encoding_version, rustc_version};
+use cstore::MetadataBlob;
+use schema::{METADATA_HEADER, RUSTC_VERSION};
 
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
@@ -382,7 +382,7 @@ impl<'a> Context<'a> {
         }
         if !self.rejected_via_version.is_empty() {
             err.help(&format!("please recompile that crate using this compiler ({})",
-                              rustc_version()));
+                              RUSTC_VERSION));
             let mismatches = self.rejected_via_version.iter();
             for (i, &CrateMismatch { ref path, ref got }) in mismatches.enumerate() {
                 err.note(&format!("crate `{}` path #{}: {} compiled by {:?}",
@@ -510,8 +510,7 @@ impl<'a> Context<'a> {
                     if let Some((ref p, _)) = lib.rlib {
                         err.note(&format!("path: {}", p.display()));
                     }
-                    let crate_info = lib.metadata.get_crate_info();
-                    note_crate_name(&mut err, &crate_info.name);
+                    note_crate_name(&mut err, &lib.metadata.get_root().name);
                 }
                 err.emit();
                 None
@@ -597,38 +596,37 @@ impl<'a> Context<'a> {
     }
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
-        let crate_rustc_version = metadata.crate_rustc_version();
-        if crate_rustc_version != Some(rustc_version()) {
-            let message = crate_rustc_version.unwrap_or(format!("an unknown compiler"));
-            info!("Rejecting via version: expected {} got {}", rustc_version(), message);
+        let root = metadata.get_root();
+        if root.rustc_version != RUSTC_VERSION {
+            info!("Rejecting via version: expected {} got {}",
+                  RUSTC_VERSION, root.rustc_version);
             self.rejected_via_version.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: message
+                got: root.rustc_version
             });
             return None;
         }
 
-        let crate_info = metadata.get_crate_info();
         if self.should_match_name {
-            if self.crate_name != crate_info.name {
+            if self.crate_name != root.name {
                 info!("Rejecting via crate name"); return None;
             }
         }
 
-        if crate_info.triple != self.triple {
+        if root.triple != self.triple {
             info!("Rejecting via crate triple: expected {} got {}",
-                  self.triple, crate_info.triple);
+                  self.triple, root.triple);
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: crate_info.triple
+                got: root.triple
             });
             return None;
         }
 
         if let Some(myhash) = self.hash {
-            if *myhash != crate_info.hash {
+            if *myhash != root.hash {
                 info!("Rejecting via hash: expected {} got {}",
-                      *myhash, crate_info.hash);
+                      *myhash, root.hash);
                 self.rejected_via_hash.push(CrateMismatch {
                     path: libpath.to_path_buf(),
                     got: myhash.to_string()
@@ -637,7 +635,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        Some(crate_info.hash)
+        Some(root.hash)
     }
 
 
@@ -758,11 +756,7 @@ impl ArchiveMetadata {
 fn verify_decompressed_encoding_version(blob: &MetadataBlob, filename: &Path)
                                         -> Result<(), String>
 {
-    let data = blob.as_slice_raw();
-    if data.len() < 4+metadata_encoding_version.len() ||
-        !<[u8]>::eq(&data[..4], &[0, 0, 0, 0]) ||
-        &data[4..4+metadata_encoding_version.len()] != metadata_encoding_version
-    {
+    if !blob.is_compatible() {
         Err((format!("incompatible metadata version found: '{}'",
                      filename.display())))
     } else {
@@ -797,7 +791,7 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
                                    filename.display()));
             }
         };
-        return match ArchiveMetadata::new(archive).map(|ar| MetadataArchive(ar)) {
+        return match ArchiveMetadata::new(archive).map(|ar| MetadataBlob::Archive(ar)) {
             None => Err(format!("failed to read rlib metadata: '{}'",
                                 filename.display())),
             Some(blob) => {
@@ -832,12 +826,12 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as usize;
                 let cvbuf: *const u8 = cbuf as *const u8;
-                let vlen = metadata_encoding_version.len();
+                let vlen = METADATA_HEADER.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
                 let minsz = cmp::min(vlen, csz);
                 let buf0 = slice::from_raw_parts(cvbuf, minsz);
-                let version_ok = buf0 == metadata_encoding_version;
+                let version_ok = buf0 == METADATA_HEADER;
                 if !version_ok {
                     return Err((format!("incompatible metadata version found: '{}'",
                                         filename.display())));
@@ -849,7 +843,7 @@ fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Pat
                 let bytes = slice::from_raw_parts(cvbuf1, csz - vlen);
                 match flate::inflate_bytes(bytes) {
                     Ok(inflated) => {
-                        let blob = MetadataVec(inflated);
+                        let blob = MetadataBlob::Inflated(inflated);
                         verify_decompressed_encoding_version(&blob, filename)?;
                         return Ok(blob);
                     }

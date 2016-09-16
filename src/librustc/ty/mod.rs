@@ -737,6 +737,9 @@ pub struct GenericPredicates<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
+impl<'tcx> serialize::UseSpecializedEncodable for GenericPredicates<'tcx> {}
+impl<'tcx> serialize::UseSpecializedDecodable for GenericPredicates<'tcx> {}
+
 impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     pub fn instantiate(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
                        -> InstantiatedPredicates<'tcx> {
@@ -2457,7 +2460,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn lookup_generics(self, did: DefId) -> &'gcx Generics<'gcx> {
         lookup_locally_or_in_crate_store(
             "generics", did, &self.generics,
-            || self.sess.cstore.item_generics(self.global_tcx(), did))
+            || self.alloc_generics(self.sess.cstore.item_generics(self.global_tcx(), did)))
     }
 
     /// Given the did of an item, returns its full set of predicates.

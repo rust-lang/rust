@@ -34,14 +34,14 @@ struct Bar {
 
 enum WireProtocol {
     JSON,
-    RBML,
+    Opaque,
     // ...
 }
 
 fn encode_json<T: Encodable>(val: &T, wr: &mut Cursor<Vec<u8>>) {
     write!(wr, "{}", json::as_json(val));
 }
-fn encode_rbml<T: Encodable>(val: &T, wr: &mut Cursor<Vec<u8>>) {
+fn encode_opaque<T: Encodable>(val: &T, wr: &mut Cursor<Vec<u8>>) {
     let mut encoder = opaque::Encoder::new(wr);
     val.encode(&mut encoder);
 }
@@ -52,6 +52,6 @@ pub fn main() {
     let proto = WireProtocol::JSON;
     match proto {
         WireProtocol::JSON => encode_json(&target, &mut wr),
-        WireProtocol::RBML => encode_rbml(&target, &mut wr)
+        WireProtocol::Opaque => encode_opaque(&target, &mut wr)
     }
 }
