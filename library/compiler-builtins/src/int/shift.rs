@@ -60,6 +60,7 @@ lshr!(__lshrdi3: u64);
 
 #[cfg(test)]
 mod tests {
+    use gcc_s;
     use quickcheck::TestResult;
     use qc::{I64, U64};
 
@@ -71,7 +72,12 @@ mod tests {
                 TestResult::discard()
             } else {
                 let r = super::__ashldi3(a, b);
-                TestResult::from_bool(r == a << b)
+
+                if let Some(ashldi3) = gcc_s::ashldi3() {
+                    TestResult::from_bool(r == unsafe { ashldi3(a, b) })
+                } else {
+                    TestResult::from_bool(r == a << b)
+                }
             }
         }
 
@@ -81,7 +87,12 @@ mod tests {
                 TestResult::discard()
             } else {
                 let r = super::__ashrdi3(a, b);
-                TestResult::from_bool(r == a >> b)
+
+                if let Some(ashrdi3) = gcc_s::ashrdi3() {
+                    TestResult::from_bool(r == unsafe { ashrdi3(a, b) })
+                } else {
+                    TestResult::from_bool(r == a >> b)
+                }
             }
         }
 
@@ -91,7 +102,12 @@ mod tests {
                 TestResult::discard()
             } else {
                 let r = super::__lshrdi3(a, b);
-                TestResult::from_bool(r == a >> b)
+
+                if let Some(lshrdi3) = gcc_s::lshrdi3() {
+                    TestResult::from_bool(r == unsafe { lshrdi3(a, b) })
+                } else {
+                    TestResult::from_bool(r == a >> b)
+                }
             }
         }
     }

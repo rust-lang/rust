@@ -199,6 +199,8 @@ pub extern fn __aeabi_fadd(a: f32, b: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use core::{f32, f64};
+
+    use gcc_s;
     use qc::{U32, U64};
     use float::Float;
 
@@ -213,15 +215,23 @@ mod tests {
         fn addsf3(a: U32, b: U32) -> bool {
             let (a, b) = (f32::from_repr(a.0), f32::from_repr(b.0));
             let x = super::__addsf3(a, b);
-            let y = a + b;
-            x.eq_repr(y)
+
+            if let Some(addsf3) = gcc_s::addsf3() {
+               x.eq_repr(unsafe { addsf3(a, b) })
+            } else {
+                x.eq_repr(a + b)
+            }
         }
 
         fn adddf3(a: U64, b: U64) -> bool {
             let (a, b) = (f64::from_repr(a.0), f64::from_repr(b.0));
             let x = super::__adddf3(a, b);
-            let y = a + b;
-            x.eq_repr(y)
+
+            if let Some(adddf3) = gcc_s::adddf3() {
+                x.eq_repr(unsafe { adddf3(a, b) })
+            } else {
+                x.eq_repr(a + b)
+            }
         }
     }
     

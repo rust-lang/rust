@@ -17,6 +17,9 @@ extern crate quickcheck;
 #[cfg(test)]
 extern crate core;
 
+#[cfg(test)]
+extern crate gcc_s;
+
 #[cfg(all(not(windows), not(target_os = "macos")))]
 extern crate rlibc;
 

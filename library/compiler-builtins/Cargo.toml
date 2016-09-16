@@ -7,7 +7,10 @@ version = "0.1.0"
 rlibc = { git = "https://github.com/alexcrichton/rlibc", optional = true }
 
 [dev-dependencies]
+gcc_s = { path = "gcc_s" }
 quickcheck = "0.3.1"
 
 [features]
 default = ["rlibc/weak"]
+
+[workspace]

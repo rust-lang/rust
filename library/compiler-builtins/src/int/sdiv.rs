@@ -52,6 +52,7 @@ divmod!(__divmoddi4, __divdi3: i64);
 
 #[cfg(test)]
 mod tests {
+    use gcc_s;
     use quickcheck::TestResult;
     use qc::{U32, U64};
 
@@ -62,7 +63,12 @@ mod tests {
                 TestResult::discard()
             } else {
                 let q = super::__divdi3(n, d);
-                TestResult::from_bool(q == n / d)
+
+                if let Some(divdi3) = gcc_s::divdi3() {
+                    TestResult::from_bool(q == unsafe { divdi3(n, d) })
+                } else {
+                    TestResult::from_bool(q == n / d)
+                }
             }
         }
 
@@ -72,7 +78,12 @@ mod tests {
                 TestResult::discard()
             } else {
                 let r = super::__moddi3(n, d);
-                TestResult::from_bool(r == n % d)
+
+                if let Some(moddi3) = gcc_s::moddi3() {
+                    TestResult::from_bool(r == unsafe { moddi3(n, d) })
+                } else {
+                    TestResult::from_bool(r == n % d)
+                }
             }
         }
 
@@ -83,7 +94,17 @@ mod tests {
             } else {
                 let mut r = 0;
                 let q = super::__divmoddi4(n, d, &mut r);
-                TestResult::from_bool(q == n / d && r == n % d)
+
+                if let Some(divmoddi4) = gcc_s::divmoddi4() {
+                    let mut gcc_s_r = 0;
+                    let gcc_s_q = unsafe {
+                        divmoddi4(n, d, &mut gcc_s_r)
+                    };
+
+                    TestResult::from_bool(q == gcc_s_q && r == gcc_s_r)
+                } else {
+                    TestResult::from_bool(q == n / d && r == n % d)
+                }
             }
         }
 
@@ -93,7 +114,12 @@ mod tests {
                 TestResult::discard()
             } else {
                 let q = super::__divsi3(n, d);
-                TestResult::from_bool(q == n / d)
+
+                if let Some(divsi3) = gcc_s::divsi3() {
+                    TestResult::from_bool(q == unsafe { divsi3(n, d)})
+                } else {
+                    TestResult::from_bool(q == n / d)
+                }
             }
         }
 
@@ -103,7 +129,12 @@ mod tests {
                 TestResult::discard()
             } else {
                 let r = super::__modsi3(n, d);
-                TestResult::from_bool(r == n % d)
+
+                if let Some(modsi3) = gcc_s::modsi3() {
+                    TestResult::from_bool(r == unsafe { modsi3(n, d) })
+                } else {
+                    TestResult::from_bool(r == n % d)
+                }
             }
         }
 
@@ -114,7 +145,17 @@ mod tests {
             } else {
                 let mut r = 0;
                 let q = super::__divmodsi4(n, d, &mut r);
-                TestResult::from_bool(q == n / d && r == n % d)
+
+                if let Some(divmodsi4) = gcc_s::divmodsi4() {
+                    let mut gcc_s_r = 0;
+                    let gcc_s_q = unsafe {
+                        divmodsi4(n, d, &mut gcc_s_r)
+                    };
+
+                    TestResult::from_bool(q == gcc_s_q && r == gcc_s_r)
+                } else {
+                    TestResult::from_bool(q == n / d && r == n % d)
+                }
             }
         }
     }
