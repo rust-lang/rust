@@ -337,7 +337,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for LifetimeContext<'a, 'tcx> {
 
         if !self.trait_ref_hack || !trait_ref.bound_lifetimes.is_empty() {
             if self.trait_ref_hack {
-                println!("{:?}", trait_ref.span);
                 span_err!(self.sess, trait_ref.span, E0316,
                           "nested quantification of lifetimes");
             }
