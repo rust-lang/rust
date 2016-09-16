@@ -77,6 +77,7 @@ use std::mem::replace;
 use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, NameResolution};
+use macros::ExpansionData;
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -1088,7 +1089,7 @@ pub struct Resolver<'a> {
     macro_names: FnvHashSet<Name>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
-    expansion_data: FnvHashMap<Mark, macros::ExpansionData<'a>>,
+    expansion_data: FnvHashMap<Mark, &'a ExpansionData<'a>>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1097,6 +1098,7 @@ pub struct ResolverArenas<'a> {
     name_bindings: arena::TypedArena<NameBinding<'a>>,
     import_directives: arena::TypedArena<ImportDirective<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
+    expansion_data: arena::TypedArena<ExpansionData<'a>>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1119,6 +1121,9 @@ impl<'a> ResolverArenas<'a> {
     }
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
         self.name_resolutions.alloc(Default::default())
+    }
+    fn alloc_expansion_data(&'a self, expansion_data: ExpansionData<'a>) -> &'a ExpansionData<'a> {
+        self.expansion_data.alloc(expansion_data)
     }
 }
 
@@ -1206,7 +1211,8 @@ impl<'a> Resolver<'a> {
         DefCollector::new(&mut definitions).collect_root();
 
         let mut expansion_data = FnvHashMap();
-        expansion_data.insert(Mark::root(), macros::ExpansionData::root(graph_root));
+        expansion_data.insert(Mark::root(),
+                              arenas.alloc_expansion_data(ExpansionData::root(graph_root)));
 
         Resolver {
             session: session,
@@ -1277,6 +1283,7 @@ impl<'a> Resolver<'a> {
             name_bindings: arena::TypedArena::new(),
             import_directives: arena::TypedArena::new(),
             name_resolutions: arena::TypedArena::new(),
+            expansion_data: arena::TypedArena::new(),
         }
     }
 
