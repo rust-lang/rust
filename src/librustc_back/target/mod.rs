@@ -63,11 +63,12 @@ mod netbsd_base;
 mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
+mod thumb_base;
 
 pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
-    ( $(($triple:expr, $module:ident)),+ ) => (
+    ( $(($triple:expr, $module:ident)),+, ) => (
         $(mod $module;)*
 
         /// List of supported targets
@@ -184,7 +185,12 @@ supported_targets! {
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
 
     ("le32-unknown-nacl", le32_unknown_nacl),
-    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten)
+    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
+
+    ("thumbv6m-none-eabi", thumbv6m_none_eabi),
+    ("thumbv7m-none-eabi", thumbv7m_none_eabi),
+    ("thumbv7em-none-eabi", thumbv7em_none_eabi),
+    ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
