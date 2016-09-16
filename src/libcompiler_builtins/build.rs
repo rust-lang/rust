@@ -84,7 +84,7 @@ fn main() {
         ref target_vendor,
         ..
     } = Cfg::new(&target).unwrap();
-    // TODO(stage0) use `unwrap` instead of `unwrap_or`
+    // FIXME(stage0) use `unwrap` instead of `unwrap_or`
     // NOTE in the latest stable/beta release, `rustc --print cfg` doesn't include `llvm_target` in
     // its output. In those cases simply fallback to the target triple, which is usually similar to
     // llvm-target, as a workaround.
