@@ -12,14 +12,15 @@
 
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use loader::{self, CratePaths};
+use macro_import;
 use schema::CrateRoot;
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
-use rustc::dep_graph::{DepGraph, DepNode};
 use rustc::session::{config, Session};
 use rustc::session::config::PanicStrategy;
 use rustc::session::search_paths::PathKind;
+use rustc::middle;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
 use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
 use rustc::hir::map as hir_map;
@@ -31,20 +32,18 @@ use std::rc::Rc;
 use std::fs;
 
 use syntax::ast;
+use syntax::ext::base::LoadedMacro;
 use syntax::abi::Abi;
 use syntax::parse;
 use syntax::attr;
 use syntax::parse::token::InternedString;
-use syntax::visit;
 use syntax_pos::{self, Span, mk_sp};
 use log;
 
-struct LocalCrateReader<'a> {
-    sess: &'a Session,
+pub struct CrateLoader<'a> {
+    pub sess: &'a Session,
+    pub creader: CrateReader<'a>,
     cstore: &'a CStore,
-    creader: CrateReader<'a>,
-    krate: &'a ast::Crate,
-    definitions: &'a hir_map::Definitions,
 }
 
 pub struct CrateReader<'a> {
@@ -54,13 +53,6 @@ pub struct CrateReader<'a> {
     foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
     local_crate_name: String,
     local_crate_config: ast::CrateConfig,
-}
-
-impl<'a> visit::Visitor for LocalCrateReader<'a> {
-    fn visit_item(&mut self, a: &ast::Item) {
-        self.process_item(a);
-        visit::walk_item(self, a);
-    }
 }
 
 fn dump_crates(cstore: &CStore) {
@@ -918,98 +910,22 @@ impl ExtensionCrate {
     }
 }
 
-impl<'a> LocalCrateReader<'a> {
-    fn new(sess: &'a Session,
-           cstore: &'a CStore,
-           defs: &'a hir_map::Definitions,
-           krate: &'a ast::Crate,
-           local_crate_name: &str)
-           -> LocalCrateReader<'a> {
-        LocalCrateReader {
+impl<'a> CrateLoader<'a> {
+    pub fn new(sess: &'a Session, cstore: &'a CStore, krate: &ast::Crate, crate_name: &str)
+               -> Self {
+        let loader = CrateLoader {
             sess: sess,
             cstore: cstore,
-            creader: CrateReader::new(sess, cstore, local_crate_name, krate.config.clone()),
-            krate: krate,
-            definitions: defs,
-        }
-    }
+            creader: CrateReader::new(sess, cstore, crate_name, krate.config.clone()),
+        };
 
-    // Traverses an AST, reading all the information about use'd crates and
-    // extern libraries necessary for later resolving, typechecking, linking,
-    // etc.
-    fn read_crates(&mut self, dep_graph: &DepGraph) {
-        let _task = dep_graph.in_task(DepNode::CrateReader);
-
-        self.process_crate(self.krate);
-        visit::walk_crate(self, self.krate);
-        self.creader.inject_allocator_crate();
-        self.creader.inject_panic_runtime(self.krate);
-
-        if log_enabled!(log::INFO) {
-            dump_crates(&self.cstore);
-        }
-
-        for &(ref name, kind) in &self.sess.opts.libs {
-            register_native_lib(self.sess, self.cstore, None, name.clone(), kind);
-        }
-        self.creader.register_statically_included_foreign_items();
-    }
-
-    fn process_crate(&self, c: &ast::Crate) {
-        for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
-            if let Some(ref linkarg) = a.value_str() {
-                self.cstore.add_used_link_args(&linkarg);
+        for attr in krate.attrs.iter().filter(|m| m.name() == "link_args") {
+            if let Some(ref linkarg) = attr.value_str() {
+                loader.cstore.add_used_link_args(&linkarg);
             }
         }
-    }
 
-    fn process_item(&mut self, i: &ast::Item) {
-        match i.node {
-            ast::ItemKind::ExternCrate(_) => {
-                // If this `extern crate` item has `#[macro_use]` then we can
-                // safely skip it. These annotations were processed during macro
-                // expansion and are already loaded (if necessary) into our
-                // crate store.
-                //
-                // Note that it's important we *don't* fall through below as
-                // some `#[macro_use]` crate are explicitly not linked (e.g.
-                // macro crates) so we want to ensure we avoid `resolve_crate`
-                // with those.
-                if attr::contains_name(&i.attrs, "macro_use") {
-                    if self.cstore.was_used_for_derive_macros(i) {
-                        return
-                    }
-                }
-
-                if let Some(info) = self.creader.extract_crate_info(i) {
-                    if !info.should_link {
-                        return;
-                    }
-                    let (cnum, ..) = self.creader.resolve_crate(&None,
-                                                                &info.ident,
-                                                                &info.name,
-                                                                None,
-                                                                i.span,
-                                                                PathKind::Crate,
-                                                                true);
-
-                    let def_id = self.definitions.opt_local_def_id(i.id).unwrap();
-                    let len = self.definitions.def_path(def_id.index).data.len();
-
-                    self.creader.update_extern_crate(cnum,
-                                                     ExternCrate {
-                                                         def_id: def_id,
-                                                         span: i.span,
-                                                         direct: true,
-                                                         path_len: len,
-                                                     },
-                                                     &mut FnvHashSet());
-                    self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
-                }
-            }
-            ast::ItemKind::ForeignMod(ref fm) => self.process_foreign_mod(i, fm),
-            _ => { }
-        }
+        loader
     }
 
     fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod) {
@@ -1073,13 +989,62 @@ impl<'a> LocalCrateReader<'a> {
     }
 }
 
-/// Traverses an AST, reading all the information about use'd crates and extern
-/// libraries necessary for later resolving, typechecking, linking, etc.
-pub fn read_local_crates(sess: & Session,
-                         cstore: & CStore,
-                         defs: & hir_map::Definitions,
-                         krate: & ast::Crate,
-                         local_crate_name: &str,
-                         dep_graph: &DepGraph) {
-    LocalCrateReader::new(sess, cstore, defs, krate, local_crate_name).read_crates(dep_graph)
+impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
+    fn postprocess(&mut self, krate: &ast::Crate) {
+        self.creader.inject_allocator_crate();
+        self.creader.inject_panic_runtime(krate);
+
+        if log_enabled!(log::INFO) {
+            dump_crates(&self.cstore);
+        }
+
+        for &(ref name, kind) in &self.sess.opts.libs {
+            register_native_lib(self.sess, self.cstore, None, name.clone(), kind);
+        }
+        self.creader.register_statically_included_foreign_items();
+    }
+
+    fn process_item(&mut self, item: &ast::Item, definitions: &hir_map::Definitions) {
+        match item.node {
+            ast::ItemKind::ExternCrate(_) => {}
+            ast::ItemKind::ForeignMod(ref fm) => return self.process_foreign_mod(item, fm),
+            _ => return,
+        }
+
+        // If this `extern crate` item has `#[macro_use]` then we can safely skip it.
+        // These annotations were processed during macro expansion and are already loaded
+        // (if necessary) into our crate store.
+        //
+        // Note that it's important we *don't* fall through below as some `#[macro_use]`
+        // crates are explicitly not linked (e.g. macro crates) so we want to ensure
+        // we avoid `resolve_crate` with those.
+        if attr::contains_name(&item.attrs, "macro_use") {
+            if self.cstore.was_used_for_derive_macros(item) {
+                return
+            }
+        }
+
+        if let Some(info) = self.creader.extract_crate_info(item) {
+            if !info.should_link {
+                return;
+            }
+
+            let (cnum, ..) = self.creader.resolve_crate(
+                &None, &info.ident, &info.name, None, item.span, PathKind::Crate, true,
+            );
+
+            let def_id = definitions.opt_local_def_id(item.id).unwrap();
+            let len = definitions.def_path(def_id.index).data.len();
+
+            let extern_crate =
+                ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
+            self.creader.update_extern_crate(cnum, extern_crate, &mut FnvHashSet());
+
+            self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
+        }
+    }
+
+    fn load_macros(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro> {
+        macro_import::load_macros(self, extern_crate, allows_macros)
+    }
 }

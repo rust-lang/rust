@@ -44,7 +44,7 @@ use self::ModulePrefixResult::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
-use rustc::middle::cstore::MacroLoader;
+use rustc::middle::cstore::CrateLoader;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
@@ -1066,7 +1066,7 @@ pub struct Resolver<'a> {
     dummy_binding: &'a NameBinding<'a>,
     new_import_semantics: bool, // true if `#![feature(item_like_imports)]`
 
-    macro_loader: &'a mut MacroLoader,
+    crate_loader: &'a mut CrateLoader,
     macro_names: FnvHashSet<Name>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
@@ -1172,7 +1172,7 @@ impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
                krate: &Crate,
                make_glob_map: MakeGlobMap,
-               macro_loader: &'a mut MacroLoader,
+               crate_loader: &'a mut CrateLoader,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def = Def::Mod(DefId::local(CRATE_DEF_INDEX));
@@ -1240,7 +1240,7 @@ impl<'a> Resolver<'a> {
             }),
             new_import_semantics: session.features.borrow().item_like_imports,
 
-            macro_loader: macro_loader,
+            crate_loader: crate_loader,
             macro_names: FnvHashSet(),
             expansion_data: expansion_data,
         }
@@ -1263,6 +1263,7 @@ impl<'a> Resolver<'a> {
 
         check_unused::check_crate(self, krate);
         self.report_errors();
+        self.crate_loader.postprocess(krate);
     }
 
     fn new_module(&self, parent: Module<'a>, kind: ModuleKind, local: bool) -> Module<'a> {

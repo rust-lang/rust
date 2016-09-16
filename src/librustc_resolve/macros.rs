@@ -38,7 +38,7 @@ struct ModuleData {
 
 impl<'a> base::Resolver for Resolver<'a> {
     fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro> {
-        self.macro_loader.load_crate(extern_crate, allows_macros)
+        self.crate_loader.load_macros(extern_crate, allows_macros)
     }
 
     fn next_node_id(&mut self) -> ast::NodeId {
