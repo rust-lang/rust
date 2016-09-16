@@ -22,9 +22,18 @@
 // object (usually called `crtX.o), which then invokes initialization callbacks
 // of other runtime components (registered via yet another special image section).
 
+#![feature(no_core, lang_items)]
 #![crate_type="rlib"]
-#![no_std]
+#![no_core]
 #![allow(non_camel_case_types)]
+
+#[lang = "sized"]
+trait Sized {}
+#[lang = "sync"]
+trait Sync {}
+#[lang = "copy"]
+trait Copy {}
+impl<T> Sync for T {}
 
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 pub mod eh_frames {
