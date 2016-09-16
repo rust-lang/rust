@@ -14,4 +14,3 @@
 // compiling then this doesn't work with `#[macro_use] extern crate std;`. Work
 // around this by not having `#[macro_use] extern crate std;`
 #![no_std]
-extern crate std;

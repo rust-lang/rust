@@ -144,7 +144,7 @@ pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
     let mut cargo = build.cargo(&compiler, Mode::Libstd, target, "doc");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
-         .arg("--features").arg(build.std_features());
+         .arg("--features").arg(build.std_features(target));
     build.run(&mut cargo);
     cp_r(&out_dir, out)
 }

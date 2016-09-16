@@ -62,7 +62,7 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
     let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
-    cargo.arg("--features").arg(build.std_features())
+    cargo.arg("--features").arg(build.std_features(target))
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
 

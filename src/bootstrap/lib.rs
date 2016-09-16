@@ -712,17 +712,27 @@ impl Build {
 
     /// Get the space-separated set of activated features for the standard
     /// library.
-    fn std_features(&self) -> String {
+    fn std_features(&self, target: &str) -> String {
         let mut features = String::new();
-        if self.config.debug_jemalloc {
-            features.push_str(" debug-jemalloc");
+
+        if target.starts_with("thumbv6m") {
+            features.push_str(" thumb_no_atomics");
+        } else if target.starts_with("thumb") {
+            features.push_str(" thumb");
+        } else {
+            features.push_str("full");
+
+            if self.config.debug_jemalloc {
+                features.push_str(" debug-jemalloc");
+            }
+            if self.config.use_jemalloc {
+                features.push_str(" jemalloc");
+            }
+            if self.config.backtrace {
+                features.push_str(" backtrace");
+            }
         }
-        if self.config.use_jemalloc {
-            features.push_str(" jemalloc");
-        }
-        if self.config.backtrace {
-            features.push_str(" backtrace");
-        }
+
         return features
     }
 

@@ -2,7 +2,11 @@
 name = "std_shim"
 version = "0.1.0"
 dependencies = [
+ "collections 0.0.0",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
+ "rand 0.0.0",
+ "rustc_unicode 0.0.0",
  "std 0.0.0",
 ]
 
