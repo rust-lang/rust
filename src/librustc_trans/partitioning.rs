@@ -133,7 +133,7 @@ use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
 use syntax::parse::token::{self, InternedString};
 use trans_item::TransItem;
-use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
+use util::nodemap::{FnvHashMap, FnvHashSet};
 
 pub enum PartitioningStrategy {
     /// Generate one codegen unit per source-level module.
@@ -254,8 +254,7 @@ const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                               trans_items: I,
                               strategy: PartitioningStrategy,
-                              inlining_map: &InliningMap<'tcx>,
-                              reachable: &NodeSet)
+                              inlining_map: &InliningMap<'tcx>)
                               -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
@@ -265,8 +264,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
     let mut initial_partitioning = place_root_translation_items(scx,
-                                                                trans_items,
-                                                                reachable);
+                                                                trans_items);
 
     debug_dump(tcx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
 
@@ -304,8 +302,7 @@ struct PreInliningPartitioning<'tcx> {
 struct PostInliningPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
 
 fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
-                                             trans_items: I,
-                                             _reachable: &NodeSet)
+                                             trans_items: I)
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
@@ -344,6 +341,10 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                                 // This is a non-generic functions, we always
                                 // make it visible externally on the chance that
                                 // it might be used in another codegen unit.
+                                // Later on base::internalize_symbols() will
+                                // assign "internal" linkage to those symbols
+                                // that are not referenced from other codegen
+                                // units (and are not publicly visible).
                                 llvm::ExternalLinkage
                             } else {
                                 // In the current setup, generic functions cannot
