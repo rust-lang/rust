@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
+use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
-use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
-use ext::base::{NormalTT, TTMacroExpander};
+use ext::base::{DummyResult, ExtCtxt, MacEager, MacResult, SyntaxExtension};
+use ext::base::{IdentMacroExpander, NormalTT, TTMacroExpander};
+use ext::placeholders;
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::parse;
@@ -240,6 +241,38 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
     }
 
      cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg[..]);
+}
+
+pub struct MacroRulesExpander;
+impl IdentMacroExpander for MacroRulesExpander {
+    fn expand(&self,
+              cx: &mut ExtCtxt,
+              span: Span,
+              ident: ast::Ident,
+              tts: Vec<tokenstream::TokenTree>,
+              attrs: Vec<ast::Attribute>)
+              -> Box<MacResult> {
+        let def = ast::MacroDef {
+            ident: ident,
+            id: ast::DUMMY_NODE_ID,
+            span: span,
+            imported_from: None,
+            use_locally: true,
+            body: tts,
+            export: attr::contains_name(&attrs, "macro_export"),
+            allow_internal_unstable: attr::contains_name(&attrs, "allow_internal_unstable"),
+            attrs: attrs,
+        };
+
+        cx.insert_macro(def.clone());
+
+        // If keep_macs is true, expands to a MacEager::items instead.
+        if cx.ecfg.keep_macs {
+            MacEager::items(placeholders::reconstructed_macro_rules(&def).make_items())
+        } else {
+            MacEager::items(placeholders::macro_scope_placeholder().make_items())
+        }
+    }
 }
 
 // Note that macro-by-example's input is also matched against a token tree:

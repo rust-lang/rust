@@ -13,7 +13,7 @@ use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
 use fold::*;
-use parse::token::keywords;
+use parse::token::{intern, keywords};
 use ptr::P;
 use util::move_map::MoveMap;
 use util::small_vector::SmallVector;
@@ -214,7 +214,7 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     }
 }
 
-pub fn reconstructed_macro_rules(def: &ast::MacroDef, path: &ast::Path) -> Expansion {
+pub fn reconstructed_macro_rules(def: &ast::MacroDef) -> Expansion {
     Expansion::Items(SmallVector::one(P(ast::Item {
         ident: def.ident,
         attrs: def.attrs.clone(),
@@ -222,7 +222,14 @@ pub fn reconstructed_macro_rules(def: &ast::MacroDef, path: &ast::Path) -> Expan
         node: ast::ItemKind::Mac(ast::Mac {
             span: def.span,
             node: ast::Mac_ {
-                path: path.clone(),
+                path: ast::Path {
+                    span: DUMMY_SP,
+                    global: false,
+                    segments: vec![ast::PathSegment {
+                        identifier: ast::Ident::with_empty_ctxt(intern("macro_rules")),
+                        parameters: ast::PathParameters::none(),
+                    }],
+                },
                 tts: def.body.clone(),
             }
         }),
