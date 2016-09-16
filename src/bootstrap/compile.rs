@@ -16,12 +16,14 @@
 //! compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
+use std::cmp;
 use std::collections::HashMap;
-use std::fs;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use build_helper::output;
+use filetime::FileTime;
 
 use util::{exe, staticlib, libdir, mtime, is_dylib, copy};
 use {Build, Compiler, Mode};
@@ -76,6 +78,7 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     }
 
     build.run(&mut cargo);
+    update_mtime(&libstd_stamp(build, compiler, target));
     std_link(build, target, compiler, compiler.host);
 }
 
@@ -149,11 +152,12 @@ pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
-    build.clear_if_dirty(&out_dir, &libstd_shim(build, compiler, target));
+    build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
     build.run(&mut cargo);
+    update_mtime(&libtest_stamp(build, compiler, target));
     test_link(build, target, compiler, compiler.host);
 }
 
@@ -181,7 +185,7 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
              compiler.stage, compiler.host, target);
 
     let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
-    build.clear_if_dirty(&out_dir, &libtest_shim(build, compiler, target));
+    build.clear_if_dirty(&out_dir, &libtest_stamp(build, compiler, target));
 
     let mut cargo = build.cargo(compiler, Mode::Librustc, target, "build");
     cargo.arg("--features").arg(build.rustc_features())
@@ -246,14 +250,14 @@ pub fn rustc_link(build: &Build,
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-fn libstd_shim(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
-    build.cargo_out(compiler, Mode::Libstd, target).join("libstd_shim.rlib")
+fn libstd_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+    build.cargo_out(compiler, Mode::Libstd, target).join(".libstd.stamp")
 }
 
 /// Cargo's output path for libtest in a given stage, compiled by a particular
 /// compiler for the specified target.
-fn libtest_shim(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
-    build.cargo_out(compiler, Mode::Libtest, target).join("libtest_shim.rlib")
+fn libtest_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+    build.cargo_out(compiler, Mode::Libtest, target).join(".libtest.stamp")
 }
 
 fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
@@ -366,10 +370,35 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
     //        Maybe when libstd is compiled it should clear out the rustc of the
     //        corresponding stage?
     // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
-    // build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
+    // build.clear_if_dirty(&out_dir, &libstd_stamp(build, stage, &host, target));
 
     let mut cargo = build.cargo(&compiler, Mode::Tool, host, "build");
     cargo.arg("--manifest-path")
          .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
     build.run(&mut cargo);
+}
+
+/// Updates the mtime of a stamp file if necessary, only changing it if it's
+/// older than some other file in the same directory.
+///
+/// We don't know what file Cargo is going to output (because there's a hash in
+/// the file name) but we know where it's going to put it. We use this helper to
+/// detect changes to that output file by looking at the modification time for
+/// all files in a directory and updating the stamp if any are newer.
+fn update_mtime(path: &Path) {
+    let mut max = None;
+    if let Ok(entries) = path.parent().unwrap().read_dir() {
+        for entry in entries.map(|e| t!(e)) {
+            if t!(entry.file_type()).is_file() {
+                let meta = t!(entry.metadata());
+                let time = FileTime::from_last_modification_time(&meta);
+                max = cmp::max(max, Some(time));
+            }
+        }
+    }
+
+    if !max.is_none() && max <= Some(mtime(path)) {
+        return
+    }
+    t!(File::create(path));
 }
