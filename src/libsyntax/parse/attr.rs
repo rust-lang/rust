@@ -125,8 +125,8 @@ impl<'a> Parser<'a> {
 
                 self.expect(&token::OpenDelim(token::Bracket))?;
                 let meta_item = self.parse_meta_item()?;
-                let hi = self.last_span.hi;
                 self.expect(&token::CloseDelim(token::Bracket))?;
+                let hi = self.last_span.hi;
 
                 (mk_sp(lo, hi), meta_item, style)
             }
