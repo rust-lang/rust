@@ -52,6 +52,19 @@ pub const SHORTHAND_OFFSET: usize = 0x80;
 
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
+///
+/// Metadata is effective a tree, encoded in post-order,
+/// and with the root's position written next to the header.
+/// That means every single `Lazy` points to some previous
+/// location in the metadata and is part of a larger node.
+///
+/// The first `Lazy` in a node is encoded as the backwards
+/// distance from the position where the containing node
+/// starts and where the `Lazy` points to, while the rest
+/// use the forward distance from the previous `Lazy`.
+/// Distances start at 1, as 0-byte nodes are invalid.
+/// Also invalid are nodes being referred in a different
+/// order than they were encoded in.
 #[must_use]
 pub struct Lazy<T> {
     pub position: usize,
@@ -65,6 +78,12 @@ impl<T> Lazy<T> {
             _marker: PhantomData
         }
     }
+
+    /// Returns the minimum encoded size of a value of type `T`.
+    // FIXME(eddyb) Give better estimates for certain types.
+    pub fn min_size() -> usize {
+        1
+    }
 }
 
 impl<T> Copy for Lazy<T> {}
@@ -77,10 +96,16 @@ impl<T> serialize::UseSpecializedDecodable for Lazy<T> {}
 
 /// A sequence of type T referred to by its absolute position
 /// in the metadata and length, and which can be decoded lazily.
+/// The sequence is a single node for the purposes of `Lazy`.
 ///
 /// Unlike `Lazy<Vec<T>>`, the length is encoded next to the
 /// position, not at the position, which means that the length
 /// doesn't need to be known before encoding all the elements.
+///
+/// If the length is 0, no position is encoded, but otherwise,
+/// the encoding is that of `Lazy`, with the distinction that
+/// the minimal distance the length of the sequence, i.e.
+/// it's assumed there's no 0-byte element in the sequence.
 #[must_use]
 pub struct LazySeq<T> {
     pub len: usize,
@@ -100,6 +125,11 @@ impl<T> LazySeq<T> {
             _marker: PhantomData
         }
     }
+
+    /// Returns the minimum encoded size of `length` values of type `T`.
+    pub fn min_size(length: usize) -> usize {
+        length
+    }
 }
 
 impl<T> Copy for LazySeq<T> {}
@@ -109,6 +139,22 @@ impl<T> Clone for LazySeq<T> {
 
 impl<T> serialize::UseSpecializedEncodable for LazySeq<T> {}
 impl<T> serialize::UseSpecializedDecodable for LazySeq<T> {}
+
+/// Encoding / decoding state for `Lazy` and `LazySeq`.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum LazyState {
+    /// Outside of a metadata node.
+    NoNode,
+
+    /// Inside a metadata node, and before any `Lazy` or `LazySeq`.
+    /// The position is that of the node itself.
+    NodeStart(usize),
+
+    /// Inside a metadata node, with a previous `Lazy` or `LazySeq`.
+    /// The position is a conservative estimate of where that
+    /// previous `Lazy` / `LazySeq` would end (see their comments).
+    Previous(usize)
+}
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct CrateRoot {
@@ -121,16 +167,16 @@ pub struct CrateRoot {
     pub plugin_registrar_fn: Option<DefIndex>,
     pub macro_derive_registrar: Option<DefIndex>,
 
-    pub index: LazySeq<index::Index>,
     pub crate_deps: LazySeq<CrateDep>,
     pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,
-    pub native_libraries: LazySeq<(NativeLibraryKind, String)>,
     pub lang_items: LazySeq<(DefIndex, usize)>,
     pub lang_items_missing: LazySeq<lang_items::LangItem>,
+    pub native_libraries: LazySeq<(NativeLibraryKind, String)>,
+    pub codemap: LazySeq<syntax_pos::FileMap>,
+    pub macro_defs: LazySeq<MacroDef>,
     pub impls: LazySeq<TraitImpls>,
     pub reachable_ids: LazySeq<DefIndex>,
-    pub macro_defs: LazySeq<MacroDef>,
-    pub codemap: LazySeq<syntax_pos::FileMap>
+    pub index: LazySeq<index::Index>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
