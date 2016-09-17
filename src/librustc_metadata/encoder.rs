@@ -53,6 +53,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     reachable: &'a NodeSet,
     mir_map: &'a MirMap<'tcx>,
 
+    lazy_state: LazyState,
     type_shorthands: FnvHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FnvHashMap<ty::Predicate<'tcx>, usize>,
 }
@@ -95,14 +96,17 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx, T> SpecializedEncoder<Lazy<T>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
-        self.emit_usize(lazy.position)
+        self.emit_lazy_distance(lazy.position, Lazy::<T>::min_size())
     }
 }
 
 impl<'a, 'tcx, T> SpecializedEncoder<LazySeq<T>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, seq: &LazySeq<T>) -> Result<(), Self::Error> {
         self.emit_usize(seq.len)?;
-        self.emit_usize(seq.position)
+        if seq.len == 0 {
+            return Ok(());
+        }
+        self.emit_lazy_distance(seq.position, LazySeq::<T>::min_size(seq.len))
     }
 }
 
@@ -129,24 +133,62 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.opaque.position()
     }
 
-    pub fn lazy<T: Encodable>(&mut self, value: &T) -> Lazy<T> {
+    fn emit_node<F: FnOnce(&mut Self, usize) -> R, R>(&mut self, f: F) -> R {
+        assert_eq!(self.lazy_state, LazyState::NoNode);
         let pos = self.position();
-        value.encode(self).unwrap();
-        Lazy::with_position(pos)
+        self.lazy_state = LazyState::NodeStart(pos);
+        let r = f(self, pos);
+        self.lazy_state = LazyState::NoNode;
+        r
+    }
+
+    fn emit_lazy_distance(&mut self, position: usize, min_size: usize)
+                          -> Result<(), <Self as Encoder>::Error> {
+        let min_end = position + min_size;
+        let distance = match self.lazy_state {
+            LazyState::NoNode => {
+                bug!("emit_lazy_distance: outside of a metadata node")
+            }
+            LazyState::NodeStart(start) => {
+                assert!(min_end <= start);
+                start - min_end
+            }
+            LazyState::Previous(last_min_end) => {
+                assert!(last_min_end <= position);
+                position - last_min_end
+            }
+        };
+        self.lazy_state = LazyState::Previous(min_end);
+        self.emit_usize(distance)
+    }
+
+    pub fn lazy<T: Encodable>(&mut self, value: &T) -> Lazy<T> {
+        self.emit_node(|ecx, pos| {
+            value.encode(ecx).unwrap();
+
+            assert!(pos + Lazy::<T>::min_size() <= ecx.position());
+            Lazy::with_position(pos)
+        })
     }
 
     fn lazy_seq<I, T>(&mut self, iter: I) -> LazySeq<T>
     where I: IntoIterator<Item=T>, T: Encodable {
-        let pos = self.position();
-        let len = iter.into_iter().map(|value| value.encode(self).unwrap()).count();
-        LazySeq::with_position_and_length(pos, len)
+        self.emit_node(|ecx, pos| {
+            let len = iter.into_iter().map(|value| value.encode(ecx).unwrap()).count();
+
+            assert!(pos + LazySeq::<T>::min_size(len) <= ecx.position());
+            LazySeq::with_position_and_length(pos, len)
+        })
     }
 
     fn lazy_seq_ref<'b, I, T>(&mut self, iter: I) -> LazySeq<T>
     where I: IntoIterator<Item=&'b T>, T: 'b + Encodable {
-        let pos = self.position();
-        let len = iter.into_iter().map(|value| value.encode(self).unwrap()).count();
-        LazySeq::with_position_and_length(pos, len)
+        self.emit_node(|ecx, pos| {
+            let len = iter.into_iter().map(|value| value.encode(ecx).unwrap()).count();
+
+            assert!(pos + LazySeq::<T>::min_size(len) <= ecx.position());
+            LazySeq::with_position_and_length(pos, len)
+        })
     }
 
     /// Encode the given value or a previously cached shorthand.
@@ -1262,16 +1304,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 None
             },
 
-            index: index,
             crate_deps: crate_deps,
             dylib_dependency_formats: dylib_dependency_formats,
-            native_libraries: native_libraries,
             lang_items: lang_items,
             lang_items_missing: lang_items_missing,
+            native_libraries: native_libraries,
+            codemap: codemap,
+            macro_defs: macro_defs,
             impls: impls,
             reachable_ids: reachable_ids,
-            macro_defs: macro_defs,
-            codemap: codemap
+            index: index,
         });
 
         let total_bytes = self.position();
@@ -1345,6 +1387,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cstore: cstore,
         reachable: reachable,
         mir_map: mir_map,
+        lazy_state: LazyState::NoNode,
         type_shorthands: Default::default(),
         predicate_shorthands: Default::default()
     }.encode_crate_root();

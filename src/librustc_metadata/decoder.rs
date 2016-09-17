@@ -52,8 +52,11 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     cdata: Option<&'a CrateMetadata>,
     from_id_range: IdRange,
     to_id_range: IdRange,
+
     // Cache the last used filemap for translating spans as an optimization.
     last_filemap_index: usize,
+
+    lazy_state: LazyState
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -73,7 +76,8 @@ pub trait Metadata<'a, 'tcx>: Copy {
             tcx: self.tcx(),
             from_id_range: id_range,
             to_id_range: id_range,
-            last_filemap_index: 0
+            last_filemap_index: 0,
+            lazy_state: LazyState::NoNode
         }
     }
 }
@@ -114,13 +118,16 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'a, 'tcx, 'tcx>
 
 impl<'a, 'tcx: 'a, T: Decodable> Lazy<T> {
     pub fn decode<M: Metadata<'a, 'tcx>>(self, meta: M) -> T {
-        T::decode(&mut meta.decoder(self.position)).unwrap()
+        let mut dcx = meta.decoder(self.position);
+        dcx.lazy_state = LazyState::NodeStart(self.position);
+        T::decode(&mut dcx).unwrap()
     }
 }
 
 impl<'a, 'tcx: 'a, T: Decodable> LazySeq<T> {
     pub fn decode<M: Metadata<'a, 'tcx>>(self, meta: M) -> impl Iterator<Item=T> + 'a {
         let mut dcx = meta.decoder(self.position);
+        dcx.lazy_state = LazyState::NodeStart(self.position);
         (0..self.len).map(move |_| {
             T::decode(&mut dcx).unwrap()
         })
@@ -137,11 +144,32 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     fn with_position<F: FnOnce(&mut Self) -> R, R>(&mut self, pos: usize, f: F) -> R {
-        let new = opaque::Decoder::new(self.opaque.data, pos);
-        let old = mem::replace(&mut self.opaque, new);
+        let new_opaque = opaque::Decoder::new(self.opaque.data, pos);
+        let old_opaque = mem::replace(&mut self.opaque, new_opaque);
+        let old_state = mem::replace(&mut self.lazy_state, LazyState::NoNode);
         let r = f(self);
-        self.opaque = old;
+        self.opaque = old_opaque;
+        self.lazy_state = old_state;
         r
+    }
+
+    fn read_lazy_distance(&mut self, min_size: usize)
+                          -> Result<usize, <Self as Decoder>::Error> {
+        let distance = self.read_usize()?;
+        let position = match self.lazy_state {
+            LazyState::NoNode => {
+                bug!("read_lazy_distance: outside of a metadata node")
+            }
+            LazyState::NodeStart(start) => {
+                assert!(distance + min_size <= start);
+                start - distance - min_size
+            }
+            LazyState::Previous(last_min_end) => {
+                last_min_end + distance
+            }
+        };
+        self.lazy_state = LazyState::Previous(position + min_size);
+        Ok(position)
     }
 }
 
@@ -185,14 +213,19 @@ impl<'doc, 'tcx> Decoder for DecodeContext<'doc, 'tcx> {
 
 impl<'a, 'tcx, T> SpecializedDecoder<Lazy<T>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Lazy<T>, Self::Error> {
-        Ok(Lazy::with_position(self.read_usize()?))
+        Ok(Lazy::with_position(self.read_lazy_distance(Lazy::<T>::min_size())?))
     }
 }
 
 impl<'a, 'tcx, T> SpecializedDecoder<LazySeq<T>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<LazySeq<T>, Self::Error> {
         let len = self.read_usize()?;
-        Ok(LazySeq::with_position_and_length(self.read_usize()?, len))
+        let position = if len == 0 {
+            0
+        } else {
+            self.read_lazy_distance(LazySeq::<T>::min_size(len))?
+        };
+        Ok(LazySeq::with_position_and_length(position, len))
     }
 }
 
