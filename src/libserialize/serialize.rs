@@ -691,42 +691,39 @@ impl<E> SpecializationError for E {
 /// Implement this trait on encoders, with `T` being the type
 /// you want to encode (employing `UseSpecializedEncodable`),
 /// using a strategy specific to the encoder.
-/// Can also be implemented alongside `UseSpecializedEncodable`
-/// to provide a default `specialized_encode` for encoders
-/// which do not implement `SpecializedEncoder` themselves.
-pub trait SpecializedEncoder<T: ?Sized>: Encoder {
+pub trait SpecializedEncoder<T: ?Sized + UseSpecializedEncodable>: Encoder {
     /// Encode the value in a manner specific to this encoder state.
-    /// Defaults to returning an error (see `SpecializationError`).
     fn specialized_encode(&mut self, value: &T) -> Result<(), Self::Error>;
 }
 
-impl<E: Encoder, T: ?Sized> SpecializedEncoder<T> for E {
-    default fn specialized_encode(&mut self, _: &T) -> Result<(), E::Error> {
-        Err(E::Error::not_found::<E, T>("SpecializedEncoder", "specialized_encode"))
+impl<E: Encoder, T: ?Sized + UseSpecializedEncodable> SpecializedEncoder<T> for E {
+    default fn specialized_encode(&mut self, value: &T) -> Result<(), E::Error> {
+        value.default_encode(self)
     }
 }
 
 /// Implement this trait on decoders, with `T` being the type
 /// you want to decode (employing `UseSpecializedDecodable`),
 /// using a strategy specific to the decoder.
-/// Can also be implemented alongside `UseSpecializedDecodable`
-/// to provide a default `specialized_decode` for decoders
-/// which do not implement `SpecializedDecoder` themselves.
-pub trait SpecializedDecoder<T>: Decoder {
+pub trait SpecializedDecoder<T: UseSpecializedDecodable>: Decoder {
     /// Decode a value in a manner specific to this decoder state.
-    /// Defaults to returning an error (see `SpecializationError`).
     fn specialized_decode(&mut self) -> Result<T, Self::Error>;
 }
 
-impl<D: Decoder, T> SpecializedDecoder<T> for D {
+impl<D: Decoder, T: UseSpecializedDecodable> SpecializedDecoder<T> for D {
     default fn specialized_decode(&mut self) -> Result<T, D::Error> {
-        Err(D::Error::not_found::<D, T>("SpecializedDecoder", "specialized_decode"))
+        T::default_decode(self)
     }
 }
 
 /// Implement this trait on your type to get an `Encodable`
 /// implementation which goes through `SpecializedEncoder`.
-pub trait UseSpecializedEncodable {}
+pub trait UseSpecializedEncodable {
+    /// Defaults to returning an error (see `SpecializationError`).
+    fn default_encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
+        Err(E::Error::not_found::<E, Self>("SpecializedEncoder", "specialized_encode"))
+    }
+}
 
 impl<T: ?Sized + UseSpecializedEncodable> Encodable for T {
     default fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
@@ -736,7 +733,12 @@ impl<T: ?Sized + UseSpecializedEncodable> Encodable for T {
 
 /// Implement this trait on your type to get an `Decodable`
 /// implementation which goes through `SpecializedDecoder`.
-pub trait UseSpecializedDecodable: Sized {}
+pub trait UseSpecializedDecodable: Sized {
+    /// Defaults to returning an error (see `SpecializationError`).
+    fn default_decode<D: Decoder>(_: &mut D) -> Result<Self, D::Error> {
+        Err(D::Error::not_found::<D, Self>("SpecializedDecoder", "specialized_decode"))
+    }
+}
 
 impl<T: UseSpecializedDecodable> Decodable for T {
     default fn decode<D: Decoder>(d: &mut D) -> Result<T, D::Error> {

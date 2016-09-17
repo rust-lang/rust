@@ -300,7 +300,7 @@ pub struct ParenthesizedParameterData {
     pub output: Option<P<Ty>>,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, RustcEncodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Debug)]
 pub struct NodeId(u32);
 
 impl NodeId {
@@ -328,7 +328,17 @@ impl fmt::Display for NodeId {
     }
 }
 
-impl serialize::UseSpecializedDecodable for NodeId {}
+impl serialize::UseSpecializedEncodable for NodeId {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u32(self.0)
+    }
+}
+
+impl serialize::UseSpecializedDecodable for NodeId {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
+        d.read_u32().map(NodeId)
+    }
+}
 
 /// Node id used to represent the root of the crate.
 pub const CRATE_NODE_ID: NodeId = NodeId(0);
