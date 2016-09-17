@@ -366,7 +366,7 @@ impl<'a, 'tcx> SpecializedDecoder<ty::GenericPredicates<'tcx>> for DecodeContext
                 } else {
                     ty::Predicate::decode(self)
                 }
-            }).collect()?
+            }).collect::<Result<Vec<_>, _>>()?
         })
     }
 }
