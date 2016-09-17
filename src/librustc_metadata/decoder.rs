@@ -43,7 +43,6 @@ use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, NodeId};
 use syntax::codemap;
-use syntax::parse::token;
 use syntax_pos::{self, Span, BytePos, Pos};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
@@ -469,32 +468,6 @@ impl<'tcx> EntryKind<'tcx> {
     }
 }
 
-fn def_key_name(def_key: &hir_map::DefKey) -> Option<ast::Name> {
-    match def_key.disambiguated_data.data {
-        DefPathData::TypeNs(ref name) |
-        DefPathData::ValueNs(ref name) |
-        DefPathData::Module(ref name) |
-        DefPathData::MacroDef(ref name) |
-        DefPathData::TypeParam(ref name) |
-        DefPathData::LifetimeDef(ref name) |
-        DefPathData::EnumVariant(ref name) |
-        DefPathData::Field(ref name) |
-        DefPathData::Binding(ref name) => {
-            Some(token::intern(name))
-        }
-
-        DefPathData::InlinedRoot(_) => bug!("unexpected DefPathData"),
-
-        DefPathData::CrateRoot |
-        DefPathData::Misc |
-        DefPathData::Impl |
-        DefPathData::ClosureExpr |
-        DefPathData::StructCtor |
-        DefPathData::Initializer |
-        DefPathData::ImplTrait => None
-    }
-}
-
 impl<'a, 'tcx> CrateMetadata {
     fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         self.root.index.lookup(self.blob.raw_bytes(), item_id)
@@ -518,7 +491,8 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     fn item_name(&self, item: &Entry<'tcx>) -> ast::Name {
-        def_key_name(&item.def_key.decode(self)).expect("no name in item_name")
+        item.def_key.decode(self).disambiguated_data.data.get_opt_name()
+            .expect("no name in item_name")
     }
 
     pub fn get_def(&self, index: DefIndex) -> Option<Def> {
@@ -708,7 +682,8 @@ impl<'a, 'tcx> CrateMetadata {
                     _ => {}
                 }
 
-                if let Some(name) = def_key_name(&child.def_key.decode(self)) {
+                let def_key = child.def_key.decode(self);
+                if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                     callback(def::Export {
                         def_id: self.local_def_id(child_index),
                         name: name
@@ -722,10 +697,6 @@ impl<'a, 'tcx> CrateMetadata {
                 callback(exp);
             }
         }
-    }
-
-    pub fn maybe_get_item_name(&self, id: DefIndex) -> Option<ast::Name> {
-        def_key_name(&self.entry(id).def_key.decode(self))
     }
 
     pub fn maybe_get_item_ast(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefIndex)
@@ -757,7 +728,7 @@ impl<'a, 'tcx> CrateMetadata {
         let parent_and_name = || {
             let def_key = item.def_key.decode(self);
             (self.local_def_id(def_key.parent.unwrap()),
-             def_key_name(&def_key).unwrap())
+             def_key.disambiguated_data.data.get_opt_name().unwrap())
         };
 
         Some(match item.kind {

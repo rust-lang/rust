@@ -21,7 +21,7 @@ use dep_graph::{self, DepNode};
 use hir::map as ast_map;
 use middle;
 use hir::def::{Def, PathResolution, ExportMap};
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
 use traits;
@@ -43,7 +43,7 @@ use std::slice;
 use std::vec::IntoIter;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
-use syntax::parse::token::InternedString;
+use syntax::parse::token::{self, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 use rustc_const_math::ConstInt;
@@ -2390,10 +2390,21 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn item_name(self, id: DefId) -> ast::Name {
         if let Some(id) = self.map.as_local_node_id(id) {
             self.map.name(id)
+        } else if id.index == CRATE_DEF_INDEX {
+            token::intern(&self.sess.cstore.original_crate_name(id.krate))
         } else {
-            self.sess.cstore.opt_item_name(id).unwrap_or_else(|| {
-                bug!("item_name: no name for {:?}", self.def_path(id));
-            })
+            let def_key = self.sess.cstore.def_key(id);
+            // The name of a StructCtor is that of its struct parent.
+            if let ast_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
+                self.item_name(DefId {
+                    krate: id.krate,
+                    index: def_key.parent.unwrap()
+                })
+            } else {
+                def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
+                    bug!("item_name: no name for {:?}", self.def_path(id));
+                })
+            }
         }
     }
 

@@ -138,7 +138,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            cur_path.push(self.sess.cstore.opt_item_name(cur_def).unwrap_or_else(||
+            cur_path.push(self.sess.cstore.def_key(cur_def)
+                              .disambiguated_data.data.get_opt_name().unwrap_or_else(||
                 token::intern("<unnamed>")));
             match visible_parent_map.get(&cur_def) {
                 Some(&def) => cur_def = def,
