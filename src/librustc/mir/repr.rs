@@ -180,6 +180,27 @@ impl<'tcx> Mir<'tcx> {
         Some(Local::new(idx))
     }
 
+    pub fn from_local_index_to_temp(&self, local: Local) -> Option<Temp> {
+        let num_args_and_vars = self.arg_decls.len() + self.var_decls.len();
+        if local.index() < num_args_and_vars {
+            None
+        } else if local.index() >= num_args_and_vars + self.temp_decls.len() {
+            None
+        } else {
+            Some(Temp::new(local.index() - num_args_and_vars))
+        }
+    }
+    pub fn from_local_index_to_var(&self, local: Local) -> Option<Var> {
+        let num_args = self.arg_decls.len();
+        if local.index() < num_args {
+            None
+        } else if local.index() >= num_args + self.var_decls.len() {
+            None
+        } else {
+            Some(Var::new(local.index() - num_args))
+        }
+    }
+
     /// Counts the number of locals, such that that local_index
     /// will always return an index smaller than this count.
     pub fn count_locals(&self) -> usize {
@@ -725,7 +746,7 @@ newtype_index!(Local, "local");
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Eq, Hash)]
 pub enum Lvalue<'tcx> {
     /// local variable declared by the user
     Var(Var),
@@ -883,7 +904,7 @@ pub struct VisibilityScopeData {
 /// These are values that can appear inside an rvalue (or an index
 /// lvalue). They are intentionally limited to prevent rvalues from
 /// being nested in one another.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Eq, Hash)]
 pub enum Operand<'tcx> {
     Consume(Lvalue<'tcx>),
     Constant(Constant<'tcx>),
