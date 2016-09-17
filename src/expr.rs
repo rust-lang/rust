@@ -219,13 +219,28 @@ fn format_expr(expr: &ast::Expr,
 
             match (lhs.as_ref().map(|x| &**x), rhs.as_ref().map(|x| &**x)) {
                 (Some(ref lhs), Some(ref rhs)) => {
-                    rewrite_pair(&**lhs, &**rhs, "", delim, "", context, width, offset)
+                    let sp_delim = if context.config.spaces_around_ranges {
+                        format!(" {} ", delim)
+                    } else {
+                        delim.into()
+                    };
+                    rewrite_pair(&**lhs, &**rhs, "", &sp_delim, "", context, width, offset)
                 }
                 (None, Some(ref rhs)) => {
-                    rewrite_unary_prefix(context, delim, &**rhs, width, offset)
+                    let sp_delim = if context.config.spaces_around_ranges {
+                        format!("{} ", delim)
+                    } else {
+                        delim.into()
+                    };
+                    rewrite_unary_prefix(context, &sp_delim, &**rhs, width, offset)
                 }
                 (Some(ref lhs), None) => {
-                    rewrite_unary_suffix(context, delim, &**lhs, width, offset)
+                    let sp_delim = if context.config.spaces_around_ranges {
+                        format!(" {}", delim)
+                    } else {
+                        delim.into()
+                    };
+                    rewrite_unary_suffix(context, &sp_delim, &**lhs, width, offset)
                 }
                 (None, None) => wrap_str(delim.into(), context.config.max_width, width, offset),
             }
@@ -1672,10 +1687,11 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 }
 
 pub fn type_annotation_separator(config: &Config) -> &str {
-    if config.space_before_type_annotation {
-        " : "
-    } else {
-        ": "
+    match (config.space_before_type_annotation, config.space_after_type_annotation_colon) {
+        (true, true) => " : ",
+        (true, false) => " :",
+        (false, true) => ": ",
+        (false, false) => ":",
     }
 }
 

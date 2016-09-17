@@ -1049,12 +1049,17 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     Some(result)
 }
 
-fn type_annotation_spacing(config: &Config) -> &str {
-    if config.space_before_type_annotation {
+fn type_annotation_spacing(config: &Config) -> (&str, &str) {
+    (if config.space_before_type_annotation {
         " "
     } else {
         ""
-    }
+    },
+     if config.space_after_type_annotation_colon {
+        " "
+    } else {
+        ""
+    })
 }
 
 impl Rewrite for ast::StructField {
@@ -1075,7 +1080,14 @@ impl Rewrite for ast::StructField {
 
         let type_annotation_spacing = type_annotation_spacing(context.config);
         let result = match name {
-            Some(name) => format!("{}{}{}{}: ", attr_str, vis, name, type_annotation_spacing),
+            Some(name) => {
+                format!("{}{}{}{}:{}",
+                        attr_str,
+                        vis,
+                        name,
+                        type_annotation_spacing.0,
+                        type_annotation_spacing.1)
+            }
             None => format!("{}{}", attr_str, vis),
         };
 
@@ -1095,12 +1107,13 @@ pub fn rewrite_static(prefix: &str,
                       context: &RewriteContext)
                       -> Option<String> {
     let type_annotation_spacing = type_annotation_spacing(context.config);
-    let prefix = format!("{}{} {}{}{}: ",
+    let prefix = format!("{}{} {}{}{}:{}",
                          format_visibility(vis),
                          prefix,
                          format_mutability(mutability),
                          ident,
-                         type_annotation_spacing);
+                         type_annotation_spacing.0,
+                         type_annotation_spacing.1);
     // 2 = " =".len()
     let ty_str = try_opt!(ty.rewrite(context,
                                      context.config.max_width - context.block_indent.width() -
@@ -1175,7 +1188,10 @@ impl Rewrite for ast::Arg {
                 if context.config.space_before_type_annotation {
                     result.push_str(" ");
                 }
-                result.push_str(": ");
+                result.push_str(":");
+                if context.config.space_after_type_annotation_colon {
+                    result.push_str(" ");
+                }
                 let max_width = try_opt!(width.checked_sub(result.len()));
                 let ty_str = try_opt!(self.ty.rewrite(context, max_width, offset + result.len()));
                 result.push_str(&ty_str);

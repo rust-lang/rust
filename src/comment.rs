@@ -71,6 +71,16 @@ pub fn rewrite_comment(orig: &str,
     let indent_str = offset.to_string(config);
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
+    let num_bare_lines = s.lines()
+        .enumerate()
+        .map(|(_, line)| line.trim())
+        .filter(|l| !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*")))
+        .count();
+
+    if num_bare_lines > 0 && !config.normalize_comments {
+        return Some(orig.to_owned());
+    }
+
     let lines = s.lines()
         .enumerate()
         .map(|(i, mut line)| {
