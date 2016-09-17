@@ -14,7 +14,7 @@ use rustc_data_structures::fnv::FnvHashMap;
 use std::fmt::Write;
 use std::hash::{Hash, Hasher, SipHasher};
 use syntax::{ast, visit};
-use syntax::parse::token::InternedString;
+use syntax::parse::token::{self, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
@@ -326,6 +326,30 @@ impl Definitions {
 }
 
 impl DefPathData {
+    pub fn get_opt_name(&self) -> Option<ast::Name> {
+        use self::DefPathData::*;
+        match *self {
+            TypeNs(ref name) |
+            ValueNs(ref name) |
+            Module(ref name) |
+            MacroDef(ref name) |
+            TypeParam(ref name) |
+            LifetimeDef(ref name) |
+            EnumVariant(ref name) |
+            Binding(ref name) |
+            Field(ref name) => Some(token::intern(name)),
+
+            Impl |
+            CrateRoot |
+            InlinedRoot(_) |
+            Misc |
+            ClosureExpr |
+            StructCtor |
+            Initializer |
+            ImplTrait => None
+        }
+    }
+
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         match *self {

@@ -132,7 +132,6 @@ pub trait CrateStore<'tcx> {
     fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                      -> Ty<'tcx>;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
-    fn opt_item_name(&self, def: DefId) -> Option<ast::Name>;
     fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> ty::GenericPredicates<'tcx>;
     fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -293,7 +292,6 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
-    fn opt_item_name(&self, def: DefId) -> Option<ast::Name> { bug!("opt_item_name") }
     fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> ty::GenericPredicates<'tcx> { bug!("item_predicates") }
     fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)

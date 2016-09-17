@@ -436,7 +436,8 @@ impl<'b> Resolver<'b> {
                 let trait_item_def_ids = self.session.cstore.impl_or_trait_items(def_id);
                 for &trait_item_def in &trait_item_def_ids {
                     let trait_item_name =
-                        self.session.cstore.opt_item_name(trait_item_def)
+                        self.session.cstore.def_key(trait_item_def)
+                            .disambiguated_data.data.get_opt_name()
                             .expect("opt_item_name returned None for trait");
 
                     debug!("(building reduced graph for external crate) ... adding trait item \
