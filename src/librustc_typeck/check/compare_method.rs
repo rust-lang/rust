@@ -87,8 +87,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 err.span_label(span, & format!("`{}` used in trait",
                                                trait_m.explicit_self));
             }
-            err.note(&format!("Expected signature: {}", trait_m.signature()));
-            err.note(&format!("   Found signature: {}", impl_m.signature()));
+
             err.emit();
             return;
         }

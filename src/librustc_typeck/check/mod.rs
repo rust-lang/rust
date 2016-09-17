@@ -1124,7 +1124,12 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     .collect::<Vec<_>>().join("`, `"))
             );
         for trait_item in missing_items {
-            err.note(&(trait_item.signature(tcx)));
+            err.note(&format!("definition {}", trait_item.signature(tcx)));
+            //err.note(&format!("node {:?}", tcx.map.trait_item.signature(tcx)));
+            if let Some(span) = tcx.map.span_if_local(trait_item.def_id()) {
+                //struct_span_err!(tcx.sess, span, E0046, "definition").emit();
+                err.span_note(span, "definition");//.emit();
+            }
         }
         err.emit();
     }

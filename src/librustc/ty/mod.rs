@@ -244,27 +244,27 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
                         match node.span() {
                             Some(span) => match tcx.sess.codemap().span_to_oneline_snippet(span) {
                                 Ok(snippet) => snippet,
-                                Err(_) => item.signature(),
+                                Err(_) => item.signature(tcx),
                             },
-                            None => item.signature(),
+                            None => item.signature(tcx),
                         }
                     }
-                    None => item.signature(),
+                    None => item.signature(tcx),
                 }
             }
-            TypeTraitItem(ref item) => item.signature(),
+            TypeTraitItem(ref item) => item.signature(tcx),
             ConstTraitItem(ref item) => {
                 match tcx.map.get_if_local(item.def_id) {
                     Some(node) => {
                         match node.span() {
                             Some(span) => match tcx.sess.codemap().span_to_oneline_snippet(span) {
                                 Ok(snippet) => snippet,
-                                Err(_) => item.signature(),
+                                Err(_) => item.signature(tcx),
                             },
-                            None => item.signature(),
+                            None => item.signature(tcx),
                         }
                     }
-                    None => item.signature(),
+                    None => item.signature(tcx),
                 }
             }
         }
@@ -362,7 +362,7 @@ impl<'tcx> Method<'tcx> {
         }
     }
 
-    pub fn signature(&self) -> String {
+    pub fn signature<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         let name = self.name.to_string();
         let unsafety = match self.fty.unsafety {
             hir::Unsafety::Unsafe => "unsafe ",
@@ -379,6 +379,7 @@ impl<'tcx> Method<'tcx> {
         };
         let args = self.fty.sig.inputs().0.iter()
             .map(|t| format!("{:?}", t)).collect::<Vec<_>>().join(", ");
+        //let return_type = format!("{}", tcx.item_name(self.fty.sig.output().0.def_id).as_str());
         let return_type = format!("{:?}", self.fty.sig.output().0);
         let return_signature = if &return_type == "()" {
             "".to_string()
@@ -387,7 +388,8 @@ impl<'tcx> Method<'tcx> {
         };
 
         // unsafe fn name<'a, T>(args) -> ReturnType
-        format!("{}fn {}{}({}){};", unsafety, name, type_args, args, return_signature)
+        //format!("{}fn {}{}({}){};", unsafety, name, type_args, args, return_signature)
+        format!("{}fn {}", unsafety, self.fty.sig.0)//name, type_args, args, return_signature)
     }
 }
 
@@ -417,13 +419,14 @@ pub struct AssociatedConst<'tcx> {
 }
 
 impl<'tcx> AssociatedConst<'tcx> {
-    pub fn signature(&self) -> String {
+    pub fn signature<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         // const FOO: Type = DEFAULT;
         let value = if self.has_value {
             " = <DEFAULT>"
         } else {
             ""
         };
+        //format!("const {}: {}{};", self.name.to_string(), tcx.item_name(self.ty.def_id).as_str(), value)
         format!("const {}: {:?}{};", self.name.to_string(), self.ty, value)
     }
 }
@@ -439,7 +442,7 @@ pub struct AssociatedType<'tcx> {
 }
 
 impl<'tcx> AssociatedType<'tcx> {
-    pub fn signature(&self) -> String {
+    pub fn signature<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         //// type Type;
         format!("type {};", self.name.to_string())
     }

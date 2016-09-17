@@ -151,6 +151,8 @@ impl EmitterWriter {
                 let mut hi = cm.lookup_char_pos(span_label.span.hi);
                 let mut is_minimized = false;
 
+                let start = lo.line;
+                let end = hi.line + 1;
                 // If the span is multi-line, simplify down to the span of one character
                 if lo.line != hi.line {
                     hi.line = lo.line;
@@ -167,16 +169,18 @@ impl EmitterWriter {
                     hi.col = CharPos(lo.col.0 + 1);
                 }
 
-                add_annotation_to_file(&mut output,
-                                        lo.file,
-                                        lo.line,
-                                        Annotation {
-                                            start_col: lo.col.0,
-                                            end_col: hi.col.0,
-                                            is_primary: span_label.is_primary,
-                                            is_minimized: is_minimized,
-                                            label: span_label.label.clone(),
-                                        });
+                for line in start..end {
+                    add_annotation_to_file(&mut output,
+                                            lo.file.clone(),
+                                            line,
+                                            Annotation {
+                                                start_col: lo.col.0,
+                                                end_col: hi.col.0,
+                                                is_primary: span_label.is_primary,
+                                                is_minimized: is_minimized,
+                                                label: span_label.label.clone(),
+                                            });
+                }
             }
         }
         output
