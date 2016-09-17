@@ -285,15 +285,6 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
 
 // We walk the HIR rather than the AST when reading items from metadata.
 impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
-    /// Because we want to track parent items and so forth, enable
-    /// deep walking so that we walk nested items in the context of
-    /// their outer items.
-    fn visit_nested_item(&mut self, item_id: hir::ItemId) {
-        debug!("visit_nested_item: {:?}", item_id);
-        let item = self.hir_crate.unwrap().item(item_id.id);
-        self.visit_item(item)
-    }
-
     fn visit_item(&mut self, i: &'ast hir::Item) {
         debug!("visit_item: {:?}", i);
 
