@@ -478,8 +478,8 @@ pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedPara
 pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
     l.map(|Local {id, pat, ty, init, span, attrs}| Local {
         id: fld.new_id(id),
-        ty: ty.map(|t| fld.fold_ty(t)),
         pat: fld.fold_pat(pat),
+        ty: ty.map(|t| fld.fold_ty(t)),
         init: init.map(|e| fld.fold_expr(e)),
         span: fld.new_span(span),
         attrs: fold_attrs(attrs.into(), fld).into(),
@@ -860,14 +860,10 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             ItemKind::Const(folder.fold_ty(t), folder.fold_expr(e))
         }
         ItemKind::Fn(decl, unsafety, constness, abi, generics, body) => {
-            ItemKind::Fn(
-                folder.fold_fn_decl(decl),
-                unsafety,
-                constness,
-                abi,
-                folder.fold_generics(generics),
-                folder.fold_block(body)
-            )
+            let generics = folder.fold_generics(generics);
+            let decl = folder.fold_fn_decl(decl);
+            let body = folder.fold_block(body);
+            ItemKind::Fn(decl, unsafety, constness, abi, generics, body)
         }
         ItemKind::Mod(m) => ItemKind::Mod(folder.fold_mod(m)),
         ItemKind::ForeignMod(nm) => ItemKind::ForeignMod(folder.fold_foreign_mod(nm)),
@@ -875,50 +871,35 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             ItemKind::Ty(folder.fold_ty(t), folder.fold_generics(generics))
         }
         ItemKind::Enum(enum_definition, generics) => {
-            ItemKind::Enum(
-                ast::EnumDef {
-                    variants: enum_definition.variants.move_map(|x| folder.fold_variant(x)),
-                },
-                folder.fold_generics(generics))
+            let generics = folder.fold_generics(generics);
+            let variants = enum_definition.variants.move_map(|x| folder.fold_variant(x));
+            ItemKind::Enum(ast::EnumDef { variants: variants }, generics)
         }
         ItemKind::Struct(struct_def, generics) => {
-            let struct_def = folder.fold_variant_data(struct_def);
-            ItemKind::Struct(struct_def, folder.fold_generics(generics))
+            let generics = folder.fold_generics(generics);
+            ItemKind::Struct(folder.fold_variant_data(struct_def), generics)
         }
         ItemKind::Union(struct_def, generics) => {
-            let struct_def = folder.fold_variant_data(struct_def);
-            ItemKind::Union(struct_def, folder.fold_generics(generics))
+            let generics = folder.fold_generics(generics);
+            ItemKind::Union(folder.fold_variant_data(struct_def), generics)
         }
         ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
             ItemKind::DefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }
-        ItemKind::Impl(unsafety, polarity, generics, ifce, ty, impl_items) => {
-            let new_impl_items = impl_items.move_flat_map(|item| {
-                folder.fold_impl_item(item)
-            });
-            let ifce = match ifce {
-                None => None,
-                Some(ref trait_ref) => {
-                    Some(folder.fold_trait_ref((*trait_ref).clone()))
-                }
-            };
-            ItemKind::Impl(unsafety,
-                     polarity,
-                     folder.fold_generics(generics),
-                     ifce,
-                     folder.fold_ty(ty),
-                     new_impl_items)
-        }
-        ItemKind::Trait(unsafety, generics, bounds, items) => {
-            let bounds = folder.fold_bounds(bounds);
-            let items = items.move_flat_map(|item| {
-                folder.fold_trait_item(item)
-            });
-            ItemKind::Trait(unsafety,
-                      folder.fold_generics(generics),
-                      bounds,
-                      items)
-        }
+        ItemKind::Impl(unsafety, polarity, generics, ifce, ty, impl_items) => ItemKind::Impl(
+            unsafety,
+            polarity,
+            folder.fold_generics(generics),
+            ifce.map(|trait_ref| folder.fold_trait_ref(trait_ref.clone())),
+            folder.fold_ty(ty),
+            impl_items.move_flat_map(|item| folder.fold_impl_item(item)),
+        ),
+        ItemKind::Trait(unsafety, generics, bounds, items) => ItemKind::Trait(
+            unsafety,
+            folder.fold_generics(generics),
+            folder.fold_bounds(bounds),
+            items.move_flat_map(|item| folder.fold_trait_item(item)),
+        ),
         ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
     }
 }
@@ -954,9 +935,9 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
                                       -> SmallVector<ImplItem> {
     SmallVector::one(ImplItem {
         id: folder.new_id(i.id),
+        vis: folder.fold_vis(i.vis),
         ident: folder.fold_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
-        vis: folder.fold_vis(i.vis),
         defaultness: i.defaultness,
         node: match i.node  {
             ast::ImplItemKind::Const(ty, expr) => {
@@ -1031,15 +1012,12 @@ pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> SmallVector<P<It
 // fold one item into exactly one item
 pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}: Item,
                                         folder: &mut T) -> Item {
-    let id = folder.new_id(id);
-    let node = folder.fold_item_kind(node);
-
     Item {
-        id: id,
+        id: folder.new_id(id),
+        vis: folder.fold_vis(vis),
         ident: folder.fold_ident(ident),
         attrs: fold_attrs(attrs, folder),
-        node: node,
-        vis: folder.fold_vis(vis),
+        node: folder.fold_item_kind(node),
         span: folder.new_span(span)
     }
 }
@@ -1047,6 +1025,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
 pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T) -> ForeignItem {
     ForeignItem {
         id: folder.new_id(ni.id),
+        vis: folder.fold_vis(ni.vis),
         ident: folder.fold_ident(ni.ident),
         attrs: fold_attrs(ni.attrs, folder),
         node: match ni.node {
@@ -1057,7 +1036,6 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T) -> For
                 ForeignItemKind::Static(folder.fold_ty(t), m)
             }
         },
-        vis: folder.fold_vis(ni.vis),
         span: folder.new_span(ni.span)
     }
 }
