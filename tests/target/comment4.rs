@@ -32,3 +32,15 @@ fn test() {
 
 /// test123
 fn doc_comment() {}
+
+/*
+Regression test for issue #956
+
+(some very important text)
+*/
+
+/*
+fn debug_function() {
+    println!("hello");
+}
+// */
