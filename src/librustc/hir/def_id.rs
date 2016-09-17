@@ -11,12 +11,12 @@
 use ty;
 
 use rustc_data_structures::indexed_vec::Idx;
-use serialize;
+use serialize::{self, Encoder, Decoder};
 
 use std::fmt;
 use std::u32;
 
-#[derive(Clone, Copy, Eq, Ord, PartialOrd, PartialEq, RustcEncodable, Hash, Debug)]
+#[derive(Clone, Copy, Eq, Ord, PartialOrd, PartialEq, Hash, Debug)]
 pub struct CrateNum(u32);
 
 impl Idx for CrateNum {
@@ -59,7 +59,17 @@ impl fmt::Display for CrateNum {
     }
 }
 
-impl serialize::UseSpecializedDecodable for CrateNum {}
+impl serialize::UseSpecializedEncodable for CrateNum {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u32(self.0)
+    }
+}
+
+impl serialize::UseSpecializedDecodable for CrateNum {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<CrateNum, D::Error> {
+        d.read_u32().map(CrateNum)
+    }
+}
 
 /// A DefIndex is an index into the hir-map for a crate, identifying a
 /// particular definition. It should really be considered an interned

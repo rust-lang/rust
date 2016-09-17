@@ -1470,8 +1470,8 @@ impl<'tcx, 'container> Hash for AdtDefData<'tcx, 'container> {
     }
 }
 
-impl<'tcx> Encodable for AdtDef<'tcx> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl<'tcx> serialize::UseSpecializedEncodable for AdtDef<'tcx> {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         self.did.encode(s)
     }
 }
