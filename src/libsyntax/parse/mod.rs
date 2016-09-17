@@ -286,52 +286,37 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
 pub fn char_lit(lit: &str) -> (char, isize) {
     use std::char;
 
-    let mut chars = lit.chars();
-    match (chars.next(), chars.next()) {
-        (Some(c), None) if c != '\\' => return (c, 1),
-        (Some('\\'), Some(c)) => match c {
-            '"' => return ('"', 2),
-            'n' => return ('\n', 2),
-            'r' => return ('\r', 2),
-            't' => return ('\t', 2),
-            '\\' => return ('\\', 2),
-            '\'' => return ('\'', 2),
-            '0' => return ('\0', 2),
-            _ => {}
-        },
-        _ => panic!("lexer accepted invalid char escape `{}`", lit)
-    };
-
-    fn esc(len: usize, lit: &str) -> Option<(char, isize)> {
-        u32::from_str_radix(&lit[2..len], 16).ok()
-        .and_then(char::from_u32)
-        .map(|x| (x, len as isize))
+    // Handle non-escaped chars first.
+    if lit.as_bytes()[0] != b'\\' {
+        // If the first byte isn't '\\' it might part of a multi-byte char, so
+        // get the char with chars().
+        let c = lit.chars().next().unwrap();
+        return (c, 1);
     }
 
-    let unicode_escape = || -> Option<(char, isize)> {
-        if lit.as_bytes()[2] == b'{' {
-            let idx = lit.find('}').unwrap_or_else(|| {
-                panic!("lexer should have rejected a bad character escape {}", lit)
-            });
-
-            let subslice = &lit[3..idx];
-            u32::from_str_radix(subslice, 16).ok()
-                .and_then(char::from_u32)
-                .map(|x| (x, subslice.chars().count() as isize + 4))
-        } else {
-            esc(6, lit)
+    // Handle escaped chars.
+    match lit.as_bytes()[1] as char {
+        '"' => ('"', 2),
+        'n' => ('\n', 2),
+        'r' => ('\r', 2),
+        't' => ('\t', 2),
+        '\\' => ('\\', 2),
+        '\'' => ('\'', 2),
+        '0' => ('\0', 2),
+        'x' => {
+            let v = u32::from_str_radix(&lit[2..4], 16).unwrap();
+            let c = char::from_u32(v).unwrap();
+            (c, 4)
         }
-    };
-
-    // Unicode escapes
-    return match lit.as_bytes()[1] as char {
-        'x' | 'X' => esc(4, lit),
-        'u' => unicode_escape(),
-        'U' => esc(10, lit),
-        _ => None,
-    }.unwrap_or_else(|| {
-        panic!("lexer should have rejected a bad character escape {}", lit)
-    })
+        'u' => {
+            assert!(lit.as_bytes()[2] == b'{');
+            let idx = lit.find('}').unwrap();
+            let v = u32::from_str_radix(&lit[3..idx], 16).unwrap();
+            let c = char::from_u32(v).unwrap();
+            (c, (idx + 1) as isize)
+        }
+        _ => panic!("lexer should have rejected a bad character escape {}", lit)
+    }
 }
 
 /// Parse a string representing a string literal into its final form. Does
