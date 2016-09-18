@@ -513,6 +513,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn original_crate_name(self, cnum: CrateNum) -> token::InternedString {
+        if cnum == LOCAL_CRATE {
+            self.crate_name.clone()
+        } else {
+            self.sess.cstore.original_crate_name(cnum)
+        }
+    }
+
     pub fn crate_disambiguator(self, cnum: CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
             self.sess.local_crate_disambiguator()

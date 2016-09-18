@@ -115,11 +115,7 @@ impl DefPath {
     pub fn to_string(&self, tcx: TyCtxt) -> String {
         let mut s = String::with_capacity(self.data.len() * 16);
 
-        if self.krate == LOCAL_CRATE {
-            s.push_str(&tcx.crate_name(self.krate));
-        } else {
-            s.push_str(&tcx.sess.cstore.original_crate_name(self.krate));
-        }
+        s.push_str(&tcx.original_crate_name(self.krate));
         s.push_str("/");
         s.push_str(&tcx.crate_disambiguator(self.krate));
 
@@ -141,7 +137,7 @@ impl DefPath {
     }
 
     pub fn deterministic_hash_to<H: Hasher>(&self, tcx: TyCtxt, state: &mut H) {
-        tcx.crate_name(self.krate).hash(state);
+        tcx.original_crate_name(self.krate).hash(state);
         tcx.crate_disambiguator(self.krate).hash(state);
         self.data.hash(state);
     }
