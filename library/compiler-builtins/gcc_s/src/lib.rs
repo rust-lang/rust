@@ -8,17 +8,34 @@ use libloading::Library;
 
 static mut GCC_S: Option<Library> = None;
 
+#[cfg(not(windows))]
 fn gcc_s() -> &'static Library {
+    #[cfg(not(target_os = "macos"))]
+    const LIBGCC_S: &'static str = "libgcc_s.so.1";
+
+    #[cfg(target_os = "macos")]
+    const LIBGCC_S: &'static str = "libgcc_s.1.dylib";
+
     unsafe {
         static INIT: Once = ONCE_INIT;
 
         INIT.call_once(|| {
-            GCC_S = Some(Library::new("libgcc_s.so.1").unwrap());
+            GCC_S = Some(Library::new(LIBGCC_S).unwrap());
         });
         GCC_S.as_ref().unwrap()
     }
 }
 
+#[cfg(windows)]
+macro_rules! declare {
+    ($symbol:ident: fn($($i:ty),+) -> $o:ty) => {
+        pub fn $symbol() -> Option<unsafe extern fn($($i),+) -> $o> {
+            None
+        }
+    }
+}
+
+#[cfg(not(windows))]
 macro_rules! declare {
     ($symbol:ident: fn($($i:ty),+) -> $o:ty) => {
         pub fn $symbol() -> Option<unsafe extern fn($($i),+) -> $o> {
