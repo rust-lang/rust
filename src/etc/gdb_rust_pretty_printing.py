@@ -209,7 +209,8 @@ class RustSlicePrinter:
     def __init__(self, val):
         self.__val = val
 
-    def display_hint(self):
+    @staticmethod
+    def display_hint():
         return "array"
 
     def to_string(self):
@@ -240,7 +241,8 @@ class RustStdVecPrinter:
     def __init__(self, val):
         self.__val = val
 
-    def display_hint(self):
+    @staticmethod
+    def display_hint():
         return "array"
 
     def to_string(self):
