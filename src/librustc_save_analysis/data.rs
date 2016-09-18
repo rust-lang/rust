@@ -167,7 +167,7 @@ pub struct FunctionData {
     pub scope: NodeId,
     pub value: String,
     pub visibility: Visibility,
-    pub parent: Option<NodeId>,
+    pub parent: Option<DefId>,
     pub docs: String,
 }
 
@@ -250,6 +250,7 @@ pub struct MethodData {
     pub scope: NodeId,
     pub value: String,
     pub decl_id: Option<DefId>,
+    pub parent: Option<DefId>,
     pub visibility: Visibility,
     pub docs: String,
 }
@@ -300,7 +301,7 @@ pub struct StructVariantData {
     pub type_value: String,
     pub value: String,
     pub scope: NodeId,
-    pub parent: Option<NodeId>,
+    pub parent: Option<DefId>,
     pub docs: String,
 }
 
@@ -326,7 +327,7 @@ pub struct TupleVariantData {
     pub type_value: String,
     pub value: String,
     pub scope: NodeId,
-    pub parent: Option<NodeId>,
+    pub parent: Option<DefId>,
     pub docs: String,
 }
 
@@ -339,7 +340,7 @@ pub struct TypeDefData {
     pub qualname: String,
     pub value: String,
     pub visibility: Visibility,
-    pub parent: Option<NodeId>,
+    pub parent: Option<DefId>,
     pub docs: String,
 }
 
@@ -380,7 +381,7 @@ pub struct VariableData {
     pub qualname: String,
     pub span: Span,
     pub scope: NodeId,
-    pub parent: Option<NodeId>,
+    pub parent: Option<DefId>,
     pub value: String,
     pub type_value: String,
     pub visibility: Visibility,

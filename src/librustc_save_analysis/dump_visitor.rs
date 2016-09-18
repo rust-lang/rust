@@ -27,9 +27,10 @@
 //! is used for recording the output in a format-agnostic way (see CsvDumper
 //! for an example).
 
+use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::Node;
+use rustc::hir::map::{Node, NodeItem};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
 
@@ -47,7 +48,7 @@ use syntax_pos::*;
 use super::{escape, generated_code, SaveContext, PathCollector, docs_for_attrs};
 use super::data::*;
 use super::dump::Dump;
-use super::external_data::Lower;
+use super::external_data::{Lower, make_def_id};
 use super::span_utils::SpanUtils;
 use super::recorder;
 
@@ -271,11 +272,13 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
     // looks up anything, not just a type
     fn lookup_type_ref(&self, ref_id: NodeId) -> Option<DefId> {
-        match self.tcx.expect_def(ref_id) {
-            Def::PrimTy(..) => None,
-            Def::SelfTy(..) => None,
-            def => Some(def.def_id()),
-        }
+        self.tcx.expect_def_or_none(ref_id).and_then(|def| {
+            match def {
+                Def::PrimTy(..) => None,
+                Def::SelfTy(..) => None,
+                def => Some(def.def_id()),
+            }
+        })
     }
 
     fn process_def_kind(&mut self,
@@ -399,20 +402,36 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             if !self.span.filter_generated(Some(method_data.span), span) {
                 let container =
                     self.tcx.impl_or_trait_item(self.tcx.map.local_def_id(id)).container();
-                let decl_id = if let ImplOrTraitItemContainer::ImplContainer(id) = container {
-                    self.tcx.trait_id_of_impl(id).and_then(|id| {
-                        for item in &**self.tcx.trait_items(id) {
-                            if let &ImplOrTraitItem::MethodTraitItem(ref m) = item {
-                                if m.name == name {
-                                    return Some(m.def_id);
+                let mut trait_id;
+                let mut decl_id = None;
+                match container {
+                    ImplOrTraitItemContainer::ImplContainer(id) => {
+                        trait_id = self.tcx.trait_id_of_impl(id);
+
+                        match trait_id {
+                            Some(id) => {
+                                for item in &**self.tcx.trait_items(id) {
+                                    if let &ImplOrTraitItem::MethodTraitItem(ref m) = item {
+                                        if m.name == name {
+                                            decl_id = Some(m.def_id);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            None => {
+                                if let Some(NodeItem(item)) = self.tcx.map.get_if_local(id) {
+                                    if let hir::ItemImpl(_, _, _, _, ref ty, _) = item.node {
+                                        trait_id = self.lookup_type_ref(ty.id);
+                                    }
                                 }
                             }
                         }
-                        None
-                    })
-                } else {
-                    None
-                };
+                    }
+                    ImplOrTraitItemContainer::TraitContainer(id) => {
+                        trait_id = Some(id);
+                    }
+                }
 
                 self.dumper.method(MethodData {
                     id: method_data.id,
@@ -422,6 +441,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     qualname: method_data.qualname.clone(),
                     value: sig_str,
                     decl_id: decl_id,
+                    parent: trait_id,
                     visibility: vis,
                     docs: docs_for_attrs(attrs),
                 }.lower(self.tcx));
@@ -544,7 +564,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                            span: Span,
                            typ: &ast::Ty,
                            expr: &ast::Expr,
-                           parent_id: NodeId,
+                           parent_id: DefId,
                            vis: Visibility,
                            attrs: &[Attribute]) {
         let qualname = format!("::{}", self.tcx.node_path_str(id));
@@ -659,7 +679,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             type_value: enum_data.qualname.clone(),
                             value: val,
                             scope: enum_data.scope,
-                            parent: Some(item.id),
+                            parent: Some(make_def_id(item.id, &self.tcx.map)),
                             docs: docs_for_attrs(&variant.node.attrs),
                         }.lower(self.tcx));
                     }
@@ -684,7 +704,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             type_value: enum_data.qualname.clone(),
                             value: val,
                             scope: enum_data.scope,
-                            parent: Some(item.id),
+                            parent: Some(make_def_id(item.id, &self.tcx.map)),
                             docs: docs_for_attrs(&variant.node.attrs),
                         }.lower(self.tcx));
                     }
@@ -738,7 +758,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
         self.process_generic_params(type_parameters, item.span, "", item.id);
         for impl_item in impl_items {
-            self.process_impl_item(impl_item, item.id);
+            let map = &self.tcx.map;
+            self.process_impl_item(impl_item, make_def_id(item.id, map));
         }
     }
 
@@ -809,7 +830,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         // walk generics and methods
         self.process_generic_params(generics, item.span, &qualname, item.id);
         for method in methods {
-            self.process_trait_item(method, item.id)
+            let map = &self.tcx.map;
+            self.process_trait_item(method, make_def_id(item.id, map))
         }
     }
 
@@ -1076,7 +1098,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
     }
 
-    fn process_trait_item(&mut self, trait_item: &ast::TraitItem, trait_id: NodeId) {
+    fn process_trait_item(&mut self, trait_item: &ast::TraitItem, trait_id: DefId) {
         self.process_macro_use(trait_item.span, trait_item.id);
         match trait_item.node {
             ast::TraitItemKind::Const(ref ty, Some(ref expr)) => {
@@ -1104,7 +1126,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         }
     }
 
-    fn process_impl_item(&mut self, impl_item: &ast::ImplItem, impl_id: NodeId) {
+    fn process_impl_item(&mut self, impl_item: &ast::ImplItem, impl_id: DefId) {
         self.process_macro_use(impl_item.span, impl_item.id);
         match impl_item.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
