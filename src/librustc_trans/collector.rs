@@ -153,7 +153,7 @@
 //! The collection algorithm handles this more or less transparently. If it is
 //! about to create a translation item for something with an external `DefId`,
 //! it will take a look if the MIR for that item is available, and if so just
-//! proceed normally. If the MIR is not available, it assumes that that item is
+//! proceed normally. If the MIR is not available, it assumes that the item is
 //! just linked to and no node is created; which is exactly what we want, since
 //! no machine code should be generated in the current crate for such an item.
 //!
