@@ -459,7 +459,8 @@ a {
 .content .search-results td:first-child { padding-right: 0; }
 .content .search-results td:first-child a { padding-right: 10px; }
 
-tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; color: black}
+tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; color: black;
+}
 
 body.blur > :not(#help) {
     filter: blur(8px);
