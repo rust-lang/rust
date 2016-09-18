@@ -503,7 +503,7 @@ class GenericIntrinsic(object):
             # must be a power of two
             assert width & (width - 1) == 0
             def recur(processed, untouched):
-                if untouched == []:
+                if not untouched:
                     ret = processed[0]
                     args = processed[1:]
                     yield MonomorphicIntrinsic(self._platform, self.intrinsic, width,
