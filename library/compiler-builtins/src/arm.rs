@@ -193,7 +193,7 @@ mod tests {
 
         fn idivmod(n: U32, d: U32) -> TestResult {
             let (n, d) = (n.0 as i32, d.0 as i32);
-            if d == 0 {
+            if d == 0 || (n == i32::min_value() && d == -1) {
                 TestResult::discard()
             } else {
                 let q: i32;
