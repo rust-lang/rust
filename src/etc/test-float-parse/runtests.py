@@ -177,7 +177,6 @@ def run(test):
 
 
 def interact(proc, queue):
-    line = ""
     n = 0
     while proc.poll() is None:
         line = proc.stdout.readline()
@@ -185,7 +184,6 @@ def interact(proc, queue):
             continue
         assert line.endswith('\n'), "incomplete line: " + repr(line)
         queue.put(line)
-        line = ""
         n += 1
         if n % UPDATE_EVERY_N == 0:
             msg("got", str(n // 1000) + "k", "records")
