@@ -131,7 +131,8 @@ def stage0_data(rust_root):
 def format_build_time(duration):
     return str(datetime.timedelta(seconds=int(duration)))
 
-class RustBuild:
+
+class RustBuild(object):
     def download_stage0(self):
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, self.stage0_rustc_date())
@@ -142,7 +143,7 @@ class RustBuild:
             os.makedirs(cargo_cache)
 
         if self.rustc().startswith(self.bin_root()) and \
-           (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
+                (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             channel = self.stage0_rustc_channel()
@@ -165,7 +166,7 @@ class RustBuild:
                 f.write(self.stage0_rustc_date())
 
         if self.cargo().startswith(self.bin_root()) and \
-           (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
+                (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
             channel = self.stage0_cargo_channel()
             filename = "cargo-{}-{}.tar.gz".format(channel, self.build)
             url = "https://static.rust-lang.org/cargo-dist/" + self.stage0_cargo_date()
@@ -238,8 +239,8 @@ class RustBuild:
 
     def get_string(self, line):
         start = line.find('"')
-        end = start + 1 + line[start+1:].find('"')
-        return line[start+1:end]
+        end = start + 1 + line[start + 1:].find('"')
+        return line[start + 1:end]
 
     def exe_suffix(self):
         if sys.platform == 'win32':
