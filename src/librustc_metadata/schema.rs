@@ -26,7 +26,11 @@ use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
 
+#[cfg(not(test))]
 pub const RUSTC_VERSION: &'static str = concat!("rustc ", env!("CFG_VERSION"));
+
+#[cfg(test)]
+pub const RUSTC_VERSION: &'static str = "rustc 0.0.0-unit-test";
 
 /// Metadata encoding version.
 /// NB: increment this if you change the format of metadata such that
