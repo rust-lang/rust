@@ -379,9 +379,7 @@ declare_lint! {
 /// **Known problems:** Does not catch multi-byte unicode characters.
 ///
 /// **Example:**
-/// ```rust
-/// _.split("x")` could be `_.split('x')
-/// ```
+/// `_.split("x")` could be `_.split('x')
 declare_lint! {
     pub SINGLE_CHAR_PATTERN,
     Warn,
