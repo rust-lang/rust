@@ -22,7 +22,7 @@ use utils::sugg::Sugg;
 /// **Example:**
 /// ```rust
 /// match x {
-///     Some(ref foo) -> bar(foo),
+///     Some(ref foo) => bar(foo),
 ///     _ => ()
 /// }
 /// ```
@@ -43,7 +43,7 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// match x {
-///     Some(ref foo) -> bar(foo),
+///     Some(ref foo) => bar(foo),
 ///     _ => bar(other_ref),
 /// }
 /// ```
