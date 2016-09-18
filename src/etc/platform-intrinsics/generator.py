@@ -285,7 +285,7 @@ class Vector(Type):
 
 class Pointer(Type):
     def __init__(self, elem, llvm_elem, const):
-        self._elem = elem;
+        self._elem = elem
         self._llvm_elem = llvm_elem
         self._const = const
         Type.__init__(self, BITWIDTH_POINTER)
