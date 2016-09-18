@@ -57,13 +57,13 @@ of scope at the end of `foo()`, Rust will clean up everything related to the
 vector, even the heap-allocated memory. This happens deterministically, at the
 end of the scope.
 
-We'll cover [vectors] in detail later in this chapter; we only use them
+We covered [vectors] in the previous chapter; we use them
 here as an example of a type that allocates space on the heap at runtime. They
 behave like [arrays], except their size may change by `push()`ing more
 elements onto them.
 
 Vectors have a [generic type][generics] `Vec<T>`, so in this example `v` will have type
-`Vec<i32>`. We'll cover generics in detail later in this chapter.
+`Vec<i32>`. We'll cover [generics] in detail in a later chapter.
 
 [arrays]: primitive-types.html#arrays
 [vectors]: vectors.html
