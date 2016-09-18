@@ -101,9 +101,9 @@ def load_unicode_data(f):
         udict[cp] = data;
 
     for code in udict:
-        [code_org, name, gencat, combine, bidi,
+        (code_org, name, gencat, combine, bidi,
          decomp, deci, digit, num, mirror,
-         old, iso, upcase, lowcase, titlecase ] = udict[code];
+         old, iso, upcase, lowcase, titlecase) = udict[code];
 
         # generate char to char direct common and simple conversions
         # uppercase to lowercase
