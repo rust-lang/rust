@@ -101,11 +101,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             RootMode::Absolute => {
                 // In absolute mode, just write the crate name
                 // unconditionally.
-                if cnum == LOCAL_CRATE {
-                    buffer.push(&self.crate_name(cnum));
-                } else {
-                    buffer.push(&self.sess.cstore.original_crate_name(cnum));
-                }
+                buffer.push(&self.original_crate_name(cnum));
             }
         }
     }
