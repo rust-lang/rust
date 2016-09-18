@@ -180,7 +180,7 @@ impl<'tcx> Mir<'tcx> {
         Some(Local::new(idx))
     }
 
-    /// Counts the number of locals, such that that local_index
+    /// Counts the number of locals, such that local_index
     /// will always return an index smaller than this count.
     pub fn count_locals(&self) -> usize {
         self.arg_decls.len() +
