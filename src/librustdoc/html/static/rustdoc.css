@@ -1,3 +1,5 @@
+@import "normalize.css";
+
 /**
  * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
  * file at the top-level directory of this distribution and at
@@ -58,8 +60,6 @@
     font-weight: 600;
     src: local('Source Code Pro Semibold'), url("SourceCodePro-Semibold.woff") format('woff');
 }
-
-@import "normalize.css";
 
 * {
   -webkit-box-sizing: border-box;
