@@ -14,10 +14,9 @@
 //! any imports resolved.
 
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
-use Module;
+use {Module, ModuleKind};
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind, ToNameBinding};
-use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
@@ -196,9 +195,8 @@ impl<'b> Resolver<'b> {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
                     };
-                    let parent_link = ModuleParentLink(parent, name);
                     let def = Def::Mod(def_id);
-                    let module = self.new_extern_crate_module(parent_link, def, item.id);
+                    let module = self.new_extern_crate_module(parent, name, def, item.id);
                     self.define(parent, name, TypeNS, (module, sp, vis));
 
                     self.populate_module_if_necessary(module);
@@ -206,9 +204,8 @@ impl<'b> Resolver<'b> {
             }
 
             ItemKind::Mod(..) => {
-                let parent_link = ModuleParentLink(parent, name);
                 let def = Def::Mod(self.definitions.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), Some(item.id));
+                let module = self.new_module(parent, ModuleKind::Def(def, name), Some(item.id));
                 module.no_implicit_prelude.set({
                     parent.no_implicit_prelude.get() ||
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
@@ -244,9 +241,8 @@ impl<'b> Resolver<'b> {
             }
 
             ItemKind::Enum(ref enum_definition, _) => {
-                let parent_link = ModuleParentLink(parent, name);
-                let def = Def::Enum(self.definitions.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), parent.normal_ancestor_id);
+                let kind = ModuleKind::Def(Def::Enum(self.definitions.local_def_id(item.id)), name);
+                let module = self.new_module(parent, kind, parent.normal_ancestor_id);
                 self.define(parent, name, TypeNS, (module, sp, vis));
 
                 for variant in &(*enum_definition).variants {
@@ -297,10 +293,8 @@ impl<'b> Resolver<'b> {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.
-                let parent_link = ModuleParentLink(parent, name);
-                let def = Def::Trait(def_id);
-                let module_parent =
-                    self.new_module(parent_link, Some(def), parent.normal_ancestor_id);
+                let kind = ModuleKind::Def(Def::Trait(def_id), name);
+                let module_parent = self.new_module(parent, kind, parent.normal_ancestor_id);
                 self.define(parent, name, TypeNS, (module_parent, sp, vis));
 
                 // Add the names of all the items to the trait info.
@@ -375,8 +369,8 @@ impl<'b> Resolver<'b> {
                     {}",
                    block_id);
 
-            let parent_link = BlockParentLink(parent, block_id);
-            let new_module = self.new_module(parent_link, None, parent.normal_ancestor_id);
+            let new_module =
+                self.new_module(parent, ModuleKind::Block(block_id), parent.normal_ancestor_id);
             self.module_map.insert(block_id, new_module);
             self.current_module = new_module; // Descend into the block.
         }
@@ -407,8 +401,7 @@ impl<'b> Resolver<'b> {
             Def::Mod(_) | Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {:?}",
                        name, vis);
-                let parent_link = ModuleParentLink(parent, name);
-                let module = self.new_module(parent_link, Some(def), None);
+                let module = self.new_module(parent, ModuleKind::Def(def, name), None);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::Variant(variant_id) => {
@@ -451,8 +444,7 @@ impl<'b> Resolver<'b> {
                     self.trait_item_map.insert((trait_item_name, def_id), false);
                 }
 
-                let parent_link = ModuleParentLink(parent, name);
-                let module = self.new_module(parent_link, Some(def), None);
+                let module = self.new_module(parent, ModuleKind::Def(def, name), None);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::TyAlias(..) | Def::AssociatedTy(..) => {
