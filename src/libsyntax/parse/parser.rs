@@ -808,10 +808,12 @@ impl<'a> Parser<'a> {
     /// Eat and discard tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     pub fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
+        let handler = self.diagnostic();
+
         self.parse_seq_to_before_tokens(kets,
                                         SeqSep::none(),
                                         |p| p.parse_token_tree(),
-                                        |mut e| e.cancel());
+                                        |mut e| handler.cancel(&mut e));
     }
 
     /// Parse a sequence, including the closing delimiter. The function
@@ -1038,6 +1040,10 @@ impl<'a> Parser<'a> {
     }
     pub fn abort_if_errors(&self) {
         self.sess.span_diagnostic.abort_if_errors();
+    }
+
+    fn cancel(&self, err: &mut DiagnosticBuilder) {
+        self.sess.span_diagnostic.cancel(err)
     }
 
     pub fn diagnostic(&self) -> &'a errors::Handler {
@@ -2386,7 +2392,7 @@ impl<'a> Parser<'a> {
                             ex = ExprKind::Lit(P(lit));
                         }
                         Err(mut err) => {
-                            err.cancel();
+                            self.cancel(&mut err);
                             let msg = format!("expected expression, found {}",
                                               self.this_token_descr());
                             return Err(self.fatal(&msg));
@@ -3702,7 +3708,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                     Err(mut err) => {
-                        err.cancel();
+                        self.cancel(&mut err);
                         let msg = format!("expected pattern, found {}", self.this_token_descr());
                         return Err(self.fatal(&msg));
                     }
@@ -4076,7 +4082,7 @@ impl<'a> Parser<'a> {
                 }
                 Err(mut e) => {
                     self.recover_stmt_(SemiColonMode::Break);
-                    e.cancel();
+                    self.cancel(&mut e);
                 }
                 _ => ()
             }
@@ -4317,7 +4323,7 @@ impl<'a> Parser<'a> {
             let span_hi = match self.parse_ty() {
                 Ok(..) => self.span.hi,
                 Err(ref mut err) => {
-                    err.cancel();
+                    self.cancel(err);
                     span_hi
                 }
             };
