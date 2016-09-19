@@ -3,7 +3,6 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{LintPass, LintArray, LateLintPass, LateContext};
-use rustc::ty::subst::ParamSpace;
 use rustc::ty;
 use rustc::hir::Expr;
 use syntax::ast;
@@ -58,9 +57,9 @@ pub struct MutexAtomic;
 impl LateLintPass for MutexAtomic {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         let ty = cx.tcx.expr_ty(expr);
-        if let ty::TyStruct(_, subst) = ty.sty {
+        if let ty::TyAdt(_, subst) = ty.sty {
             if match_type(cx, ty, &paths::MUTEX) {
-                let mutex_param = &subst.types.get(ParamSpace::TypeSpace, 0).sty;
+                let mutex_param = &subst.type_at(0).sty;
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!("Consider using an {} instead of a Mutex here. If you just want the locking \
                                        behaviour and not the internal type, consider using Mutex<()>.",

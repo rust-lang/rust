@@ -106,7 +106,8 @@ fn check_hash_peq<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, span: Span, trait_re
             let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
 
             // Only care about `impl PartialEq<Foo> for Foo`
-            if trait_ref.input_types()[0] == ty {
+            // For `impl PartialEq<B> for A, input_types is [A, B]
+            if trait_ref.substs.type_at(1) == ty {
                 let mess = if peq_is_automatically_derived {
                     "you are implementing `Hash` explicitly but have derived `PartialEq`"
                 } else {
@@ -139,10 +140,11 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
             return; // ty is not Copy
         }
 
-        // Some types are not Clone by default but could be cloned `by hand` if necessary
         match ty.sty {
-            TypeVariants::TyEnum(def, substs) |
-            TypeVariants::TyStruct(def, substs) => {
+            TypeVariants::TyAdt(def, _) if def.is_union() => return,
+
+            // Some types are not Clone by default but could be cloned “by hand” if necessary
+            TypeVariants::TyAdt(def, substs) => {
                 for variant in &def.variants {
                     for field in &variant.fields {
                         match field.ty(cx.tcx, substs).sty {

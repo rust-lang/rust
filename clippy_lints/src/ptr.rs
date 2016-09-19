@@ -5,14 +5,14 @@ use rustc::hir::map::NodeItem;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::NodeId;
-use utils::{match_type, paths, span_lint};
+use utils::{match_path, match_type, paths, span_lint};
 
-/// **What it does:** Checks for function arguments of type `&String` or `&Vec`
-/// unless the references are mutable.
+/// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless
+/// the references are mutable.
 ///
-/// **Why is this bad?** Requiring the argument to be of the specific size makes
-/// the function less useful for no benefit; slices in the form of `&[T]` or
-/// `&str` usually suffice and can be obtained from other types, too.
+/// **Why is this bad?** Requiring the argument to be of the specific size makes the function less
+/// useful for no benefit; slices in the form of `&[T]` or `&str` usually suffice and can be
+/// obtained from other types, too.
 ///
 /// **Known problems:** None.
 ///
@@ -23,19 +23,38 @@ use utils::{match_type, paths, span_lint};
 declare_lint! {
     pub PTR_ARG,
     Warn,
-    "arguments of the type `&Vec<...>` (instead of `&[...]`) or `&String` (instead of `&str`)"
+    "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
+     instead, respectively"
 }
 
-#[derive(Copy,Clone)]
-pub struct PtrArg;
+/// **What it does:** This lint checks for equality comparisons with `ptr::null`
+///
+/// **Why is this bad?** It's easier and more readable to use the inherent `.is_null()`
+/// method instead
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// if x == ptr::null { .. }
+/// ```
+declare_lint! {
+    pub CMP_NULL,
+    Warn,
+    "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead."
+}
 
-impl LintPass for PtrArg {
+
+#[derive(Copy,Clone)]
+pub struct PointerPass;
+
+impl LintPass for PointerPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PTR_ARG)
+        lint_array!(PTR_ARG, CMP_NULL)
     }
 }
 
-impl LateLintPass for PtrArg {
+impl LateLintPass for PointerPass {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemFn(ref decl, _, _, _, _, _) = item.node {
             check_fn(cx, decl, item.id);
@@ -56,6 +75,17 @@ impl LateLintPass for PtrArg {
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
             check_fn(cx, &sig.decl, item.id);
+        }
+    }
+    
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        if let ExprBinary(ref op, ref l, ref r) = expr.node {
+            if (op.node == BiEq || op.node == BiNe) && (is_null_path(l) || is_null_path(r)) {
+                span_lint(cx,
+                          CMP_NULL,
+                          expr.span,
+                          "Comparing with null is better expressed by the .is_null() method");
+            }
         }
     }
 }
@@ -80,4 +110,15 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
             }
         }
     }
+}
+
+fn is_null_path(expr: &Expr) -> bool {
+    if let ExprCall(ref pathexp, ref args) = expr.node {
+        if args.is_empty() {
+            if let ExprPath(_, ref path) = pathexp.node {
+                return match_path(path, &paths::PTR_NULL) || match_path(path, &paths::PTR_NULL_MUT)
+            }
+        }
+    }
+    false
 }

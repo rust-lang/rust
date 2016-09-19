@@ -40,16 +40,134 @@ declare_lint! {
     "an entire binding declared as `ref`, in a function argument or a `let` statement"
 }
 
-#[allow(missing_copy_implementations)]
-pub struct TopLevelRefPass;
+/// **What it does:** Checks for comparisons to NaN.
+///
+/// **Why is this bad?** NaN does not compare meaningfully to anything – not
+/// even itself – so those comparisons are simply wrong.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// x == NAN
+/// ```
+declare_lint! {
+    pub CMP_NAN,
+    Deny,
+    "comparisons to NAN, which will always return false, probably not intended"
+}
 
-impl LintPass for TopLevelRefPass {
+/// **What it does:** Checks for (in-)equality comparisons on floating-point
+/// values (apart from zero), except in functions called `*eq*` (which probably
+/// implement equality for a type involving floats).
+///
+/// **Why is this bad?** Floating point calculations are usually imprecise, so
+/// asking if two values are *exactly* equal is asking for trouble. For a good
+/// guide on what to do, see [the floating point
+/// guide](http://www.floating-point-gui.de/errors/comparison).
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// y == 1.23f64
+/// y != x  // where both are floats
+/// ```
+declare_lint! {
+    pub FLOAT_CMP,
+    Warn,
+    "using `==` or `!=` on float values instead of comparing difference with an epsilon"
+}
+
+/// **What it does:** Checks for conversions to owned values just for the sake
+/// of a comparison.
+///
+/// **Why is this bad?** The comparison can operate on a reference, so creating
+/// an owned value effectively throws it away directly afterwards, which is
+/// needlessly consuming code and heap space.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// x.to_owned() == y
+/// ```
+declare_lint! {
+    pub CMP_OWNED,
+    Warn,
+    "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`"
+}
+
+/// **What it does:** Checks for getting the remainder of a division by one.
+///
+/// **Why is this bad?** The result can only ever be zero. No one will write
+/// such code deliberately, unless trying to win an Underhanded Rust
+/// Contest. Even for that contest, it's probably a bad idea. Use something more
+/// underhanded.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// x % 1
+/// ```
+declare_lint! {
+    pub MODULO_ONE,
+    Warn,
+    "taking a number modulo 1, which always returns 0"
+}
+
+/// **What it does:** Checks for patterns in the form `name @ _`.
+///
+/// **Why is this bad?** It's almost always more readable to just use direct bindings.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// match v {
+///     Some(x) => (),
+///     y @ _   => (), // easier written as `y`,
+/// }
+/// ```
+declare_lint! {
+    pub REDUNDANT_PATTERN,
+    Warn,
+    "using `name @ _` in a pattern"
+}
+
+/// **What it does:** Checks for the use of bindings with a single leading underscore.
+///
+/// **Why is this bad?** A single leading underscore is usually used to indicate
+/// that a binding will not be used. Using such a binding breaks this
+/// expectation.
+///
+/// **Known problems:** The lint does not work properly with desugaring and
+/// macro, it has been allowed in the mean time.
+///
+/// **Example:**
+/// ```rust
+/// let _x = 0;
+/// let y = _x + 1; // Here we are using `_x`, even though it has a leading underscore.
+///                 // We should rename `_x` to `x`
+/// ```
+declare_lint! {
+    pub USED_UNDERSCORE_BINDING,
+    Allow,
+    "using a binding which is prefixed with an underscore"
+}
+
+#[derive(Copy, Clone)]
+pub struct Pass;
+
+impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(TOPLEVEL_REF_ARG)
+        lint_array!(TOPLEVEL_REF_ARG, CMP_NAN, FLOAT_CMP, CMP_OWNED, MODULO_ONE, REDUNDANT_PATTERN,
+                    USED_UNDERSCORE_BINDING)
     }
 }
 
-impl LateLintPass for TopLevelRefPass {
+impl LateLintPass for Pass {
     fn check_fn(&mut self, cx: &LateContext, k: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
         if let FnKind::Closure(_) = k {
             // Does not apply to closures
@@ -64,6 +182,7 @@ impl LateLintPass for TopLevelRefPass {
             }
         }
     }
+
     fn check_stmt(&mut self, cx: &LateContext, s: &Stmt) {
         if_let_chain! {[
             let StmtDecl(ref d, _) = s.node,
@@ -97,44 +216,98 @@ impl LateLintPass for TopLevelRefPass {
             );
         }}
     }
-}
 
-/// **What it does:** Checks for comparisons to NaN.
-///
-/// **Why is this bad?** NaN does not compare meaningfully to anything – not
-/// even itself – so those comparisons are simply wrong.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x == NAN
-/// ```
-declare_lint! {
-    pub CMP_NAN,
-    Deny,
-    "comparisons to NAN, which will always return false, probably not intended"
-}
-
-#[derive(Copy,Clone)]
-pub struct CmpNan;
-
-impl LintPass for CmpNan {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(CMP_NAN)
-    }
-}
-
-impl LateLintPass for CmpNan {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-            if cmp.node.is_comparison() {
+            let op = cmp.node;
+            if op.is_comparison() {
                 if let ExprPath(_, ref path) = left.node {
                     check_nan(cx, path, expr.span);
                 }
                 if let ExprPath(_, ref path) = right.node {
                     check_nan(cx, path, expr.span);
                 }
+                check_to_owned(cx, left, right, true, cmp.span);
+                check_to_owned(cx, right, left, false, cmp.span)
+            }
+            if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
+                if is_allowed(cx, left) || is_allowed(cx, right) {
+                    return;
+                }
+                if let Some(name) = get_item_name(cx, expr) {
+                    let name = name.as_str();
+                    if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
+                        name.ends_with("_eq") {
+                        return;
+                    }
+                }
+                span_lint_and_then(cx,
+                                   FLOAT_CMP,
+                                   expr.span,
+                                   "strict comparison of f32 or f64",
+                                   |db| {
+                                       let lhs = Sugg::hir(cx, left, "..");
+                                       let rhs = Sugg::hir(cx, right, "..");
+
+                                       db.span_suggestion(expr.span,
+                                                          "consider comparing them within some error",
+                                                          format!("({}).abs() < error", lhs - rhs));
+                                       db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
+                                   });
+            } else if op == BiRem && is_integer_literal(right, 1) {
+                span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
+            }
+        }
+        if in_attributes_expansion(cx, expr) {
+            // Don't lint things expanded by #[derive(...)], etc
+            return;
+        }
+        let binding = match expr.node {
+            ExprPath(_, ref path) => {
+                let binding = path.segments
+                    .last()
+                    .expect("path should always have at least one segment")
+                    .name
+                    .as_str();
+                if binding.starts_with('_') &&
+                    !binding.starts_with("__") &&
+                    binding != "_result" && // FIXME: #944
+                    is_used(cx, expr) &&
+                    // don't lint if the declaration is in a macro
+                    non_macro_local(cx, &cx.tcx.expect_def(expr.id)) {
+                    Some(binding)
+                } else {
+                    None
+                }
+            }
+            ExprField(_, spanned) => {
+                let name = spanned.node.as_str();
+                if name.starts_with('_') && !name.starts_with("__") {
+                    Some(name)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+        if let Some(binding) = binding {
+            span_lint(cx,
+                      USED_UNDERSCORE_BINDING,
+                      expr.span,
+                      &format!("used binding `{}` which is prefixed with an underscore. A leading \
+                                underscore signals that a binding will not be used.", binding));
+        }
+    }
+
+    fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
+        if let PatKind::Binding(_, ref ident, Some(ref right)) = pat.node {
+            if right.node == PatKind::Wild {
+                span_lint(cx,
+                          REDUNDANT_PATTERN,
+                          pat.span,
+                          &format!("the `{} @ _` pattern can be written as just `{}`",
+                                   ident.node,
+                                   ident.node));
             }
         }
     }
@@ -149,70 +322,6 @@ fn check_nan(cx: &LateContext, path: &Path, span: Span) {
                       "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
         }
     });
-}
-
-/// **What it does:** Checks for (in-)equality comparisons on floating-point
-/// values (apart from zero), except in functions called `*eq*` (which probably
-/// implement equality for a type involving floats).
-///
-/// **Why is this bad?** Floating point calculations are usually imprecise, so
-/// asking if two values are *exactly* equal is asking for trouble. For a good
-/// guide on what to do, see [the floating point
-/// guide](http://www.floating-point-gui.de/errors/comparison).
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// y == 1.23f64
-/// y != x  // where both are floats
-/// ```
-declare_lint! {
-    pub FLOAT_CMP,
-    Warn,
-    "using `==` or `!=` on float values instead of comparing difference with an epsilon"
-}
-
-#[derive(Copy,Clone)]
-pub struct FloatCmp;
-
-impl LintPass for FloatCmp {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(FLOAT_CMP)
-    }
-}
-
-impl LateLintPass for FloatCmp {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-            let op = cmp.node;
-            if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
-                if is_allowed(cx, left) || is_allowed(cx, right) {
-                    return;
-                }
-                if let Some(name) = get_item_name(cx, expr) {
-                    let name = name.as_str();
-                    if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
-                       name.ends_with("_eq") {
-                        return;
-                    }
-                }
-                span_lint_and_then(cx,
-                                   FLOAT_CMP,
-                                   expr.span,
-                                   "strict comparison of f32 or f64",
-                                   |db| {
-                    let lhs = Sugg::hir(cx, left, "..");
-                    let rhs = Sugg::hir(cx, right, "..");
-
-                    db.span_suggestion(expr.span,
-                                       "consider comparing them within some error",
-                                       format!("({}).abs() < error", lhs - rhs));
-                    db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
-                });
-            }
-        }
-    }
 }
 
 fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
@@ -245,45 +354,6 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
 
 fn is_float(cx: &LateContext, expr: &Expr) -> bool {
     matches!(walk_ptrs_ty(cx.tcx.expr_ty(expr)).sty, ty::TyFloat(_))
-}
-
-/// **What it does:** Checks for conversions to owned values just for the sake
-/// of a comparison.
-///
-/// **Why is this bad?** The comparison can operate on a reference, so creating
-/// an owned value effectively throws it away directly afterwards, which is
-/// needlessly consuming code and heap space.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x.to_owned() == y
-/// ```
-declare_lint! {
-    pub CMP_OWNED,
-    Warn,
-    "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`"
-}
-
-#[derive(Copy,Clone)]
-pub struct CmpOwned;
-
-impl LintPass for CmpOwned {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(CMP_OWNED)
-    }
-}
-
-impl LateLintPass for CmpOwned {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-            if cmp.node.is_comparison() {
-                check_to_owned(cx, left, right, true, cmp.span);
-                check_to_owned(cx, right, left, false, cmp.span)
-            }
-        }
-    }
 }
 
 fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: Span) {
@@ -344,165 +414,6 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
 fn is_str_arg(cx: &LateContext, args: &[P<Expr>]) -> bool {
     args.len() == 1 &&
         matches!(walk_ptrs_ty(cx.tcx.expr_ty(&args[0])).sty, ty::TyStr)
-}
-
-/// **What it does:** Checks for getting the remainder of a division by one.
-///
-/// **Why is this bad?** The result can only ever be zero. No one will write
-/// such code deliberately, unless trying to win an Underhanded Rust
-/// Contest. Even for that contest, it's probably a bad idea. Use something more
-/// underhanded.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// x % 1
-/// ```
-declare_lint! {
-    pub MODULO_ONE,
-    Warn,
-    "taking a number modulo 1, which always returns 0"
-}
-
-#[derive(Copy,Clone)]
-pub struct ModuloOne;
-
-impl LintPass for ModuloOne {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MODULO_ONE)
-    }
-}
-
-impl LateLintPass for ModuloOne {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprBinary(ref cmp, _, ref right) = expr.node {
-            if let Spanned { node: BinOp_::BiRem, .. } = *cmp {
-                if is_integer_literal(right, 1) {
-                    span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
-                }
-            }
-        }
-    }
-}
-
-/// **What it does:** Checks for patterns in the form `name @ _`.
-///
-/// **Why is this bad?** It's almost always more readable to just use direct bindings.
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// match v {
-///     Some(x) => (),
-///     y @ _   => (), // easier written as `y`,
-/// }
-/// ```
-declare_lint! {
-    pub REDUNDANT_PATTERN,
-    Warn,
-    "using `name @ _` in a pattern"
-}
-
-#[derive(Copy,Clone)]
-pub struct PatternPass;
-
-impl LintPass for PatternPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(REDUNDANT_PATTERN)
-    }
-}
-
-impl LateLintPass for PatternPass {
-    fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
-        if let PatKind::Binding(_, ref ident, Some(ref right)) = pat.node {
-            if right.node == PatKind::Wild {
-                span_lint(cx,
-                          REDUNDANT_PATTERN,
-                          pat.span,
-                          &format!("the `{} @ _` pattern can be written as just `{}`",
-                                   ident.node,
-                                   ident.node));
-            }
-        }
-    }
-}
-
-
-/// **What it does:** Checks for the use of bindings with a single leading underscore.
-///
-/// **Why is this bad?** A single leading underscore is usually used to indicate
-/// that a binding will not be used. Using such a binding breaks this
-/// expectation.
-///
-/// **Known problems:** The lint does not work properly with desugaring and
-/// macro, it has been allowed in the mean time.
-///
-/// **Example:**
-/// ```rust
-/// let _x = 0;
-/// let y = _x + 1; // Here we are using `_x`, even though it has a leading underscore.
-///                 // We should rename `_x` to `x`
-/// ```
-declare_lint! {
-    pub USED_UNDERSCORE_BINDING,
-    Allow,
-    "using a binding which is prefixed with an underscore"
-}
-
-#[derive(Copy, Clone)]
-pub struct UsedUnderscoreBinding;
-
-impl LintPass for UsedUnderscoreBinding {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(USED_UNDERSCORE_BINDING)
-    }
-}
-
-impl LateLintPass for UsedUnderscoreBinding {
-    #[cfg_attr(rustfmt, rustfmt_skip)]
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if in_attributes_expansion(cx, expr) {
-            // Don't lint things expanded by #[derive(...)], etc
-            return;
-        }
-        let binding = match expr.node {
-            ExprPath(_, ref path) => {
-                let binding = path.segments
-                                .last()
-                                .expect("path should always have at least one segment")
-                                .name
-                                .as_str();
-                if binding.starts_with('_') &&
-                   !binding.starts_with("__") &&
-                   binding != "_result" && // FIXME: #944
-                   is_used(cx, expr) &&
-                   // don't lint if the declaration is in a macro
-                   non_macro_local(cx, &cx.tcx.expect_def(expr.id)) {
-                    Some(binding)
-                } else {
-                    None
-                }
-            }
-            ExprField(_, spanned) => {
-                let name = spanned.node.as_str();
-                if name.starts_with('_') && !name.starts_with("__") {
-                    Some(name)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        };
-        if let Some(binding) = binding {
-            span_lint(cx,
-                      USED_UNDERSCORE_BINDING,
-                      expr.span,
-                      &format!("used binding `{}` which is prefixed with an underscore. A leading \
-                                underscore signals that a binding will not be used.", binding));
-        }
-    }
 }
 
 /// Heuristic to see if an expression is used. Should be compatible with `unused_variables`'s idea

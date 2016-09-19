@@ -165,3 +165,31 @@ fn issue1017() {
         }
     }
 }
+
+// Issue #1188
+fn refutable() {
+    let a = [42, 1337];
+    let mut b = a.iter();
+
+    // consume all the 42s
+    while let Some(&42) = b.next() {
+    }
+
+    let a = [(1, 2, 3)];
+    let mut b = a.iter();
+
+    while let Some(&(1, 2, 3)) = b.next() {
+    }
+
+    let a = [Some(42)];
+    let mut b = a.iter();
+
+    while let Some(&None) = b.next() {
+    }
+
+    /* This gives “refutable pattern in `for` loop binding: `&_` not covered”
+    for &42 in b {}
+    for &(1, 2, 3) in b {}
+    for &Option::None in b.next() {}
+    // */
+}

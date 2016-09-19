@@ -1,18 +1,45 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-struct One;
+#![deny(len_without_is_empty, len_zero)]
+#![allow(dead_code, unused)]
 
-#[deny(len_without_is_empty)]
-impl One {
-    fn len(self: &Self) -> isize { //~ERROR item `One` has a `.len(_: &Self)`
+pub struct PubOne;
+
+impl PubOne {
+    pub fn len(self: &Self) -> isize { //~ERROR item `PubOne` has a public `len` method but no corresponding `is_empty`
         1
     }
 }
 
-#[deny(len_without_is_empty)]
+struct NotPubOne;
+
+impl NotPubOne {
+    pub fn len(self: &Self) -> isize { // no error, len is pub but `NotPubOne` is not exported anyway
+        1
+    }
+}
+
+struct One;
+
+impl One {
+    fn len(self: &Self) -> isize { // no error, len is private, see #1085
+        1
+    }
+}
+
+pub trait PubTraitsToo {
+    fn len(self: &Self) -> isize; //~ERROR trait `PubTraitsToo` has a `len` method but no `is_empty`
+}
+
+impl PubTraitsToo for One {
+    fn len(self: &Self) -> isize {
+        0
+    }
+}
+
 trait TraitsToo {
-    fn len(self: &Self) -> isize; //~ERROR trait `TraitsToo` has a `.len(_:
+    fn len(self: &Self) -> isize; // no error, len is private, see #1085
 }
 
 impl TraitsToo for One {
@@ -21,11 +48,22 @@ impl TraitsToo for One {
     }
 }
 
-struct HasIsEmpty;
+struct HasPrivateIsEmpty;
 
-#[deny(len_without_is_empty)]
+impl HasPrivateIsEmpty {
+    pub fn len(self: &Self) -> isize {
+        1
+    }
+
+    fn is_empty(self: &Self) -> bool {
+        false
+    }
+}
+
+pub struct HasIsEmpty;
+
 impl HasIsEmpty {
-    fn len(self: &Self) -> isize {
+    pub fn len(self: &Self) -> isize { //~ERROR item `HasIsEmpty` has a public `len` method but a private `is_empty`
         1
     }
 
@@ -36,8 +74,7 @@ impl HasIsEmpty {
 
 struct Wither;
 
-#[deny(len_without_is_empty)]
-trait WithIsEmpty {
+pub trait WithIsEmpty {
     fn len(self: &Self) -> isize;
     fn is_empty(self: &Self) -> bool;
 }
@@ -52,21 +89,18 @@ impl WithIsEmpty for Wither {
     }
 }
 
-struct HasWrongIsEmpty;
+pub struct HasWrongIsEmpty;
 
-#[deny(len_without_is_empty)]
 impl HasWrongIsEmpty {
-    fn len(self: &Self) -> isize { //~ERROR item `HasWrongIsEmpty` has a `.len(_: &Self)`
+    pub fn len(self: &Self) -> isize { //~ERROR item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty`
         1
     }
 
-    #[allow(dead_code, unused)]
-    fn is_empty(self: &Self, x : u32) -> bool {
+    pub fn is_empty(self: &Self, x : u32) -> bool {
         false
     }
 }
 
-#[deny(len_zero)]
 fn main() {
     let x = [1, 2];
     if x.len() == 0 {

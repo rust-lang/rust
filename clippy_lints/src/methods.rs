@@ -2,7 +2,6 @@ use rustc::hir;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::const_qualif::ConstQualif;
-use rustc::ty::subst::TypeSpace;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
@@ -380,9 +379,7 @@ declare_lint! {
 /// **Known problems:** Does not catch multi-byte unicode characters.
 ///
 /// **Example:**
-/// ```rust
-/// _.split("x")` could be `_.split('x')
-/// ```
+/// `_.split("x")` could be `_.split('x')
 declare_lint! {
     pub SINGLE_CHAR_PATTERN,
     Warn,
@@ -462,6 +459,7 @@ impl LintPass for Pass {
                     SINGLE_CHAR_PATTERN,
                     SEARCH_IS_SOME,
                     TEMPORARY_CSTRING_AS_PTR,
+                    FILTER_NEXT,
                     FILTER_MAP,
                     ITER_NTH)
     }
@@ -796,7 +794,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
     fn may_slice(cx: &LateContext, ty: ty::Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
-            ty::TyStruct(..) => match_type(cx, ty, &paths::VEC),
+            ty::TyAdt(..) => match_type(cx, ty, &paths::VEC),
             ty::TyArray(_, size) => size < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) |
             ty::TyBox(inner) => may_slice(cx, inner),
@@ -1081,15 +1079,15 @@ fn lint_single_char_pattern(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr)
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
-    if !match_type(cx, ty, &paths::RESULT) {
-        return None;
-    }
-    if let ty::TyEnum(_, substs) = ty.sty {
-        if let Some(err_ty) = substs.types.opt_get(TypeSpace, 1) {
-            return Some(err_ty);
+    if let ty::TyAdt(_, substs) = ty.sty {
+        if match_type(cx, ty, &paths::RESULT) {
+            substs.types().nth(1)
+        } else {
+            None
         }
+    } else {
+        None
     }
-    None
 }
 
 /// This checks whether a given type is known to implement Debug.

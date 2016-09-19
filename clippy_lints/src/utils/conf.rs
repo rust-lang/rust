@@ -1,12 +1,16 @@
+//! Read configurations files.
+
+#![deny(missing_docs_in_private_items)]
+
 use std::{fmt, fs, io};
 use std::io::Read;
-use syntax::{ast, codemap, ptr};
+use syntax::{ast, codemap};
 use syntax::parse::token;
 use toml;
 
 /// Get the configuration file from arguments.
-pub fn file(args: &[ptr::P<ast::MetaItem>]) -> Result<Option<token::InternedString>, (&'static str, codemap::Span)> {
-    for arg in args {
+pub fn file(args: &[codemap::Spanned<ast::NestedMetaItemKind>]) -> Result<Option<token::InternedString>, (&'static str, codemap::Span)> {
+    for arg in args.iter().filter_map(|a| a.meta_item()) {
         match arg.node {
             ast::MetaItemKind::Word(ref name) |
             ast::MetaItemKind::List(ref name, _) => {
@@ -32,9 +36,20 @@ pub fn file(args: &[ptr::P<ast::MetaItem>]) -> Result<Option<token::InternedStri
 /// Error from reading a configuration file.
 #[derive(Debug)]
 pub enum Error {
+    /// An I/O error.
     Io(io::Error),
+    /// The file is not valid TOML.
     Toml(Vec<toml::ParserError>),
-    Type(&'static str, &'static str, &'static str),
+    /// Type error.
+    Type(
+        /// The name of the key.
+        &'static str,
+        /// The expected type.
+        &'static str,
+        /// The type we got instead.
+        &'static str
+    ),
+    /// There is an unknown key is the file.
     UnknownKey(String),
 }
 

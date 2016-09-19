@@ -22,7 +22,7 @@ use utils::sugg::Sugg;
 /// **Example:**
 /// ```rust
 /// match x {
-///     Some(ref foo) -> bar(foo),
+///     Some(ref foo) => bar(foo),
 ///     _ => ()
 /// }
 /// ```
@@ -43,7 +43,7 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// match x {
-///     Some(ref foo) -> bar(foo),
+///     Some(ref foo) => bar(foo),
 ///     _ => bar(other_ref),
 /// }
 /// ```
@@ -125,7 +125,7 @@ pub struct MatchPass;
 
 impl LintPass for MatchPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SINGLE_MATCH, MATCH_REF_PATS, MATCH_BOOL, SINGLE_MATCH_ELSE)
+        lint_array!(SINGLE_MATCH, MATCH_REF_PATS, MATCH_BOOL, SINGLE_MATCH_ELSE, MATCH_OVERLAPPING_ARM)
     }
 }
 

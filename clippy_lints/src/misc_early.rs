@@ -4,7 +4,7 @@ use std::char;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use utils::{span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
+use utils::{constants, span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
@@ -105,6 +105,63 @@ declare_lint! {
     "literals whose suffix is not separated by an underscore"
 }
 
+/// **What it does:** Warns if an integral constant literal starts with `0`.
+///
+/// **Why is this bad?** In some languages (including the infamous C language and most of its
+/// familly), this marks an octal constant. In Rust however, this is a decimal constant. This could
+/// be confusing for both the writer and a reader of the constant.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+///
+/// In Rust:
+/// ```rust
+/// fn main() {
+///     let a = 0123;
+///     println!("{}", a);
+/// }
+/// ```
+///
+/// prints `123`, while in C:
+///
+/// ```c
+/// #include <stdio.h>
+///
+/// int main() {
+///     int a = 0123;
+///     printf("%d\n", a);
+/// }
+/// ```
+///
+/// prints `83` (as `83 == 0o123` while `123 == 0o173`).
+declare_lint! {
+    pub ZERO_PREFIXED_LITERAL,
+    Warn,
+    "integer literals starting with `0`"
+}
+
+/// **What it does:** Warns if a generic shadows a built-in type.
+///
+/// **Why is this bad?** This gives surprising type errors.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+///
+/// ```rust
+/// impl<u32> Foo<u32> {
+///     fn impl_func(&self) -> u32 {
+///         42
+///     }
+/// }
+/// ```
+declare_lint! {
+    pub BUILTIN_TYPE_SHADOW,
+    Warn,
+    "shadowing a builtin type"
+}
+
 
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
@@ -112,11 +169,24 @@ pub struct MiscEarly;
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL,
-                    DOUBLE_NEG, MIXED_CASE_HEX_LITERALS, UNSEPARATED_LITERAL_SUFFIX)
+                    DOUBLE_NEG, MIXED_CASE_HEX_LITERALS, UNSEPARATED_LITERAL_SUFFIX,
+                    ZERO_PREFIXED_LITERAL, BUILTIN_TYPE_SHADOW)
     }
 }
 
 impl EarlyLintPass for MiscEarly {
+    fn check_generics(&mut self, cx: &EarlyContext, gen: &Generics) {
+        for ty in &gen.ty_params {
+            let name = ty.ident.name.as_str();
+            if constants::BUILTIN_TYPES.contains(&&*name) {
+                span_lint(cx,
+                          BUILTIN_TYPE_SHADOW,
+                          ty.span,
+                          &format!("This generic shadows the built-in type `{}`", name));
+            }
+        }
+    }
+
     fn check_pat(&mut self, cx: &EarlyContext, pat: &Pat) {
         if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
@@ -220,7 +290,7 @@ impl EarlyLintPass for MiscEarly {
             }
             ExprKind::Lit(ref lit) => {
                 if_let_chain! {[
-                    let LitKind::Int(..) = lit.node,
+                    let LitKind::Int(value, ..) = lit.node,
                     let Some(src) = snippet_opt(cx, lit.span),
                     let Some(firstch) = src.chars().next(),
                     char::to_digit(firstch, 10).is_some()
@@ -250,6 +320,17 @@ impl EarlyLintPass for MiscEarly {
                             span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
                                       "inconsistent casing in hexadecimal literal");
                         }
+                    } else if src.starts_with("0b") || src.starts_with("0o") {
+                        /* nothing to do */
+                    } else if value != 0 && src.starts_with('0') {
+                        span_lint_and_then(cx,
+                                           ZERO_PREFIXED_LITERAL,
+                                           lit.span,
+                                           "this is a decimal constant",
+                                           |db| {
+                            db.span_suggestion(lit.span, "if you mean to use a decimal constant, remove the `0` to remove confusion:", src[1..].to_string());
+                            db.span_suggestion(lit.span, "if you mean to use an octal constant, use `0o`:", format!("0o{}", &src[1..]));
+                        });
                     }
                 }}
                 if_let_chain! {[

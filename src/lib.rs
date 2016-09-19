@@ -3,6 +3,7 @@
 #![feature(rustc_private)]
 #![allow(unknown_lints)]
 #![feature(borrow_state)]
+#![allow(missing_docs_in_private_items)]
 
 extern crate rustc_plugin;
 use rustc_plugin::Registry;
