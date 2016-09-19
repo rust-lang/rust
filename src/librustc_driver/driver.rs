@@ -643,7 +643,8 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         macro_import::MacroLoader::new(sess, &cstore, crate_name, krate.config.clone());
 
     let resolver_arenas = Resolver::arenas();
-    let mut resolver = Resolver::new(sess, make_glob_map, &mut macro_loader, &resolver_arenas);
+    let mut resolver =
+        Resolver::new(sess, &krate, make_glob_map, &mut macro_loader, &resolver_arenas);
     syntax_ext::register_builtins(&mut resolver, sess.features.borrow().quote);
 
     krate = time(time_passes, "expansion", || {

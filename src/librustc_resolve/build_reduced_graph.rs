@@ -14,7 +14,7 @@
 //! any imports resolved.
 
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
-use {Module, ModuleKind};
+use {Module, ModuleS, ModuleKind};
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind, ToNameBinding};
 use Resolver;
@@ -55,8 +55,6 @@ impl<'a> ToNameBinding<'a> for (Def, Span, ty::Visibility) {
 impl<'b> Resolver<'b> {
     /// Constructs the reduced graph for the entire crate.
     pub fn build_reduced_graph(&mut self, krate: &Crate) {
-        let no_implicit_prelude = attr::contains_name(&krate.attrs, "no_implicit_prelude");
-        self.graph_root.no_implicit_prelude.set(no_implicit_prelude);
         visit::walk_crate(&mut BuildReducedGraphVisitor { resolver: self }, krate);
     }
 
@@ -195,8 +193,11 @@ impl<'b> Resolver<'b> {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
                     };
-                    let def = Def::Mod(def_id);
-                    let module = self.new_extern_crate_module(parent, name, def, item.id);
+                    let module = self.arenas.alloc_module(ModuleS {
+                        extern_crate_id: Some(item.id),
+                        populated: Cell::new(false),
+                        ..ModuleS::new(Some(parent), ModuleKind::Def(Def::Mod(def_id), name))
+                    });
                     self.define(parent, name, TypeNS, (module, sp, vis));
 
                     self.populate_module_if_necessary(module);
@@ -205,10 +206,12 @@ impl<'b> Resolver<'b> {
 
             ItemKind::Mod(..) => {
                 let def = Def::Mod(self.definitions.local_def_id(item.id));
-                let module = self.new_module(parent, ModuleKind::Def(def, name), Some(item.id));
-                module.no_implicit_prelude.set({
-                    parent.no_implicit_prelude.get() ||
+                let module = self.arenas.alloc_module(ModuleS {
+                    no_implicit_prelude: parent.no_implicit_prelude || {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
+                    },
+                    normal_ancestor_id: Some(item.id),
+                    ..ModuleS::new(Some(parent), ModuleKind::Def(def, name))
                 });
                 self.define(parent, name, TypeNS, (module, sp, vis));
                 self.module_map.insert(item.id, module);
@@ -241,8 +244,8 @@ impl<'b> Resolver<'b> {
             }
 
             ItemKind::Enum(ref enum_definition, _) => {
-                let kind = ModuleKind::Def(Def::Enum(self.definitions.local_def_id(item.id)), name);
-                let module = self.new_module(parent, kind, parent.normal_ancestor_id);
+                let def = Def::Enum(self.definitions.local_def_id(item.id));
+                let module = self.new_module(parent, ModuleKind::Def(def, name), true);
                 self.define(parent, name, TypeNS, (module, sp, vis));
 
                 for variant in &(*enum_definition).variants {
@@ -293,8 +296,8 @@ impl<'b> Resolver<'b> {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.
-                let kind = ModuleKind::Def(Def::Trait(def_id), name);
-                let module = self.new_module(parent, kind, parent.normal_ancestor_id);
+                let module =
+                    self.new_module(parent, ModuleKind::Def(Def::Trait(def_id), name), true);
                 self.define(parent, name, TypeNS, (module, sp, vis));
                 self.current_module = module;
             }
@@ -348,8 +351,7 @@ impl<'b> Resolver<'b> {
                     {}",
                    block_id);
 
-            let new_module =
-                self.new_module(parent, ModuleKind::Block(block_id), parent.normal_ancestor_id);
+            let new_module = self.new_module(parent, ModuleKind::Block(block_id), true);
             self.module_map.insert(block_id, new_module);
             self.current_module = new_module; // Descend into the block.
         }
@@ -377,7 +379,7 @@ impl<'b> Resolver<'b> {
             Def::Mod(_) | Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {:?}",
                        name, vis);
-                let module = self.new_module(parent, ModuleKind::Def(def, name), None);
+                let module = self.new_module(parent, ModuleKind::Def(def, name), false);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::Variant(variant_id) => {
@@ -420,7 +422,7 @@ impl<'b> Resolver<'b> {
                     self.trait_item_map.insert((trait_item_name, def_id), false);
                 }
 
-                let module = self.new_module(parent, ModuleKind::Def(def, name), None);
+                let module = self.new_module(parent, ModuleKind::Def(def, name), false);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::TyAlias(..) | Def::AssociatedTy(..) => {
