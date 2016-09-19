@@ -342,6 +342,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.get_crate_data(def.krate).def_path(def.index)
     }
 
+    fn variant_kind(&self, def_id: DefId) -> Option<ty::VariantKind>
+    {
+        self.dep_graph.read(DepNode::MetaData(def_id));
+        self.get_crate_data(def_id.krate).get_variant_kind(def_id.index)
+    }
+
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
     {
         self.dep_graph.read(DepNode::MetaData(struct_def_id));

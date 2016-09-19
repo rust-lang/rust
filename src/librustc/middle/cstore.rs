@@ -200,6 +200,7 @@ pub trait CrateStore<'tcx> {
                              -> Option<DefIndex>;
     fn def_key(&self, def: DefId) -> hir_map::DefKey;
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath>;
+    fn variant_kind(&self, def_id: DefId) -> Option<ty::VariantKind>;
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
@@ -283,7 +284,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind  { bug!("closure_kind") }
+    fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind { bug!("closure_kind") }
     fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                       -> ty::ClosureTy<'tcx>  { bug!("closure_ty") }
     fn item_variances(&self, def: DefId) -> Vec<ty::Variance> { bug!("item_variances") }
@@ -376,6 +377,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn relative_def_path(&self, def: DefId) -> Option<hir_map::DefPath> {
         bug!("relative_def_path")
     }
+    fn variant_kind(&self, def_id: DefId) -> Option<ty::VariantKind> { bug!("variant_kind") }
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
         { bug!("struct_ctor_def_id") }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }

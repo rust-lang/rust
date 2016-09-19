@@ -787,6 +787,15 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id).variances.decode(self).collect()
     }
 
+    pub fn get_variant_kind(&self, node_id: DefIndex) -> Option<ty::VariantKind> {
+        match self.entry(node_id).kind {
+            EntryKind::Struct(data) |
+            EntryKind::Union(data) |
+            EntryKind::Variant(data) => Some(data.decode(self).kind),
+            _ => None
+        }
+    }
+
     pub fn get_struct_ctor_def_id(&self, node_id: DefIndex) -> Option<DefId> {
         match self.entry(node_id).kind {
             EntryKind::Struct(data) => {
