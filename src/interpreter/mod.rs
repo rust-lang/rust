@@ -105,7 +105,7 @@ pub struct Frame<'a, 'tcx: 'a> {
 /// value held directly, outside of any allocation (`ByVal`).
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
-/// primitive values (`ByValPair`). It allows Miri to avoid making allocations for check binary
+/// primitive values (`ByValPair`). It allows Miri to avoid making allocations for checked binary
 /// operations and fat pointers. This idea was taken from rustc's trans.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Value {
