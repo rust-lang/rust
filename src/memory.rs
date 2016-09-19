@@ -444,9 +444,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-
     pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx, ()> {
-        self.get_mut(alloc_id)?.immutable = true;
+        // Never freeze the zero-sized allocation. If you do that, then getting a mutable handle to
+        // _any_ ZST becomes an error, since they all share the same allocation.
+        if alloc_id != ZST_ALLOC_ID {
+            self.get_mut(alloc_id)?.immutable = true;
+        }
         Ok(())
     }
 

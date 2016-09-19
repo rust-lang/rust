@@ -217,11 +217,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Char(c) => Value::ByVal(PrimVal::Char(c)),
 
             Str(ref s) => {
-                let psize = self.memory.pointer_size();
+                // Create and freeze the allocation holding the characters.
                 let static_ptr = self.memory.allocate(s.len(), 1)?;
+                self.memory.write_bytes(static_ptr, s.as_bytes())?;
+                self.memory.freeze(static_ptr.alloc_id)?;
+
+                // Create an allocation to hold the fat pointer to the above char allocation.
+                // FIXME(solson): Introduce Value::ByValPair to remove this allocation.
+                let psize = self.memory.pointer_size();
                 let ptr = self.memory.allocate(psize * 2, psize)?;
                 let (ptr, extra) = self.get_fat_ptr(ptr);
-                self.memory.write_bytes(static_ptr, s.as_bytes())?;
                 self.memory.write_ptr(ptr, static_ptr)?;
                 self.memory.write_usize(extra, s.len() as u64)?;
                 Value::ByRef(ptr)
@@ -230,6 +235,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ByteStr(ref bs) => {
                 let ptr = self.memory.allocate(bs.len(), 1)?;
                 self.memory.write_bytes(ptr, bs)?;
+                self.memory.freeze(ptr.alloc_id)?;
                 Value::ByVal(PrimVal::AbstractPtr(ptr))
             }
 
