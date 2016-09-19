@@ -11,7 +11,7 @@
 use libc::c_uint;
 use llvm::{self, ValueRef};
 use rustc::ty;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use session::config::FullDebugInfo;
 use base;

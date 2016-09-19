@@ -10,7 +10,7 @@
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::DefId;
-use mir::repr::Mir;
+use mir::Mir;
 use std::marker::PhantomData;
 
 pub struct MirMap<'tcx> {

@@ -13,7 +13,7 @@
 use rustc::ty::TyCtxt;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
-use rustc::mir::repr::*;
+use rustc::mir::*;
 
 use std::fmt;
 

@@ -12,7 +12,7 @@ use dep_graph::DepNode;
 use hir;
 use hir::map::DefPathData;
 use mir::mir_map::MirMap;
-use mir::repr::{Mir, Promoted};
+use mir::{Mir, Promoted};
 use ty::TyCtxt;
 use syntax::ast::NodeId;
 use util::common::time;

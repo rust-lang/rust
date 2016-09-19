@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::mir::repr as mir;
+use rustc::mir;
 
 use base;
 use common::{self, BlockAndBuilder};

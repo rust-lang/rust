@@ -25,7 +25,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::matches::{Binding, MatchPair, Candidate};
 use hair::*;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 
 use std::mem;
 

@@ -29,7 +29,7 @@ use hir::map::definitions::{Definitions, DefKey};
 use hir::svh::Svh;
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt};
-use mir::repr::Mir;
+use mir::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
 use session::search_paths::PathKind;

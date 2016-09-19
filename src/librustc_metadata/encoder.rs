@@ -605,7 +605,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }))
     }
 
-    fn encode_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::repr::Mir<'tcx>>> {
+    fn encode_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
         self.mir_map.map.get(&def_id).map(|mir| self.lazy(mir))
     }
 

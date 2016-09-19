@@ -198,10 +198,9 @@ use rustc::traits;
 use rustc::ty::subst::{Substs, Subst};
 use rustc::ty::{self, TypeFoldable, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::mir::repr as mir;
+use rustc::mir::{self, Location};
 use rustc::mir::visit as mir_visit;
 use rustc::mir::visit::Visitor as MirVisitor;
-use rustc::mir::repr::Location;
 
 use rustc_const_eval as const_eval;
 

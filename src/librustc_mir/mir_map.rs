@@ -19,7 +19,7 @@
 use build;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr::Mir;
+use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
 use pretty;

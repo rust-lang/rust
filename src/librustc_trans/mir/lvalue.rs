@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::mir::repr as mir;
+use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 use adt;

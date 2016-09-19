@@ -30,7 +30,7 @@
 //! future.
 
 use def_use::DefUseAnalysis;
-use rustc::mir::repr::{Constant, Local, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
+use rustc::mir::{Constant, Local, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
