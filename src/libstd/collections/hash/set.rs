@@ -643,7 +643,10 @@ impl<T, S> Extend<T> for HashSet<T, S>
     where T: Eq + Hash,
           S: BuildHasher,
 {
-    fn extend<I: IntoIterator<Item=T>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
+        let iter = iterable.into_iter();
+        let (lower_bound, _) = iter.size_hint();
+        self.reserve(lower_bound);
         for k in iter {
             self.insert(k);
         }

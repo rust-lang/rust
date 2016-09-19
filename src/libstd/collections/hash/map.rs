@@ -1906,7 +1906,10 @@ impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
 impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
     where K: Eq + Hash, S: BuildHasher
 {
-    fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iter: T) {
+    fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iterable: T) {
+        let iter = iterable.into_iter();
+        let (lower_bound, _) = iter.size_hint();
+        self.reserve(lower_bound);
         for (k, v) in iter {
             self.insert(k, v);
         }
