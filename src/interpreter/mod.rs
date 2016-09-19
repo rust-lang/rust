@@ -99,10 +99,14 @@ pub struct Frame<'a, 'tcx: 'a> {
     pub stmt: usize,
 }
 
+/// A `Value` represents a single self-contained Rust value.
+///
+/// A `Value` can either refer to a block of memory inside an allocation (`ByRef`) or to a primitve
+/// value held directly, outside of any allocation (`ByVal`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Value {
-    Ptr(Pointer),
-    Prim(PrimVal),
+    ByRef(Pointer),
+    ByVal(PrimVal),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -193,24 +197,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstFloat};
 
         let primval = match *const_val {
-            Integral(ConstInt::I8(i)) => Value::Prim(PrimVal::I8(i)),
-            Integral(ConstInt::U8(i)) => Value::Prim(PrimVal::U8(i)),
+            Integral(ConstInt::I8(i)) => Value::ByVal(PrimVal::I8(i)),
+            Integral(ConstInt::U8(i)) => Value::ByVal(PrimVal::U8(i)),
             Integral(ConstInt::Isize(ConstIsize::Is16(i))) |
-            Integral(ConstInt::I16(i)) => Value::Prim(PrimVal::I16(i)),
+            Integral(ConstInt::I16(i)) => Value::ByVal(PrimVal::I16(i)),
             Integral(ConstInt::Usize(ConstUsize::Us16(i))) |
-            Integral(ConstInt::U16(i)) => Value::Prim(PrimVal::U16(i)),
+            Integral(ConstInt::U16(i)) => Value::ByVal(PrimVal::U16(i)),
             Integral(ConstInt::Isize(ConstIsize::Is32(i))) |
-            Integral(ConstInt::I32(i)) => Value::Prim(PrimVal::I32(i)),
+            Integral(ConstInt::I32(i)) => Value::ByVal(PrimVal::I32(i)),
             Integral(ConstInt::Usize(ConstUsize::Us32(i))) |
-            Integral(ConstInt::U32(i)) => Value::Prim(PrimVal::U32(i)),
+            Integral(ConstInt::U32(i)) => Value::ByVal(PrimVal::U32(i)),
             Integral(ConstInt::Isize(ConstIsize::Is64(i))) |
-            Integral(ConstInt::I64(i)) => Value::Prim(PrimVal::I64(i)),
+            Integral(ConstInt::I64(i)) => Value::ByVal(PrimVal::I64(i)),
             Integral(ConstInt::Usize(ConstUsize::Us64(i))) |
-            Integral(ConstInt::U64(i)) => Value::Prim(PrimVal::U64(i)),
-            Float(ConstFloat::F32(f)) => Value::Prim(PrimVal::F32(f)),
-            Float(ConstFloat::F64(f)) => Value::Prim(PrimVal::F64(f)),
-            Bool(b) => Value::Prim(PrimVal::Bool(b)),
-            Char(c) => Value::Prim(PrimVal::Char(c)),
+            Integral(ConstInt::U64(i)) => Value::ByVal(PrimVal::U64(i)),
+            Float(ConstFloat::F32(f)) => Value::ByVal(PrimVal::F32(f)),
+            Float(ConstFloat::F64(f)) => Value::ByVal(PrimVal::F64(f)),
+            Bool(b) => Value::ByVal(PrimVal::Bool(b)),
+            Char(c) => Value::ByVal(PrimVal::Char(c)),
 
             Str(ref s) => {
                 let psize = self.memory.pointer_size();
@@ -220,16 +224,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_bytes(static_ptr, s.as_bytes())?;
                 self.memory.write_ptr(ptr, static_ptr)?;
                 self.memory.write_usize(extra, s.len() as u64)?;
-                Value::Ptr(ptr)
+                Value::ByRef(ptr)
             }
 
             ByteStr(ref bs) => {
-                let psize = self.memory.pointer_size();
-                let static_ptr = self.memory.allocate(bs.len(), 1)?;
-                let ptr = self.memory.allocate(psize, psize)?;
-                self.memory.write_bytes(static_ptr, bs)?;
-                self.memory.write_ptr(ptr, static_ptr)?;
-                Value::Ptr(ptr)
+                let ptr = self.memory.allocate(bs.len(), 1)?;
+                self.memory.write_bytes(ptr, bs)?;
+                Value::ByVal(PrimVal::AbstractPtr(ptr))
             }
 
             Struct(_)    => unimplemented!(),
@@ -754,8 +755,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_operand_to_ptr(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Pointer> {
         let value = self.eval_operand(op)?;
         match value {
-            Value::Ptr(ptr) => Ok(ptr),
-            Value::Prim(primval) => {
+            Value::ByRef(ptr) => Ok(ptr),
+            Value::ByVal(primval) => {
                 let ty = self.operand_ty(op);
                 let size = self.type_size(ty);
                 let align = self.type_align(ty);
@@ -775,7 +776,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => Ok(Value::Ptr(self.eval_lvalue(lvalue)?.to_ptr())),
+            Consume(ref lvalue) => Ok(Value::ByRef(self.eval_lvalue(lvalue)?.to_ptr())),
 
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal;
@@ -785,7 +786,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Literal::Item { def_id, substs } => {
                         if let ty::TyFnDef(..) = ty.sty {
                             // function items are zero sized
-                            Value::Ptr(self.memory.allocate(0, 0)?)
+                            Value::ByRef(self.memory.allocate(0, 0)?)
                         } else {
                             let cid = ConstantId {
                                 def_id: def_id,
@@ -794,7 +795,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             };
                             let static_ptr = *self.statics.get(&cid)
                                 .expect("static should have been cached (rvalue)");
-                            Value::Ptr(static_ptr)
+                            Value::ByRef(static_ptr)
                         }
                     }
 
@@ -806,7 +807,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         };
                         let static_ptr = *self.statics.get(&cid)
                             .expect("a promoted constant hasn't been precomputed");
-                        Value::Ptr(static_ptr)
+                        Value::ByRef(static_ptr)
                     }
                 };
 
@@ -942,17 +943,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match value {
-            Value::Ptr(ptr) => self.read_primval(ptr, ty),
+            Value::ByRef(ptr) => self.read_primval(ptr, ty),
 
             // TODO(solson): Sanity-check the primval type against the input type.
-            Value::Prim(primval) => Ok(primval),
+            Value::ByVal(primval) => Ok(primval),
         }
     }
 
-    fn write_value(&mut self, value: Value, dest: Pointer, dest_ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+    fn write_value(
+        &mut self,
+        value: Value,
+        dest: Pointer,
+        dest_ty: Ty<'tcx>
+    ) -> EvalResult<'tcx, ()> {
         match value {
-            Value::Ptr(ptr) => self.move_(ptr, dest, dest_ty),
-            Value::Prim(primval) => self.memory.write_primval(dest, primval),
+            Value::ByRef(ptr) => self.move_(ptr, dest, dest_ty),
+            Value::ByVal(primval) => self.memory.write_primval(dest, primval),
         }
     }
 
