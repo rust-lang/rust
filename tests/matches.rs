@@ -1,16 +1,15 @@
-#![allow(plugin_as_library)]
 #![feature(rustc_private)]
 
-extern crate clippy;
+extern crate clippy_lints;
 extern crate syntax;
 
 #[test]
 fn test_overlapping() {
-    use clippy::matches::overlapping;
+    use clippy_lints::matches::overlapping;
     use syntax::codemap::DUMMY_SP;
 
     let sp = |s, e| {
-        clippy::matches::SpannedRange {
+        clippy_lints::matches::SpannedRange {
             span: DUMMY_SP,
             node: (s, e),
         }

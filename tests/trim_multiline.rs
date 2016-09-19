@@ -1,8 +1,7 @@
 /// test the multiline-trim function
-#[allow(plugin_as_library)]
-extern crate clippy;
+extern crate clippy_lints;
 
-use clippy::utils::trim_multiline;
+use clippy_lints::utils::trim_multiline;
 
 #[test]
 fn test_single_line() {
