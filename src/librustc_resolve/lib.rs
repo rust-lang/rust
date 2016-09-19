@@ -60,6 +60,7 @@ use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
+use syntax::attr;
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
@@ -771,7 +772,7 @@ pub struct ModuleS<'a> {
 
     resolutions: RefCell<FnvHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
 
-    no_implicit_prelude: Cell<bool>,
+    no_implicit_prelude: bool,
 
     glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
@@ -788,19 +789,18 @@ pub struct ModuleS<'a> {
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
-    fn new(parent: Option<Module<'a>>, kind: ModuleKind, normal_ancestor_id: Option<NodeId>)
-           -> Self {
+    fn new(parent: Option<Module<'a>>, kind: ModuleKind) -> Self {
         ModuleS {
             parent: parent,
             kind: kind,
-            normal_ancestor_id: normal_ancestor_id,
+            normal_ancestor_id: None,
             extern_crate_id: None,
             resolutions: RefCell::new(FnvHashMap()),
-            no_implicit_prelude: Cell::new(false),
+            no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
-            populated: Cell::new(normal_ancestor_id.is_some()),
+            populated: Cell::new(true),
         }
     }
 
@@ -1170,14 +1170,17 @@ impl Named for hir::PathSegment {
 
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
+               krate: &Crate,
                make_glob_map: MakeGlobMap,
                macro_loader: &'a mut MacroLoader,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
-        let graph_root_kind =
-            ModuleKind::Def(Def::Mod(DefId::local(CRATE_DEF_INDEX)), keywords::Invalid.name());
-        let graph_root =
-            arenas.alloc_module(ModuleS::new(None, graph_root_kind, Some(CRATE_NODE_ID)));
+        let root_def = Def::Mod(DefId::local(CRATE_DEF_INDEX));
+        let graph_root = arenas.alloc_module(ModuleS {
+            normal_ancestor_id: Some(CRATE_NODE_ID),
+            no_implicit_prelude: attr::contains_name(&krate.attrs, "no_implicit_prelude"),
+            ..ModuleS::new(None, ModuleKind::Def(root_def, keywords::Invalid.name()))
+        });
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
 
@@ -1259,17 +1262,12 @@ impl<'a> Resolver<'a> {
         self.report_errors();
     }
 
-    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, normal_ancestor_id: Option<NodeId>)
-                  -> Module<'a> {
-        self.arenas.alloc_module(ModuleS::new(Some(parent), kind, normal_ancestor_id))
-    }
-
-    fn new_extern_crate_module(&self, parent: Module<'a>, name: Name, def: Def, node_id: NodeId)
-                               -> Module<'a> {
-        let mut module = ModuleS::new(Some(parent), ModuleKind::Def(def, name), Some(node_id));
-        module.extern_crate_id = Some(node_id);
-        module.populated.set(false);
-        self.arenas.modules.alloc(module)
+    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, local: bool) -> Module<'a> {
+        self.arenas.alloc_module(ModuleS {
+            normal_ancestor_id: if local { self.current_module.normal_ancestor_id } else { None },
+            populated: Cell::new(local),
+            ..ModuleS::new(Some(parent), kind)
+        })
     }
 
     fn get_ribs<'b>(&'b mut self, ns: Namespace) -> &'b mut Vec<Rib<'a>> {
@@ -1509,7 +1507,7 @@ impl<'a> Resolver<'a> {
                 }
 
                 if let ModuleKind::Block(..) = module.kind { // We can see through blocks
-                } else if !module.no_implicit_prelude.get() {
+                } else if !module.no_implicit_prelude {
                     return self.prelude.and_then(|prelude| {
                         self.resolve_name_in_module(prelude, name, ns, false, None).success()
                     }).map(LexicalScopeBinding::Item)
@@ -3156,7 +3154,7 @@ impl<'a> Resolver<'a> {
             if let ModuleKind::Block(..) = search_module.kind {
                 search_module = search_module.parent.unwrap();
             } else {
-                if !search_module.no_implicit_prelude.get() {
+                if !search_module.no_implicit_prelude {
                     self.prelude.map(|prelude| search_in_module(self, prelude));
                 }
                 break;
