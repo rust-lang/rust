@@ -411,12 +411,16 @@ impl<'b> Resolver<'b> {
                 let module = self.new_module(parent_link, Some(def), None);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
-            Def::Variant(..) => {
+            Def::Variant(variant_id) => {
                 debug!("(building reduced graph for external crate) building variant {}", name);
                 // Variants are always treated as importable to allow them to be glob used.
                 // All variants are defined in both type and value namespaces as future-proofing.
                 let _ = self.try_define(parent, name, TypeNS, (def, DUMMY_SP, vis));
                 let _ = self.try_define(parent, name, ValueNS, (def, DUMMY_SP, vis));
+                if self.session.cstore.variant_kind(variant_id) == Some(ty::VariantKind::Struct) {
+                    // Not adding fields for variants as they are not accessed with a self receiver
+                    self.structs.insert(variant_id, Vec::new());
+                }
             }
             Def::Fn(..) |
             Def::Static(..) |
