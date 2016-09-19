@@ -13,7 +13,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bitslice::{bitwise, BitwiseOperator};
 
 use rustc::ty::TyCtxt;
-use rustc::mir::repr::{self, Mir};
+use rustc::mir::{self, Mir};
 
 use std::fmt::Debug;
 use std::io;
@@ -78,14 +78,12 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
         // the kill-sets.
 
         {
-            let sets = &mut self.flow_state.sets.for_block(repr::START_BLOCK.index());
+            let sets = &mut self.flow_state.sets.for_block(mir::START_BLOCK.index());
             self.flow_state.operator.start_block_effect(&self.ctxt, sets);
         }
 
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
-            let &repr::BasicBlockData { ref statements,
-                                        ref terminator,
-                                        is_cleanup: _ } = data;
+            let &mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = data;
 
             let sets = &mut self.flow_state.sets.for_block(bb.index());
             for j_stmt in 0..statements.len() {
@@ -122,7 +120,7 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
                 in_out.subtract(sets.kill_set);
             }
             builder.propagate_bits_into_graph_successors_of(
-                in_out, &mut self.changed, (repr::BasicBlock::new(bb_idx), bb_data));
+                in_out, &mut self.changed, (mir::BasicBlock::new(bb_idx), bb_data));
         }
     }
 }
@@ -336,7 +334,7 @@ pub trait BitDenotation {
     fn statement_effect(&self,
                         ctxt: &Self::Ctxt,
                         sets: &mut BlockSets<Self::Idx>,
-                        bb: repr::BasicBlock,
+                        bb: mir::BasicBlock,
                         idx_stmt: usize);
 
     /// Mutates the block-sets (the flow sets for the given
@@ -352,7 +350,7 @@ pub trait BitDenotation {
     fn terminator_effect(&self,
                          ctxt: &Self::Ctxt,
                          sets: &mut BlockSets<Self::Idx>,
-                         bb: repr::BasicBlock,
+                         bb: mir::BasicBlock,
                          idx_term: usize);
 
     /// Mutates the block-sets according to the (flow-dependent)
@@ -377,9 +375,9 @@ pub trait BitDenotation {
     fn propagate_call_return(&self,
                              ctxt: &Self::Ctxt,
                              in_out: &mut IdxSet<Self::Idx>,
-                             call_bb: repr::BasicBlock,
-                             dest_bb: repr::BasicBlock,
-                             dest_lval: &repr::Lvalue);
+                             call_bb: mir::BasicBlock,
+                             dest_bb: mir::BasicBlock,
+                             dest_lval: &mir::Lvalue);
 }
 
 impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
@@ -444,39 +442,39 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         &mut self,
         in_out: &mut IdxSet<D::Idx>,
         changed: &mut bool,
-        (bb, bb_data): (repr::BasicBlock, &repr::BasicBlockData))
+        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData))
     {
         match bb_data.terminator().kind {
-            repr::TerminatorKind::Return |
-            repr::TerminatorKind::Resume |
-            repr::TerminatorKind::Unreachable => {}
-            repr::TerminatorKind::Goto { ref target } |
-            repr::TerminatorKind::Assert { ref target, cleanup: None, .. } |
-            repr::TerminatorKind::Drop { ref target, location: _, unwind: None } |
-            repr::TerminatorKind::DropAndReplace {
+            mir::TerminatorKind::Return |
+            mir::TerminatorKind::Resume |
+            mir::TerminatorKind::Unreachable => {}
+            mir::TerminatorKind::Goto { ref target } |
+            mir::TerminatorKind::Assert { ref target, cleanup: None, .. } |
+            mir::TerminatorKind::Drop { ref target, location: _, unwind: None } |
+            mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: None
             } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
             }
-            repr::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
-            repr::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
-            repr::TerminatorKind::DropAndReplace {
+            mir::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
+            mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
+            mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: Some(ref unwind)
             } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
             }
-            repr::TerminatorKind::If { ref targets, .. } => {
+            mir::TerminatorKind::If { ref targets, .. } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, &targets.0);
                 self.propagate_bits_into_entry_set_for(in_out, changed, &targets.1);
             }
-            repr::TerminatorKind::Switch { ref targets, .. } |
-            repr::TerminatorKind::SwitchInt { ref targets, .. } => {
+            mir::TerminatorKind::Switch { ref targets, .. } |
+            mir::TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
                     self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 }
             }
-            repr::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
+            mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
                 if let Some(ref unwind) = *cleanup {
                     self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
                 }
@@ -494,7 +492,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
     fn propagate_bits_into_entry_set_for(&mut self,
                                          in_out: &IdxSet<D::Idx>,
                                          changed: &mut bool,
-                                         bb: &repr::BasicBlock) {
+                                         bb: &mir::BasicBlock) {
         let entry_set = self.flow_state.sets.for_block(bb.index()).on_entry;
         let set_changed = bitwise(entry_set.words_mut(),
                                   in_out.words(),

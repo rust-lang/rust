@@ -16,7 +16,7 @@ use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use rustc::mir::mir_map::MirMap;
-use rustc::mir::repr as mir;
+use rustc::mir;
 use base;
 use builder::Builder;
 use common::BuilderRef_res;

@@ -13,7 +13,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::repr::{self, Mir};
+use rustc::mir::{self, Mir};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::super::gather_moves::{MovePathIndex, LookupResult};
@@ -59,13 +59,11 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &Mir<'tcx>,
                            ctxt: &O::Ctxt,
                            results: &DataflowResults<O>,
-                           bb: repr::BasicBlock) where
+                           bb: mir::BasicBlock) where
     O: BitDenotation<Ctxt=MoveDataParamEnv<'tcx>, Idx=MovePathIndex>
 {
     let move_data = &ctxt.move_data;
-    let repr::BasicBlockData { ref statements,
-                               ref terminator,
-                               is_cleanup: _ } = mir[bb];
+    let mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = mir[bb];
 
     let (args, span) = match is_rustc_peek(tcx, terminator) {
         Some(args_and_span) => args_and_span,
@@ -73,7 +71,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     assert!(args.len() == 1);
     let peek_arg_lval = match args[0] {
-        repr::Operand::Consume(ref lval @ repr::Lvalue::Local(_)) => Some(lval),
+        mir::Operand::Consume(ref lval @ mir::Lvalue::Local(_)) => Some(lval),
         _ => None,
     };
 
@@ -103,21 +101,19 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for (j, stmt) in statements.iter().enumerate() {
         debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
         let (lvalue, rvalue) = match stmt.kind {
-            repr::StatementKind::Assign(ref lvalue, ref rvalue) => {
+            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
                 (lvalue, rvalue)
             }
-            repr::StatementKind::StorageLive(_) |
-            repr::StatementKind::StorageDead(_) |
-            repr::StatementKind::Nop => continue,
-            repr::StatementKind::SetDiscriminant{ .. } =>
+            mir::StatementKind::StorageLive(_) |
+            mir::StatementKind::StorageDead(_) |
+            mir::StatementKind::Nop => continue,
+            mir::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
                           "sanity_check should run before Deaggregator inserts SetDiscriminant"),
         };
 
         if lvalue == peek_arg_lval {
-            if let repr::Rvalue::Ref(_,
-                                     repr::BorrowKind::Shared,
-                                     ref peeking_at_lval) = *rvalue {
+            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_lval) = *rvalue {
                 // Okay, our search is over.
                 match move_data.rev_lookup.find(peeking_at_lval) {
                     LookupResult::Exact(peek_mpi) => {
@@ -162,12 +158,12 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           terminator: &'a Option<repr::Terminator<'tcx>>)
-                           -> Option<(&'a [repr::Operand<'tcx>], Span)> {
-    if let Some(repr::Terminator { ref kind, source_info, .. }) = *terminator {
-        if let repr::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind
+                           terminator: &'a Option<mir::Terminator<'tcx>>)
+                           -> Option<(&'a [mir::Operand<'tcx>], Span)> {
+    if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
+        if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind
         {
-            if let repr::Operand::Constant(ref func) = *oper
+            if let mir::Operand::Constant(ref func) = *oper
             {
                 if let ty::TyFnDef(def_id, _, &ty::BareFnTy { abi, .. }) = func.ty.sty
                 {

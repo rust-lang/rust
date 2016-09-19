@@ -12,7 +12,7 @@
 //! specified.
 
 use rustc::ty::TyCtxt;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
 

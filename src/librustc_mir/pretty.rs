@@ -11,7 +11,7 @@
 use build::{ScopeAuxiliaryVec, ScopeId};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::transform::MirSource;
 use rustc::ty::TyCtxt;

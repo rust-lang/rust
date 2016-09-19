@@ -32,7 +32,7 @@ use abi::Abi;
 use common::{CrateContext, FunctionContext, Block, BlockAndBuilder};
 use monomorphize::{self, Instance};
 use rustc::ty::{self, Ty};
-use rustc::mir::repr as mir;
+use rustc::mir;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, FnvHashMap, FnvHashSet};
 

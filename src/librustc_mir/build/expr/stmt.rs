@@ -12,7 +12,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::scope::LoopScope;
 use hair::*;
 use rustc::middle::region::CodeExtent;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {

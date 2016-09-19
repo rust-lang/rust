@@ -10,7 +10,7 @@
 
 use dot;
 use rustc::hir::def_id::DefId;
-use rustc::mir::repr::*;
+use rustc::mir::*;
 use rustc::mir::mir_map::MirMap;
 use rustc::ty::TyCtxt;
 use std::fmt::Debug;

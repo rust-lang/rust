@@ -15,7 +15,7 @@ use super::utils::{DIB, span_start};
 use llvm;
 use llvm::debuginfo::{DIScope, DISubprogram};
 use common::{CrateContext, FunctionContext};
-use rustc::mir::repr::{Mir, VisibilityScope};
+use rustc::mir::{Mir, VisibilityScope};
 
 use libc::c_uint;
 use std::ptr;

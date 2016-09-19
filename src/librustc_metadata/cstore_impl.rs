@@ -23,7 +23,7 @@ use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::DefKey;
-use rustc::mir::repr::Mir;
+use rustc::mir::Mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
