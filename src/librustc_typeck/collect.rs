@@ -563,6 +563,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             vis: &hir::Visibility,
                             sig: &hir::MethodSig,
                             defaultness: hir::Defaultness,
+                            has_body: bool,
                             untransformed_rcvr_ty: Ty<'tcx>,
                             rcvr_ty_predicates: &ty::GenericPredicates<'tcx>) {
     let def_id = ccx.tcx.map.local_def_id(id);
@@ -580,15 +581,18 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               sig, untransformed_rcvr_ty, anon_scope)
     };
 
-    let ty_method = ty::Method::new(name,
-                                    ty_generics,
-                                    ty_generic_predicates,
-                                    fty,
-                                    explicit_self_category,
-                                    ty::Visibility::from_hir(vis, id, ccx.tcx),
-                                    defaultness,
-                                    def_id,
-                                    container);
+    let ty_method = ty::Method {
+        name: name,
+        generics: ty_generics,
+        predicates: ty_generic_predicates,
+        fty: fty,
+        explicit_self: explicit_self_category,
+        vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
+        defaultness: defaultness,
+        has_body: has_body,
+        def_id: def_id,
+        container: container,
+    };
 
     let substs = mk_item_substs(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
                                 ccx.tcx.map.span(id), def_id);
@@ -843,7 +847,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
                     convert_method(ccx, ImplContainer(def_id),
                                    impl_item.name, impl_item.id, method_vis,
-                                   sig, impl_item.defaultness, selfty,
+                                   sig, impl_item.defaultness, true, selfty,
                                    &ty_predicates);
                 }
             }
@@ -905,7 +909,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Convert all the methods
             for trait_item in trait_items {
-                if let hir::MethodTraitItem(ref sig, _) = trait_item.node {
+                if let hir::MethodTraitItem(ref sig, ref body) = trait_item.node {
                     convert_method(ccx,
                                    container,
                                    trait_item.name,
@@ -913,6 +917,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                    &hir::Inherited,
                                    sig,
                                    hir::Defaultness::Default,
+                                   body.is_some(),
                                    tcx.mk_self_type(),
                                    &trait_predicates);
 
@@ -928,8 +933,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     hir::TypeTraitItem(..) => ty::TypeTraitItemId(def_id)
                 }
             }).collect());
-            tcx.trait_item_def_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
-                                                       trait_item_def_ids);
+            tcx.impl_or_trait_item_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
+                                                           trait_item_def_ids);
         },
         hir::ItemStruct(ref struct_def, _) |
         hir::ItemUnion(ref struct_def, _) => {

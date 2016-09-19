@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mem;
 use std::io::prelude::*;
 use std::io::{self, SeekFrom, Cursor};
 
@@ -112,50 +111,10 @@ impl<'a> Encoder<'a> {
         Ok(())
     }
 
-    pub fn wr_tag<F>(&mut self, tag_id: usize, blk: F) -> EncodeResult
-        where F: FnOnce() -> EncodeResult
-    {
-        self.start_tag(tag_id)?;
-        blk()?;
-        self.end_tag()
-    }
-
-    pub fn wr_tagged_bytes(&mut self, tag_id: usize, b: &[u8]) -> EncodeResult {
-        write_tag(&mut self.opaque.cursor, tag_id)?;
-        write_vuint(&mut self.opaque.cursor, b.len())?;
-        self.opaque.cursor.write_all(b)
-    }
-
-    pub fn wr_tagged_u64(&mut self, tag_id: usize, v: u64) -> EncodeResult {
-        let bytes: [u8; 8] = unsafe { mem::transmute(v.to_be()) };
-        // tagged integers are emitted in big-endian, with no
-        // leading zeros.
-        let leading_zero_bytes = v.leading_zeros() / 8;
-        self.wr_tagged_bytes(tag_id, &bytes[leading_zero_bytes as usize..])
-    }
-
-    #[inline]
-    pub fn wr_tagged_u32(&mut self, tag_id: usize, v: u32) -> EncodeResult {
-        self.wr_tagged_u64(tag_id, v as u64)
-    }
-
-    #[inline]
-    pub fn wr_tagged_u8(&mut self, tag_id: usize, v: u8) -> EncodeResult {
-        self.wr_tagged_bytes(tag_id, &[v])
-    }
-
     pub fn wr_tagged_str(&mut self, tag_id: usize, v: &str) -> EncodeResult {
-        self.wr_tagged_bytes(tag_id, v.as_bytes())
-    }
-
-    pub fn wr_bytes(&mut self, b: &[u8]) -> EncodeResult {
-        debug!("Write {:?} bytes", b.len());
-        self.opaque.cursor.write_all(b)
-    }
-
-    pub fn wr_str(&mut self, s: &str) -> EncodeResult {
-        debug!("Write str: {:?}", s);
-        self.opaque.cursor.write_all(s.as_bytes())
+        write_tag(&mut self.opaque.cursor, tag_id)?;
+        write_vuint(&mut self.opaque.cursor, v.len())?;
+        self.opaque.cursor.write_all(v.as_bytes())
     }
 
     pub fn position(&mut self) -> usize {

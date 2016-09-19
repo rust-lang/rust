@@ -580,22 +580,24 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn expect_struct(&self, id: NodeId) -> &'ast VariantData {
+    pub fn expect_variant_data(&self, id: NodeId) -> &'ast VariantData {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
-                    ItemStruct(ref struct_def, _) => struct_def,
-                    _ => bug!("struct ID bound to non-struct")
+                    ItemStruct(ref struct_def, _) |
+                    ItemUnion(ref struct_def, _) => struct_def,
+                    _ => {
+                        bug!("struct ID bound to non-struct {}",
+                             self.node_to_string(id));
+                    }
                 }
             }
-            Some(NodeVariant(variant)) => {
-                if variant.node.data.is_struct() {
-                    &variant.node.data
-                } else {
-                    bug!("struct ID bound to enum variant that isn't struct-like")
-                }
+            Some(NodeStructCtor(data)) => data,
+            Some(NodeVariant(variant)) => &variant.node.data,
+            _ => {
+                bug!("expected struct or variant, found {}",
+                     self.node_to_string(id));
             }
-            _ => bug!("expected struct, found {}", self.node_to_string(id)),
         }
     }
 

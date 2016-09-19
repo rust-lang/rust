@@ -22,7 +22,7 @@ use index;
 use loader;
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::{CrateNum, DefIndex, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, DefId};
 use rustc::hir::map::DefKey;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::ExternCrate;
@@ -77,7 +77,6 @@ pub struct CrateMetadata {
     pub cnum_map: RefCell<CrateNumMap>,
     pub cnum: CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
-    pub staged_api: bool,
 
     pub index: index::Index,
     pub xref_index: index::DenseIndex,
@@ -300,9 +299,9 @@ impl CStore {
 
 impl CrateMetadata {
     pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
-    pub fn name(&self) -> &str { decoder::get_crate_name(self.data()) }
+    pub fn name(&self) -> String { decoder::get_crate_name(self.data()) }
     pub fn hash(&self) -> Svh { decoder::get_crate_hash(self.data()) }
-    pub fn disambiguator(&self) -> &str {
+    pub fn disambiguator(&self) -> String {
         decoder::get_crate_disambiguator(self.data())
     }
     pub fn imported_filemaps<'a>(&'a self, codemap: &codemap::CodeMap)
@@ -320,23 +319,30 @@ impl CrateMetadata {
         }
     }
 
+    pub fn is_staged_api(&self) -> bool {
+        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
+        attrs.iter().any(|attr| {
+            attr.name() == "stable" || attr.name() == "unstable"
+        })
+    }
+
     pub fn is_allocator(&self) -> bool {
-        let attrs = decoder::get_crate_attributes(self.data());
+        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "allocator")
     }
 
     pub fn needs_allocator(&self) -> bool {
-        let attrs = decoder::get_crate_attributes(self.data());
+        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "needs_allocator")
     }
 
     pub fn is_panic_runtime(&self) -> bool {
-        let attrs = decoder::get_crate_attributes(self.data());
+        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "panic_runtime")
     }
 
     pub fn needs_panic_runtime(&self) -> bool {
-        let attrs = decoder::get_crate_attributes(self.data());
+        let attrs = decoder::get_item_attrs(self, CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "needs_panic_runtime")
     }
 

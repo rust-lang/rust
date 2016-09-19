@@ -13,13 +13,13 @@ use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
-use rustc::hir::def_id::{CrateNum, DefId};
+use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::map as hir_map;
 use rustc::lint;
-use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
+use rustc::util::nodemap::FnvHashMap;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
@@ -53,7 +53,7 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub map: &'a hir_map::Map<'tcx>,
     pub maybe_typed: MaybeTyped<'a, 'tcx>,
     pub input: Input,
-    pub populated_crate_impls: RefCell<FnvHashSet<CrateNum>>,
+    pub populated_all_crate_impls: Cell<bool>,
     pub deref_trait_did: Cell<Option<DefId>>,
     pub deref_mut_trait_did: Cell<Option<DefId>>,
     // Note that external items for which `doc(hidden)` applies to are shown as
@@ -205,7 +205,7 @@ pub fn run_core(search_paths: SearchPaths,
             map: &tcx.map,
             maybe_typed: Typed(tcx),
             input: input,
-            populated_crate_impls: Default::default(),
+            populated_all_crate_impls: Cell::new(false),
             deref_trait_did: Cell::new(None),
             deref_mut_trait_did: Cell::new(None),
             access_levels: RefCell::new(access_levels),

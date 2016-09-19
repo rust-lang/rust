@@ -55,12 +55,12 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             })
         }
 
-        let impl_items = self.tcx.impl_items.borrow();
+        let impl_items = self.tcx.impl_or_trait_item_ids.borrow();
 
-        for item1 in &impl_items[&impl1] {
+        for item1 in &impl_items[&impl1][..] {
             let (name, namespace) = name_and_namespace(self.tcx, item1);
 
-            for item2 in &impl_items[&impl2] {
+            for item2 in &impl_items[&impl2][..] {
                 if (name, namespace) == name_and_namespace(self.tcx, item2) {
                     let msg = format!("duplicate definitions with name `{}`", name);
                     let node_id = self.tcx.map.as_local_node_id(item1.def_id()).unwrap();

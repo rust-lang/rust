@@ -1275,6 +1275,7 @@ impl<'a> Resolver<'a> {
                                -> Module<'a> {
         let mut module = ModuleS::new(parent_link, Some(def), Some(local_node_id));
         module.extern_crate_id = Some(local_node_id);
+        module.populated.set(false);
         self.arenas.modules.alloc(module)
     }
 

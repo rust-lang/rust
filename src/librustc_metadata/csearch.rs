@@ -14,11 +14,11 @@ use decoder;
 use encoder;
 use loader;
 
-use middle::cstore::{InlinedItem, CrateStore, CrateSource, ChildItem, ExternCrate, DefLike};
+use middle::cstore::{InlinedItem, CrateStore, CrateSource, ChildItem, ExternCrate};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use rustc::hir::def;
 use middle::lang_items;
-use rustc::ty::{self, Ty, TyCtxt, VariantKind};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 
 use rustc::dep_graph::DepNode;
@@ -26,10 +26,9 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::DefKey;
 use rustc::mir::repr::Mir;
 use rustc::mir::mir_map::MirMap;
-use rustc::util::nodemap::{FnvHashMap, NodeSet, DefIdMap};
+use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc::session::config::PanicStrategy;
 
-use std::rc::Rc;
 use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
@@ -166,42 +165,27 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn implementations_of_trait(&self, def_id: DefId) -> Vec<DefId>
+    fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
     {
-        self.dep_graph.read(DepNode::MetaData(def_id));
+        if let Some(def_id) = filter {
+            self.dep_graph.read(DepNode::MetaData(def_id));
+        }
         let mut result = vec![];
         self.iter_crate_data(|_, cdata| {
-            decoder::each_implementation_for_trait(cdata, def_id, &mut |iid| {
+            decoder::each_implementation_for_trait(cdata, filter, &mut |iid| {
                 result.push(iid)
             })
         });
         result
     }
 
-    fn provided_trait_methods<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                                  -> Vec<Rc<ty::Method<'tcx>>>
-    {
-        self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_provided_trait_methods(&cdata, def.index, tcx)
+    fn impl_or_trait_items(&self, def_id: DefId) -> Vec<ty::ImplOrTraitItemId> {
+        self.dep_graph.read(DepNode::MetaData(def_id));
+        let cdata = self.get_crate_data(def_id.krate);
+        decoder::get_impl_or_trait_items(&cdata, def_id.index)
     }
 
-    fn trait_item_def_ids(&self, def: DefId)
-                          -> Vec<ty::ImplOrTraitItemId>
-    {
-        self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_trait_item_def_ids(&cdata, def.index)
-    }
-
-    fn impl_items(&self, impl_def_id: DefId) -> Vec<ty::ImplOrTraitItemId>
-    {
-        self.dep_graph.read(DepNode::MetaData(impl_def_id));
-        let cdata = self.get_crate_data(impl_def_id.krate);
-        decoder::get_impl_items(&cdata, impl_def_id.index)
-    }
-
-    fn impl_polarity(&self, def: DefId) -> Option<hir::ImplPolarity>
+    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity
     {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
@@ -222,14 +206,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.dep_graph.read(DepNode::MetaData(def));
         let cdata = self.get_crate_data(def.krate);
         decoder::get_custom_coerce_unsized_kind(&cdata, def.index)
-    }
-
-    // FIXME: killme
-    fn associated_consts<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                             -> Vec<Rc<ty::AssociatedConst<'tcx>>> {
-        self.dep_graph.read(DepNode::MetaData(def));
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_associated_consts(&cdata, def.index, tcx)
     }
 
     fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
@@ -266,13 +242,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_defaulted_trait(&cdata, trait_def_id.index)
     }
 
-    fn is_impl(&self, did: DefId) -> bool
-    {
-        self.dep_graph.read(DepNode::MetaData(did));
-        let cdata = self.get_crate_data(did.krate);
-        decoder::is_impl(&cdata, did.index)
-    }
-
     fn is_default_impl(&self, impl_did: DefId) -> bool {
         self.dep_graph.read(DepNode::MetaData(impl_did));
         let cdata = self.get_crate_data(impl_did.krate);
@@ -295,12 +264,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         self.do_is_statically_included_foreign_item(id)
     }
 
-    fn is_typedef(&self, did: DefId) -> bool {
-        self.dep_graph.read(DepNode::MetaData(did));
-        let cdata = self.get_crate_data(did.krate);
-        decoder::is_typedef(&cdata, did.index)
-    }
-
     fn dylib_dependency_formats(&self, cnum: CrateNum)
                                 -> Vec<(CrateNum, LinkagePreference)>
     {
@@ -310,12 +273,8 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
     {
-        let mut result = vec![];
         let crate_data = self.get_crate_data(cnum);
-        decoder::each_lang_item(&crate_data, |did, lid| {
-            result.push((did, lid)); true
-        });
-        result
+        decoder::get_lang_items(&crate_data)
     }
 
     fn missing_lang_items(&self, cnum: CrateNum)
@@ -327,7 +286,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn is_staged_api(&self, cnum: CrateNum) -> bool
     {
-        self.get_crate_data(cnum).staged_api
+        self.get_crate_data(cnum).is_staged_api()
     }
 
     fn is_explicitly_linked(&self, cnum: CrateNum) -> bool
@@ -355,7 +314,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
     fn crate_attrs(&self, cnum: CrateNum) -> Vec<ast::Attribute>
     {
-        decoder::get_crate_attributes(self.get_crate_data(cnum).data())
+        decoder::get_item_attrs(&self.get_crate_data(cnum), CRATE_DEF_INDEX)
     }
 
     fn crate_name(&self, cnum: CrateNum) -> token::InternedString
@@ -382,13 +341,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn crate_disambiguator(&self, cnum: CrateNum) -> token::InternedString
     {
         let cdata = self.get_crate_data(cnum);
-        token::intern_and_get_ident(decoder::get_crate_disambiguator(cdata.data()))
-    }
-
-    fn crate_struct_field_attrs(&self, cnum: CrateNum)
-                                -> FnvHashMap<DefId, Vec<ast::Attribute>>
-    {
-        decoder::get_struct_field_attrs(&self.get_crate_data(cnum))
+        token::intern_and_get_ident(&decoder::get_crate_disambiguator(cdata.data()))
     }
 
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
@@ -447,12 +400,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::def_path(&cdata, def.index)
     }
 
-    fn variant_kind(&self, def_id: DefId) -> Option<VariantKind> {
-        self.dep_graph.read(DepNode::MetaData(def_id));
-        let cdata = self.get_crate_data(def_id.krate);
-        decoder::get_variant_kind(&cdata, def_id.index)
-    }
-
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
     {
         self.dep_graph.read(DepNode::MetaData(struct_def_id));
@@ -481,17 +428,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let crate_data = self.get_crate_data(def_id.krate);
         let get_crate_data = |cnum| self.get_crate_data(cnum);
         decoder::each_child_of_item(&crate_data, def_id.index, get_crate_data, |def, name, vis| {
-            result.push(ChildItem { def: def, name: name, vis: vis });
-        });
-        result
-    }
-
-    fn crate_top_level_items(&self, cnum: CrateNum) -> Vec<ChildItem>
-    {
-        let mut result = vec![];
-        let crate_data = self.get_crate_data(cnum);
-        let get_crate_data = |cnum| self.get_crate_data(cnum);
-        decoder::each_top_level_item_of_crate(&crate_data, get_crate_data, |def, name, vis| {
             result.push(ChildItem { def: def, name: name, vis: vis });
         });
         result
@@ -726,9 +662,10 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
 
             let mut bfs_queue = &mut VecDeque::new();
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: ChildItem, parent: DefId| {
-                let child = match child.def {
-                    DefLike::DlDef(def) if child.vis == ty::Visibility::Public => def.def_id(),
-                    _ => return,
+                let child = if child.vis == ty::Visibility::Public {
+                    child.def.def_id()
+                } else {
+                    return;
                 };
 
                 match visible_parent_map.entry(child) {
@@ -746,10 +683,10 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                 }
             };
 
-            let croot = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-            for child in self.crate_top_level_items(cnum) {
-                add_child(bfs_queue, child, croot);
-            }
+            bfs_queue.push_back(DefId {
+                krate: cnum,
+                index: CRATE_DEF_INDEX
+            });
             while let Some(def) = bfs_queue.pop_front() {
                 for child in self.item_children(def) {
                     add_child(bfs_queue, child, def);
@@ -760,4 +697,3 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         visible_parent_map
     }
 }
-

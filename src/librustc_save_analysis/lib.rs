@@ -543,10 +543,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 .map(|mr| mr.def_id())
                         }
                         ty::ImplContainer(def_id) => {
-                            let impl_items = self.tcx.impl_items.borrow();
-                            Some(impl_items.get(&def_id)
-                                           .unwrap()
-                                           .iter()
+                            let impl_items = self.tcx.impl_or_trait_items(def_id);
+                            Some(impl_items.iter()
                                            .find(|mr| {
                                                self.tcx.impl_or_trait_item(mr.def_id()).name() ==
                                                ti.name()

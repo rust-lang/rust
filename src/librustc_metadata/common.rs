@@ -10,13 +10,38 @@
 
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
+use rustc::ty;
+
+#[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum Family {
+    ImmStatic,
+    MutStatic,
+    Fn,
+    Method,
+    AssociatedType,
+    Type,
+    Mod,
+    ForeignMod,
+    Enum,
+    Variant(ty::VariantKind),
+    Impl,
+    DefaultImpl,
+    Trait,
+    Struct(ty::VariantKind),
+    Union,
+    PublicField,
+    InheritedField,
+    Const,
+    AssociatedConst,
+}
+
 // GAP 0x00...0x19
 
 pub const tag_items: usize = 0x100; // top-level only
 
 pub const tag_paths_data_name: usize = 0x20;
 
-pub const tag_def_id: usize = 0x21;
+pub const tag_def_index: usize = 0x21;
 
 pub const tag_items_data: usize = 0x22;
 
@@ -26,9 +51,7 @@ pub const tag_items_data_item_family: usize = 0x24;
 
 pub const tag_items_data_item_type: usize = 0x25;
 
-// GAP 0x26
-
-pub const tag_items_data_item_variant: usize = 0x27;
+// GAP 0x26, 0x27
 
 pub const tag_items_data_parent_item: usize = 0x28;
 
@@ -47,19 +70,11 @@ pub const tag_attributes: usize = 0x101; // top-level only
 
 // The list of crates that this crate depends on
 pub const tag_crate_deps: usize = 0x102; // top-level only
-
-// A single crate dependency
-pub const tag_crate_dep: usize = 0x35;
-
 pub const tag_crate_hash: usize = 0x103; // top-level only
 pub const tag_crate_crate_name: usize = 0x104; // top-level only
 pub const tag_crate_disambiguator: usize = 0x113; // top-level only
 
-pub const tag_crate_dep_crate_name: usize = 0x36;
-pub const tag_crate_dep_hash: usize = 0x37;
-pub const tag_crate_dep_explicitly_linked: usize = 0x38; // top-level only
-
-pub const tag_item_trait_item: usize = 0x3a;
+// GAP 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a
 
 pub const tag_item_trait_ref: usize = 0x3b;
 
@@ -68,26 +83,13 @@ pub const tag_disr_val: usize = 0x3c;
 
 // GAP 0x3d, 0x3e, 0x3f, 0x40
 
-pub const tag_item_field: usize = 0x41;
+pub const tag_item_fields: usize = 0x41;
 // GAP 0x42
 pub const tag_item_variances: usize = 0x43;
-/*
-  trait items contain tag_item_trait_item elements,
-  impl items contain tag_item_impl_item elements, and classes
-  have both. That's because some code treats classes like traits,
-  and other code treats them like impls. Because classes can contain
-  both, tag_item_trait_item and tag_item_impl_item have to be two
-  different tags.
- */
-pub const tag_item_impl_item: usize = 0x44;
+// GAP 0x44
 pub const tag_item_trait_method_explicit_self: usize = 0x45;
 
-
-// Reexports are found within module tags. Each reexport contains def_ids
-// and names.
-pub const tag_items_data_item_reexport: usize = 0x46;
-pub const tag_items_data_item_reexport_def_id: usize = 0x47;
-pub const tag_items_data_item_reexport_name: usize = 0x48;
+// GAP 0x46, 0x47, 0x48
 
 // used to encode crate_ctxt side tables
 pub const tag_ast: usize = 0x50;
@@ -98,58 +100,58 @@ pub const tag_mir: usize = 0x52;
 
 // GAP 0x53...0x6a
 
-pub const tag_item_trait_item_sort: usize = 0x70;
+pub const tag_item_trait_item_has_body: usize = 0x70;
 
 pub const tag_crate_triple: usize = 0x105; // top-level only
 
 pub const tag_dylib_dependency_formats: usize = 0x106; // top-level only
 
-// Language items are a top-level directory (for speed). Hierarchy:
-//
-// tag_lang_items
-// - tag_lang_items_item
-//   - tag_lang_items_item_id: u32
-//   - tag_lang_items_item_index: u32
-
 pub const tag_lang_items: usize = 0x107; // top-level only
-pub const tag_lang_items_item: usize = 0x73;
-pub const tag_lang_items_item_id: usize = 0x74;
-pub const tag_lang_items_item_index: usize = 0x75;
-pub const tag_lang_items_missing: usize = 0x76;
 
-pub const tag_item_unnamed_field: usize = 0x77;
+// GAP 0x73, 0x74, 0x75
+
+pub const tag_lang_items_missing: usize = 0x76; // top-level only
+
+// GAP 0x77
+
 pub const tag_items_data_item_visibility: usize = 0x78;
-pub const tag_items_data_item_inherent_impl: usize = 0x79;
+pub const tag_items_data_item_inherent_impls: usize = 0x79;
+
 // GAP 0x7a
-pub const tag_mod_child: usize = 0x7b;
+
+// GAP 0x7c
+pub const tag_mod_children: usize = 0x7b;
+
+// GAP 0x108 // top-level only
+
 // GAP 0x7c
 
 // GAP 0x108
 pub const tag_impls: usize = 0x109; // top-level only
-pub const tag_impls_trait: usize = 0x7d;
-pub const tag_impls_trait_impl: usize = 0x7e;
 
-// GAP 0x7f, 0x80, 0x81
+// GAP 0x7d, 0x7e, 0x7f, 0x80, 0x81
 
 pub const tag_native_libraries: usize = 0x10a; // top-level only
-pub const tag_native_libraries_lib: usize = 0x82;
-pub const tag_native_libraries_name: usize = 0x83;
-pub const tag_native_libraries_kind: usize = 0x84;
+
+// GAP 0x82, 0x83, 0x84
 
 pub const tag_plugin_registrar_fn: usize = 0x10b; // top-level only
 
 pub const tag_method_argument_names: usize = 0x85;
-pub const tag_method_argument_name: usize = 0x86;
+
+// GAP 0x86
 
 pub const tag_reachable_ids: usize = 0x10c; // top-level only
-pub const tag_reachable_id: usize = 0x87;
+
+// GAP 0x87
 
 pub const tag_items_data_item_stability: usize = 0x88;
 
 pub const tag_items_data_item_repr: usize = 0x89;
 
-pub const tag_struct_fields: usize = 0x10d; // top-level only
-pub const tag_struct_field: usize = 0x8a;
+// GAP 0x10d // top-level only
+
+// GAP 0x8a
 
 pub const tag_items_data_item_struct_ctor: usize = 0x8b;
 pub const tag_attribute_is_sugared_doc: usize = 0x8c;
@@ -160,10 +162,7 @@ pub const tag_item_generics: usize = 0x8f;
 // GAP 0x90, 0x91, 0x92, 0x93, 0x94
 
 pub const tag_item_predicates: usize = 0x95;
-// GAP 0x96
-
-pub const tag_predicate: usize = 0x97;
-// GAP 0x98, 0x99
+// GAP 0x96, 0x97, 0x98, 0x99
 
 pub const tag_unsafety: usize = 0x9a;
 
@@ -173,15 +172,14 @@ pub const tag_associated_type_name: usize = 0x9c;
 pub const tag_polarity: usize = 0x9d;
 
 pub const tag_macro_defs: usize = 0x10e; // top-level only
-pub const tag_macro_def: usize = 0x9e;
-pub const tag_macro_def_body: usize = 0x9f;
-pub const tag_macro_def_span_lo: usize = 0xa8;
-pub const tag_macro_def_span_hi: usize = 0xa9;
+
+// GAP 0x9e, 0x9f
 
 pub const tag_paren_sugar: usize = 0xa0;
 
 pub const tag_codemap: usize = 0xa1;
-pub const tag_codemap_filemap: usize = 0xa2;
+
+// GAP 0xa2
 
 pub const tag_item_super_predicates: usize = 0xa3;
 
