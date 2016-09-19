@@ -382,7 +382,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     print!("__ ");
                 }
             }
-            println!("({} bytes)", alloc.bytes.len());
+
+            let immutable = if alloc.immutable { " (immutable)" } else { "" };
+            println!("({} bytes){}", alloc.bytes.len(), immutable);
 
             if !relocations.is_empty() {
                 print!("{:1$}", "", prefix.len()); // Print spaces.
