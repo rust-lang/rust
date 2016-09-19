@@ -1006,7 +1006,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         Err(e) => return Err(e),
                     }
                 } else {
-                    return Err(EvalError::Unimplemented(format!("unimplemented: primitive read of fat pointer type: {:?}", ty)));
+                    bug!("primitive read of fat pointer type: {:?}", ty);
                 }
             }
 
