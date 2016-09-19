@@ -1,6 +1,8 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+#![allow(dead_code)]
+
 extern crate core;
 
 use std::mem::transmute as my_transmute;
@@ -83,6 +85,31 @@ unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     let _: &T = &*(om as *const T);
 }
 
+#[deny(transmute_ptr_to_ref)]
+fn issue1231() {
+    struct Foo<'a, T: 'a> {
+        bar: &'a T,
+    }
+
+    let raw = 0 as *const i32;
+    let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
+    //~^ ERROR transmute from a pointer type
+    //~| HELP try
+    //~| SUGGESTION unsafe { &*(raw as *const Foo<_>) };
+
+    let _: &Foo<&u8> = unsafe { std::mem::transmute::<_, &Foo<&_>>(raw) };
+    //~^ ERROR transmute from a pointer type
+    //~| HELP try
+    //~| SUGGESTION unsafe { &*(raw as *const Foo<&_>) };
+
+    type Bar<'a> = &'a u8;
+    let raw = 0 as *const i32;
+    unsafe { std::mem::transmute::<_, Bar>(raw) };
+    //~^ ERROR transmute from a pointer type
+    //~| HELP try
+    //~| SUGGESTION unsafe { &*(raw as *const u8) };
+}
+
 #[deny(useless_transmute)]
 fn useless() {
     unsafe {
@@ -144,7 +171,4 @@ fn crosspointer() {
     }
 }
 
-fn main() {
-    useless();
-    crosspointer();
-}
+fn main() { }
