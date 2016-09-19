@@ -92,6 +92,8 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     t: Ty<'tcx>) -> Ty<'tcx> {
     assert!(t.is_normalized_for_trans());
 
+    let t = tcx.erase_regions(&t);
+
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
     if !type_is_sized(tcx, t) {
