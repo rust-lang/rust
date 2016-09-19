@@ -55,8 +55,8 @@ fn foo() -> bool {
     }
 
     if let (some_very_large,
-            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1111 +
-                                                                                         2222 {}
+            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) =
+        1111 + 2222 {}
 
     if let (some_very_large,
             tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {
@@ -283,10 +283,23 @@ fn complex_if_else() {
     } else if xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx + xxxxxxxx {
         yo();
     } else if let Some(x) =
-                  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
         ha();
     } else if xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx +
               xxxxxxxxx {
         yo();
+    }
+}
+
+fn issue1106() {
+    {
+        if let hir::ItemEnum(ref enum_def, ref generics) =
+            self.ast_map.expect_item(enum_node_id).node {
+        }
+    }
+
+    for entry in WalkDir::new(path)
+        .into_iter()
+        .filter_entry(|entry| exclusions.filter_entry(entry)) {
     }
 }
