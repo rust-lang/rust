@@ -1021,6 +1021,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     None => return Err(EvalError::InvalidChar(c as u64)),
                 }
             }
+
             &ty::TyInt(IntTy::I8)    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
             &ty::TyInt(IntTy::I16)   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
             &ty::TyInt(IntTy::I32)   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
@@ -1030,15 +1031,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             &ty::TyUint(UintTy::U32) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
             &ty::TyUint(UintTy::U64) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
 
-            &ty::TyInt(IntTy::Is) => {
-                let psize = self.memory.pointer_size();
-                self.target_isize_primval(self.memory.read_int(ptr, psize)?)
-            }
-
-            &ty::TyUint(UintTy::Us) => {
-                let psize = self.memory.pointer_size();
-                self.target_usize_primval(self.memory.read_uint(ptr, psize)?)
-            }
+            &ty::TyInt(IntTy::Is)    => self.target_isize_primval(self.memory.read_isize(ptr)?),
+            &ty::TyUint(UintTy::Us)  => self.target_usize_primval(self.memory.read_usize(ptr)?),
 
             &ty::TyFloat(FloatTy::F32) => PrimVal::F32(self.memory.read_f32(ptr)?),
             &ty::TyFloat(FloatTy::F64) => PrimVal::F64(self.memory.read_f64(ptr)?),
