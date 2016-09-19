@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use arena::TypedArena;
-use back::symbol_names;
 use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
 use abi::{Abi, FnType};
@@ -152,6 +151,7 @@ pub fn trans_closure_body_via_mir<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                       closure_def_id: DefId,
                                       substs: ty::ClosureSubsts<'tcx>,
+                                      method_instance: Instance<'tcx>,
                                       trait_closure_kind: ty::ClosureKind)
                                       -> ValueRef
 {
@@ -199,7 +199,7 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
             //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
             //
             // These are both the same at trans time.
-            trans_fn_once_adapter_shim(ccx, closure_def_id, substs, llfn)
+            trans_fn_once_adapter_shim(ccx, closure_def_id, substs, method_instance, llfn)
         }
         _ => {
             bug!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
@@ -213,6 +213,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     closure_def_id: DefId,
     substs: ty::ClosureSubsts<'tcx>,
+    method_instance: Instance<'tcx>,
     llreffn: ValueRef)
     -> ValueRef
 {
@@ -255,8 +256,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     }));
 
     // Create the by-value helper.
-    let function_name =
-        symbol_names::internal_name_from_type_and_suffix(ccx, llonce_fn_ty, "once_shim");
+    let function_name = method_instance.symbol_name(ccx.shared());
     let lloncefn = declare::declare_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
