@@ -330,8 +330,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Maps from a trait item to the trait item "descriptor"
     pub impl_or_trait_items: RefCell<DepTrackingMap<maps::ImplOrTraitItems<'tcx>>>,
 
-    /// Maps from a trait def-id to a list of the def-ids of its trait items
-    pub trait_item_def_ids: RefCell<DepTrackingMap<maps::TraitItemDefIds<'tcx>>>,
+    /// Maps from an impl/trait def-id to a list of the def-ids of its items
+    pub impl_or_trait_item_ids: RefCell<DepTrackingMap<maps::ImplOrTraitItemIds<'tcx>>>,
 
     /// A cache for the trait_items() routine; note that the routine
     /// itself pushes the `TraitItems` dependency node.
@@ -391,12 +391,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
     pub inherent_impls: RefCell<DepTrackingMap<maps::InherentImpls<'tcx>>>,
-
-    /// Maps a DefId of an impl to a list of its items.
-    /// Note that this contains all of the impls that we know about,
-    /// including ones in other crates. It's not clear that this is the best
-    /// way to do it.
-    pub impl_items: RefCell<DepTrackingMap<maps::ImplItems<'tcx>>>,
 
     /// Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     /// present in this set can be warned about.
@@ -734,13 +728,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             rcache: RefCell::new(FnvHashMap()),
             tc_cache: RefCell::new(FnvHashMap()),
             impl_or_trait_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            trait_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
+            impl_or_trait_item_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_items_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             ty_param_defs: RefCell::new(NodeMap()),
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
             inherent_impls: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            impl_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             used_unsafe: RefCell::new(NodeSet()),
             used_mut_nodes: RefCell::new(NodeSet()),
             used_trait_imports: RefCell::new(NodeSet()),
@@ -1401,7 +1394,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn trait_items(self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'gcx>>> {
         self.trait_items_cache.memoize(trait_did, || {
-            let def_ids = self.trait_item_def_ids(trait_did);
+            let def_ids = self.impl_or_trait_items(trait_did);
             Rc::new(def_ids.iter()
                            .map(|d| self.impl_or_trait_item(d.def_id()))
                            .collect())

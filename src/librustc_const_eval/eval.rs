@@ -1080,9 +1080,17 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // when constructing the inference context above.
         match selection {
             traits::VtableImpl(ref impl_data) => {
-                match tcx.associated_consts(impl_data.impl_def_id)
-                        .iter().find(|ic| ic.name == ti.name) {
-                    Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
+                let ac = tcx.impl_or_trait_items(impl_data.impl_def_id)
+                    .iter().filter_map(|id| {
+                        match *id {
+                            ty::ConstTraitItemId(def_id) => {
+                                Some(tcx.impl_or_trait_item(def_id))
+                            }
+                            _ => None
+                        }
+                    }).find(|ic| ic.name() == ti.name);
+                match ac {
+                    Some(ic) => lookup_const_by_id(tcx, ic.def_id(), None),
                     None => match ti.node {
                         hir::ConstTraitItem(ref ty, Some(ref expr)) => {
                             Some((&*expr, tcx.ast_ty_to_prim_ty(ty)))

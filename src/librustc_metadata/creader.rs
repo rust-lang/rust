@@ -264,7 +264,7 @@ impl<'a> CrateReader<'a> {
 
         // Check for (potential) conflicts with the local crate
         if self.local_crate_name == crate_name &&
-           self.sess.local_crate_disambiguator() == disambiguator {
+           self.sess.local_crate_disambiguator() == &disambiguator[..] {
             span_fatal!(self.sess, span, E0519,
                         "the current crate is indistinguishable from one of its \
                          dependencies: it has the same crate-name `{}` and was \
@@ -320,7 +320,6 @@ impl<'a> CrateReader<'a> {
         let loader::Library { dylib, rlib, metadata } = lib;
 
         let cnum_map = self.resolve_crate_deps(root, metadata.as_slice(), cnum, span);
-        let staged_api = self.is_staged_api(metadata.as_slice());
 
         let cmeta = Rc::new(cstore::CrateMetadata {
             name: name.to_string(),
@@ -332,7 +331,6 @@ impl<'a> CrateReader<'a> {
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,
             codemap_import_info: RefCell::new(vec![]),
-            staged_api: staged_api,
             explicitly_linked: Cell::new(explicitly_linked),
         });
 
@@ -350,16 +348,6 @@ impl<'a> CrateReader<'a> {
         self.cstore.set_crate_data(cnum, cmeta.clone());
         self.cstore.add_used_crate_source(source.clone());
         (cnum, cmeta, source)
-    }
-
-    fn is_staged_api(&self, data: &[u8]) -> bool {
-        let attrs = decoder::get_crate_attributes(data);
-        for attr in &attrs {
-            if attr.name() == "stable" || attr.name() == "unstable" {
-                return true
-            }
-        }
-        false
     }
 
     fn resolve_crate(&mut self,

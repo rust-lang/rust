@@ -20,7 +20,7 @@ use decoder;
 use def_key;
 use index::{self, IndexData};
 
-use middle::cstore::{InlinedItemRef, LinkMeta};
+use middle::cstore::{InlinedItemRef, LinkMeta, LinkagePreference};
 use rustc::hir::def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
@@ -28,24 +28,22 @@ use rustc::dep_graph::DepNode;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
 
-use rustc::hir::svh::Svh;
 use rustc::mir::mir_map::MirMap;
-use rustc::session::config::{self, PanicStrategy, CrateTypeRustcMacro};
+use rustc::session::config::{self, CrateTypeRustcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
-use rustc_serialize as serialize;
 use std::cell::RefCell;
 use std::intrinsics;
 use std::io::prelude::*;
 use std::io::Cursor;
+use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::u32;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID};
 use syntax::attr;
 use syntax;
-use syntax_pos::BytePos;
 use rbml;
 
 use rustc::hir::{self, PatKind};
@@ -53,7 +51,7 @@ use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
 use rustc::hir::map::DefKey;
 
-use super::index_builder::{FromId, IndexBuilder, ItemContentBuilder, Untracked, XRef};
+use super::index_builder::{FromId, IndexBuilder, Untracked};
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     rbml_w: rbml::writer::Encoder<'a>,
@@ -61,10 +59,16 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     reexports: &'a def::ExportMap,
     link_meta: &'a LinkMeta,
     cstore: &'a cstore::CStore,
-    type_shorthands: RefCell<FnvHashMap<Ty<'tcx>, usize>>,
     reachable: &'a NodeSet,
     mir_map: &'a MirMap<'tcx>,
+
+    type_shorthands: RefCell<FnvHashMap<Ty<'tcx>, usize>>,
+    xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
 }
+
+/// "interned" entries referenced by id
+#[derive(PartialEq, Eq, Hash)]
+enum XRef<'tcx> { Predicate(ty::Predicate<'tcx>) }
 
 impl<'a, 'tcx> Deref for EncodeContext<'a, 'tcx> {
     type Target = rbml::writer::Encoder<'a>;
@@ -87,8 +91,8 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'a, 'tcx> serialize::Encoder for ::encoder::EncodeContext<'a, 'tcx> {
-    type Error = <opaque::Encoder<'a> as serialize::Encoder>::Error;
+impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
+    type Error = <opaque::Encoder<'a> as Encoder>::Error;
 
     fn emit_nil(&mut self) -> Result<(), Self::Error> {
         Ok(())
@@ -146,12 +150,35 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     }
 }
 
-fn encode_name(ecx: &mut EncodeContext, name: Name) {
-    ecx.wr_tagged_str(tag_paths_data_name, &name.as_str());
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    fn seq<I, F, T>(&mut self, iter: I, mut f: F)
+    where I: IntoIterator,
+          I::IntoIter: ExactSizeIterator,
+          F: FnMut(&mut Self, I::Item) -> T,
+          T: Encodable {
+        let iter = iter.into_iter();
+        self.emit_seq(iter.len(), move |ecx| {
+            for (i, elem) in iter.enumerate() {
+                ecx.emit_seq_elt(i, |ecx| {
+                    f(ecx, elem).encode(ecx)
+                })?;
+            }
+            Ok(())
+        }).unwrap();
+    }
 }
 
-fn encode_def_id(ecx: &mut EncodeContext, id: DefId) {
-    ecx.wr_tagged_u64(tag_def_id, def_to_u64(id));
+fn encode_name(ecx: &mut EncodeContext, name: Name) {
+    ecx.start_tag(tag_paths_data_name);
+    name.encode(ecx).unwrap();
+    ecx.end_tag();
+}
+
+fn encode_def_id(ecx: &mut EncodeContext, def_id: DefId) {
+    assert!(def_id.is_local());
+    ecx.start_tag(tag_def_index);
+    def_id.index.encode(ecx).unwrap();
+    ecx.end_tag();
 }
 
 fn encode_def_key(ecx: &mut EncodeContext, key: DefKey) {
@@ -178,16 +205,10 @@ fn encode_trait_ref<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
 }
 
 // Item info table encoding
-fn encode_family(ecx: &mut EncodeContext, c: char) {
-    ecx.wr_tagged_u8(tag_items_data_item_family, c as u8);
-}
-
-pub fn def_to_u64(did: DefId) -> u64 {
-    (did.krate.as_u32() as u64) << 32 | (did.index.as_u32() as u64)
-}
-
-pub fn def_to_string(_tcx: TyCtxt, did: DefId) -> String {
-    format!("{}:{}", did.krate, did.index.as_usize())
+fn encode_family(ecx: &mut EncodeContext, f: Family) {
+    ecx.start_tag(tag_items_data_item_family);
+    f.encode(ecx).unwrap();
+    ecx.end_tag();
 }
 
 fn encode_item_variances(ecx: &mut EncodeContext, id: NodeId) {
@@ -197,7 +218,7 @@ fn encode_item_variances(ecx: &mut EncodeContext, id: NodeId) {
     ecx.end_tag();
 }
 
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_bounds_and_type_for_item(&mut self, def_id: DefId) {
         let tcx = self.tcx;
         self.encode_bounds_and_type(&tcx.lookup_item_type(def_id),
@@ -210,44 +231,31 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         self.encode_generics(&scheme.generics, &predicates);
         self.encode_type(scheme.ty);
     }
-}
 
-fn encode_variant_id(ecx: &mut EncodeContext, vid: DefId) {
-    let id = def_to_u64(vid);
-    ecx.wr_tagged_u64(tag_items_data_item_variant, id);
-    ecx.wr_tagged_u64(tag_mod_child, id);
-}
-
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
     fn encode_type(&mut self, typ: Ty<'tcx>) {
         self.start_tag(tag_items_data_item_type);
-        typ.encode(self.ecx).unwrap();
+        typ.encode(self).unwrap();
         self.end_tag();
     }
 
     fn encode_disr_val(&mut self,
                        disr_val: ty::Disr) {
-        // convert to u64 so just the number is printed, without any type info
-        self.wr_tagged_str(tag_disr_val, &disr_val.to_u64_unchecked().to_string());
+        self.start_tag(tag_disr_val);
+        disr_val.to_u64_unchecked().encode(self).unwrap();
+        self.end_tag();
     }
 
     fn encode_parent_item(&mut self, id: DefId) {
-        self.wr_tagged_u64(tag_items_data_parent_item, def_to_u64(id));
+        self.start_tag(tag_items_data_parent_item);
+        id.encode(self).unwrap();
+        self.end_tag();
     }
 
-    fn encode_struct_fields(&mut self,
-                            variant: ty::VariantDef) {
-        for f in &variant.fields {
-            if variant.kind == ty::VariantKind::Tuple {
-                self.start_tag(tag_item_unnamed_field);
-            } else {
-                self.start_tag(tag_item_field);
-                encode_name(self, f.name);
-            }
-            self.encode_struct_field_family(f.vis);
-            encode_def_id(self, f.did);
-            self.end_tag();
-        }
+    fn encode_variant_fields(&mut self,
+                             variant: ty::VariantDef) {
+        self.start_tag(tag_item_fields);
+        self.seq(&variant.fields, |_, f| f.did);
+        self.end_tag();
     }
 }
 
@@ -258,13 +266,13 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         self.encode_fields(enum_did);
         for (i, variant) in def.variants.iter().enumerate() {
             self.record(variant.did,
-                        ItemContentBuilder::encode_enum_variant_info,
+                        EncodeContext::encode_enum_variant_info,
                         (enum_did, Untracked(i)));
         }
     }
 }
 
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// Encode data for the given variant of the given ADT. The
     /// index of the variant is untracked: this is ok because we
     /// will have to lookup the adt-def by its id, and that gives us
@@ -278,11 +286,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         let variant = &def.variants[index];
         let vid = variant.did;
         encode_def_id_and_key(self, vid);
-        encode_family(self, match variant.kind {
-            ty::VariantKind::Struct => 'V',
-            ty::VariantKind::Tuple => 'v',
-            ty::VariantKind::Unit => 'w',
-        });
+        encode_family(self, Family::Variant(variant.kind));
         encode_name(self, variant.name);
         self.encode_parent_item(enum_did);
 
@@ -299,51 +303,35 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         encode_stability(self, stab);
         encode_deprecation(self, depr);
 
-        self.encode_struct_fields(variant);
+        self.encode_variant_fields(variant);
         self.encode_disr_val(variant.disr_val);
         self.encode_bounds_and_type_for_item(vid);
     }
 }
 
-fn encode_reexports(ecx: &mut EncodeContext, id: NodeId) {
-    debug!("(encoding info for module) encoding reexports for {}", id);
-    match ecx.reexports.get(&id) {
-        Some(exports) => {
-            debug!("(encoding info for module) found reexports for {}", id);
-            for exp in exports {
-                debug!("(encoding info for module) reexport '{}' ({:?}) for \
-                        {}",
-                       exp.name,
-                       exp.def_id,
-                       id);
-                ecx.start_tag(tag_items_data_item_reexport);
-                ecx.wr_tagged_u64(tag_items_data_item_reexport_def_id,
-                                  def_to_u64(exp.def_id));
-                ecx.wr_tagged_str(tag_items_data_item_reexport_name,
-                                  &exp.name.as_str());
-                ecx.end_tag();
-            }
-        },
-        None => debug!("(encoding info for module) found no reexports for {}", id),
-    }
-}
-
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_mod(&mut self,
                            FromId(id, (md, attrs, name, vis)):
                            FromId<(&hir::Mod, &[ast::Attribute], Name, &hir::Visibility)>) {
         let tcx = self.tcx;
 
         encode_def_id_and_key(self, tcx.map.local_def_id(id));
-        encode_family(self, 'm');
+        encode_family(self, Family::Mod);
         encode_name(self, name);
         debug!("(encoding info for module) encoding info for module ID {}", id);
 
         // Encode info about all the module children.
-        for item_id in &md.item_ids {
-            self.wr_tagged_u64(tag_mod_child,
-                               def_to_u64(tcx.map.local_def_id(item_id.id)));
+        self.start_tag(tag_mod_children);
+        self.seq(&md.item_ids, |_, item_id| {
+            tcx.map.local_def_id(item_id.id)
+        });
+
+        // Encode the reexports of this module, if this module is public.
+        match self.reexports.get(&id) {
+            Some(exports) if *vis == hir::Public => exports.encode(self).unwrap(),
+            _ => <[def::Export]>::encode(&[], self).unwrap()
         }
+        self.end_tag();
 
         self.encode_visibility(vis);
 
@@ -352,22 +340,27 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         encode_stability(self, stab);
         encode_deprecation(self, depr);
 
-        // Encode the reexports of this module, if this module is public.
-        if *vis == hir::Public {
-            debug!("(encoding info for module) encoding reexports for {}", id);
-            encode_reexports(self, id);
-        }
         encode_attributes(self, attrs);
     }
 
     fn encode_struct_field_family(&mut self,
                                   visibility: ty::Visibility) {
-        encode_family(self, if visibility.is_public() { 'g' } else { 'N' });
+        encode_family(self, if visibility.is_public() {
+            Family::PublicField
+        } else {
+            Family::InheritedField
+        });
     }
 
     fn encode_visibility<T: HasVisibility>(&mut self, visibility: T) {
-        let ch = if visibility.is_public() { 'y' } else { 'i' };
-        self.wr_tagged_u8(tag_items_data_item_visibility, ch as u8);
+        let vis = if visibility.is_public() {
+            ty::Visibility::Public
+        } else {
+            ty::Visibility::PrivateExternal
+        };
+        self.start_tag(tag_items_data_item_visibility);
+        vis.encode(self).unwrap();
+        self.end_tag();
     }
 }
 
@@ -389,54 +382,14 @@ impl HasVisibility for ty::Visibility {
 
 fn encode_constness(ecx: &mut EncodeContext, constness: hir::Constness) {
     ecx.start_tag(tag_items_data_item_constness);
-    let ch = match constness {
-        hir::Constness::Const => 'c',
-        hir::Constness::NotConst => 'n',
-    };
-    ecx.wr_str(&ch.to_string());
+    constness.encode(ecx).unwrap();
     ecx.end_tag();
 }
 
 fn encode_defaultness(ecx: &mut EncodeContext, defaultness: hir::Defaultness) {
-    let ch = match defaultness {
-        hir::Defaultness::Default => 'd',
-        hir::Defaultness::Final => 'f',
-    };
-    ecx.wr_tagged_u8(tag_items_data_item_defaultness, ch as u8);
-}
-
-fn encode_explicit_self(ecx: &mut EncodeContext,
-                        explicit_self: &ty::ExplicitSelfCategory) {
-    let tag = tag_item_trait_method_explicit_self;
-
-    // Encode the base self type.
-    match *explicit_self {
-        ty::ExplicitSelfCategory::Static => {
-            ecx.wr_tagged_bytes(tag, &['s' as u8]);
-        }
-        ty::ExplicitSelfCategory::ByValue => {
-            ecx.wr_tagged_bytes(tag, &['v' as u8]);
-        }
-        ty::ExplicitSelfCategory::ByBox => {
-            ecx.wr_tagged_bytes(tag, &['~' as u8]);
-        }
-        ty::ExplicitSelfCategory::ByReference(_, m) => {
-            // FIXME(#4846) encode custom lifetime
-            let ch = encode_mutability(m);
-            ecx.wr_tagged_bytes(tag, &['&' as u8, ch]);
-        }
-    }
-
-    fn encode_mutability(m: hir::Mutability) -> u8 {
-        match m {
-            hir::MutImmutable => 'i' as u8,
-            hir::MutMutable => 'm' as u8,
-        }
-    }
-}
-
-fn encode_item_sort(ecx: &mut EncodeContext, sort: char) {
-    ecx.wr_tagged_u8(tag_item_trait_item_sort, sort as u8);
+    ecx.start_tag(tag_items_data_item_defaultness);
+    defaultness.encode(ecx).unwrap();
+    ecx.end_tag();
 }
 
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
@@ -446,14 +399,14 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         for (variant_index, variant) in def.variants.iter().enumerate() {
             for (field_index, field) in variant.fields.iter().enumerate() {
                 self.record(field.did,
-                            ItemContentBuilder::encode_field,
+                            EncodeContext::encode_field,
                             (adt_def_id, Untracked((variant_index, field_index))));
             }
         }
     }
 }
 
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// Encode data for the given field of the given variant of the
     /// given ADT. The indices of the variant/field are untracked:
     /// this is ok because we will have to lookup the adt-def by its
@@ -476,6 +429,10 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         self.encode_bounds_and_type_for_item(field.did);
         encode_def_id_and_key(self, field.did);
 
+        let variant_id = tcx.map.as_local_node_id(variant.did).unwrap();
+        let variant_data = tcx.map.expect_variant_data(variant_id);
+        encode_attributes(self, &variant_data.fields()[field_index].attrs);
+
         let stab = tcx.lookup_stability(field.did);
         let depr = tcx.lookup_deprecation(field.did);
         encode_stability(self, stab);
@@ -491,11 +448,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         let item = tcx.map.expect_item(struct_node_id);
         let ctor_def_id = tcx.map.local_def_id(ctor_node_id);
         encode_def_id_and_key(self, ctor_def_id);
-        encode_family(self, match variant.kind {
-            ty::VariantKind::Struct => 'S',
-            ty::VariantKind::Tuple => 's',
-            ty::VariantKind::Unit => 'u',
-        });
+        encode_family(self, Family::Struct(variant.kind));
         self.encode_bounds_and_type_for_item(ctor_def_id);
         encode_name(self, item.name);
         self.encode_parent_item(struct_def_id);
@@ -510,7 +463,9 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         // definition, but without this there is no way for them
         // to tell that they actually have a ctor rather than a
         // normal function
-        self.wr_tagged_bytes(tag_items_data_item_is_tuple_struct_ctor, &[]);
+        self.start_tag(tag_items_data_item_is_tuple_struct_ctor);
+        true.encode(self).unwrap();
+        self.end_tag();
     }
 
     fn encode_generics(&mut self,
@@ -518,7 +473,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                        predicates: &ty::GenericPredicates<'tcx>)
     {
         self.start_tag(tag_item_generics);
-        generics.encode(self.ecx).unwrap();
+        generics.encode(self).unwrap();
         self.end_tag();
         self.encode_predicates(predicates, tag_item_predicates);
     }
@@ -527,13 +482,10 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                          predicates: &ty::GenericPredicates<'tcx>,
                          tag: usize) {
         self.start_tag(tag);
-        if let Some(def_id) = predicates.parent {
-            self.wr_tagged_u64(tag_items_data_parent_item, def_to_u64(def_id));
-        }
-        for predicate in &predicates.predicates {
-            let xref = self.add_xref(XRef::Predicate(predicate.clone()));
-            self.wr_tagged_u32(tag_predicate, xref);
-        }
+        predicates.parent.encode(self).unwrap();
+        self.seq(&predicates.predicates, |ecx, predicate| {
+            ecx.add_xref(XRef::Predicate(predicate.clone()))
+        });
         self.end_tag();
     }
 
@@ -542,13 +494,12 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         encode_name(self, method_ty.name);
         self.encode_generics(&method_ty.generics, &method_ty.predicates);
         self.encode_visibility(method_ty.vis);
-        encode_explicit_self(self, &method_ty.explicit_self);
-        match method_ty.explicit_self {
-            ty::ExplicitSelfCategory::Static => {
-                encode_family(self, STATIC_METHOD_FAMILY);
-            }
-            _ => encode_family(self, METHOD_FAMILY)
-        }
+
+        self.start_tag(tag_item_trait_method_explicit_self);
+        method_ty.explicit_self.encode(self).unwrap();
+        self.end_tag();
+
+        encode_family(self, Family::Method);
     }
 
     fn encode_info_for_trait_item(&mut self,
@@ -563,79 +514,47 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         encode_stability(self, stab);
         encode_deprecation(self, depr);
 
-        let trait_item_type =
-            tcx.impl_or_trait_item(item_def_id);
-        let is_nonstatic_method;
-        match trait_item_type {
+        match tcx.impl_or_trait_item(item_def_id) {
             ty::ConstTraitItem(associated_const) => {
                 encode_name(self, associated_const.name);
-                encode_def_id_and_key(self, associated_const.def_id);
+                encode_def_id_and_key(self, item_def_id);
                 self.encode_visibility(associated_const.vis);
 
-                encode_family(self, 'C');
-
-                self.encode_bounds_and_type_for_item(associated_const.def_id);
-
-                is_nonstatic_method = false;
+                encode_family(self, Family::AssociatedConst);
+                self.encode_bounds_and_type_for_item(item_def_id);
             }
             ty::MethodTraitItem(method_ty) => {
-                let method_def_id = item_def_id;
-
                 self.encode_method_ty_fields(&method_ty);
-
-                match method_ty.explicit_self {
-                    ty::ExplicitSelfCategory::Static => {
-                        encode_family(self, STATIC_METHOD_FAMILY);
-                    }
-                    _ => {
-                        encode_family(self, METHOD_FAMILY);
-                    }
-                }
-                self.encode_bounds_and_type_for_item(method_def_id);
-
-                is_nonstatic_method = method_ty.explicit_self !=
-                    ty::ExplicitSelfCategory::Static;
+                self.encode_bounds_and_type_for_item(item_def_id);
             }
             ty::TypeTraitItem(associated_type) => {
                 encode_name(self, associated_type.name);
-                encode_def_id_and_key(self, associated_type.def_id);
-                encode_item_sort(self, 't');
-                encode_family(self, 'y');
+                encode_def_id_and_key(self, item_def_id);
+                encode_family(self, Family::AssociatedType);
 
                 if let Some(ty) = associated_type.ty {
                     self.encode_type(ty);
                 }
-
-                is_nonstatic_method = false;
             }
         }
 
         encode_attributes(self, &trait_item.attrs);
         match trait_item.node {
             hir::ConstTraitItem(_, ref default) => {
-                if default.is_some() {
-                    encode_item_sort(self, 'C');
-                } else {
-                    encode_item_sort(self, 'c');
-                }
+                self.start_tag(tag_item_trait_item_has_body);
+                default.is_some().encode(self).unwrap();
+                self.end_tag();
 
                 encode_inlined_item(self,
                                     InlinedItemRef::TraitItem(trait_def_id, trait_item));
                 self.encode_mir(item_def_id);
             }
             hir::MethodTraitItem(ref sig, ref body) => {
-                // If this is a static method, we've already
-                // encoded self.
-                if is_nonstatic_method {
-                    self.encode_bounds_and_type_for_item(item_def_id);
-                }
+                self.start_tag(tag_item_trait_item_has_body);
+                body.is_some().encode(self).unwrap();
+                self.end_tag();
 
-                if body.is_some() {
-                    encode_item_sort(self, 'p');
-                    self.encode_mir(item_def_id);
-                } else {
-                    encode_item_sort(self, 'r');
-                }
+                self.encode_mir(item_def_id);
                 self.encode_method_argument_names(&sig.decl);
             }
 
@@ -654,7 +573,6 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
             }
             ty::MethodTraitItem(ref method_type) => {
                 self.encode_info_for_method(&method_type,
-                                            false,
                                             impl_id,
                                             ast_item)
             }
@@ -678,10 +596,13 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         encode_def_id_and_key(self, associated_const.def_id);
         encode_name(self, associated_const.name);
         self.encode_visibility(associated_const.vis);
-        encode_family(self, 'C');
+        encode_family(self, Family::AssociatedConst);
 
         self.encode_parent_item(tcx.map.local_def_id(parent_id));
-        encode_item_sort(self, 'C');
+
+        self.start_tag(tag_item_trait_item_has_body);
+        true.encode(self).unwrap();
+        self.end_tag();
 
         self.encode_bounds_and_type_for_item(associated_const.def_id);
 
@@ -702,7 +623,6 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
 
     fn encode_info_for_method(&mut self,
                               m: &ty::Method<'tcx>,
-                              is_default_impl: bool,
                               parent_id: NodeId,
                               impl_item_opt: Option<&hir::ImplItem>) {
         let tcx = self.tcx;
@@ -711,7 +631,10 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                m.name);
         self.encode_method_ty_fields(m);
         self.encode_parent_item(tcx.map.local_def_id(parent_id));
-        encode_item_sort(self, 'r');
+
+        self.start_tag(tag_item_trait_item_has_body);
+        true.encode(self).unwrap();
+        self.end_tag();
 
         let stab = tcx.lookup_stability(m.def_id);
         let depr = tcx.lookup_deprecation(m.def_id);
@@ -725,8 +648,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 encode_attributes(self, &impl_item.attrs);
                 let generics = tcx.lookup_generics(m.def_id);
                 let types = generics.parent_types as usize + generics.types.len();
-                let needs_inline = types > 0 || is_default_impl ||
-                    attr::requests_inline(&impl_item.attrs);
+                let needs_inline = types > 0 || attr::requests_inline(&impl_item.attrs);
                 if sig.constness == hir::Constness::Const {
                     encode_inlined_item(
                         self,
@@ -755,9 +677,8 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         encode_def_id_and_key(self, associated_type.def_id);
         encode_name(self, associated_type.name);
         self.encode_visibility(associated_type.vis);
-        encode_family(self, 'y');
+        encode_family(self, Family::AssociatedType);
         self.encode_parent_item(tcx.map.local_def_id(parent_id));
-        encode_item_sort(self, 't');
 
         let stab = tcx.lookup_stability(associated_type.def_id);
         let depr = tcx.lookup_deprecation(associated_type.def_id);
@@ -777,15 +698,15 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
     fn encode_method_argument_names(&mut self,
                                     decl: &hir::FnDecl) {
         self.start_tag(tag_method_argument_names);
-        for arg in &decl.inputs {
-            let tag = tag_method_argument_name;
+
+        self.seq(&decl.inputs, |_, arg| {
             if let PatKind::Binding(_, ref path1, _) = arg.pat.node {
-                let name = path1.node.as_str();
-                self.wr_tagged_bytes(tag, name.as_bytes());
+                path1.node
             } else {
-                self.wr_tagged_bytes(tag, &[]);
+                syntax::parse::token::intern("")
             }
-        }
+        });
+
         self.end_tag();
     }
 
@@ -797,36 +718,28 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                                                     attr));
         }
         self.start_tag(tag_items_data_item_repr);
-        repr_attrs.encode(self.ecx);
+        repr_attrs.encode(self);
         self.end_tag();
     }
 
     fn encode_mir(&mut self, def_id: DefId) {
         if let Some(mir) = self.mir_map.map.get(&def_id) {
             self.start_tag(tag_mir as usize);
-            mir.encode(self.ecx);
+            mir.encode(self);
             self.end_tag();
         }
     }
 }
 
-const FN_FAMILY: char = 'f';
-const STATIC_METHOD_FAMILY: char = 'F';
-const METHOD_FAMILY: char = 'h';
-
 // Encodes the inherent implementations of a structure, enumeration, or trait.
 fn encode_inherent_implementations(ecx: &mut EncodeContext,
                                    def_id: DefId) {
+    ecx.start_tag(tag_items_data_item_inherent_impls);
     match ecx.tcx.inherent_impls.borrow().get(&def_id) {
-        None => {}
-        Some(implementations) => {
-            for &impl_def_id in implementations.iter() {
-                ecx.start_tag(tag_items_data_item_inherent_impl);
-                encode_def_id(ecx, impl_def_id);
-                ecx.end_tag();
-            }
-        }
+        None => <[DefId]>::encode(&[], ecx).unwrap(),
+        Some(implementations) => implementations.encode(ecx).unwrap()
     }
+    ecx.end_tag();
 }
 
 fn encode_stability(ecx: &mut EncodeContext, stab_opt: Option<&attr::Stability>) {
@@ -845,37 +758,35 @@ fn encode_deprecation(ecx: &mut EncodeContext, depr_opt: Option<attr::Deprecatio
     });
 }
 
-fn encode_parent_impl(ecx: &mut EncodeContext, parent_opt: Option<DefId>) {
-    parent_opt.map(|parent| {
-        ecx.wr_tagged_u64(tag_items_data_parent_impl, def_to_u64(parent));
-    });
-}
-
-fn encode_xrefs<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>,
-                          xrefs: FnvHashMap<XRef<'tcx>, u32>)
-{
-    let mut xref_positions = vec![0; xrefs.len()];
-
-    // Encode XRefs sorted by their ID
-    let mut sorted_xrefs: Vec<_> = xrefs.into_iter().collect();
-    sorted_xrefs.sort_by_key(|&(_, id)| id);
-
-    ecx.start_tag(tag_xref_data);
-    for (xref, id) in sorted_xrefs.into_iter() {
-        xref_positions[id as usize] = ecx.mark_stable_position() as u32;
-        match xref {
-            XRef::Predicate(p) => p.encode(ecx).unwrap()
-        }
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    fn add_xref(&mut self, xref: XRef<'tcx>) -> u32 {
+        let old_len = self.xrefs.len() as u32;
+        *self.xrefs.entry(xref).or_insert(old_len)
     }
-    ecx.mark_stable_position();
-    ecx.end_tag();
 
-    ecx.start_tag(tag_xref_index);
-    index::write_dense_index(xref_positions, &mut ecx.opaque.cursor);
-    ecx.end_tag();
-}
+    fn encode_xrefs(&mut self) {
+        let xrefs = mem::replace(&mut self.xrefs, Default::default());
+        let mut xref_positions = vec![0; xrefs.len()];
 
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
+        // Encode XRefs sorted by their ID
+        let mut sorted_xrefs: Vec<_> = xrefs.into_iter().collect();
+        sorted_xrefs.sort_by_key(|&(_, id)| id);
+
+        self.start_tag(tag_xref_data);
+        for (xref, id) in sorted_xrefs.into_iter() {
+            xref_positions[id as usize] = self.mark_stable_position() as u32;
+            match xref {
+                XRef::Predicate(p) => p.encode(self).unwrap()
+            }
+        }
+        self.mark_stable_position();
+        self.end_tag();
+
+        self.start_tag(tag_xref_index);
+        index::write_dense_index(xref_positions, &mut self.opaque.cursor);
+        self.end_tag();
+    }
+
     fn encode_info_for_item(&mut self,
                             (def_id, item): (DefId, &hir::Item)) {
         let tcx = self.tcx;
@@ -893,11 +804,11 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         match item.node {
             hir::ItemStatic(_, m, _) => {
                 encode_def_id_and_key(self, def_id);
-                if m == hir::MutMutable {
-                    encode_family(self, 'b');
+                encode_family(self, if m == hir::MutMutable {
+                    Family::MutStatic
                 } else {
-                    encode_family(self, 'c');
-                }
+                    Family::ImmStatic
+                });
                 self.encode_bounds_and_type_for_item(def_id);
                 encode_name(self, item.name);
                 self.encode_visibility(vis);
@@ -907,7 +818,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
             }
             hir::ItemConst(..) => {
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, 'C');
+                encode_family(self, Family::Const);
                 self.encode_bounds_and_type_for_item(def_id);
                 encode_name(self, item.name);
                 encode_attributes(self, &item.attrs);
@@ -919,7 +830,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
             }
             hir::ItemFn(ref decl, _, constness, _, ref generics, _) => {
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, FN_FAMILY);
+                encode_family(self, Family::Fn);
                 let tps_len = generics.ty_params.len();
                 self.encode_bounds_and_type_for_item(def_id);
                 encode_name(self, item.name);
@@ -942,22 +853,24 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
             }
             hir::ItemForeignMod(ref fm) => {
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, 'n');
+                encode_family(self, Family::ForeignMod);
                 encode_name(self, item.name);
 
                 // Encode all the items in self module.
-                for foreign_item in &fm.items {
-                    self.wr_tagged_u64(
-                        tag_mod_child,
-                        def_to_u64(tcx.map.local_def_id(foreign_item.id)));
-                }
+                self.start_tag(tag_mod_children);
+                self.seq(&fm.items, |_, foreign_item| {
+                    tcx.map.local_def_id(foreign_item.id)
+                });
+                <[def::Export]>::encode(&[], self).unwrap();
+                self.end_tag();
+
                 self.encode_visibility(vis);
                 encode_stability(self, stab);
                 encode_deprecation(self, depr);
             }
             hir::ItemTy(..) => {
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, 'y');
+                encode_family(self, Family::Type);
                 self.encode_bounds_and_type_for_item(def_id);
                 encode_name(self, item.name);
                 self.encode_visibility(vis);
@@ -966,15 +879,19 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
             }
             hir::ItemEnum(ref enum_definition, _) => {
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, 't');
+                encode_family(self, Family::Enum);
                 encode_item_variances(self, item.id);
                 self.encode_bounds_and_type_for_item(def_id);
                 encode_name(self, item.name);
                 encode_attributes(self, &item.attrs);
                 self.encode_repr_attrs(&item.attrs);
-                for v in &enum_definition.variants {
-                    encode_variant_id(self, tcx.map.local_def_id(v.node.data.id()));
-                }
+
+                self.start_tag(tag_mod_children);
+                self.seq(&enum_definition.variants, |_, v| {
+                    tcx.map.local_def_id(v.node.data.id())
+                });
+                <[def::Export]>::encode(&[], self).unwrap();
+                self.end_tag();
 
                 // Encode inherent implementations for self enumeration.
                 encode_inherent_implementations(self, def_id);
@@ -990,11 +907,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
 
                 /* Now, make an item for the class itself */
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, match *struct_def {
-                    hir::VariantData::Struct(..) => 'S',
-                    hir::VariantData::Tuple(..) => 's',
-                    hir::VariantData::Unit(..) => 'u',
-                });
+                encode_family(self, Family::Struct(variant.kind));
                 self.encode_bounds_and_type_for_item(def_id);
 
                 encode_item_variances(self, item.id);
@@ -1008,15 +921,16 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 /* Encode def_ids for each field and method
                 for methods, write all the stuff get_trait_method
                 needs to know*/
-                self.encode_struct_fields(variant);
+                self.encode_variant_fields(variant);
 
                 // Encode inherent implementations for self structure.
                 encode_inherent_implementations(self, def_id);
 
                 if !struct_def.is_struct() {
                     let ctor_did = tcx.map.local_def_id(struct_def.id());
-                    self.wr_tagged_u64(tag_items_data_item_struct_ctor,
-                                       def_to_u64(ctor_did));
+                    self.start_tag(tag_items_data_item_struct_ctor);
+                    ctor_did.encode(self).unwrap();
+                    self.end_tag();
                 }
             }
             hir::ItemUnion(..) => {
@@ -1024,7 +938,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 let variant = def.struct_variant();
 
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, 'U');
+                encode_family(self, Family::Union);
                 self.encode_bounds_and_type_for_item(def_id);
 
                 encode_item_variances(self, item.id);
@@ -1038,7 +952,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 /* Encode def_ids for each field and method
                 for methods, write all the stuff get_trait_method
                 needs to know*/
-                self.encode_struct_fields(variant);
+                self.encode_variant_fields(variant);
 
                 encode_inlined_item(self, InlinedItemRef::Item(def_id, item));
                 self.encode_mir(def_id);
@@ -1046,28 +960,24 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 // Encode inherent implementations for self union.
                 encode_inherent_implementations(self, def_id);
             }
-            hir::ItemDefaultImpl(unsafety, _) => {
+            hir::ItemDefaultImpl(..) => {
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, 'd');
+                encode_family(self, Family::DefaultImpl);
                 encode_name(self, item.name);
-                encode_unsafety(self, unsafety);
 
                 let trait_ref = tcx.impl_trait_ref(tcx.map.local_def_id(item.id)).unwrap();
                 encode_trait_ref(self, trait_ref, tag_item_trait_ref);
             }
-            hir::ItemImpl(unsafety, polarity, ..) => {
-                // We need to encode information about the default methods we
-                // have inherited, so we drive self based on the impl structure.
-                let impl_items = tcx.impl_items.borrow();
-                let items = &impl_items[&def_id];
-
+            hir::ItemImpl(_, polarity, ..) => {
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, 'i');
+                encode_family(self, Family::Impl);
                 self.encode_bounds_and_type_for_item(def_id);
                 encode_name(self, item.name);
                 encode_attributes(self, &item.attrs);
-                encode_unsafety(self, unsafety);
-                encode_polarity(self, polarity);
+
+                self.start_tag(tag_polarity);
+                polarity.encode(self).unwrap();
+                self.end_tag();
 
                 match
                     tcx.custom_coerce_unsized_kinds
@@ -1076,30 +986,17 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 {
                     Some(&kind) => {
                         self.start_tag(tag_impl_coerce_unsized_kind);
-                        kind.encode(self.ecx);
+                        kind.encode(self);
                         self.end_tag();
                     }
                     None => {}
                 }
 
-                for &item_def_id in items {
-                    self.start_tag(tag_item_impl_item);
-                    match item_def_id {
-                        ty::ConstTraitItemId(item_def_id) => {
-                            encode_def_id(self, item_def_id);
-                            encode_item_sort(self, 'C');
-                        }
-                        ty::MethodTraitItemId(item_def_id) => {
-                            encode_def_id(self, item_def_id);
-                            encode_item_sort(self, 'r');
-                        }
-                        ty::TypeTraitItemId(item_def_id) => {
-                            encode_def_id(self, item_def_id);
-                            encode_item_sort(self, 't');
-                        }
-                    }
-                    self.end_tag();
-                }
+                self.start_tag(tag_mod_children);
+                let items = tcx.impl_or_trait_items(def_id);
+                self.seq(&items[..], |_, id| id.def_id());
+                <[def::Export]>::encode(&[], self).unwrap();
+                self.end_tag();
 
                 let did = tcx.map.local_def_id(item.id);
                 if let Some(trait_ref) = tcx.impl_trait_ref(did) {
@@ -1114,20 +1011,34 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                                                   Some(parent),
                                               _ => None,
                                           });
-                    encode_parent_impl(self, parent);
+                    parent.map(|parent| {
+                        self.start_tag(tag_items_data_parent_impl);
+                        parent.encode(self).unwrap();
+                        self.end_tag();
+                    });
                 }
                 encode_stability(self, stab);
                 encode_deprecation(self, depr);
             }
             hir::ItemTrait(..) => {
                 encode_def_id_and_key(self, def_id);
-                encode_family(self, 'I');
+                encode_family(self, Family::Trait);
                 encode_item_variances(self, item.id);
                 let trait_def = tcx.lookup_trait_def(def_id);
                 let trait_predicates = tcx.lookup_predicates(def_id);
-                encode_unsafety(self, trait_def.unsafety);
-                encode_paren_sugar(self, trait_def.paren_sugar);
-                encode_defaulted(self, tcx.trait_has_default_impl(def_id));
+
+                self.start_tag(tag_unsafety);
+                trait_def.unsafety.encode(self).unwrap();
+                self.end_tag();
+
+                self.start_tag(tag_paren_sugar);
+                trait_def.paren_sugar.encode(self).unwrap();
+                self.end_tag();
+
+                self.start_tag(tag_defaulted_trait);
+                tcx.trait_has_default_impl(def_id).encode(self).unwrap();
+                self.end_tag();
+
                 encode_associated_type_names(self, &trait_def.associated_type_names);
                 self.encode_generics(&trait_def.generics, &trait_predicates);
                 self.encode_predicates(&tcx.lookup_super_predicates(def_id),
@@ -1138,27 +1049,12 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 self.encode_visibility(vis);
                 encode_stability(self, stab);
                 encode_deprecation(self, depr);
-                for &method_def_id in tcx.trait_item_def_ids(def_id).iter() {
-                    self.start_tag(tag_item_trait_item);
-                    match method_def_id {
-                        ty::ConstTraitItemId(const_def_id) => {
-                            encode_def_id(self, const_def_id);
-                            encode_item_sort(self, 'C');
-                        }
-                        ty::MethodTraitItemId(method_def_id) => {
-                            encode_def_id(self, method_def_id);
-                            encode_item_sort(self, 'r');
-                        }
-                        ty::TypeTraitItemId(type_def_id) => {
-                            encode_def_id(self, type_def_id);
-                            encode_item_sort(self, 't');
-                        }
-                    }
-                    self.end_tag();
 
-                    self.wr_tagged_u64(tag_mod_child,
-                                       def_to_u64(method_def_id.def_id()));
-                }
+                self.start_tag(tag_mod_children);
+                let items = tcx.impl_or_trait_items(def_id);
+                self.seq(&items[..], |_, id| id.def_id());
+                <[def::Export]>::encode(&[], self).unwrap();
+                self.end_tag();
 
                 // Encode inherent implementations for self trait.
                 encode_inherent_implementations(self, def_id);
@@ -1227,7 +1123,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                 // Foo()` and `struct Foo`
                 let ctor_def_id = self.tcx.map.local_def_id(struct_node_id);
                 self.record(ctor_def_id,
-                            ItemContentBuilder::encode_struct_ctor,
+                            EncodeContext::encode_struct_ctor,
                             (def_id, item.id, struct_node_id));
             }
         }
@@ -1241,8 +1137,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                              def_id: DefId,
                              impl_id: ast::NodeId,
                              ast_items: &[hir::ImplItem]) {
-        let impl_items = self.tcx.impl_items.borrow();
-        let items = &impl_items[&def_id];
+        let items = self.tcx.impl_or_trait_items(def_id);
 
         // Iterate down the trait items, emitting them. We rely on the
         // assumption that all of the actually implemented trait items
@@ -1258,7 +1153,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
             let trait_item_def_id = trait_item_def_id.def_id();
             self.record(trait_item_def_id,
-                        ItemContentBuilder::encode_info_for_impl_item,
+                        EncodeContext::encode_info_for_impl_item,
                         (impl_id, trait_item_def_id, ast_item));
         }
     }
@@ -1267,19 +1162,18 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                               def_id: DefId,
                               trait_items: &[hir::TraitItem]) {
         // Now output the trait item info for each trait item.
-        let tcx = self.tcx;
-        let r = tcx.trait_item_def_ids(def_id);
+        let r = self.tcx.impl_or_trait_items(def_id);
         for (item_def_id, trait_item) in r.iter().zip(trait_items) {
             let item_def_id = item_def_id.def_id();
             assert!(item_def_id.is_local());
             self.record(item_def_id,
-                        ItemContentBuilder::encode_info_for_trait_item,
+                        EncodeContext::encode_info_for_trait_item,
                         (def_id, item_def_id, trait_item));
         }
     }
 }
 
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_foreign_item(&mut self,
                                     (def_id, nitem): (DefId, &hir::ForeignItem)) {
         let tcx = self.tcx;
@@ -1292,7 +1186,7 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         self.encode_visibility(&nitem.vis);
         match nitem.node {
             hir::ForeignItemFn(ref fndecl, _) => {
-                encode_family(self, FN_FAMILY);
+                encode_family(self, Family::Fn);
                 self.encode_bounds_and_type_for_item(def_id);
                 encode_name(self, nitem.name);
                 encode_attributes(self, &nitem.attrs);
@@ -1303,11 +1197,11 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
                 self.encode_method_argument_names(&fndecl);
             }
             hir::ForeignItemStatic(_, mutbl) => {
-                if mutbl {
-                    encode_family(self, 'b');
+                encode_family(self, if mutbl {
+                    Family::MutStatic
                 } else {
-                    encode_family(self, 'c');
-                }
+                    Family::ImmStatic
+                });
                 self.encode_bounds_and_type_for_item(def_id);
                 encode_attributes(self, &nitem.attrs);
                 let stab = tcx.lookup_stability(tcx.map.local_def_id(nitem.id));
@@ -1335,7 +1229,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         match item.node {
             hir::ItemExternCrate(_) | hir::ItemUse(_) => (), // ignore these
             _ => self.index.record(def_id,
-                                   ItemContentBuilder::encode_info_for_item,
+                                   EncodeContext::encode_info_for_item,
                                    (def_id, item)),
         }
         self.index.encode_addl_info_for_item(item);
@@ -1344,7 +1238,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         intravisit::walk_foreign_item(self, ni);
         let def_id = self.index.tcx.map.local_def_id(ni.id);
         self.index.record(def_id,
-                          ItemContentBuilder::encode_info_for_foreign_item,
+                          EncodeContext::encode_info_for_foreign_item,
                           (def_id, ni));
     }
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
@@ -1358,7 +1252,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         if let hir::TyImplTrait(_) = ty.node {
             let def_id = self.tcx.map.local_def_id(ty.id);
             self.record(def_id,
-                        ItemContentBuilder::encode_info_for_anon_ty,
+                        EncodeContext::encode_info_for_anon_ty,
                         def_id);
         }
     }
@@ -1368,7 +1262,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ExprClosure(..) => {
                 let def_id = self.tcx.map.local_def_id(expr.id);
                 self.record(def_id,
-                            ItemContentBuilder::encode_info_for_closure,
+                            EncodeContext::encode_info_for_closure,
                             def_id);
             }
             _ => { }
@@ -1376,10 +1270,9 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_anon_ty(&mut self, def_id: DefId) {
         encode_def_id_and_key(self, def_id);
-        encode_family(self, 'y');
         self.encode_bounds_and_type_for_item(def_id);
     }
 
@@ -1389,11 +1282,11 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
         encode_name(self, syntax::parse::token::intern("<closure>"));
 
         self.start_tag(tag_items_closure_ty);
-        tcx.tables.borrow().closure_tys[&def_id].encode(self.ecx).unwrap();
+        tcx.tables.borrow().closure_tys[&def_id].encode(self).unwrap();
         self.end_tag();
 
         self.start_tag(tag_items_closure_kind);
-        tcx.closure_kind(def_id).encode(self.ecx).unwrap();
+        tcx.closure_kind(def_id).encode(self).unwrap();
         self.end_tag();
 
         assert!(self.mir_map.map.contains_key(&def_id));
@@ -1401,30 +1294,29 @@ impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
     }
 }
 
-fn encode_info_for_items<'a, 'tcx>(ecx: &mut EncodeContext<'a, 'tcx>)
-                                   -> (IndexData, FnvHashMap<XRef<'tcx>, u32>) {
+fn encode_info_for_items(ecx: &mut EncodeContext) -> IndexData {
     let krate = ecx.tcx.map.krate();
 
     ecx.start_tag(tag_items_data);
 
-    let fields = {
+    let items = {
         let mut index = IndexBuilder::new(ecx);
         index.record(DefId::local(CRATE_DEF_INDEX),
-                     ItemContentBuilder::encode_info_for_mod,
+                     EncodeContext::encode_info_for_mod,
                      FromId(CRATE_NODE_ID, (&krate.module,
-                                            &[],
+                                            &krate.attrs,
                                             syntax::parse::token::intern(&ecx.link_meta.crate_name),
                                             &hir::Public)));
         let mut visitor = EncodeVisitor {
             index: index,
         };
         krate.visit_all_items(&mut visitor);
-        visitor.index.into_fields()
+        visitor.index.into_items()
     };
 
     ecx.end_tag();
 
-    fields
+    items
 }
 
 fn encode_item_index(ecx: &mut EncodeContext, index: IndexData) {
@@ -1439,38 +1331,10 @@ fn encode_attributes(ecx: &mut EncodeContext, attrs: &[ast::Attribute]) {
     ecx.end_tag();
 }
 
-fn encode_unsafety(ecx: &mut EncodeContext, unsafety: hir::Unsafety) {
-    let byte: u8 = match unsafety {
-        hir::Unsafety::Normal => 0,
-        hir::Unsafety::Unsafe => 1,
-    };
-    ecx.wr_tagged_u8(tag_unsafety, byte);
-}
-
-fn encode_paren_sugar(ecx: &mut EncodeContext, paren_sugar: bool) {
-    let byte: u8 = if paren_sugar {1} else {0};
-    ecx.wr_tagged_u8(tag_paren_sugar, byte);
-}
-
-fn encode_defaulted(ecx: &mut EncodeContext, is_defaulted: bool) {
-    let byte: u8 = if is_defaulted {1} else {0};
-    ecx.wr_tagged_u8(tag_defaulted_trait, byte);
-}
-
 fn encode_associated_type_names(ecx: &mut EncodeContext, names: &[Name]) {
     ecx.start_tag(tag_associated_type_names);
-    for &name in names {
-        ecx.wr_tagged_str(tag_associated_type_name, &name.as_str());
-    }
+    names.encode(ecx).unwrap();
     ecx.end_tag();
-}
-
-fn encode_polarity(ecx: &mut EncodeContext, polarity: hir::ImplPolarity) {
-    let byte: u8 = match polarity {
-        hir::ImplPolarity::Positive => 0,
-        hir::ImplPolarity::Negative => 1,
-    };
-    ecx.wr_tagged_u8(tag_polarity, byte);
 }
 
 fn encode_crate_deps(ecx: &mut EncodeContext, cstore: &cstore::CStore) {
@@ -1500,48 +1364,56 @@ fn encode_crate_deps(ecx: &mut EncodeContext, cstore: &cstore::CStore) {
     // FIXME (#2166): This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     ecx.start_tag(tag_crate_deps);
-    for (_cnum, dep) in get_ordered_deps(cstore) {
-        encode_crate_dep(ecx, &dep);
-    }
+    ecx.seq(&get_ordered_deps(cstore), |_, &(_, ref dep)| {
+        (dep.name(), decoder::get_crate_hash(dep.data()),
+         dep.explicitly_linked.get())
+    });
     ecx.end_tag();
 }
 
 fn encode_lang_items(ecx: &mut EncodeContext) {
-    ecx.start_tag(tag_lang_items);
-
-    for (i, &opt_def_id) in ecx.tcx.lang_items.items().iter().enumerate() {
-        if let Some(def_id) = opt_def_id {
-            if def_id.is_local() {
-                ecx.start_tag(tag_lang_items_item);
-                ecx.wr_tagged_u32(tag_lang_items_item_id, i as u32);
-                ecx.wr_tagged_u32(tag_lang_items_item_index, def_id.index.as_u32());
-                ecx.end_tag();
+    let tcx = ecx.tcx;
+    let lang_items = || {
+        tcx.lang_items.items().iter().enumerate().filter_map(|(i, &opt_def_id)| {
+            if let Some(def_id) = opt_def_id {
+                if def_id.is_local() {
+                    return Some((def_id.index, i));
+                }
             }
-        }
-    }
+            None
+        })
+    };
 
-    for i in &ecx.tcx.lang_items.missing {
-        ecx.wr_tagged_u32(tag_lang_items_missing, *i as u32);
-    }
+    let count = lang_items().count();
+    let mut lang_items = lang_items();
 
-    ecx.end_tag();   // tag_lang_items
+    ecx.start_tag(tag_lang_items);
+    ecx.seq(0..count, |_, _| lang_items.next().unwrap());
+    ecx.end_tag();
+
+    ecx.start_tag(tag_lang_items_missing);
+    tcx.lang_items.missing.encode(ecx).unwrap();
+    ecx.end_tag();
 }
 
 fn encode_native_libraries(ecx: &mut EncodeContext) {
-    ecx.start_tag(tag_native_libraries);
-
-    for &(ref lib, kind) in ecx.tcx.sess.cstore.used_libraries().iter() {
-        match kind {
-            cstore::NativeStatic => {} // these libraries are not propagated
-            cstore::NativeFramework | cstore::NativeUnknown => {
-                ecx.start_tag(tag_native_libraries_lib);
-                ecx.wr_tagged_u32(tag_native_libraries_kind, kind as u32);
-                ecx.wr_tagged_str(tag_native_libraries_name, lib);
-                ecx.end_tag();
+    let used_libraries = ecx.tcx.sess.cstore.used_libraries();
+    let libs = || {
+        used_libraries.iter().filter_map(|&(ref lib, kind)| {
+            match kind {
+                cstore::NativeStatic => None, // these libraries are not propagated
+                cstore::NativeFramework | cstore::NativeUnknown => {
+                    Some((kind, lib))
+                }
             }
-        }
-    }
+        })
+    };
 
+    let count = libs().count();
+    let mut libs = libs();
+
+    ecx.start_tag(tag_native_libraries);
+    ecx.seq(0..count, |_, _| libs.next().unwrap());
     ecx.end_tag();
 }
 
@@ -1549,83 +1421,54 @@ fn encode_plugin_registrar_fn(ecx: &mut EncodeContext) {
     match ecx.tcx.sess.plugin_registrar_fn.get() {
         Some(id) => {
             let def_id = ecx.tcx.map.local_def_id(id);
-            ecx.wr_tagged_u32(tag_plugin_registrar_fn, def_id.index.as_u32());
+            ecx.start_tag(tag_plugin_registrar_fn);
+            def_id.index.encode(ecx).unwrap();
+            ecx.end_tag();
         }
         None => {}
     }
 }
 
 fn encode_codemap(ecx: &mut EncodeContext) {
-    ecx.start_tag(tag_codemap);
     let codemap = ecx.tcx.sess.codemap();
+    let all_filemaps = codemap.files.borrow();
+    let filemaps = || {
+        // No need to export empty filemaps, as they can't contain spans
+        // that need translation.
+        // Also no need to re-export imported filemaps, as any downstream
+        // crate will import them from their original source.
+        all_filemaps.iter().filter(|filemap| {
+            !filemap.lines.borrow().is_empty() && !filemap.is_imported()
+        })
+    };
 
-    for filemap in &codemap.files.borrow()[..] {
+    let count = filemaps().count();
+    let mut filemaps = filemaps();
 
-        if filemap.lines.borrow().is_empty() || filemap.is_imported() {
-            // No need to export empty filemaps, as they can't contain spans
-            // that need translation.
-            // Also no need to re-export imported filemaps, as any downstream
-            // crate will import them from their original source.
-            continue;
-        }
-
-        ecx.start_tag(tag_codemap_filemap);
-        filemap.encode(ecx).unwrap();
-        ecx.end_tag();
-    }
-
+    ecx.start_tag(tag_codemap);
+    ecx.seq(0..count, |_, _| filemaps.next().unwrap());
     ecx.end_tag();
 }
 
 /// Serialize the text of the exported macros
-fn encode_macro_defs(ecx: &mut EncodeContext,
-                     krate: &hir::Crate) {
+fn encode_macro_defs(ecx: &mut EncodeContext) {
+    let tcx = ecx.tcx;
     ecx.start_tag(tag_macro_defs);
-    for def in &krate.exported_macros {
-        ecx.start_tag(tag_macro_def);
-
-        encode_name(ecx, def.name);
-        encode_attributes(ecx, &def.attrs);
-        let &BytePos(lo) = &def.span.lo;
-        let &BytePos(hi) = &def.span.hi;
-        ecx.wr_tagged_u32(tag_macro_def_span_lo, lo);
-        ecx.wr_tagged_u32(tag_macro_def_span_hi, hi);
-
-        ecx.wr_tagged_str(tag_macro_def_body,
-                          &::syntax::print::pprust::tts_to_string(&def.body));
-
-        ecx.end_tag();
-    }
+    ecx.seq(&tcx.map.krate().exported_macros, |_, def| {
+        let body = ::syntax::print::pprust::tts_to_string(&def.body);
+        (def.name, &def.attrs, def.span, body)
+    });
     ecx.end_tag();
 
     if ecx.tcx.sess.crate_types.borrow().contains(&CrateTypeRustcMacro) {
         let id = ecx.tcx.sess.derive_registrar_fn.get().unwrap();
         let did = ecx.tcx.map.local_def_id(id);
-        ecx.wr_tagged_u32(tag_macro_derive_registrar, did.index.as_u32());
+
+        ecx.start_tag(tag_macro_derive_registrar);
+        did.index.encode(ecx).unwrap();
+        ecx.end_tag();
     }
 }
-
-fn encode_struct_field_attrs(ecx: &mut EncodeContext, krate: &hir::Crate) {
-    struct StructFieldVisitor<'a, 'b:'a, 'tcx:'b> {
-        ecx: &'a mut EncodeContext<'b, 'tcx>
-    }
-
-    impl<'a, 'b, 'tcx, 'v> Visitor<'v> for StructFieldVisitor<'a, 'b, 'tcx> {
-        fn visit_struct_field(&mut self, field: &hir::StructField) {
-            self.ecx.start_tag(tag_struct_field);
-            let def_id = self.ecx.tcx.map.local_def_id(field.id);
-            encode_def_id(self.ecx, def_id);
-            encode_attributes(self.ecx, &field.attrs);
-            self.ecx.end_tag();
-        }
-    }
-
-    ecx.start_tag(tag_struct_fields);
-    krate.visit_all_items(&mut StructFieldVisitor { ecx: ecx });
-    ecx.end_tag();
-}
-
-
 
 struct ImplVisitor<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1646,20 +1489,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'tcx> {
 }
 
 /// Encodes an index, mapping each trait to its (local) implementations.
-fn encode_impls(ecx: &mut EncodeContext, krate: &hir::Crate) {
+fn encode_impls(ecx: &mut EncodeContext) {
     let mut visitor = ImplVisitor {
         tcx: ecx.tcx,
         impls: FnvHashMap()
     };
-    krate.visit_all_items(&mut visitor);
+    ecx.tcx.map.krate().visit_all_items(&mut visitor);
 
     ecx.start_tag(tag_impls);
-    for (trait_, trait_impls) in visitor.impls {
-        ecx.start_tag(tag_impls_trait);
-        encode_def_id(ecx, trait_);
-        for impl_ in trait_impls {
-            ecx.wr_tagged_u64(tag_impls_trait_impl, def_to_u64(impl_));
-        }
+    for (trait_def_id, trait_impls) in visitor.impls {
+        // FIXME(eddyb) Avoid wrapping the entries in docs.
+        ecx.start_tag(0);
+        (trait_def_id.krate.as_u32(), trait_def_id.index).encode(ecx).unwrap();
+        trait_impls.encode(ecx).unwrap();
         ecx.end_tag();
     }
     ecx.end_tag();
@@ -1673,74 +1515,32 @@ fn encode_impls(ecx: &mut EncodeContext, krate: &hir::Crate) {
 // definition (as that's not defined in this crate).
 fn encode_reachable(ecx: &mut EncodeContext) {
     ecx.start_tag(tag_reachable_ids);
-    for &id in ecx.reachable {
-        let def_id = ecx.tcx.map.local_def_id(id);
-        ecx.wr_tagged_u32(tag_reachable_id, def_id.index.as_u32());
-    }
+
+    let reachable = ecx.reachable;
+    ecx.seq(reachable, |ecx, &id| ecx.tcx.map.local_def_id(id).index);
+
     ecx.end_tag();
-}
-
-fn encode_crate_dep(ecx: &mut EncodeContext,
-                    dep: &cstore::CrateMetadata) {
-    ecx.start_tag(tag_crate_dep);
-    ecx.wr_tagged_str(tag_crate_dep_crate_name, &dep.name());
-    let hash = decoder::get_crate_hash(dep.data());
-    ecx.wr_tagged_u64(tag_crate_dep_hash, hash.as_u64());
-    ecx.wr_tagged_u8(tag_crate_dep_explicitly_linked,
-                     dep.explicitly_linked.get() as u8);
-    ecx.end_tag();
-}
-
-fn encode_hash(ecx: &mut EncodeContext, hash: &Svh) {
-    ecx.wr_tagged_u64(tag_crate_hash, hash.as_u64());
-}
-
-fn encode_rustc_version(ecx: &mut EncodeContext) {
-    ecx.wr_tagged_str(tag_rustc_version, &rustc_version());
-}
-
-fn encode_crate_name(ecx: &mut EncodeContext, crate_name: &str) {
-    ecx.wr_tagged_str(tag_crate_crate_name, crate_name);
-}
-
-fn encode_crate_disambiguator(ecx: &mut EncodeContext, crate_disambiguator: &str) {
-    ecx.wr_tagged_str(tag_crate_disambiguator, crate_disambiguator);
-}
-
-fn encode_crate_triple(ecx: &mut EncodeContext, triple: &str) {
-    ecx.wr_tagged_str(tag_crate_triple, triple);
 }
 
 fn encode_dylib_dependency_formats(ecx: &mut EncodeContext) {
-    let tag = tag_dylib_dependency_formats;
+    ecx.start_tag(tag_dylib_dependency_formats);
     match ecx.tcx.sess.dependency_formats.borrow().get(&config::CrateTypeDylib) {
         Some(arr) => {
-            let s = arr.iter().enumerate().filter_map(|(i, slot)| {
-                let kind = match *slot {
+            ecx.seq(arr, |_, slot| {
+                match *slot {
                     Linkage::NotLinked |
-                    Linkage::IncludedFromDylib => return None,
-                    Linkage::Dynamic => "d",
-                    Linkage::Static => "s",
-                };
-                Some(format!("{}:{}", i + 1, kind))
-            }).collect::<Vec<String>>();
-            ecx.wr_tagged_str(tag, &s.join(","));
+                    Linkage::IncludedFromDylib => None,
+
+                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
+                    Linkage::Static => Some(LinkagePreference::RequireStatic),
+                }
+            });
         }
         None => {
-            ecx.wr_tagged_str(tag, "");
+            <[Option<LinkagePreference>]>::encode(&[], ecx).unwrap();
         }
     }
-}
-
-fn encode_panic_strategy(ecx: &mut EncodeContext) {
-    match ecx.tcx.sess.opts.cg.panic {
-        PanicStrategy::Unwind => {
-            ecx.wr_tagged_u8(tag_panic_strategy, b'U');
-        }
-        PanicStrategy::Abort => {
-            ecx.wr_tagged_u8(tag_panic_strategy, b'A');
-        }
-    }
+    ecx.end_tag();
 }
 
 pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1764,6 +1564,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable: reachable,
         mir_map: mir_map,
         type_shorthands: Default::default(),
+        xrefs: Default::default()
     });
 
     // RBML compacts the encoded bytes whenever appropriate,
@@ -1806,24 +1607,34 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn encode_metadata_inner(ecx: &mut EncodeContext) {
-    encode_rustc_version(ecx);
+    ecx.wr_tagged_str(tag_rustc_version, &rustc_version());
 
     let tcx = ecx.tcx;
     let link_meta = ecx.link_meta;
-    encode_crate_name(ecx, &link_meta.crate_name);
-    encode_crate_triple(ecx, &tcx.sess.opts.target_triple);
-    encode_hash(ecx, &link_meta.crate_hash);
-    encode_crate_disambiguator(ecx, &tcx.sess.local_crate_disambiguator());
-    encode_dylib_dependency_formats(ecx);
-    encode_panic_strategy(ecx);
 
-    let krate = tcx.map.krate();
+    ecx.start_tag(tag_crate_crate_name);
+    link_meta.crate_name.encode(ecx).unwrap();
+    ecx.end_tag();
+
+    ecx.start_tag(tag_crate_triple);
+    tcx.sess.opts.target_triple.encode(ecx).unwrap();
+    ecx.end_tag();
+
+    ecx.start_tag(tag_crate_hash);
+    link_meta.crate_hash.encode(ecx).unwrap();
+    ecx.end_tag();
+
+    ecx.start_tag(tag_crate_disambiguator);
+    tcx.sess.local_crate_disambiguator().encode(ecx).unwrap();
+    ecx.end_tag();
+
+    encode_dylib_dependency_formats(ecx);
+
+    ecx.start_tag(tag_panic_strategy);
+    ecx.tcx.sess.opts.cg.panic.encode(ecx);
+    ecx.end_tag();
 
     let mut i = ecx.position();
-    encode_attributes(ecx, &krate.attrs);
-    let attr_bytes = ecx.position() - i;
-
-    i = ecx.position();
     encode_crate_deps(ecx, ecx.cstore);
     let dep_bytes = ecx.position() - i;
 
@@ -1849,12 +1660,12 @@ fn encode_metadata_inner(ecx: &mut EncodeContext) {
 
     // Encode macro definitions
     i = ecx.position();
-    encode_macro_defs(ecx, krate);
+    encode_macro_defs(ecx);
     let macro_defs_bytes = ecx.position() - i;
 
     // Encode the def IDs of impls, for coherence checking.
     i = ecx.position();
-    encode_impls(ecx, krate);
+    encode_impls(ecx);
     let impl_bytes = ecx.position() - i;
 
     // Encode reachability info.
@@ -1865,7 +1676,7 @@ fn encode_metadata_inner(ecx: &mut EncodeContext) {
     // Encode and index the items.
     ecx.start_tag(tag_items);
     i = ecx.position();
-    let (items, xrefs) = encode_info_for_items(ecx);
+    let items = encode_info_for_items(ecx);
     let item_bytes = ecx.position() - i;
     ecx.end_tag();
 
@@ -1874,10 +1685,8 @@ fn encode_metadata_inner(ecx: &mut EncodeContext) {
     let index_bytes = ecx.position() - i;
 
     i = ecx.position();
-    encode_xrefs(ecx, xrefs);
+    ecx.encode_xrefs();
     let xref_bytes = ecx.position() - i;
-
-    encode_struct_field_attrs(ecx, krate);
 
     let total_bytes = ecx.position();
 
@@ -1890,7 +1699,6 @@ fn encode_metadata_inner(ecx: &mut EncodeContext) {
         }
 
         println!("metadata stats:");
-        println!("       attribute bytes: {}", attr_bytes);
         println!("             dep bytes: {}", dep_bytes);
         println!("       lang item bytes: {}", lang_item_bytes);
         println!("          native bytes: {}", native_lib_bytes);

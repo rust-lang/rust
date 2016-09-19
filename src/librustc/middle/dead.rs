@@ -470,7 +470,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        let impl_items = self.tcx.impl_items.borrow();
+        let impl_items = self.tcx.impl_or_trait_item_ids.borrow();
         if let Some(impl_list) =
                 self.tcx.inherent_impls.borrow().get(&self.tcx.map.local_def_id(id)) {
             for impl_did in impl_list.iter() {

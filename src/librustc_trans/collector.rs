@@ -627,25 +627,23 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         fn can_result_in_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               def_id: DefId)
                                               -> bool {
-            if !match tcx.lookup_item_type(def_id).ty.sty {
-                ty::TyFnDef(def_id, ..) => {
+            match tcx.lookup_item_type(def_id).ty.sty {
+                ty::TyFnDef(def_id, _, f) => {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in
                     // translation item. Same for FFI functions.
-                    match tcx.map.get_if_local(def_id) {
-                        Some(hir_map::NodeVariant(_))    |
-                        Some(hir_map::NodeStructCtor(_)) |
-                        Some(hir_map::NodeForeignItem(_)) => false,
-                        Some(_) => true,
-                        None => {
-                            tcx.sess.cstore.variant_kind(def_id).is_none()
+                    if let Some(hir_map::NodeForeignItem(_)) = tcx.map.get_if_local(def_id) {
+                        return false;
+                    }
+
+                    if let Some(adt_def) = f.sig.output().skip_binder().ty_adt_def() {
+                        if adt_def.variants.iter().any(|v| def_id == v.did) {
+                            return false;
                         }
                     }
                 }
-                ty::TyClosure(..) => true,
-                _ => false
-            } {
-                return false;
+                ty::TyClosure(..) => {}
+                _ => return false
             }
 
             can_have_local_instance(tcx, def_id)

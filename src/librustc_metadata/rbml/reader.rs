@@ -80,19 +80,16 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn get(&self, tag: usize) -> Doc<'doc> {
-        get_doc(*self, tag)
+        match maybe_get_doc(*self, tag) {
+            Some(d) => d,
+            None => {
+                bug!("failed to find block with tag {:?}", tag);
+            }
+        }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.start == self.end
-    }
-
-    pub fn as_str(&self) -> &'doc str {
-        str::from_utf8(&self.data[self.start..self.end]).unwrap()
-    }
-
-    pub fn to_string(&self) -> String {
-        self.as_str().to_string()
+    pub fn children(self) -> DocsIterator<'doc> {
+        DocsIterator { d: self }
     }
 }
 
@@ -129,7 +126,7 @@ pub struct Res {
     pub next: usize,
 }
 
-pub fn tag_at(data: &[u8], start: usize) -> Result<Res, Error> {
+fn tag_at(data: &[u8], start: usize) -> Result<Res, Error> {
     let v = data[start] as usize;
     if v < 0xf0 {
         Ok(Res {
@@ -180,7 +177,7 @@ fn vuint_at_slow(data: &[u8], start: usize) -> Result<Res, Error> {
     Err(Error::IntTooBig(a as usize))
 }
 
-pub fn vuint_at(data: &[u8], start: usize) -> Result<Res, Error> {
+fn vuint_at(data: &[u8], start: usize) -> Result<Res, Error> {
     if data.len() - start < 4 {
         return vuint_at_slow(data, start);
     }
@@ -234,7 +231,7 @@ pub fn vuint_at(data: &[u8], start: usize) -> Result<Res, Error> {
     }
 }
 
-pub fn tag_len_at(data: &[u8], next: usize) -> Result<Res, Error> {
+fn tag_len_at(data: &[u8], next: usize) -> Result<Res, Error> {
     vuint_at(data, next)
 }
 
@@ -255,27 +252,14 @@ pub fn maybe_get_doc<'a>(d: Doc<'a>, tg: usize) -> Option<Doc<'a>> {
     None
 }
 
-pub fn get_doc<'a>(d: Doc<'a>, tg: usize) -> Doc<'a> {
-    match maybe_get_doc(d, tg) {
-        Some(d) => d,
-        None => {
-            bug!("failed to find block with tag {:?}", tg);
-        }
-    }
-}
-
-pub fn docs<'a>(d: Doc<'a>) -> DocsIterator<'a> {
-    DocsIterator { d: d }
-}
-
 pub struct DocsIterator<'a> {
     d: Doc<'a>,
 }
 
 impl<'a> Iterator for DocsIterator<'a> {
-    type Item = (usize, Doc<'a>);
+    type Item = Doc<'a>;
 
-    fn next(&mut self) -> Option<(usize, Doc<'a>)> {
+    fn next(&mut self) -> Option<Doc<'a>> {
         if self.d.start >= self.d.end {
             return None;
         }
@@ -297,96 +281,8 @@ impl<'a> Iterator for DocsIterator<'a> {
         };
 
         self.d.start = end;
-        return Some((elt_tag.val, doc));
+        return Some(doc);
     }
-}
-
-pub fn tagged_docs<'a>(d: Doc<'a>, tag: usize) -> TaggedDocsIterator<'a> {
-    TaggedDocsIterator {
-        iter: docs(d),
-        tag: tag,
-    }
-}
-
-pub struct TaggedDocsIterator<'a> {
-    iter: DocsIterator<'a>,
-    tag: usize,
-}
-
-impl<'a> Iterator for TaggedDocsIterator<'a> {
-    type Item = Doc<'a>;
-
-    fn next(&mut self) -> Option<Doc<'a>> {
-        while let Some((tag, doc)) = self.iter.next() {
-            if tag == self.tag {
-                return Some(doc);
-            }
-        }
-        None
-    }
-}
-
-pub fn with_doc_data<T, F>(d: Doc, f: F) -> T
-    where F: FnOnce(&[u8]) -> T
-{
-    f(&d.data[d.start..d.end])
-}
-
-pub fn doc_as_u8(d: Doc) -> u8 {
-    assert_eq!(d.end, d.start + 1);
-    d.data[d.start]
-}
-
-pub fn doc_as_u64(d: Doc) -> u64 {
-    if d.end >= 8 {
-        // For performance, we read 8 big-endian bytes,
-        // and mask off the junk if there is any. This
-        // obviously won't work on the first 8 bytes
-        // of a file - we will fall of the start
-        // of the page and segfault.
-
-        let mut b = [0; 8];
-        b.copy_from_slice(&d.data[d.end - 8..d.end]);
-        let data = unsafe { (*(b.as_ptr() as *const u64)).to_be() };
-        let len = d.end - d.start;
-        if len < 8 {
-            data & ((1 << (len * 8)) - 1)
-        } else {
-            data
-        }
-    } else {
-        let mut result = 0;
-        for b in &d.data[d.start..d.end] {
-            result = (result << 8) + (*b as u64);
-        }
-        result
-    }
-}
-
-#[inline]
-pub fn doc_as_u16(d: Doc) -> u16 {
-    doc_as_u64(d) as u16
-}
-#[inline]
-pub fn doc_as_u32(d: Doc) -> u32 {
-    doc_as_u64(d) as u32
-}
-
-#[inline]
-pub fn doc_as_i8(d: Doc) -> i8 {
-    doc_as_u8(d) as i8
-}
-#[inline]
-pub fn doc_as_i16(d: Doc) -> i16 {
-    doc_as_u16(d) as i16
-}
-#[inline]
-pub fn doc_as_i32(d: Doc) -> i32 {
-    doc_as_u32(d) as i32
-}
-#[inline]
-pub fn doc_as_i64(d: Doc) -> i64 {
-    doc_as_u64(d) as i64
 }
 
 #[test]

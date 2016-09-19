@@ -39,6 +39,8 @@ use rustc::hir::intravisit;
 use rustc::hir::{Item, ItemImpl};
 use rustc::hir;
 
+use std::rc::Rc;
+
 mod orphan;
 mod overlap;
 mod unsafety;
@@ -156,7 +158,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
             }
         }
 
-        tcx.impl_items.borrow_mut().insert(impl_did, impl_items);
+        tcx.impl_or_trait_item_ids.borrow_mut().insert(impl_did, Rc::new(impl_items));
     }
 
     fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
@@ -208,7 +210,7 @@ impl<'a, 'gcx, 'tcx> CoherenceChecker<'a, 'gcx, 'tcx> {
         tcx.populate_implementations_for_trait_if_necessary(drop_trait);
         let drop_trait = tcx.lookup_trait_def(drop_trait);
 
-        let impl_items = tcx.impl_items.borrow();
+        let impl_items = tcx.impl_or_trait_item_ids.borrow();
 
         drop_trait.for_each_impl(tcx, |impl_did| {
             let items = impl_items.get(&impl_did).unwrap();

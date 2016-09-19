@@ -230,7 +230,7 @@ pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
-    let trait_item_def_ids = tcx.trait_item_def_ids(trait_id);
+    let trait_item_def_ids = tcx.impl_or_trait_items(trait_id);
     trait_item_def_ids
         .iter()
 

@@ -38,17 +38,11 @@
 //!
 //! What record will do is to (a) record the current offset, (b) emit
 //! the `common::data_item` tag, and then call `callback_fn` with the
-//! given data as well as an `ItemContentBuilder`. Once `callback_fn`
+//! given data as well as the `EncodingContext`. Once `callback_fn`
 //! returns, the `common::data_item` tag will be closed.
 //!
-//! The `ItemContentBuilder` is another type that just offers access
-//! to the `ecx` that was given in, as well as maintaining a list of
-//! `xref` instances, which are used to extract common data so it is
-//! not re-serialized.
-//!
-//! `ItemContentBuilder` is a distinct type which does not offer the
-//! `record` method, so that we can ensure that `common::data_item` elements
-//! are never nested.
+//! `EncodingContext` does not offer the `record` method, so that we
+//! can ensure that `common::data_item` elements are never nested.
 //!
 //! In addition, while the `callback_fn` is executing, we will push a
 //! task `MetaData(some_def_id)`, which can then observe the
@@ -67,8 +61,7 @@ use index::IndexData;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TyCtxt};
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc::ty::TyCtxt;
 use syntax::ast;
 
 use std::ops::{Deref, DerefMut};
@@ -77,54 +70,27 @@ use std::ops::{Deref, DerefMut};
 /// Item encoding cannot be nested.
 pub struct IndexBuilder<'a, 'b: 'a, 'tcx: 'b> {
     items: IndexData,
-    builder: ItemContentBuilder<'a, 'b, 'tcx>,
-}
-
-/// Builder that can encode the content of items, but can't start a
-/// new item itself. Most code is attached to here.
-pub struct ItemContentBuilder<'a, 'b: 'a, 'tcx: 'b> {
-    xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
     pub ecx: &'a mut EncodeContext<'b, 'tcx>,
 }
 
 impl<'a, 'b, 'tcx> Deref for IndexBuilder<'a, 'b, 'tcx> {
     type Target = EncodeContext<'b, 'tcx>;
     fn deref(&self) -> &Self::Target {
-        self.builder.ecx
+        self.ecx
     }
 }
 
 impl<'a, 'b, 'tcx> DerefMut for IndexBuilder<'a, 'b, 'tcx> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.builder.ecx
-    }
-}
-
-impl<'a, 'b, 'tcx> Deref for ItemContentBuilder<'a, 'b, 'tcx> {
-    type Target = EncodeContext<'b, 'tcx>;
-    fn deref(&self) -> &Self::Target {
         self.ecx
     }
 }
-
-impl<'a, 'b, 'tcx> DerefMut for ItemContentBuilder<'a, 'b, 'tcx> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.ecx
-    }
-}
-
-/// "interned" entries referenced by id
-#[derive(PartialEq, Eq, Hash)]
-pub enum XRef<'tcx> { Predicate(ty::Predicate<'tcx>) }
 
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
         IndexBuilder {
             items: IndexData::new(ecx.tcx.map.num_local_def_ids()),
-            builder: ItemContentBuilder {
-                ecx: ecx,
-                xrefs: FnvHashMap(),
-            },
+            ecx: ecx,
         }
     }
 
@@ -147,28 +113,21 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// content system.
     pub fn record<DATA>(&mut self,
                         id: DefId,
-                        op: fn(&mut ItemContentBuilder<'a, 'b, 'tcx>, DATA),
+                        op: fn(&mut EncodeContext<'b, 'tcx>, DATA),
                         data: DATA)
         where DATA: DepGraphRead
     {
-        let position = self.builder.ecx.mark_stable_position();
+        let position = self.ecx.mark_stable_position();
         self.items.record(id, position);
         let _task = self.tcx.dep_graph.in_task(DepNode::MetaData(id));
-        self.builder.ecx.start_tag(tag_items_data_item).unwrap();
+        self.ecx.start_tag(tag_items_data_item).unwrap();
         data.read(self.tcx);
-        op(&mut self.builder, data);
-        self.builder.ecx.end_tag().unwrap();
+        op(&mut self.ecx, data);
+        self.ecx.end_tag().unwrap();
     }
 
-    pub fn into_fields(self) -> (IndexData, FnvHashMap<XRef<'tcx>, u32>) {
-        (self.items, self.builder.xrefs)
-    }
-}
-
-impl<'a, 'b, 'tcx> ItemContentBuilder<'a, 'b, 'tcx> {
-    pub fn add_xref(&mut self, xref: XRef<'tcx>) -> u32 {
-        let old_len = self.xrefs.len() as u32;
-        *self.xrefs.entry(xref).or_insert(old_len)
+    pub fn into_items(self) -> IndexData {
+        self.items
     }
 }
 

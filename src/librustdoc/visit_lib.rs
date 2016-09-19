@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::cstore::{CrateStore, ChildItem, DefLike};
+use rustc::middle::cstore::{CrateStore, ChildItem};
 use rustc::middle::privacy::{AccessLevels, AccessLevel};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
@@ -66,39 +66,32 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
 
     pub fn visit_mod(&mut self, did: DefId) {
         for item in self.cstore.item_children(did) {
-            if let DefLike::DlDef(def) = item.def {
-                match def {
-                    Def::Mod(did) |
-                    Def::ForeignMod(did) |
-                    Def::Trait(did) |
-                    Def::Struct(did) |
-                    Def::Union(did) |
-                    Def::Enum(did) |
-                    Def::TyAlias(did) |
-                    Def::Fn(did) |
-                    Def::Method(did) |
-                    Def::Static(did, _) |
-                    Def::Const(did) => self.visit_item(did, item),
-                    _ => {}
-                }
+            match item.def {
+                Def::Mod(did) |
+                Def::ForeignMod(did) |
+                Def::Trait(did) |
+                Def::Struct(did) |
+                Def::Union(did) |
+                Def::Enum(did) |
+                Def::TyAlias(did) |
+                Def::Fn(did) |
+                Def::Method(did) |
+                Def::Static(did, _) |
+                Def::Const(did) => self.visit_item(did, item),
+                _ => {}
             }
         }
     }
 
     fn visit_item(&mut self, did: DefId, item: ChildItem) {
         let inherited_item_level = match item.def {
-            DefLike::DlImpl(..) | DefLike::DlField => unreachable!(),
-            DefLike::DlDef(def) => {
-                match def {
-                    Def::ForeignMod(..) => self.prev_level,
-                    _ => if item.vis == Visibility::Public { self.prev_level } else { None }
-                }
-            }
+            Def::ForeignMod(..) => self.prev_level,
+            _ => if item.vis == Visibility::Public { self.prev_level } else { None }
         };
 
         let item_level = self.update(did, inherited_item_level);
 
-        if let DefLike::DlDef(Def::Mod(did)) = item.def {
+        if let Def::Mod(did) = item.def {
             let orig_level = self.prev_level;
 
             self.prev_level = item_level;

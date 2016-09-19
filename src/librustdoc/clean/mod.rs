@@ -33,7 +33,6 @@ use syntax::print::pprust as syntax_pprust;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
 use rustc_trans::back::link;
-use rustc::middle::cstore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime::DefRegion::*;
 use rustc::hir::def::Def;
@@ -239,9 +238,10 @@ impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &DocContext) -> ExternalCrate {
         let mut primitives = Vec::new();
         cx.tcx_opt().map(|tcx| {
-            for item in tcx.sess.cstore.crate_top_level_items(self.0) {
+            let root = DefId { krate: self.0, index: CRATE_DEF_INDEX };
+            for item in tcx.sess.cstore.item_children(root) {
                 let did = match item.def {
-                    cstore::DlDef(Def::Mod(did)) => did,
+                    Def::Mod(did) => did,
                     _ => continue
                 };
                 let attrs = inline::load_attrs(cx, tcx, did);
@@ -1877,11 +1877,9 @@ impl Clean<Item> for hir::StructField {
 
 impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        // FIXME: possible O(n^2)-ness! Not my fault.
-        let attr_map = cx.tcx().sess.cstore.crate_struct_field_attrs(self.did.krate);
         Item {
             name: Some(self.name).clean(cx),
-            attrs: attr_map.get(&self.did).unwrap_or(&Vec::new()).clean(cx),
+            attrs: cx.tcx().get_attrs(self.did).clean(cx),
             source: Span::empty(),
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, self.did),

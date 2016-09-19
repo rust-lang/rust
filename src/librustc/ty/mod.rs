@@ -50,7 +50,6 @@ use syntax_pos::{DUMMY_SP, Span};
 use rustc_const_math::ConstInt;
 
 use hir;
-use hir::{ItemImpl, ItemTrait, PatKind};
 use hir::intravisit::Visitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
@@ -251,7 +250,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
 pub enum ImplOrTraitItemId {
     ConstTraitItemId(DefId),
     MethodTraitItemId(DefId),
@@ -268,7 +267,7 @@ impl ImplOrTraitItemId {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable)]
 pub enum Visibility {
     /// Visible everywhere (including in other crates).
     Public,
@@ -346,34 +345,12 @@ pub struct Method<'tcx> {
     pub explicit_self: ExplicitSelfCategory<'tcx>,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
+    pub has_body: bool,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
 }
 
 impl<'tcx> Method<'tcx> {
-    pub fn new(name: Name,
-               generics: &'tcx ty::Generics<'tcx>,
-               predicates: GenericPredicates<'tcx>,
-               fty: &'tcx BareFnTy<'tcx>,
-               explicit_self: ExplicitSelfCategory<'tcx>,
-               vis: Visibility,
-               defaultness: hir::Defaultness,
-               def_id: DefId,
-               container: ImplOrTraitItemContainer)
-               -> Method<'tcx> {
-        Method {
-            name: name,
-            generics: generics,
-            predicates: predicates,
-            fty: fty,
-            explicit_self: explicit_self,
-            vis: vis,
-            defaultness: defaultness,
-            def_id: def_id,
-            container: container,
-        }
-    }
-
     pub fn container_id(&self) -> DefId {
         match self.container {
             TraitContainer(id) => id,
@@ -2236,7 +2213,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         match self.map.find(id) {
             Some(ast_map::NodeLocal(pat)) => {
                 match pat.node {
-                    PatKind::Binding(_, ref path1, _) => path1.node.as_str(),
+                    hir::PatKind::Binding(_, ref path1, _) => path1.node.as_str(),
                     _ => {
                         bug!("Variable id {} maps to {:?}, not local", id, pat);
                     },
@@ -2299,84 +2276,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn provided_trait_methods(self, id: DefId) -> Vec<Rc<Method<'gcx>>> {
-        if let Some(id) = self.map.as_local_node_id(id) {
-            if let ItemTrait(.., ref ms) = self.map.expect_item(id).node {
-                ms.iter().filter_map(|ti| {
-                    if let hir::MethodTraitItem(_, Some(_)) = ti.node {
-                        match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
-                            MethodTraitItem(m) => Some(m),
-                            _ => {
-                                bug!("provided_trait_methods(): \
-                                      non-method item found from \
-                                      looking up provided method?!")
-                            }
-                        }
-                    } else {
-                        None
-                    }
-                }).collect()
-            } else {
-                bug!("provided_trait_methods: `{:?}` is not a trait", id)
+        self.impl_or_trait_items(id).iter().filter_map(|id| {
+            match self.impl_or_trait_item(id.def_id()) {
+                MethodTraitItem(ref m) if m.has_body => Some(m.clone()),
+                _ => None
             }
-        } else {
-            self.sess.cstore.provided_trait_methods(self.global_tcx(), id)
-        }
+        }).collect()
     }
 
-    pub fn associated_consts(self, id: DefId) -> Vec<Rc<AssociatedConst<'gcx>>> {
+    pub fn trait_impl_polarity(self, id: DefId) -> hir::ImplPolarity {
         if let Some(id) = self.map.as_local_node_id(id) {
             match self.map.expect_item(id).node {
-                ItemTrait(.., ref tis) => {
-                    tis.iter().filter_map(|ti| {
-                        if let hir::ConstTraitItem(..) = ti.node {
-                            match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
-                                ConstTraitItem(ac) => Some(ac),
-                                _ => {
-                                    bug!("associated_consts(): \
-                                          non-const item found from \
-                                          looking up a constant?!")
-                                }
-                            }
-                        } else {
-                            None
-                        }
-                    }).collect()
-                }
-                ItemImpl(.., ref iis) => {
-                    iis.iter().filter_map(|ii| {
-                        if let hir::ImplItemKind::Const(..) = ii.node {
-                            match self.impl_or_trait_item(self.map.local_def_id(ii.id)) {
-                                ConstTraitItem(ac) => Some(ac),
-                                _ => {
-                                    bug!("associated_consts(): \
-                                          non-const item found from \
-                                          looking up a constant?!")
-                                }
-                            }
-                        } else {
-                            None
-                        }
-                    }).collect()
-                }
-                _ => {
-                    bug!("associated_consts: `{:?}` is not a trait or impl", id)
-                }
-            }
-        } else {
-            self.sess.cstore.associated_consts(self.global_tcx(), id)
-        }
-    }
-
-    pub fn trait_impl_polarity(self, id: DefId) -> Option<hir::ImplPolarity> {
-        if let Some(id) = self.map.as_local_node_id(id) {
-            match self.map.find(id) {
-                Some(ast_map::NodeItem(item)) => {
-                    match item.node {
-                        hir::ItemImpl(_, polarity, ..) => Some(polarity),
-                        _ => None
-                    }
-                }
-                _ => None
+                hir::ItemImpl(_, polarity, ..) => polarity,
+                ref item => bug!("trait_impl_polarity: {:?} not an impl", item)
             }
         } else {
             self.sess.cstore.impl_polarity(id)
@@ -2409,10 +2321,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                    .expect("missing ImplOrTraitItem in metadata"))
     }
 
-    pub fn trait_item_def_ids(self, id: DefId) -> Rc<Vec<ImplOrTraitItemId>> {
+    pub fn impl_or_trait_items(self, id: DefId) -> Rc<Vec<ImplOrTraitItemId>> {
         lookup_locally_or_in_crate_store(
-            "trait_item_def_ids", id, &self.trait_item_def_ids,
-            || Rc::new(self.sess.cstore.trait_item_def_ids(id)))
+            "impl_or_trait_items", id, &self.impl_or_trait_item_ids,
+            || Rc::new(self.sess.cstore.impl_or_trait_items(id)))
     }
 
     /// Returns the trait-ref corresponding to a given impl, or None if it is
@@ -2421,20 +2333,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         lookup_locally_or_in_crate_store(
             "impl_trait_refs", id, &self.impl_trait_refs,
             || self.sess.cstore.impl_trait_ref(self.global_tcx(), id))
-    }
-
-    /// Returns whether this DefId refers to an impl
-    pub fn is_impl(self, id: DefId) -> bool {
-        if let Some(id) = self.map.as_local_node_id(id) {
-            if let Some(ast_map::NodeItem(
-                &hir::Item { node: hir::ItemImpl(..), .. })) = self.map.find(id) {
-                true
-            } else {
-                false
-            }
-        } else {
-            self.sess.cstore.is_impl(id)
-        }
     }
 
     /// Returns a path resolution for node id if it exists, panics otherwise.
@@ -2699,10 +2597,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         debug!("populate_implementations_for_primitive_if_necessary: searching for {:?}",
                primitive_def_id);
 
-        let impl_items = self.sess.cstore.impl_items(primitive_def_id);
+        let impl_items = self.sess.cstore.impl_or_trait_items(primitive_def_id);
 
         // Store the implementation info.
-        self.impl_items.borrow_mut().insert(primitive_def_id, impl_items);
+        self.impl_or_trait_item_ids.borrow_mut().insert(primitive_def_id, Rc::new(impl_items));
         self.populated_external_primitive_impls.borrow_mut().insert(primitive_def_id);
     }
 
@@ -2728,8 +2626,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let inherent_impls = self.sess.cstore.inherent_implementations_for_type(type_id);
         for &impl_def_id in &inherent_impls {
             // Store the implementation info.
-            let impl_items = self.sess.cstore.impl_items(impl_def_id);
-            self.impl_items.borrow_mut().insert(impl_def_id, impl_items);
+            let impl_items = self.sess.cstore.impl_or_trait_items(impl_def_id);
+            self.impl_or_trait_item_ids.borrow_mut().insert(impl_def_id, Rc::new(impl_items));
         }
 
         self.inherent_impls.borrow_mut().insert(type_id, inherent_impls);
@@ -2758,8 +2656,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.record_trait_has_default_impl(trait_id);
         }
 
-        for impl_def_id in self.sess.cstore.implementations_of_trait(trait_id) {
-            let impl_items = self.sess.cstore.impl_items(impl_def_id);
+        for impl_def_id in self.sess.cstore.implementations_of_trait(Some(trait_id)) {
+            let impl_items = self.sess.cstore.impl_or_trait_items(impl_def_id);
             let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
 
             // Record the trait->implementation mapping.
@@ -2779,7 +2677,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
 
             // Store the implementation info.
-            self.impl_items.borrow_mut().insert(impl_def_id, impl_items);
+            self.impl_or_trait_item_ids.borrow_mut().insert(impl_def_id, Rc::new(impl_items));
         }
 
         def.flags.set(def.flags.get() | TraitFlags::IMPLS_VALID);
@@ -3012,7 +2910,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 /// The category of explicit self.
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum ExplicitSelfCategory<'tcx> {
     Static,
     ByValue,

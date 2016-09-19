@@ -493,7 +493,7 @@ impl Passes {
     }
 }
 
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum PanicStrategy {
     Unwind,
     Abort,
