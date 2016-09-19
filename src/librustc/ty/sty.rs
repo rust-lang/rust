@@ -275,7 +275,7 @@ impl<'tcx> Encodable for ClosureSubsts<'tcx> {
 impl<'tcx> Decodable for ClosureSubsts<'tcx> {
     fn decode<D: Decoder>(d: &mut D) -> Result<ClosureSubsts<'tcx>, D::Error> {
         let (func_substs, upvar_tys) = Decodable::decode(d)?;
-        cstore::tls::with_decoding_context(d, |dcx, _| {
+        cstore::tls::with_decoding_context(|dcx| {
             Ok(ClosureSubsts {
                 func_substs: func_substs,
                 upvar_tys: dcx.tcx().mk_type_list(upvar_tys)
@@ -666,7 +666,7 @@ pub enum Region {
 impl<'tcx> Decodable for &'tcx Region {
     fn decode<D: Decoder>(d: &mut D) -> Result<&'tcx Region, D::Error> {
         let r = Decodable::decode(d)?;
-        cstore::tls::with_decoding_context(d, |dcx, _| {
+        cstore::tls::with_decoding_context(|dcx| {
             Ok(dcx.tcx().mk_region(r))
         })
     }

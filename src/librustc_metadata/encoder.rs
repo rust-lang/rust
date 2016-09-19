@@ -28,13 +28,14 @@ use middle::dependency_format::Linkage;
 use rustc::dep_graph::DepNode;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Substs;
 
 use rustc::hir::svh::Svh;
 use rustc::mir::mir_map::MirMap;
 use rustc::session::config::{self, PanicStrategy, CrateTypeRustcMacro};
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 
-use rustc_serialize::Encodable;
+use rustc_serialize::{Encodable, SpecializedEncoder, SpecializedDecoder};
 use std::cell::RefCell;
 use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
@@ -75,6 +76,48 @@ impl<'a, 'tcx> Deref for EncodeContext<'a, 'tcx> {
 impl<'a, 'tcx> DerefMut for EncodeContext<'a, 'tcx> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.rbml_w
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
+        let cx = self.ty_str_ctxt();
+        self.emit_opaque(|opaque_encoder| {
+            Ok(tyencode::enc_ty(opaque_encoder.cursor, &cx, ty))
+        })
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<&'tcx Substs<'tcx>> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, substs: &&'tcx Substs<'tcx>) -> Result<(), Self::Error> {
+        let cx = self.ty_str_ctxt();
+        self.emit_opaque(|opaque_encoder| {
+            Ok(tyencode::enc_substs(opaque_encoder.cursor, &cx, substs))
+        })
+    }
+}
+
+/// FIXME(#31844) This is horribly unsound as it allows the
+/// caller to pick any lifetime for 'tcx, including 'static.
+impl<'a, 'tcx> SpecializedDecoder<Ty<'tcx>> for ::rbml::reader::Decoder<'a> {
+    fn specialized_decode(&mut self) -> Result<Ty<'tcx>, Self::Error> {
+        self.read_opaque(|opaque_decoder, _| {
+            ::middle::cstore::tls::with_decoding_context(|dcx| {
+                Ok(dcx.decode_ty(opaque_decoder))
+            })
+        })
+    }
+}
+
+/// FIXME(#31844) This is horribly unsound as it allows the
+/// caller to pick any lifetime for 'tcx, including 'static.
+impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for ::rbml::reader::Decoder<'a> {
+    fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
+        self.read_opaque(|opaque_decoder, _| {
+            ::middle::cstore::tls::with_decoding_context(|dcx| {
+                Ok(dcx.decode_substs(opaque_decoder))
+            })
+        })
     }
 }
 

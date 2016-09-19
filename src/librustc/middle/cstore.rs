@@ -509,85 +509,20 @@ pub trait MacroLoader {
 /// Note, however, that this only works for RBML-based encoding and decoding at
 /// the moment.
 pub mod tls {
-    use rbml::opaque::Encoder as OpaqueEncoder;
     use rbml::opaque::Decoder as OpaqueDecoder;
-    use serialize;
     use std::cell::Cell;
-    use std::mem;
-    use ty::{self, Ty, TyCtxt};
+    use ty::{Ty, TyCtxt};
     use ty::subst::Substs;
     use hir::def_id::DefId;
-
-    pub trait EncodingContext<'tcx> {
-        fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
-        fn encode_ty(&self, encoder: &mut OpaqueEncoder, t: Ty<'tcx>);
-        fn encode_substs(&self, encoder: &mut OpaqueEncoder, substs: &Substs<'tcx>);
-    }
 
     /// Marker type used for the TLS slot.
     /// The type context cannot be used directly because the TLS
     /// in libstd doesn't allow types generic over lifetimes.
     struct TlsPayload;
 
-    thread_local! {
-        static TLS_ENCODING: Cell<Option<*const TlsPayload>> = Cell::new(None)
-    }
-
-    /// Execute f after pushing the given EncodingContext onto the TLS stack.
-    pub fn enter_encoding_context<'tcx, F, R>(ecx: &EncodingContext<'tcx>,
-                                              encoder: &mut OpaqueEncoder,
-                                              f: F) -> R
-        where F: FnOnce(&EncodingContext<'tcx>, &mut OpaqueEncoder) -> R
-    {
-        let tls_payload = (ecx as *const _, encoder as *mut _);
-        let tls_ptr = &tls_payload as *const _ as *const TlsPayload;
-        TLS_ENCODING.with(|tls| {
-            let prev = tls.get();
-            tls.set(Some(tls_ptr));
-            let ret = f(ecx, encoder);
-            tls.set(prev);
-            return ret
-        })
-    }
-
-    /// Execute f with access to the thread-local encoding context and
-    /// rbml encoder. This function will panic if the encoder passed in and the
-    /// context encoder are not the same.
-    ///
-    /// Note that this method is 'practically' safe due to its checking that the
-    /// encoder passed in is the same as the one in TLS, but it would still be
-    /// possible to construct cases where the EncodingContext is exchanged
-    /// while the same encoder is used, thus working with a wrong context.
-    pub fn with_encoding_context<'tcx, E, F, R>(encoder: &mut E, f: F) -> R
-        where F: FnOnce(&EncodingContext<'tcx>, &mut OpaqueEncoder) -> R,
-              E: serialize::Encoder
-    {
-        unsafe {
-            unsafe_with_encoding_context(|ecx, tls_encoder| {
-                assert!(encoder as *mut _ as usize == tls_encoder as *mut _ as usize);
-
-                let ecx: &EncodingContext<'tcx> = mem::transmute(ecx);
-
-                f(ecx, tls_encoder)
-            })
-        }
-    }
-
-    /// Execute f with access to the thread-local encoding context and
-    /// rbml encoder.
-    pub unsafe fn unsafe_with_encoding_context<F, R>(f: F) -> R
-        where F: FnOnce(&EncodingContext, &mut OpaqueEncoder) -> R
-    {
-        TLS_ENCODING.with(|tls| {
-            let tls = tls.get().unwrap();
-            let tls_payload = tls as *mut (&EncodingContext, &mut OpaqueEncoder);
-            f((*tls_payload).0, (*tls_payload).1)
-        })
-    }
-
     pub trait DecodingContext<'tcx> {
         fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
-        fn decode_ty(&self, decoder: &mut OpaqueDecoder) -> ty::Ty<'tcx>;
+        fn decode_ty(&self, decoder: &mut OpaqueDecoder) -> Ty<'tcx>;
         fn decode_substs(&self, decoder: &mut OpaqueDecoder) -> &'tcx Substs<'tcx>;
         fn translate_def_id(&self, def_id: DefId) -> DefId;
     }
@@ -597,56 +532,31 @@ pub mod tls {
     }
 
     /// Execute f after pushing the given DecodingContext onto the TLS stack.
-    pub fn enter_decoding_context<'tcx, F, R>(dcx: &DecodingContext<'tcx>,
-                                              decoder: &mut OpaqueDecoder,
-                                              f: F) -> R
-        where F: FnOnce(&DecodingContext<'tcx>, &mut OpaqueDecoder) -> R
+    pub fn enter_decoding_context<'tcx, F, R>(dcx: &DecodingContext<'tcx>, f: F) -> R
+        where F: FnOnce(&DecodingContext<'tcx>) -> R
     {
-        let tls_payload = (dcx as *const _, decoder as *mut _);
+        let tls_payload = dcx as *const _;
         let tls_ptr = &tls_payload as *const _ as *const TlsPayload;
         TLS_DECODING.with(|tls| {
             let prev = tls.get();
             tls.set(Some(tls_ptr));
-            let ret = f(dcx, decoder);
+            let ret = f(dcx);
             tls.set(prev);
-            return ret
+            ret
         })
     }
 
-    /// Execute f with access to the thread-local decoding context and
-    /// rbml decoder. This function will panic if the decoder passed in and the
-    /// context decoder are not the same.
-    ///
-    /// Note that this method is 'practically' safe due to its checking that the
-    /// decoder passed in is the same as the one in TLS, but it would still be
-    /// possible to construct cases where the DecodingContext is exchanged
-    /// while the same decoder is used, thus working with a wrong context.
-    pub fn with_decoding_context<'decoder, 'tcx, D, F, R>(d: &'decoder mut D, f: F) -> R
-        where D: serialize::Decoder,
-              F: FnOnce(&DecodingContext<'tcx>,
-                        &mut OpaqueDecoder) -> R,
-              'tcx: 'decoder
+    /// Execute f with access to the thread-local decoding context.
+    /// FIXME(eddyb) This is horribly unsound as it allows the
+    /// caler to pick any lifetime for 'tcx, including 'static.
+    pub fn with_decoding_context<'tcx, F, R>(f: F) -> R
+        where F: FnOnce(&DecodingContext<'tcx>) -> R,
     {
         unsafe {
-            unsafe_with_decoding_context(|dcx, decoder| {
-                assert!((d as *mut _ as usize) == (decoder as *mut _ as usize));
-
-                let dcx: &DecodingContext<'tcx> = mem::transmute(dcx);
-
-                f(dcx, decoder)
+            TLS_DECODING.with(|tls| {
+                let tls = tls.get().unwrap();
+                f(*(tls as *mut &DecodingContext))
             })
         }
-    }
-
-    /// Execute f with access to the thread-local decoding context and
-    /// rbml decoder.
-    pub unsafe fn unsafe_with_decoding_context<F, R>(f: F) -> R
-        where F: FnOnce(&DecodingContext, &mut OpaqueDecoder) -> R
-    {
-        TLS_DECODING.with(|tls| {
-            let tls = tls.get().unwrap();
-            let tls_payload = tls as *mut (&DecodingContext, &mut OpaqueDecoder);
-            f((*tls_payload).0, (*tls_payload).1)
-        })
     }
 }
