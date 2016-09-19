@@ -186,6 +186,7 @@ pub fn opts() -> Vec<RustcOptGroup> {
                          own theme", "PATH")),
         unstable(optmulti("Z", "",
                           "internal and debugging options (only on nightly build)", "FLAG")),
+        stable(optopt("", "sysroot", "Override the system root", "PATH")),
     )
 }
 
@@ -370,6 +371,7 @@ fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> 
     }
     let cfgs = matches.opt_strs("cfg");
     let triple = matches.opt_str("target");
+    let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
 
     let cr = PathBuf::from(cratefile);
     info!("starting to run rustc");
@@ -379,7 +381,7 @@ fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> 
         use rustc::session::config::Input;
 
         tx.send(core::run_core(paths, cfgs, externs, Input::File(cr),
-                               triple)).unwrap();
+                               triple, maybe_sysroot)).unwrap();
     });
     let (mut krate, renderinfo) = rx.recv().unwrap();
     info!("finished with rustc");
