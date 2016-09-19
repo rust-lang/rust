@@ -1,18 +1,19 @@
 use rustc::hir::def_id::DefId;
+use rustc::middle::const_val::ConstVal;
 use rustc::mir::repr as mir;
 use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, BareFnTy};
-use std::rc::Rc;
 use std::iter;
-use syntax::{ast, attr};
+use std::rc::Rc;
 use syntax::codemap::{DUMMY_SP, Span};
+use syntax::{ast, attr};
 
-use super::{EvalContext, IntegerExt, StackPopCleanup};
 use error::{EvalError, EvalResult};
 use memory::Pointer;
+use super::{EvalContext, IntegerExt, StackPopCleanup};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
@@ -32,8 +33,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Goto { target } => self.goto_block(target),
 
             If { ref cond, targets: (then_target, else_target) } => {
-                let cond_ptr = self.eval_operand(cond)?;
-                let cond_val = self.memory.read_bool(cond_ptr)?;
+                let cond_val = self.eval_operand_to_primval(cond)?
+                    .expect_bool("TerminatorKind::If condition constant was not a bool");
                 self.goto_block(if cond_val { then_target } else { else_target });
             }
 
@@ -54,9 +55,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
-                for (index, val_const) in values.iter().enumerate() {
-                    let ptr = self.const_to_ptr(val_const)?;
-                    let val = self.memory.read_uint(ptr, discr_size)?;
+                for (index, const_val) in values.iter().enumerate() {
+                    let val = match const_val {
+                        &ConstVal::Integral(i) => i.to_u64_unchecked(),
+                        _ => bug!("TerminatorKind::SwitchInt branch constant was not an integer"),
+                    };
                     if discr_val == val {
                         target_block = targets[index];
                         break;
@@ -88,7 +91,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let func_ty = self.operand_ty(func);
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
-                        let ptr = self.eval_operand(func)?;
+                        let ptr = self.eval_operand_to_ptr(func)?;
                         let fn_ptr = self.memory.read_ptr(ptr)?;
                         let (def_id, substs, fn_ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
                         if fn_ty != bare_fn_ty {
@@ -114,15 +117,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
-                let cond_ptr = self.eval_operand(cond)?;
-                if expected == self.memory.read_bool(cond_ptr)? {
+                let cond_val = self.eval_operand_to_primval(cond)?
+                    .expect_bool("TerminatorKind::Assert condition constant was not a bool");
+                if expected == cond_val {
                     self.goto_block(target);
                 } else {
                     return match *msg {
                         mir::AssertMessage::BoundsCheck { ref len, ref index } => {
-                            let len = self.eval_operand(len).expect("can't eval len");
+                            let len = self.eval_operand_to_ptr(len).expect("can't eval len");
                             let len = self.memory.read_usize(len).expect("can't read len");
-                            let index = self.eval_operand(index).expect("can't eval index");
+                            let index = self.eval_operand_to_ptr(index).expect("can't eval index");
                             let index = self.memory.read_usize(index).expect("can't read index");
                             Err(EvalError::ArrayIndexOutOfBounds(terminator.source_info.span, len, index))
                         },
@@ -174,7 +178,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let mut arg_srcs = Vec::new();
                 for arg in args {
-                    let src = self.eval_operand(arg)?;
+                    let src = self.eval_operand_to_ptr(arg)?;
                     let src_ty = self.operand_ty(arg);
                     arg_srcs.push((src, src_ty));
                 }
@@ -271,8 +275,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Pointer,
         dest_layout: &'tcx Layout,
     ) -> EvalResult<'tcx, ()> {
+        // TODO(solson): We can probably remove this _to_ptr easily.
         let args_res: EvalResult<Vec<Pointer>> = args.iter()
-            .map(|arg| self.eval_operand(arg))
+            .map(|arg| self.eval_operand_to_ptr(arg))
             .collect();
         let args_ptrs = args_res?;
         let pointer_size = self.memory.pointer_size();
@@ -422,8 +427,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             None => name.as_str(),
         };
 
+        // TODO(solson): We can probably remove this _to_ptr easily.
         let args_res: EvalResult<Vec<Pointer>> = args.iter()
-            .map(|arg| self.eval_operand(arg))
+            .map(|arg| self.eval_operand_to_ptr(arg))
             .collect();
         let args = args_res?;
 

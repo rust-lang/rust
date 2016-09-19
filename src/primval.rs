@@ -20,6 +20,15 @@ pub enum PrimVal {
     F32(f32), F64(f64),
 }
 
+impl PrimVal {
+    pub fn expect_bool(self, error_msg: &str) -> bool {
+        match self {
+            PrimVal::Bool(b) => b,
+            _ => bug!("{}", error_msg),
+        }
+    }
+}
+
 /// returns the result of the operation and whether the operation overflowed
 pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<'tcx, (PrimVal, bool)> {
     use rustc::mir::repr::BinOp::*;

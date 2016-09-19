@@ -30,6 +30,13 @@ fn bar(i: i32) {
         //~|NOTE inside call to bar
         //~|NOTE inside call to bar
         //~|NOTE inside call to bar
+        //~|NOTE inside call to bar
+        //~|NOTE inside call to bar
+        //~|NOTE inside call to bar
+        //~|NOTE inside call to bar
+        //~|NOTE inside call to bar
+        //~|NOTE inside call to bar
+        //~|NOTE inside call to bar
     }
 }
 

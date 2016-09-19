@@ -1,4 +1,4 @@
-use rustc::middle::const_val;
+use rustc::middle::const_val::ConstVal;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
@@ -99,6 +99,12 @@ pub struct Frame<'a, 'tcx: 'a> {
     pub stmt: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Value {
+    Ptr(Pointer),
+    Prim(PrimVal),
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct Lvalue {
     ptr: Pointer,
@@ -182,45 +188,30 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.stack
     }
 
-    // TODO(solson): Try making const_to_primval instead.
-    fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<'tcx, Pointer> {
+    fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
         use rustc::middle::const_val::ConstVal::*;
         use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstFloat};
-        macro_rules! i2p {
-            ($i:ident, $n:expr) => {{
-                let ptr = self.memory.allocate($n, $n)?;
-                self.memory.write_int(ptr, $i as i64, $n)?;
-                Ok(ptr)
-            }}
-        }
-        match *const_val {
-            Float(ConstFloat::F32(f)) => {
-                let ptr = self.memory.allocate(4, 4)?;
-                self.memory.write_f32(ptr, f)?;
-                Ok(ptr)
-            },
-            Float(ConstFloat::F64(f)) => {
-                let ptr = self.memory.allocate(8, 8)?;
-                self.memory.write_f64(ptr, f)?;
-                Ok(ptr)
-            },
-            Float(ConstFloat::FInfer{..}) |
-            Integral(ConstInt::Infer(_)) |
-            Integral(ConstInt::InferSigned(_)) => bug!("uninferred constants only exist before typeck"),
-            Integral(ConstInt::I8(i)) => i2p!(i, 1),
-            Integral(ConstInt::U8(i)) => i2p!(i, 1),
+
+        let primval = match *const_val {
+            Integral(ConstInt::I8(i)) => Value::Prim(PrimVal::I8(i)),
+            Integral(ConstInt::U8(i)) => Value::Prim(PrimVal::U8(i)),
             Integral(ConstInt::Isize(ConstIsize::Is16(i))) |
-            Integral(ConstInt::I16(i)) => i2p!(i, 2),
+            Integral(ConstInt::I16(i)) => Value::Prim(PrimVal::I16(i)),
             Integral(ConstInt::Usize(ConstUsize::Us16(i))) |
-            Integral(ConstInt::U16(i)) => i2p!(i, 2),
+            Integral(ConstInt::U16(i)) => Value::Prim(PrimVal::U16(i)),
             Integral(ConstInt::Isize(ConstIsize::Is32(i))) |
-            Integral(ConstInt::I32(i)) => i2p!(i, 4),
+            Integral(ConstInt::I32(i)) => Value::Prim(PrimVal::I32(i)),
             Integral(ConstInt::Usize(ConstUsize::Us32(i))) |
-            Integral(ConstInt::U32(i)) => i2p!(i, 4),
+            Integral(ConstInt::U32(i)) => Value::Prim(PrimVal::U32(i)),
             Integral(ConstInt::Isize(ConstIsize::Is64(i))) |
-            Integral(ConstInt::I64(i)) => i2p!(i, 8),
+            Integral(ConstInt::I64(i)) => Value::Prim(PrimVal::I64(i)),
             Integral(ConstInt::Usize(ConstUsize::Us64(i))) |
-            Integral(ConstInt::U64(i)) => i2p!(i, 8),
+            Integral(ConstInt::U64(i)) => Value::Prim(PrimVal::U64(i)),
+            Float(ConstFloat::F32(f)) => Value::Prim(PrimVal::F32(f)),
+            Float(ConstFloat::F64(f)) => Value::Prim(PrimVal::F64(f)),
+            Bool(b) => Value::Prim(PrimVal::Bool(b)),
+            Char(c) => Value::Prim(PrimVal::Char(c)),
+
             Str(ref s) => {
                 let psize = self.memory.pointer_size();
                 let static_ptr = self.memory.allocate(s.len(), 1)?;
@@ -229,33 +220,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_bytes(static_ptr, s.as_bytes())?;
                 self.memory.write_ptr(ptr, static_ptr)?;
                 self.memory.write_usize(extra, s.len() as u64)?;
-                Ok(ptr)
+                Value::Ptr(ptr)
             }
+
             ByteStr(ref bs) => {
                 let psize = self.memory.pointer_size();
                 let static_ptr = self.memory.allocate(bs.len(), 1)?;
                 let ptr = self.memory.allocate(psize, psize)?;
                 self.memory.write_bytes(static_ptr, bs)?;
                 self.memory.write_ptr(ptr, static_ptr)?;
-                Ok(ptr)
+                Value::Ptr(ptr)
             }
-            Bool(b) => {
-                let ptr = self.memory.allocate(1, 1)?;
-                self.memory.write_bool(ptr, b)?;
-                Ok(ptr)
-            }
-            Char(c) => {
-                let ptr = self.memory.allocate(4, 4)?;
-                self.memory.write_uint(ptr, c as u64, 4)?;
-                Ok(ptr)
-            },
-            Struct(_node_id)  => unimplemented!(),
-            Tuple(_node_id)   => unimplemented!(),
-            Function(_def_id) => unimplemented!(),
-            Array(_, _)       => unimplemented!(),
-            Repeat(_, _)      => unimplemented!(),
-            Dummy             => unimplemented!(),
-        }
+
+            Struct(_)    => unimplemented!(),
+            Tuple(_)     => unimplemented!(),
+            Function(_)  => unimplemented!(),
+            Array(_, _)  => unimplemented!(),
+            Repeat(_, _) => unimplemented!(),
+            Dummy        => unimplemented!(),
+
+            Float(ConstFloat::FInfer{..}) |
+            Integral(ConstInt::Infer(_)) |
+            Integral(ConstInt::InferSigned(_)) =>
+                bug!("uninferred constants only exist before typeck"),
+        };
+
+        Ok(primval)
     }
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
@@ -404,15 +394,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         right: &mir::Operand<'tcx>,
         dest: Pointer,
     ) -> EvalResult<'tcx, bool> {
-        let left_ptr = self.eval_operand(left)?;
-        let left_ty = self.operand_ty(left);
-        let left_val = self.read_primval(left_ptr, left_ty)?;
-
-        let right_ptr = self.eval_operand(right)?;
-        let right_ty = self.operand_ty(right);
-        let right_val = self.read_primval(right_ptr, right_ty)?;
-
-        let (val, overflow) = primval::binary_op(op, left_val, right_val)?;
+        let left_primval = self.eval_operand_to_primval(left)?;
+        let right_primval = self.eval_operand_to_primval(right)?;
+        let (val, overflow) = primval::binary_op(op, left_primval, right_primval)?;
         self.memory.write_primval(dest, val)?;
         Ok(overflow)
     }
@@ -424,17 +408,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         operands: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx, ()> {
         for (offset, operand) in offsets.into_iter().zip(operands) {
-            let src = self.eval_operand(operand)?;
-            let src_ty = self.operand_ty(operand);
+            let value = self.eval_operand(operand)?;
+            let value_ty = self.operand_ty(operand);
             let field_dest = dest.offset(offset as isize);
-            self.move_(src, field_dest, src_ty)?;
+            self.write_value(value, field_dest, value_ty)?;
         }
         Ok(())
     }
 
-    fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
-        -> EvalResult<'tcx, ()>
-    {
+    /// Evaluate an assignment statement.
+    ///
+    /// There is no separate `eval_rvalue` function. Instead, the code for handling each rvalue
+    /// type writes its results directly into the memory specified by the lvalue.
+    fn eval_rvalue_into_lvalue(
+        &mut self,
+        rvalue: &mir::Rvalue<'tcx>,
+        lvalue: &mir::Lvalue<'tcx>,
+    ) -> EvalResult<'tcx, ()> {
         let dest = self.eval_lvalue(lvalue)?.to_ptr();
         let dest_ty = self.lvalue_ty(lvalue);
         let dest_layout = self.type_layout(dest_ty);
@@ -442,8 +432,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
-                let src = self.eval_operand(operand)?;
-                self.move_(src, dest, dest_ty)?;
+                let value = self.eval_operand(operand)?;
+                self.write_value(value, dest, dest_ty)?;
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
@@ -456,9 +446,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             UnaryOp(un_op, ref operand) => {
-                let ptr = self.eval_operand(operand)?;
-                let ty = self.operand_ty(operand);
-                let val = self.read_primval(ptr, ty)?;
+                let val = self.eval_operand_to_primval(operand)?;
                 self.memory.write_primval(dest, primval::unary_op(un_op, val)?)?;
             }
 
@@ -499,9 +487,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             if nndiscr == variant as u64 {
                                 assert_eq!(operands.len(), 1);
                                 let operand = &operands[0];
-                                let src = self.eval_operand(operand)?;
-                                let src_ty = self.operand_ty(operand);
-                                self.move_(src, dest, src_ty)?;
+                                let value = self.eval_operand(operand)?;
+                                let value_ty = self.operand_ty(operand);
+                                self.write_value(value, dest, value_ty)?;
                             } else {
                                 assert_eq!(operands.len(), 0);
                                 self.memory.write_isize(dest, 0)?;
@@ -549,15 +537,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Repeat(ref operand, _) => {
-                let (elem_size, elem_align, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (self.type_size(elem_ty), self.type_align(elem_ty), n),
+                let (elem_ty, length) = match dest_ty.sty {
+                    ty::TyArray(elem_ty, n) => (elem_ty, n),
                     _ => bug!("tried to assign array-repeat to non-array type {:?}", dest_ty),
                 };
-
-                let src = self.eval_operand(operand)?;
+                let elem_size = self.type_size(elem_ty);
+                let value = self.eval_operand(operand)?;
                 for i in 0..length {
                     let elem_dest = dest.offset((i * elem_size) as isize);
-                    self.memory.copy(src, elem_dest, elem_size, elem_align)?;
+                    self.write_value(value, elem_dest, elem_ty)?;
                 }
             }
 
@@ -604,7 +592,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 use rustc::mir::repr::CastKind::*;
                 match kind {
                     Unsize => {
-                        let src = self.eval_operand(operand)?;
+                        let src = self.eval_operand_to_ptr(operand)?;
                         let src_ty = self.operand_ty(operand);
                         let dest_ty = self.monomorphize(dest_ty, self.substs());
                         assert!(self.type_is_fat_ptr(dest_ty));
@@ -637,7 +625,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     Misc => {
-                        let src = self.eval_operand(operand)?;
+                        let src = self.eval_operand_to_ptr(operand)?;
                         let src_ty = self.operand_ty(operand);
                         if self.type_is_fat_ptr(src_ty) {
                             let (data_ptr, _meta_ptr) = self.get_fat_ptr(src);
@@ -671,7 +659,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     UnsafeFnPointer => match dest_ty.sty {
                         ty::TyFnPtr(unsafe_fn_ty) => {
-                            let src = self.eval_operand(operand)?;
+                            let src = self.eval_operand_to_ptr(operand)?;
                             let ptr = self.memory.read_ptr(src)?;
                             let (def_id, substs, _) = self.memory.get_fn(ptr.alloc_id)?;
                             let fn_ptr = self.memory.create_fn_ptr(def_id, substs, unsafe_fn_ty);
@@ -761,36 +749,68 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Pointer> {
+    // FIXME(solson): This method unnecessarily allocates and should not be necessary. We can
+    // remove it as soon as PrimVal can represent fat pointers.
+    fn eval_operand_to_ptr(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Pointer> {
+        let value = self.eval_operand(op)?;
+        match value {
+            Value::Ptr(ptr) => Ok(ptr),
+            Value::Prim(primval) => {
+                let ty = self.operand_ty(op);
+                let size = self.type_size(ty);
+                let align = self.type_align(ty);
+                let ptr = self.memory.allocate(size, align)?;
+                self.memory.write_primval(ptr, primval)?;
+                Ok(ptr)
+            }
+        }
+    }
+
+    fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
+        let value = self.eval_operand(op)?;
+        let ty = self.operand_ty(op);
+        self.value_to_primval(value, ty)
+    }
+
+    fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => Ok(self.eval_lvalue(lvalue)?.to_ptr()),
+            Consume(ref lvalue) => Ok(Value::Ptr(self.eval_lvalue(lvalue)?.to_ptr())),
+
             Constant(mir::Constant { ref literal, ty, .. }) => {
-                use rustc::mir::repr::Literal::*;
-                match *literal {
-                    Value { ref value } => Ok(self.const_to_ptr(value)?),
-                    Item { def_id, substs } => {
+                use rustc::mir::repr::Literal;
+                let value = match *literal {
+                    Literal::Value { ref value } => self.const_to_value(value)?,
+
+                    Literal::Item { def_id, substs } => {
                         if let ty::TyFnDef(..) = ty.sty {
                             // function items are zero sized
-                            Ok(self.memory.allocate(0, 0)?)
+                            Value::Ptr(self.memory.allocate(0, 0)?)
                         } else {
                             let cid = ConstantId {
                                 def_id: def_id,
                                 substs: substs,
                                 kind: ConstantKind::Global,
                             };
-                            Ok(*self.statics.get(&cid).expect("static should have been cached (rvalue)"))
+                            let static_ptr = *self.statics.get(&cid)
+                                .expect("static should have been cached (rvalue)");
+                            Value::Ptr(static_ptr)
                         }
-                    },
-                    Promoted { index } => {
+                    }
+
+                    Literal::Promoted { index } => {
                         let cid = ConstantId {
                             def_id: self.frame().def_id,
                             substs: self.substs(),
                             kind: ConstantKind::Promoted(index),
                         };
-                        Ok(*self.statics.get(&cid).expect("a promoted constant hasn't been precomputed"))
-                    },
-                }
+                        let static_ptr = *self.statics.get(&cid)
+                            .expect("a promoted constant hasn't been precomputed");
+                        Value::Ptr(static_ptr)
+                    }
+                };
+
+                Ok(value)
             }
         }
     }
@@ -885,7 +905,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             ty::TySlice(elem_ty) => self.type_size(elem_ty),
                             _ => bug!("indexing expected an array or slice, got {:?}", base_ty),
                         };
-                        let n_ptr = self.eval_operand(operand)?;
+                        let n_ptr = self.eval_operand_to_ptr(operand)?;
                         let n = self.memory.read_usize(n_ptr)?;
                         base.ptr.offset(n as isize * elem_size as isize)
                     }
@@ -918,6 +938,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let align = self.type_align(ty);
         self.memory.copy(src, dest, size, align)?;
         Ok(())
+    }
+
+    fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+        match value {
+            Value::Ptr(ptr) => self.read_primval(ptr, ty),
+
+            // TODO(solson): Sanity-check the primval type against the input type.
+            Value::Prim(primval) => Ok(primval),
+        }
+    }
+
+    fn write_value(&mut self, value: Value, dest: Pointer, dest_ty: Ty<'tcx>) -> EvalResult<'tcx, ()> {
+        match value {
+            Value::Ptr(ptr) => self.move_(ptr, dest, dest_ty),
+            Value::Prim(primval) => self.memory.write_primval(dest, primval),
+        }
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {

@@ -77,7 +77,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         use rustc::mir::repr::StatementKind::*;
         match stmt.kind {
-            Assign(ref lvalue, ref rvalue) => self.eval_assignment(lvalue, rvalue)?,
+            Assign(ref lvalue, ref rvalue) => self.eval_rvalue_into_lvalue(rvalue, lvalue)?,
             SetDiscriminant { .. } => unimplemented!(),
 
             // Miri can safely ignore these. Only translation needs them.
