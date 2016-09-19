@@ -103,10 +103,15 @@ pub struct Frame<'a, 'tcx: 'a> {
 ///
 /// A `Value` can either refer to a block of memory inside an allocation (`ByRef`) or to a primitve
 /// value held directly, outside of any allocation (`ByVal`).
+///
+/// For optimization of a few very common cases, there is also a representation for a pair of
+/// primitive values (`ByValPair`). It allows Miri to avoid making allocations for check binary
+/// operations and fat pointers. This idea was taken from rustc's trans.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Value {
     ByRef(Pointer),
     ByVal(PrimVal),
+    ByValPair(PrimVal, PrimVal),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -192,6 +197,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.stack
     }
 
+    fn target_isize_primval(&self, n: i64) -> PrimVal {
+        match self.memory.pointer_size() {
+            1 => PrimVal::I8(n as i8),
+            2 => PrimVal::I16(n as i16),
+            4 => PrimVal::I32(n as i32),
+            8 => PrimVal::I64(n as i64),
+            p => bug!("unsupported target pointer size: {}", p),
+        }
+    }
+
+    fn target_usize_primval(&self, n: u64) -> PrimVal {
+        match self.memory.pointer_size() {
+            1 => PrimVal::U8(n as u8),
+            2 => PrimVal::U16(n as u16),
+            4 => PrimVal::U32(n as u32),
+            8 => PrimVal::U64(n as u64),
+            p => bug!("unsupported target pointer size: {}", p),
+        }
+    }
+
     fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
         use rustc::middle::const_val::ConstVal::*;
         use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstFloat};
@@ -217,19 +242,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Char(c) => Value::ByVal(PrimVal::Char(c)),
 
             Str(ref s) => {
-                // Create and freeze the allocation holding the characters.
-                let static_ptr = self.memory.allocate(s.len(), 1)?;
-                self.memory.write_bytes(static_ptr, s.as_bytes())?;
-                self.memory.freeze(static_ptr.alloc_id)?;
-
-                // Create an allocation to hold the fat pointer to the above char allocation.
-                // FIXME(solson): Introduce Value::ByValPair to remove this allocation.
-                let psize = self.memory.pointer_size();
-                let ptr = self.memory.allocate(psize * 2, psize)?;
-                let (ptr, extra) = self.get_fat_ptr(ptr);
-                self.memory.write_ptr(ptr, static_ptr)?;
-                self.memory.write_usize(extra, s.len() as u64)?;
-                Value::ByRef(ptr)
+                let ptr = self.memory.allocate(s.len(), 1)?;
+                self.memory.write_bytes(ptr, s.as_bytes())?;
+                self.memory.freeze(ptr.alloc_id)?;
+                Value::ByValPair(
+                    PrimVal::AbstractPtr(ptr),
+                    self.target_usize_primval(s.len() as u64)
+                )
             }
 
             ByteStr(ref bs) => {
@@ -762,12 +781,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let value = self.eval_operand(op)?;
         match value {
             Value::ByRef(ptr) => Ok(ptr),
+
             Value::ByVal(primval) => {
                 let ty = self.operand_ty(op);
                 let size = self.type_size(ty);
                 let align = self.type_align(ty);
                 let ptr = self.memory.allocate(size, align)?;
                 self.memory.write_primval(ptr, primval)?;
+                Ok(ptr)
+            }
+
+            Value::ByValPair(primval1, primval2) => {
+                let ty = self.operand_ty(op);
+                let size = self.type_size(ty);
+                let align = self.type_align(ty);
+                let ptr = self.memory.allocate(size, align)?;
+
+                // FIXME(solson): Major dangerous assumptions here. Ideally obliterate this
+                // function.
+                self.memory.write_primval(ptr, primval1)?;
+                self.memory.write_primval(ptr.offset((size / 2) as isize), primval2)?;
                 Ok(ptr)
             }
         }
@@ -953,6 +986,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             // TODO(solson): Sanity-check the primval type against the input type.
             Value::ByVal(primval) => Ok(primval),
+            Value::ByValPair(..) => bug!("can't turn a ByValPair into a single PrimVal"),
         }
     }
 
@@ -965,44 +999,56 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match value {
             Value::ByRef(ptr) => self.move_(ptr, dest, dest_ty),
             Value::ByVal(primval) => self.memory.write_primval(dest, primval),
+            Value::ByValPair(primval1, primval2) => {
+                let size = self.type_size(dest_ty);
+
+                // FIXME(solson): Major dangerous assumptions here.
+                self.memory.write_primval(dest, primval1)?;
+                self.memory.write_primval(dest.offset((size / 2) as isize), primval2)?;
+                Ok(())
+            }
         }
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         use syntax::ast::{IntTy, UintTy, FloatTy};
-        let val = match (self.memory.pointer_size(), &ty.sty) {
-            (_, &ty::TyBool)              => PrimVal::Bool(self.memory.read_bool(ptr)?),
-            (_, &ty::TyChar)              => {
+        let val = match &ty.sty {
+            &ty::TyBool => PrimVal::Bool(self.memory.read_bool(ptr)?),
+            &ty::TyChar => {
                 let c = self.memory.read_uint(ptr, 4)? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::Char(ch),
                     None => return Err(EvalError::InvalidChar(c as u64)),
                 }
             }
-            (_, &ty::TyInt(IntTy::I8))    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
-            (2, &ty::TyInt(IntTy::Is)) |
-            (_, &ty::TyInt(IntTy::I16))   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
-            (4, &ty::TyInt(IntTy::Is)) |
-            (_, &ty::TyInt(IntTy::I32))   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
-            (8, &ty::TyInt(IntTy::Is)) |
-            (_, &ty::TyInt(IntTy::I64))   => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
-            (_, &ty::TyUint(UintTy::U8))  => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
-            (2, &ty::TyUint(UintTy::Us)) |
-            (_, &ty::TyUint(UintTy::U16)) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
-            (4, &ty::TyUint(UintTy::Us)) |
-            (_, &ty::TyUint(UintTy::U32)) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
-            (8, &ty::TyUint(UintTy::Us)) |
-            (_, &ty::TyUint(UintTy::U64)) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
+            &ty::TyInt(IntTy::I8)    => PrimVal::I8(self.memory.read_int(ptr, 1)? as i8),
+            &ty::TyInt(IntTy::I16)   => PrimVal::I16(self.memory.read_int(ptr, 2)? as i16),
+            &ty::TyInt(IntTy::I32)   => PrimVal::I32(self.memory.read_int(ptr, 4)? as i32),
+            &ty::TyInt(IntTy::I64)   => PrimVal::I64(self.memory.read_int(ptr, 8)? as i64),
+            &ty::TyUint(UintTy::U8)  => PrimVal::U8(self.memory.read_uint(ptr, 1)? as u8),
+            &ty::TyUint(UintTy::U16) => PrimVal::U16(self.memory.read_uint(ptr, 2)? as u16),
+            &ty::TyUint(UintTy::U32) => PrimVal::U32(self.memory.read_uint(ptr, 4)? as u32),
+            &ty::TyUint(UintTy::U64) => PrimVal::U64(self.memory.read_uint(ptr, 8)? as u64),
 
-            (_, &ty::TyFloat(FloatTy::F32)) => PrimVal::F32(self.memory.read_f32(ptr)?),
-            (_, &ty::TyFloat(FloatTy::F64)) => PrimVal::F64(self.memory.read_f64(ptr)?),
+            &ty::TyInt(IntTy::Is) => {
+                let psize = self.memory.pointer_size();
+                self.target_isize_primval(self.memory.read_int(ptr, psize)?)
+            }
 
-            (_, &ty::TyFnDef(def_id, substs, fn_ty)) => {
+            &ty::TyUint(UintTy::Us) => {
+                let psize = self.memory.pointer_size();
+                self.target_usize_primval(self.memory.read_uint(ptr, psize)?)
+            }
+
+            &ty::TyFloat(FloatTy::F32) => PrimVal::F32(self.memory.read_f32(ptr)?),
+            &ty::TyFloat(FloatTy::F64) => PrimVal::F64(self.memory.read_f64(ptr)?),
+
+            &ty::TyFnDef(def_id, substs, fn_ty) => {
                 PrimVal::FnPtr(self.memory.create_fn_ptr(def_id, substs, fn_ty))
             },
-            (_, &ty::TyFnPtr(_)) => self.memory.read_ptr(ptr).map(PrimVal::FnPtr)?,
-            (_, &ty::TyRef(_, ty::TypeAndMut { ty, .. })) |
-            (_, &ty::TyRawPtr(ty::TypeAndMut { ty, .. })) => {
+            &ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::FnPtr)?,
+            &ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+            &ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                 if self.type_is_sized(ty) {
                     match self.memory.read_ptr(ptr) {
                         Ok(p) => PrimVal::AbstractPtr(p),
@@ -1016,7 +1062,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            (_, &ty::TyAdt(..)) => {
+            &ty::TyAdt(..) => {
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty) {
                     match (discr.size().bytes(), signed) {
