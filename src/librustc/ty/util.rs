@@ -436,17 +436,18 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
             TyInt(i) => self.hash(i),
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
-            TyAdt(d, _) => self.def_id(d.did),
             TyArray(_, n) => self.hash(n),
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
             TyAnon(def_id, _) |
             TyFnDef(def_id, ..) => self.def_id(def_id),
+            TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
                 self.hash(f.unsafety);
                 self.hash(f.abi);
                 self.hash(f.sig.variadic());
+                self.hash(f.sig.inputs().skip_binder().len());
             }
             TyTrait(ref data) => {
                 self.def_id(data.principal.def_id());
@@ -468,9 +469,10 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
             TyChar |
             TyStr |
             TyBox(_) |
-            TySlice(_) |
-            TyError => {}
-            TyInfer(_) => bug!()
+            TySlice(_) => {}
+
+            TyError |
+            TyInfer(_) => bug!("TypeIdHasher: unexpected type {}", ty)
         }
 
         ty.super_visit_with(self)
@@ -478,7 +480,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
 
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
         match *r {
-            ty::ReStatic | ty::ReErased => {
+            ty::ReErased => {
                 self.hash::<u32>(0);
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
@@ -486,6 +488,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
                 self.hash::<u32>(db.depth);
                 self.hash(i);
             }
+            ty::ReStatic |
             ty::ReEmpty |
             ty::ReEarlyBound(..) |
             ty::ReLateBound(..) |
@@ -493,7 +496,7 @@ impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tc
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) => {
-                bug!("unexpected region found when hashing a type")
+                bug!("TypeIdHasher: unexpected region {:?}", r)
             }
         }
         false
