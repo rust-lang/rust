@@ -1051,15 +1051,15 @@ pub fn rewrite_type_alias(context: &RewriteContext,
 
 fn type_annotation_spacing(config: &Config) -> (&str, &str) {
     (if config.space_before_type_annotation {
-        " "
-    } else {
-        ""
-    },
+         " "
+     } else {
+         ""
+     },
      if config.space_after_type_annotation_colon {
-        " "
-    } else {
-        ""
-    })
+         " "
+     } else {
+         ""
+     })
 }
 
 impl Rewrite for ast::StructField {
