@@ -11,32 +11,14 @@
 // This module provides implementations for the thread-local encoding and
 // decoding context traits in rustc::middle::cstore::tls.
 
-use rbml::opaque::Encoder as OpaqueEncoder;
 use rbml::opaque::Decoder as OpaqueDecoder;
 use rustc::middle::cstore::tls;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 
 use decoder::{self, Cmd};
-use encoder;
 use tydecode::TyDecoder;
-use tyencode;
-
-impl<'a, 'tcx: 'a> tls::EncodingContext<'tcx> for encoder::EncodeContext<'a, 'tcx> {
-
-    fn tcx<'s>(&'s self) -> TyCtxt<'s, 'tcx, 'tcx> {
-        self.tcx
-    }
-
-    fn encode_ty(&self, encoder: &mut OpaqueEncoder, t: ty::Ty<'tcx>) {
-        tyencode::enc_ty(encoder.cursor, &self.ty_str_ctxt(), t);
-    }
-
-    fn encode_substs(&self, encoder: &mut OpaqueEncoder, substs: &Substs<'tcx>) {
-        tyencode::enc_substs(encoder.cursor, &self.ty_str_ctxt(), substs);
-    }
-}
 
 pub struct DecodingContext<'a, 'tcx: 'a> {
     pub crate_metadata: Cmd<'a>,
@@ -49,7 +31,7 @@ impl<'a, 'tcx: 'a> tls::DecodingContext<'tcx> for DecodingContext<'a, 'tcx> {
         self.tcx
     }
 
-    fn decode_ty(&self, decoder: &mut OpaqueDecoder) -> ty::Ty<'tcx> {
+    fn decode_ty(&self, decoder: &mut OpaqueDecoder) -> Ty<'tcx> {
         let def_id_convert = &mut |did| {
             decoder::translate_def_id(self.crate_metadata, did)
         };

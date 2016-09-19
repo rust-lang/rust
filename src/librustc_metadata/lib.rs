@@ -26,6 +26,7 @@
 #![feature(rustc_macro_lib)]
 #![feature(rustc_macro_internals)]
 #![feature(rustc_private)]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![cfg_attr(test, feature(test))]
 

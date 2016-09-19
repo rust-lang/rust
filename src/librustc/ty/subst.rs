@@ -10,12 +10,11 @@
 
 // Type substitutions.
 
-use middle::cstore;
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
-use serialize::{Encodable, Encoder, Decodable, Decoder};
+use serialize;
 use syntax_pos::{Span, DUMMY_SP};
 
 use core::nonzero::NonZero;
@@ -298,25 +297,8 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     }
 }
 
-impl<'tcx> Encodable for &'tcx Substs<'tcx> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        cstore::tls::with_encoding_context(s, |ecx, rbml_w| {
-            ecx.encode_substs(rbml_w, self);
-            Ok(())
-        })
-    }
-}
-
-impl<'tcx> Decodable for &'tcx Substs<'tcx> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<&'tcx Substs<'tcx>, D::Error> {
-        let substs = cstore::tls::with_decoding_context(d, |dcx, rbml_r| {
-            dcx.decode_substs(rbml_r)
-        });
-
-        Ok(substs)
-    }
-}
-
+impl<'tcx> serialize::UseSpecializedEncodable for &'tcx Substs<'tcx> {}
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
