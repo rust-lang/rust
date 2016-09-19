@@ -342,6 +342,7 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
         if self.visit_attrs(&ti.attrs) {
+            self.push_rewrite(ti.span, None);
             return;
         }
 
@@ -385,6 +386,7 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
         if self.visit_attrs(&ii.attrs) {
+            self.push_rewrite(ii.span, None);
             return;
         }
 
