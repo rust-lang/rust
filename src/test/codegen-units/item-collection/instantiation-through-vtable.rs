@@ -31,6 +31,7 @@ impl<T> Trait for Struct<T> {
 fn main() {
     let s1 = Struct { _a: 0u32 };
 
+    //~ TRANS_ITEM drop-glue i8
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::foo[0]<u32>
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::bar[0]<u32>
     let _ = &s1 as &Trait;
