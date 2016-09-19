@@ -1070,7 +1070,7 @@ pub struct Resolver<'a> {
     macro_names: FnvHashSet<Name>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
-    expansion_data: Vec<macros::ExpansionData>,
+    expansion_data: FnvHashMap<u32, macros::ExpansionData>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1184,6 +1184,9 @@ impl<'a> Resolver<'a> {
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
 
+        let mut expansion_data = FnvHashMap();
+        expansion_data.insert(0, macros::ExpansionData::default()); // Crate root expansion
+
         Resolver {
             session: session,
 
@@ -1239,7 +1242,7 @@ impl<'a> Resolver<'a> {
 
             macro_loader: macro_loader,
             macro_names: FnvHashSet(),
-            expansion_data: vec![macros::ExpansionData::default()],
+            expansion_data: expansion_data,
         }
     }
 
