@@ -1386,8 +1386,8 @@ impl<'a> Parser<'a> {
             // Parse the `; e` in `[ i32; e ]`
             // where `e` is a const expression
             let t = match self.maybe_parse_fixed_length_of_vec()? {
-                None => TyKind::Vec(t),
-                Some(suffix) => TyKind::FixedLengthVec(t, suffix)
+                None => TyKind::Slice(t),
+                Some(suffix) => TyKind::Array(t, suffix)
             };
             self.expect(&token::CloseDelim(token::Bracket))?;
             t
@@ -3587,7 +3587,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let (before, slice, after) = self.parse_pat_vec_elements()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
-                pat = PatKind::Vec(before, slice, after);
+                pat = PatKind::Slice(before, slice, after);
             }
             // At this point, token != _, &, &&, (, [
             _ => if self.eat_keyword(keywords::Mut) {
