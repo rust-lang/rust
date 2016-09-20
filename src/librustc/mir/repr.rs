@@ -187,6 +187,32 @@ impl<'tcx> Mir<'tcx> {
         self.var_decls.len() +
         self.temp_decls.len() + 1
     }
+
+    pub fn format_local(&self, local: Local) -> String {
+        let mut index = local.index();
+        index = match index.checked_sub(self.arg_decls.len()) {
+            None => return format!("{:?}", Arg::new(index)),
+            Some(index) => index,
+        };
+        index = match index.checked_sub(self.var_decls.len()) {
+            None => return format!("{:?}", Var::new(index)),
+            Some(index) => index,
+        };
+        index = match index.checked_sub(self.temp_decls.len()) {
+            None => return format!("{:?}", Temp::new(index)),
+            Some(index) => index,
+        };
+        debug_assert!(index == 0);
+        return "ReturnPointer".to_string()
+    }
+
+    /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
+    /// invalidating statement indices in `Location`s.
+    pub fn make_statement_nop(&mut self, location: Location) {
+        let block = &mut self[location.block];
+        debug_assert!(location.statement_index < block.statements.len());
+        block.statements[location.statement_index].make_nop()
+    }
 }
 
 impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
@@ -686,6 +712,14 @@ pub struct Statement<'tcx> {
     pub kind: StatementKind<'tcx>,
 }
 
+impl<'tcx> Statement<'tcx> {
+    /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
+    /// invalidating statement indices in `Location`s.
+    pub fn make_nop(&mut self) {
+        self.kind = StatementKind::Nop
+    }
+}
+
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Lvalue.
@@ -699,6 +733,9 @@ pub enum StatementKind<'tcx> {
 
     /// End the current live range for the storage of the local.
     StorageDead(Lvalue<'tcx>),
+
+    /// No-op. Useful for deleting instructions without affecting statement indices.
+    Nop,
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
@@ -711,6 +748,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
                 write!(fmt, "discriminant({:?}) = {:?}", lv, index)
             }
+            Nop => write!(fmt, "nop"),
         }
     }
 }
@@ -823,6 +861,24 @@ impl<'tcx> Lvalue<'tcx> {
             base: self,
             elem: elem,
         }))
+    }
+
+    pub fn from_local(mir: &Mir<'tcx>, local: Local) -> Lvalue<'tcx> {
+        let mut index = local.index();
+        index = match index.checked_sub(mir.arg_decls.len()) {
+            None => return Lvalue::Arg(Arg(index as u32)),
+            Some(index) => index,
+        };
+        index = match index.checked_sub(mir.var_decls.len()) {
+            None => return Lvalue::Var(Var(index as u32)),
+            Some(index) => index,
+        };
+        index = match index.checked_sub(mir.temp_decls.len()) {
+            None => return Lvalue::Temp(Temp(index as u32)),
+            Some(index) => index,
+        };
+        debug_assert!(index == 0);
+        Lvalue::ReturnPointer
     }
 }
 
@@ -1256,5 +1312,15 @@ pub struct Location {
 impl fmt::Debug for Location {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}[{}]", self.block, self.statement_index)
+    }
+}
+
+impl Location {
+    pub fn dominates(&self, other: &Location, dominators: &Dominators<BasicBlock>) -> bool {
+        if self.block == other.block {
+            self.statement_index <= other.statement_index
+        } else {
+            dominators.is_dominated_by(other.block, self.block)
+        }
     }
 }

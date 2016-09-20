@@ -1028,6 +1028,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // No lifetime analysis based on borrowing can be done from here on out.
         passes.push_pass(box mir::transform::instcombine::InstCombine::new());
         passes.push_pass(box mir::transform::deaggregator::Deaggregator);
+        passes.push_pass(box mir::transform::copy_prop::CopyPropagation);
 
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box mir::transform::dump_mir::Marker("PreTrans"));
