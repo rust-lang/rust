@@ -2868,6 +2868,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                                             autoderefs))
     }
 
+    /// Checks if the given def is a const fn
+    pub fn is_const_fn(self, def_id: DefId) -> bool {
+        use hir::intravisit::FnKind;
+        use hir::map::blocks::FnLikeNode;
+
+        if let Some(node_id) = self.map.as_local_node_id(def_id) {
+            let fn_like = FnLikeNode::from_node(self.map.get(node_id));
+            match fn_like.map(|f| f.kind()) {
+                Some(FnKind::ItemFn(_, _, _, c, ..)) => {
+                    c == hir::Constness::Const
+                }
+                Some(FnKind::Method(_, m, ..)) => {
+                    m.constness == hir::Constness::Const
+                }
+                _ => false
+            }
+        } else {
+            self.sess.cstore.is_const_fn(def_id)
+        }
+    }
+
     pub fn upvar_capture(self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
