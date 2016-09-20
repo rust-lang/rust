@@ -22,7 +22,8 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     source: MirSource, mir: &mut Mir<'tcx>) {
         let node_id = source.item_id();
-        let node_path = tcx.item_path_str(tcx.map.local_def_id(node_id));
+        let def_id = tcx.map.local_def_id(node_id);
+        let node_path = tcx.item_path_str(def_id);
         debug!("running on: {:?}", node_path);
         // we only run when mir_opt_level > 1
         match tcx.sess.opts.debugging_opts.mir_opt_level {
@@ -36,6 +37,9 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
         if let MirSource::Fn(_) = source {} else { return; }
         // In fact, we might not want to trigger in other cases.
         // Ex: when we could use SROA.  See issue #35259
+
+        // Don't deaggregate in const fns
+        if tcx.is_const_fn(def_id) { return; }
 
         let mut curr: usize = 0;
         for bb in mir.basic_blocks_mut() {
