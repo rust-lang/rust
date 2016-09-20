@@ -527,9 +527,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let mname = self.tcx.item_name(def_id);
                 // Create a concatenated set of substitutions which includes those from the impl
                 // and those from the method:
-                let mth = get_impl_method(self.tcx, substs, impl_did, vtable_impl.substs, mname);
+                let (did, substs) = find_method(self.tcx, substs, impl_did, vtable_impl.substs, mname);
 
-                Ok((mth.method.def_id, mth.substs))
+                Ok((did, substs))
             }
 
             traits::VtableClosure(vtable_closure) =>
@@ -630,6 +630,38 @@ pub(super) fn get_impl_method<'a, 'tcx>(
                 substs: substs,
                 is_provided: node_item.node.is_from_trait(),
             }
+        }
+        None => {
+            bug!("method {:?} not found in {:?}", name, impl_def_id)
+        }
+    }
+}
+
+/// Locates the applicable definition of a method, given its name.
+pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             substs: &'tcx Substs<'tcx>,
+                             impl_def_id: DefId,
+                             impl_substs: &'tcx Substs<'tcx>,
+                             name: ast::Name)
+                             -> (DefId, &'tcx Substs<'tcx>)
+{
+    assert!(!substs.needs_infer());
+
+    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
+
+    match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
+        Some(node_item) => {
+            let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+                let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);
+                let substs = traits::translate_substs(&infcx, impl_def_id, substs, node_item.node);
+                tcx.lift(&substs).unwrap_or_else(|| {
+                    bug!("find_method: translate_substs \
+                          returned {:?} which contains inference types/regions",
+                         substs);
+                })
+            });
+            (node_item.item.def_id, substs)
         }
         None => {
             bug!("method {:?} not found in {:?}", name, impl_def_id)
