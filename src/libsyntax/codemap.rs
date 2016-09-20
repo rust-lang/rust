@@ -392,8 +392,8 @@ impl CodeMap {
             return None;
         }
 
-        // ensure these follow the expected order
-        if sp_lhs.lo <= sp_rhs.lo {
+        // ensure these follow the expected order and we don't overlap
+        if (sp_lhs.lo <= sp_rhs.lo) && (sp_lhs.hi <= sp_rhs.lo) {
             Some(Span {
                 lo: cmp::min(sp_lhs.lo, sp_rhs.lo),
                 hi: cmp::max(sp_lhs.hi, sp_rhs.hi),
@@ -1146,12 +1146,7 @@ mod tests {
         let span1 = span_from_selection(inputtext, selection1);
         let span2 = span_from_selection(inputtext, selection2);
 
-        if let Some(_) = cm.merge_spans(span1, span2) {
-            assert!(false);
-        }
-        else {
-            assert!(true);
-        }
+        assert!(cm.merge_spans(span1, span2).is_none());
     }
 
     /// Returns the span corresponding to the `n`th occurrence of
