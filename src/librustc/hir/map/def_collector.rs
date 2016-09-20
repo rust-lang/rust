@@ -286,7 +286,7 @@ impl<'a> visit::Visitor for DefCollector<'a> {
     fn visit_ty(&mut self, ty: &Ty) {
         match ty.node {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id, false),
-            TyKind::FixedLengthVec(_, ref length) => self.visit_ast_const_integer(length),
+            TyKind::Array(_, ref length) => self.visit_ast_const_integer(length),
             TyKind::ImplTrait(..) => {
                 self.create_def(ty.id, DefPathData::ImplTrait);
             }

@@ -1082,14 +1082,14 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
 
     fn visit_pat(&mut self, pattern: &ast::Pat) {
         match pattern.node {
-            PatKind::Vec(_, Some(_), ref last) if !last.is_empty() => {
+            PatKind::Slice(_, Some(_), ref last) if !last.is_empty() => {
                 gate_feature_post!(&self, advanced_slice_patterns,
                                   pattern.span,
                                   "multiple-element slice matches anywhere \
                                    but at the end of a slice (e.g. \
                                    `[0, ..xs, 0]`) are experimental")
             }
-            PatKind::Vec(..) => {
+            PatKind::Slice(..) => {
                 gate_feature_post!(&self, slice_patterns,
                                   pattern.span,
                                   "slice pattern syntax is experimental");
