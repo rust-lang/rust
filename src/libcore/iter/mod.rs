@@ -301,7 +301,6 @@
 
 use clone::Clone;
 use cmp;
-use default::Default;
 use fmt;
 use iter_private::TrustedRandomAccess;
 use ops::FnMut;
