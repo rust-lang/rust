@@ -150,7 +150,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_lvalue(&mut self,
                             lvalue: & $($mutability)* Lvalue<'tcx>,
-                            context: LvalueContext,
+                            context: LvalueContext<'tcx>,
                             location: Location) {
                 self.super_lvalue(lvalue, context, location);
             }
@@ -346,6 +346,7 @@ macro_rules! make_mir_visitor {
                     StatementKind::StorageDead(ref $($mutability)* lvalue) => {
                         self.visit_lvalue(lvalue, LvalueContext::StorageDead, location);
                     }
+                    StatementKind::Nop => {}
                 }
             }
 
@@ -580,7 +581,7 @@ macro_rules! make_mir_visitor {
 
             fn super_lvalue(&mut self,
                             lvalue: & $($mutability)* Lvalue<'tcx>,
-                            context: LvalueContext,
+                            context: LvalueContext<'tcx>,
                             location: Location) {
                 match *lvalue {
                     Lvalue::Var(_) |
@@ -605,7 +606,12 @@ macro_rules! make_mir_visitor {
                     ref $($mutability)* base,
                     ref $($mutability)* elem,
                 } = *proj;
-                self.visit_lvalue(base, LvalueContext::Projection, location);
+                let context = if context.is_mutating_use() {
+                    LvalueContext::Projection(Mutability::Mut)
+                } else {
+                    LvalueContext::Projection(Mutability::Not)
+                };
+                self.visit_lvalue(base, context, location);
                 self.visit_projection_elem(elem, context, location);
             }
 
@@ -750,6 +756,21 @@ macro_rules! make_mir_visitor {
 
             fn super_const_usize(&mut self, _substs: & $($mutability)* ConstUsize) {
             }
+
+            // Convenience methods
+
+            fn visit_location(&mut self, mir: & $($mutability)* Mir<'tcx>, location: Location) {
+                let basic_block = & $($mutability)* mir[location.block];
+                if basic_block.statements.len() == location.statement_index {
+                    if let Some(ref $($mutability)* terminator) = basic_block.terminator {
+                        self.visit_terminator(location.block, terminator, location)
+                    }
+                } else {
+                    let statement = & $($mutability)*
+                        basic_block.statements[location.statement_index];
+                    self.visit_statement(location.block, statement, location)
+                }
+            }
         }
     }
 }
@@ -774,8 +795,20 @@ pub enum LvalueContext<'tcx> {
     // Being borrowed
     Borrow { region: &'tcx Region, kind: BorrowKind },
 
-    // Used as base for another lvalue, e.g. `x` in `x.y`
-    Projection,
+    // Used as base for another lvalue, e.g. `x` in `x.y`.
+    //
+    // The `Mutability` argument specifies whether the projection is being performed in order to
+    // (potentially) mutate the lvalue. For example, the projection `x.y` is marked as a mutation
+    // in these cases:
+    //
+    //     x.y = ...;
+    //     f(&mut x.y);
+    //
+    // But not in these cases:
+    //
+    //     z = x.y;
+    //     f(&x.y);
+    Projection(Mutability),
 
     // Consumed as part of an operand
     Consume,
@@ -784,3 +817,69 @@ pub enum LvalueContext<'tcx> {
     StorageLive,
     StorageDead,
 }
+
+impl<'tcx> LvalueContext<'tcx> {
+    /// Returns true if this lvalue context represents a drop.
+    pub fn is_drop(&self) -> bool {
+        match *self {
+            LvalueContext::Drop => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this lvalue context represents a storage live or storage dead marker.
+    pub fn is_storage_marker(&self) -> bool {
+        match *self {
+            LvalueContext::StorageLive | LvalueContext::StorageDead => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this lvalue context represents a storage live marker.
+    pub fn is_storage_live_marker(&self) -> bool {
+        match *self {
+            LvalueContext::StorageLive => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this lvalue context represents a storage dead marker.
+    pub fn is_storage_dead_marker(&self) -> bool {
+        match *self {
+            LvalueContext::StorageDead => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this lvalue context represents a use that potentially changes the value.
+    pub fn is_mutating_use(&self) -> bool {
+        match *self {
+            LvalueContext::Store | LvalueContext::Call |
+            LvalueContext::Borrow { kind: BorrowKind::Mut, .. } |
+            LvalueContext::Projection(Mutability::Mut) |
+            LvalueContext::Drop => true,
+            LvalueContext::Inspect |
+            LvalueContext::Borrow { kind: BorrowKind::Shared, .. } |
+            LvalueContext::Borrow { kind: BorrowKind::Unique, .. } |
+            LvalueContext::Projection(Mutability::Not) | LvalueContext::Consume |
+            LvalueContext::StorageLive | LvalueContext::StorageDead => false,
+        }
+    }
+
+    /// Returns true if this lvalue context represents a use that does not change the value.
+    pub fn is_nonmutating_use(&self) -> bool {
+        match *self {
+            LvalueContext::Inspect | LvalueContext::Borrow { kind: BorrowKind::Shared, .. } |
+            LvalueContext::Borrow { kind: BorrowKind::Unique, .. } |
+            LvalueContext::Projection(Mutability::Not) | LvalueContext::Consume => true,
+            LvalueContext::Borrow { kind: BorrowKind::Mut, .. } | LvalueContext::Store |
+            LvalueContext::Call | LvalueContext::Projection(Mutability::Mut) |
+            LvalueContext::Drop | LvalueContext::StorageLive | LvalueContext::StorageDead => false,
+        }
+    }
+
+    pub fn is_use(&self) -> bool {
+        self.is_mutating_use() || self.is_nonmutating_use()
+    }
+}
+

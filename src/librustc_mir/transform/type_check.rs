@@ -385,6 +385,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 }
             }
+            StatementKind::Nop => {}
         }
     }
 

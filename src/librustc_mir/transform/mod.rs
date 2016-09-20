@@ -19,4 +19,4 @@ pub mod qualify_consts;
 pub mod dump_mir;
 pub mod deaggregator;
 pub mod instcombine;
-
+pub mod copy_prop;

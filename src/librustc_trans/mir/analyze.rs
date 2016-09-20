@@ -147,7 +147,7 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
 
     fn visit_lvalue(&mut self,
                     lvalue: &mir::Lvalue<'tcx>,
-                    context: LvalueContext,
+                    context: LvalueContext<'tcx>,
                     location: Location) {
         debug!("visit_lvalue(lvalue={:?}, context={:?})", lvalue, context);
 
@@ -180,7 +180,7 @@ impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'bcx, 'tcx> {
                 LvalueContext::Store |
                 LvalueContext::Inspect |
                 LvalueContext::Borrow { .. } |
-                LvalueContext::Projection => {
+                LvalueContext::Projection(..) => {
                     self.mark_as_lvalue(index);
                 }
 
