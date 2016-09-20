@@ -200,7 +200,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             _ => unreachable!(),
         };
 
-        if self.cx.parse_sess.span_diagnostic.err_count() > err_count {
+        if self.cx.parse_sess.span_diagnostic.err_count() - self.cx.resolve_err_count > err_count {
             self.cx.parse_sess.span_diagnostic.abort_if_errors();
         }
 
@@ -271,8 +271,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.cfg = crate_config;
 
         if self.monotonic {
+            let err_count = self.cx.parse_sess.span_diagnostic.err_count();
             let mark = self.cx.current_expansion.mark;
             self.cx.resolver.visit_expansion(mark, &result.0);
+            self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
         }
 
         result
