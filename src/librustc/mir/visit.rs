@@ -665,7 +665,6 @@ macro_rules! make_mir_visitor {
                               arg_decl: & $($mutability)* ArgDecl<'tcx>) {
                 let ArgDecl {
                     ref $($mutability)* ty,
-                    spread: _,
                     debug_name: _
                 } = *arg_decl;
 

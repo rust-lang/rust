@@ -169,7 +169,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         tcx.region_maps.lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body_id });
     let mut block = START_BLOCK;
-    let mut arg_decls = unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
+    let arg_decls = unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
         let arg_decls = unpack!(block = builder.in_scope(arg_extent, block, |builder| {
             builder.args_and_body(block, return_ty, arguments, arg_extent, ast_block)
         }));
@@ -184,12 +184,11 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     }));
     assert_eq!(block, builder.return_block());
 
+    let mut spread_last_arg = false;
     match tcx.node_id_to_type(fn_id).sty {
         ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
             // RustCall pseudo-ABI untuples the last argument.
-            if let Some(last_arg) = arg_decls.last() {
-                arg_decls[last_arg].spread = true;
-            }
+            spread_last_arg = true;
         }
         _ => {}
     }
@@ -218,7 +217,9 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         }).collect()
     });
 
-    builder.finish(upvar_decls, arg_decls, return_ty)
+    let (mut mir, aux) = builder.finish(upvar_decls, arg_decls, return_ty);
+    mir.spread_last_arg = spread_last_arg;
+    (mir, aux)
 }
 
 pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
@@ -331,7 +332,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             ArgDecl {
                 ty: ty,
-                spread: false,
                 debug_name: name
             }
         }).collect();
