@@ -36,6 +36,7 @@ pub use interpreter::{
     Frame,
     eval_main,
     run_mir_passes,
+    StackPopCleanup,
 };
 
 pub use memory::{
