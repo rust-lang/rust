@@ -633,7 +633,8 @@ ALL_TARGET_RULES = $(foreach target,$(CFG_TARGET), \
 	$(foreach host,$(CFG_HOST), \
  all-target-$(target)-host-$(host)))
 
-all: $(ALL_TARGET_RULES) $(GENERATED) docs
+all-no-docs: $(ALL_TARGET_RULES) $(GENERATED)
+all: all-no-docs docs
 
 ######################################################################
 # Build system documentation
