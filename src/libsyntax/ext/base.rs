@@ -708,6 +708,7 @@ pub struct ExtCtxt<'a> {
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
     pub resolver: &'a mut Resolver,
+    pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
 }
 
@@ -722,6 +723,7 @@ impl<'a> ExtCtxt<'a> {
             ecfg: ecfg,
             crate_root: None,
             resolver: resolver,
+            resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,
