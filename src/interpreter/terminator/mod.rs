@@ -368,7 +368,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     /// Trait method, which has to be resolved to an impl method.
     fn trait_method(
-        &self,
+        &mut self,
         trait_id: DefId,
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
@@ -388,8 +388,41 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok((did, substs))
             }
 
-            traits::VtableClosure(vtable_closure) =>
-                Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs)),
+            traits::VtableClosure(vtable_closure) => {
+                let trait_closure_kind = self.tcx
+                    .lang_items
+                    .fn_trait_kind(trait_id)
+                    .expect("The substitutions should have no type parameters remaining after passing through fulfill_obligation");
+                let closure_kind = self.tcx.closure_kind(vtable_closure.closure_def_id);
+                trace!("closures {:?}, {:?}", closure_kind, trait_closure_kind);
+                match (closure_kind, trait_closure_kind) {
+                    (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+                    (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+                    (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) |
+                    (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {} // No adapter needed.
+                    (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+                    (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+                        // The closure fn is a `fn(&self, ...)` or `fn(&mut self, ...)`.
+                        // We want a `fn(self, ...)`.
+                        // We can produce this by doing something like:
+                        //
+                        //     fn call_once(self, ...) { call_mut(&self, ...) }
+                        //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+                        //
+                        // These are both the same at trans time.
+
+                        // interpreter magic: insert an intermediate pointer, so we can skip the intermediate function call
+                        // FIXME: this is a memory leak, should probably add the pointer to the current stack
+                        let ptr_size = self.memory.pointer_size();
+                        let first = self.memory.allocate(ptr_size, ptr_size)?;
+                        self.memory.copy(args[0].0, first, ptr_size, ptr_size)?;
+                        self.memory.write_ptr(args[0].0, first)?;
+                        self.memory.dump(args[0].0.alloc_id);
+                    }
+                    _ => bug!("cannot convert {:?} to {:?}", closure_kind, trait_closure_kind),
+                }
+                Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs))
+            }
 
             traits::VtableFnPointer(vtable_fn_ptr) => {
                 if let ty::TyFnDef(did, ref substs, _) = vtable_fn_ptr.fn_ty.sty {
