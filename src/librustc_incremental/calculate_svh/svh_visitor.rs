@@ -207,7 +207,7 @@ enum SawExprComponent<'a> {
     SawExprAgain(Option<token::InternedString>),
 
     SawExprBox,
-    SawExprVec,
+    SawExprArray,
     SawExprCall,
     SawExprMethodCall,
     SawExprTup,
@@ -235,7 +235,7 @@ enum SawExprComponent<'a> {
 fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
     match *node {
         ExprBox(..)              => SawExprBox,
-        ExprVec(..)              => SawExprVec,
+        ExprArray(..)            => SawExprArray,
         ExprCall(..)             => SawExprCall,
         ExprMethodCall(..)       => SawExprMethodCall,
         ExprTup(..)              => SawExprTup,

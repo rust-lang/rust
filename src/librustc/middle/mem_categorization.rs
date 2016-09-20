@@ -503,7 +503,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           hir::ExprClosure(..) | hir::ExprRet(..) |
           hir::ExprUnary(..) |
           hir::ExprMethodCall(..) | hir::ExprCast(..) |
-          hir::ExprVec(..) | hir::ExprTup(..) | hir::ExprIf(..) |
+          hir::ExprArray(..) | hir::ExprTup(..) | hir::ExprIf(..) |
           hir::ExprBinary(..) | hir::ExprWhile(..) |
           hir::ExprBlock(..) | hir::ExprLoop(..) | hir::ExprMatch(..) |
           hir::ExprLit(..) | hir::ExprBreak(..) |
@@ -1155,7 +1155,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             self.cat_pattern_(subcmt, &subpat, op)?;
           }
 
-          PatKind::Vec(ref before, ref slice, ref after) => {
+          PatKind::Slice(ref before, ref slice, ref after) => {
             let context = InteriorOffsetKind::Pattern;
             let elt_cmt = self.cat_index(pat, cmt, context)?;
             for before_pat in before {

@@ -486,7 +486,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(ty.span.lo)?;
         self.ibox(0)?;
         match ty.node {
-            hir::TyVec(ref ty) => {
+            hir::TySlice(ref ty) => {
                 word(&mut self.s, "[")?;
                 self.print_type(&ty)?;
                 word(&mut self.s, "]")?;
@@ -543,7 +543,7 @@ impl<'a> State<'a> {
             hir::TyImplTrait(ref bounds) => {
                 self.print_bounds("impl ", &bounds[..])?;
             }
-            hir::TyFixedLengthVec(ref ty, ref v) => {
+            hir::TyArray(ref ty, ref v) => {
                 word(&mut self.s, "[")?;
                 self.print_type(&ty)?;
                 word(&mut self.s, "; ")?;
@@ -1319,7 +1319,7 @@ impl<'a> State<'a> {
                 self.word_space("box")?;
                 self.print_expr(expr)?;
             }
-            hir::ExprVec(ref exprs) => {
+            hir::ExprArray(ref exprs) => {
                 self.print_expr_vec(&exprs[..])?;
             }
             hir::ExprRepeat(ref element, ref count) => {
@@ -1829,7 +1829,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, "...")?;
                 self.print_expr(&end)?;
             }
-            PatKind::Vec(ref before, ref slice, ref after) => {
+            PatKind::Slice(ref before, ref slice, ref after) => {
                 word(&mut self.s, "[")?;
                 self.commasep(Inconsistent, &before[..], |s, p| s.print_pat(&p))?;
                 if let Some(ref p) = *slice {

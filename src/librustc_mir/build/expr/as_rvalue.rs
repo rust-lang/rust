@@ -160,7 +160,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                           .map(|f| unpack!(block = this.as_operand(block, f)))
                           .collect();
 
-                block.and(Rvalue::Aggregate(AggregateKind::Vec, fields))
+                block.and(Rvalue::Aggregate(AggregateKind::Array, fields))
             }
             ExprKind::Tuple { fields } => { // see (*) above
                 // first process the set of fields

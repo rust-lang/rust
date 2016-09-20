@@ -490,7 +490,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
 
       // otherwise, live nodes are not required:
       hir::ExprIndex(..) | hir::ExprField(..) | hir::ExprTupField(..) |
-      hir::ExprVec(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) |
+      hir::ExprArray(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) |
       hir::ExprTup(..) | hir::ExprBinary(..) | hir::ExprAddrOf(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprBreak(_) |
       hir::ExprAgain(_) | hir::ExprLit(_) | hir::ExprRet(..) |
@@ -1095,7 +1095,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           // Uninteresting cases: just propagate in rev exec order
 
-          hir::ExprVec(ref exprs) => {
+          hir::ExprArray(ref exprs) => {
             self.propagate_through_exprs(&exprs[..], succ)
           }
 
@@ -1436,7 +1436,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       hir::ExprCall(..) | hir::ExprMethodCall(..) | hir::ExprIf(..) |
       hir::ExprMatch(..) | hir::ExprWhile(..) | hir::ExprLoop(..) |
       hir::ExprIndex(..) | hir::ExprField(..) | hir::ExprTupField(..) |
-      hir::ExprVec(..) | hir::ExprTup(..) | hir::ExprBinary(..) |
+      hir::ExprArray(..) | hir::ExprTup(..) | hir::ExprBinary(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprRet(..) |
       hir::ExprBreak(..) | hir::ExprAgain(..) | hir::ExprLit(_) |
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |

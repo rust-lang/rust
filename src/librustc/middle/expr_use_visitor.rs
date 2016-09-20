@@ -442,7 +442,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            hir::ExprVec(ref exprs) => {
+            hir::ExprArray(ref exprs) => {
                 self.consume_exprs(exprs);
             }
 

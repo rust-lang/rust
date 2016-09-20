@@ -448,7 +448,7 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     }
 
     fn visit_ty(&mut self, ty: &'ast hir::Ty) {
-        if let hir::TyFixedLengthVec(_, ref length) = ty.node {
+        if let hir::TyArray(_, ref length) = ty.node {
             self.visit_hir_const_integer(length);
         }
         if let hir::TyImplTrait(..) = ty.node {

@@ -202,7 +202,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
 
     // Array lengths, i.e. [T; constant].
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyFixedLengthVec(_, ref length) = ty.node {
+        if let hir::TyArray(_, ref length) = ty.node {
             self.build_const_integer(length);
         }
         intravisit::walk_ty(self, ty);
