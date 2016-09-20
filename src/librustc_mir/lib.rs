@@ -47,9 +47,9 @@ pub mod diagnostics;
 
 pub mod build;
 pub mod def_use;
+pub mod callgraph;
 pub mod graphviz;
 mod hair;
 pub mod mir_map;
 pub mod pretty;
 pub mod transform;
-
