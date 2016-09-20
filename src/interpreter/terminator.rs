@@ -91,8 +91,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let func_ty = self.operand_ty(func);
                 match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
-                        let ptr = self.eval_operand_to_ptr(func)?;
-                        let fn_ptr = self.memory.read_ptr(ptr)?;
+                        let fn_ptr = self.eval_operand_to_primval(func)?
+                            .expect_fn_ptr("TyFnPtr callee did not evaluate to PrimVal::FnPtr");
                         let (def_id, substs, fn_ty) = self.memory.get_fn(fn_ptr.alloc_id)?;
                         if fn_ty != bare_fn_ty {
                             return Err(EvalError::FunctionPointerTyMismatch(fn_ty, bare_fn_ty));
@@ -124,13 +124,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 } else {
                     return match *msg {
                         mir::AssertMessage::BoundsCheck { ref len, ref index } => {
-                            let len = self.eval_operand_to_ptr(len).expect("can't eval len");
-                            let len = self.memory.read_usize(len).expect("can't read len");
-                            let index = self.eval_operand_to_ptr(index).expect("can't eval index");
-                            let index = self.memory.read_usize(index).expect("can't read index");
-                            Err(EvalError::ArrayIndexOutOfBounds(terminator.source_info.span, len, index))
+                            let span = terminator.source_info.span;
+                            let len = self.eval_operand_to_primval(len).expect("can't eval len")
+                                .expect_uint("BoundsCheck len wasn't a uint");
+                            let index = self.eval_operand_to_primval(index)
+                                .expect("can't eval index")
+                                .expect_uint("BoundsCheck index wasn't a uint");
+                            Err(EvalError::ArrayIndexOutOfBounds(span, len, index))
                         },
-                        mir::AssertMessage::Math(ref err) => Err(EvalError::Math(terminator.source_info.span, err.clone())),
+                        mir::AssertMessage::Math(ref err) =>
+                            Err(EvalError::Math(terminator.source_info.span, err.clone())),
                     }
                 }
             },

@@ -20,10 +20,28 @@ pub enum PrimVal {
     F32(f32), F64(f64),
 }
 
+macro_rules! declare_expect_fn {
+    ($name:ident, $variant:ident, $t:ty) => (
+        pub fn $name(self, error_msg: &str) -> $t {
+            match self {
+                PrimVal::$variant(x) => x,
+                _ => bug!("{}", error_msg),
+            }
+        }
+    );
+}
+
 impl PrimVal {
-    pub fn expect_bool(self, error_msg: &str) -> bool {
+    declare_expect_fn!(expect_bool, Bool, bool);
+    declare_expect_fn!(expect_fn_ptr, FnPtr, Pointer);
+
+    pub fn expect_uint(self, error_msg: &str) -> u64 {
+        use self::PrimVal::*;
         match self {
-            PrimVal::Bool(b) => b,
+            U8(u)  => u as u64,
+            U16(u) => u as u64,
+            U32(u) => u as u64,
+            U64(u) => u,
             _ => bug!("{}", error_msg),
         }
     }
