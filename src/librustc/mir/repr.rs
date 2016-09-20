@@ -63,7 +63,7 @@ macro_rules! newtype_index {
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
-    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    pub basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 
     /// List of visibility (lexical) scopes; these are referenced by statements
     /// and used (eventually) for debuginfo. Indexed by a `VisibilityScope`.
