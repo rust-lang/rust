@@ -303,16 +303,16 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                             -> Option<String>
     where I: Iterator<Item = &'a ast::Expr>
 {
-    // 2 for brackets;
+    // 1 = [
     let offset = offset + 1;
     let inner_context = &RewriteContext { block_indent: offset, ..*context };
+    // 2 for brackets
     let max_item_width = try_opt!(width.checked_sub(2));
     let items = itemize_list(context.codemap,
                              expr_iter,
                              "]",
                              |item| item.span.lo,
                              |item| item.span.hi,
-                             // 1 = [
                              |item| item.rewrite(inner_context, max_item_width, offset),
                              span.lo,
                              span.hi)
@@ -1753,20 +1753,15 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
     }
 
     let list_lo = context.codemap.span_after(span, "(");
+    let budget = try_opt!(width.checked_sub(2));
     let items = itemize_list(context.codemap,
                              items,
                              ")",
                              |item| item.span().lo,
                              |item| item.span().hi,
-                             |item| {
-                                 let inner_width = try_opt!(context.config
-                                     .max_width
-                                     .checked_sub(indent.width() + 1));
-                                 item.rewrite(&aligned, inner_width, indent)
-                             },
+                             |item| item.rewrite(&aligned, budget, indent),
                              list_lo,
                              span.hi - BytePos(1));
-    let budget = try_opt!(width.checked_sub(2));
     let list_str = try_opt!(format_item_list(items, budget, indent, context.config));
 
     Some(format!("({})", list_str))
