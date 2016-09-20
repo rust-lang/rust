@@ -349,7 +349,7 @@ fn arg_local_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
     mir.arg_decls.iter().enumerate().map(|(arg_index, arg_decl)| {
         let arg_ty = bcx.monomorphize(&arg_decl.ty);
         let local = mir.local_index(&mir::Lvalue::Arg(mir::Arg::new(arg_index))).unwrap();
-        if arg_decl.spread {
+        if mir.spread_last_arg && arg_index == mir.arg_decls.len() - 1 {
             // This argument (e.g. the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
             // to reconstruct it into a tuple local variable, from multiple
