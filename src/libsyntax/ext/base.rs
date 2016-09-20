@@ -816,7 +816,7 @@ impl<'a> ExtCtxt<'a> {
             self.exported_macros.push(def.clone());
         }
         if def.use_locally {
-            let ext = macro_rules::compile(self, &def);
+            let ext = macro_rules::compile(self.parse_sess, &def);
             self.resolver.add_macro(self.current_expansion.mark, def.ident, Rc::new(ext));
         }
     }
