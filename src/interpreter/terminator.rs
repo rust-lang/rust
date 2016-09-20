@@ -218,7 +218,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Some((ptr, block)) => (Some(ptr), StackPopCleanup::Goto(block)),
                     None => (None, StackPopCleanup::None),
                 };
-                self.push_stack_frame(def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
+                self.push_stack_frame(resolved_def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
 
                 for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                     let dest = self.frame().locals[i];
