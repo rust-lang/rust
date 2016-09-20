@@ -240,7 +240,9 @@ impl<'a> LoweringContext<'a> {
                     }))
                 }
                 TyKind::Never => hir::TyNever,
-                TyKind::Tup(ref tys) => hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty)).collect()),
+                TyKind::Tup(ref tys) => {
+                    hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty)).collect())
+                }
                 TyKind::Paren(ref ty) => {
                     return self.lower_ty(ty);
                 }
