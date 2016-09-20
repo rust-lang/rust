@@ -227,7 +227,7 @@ impl<'a> LoweringContext<'a> {
             id: t.id,
             node: match t.node {
                 Infer | ImplicitSelf => hir::TyInfer,
-                Vec(ref ty) => hir::TyVec(self.lower_ty(ty)),
+                Vec(ref ty) => hir::TySlice(self.lower_ty(ty)),
                 Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
                 Rptr(ref region, ref mt) => {
                     hir::TyRptr(self.lower_opt_lifetime(region), self.lower_mt(mt))
@@ -258,7 +258,7 @@ impl<'a> LoweringContext<'a> {
                     hir::TyObjectSum(self.lower_ty(ty), self.lower_bounds(bounds))
                 }
                 FixedLengthVec(ref ty, ref e) => {
-                    hir::TyFixedLengthVec(self.lower_ty(ty), self.lower_expr(e))
+                    hir::TyArray(self.lower_ty(ty), self.lower_expr(e))
                 }
                 Typeof(ref expr) => {
                     hir::TyTypeof(self.lower_expr(expr))
@@ -892,7 +892,7 @@ impl<'a> LoweringContext<'a> {
                     hir::PatKind::Range(self.lower_expr(e1), self.lower_expr(e2))
                 }
                 PatKind::Vec(ref before, ref slice, ref after) => {
-                    hir::PatKind::Vec(before.iter().map(|x| self.lower_pat(x)).collect(),
+                    hir::PatKind::Slice(before.iter().map(|x| self.lower_pat(x)).collect(),
                                 slice.as_ref().map(|x| self.lower_pat(x)),
                                 after.iter().map(|x| self.lower_pat(x)).collect())
                 }
@@ -1031,7 +1031,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 ExprKind::Vec(ref exprs) => {
-                    hir::ExprVec(exprs.iter().map(|x| self.lower_expr(x)).collect())
+                    hir::ExprArray(exprs.iter().map(|x| self.lower_expr(x)).collect())
                 }
                 ExprKind::Repeat(ref expr, ref count) => {
                     let expr = self.lower_expr(expr);

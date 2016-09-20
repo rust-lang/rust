@@ -2228,7 +2228,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::ExprClosure(..) |
             hir::ExprBlock(..) |
             hir::ExprRepeat(..) |
-            hir::ExprVec(..) |
+            hir::ExprArray(..) |
             hir::ExprBreak(..) |
             hir::ExprAgain(..) |
             hir::ExprRet(..) |
