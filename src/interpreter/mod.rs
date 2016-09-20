@@ -907,9 +907,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Downcast(_, variant) => {
                         use rustc::ty::layout::Layout::*;
                         match *base_layout {
-                            General { discr, .. } => {
+                            General { ref variants, .. } => {
                                 return Ok(Lvalue {
-                                    ptr: base.ptr.offset(discr.size().bytes() as isize),
+                                    ptr: base.ptr.offset(variants[variant].field_offset(1).bytes() as isize),
                                     extra: LvalueExtra::DowncastVariant(variant),
                                 });
                             }
