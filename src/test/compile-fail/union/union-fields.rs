@@ -21,6 +21,7 @@ fn main() {
     let u = U { a: 0, b: 1 }; //~ ERROR union expressions should have exactly one field
     let u = U { a: 0, b: 1, c: 2 }; //~ ERROR union expressions should have exactly one field
                                     //~^ ERROR union `U` has no field named `c`
+                                    //~| NOTE `U` does not have this field
     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
                        //~^ ERROR functional record update syntax requires a struct
 
@@ -29,6 +30,7 @@ fn main() {
     let U { a, b } = u; //~ ERROR union patterns should have exactly one field
     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
                            //~^ ERROR union `U` does not have a field named `c`
+                           //~| NOTE union `U` does not have field `c`
     let U { .. } = u; //~ ERROR union patterns should have exactly one field
                       //~^ ERROR `..` cannot be used in union patterns
     let U { a, .. } = u; //~ ERROR `..` cannot be used in union patterns
