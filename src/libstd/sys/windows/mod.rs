@@ -22,6 +22,7 @@ pub mod backtrace;
 pub mod c;
 pub mod condvar;
 pub mod dynamic_lib;
+pub mod env;
 pub mod ext;
 pub mod fs;
 pub mod handle;
