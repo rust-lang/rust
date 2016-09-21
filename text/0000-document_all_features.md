@@ -26,10 +26,6 @@ One of the major goals of Rust's development process is *stability without stagn
         -   [Language features](#language-features)
         -   [Standard library](#standard-library)
     -   [Add an “Edit” link (optional)](#add-an-edit-link-optional)
-        -   [Support with infrastructure
-            change](#support-with-infrastructure-change)
-    -   [Visually Distinguish
-        Nightly (optional)](#visually-distinguish-nightly-optional)
 -   [How do we teach this?](#how-do-we-teach-this)
 -   [Drawbacks](#drawbacks)
 -   [Alternatives](#alternatives)
@@ -107,16 +103,15 @@ The basic decision has led to a substantial improvement in the currency of the d
 # Detailed design
 [design]: #detailed-design
 
-The basic process of developing new language features will remain largely the same as today. The changes are two additions:
+The basic process of developing new language features will remain largely the same as today. The required changes are two additions:
 
 - a new section in the RFC, "How do we teach this?" modeled on Ember's updated RFC process
 
 - a new requirement that the changes themselves be properly documented before being merged to stable
 
-Additionally, we might make some content-level/infrastructural changes:
+Additionally, we should make some content-level/infrastructural changes:
 
 - add an "edit" link to the documentation pages
-- visually distinguish nightly vs. stable build docs
 
 
 ## New RFC section: "How do we teach this?"
@@ -198,16 +193,6 @@ Making a similar change has some downsides (see below under [**Drawbacks**][draw
 
 2. It sends a quiet but real signal that the docs are up for editing. This makes it likelier that people will edit them!
 
-### Support with infrastructure change
-[edit-link-infrastructure]: #optional-support-with-infrastructure-change
-
-The links to edit the documentation could track against the release branch instead of against `master`. (Fixes to documentation would be analogous to bugfix releases in this sense.) Targeting the pull-request automatically would be straightforward. However, see below under [**Drawbacks**][drawbacks].
-
-## Visually Distinguish Nightly (optional)
-[distinguish-nightly]: #optional-visually-distinguish-nightly
-
-It might be useful to visually distinguish the documentation for nightly Rust as being unstable and subject to change, even simply by setting a different default theme on _The Rust Programming Language_ book for nightly Rust.
-
 
 # How do we teach this?
 
@@ -268,10 +253,6 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
     2. This concern primarily impacts _The Rust Programming Language_. Both in its current state and in the event of an eventual revamp (at least: after such a revamp finished), the Rust Reference is far less likely to see pages removed or moved.
 
     Finally, while infrastructure changes could be made in support of a more "targeted" editing experience, doing so would substantially increase the triage work required for the docs. It would also entail extra work "porting" the changes back to `master`. Additionally, because the language itself does not currently "bugfix" releases, this would substantially alter the workflow for dealing with releases in general.
-
-6. Specific to the suggestion to [**Visually Distinguish Nightly**][distinguish-nightly]:
-
-    This requires at least some infrastructure investment. Making the change apply to the Reference as well as to the two books would entail the maintenance of further CSS. This might be acceptable if documentation teams are sufficiently motivated and engaged, but it means that if not very carefully designed up front, any changes to the documentation theme will basically require double CSS changes; they will also require double the *design* efforts.
 
 
 # Alternatives
