@@ -131,7 +131,7 @@ For a great example of this in practice, see the (currently open) [Ember RFC: Mo
 
 ## New requirement to document changes before stabilizing
 
-Changes will now be reviewed for changes to the documentation prior to being merged. This will proceed in the following places:
+Prior to approving pull requests that stabilize features, reviewers must verify that the document is properly documented in the following places:
 
 - language features:
     - in the reference
