@@ -313,7 +313,7 @@ impl CString {
 #[stable(feature = "cstring_drop", since = "1.13.0")]
 impl Drop for CString {
     fn drop(&mut self) {
-        unsafe { *self.inner.get_unchecked_mut(0) = 0; }
+        unsafe { ptr::write_volatile(self.inner.as_mut_ptr(), 0u8) }
     }
 }
 
