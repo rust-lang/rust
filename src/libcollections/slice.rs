@@ -168,7 +168,7 @@ impl<T> [T] {
         core_slice::SliceExt::len(self)
     }
 
-    /// Returns true if the slice has a length of 0
+    /// Returns true if the slice has a length of 0.
     ///
     /// # Example
     ///
@@ -402,7 +402,7 @@ impl<T> [T] {
         core_slice::SliceExt::get_unchecked_mut(self, index)
     }
 
-    /// Returns an raw pointer to the slice's buffer
+    /// Returns an raw pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
@@ -468,7 +468,7 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = ["a", "b", "c", "d"];
     /// v.swap(1, 3);
     /// assert!(v == ["a", "d", "c", "b"]);
@@ -483,7 +483,7 @@ impl<T> [T] {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [1, 2, 3];
     /// v.reverse();
     /// assert!(v == [3, 2, 1]);
@@ -567,9 +567,9 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over `size` elements of the slice at a
-    /// time. The chunks are slices and do not overlap. If `size` does not divide the
-    /// length of the slice, then the last chunk will not have length
-    /// `size`.
+    /// time. The chunks are slices and do not overlap. If `size` does
+    /// not divide the length of the slice, then the last chunk will
+    /// not have length `size`.
     ///
     /// # Panics
     ///
@@ -656,7 +656,7 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [1, 2, 3, 4, 5, 6];
     ///
     /// // scoped to restrict the lifetime of the borrows
@@ -754,7 +754,7 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
-    /// `pred`, limited to returning at most `n` items.  The matched element is
+    /// `pred`, limited to returning at most `n` items. The matched element is
     /// not contained in the subslices.
     ///
     /// The last element returned, if any, will contain the remainder of the
@@ -781,7 +781,7 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
-    /// `pred`, limited to returning at most `n` items.  The matched element is
+    /// `pred`, limited to returning at most `n` items. The matched element is
     /// not contained in the subslices.
     ///
     /// The last element returned, if any, will contain the remainder of the
@@ -835,7 +835,7 @@ impl<T> [T] {
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred` limited to returning at most `n` items. This starts at the end of
-    /// the slice and works backwards.  The matched element is not contained in
+    /// the slice and works backwards. The matched element is not contained in
     /// the subslices.
     ///
     /// The last element returned, if any, will contain the remainder of the
@@ -922,9 +922,9 @@ impl<T> [T] {
     ///
     /// Looks up a series of four elements. The first is found, with a
     /// uniquely determined position; the second and third are not
-    /// found; the fourth could match any position in `[1,4]`.
+    /// found; the fourth could match any position in `[1, 4]`.
     ///
-    /// ```rust
+    /// ```
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     ///
     /// assert_eq!(s.binary_search(&13),  Ok(9));
@@ -956,9 +956,9 @@ impl<T> [T] {
     ///
     /// Looks up a series of four elements. The first is found, with a
     /// uniquely determined position; the second and third are not
-    /// found; the fourth could match any position in `[1,4]`.
+    /// found; the fourth could match any position in `[1, 4]`.
     ///
-    /// ```rust
+    /// ```
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     ///
     /// let seek = 13;
@@ -982,21 +982,23 @@ impl<T> [T] {
     /// Binary search a sorted slice with a key extraction function.
     ///
     /// Assumes that the slice is sorted by the key, for instance with
-    /// `sort_by_key` using the same key extraction function.
+    /// [`sort_by_key`] using the same key extraction function.
     ///
     /// If a matching value is found then returns `Ok`, containing the
     /// index for the matched element; if no match is found then `Err`
     /// is returned, containing the index where a matching element could
     /// be inserted while maintaining sorted order.
     ///
+    /// [`sort_by_key`]: #method.sort_by_key
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements in a slice of pairs sorted by
     /// their second elements. The first is found, with a uniquely
     /// determined position; the second and third are not found; the
-    /// fourth could match any position in `[1,4]`.
+    /// fourth could match any position in `[1, 4]`.
     ///
-    /// ```rust
+    /// ```
     /// let s = [(0, 0), (2, 1), (4, 1), (5, 1), (3, 1),
     ///          (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
     ///          (1, 21), (2, 34), (4, 55)];
@@ -1023,7 +1025,7 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [-5, 4, 1, -3, 2];
     ///
     /// v.sort();
@@ -1045,7 +1047,7 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// v.sort_by_key(|k| k.abs());
@@ -1067,7 +1069,7 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [5, 4, 1, 3, 2];
     /// v.sort_by(|a, b| a.cmp(b));
     /// assert!(v == [1, 2, 3, 4, 5]);
@@ -1094,7 +1096,7 @@ impl<T> [T] {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// let mut dst = [0, 0, 0];
     /// let src = [1, 2, 3];
     ///
@@ -1116,7 +1118,7 @@ impl<T> [T] {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// let mut dst = [0, 0, 0];
     /// let src = [1, 2, 3];
     ///
