@@ -1,0 +1,18 @@
+error: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/issue-36530.rs:11:1
+   |
+11 | #[foo]
+   | ^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error: The attribute `foo` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/issue-36530.rs:13:5
+   |
+13 |     #![foo]
+   |     ^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
