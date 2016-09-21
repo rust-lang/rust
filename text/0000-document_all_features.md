@@ -25,7 +25,6 @@ One of the major goals of Rust's development process is *stability without stagn
         stabilizing](#new-requirement-to-document-changes-before-stabilizing)
         -   [Language features](#language-features)
         -   [Standard library](#standard-library)
-    -   [Add an “Edit” link (optional)](#add-an-edit-link-optional)
 -   [How do we teach this?](#how-do-we-teach-this)
 -   [Drawbacks](#drawbacks)
 -   [Alternatives](#alternatives)
@@ -109,10 +108,6 @@ The basic process of developing new language features will remain largely the sa
 
 - a new requirement that the changes themselves be properly documented before being merged to stable
 
-Additionally, we should make some content-level/infrastructural changes:
-
-- add an "edit" link to the documentation pages
-
 
 ## New RFC section: "How do we teach this?"
 [new-rfc-section]: #new-rfc-section-how-do-we-teach-this
@@ -182,18 +177,6 @@ Updating the reference could proceed stepwise:
 In the case of the standard library, this could conceivably be managed by setting the `#[forbid(missing_docs)]` attribute on the library roots. In lieu of that, manual code review and general discipline should continue to serve. However, if automated tools *can* be employed here, they should.
 
 
-## Add an "Edit" link (optional)
-[edit-link]: #add-an-edit-link
-
-To support its own change, the Ember team added an "edit this" icon to the top of every page in the guides (and plans to do so for the API documentation, pending infrastructure changes to support that). Each of _The Rust Programming Language_, _Rust by Example_, and the Rust Reference should do the same.
-
-Making a similar change has some downsides (see below under [**Drawbacks**][drawbacks]), but it has two major upsides:
-
-1. It gives users an obvious action to fix typos. Speaking from personal experience, it can be difficult to find where a given documentation or book page exists in the Rust repository. Even with the drawbacks noted below, this would substantially smooth the process of making e.g. a small typo fix for first-time readers of _The Rust Programming Language_. Making the first contribution easy makes further contributions much more likely.
-
-2. It sends a quiet but real signal that the docs are up for editing. This makes it likelier that people will edit them!
-
-
 # How do we teach this?
 
 Since this RFC promotes including this section, it includes it itself. (RFCs, unlike Rust `struct` or `enum` types, may be freely self-referential. No boxing required.)
@@ -240,19 +223,6 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
     For Rust to attain its goal of *stability without stagnation*, its documentation must also be stable and not stagnant.
 
 4. If the forthcoming docs team is unable to provide significant support for the core team member responsible for documentation, and perhaps equally if the rest of the community does not also increase involvement, this will simply not work. No individual can manage all of these docs alone.
-
-5. Specific to the suggestion to [**Add an "edit" link**][edit-link]:
-
-    - If the specific page is in flux (e.g. being rewritten, broken into pieces, etc.), then a link to edit `master` will be confusing.
-    - In addition, when users *have* made edits, it may take some time before it appears, and thus users may be confused when attempting to make edits and finding that the relevant editss have already been made.
-    - Some pages users attempt to edit are *likely* to have different documentation in them than the existing pages, to account for inbound changes for feature additions to the language!
-
-    Two notes, however:
-
-    1. Even facing the same issues, the Ember team has found it useful to have the link, as it enables basically any user of a sufficient comfort level with GitHub to fix basic typos or logic errors.
-    2. This concern primarily impacts _The Rust Programming Language_. Both in its current state and in the event of an eventual revamp (at least: after such a revamp finished), the Rust Reference is far less likely to see pages removed or moved.
-
-    Finally, while infrastructure changes could be made in support of a more "targeted" editing experience, doing so would substantially increase the triage work required for the docs. It would also entail extra work "porting" the changes back to `master`. Additionally, because the language itself does not currently "bugfix" releases, this would substantially alter the workflow for dealing with releases in general.
 
 
 # Alternatives
