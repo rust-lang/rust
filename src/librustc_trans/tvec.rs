@@ -349,7 +349,7 @@ fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let plusone = Add(bcx, loop_counter, C_uint(bcx.ccx(), 1usize), DebugLoc::None);
     AddIncomingToPhi(loop_counter, plusone, bcx.llbb);
 
-    let cond_val = ICmp(bcx, llvm::IntULT, plusone, count, DebugLoc::None);
+    let cond_val = ICmp(bcx, llvm::IntNE, plusone, count, DebugLoc::None);
     CondBr(bcx, cond_val, loop_bcx.llbb, next_bcx.llbb, DebugLoc::None);
 
     next_bcx
@@ -381,7 +381,7 @@ pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         let data_ptr =
             Phi(header_bcx, val_ty(data_ptr), &[data_ptr], &[bcx.llbb]);
         let not_yet_at_end =
-            ICmp(header_bcx, llvm::IntULT, data_ptr, data_end_ptr, DebugLoc::None);
+            ICmp(header_bcx, llvm::IntNE, data_ptr, data_end_ptr, DebugLoc::None);
         let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
         let next_bcx = fcx.new_temp_block("iter_vec_next");
         CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
