@@ -195,7 +195,8 @@ pub fn expand_derive(cx: &mut ExtCtxt,
         // If custom derive extensions end up threading through the `#[derive]`
         // attribute, we'll get called again later on to continue expanding
         // those modes.
-        } else if let Some(ext) = cx.derive_modes.remove(&tname) {
+        } else if let Some(ext) =
+                   cx.resolver.resolve_derive_mode(ast::Ident::with_empty_ctxt(intern(&tname))) {
             let remaining_derives = iter.cloned().collect::<Vec<_>>();
             if remaining_derives.len() > 0 {
                 let list = cx.meta_list(titem.span,
@@ -214,7 +215,6 @@ pub fn expand_derive(cx: &mut ExtCtxt,
             let item = Annotatable::Item(item);
             let mut items = ext.expand(cx, mitem.span, &mitem, item);
             items.extend(other_items);
-            cx.derive_modes.insert(tname.clone(), ext);
             return items
 
         // If we've gotten this far then it means that we're in the territory of

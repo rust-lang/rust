@@ -9,19 +9,23 @@
 // except according to those terms.
 
 use Resolver;
+use rustc::middle::cstore::LoadedMacro;
 use rustc::util::nodemap::FnvHashMap;
 use std::cell::RefCell;
 use std::mem;
 use std::rc::Rc;
 use syntax::ast::{self, Name};
 use syntax::errors::DiagnosticBuilder;
-use syntax::ext::base::{self, LoadedMacro, MultiModifier, MultiDecorator};
-use syntax::ext::base::{NormalTT, SyntaxExtension};
+use syntax::ext::base::{self, MultiModifier, MultiDecorator, MultiItemModifier};
+use syntax::ext::base::{NormalTT, Resolver as SyntaxResolver, SyntaxExtension};
 use syntax::ext::expand::{Expansion, Invocation, InvocationKind};
 use syntax::ext::hygiene::Mark;
-use syntax::parse::token::intern;
+use syntax::ext::tt::macro_rules;
+use syntax::feature_gate::{self, emit_feature_err};
+use syntax::parse::token::{self, intern};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::{self, Visitor};
+use syntax_pos::Span;
 
 #[derive(Clone, Default)]
 pub struct ExpansionData {
@@ -37,10 +41,6 @@ struct ModuleData {
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
-    fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro> {
-        self.crate_loader.load_macros(extern_crate, allows_macros)
-    }
-
     fn next_node_id(&mut self) -> ast::NodeId {
         self.session.next_node_id()
     }
@@ -52,7 +52,18 @@ impl<'a> base::Resolver for Resolver<'a> {
         });
     }
 
-    fn add_macro(&mut self, scope: Mark, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
+    fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
+        if def.use_locally {
+            let ext = macro_rules::compile(&self.session.parse_sess, &def);
+            self.add_ext(scope, def.ident, Rc::new(ext));
+        }
+        if def.export {
+            def.id = self.next_node_id();
+            self.exported_macros.push(def);
+        }
+    }
+
+    fn add_ext(&mut self, scope: Mark, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
         if let NormalTT(..) = *ext {
             self.macro_names.insert(ident.name);
         }
@@ -116,6 +127,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         err.emit();
         None
     }
+
+    fn resolve_derive_mode(&mut self, ident: ast::Ident) -> Option<Rc<MultiItemModifier>> {
+        self.derive_modes.get(&ident.name).cloned()
+    }
 }
 
 impl<'a> Resolver<'a> {
@@ -126,6 +141,17 @@ impl<'a> Resolver<'a> {
             } else {
                 err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
             }
+        }
+    }
+
+    fn insert_custom_derive(&mut self, name: &str, ext: Rc<MultiItemModifier>, sp: Span) {
+        if !self.session.features.borrow().rustc_macro {
+            let diagnostic = &self.session.parse_sess.span_diagnostic;
+            let msg = "loading custom derive macro crates is experimentally supported";
+            emit_feature_err(diagnostic, "rustc_macro", sp, feature_gate::GateIssue::Language, msg);
+        }
+        if self.derive_modes.insert(token::intern(name), ext).is_some() {
+            self.session.span_err(sp, &format!("cannot shadow existing derive mode `{}`", name));
         }
     }
 }
@@ -200,6 +226,21 @@ impl<'a, 'b> Visitor for ExpansionVisitor<'a, 'b>  {
                 let orig_module = mem::replace(&mut self.current_module, Rc::new(module_data));
                 visit::walk_item(self, item);
                 self.current_module = orig_module;
+            }
+            ast::ItemKind::ExternCrate(..) => {
+                // We need to error on `#[macro_use] extern crate` when it isn't at the
+                // crate root, because `$crate` won't work properly.
+                // FIXME(jseyfried): This will be nicer once `ModuleData` is merged with `ModuleS`.
+                let is_crate_root = self.current_module.parent.as_ref().unwrap().parent.is_none();
+                for def in self.resolver.crate_loader.load_macros(item, is_crate_root) {
+                    match def {
+                        LoadedMacro::Def(def) => self.resolver.add_macro(Mark::root(), def),
+                        LoadedMacro::CustomDerive(name, ext) => {
+                            self.resolver.insert_custom_derive(&name, ext, item.span);
+                        }
+                    }
+                }
+                visit::walk_item(self, item);
             }
             _ => visit::walk_item(self, item),
         }
