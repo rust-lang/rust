@@ -200,9 +200,9 @@ This is also an opportunity to allow/enable non-core-team members with less expe
 
 2. We can use the more complicated language reference issues as points for mentoring developers interested in contributing to the compiler. Helping document a complex language feature may be a useful on-ramp for working on the compiler itself.
 
-3. ~~We may find it useful to form~~ We are already forming a documentation subteam (under the leadership of the relevant core team representative), similar to what Ember has done, which will be responsible for shepherding these changes along.
+3. We have formed a documentation subteam (under the leadership of the relevant core team representative), similar to what Ember has done, which will be responsible for shepherding these changes along.
 
-    ~~Whether such a team is formalized or not,~~ Even with such a team in place, a major goal remains encouraging the community to take up a greater degree of responsibility for the state of the documentation, rather than it falling entirely on the shoulders of a single core team member or even the docs team. (Having a dedicated core team member focused solely on docs is *wonderful*, but it means we can sometimes leave it all to just one person, and Rust has far too much going on for any individual to manage on their own.)
+    Even with such a team in place, a major goal remains encouraging the community to take up a greater degree of responsibility for the state of the documentation, rather than it falling entirely on the shoulders of a single core team member or even the docs team. (Having a dedicated core team member focused solely on docs is *wonderful*, but it means we can sometimes leave it all to just one person, and Rust has far too much going on for any individual to manage on their own.)
 
 At a "messaging" level, we should continue to emphasize that *documentation is just as valuable as code*. For example (and there are many other similar opportunities): in addition to highlighting new language features in the release notes for each version, we might highlight any part of the documentation which saw substantial improvement in the release.
 
