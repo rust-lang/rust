@@ -24,18 +24,18 @@ fn main () {
     let k = B {
         aa: 20,
         //~^ ERROR struct `xc::B` has no field named `aa`
-        //~| NOTE did you mean `a`?
+        //~| NOTE field does not exist - did you mean `a`?
         bb: 20,
         //~^ ERROR struct `xc::B` has no field named `bb`
-        //~| NOTE did you mean `a`?
+        //~| NOTE field does not exist - did you mean `a`?
     };
     // local crate struct
     let l = A {
         aa: 20,
         //~^ ERROR struct `A` has no field named `aa`
-        //~| NOTE did you mean `a`?
+        //~| NOTE field does not exist - did you mean `a`?
         bb: 20,
         //~^ ERROR struct `A` has no field named `bb`
-        //~| NOTE did you mean `b`?
+        //~| NOTE field does not exist - did you mean `b`?
     };
 }
