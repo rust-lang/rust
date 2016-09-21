@@ -165,14 +165,14 @@ impl<'tcx, F> MutVisitor<'tcx> for MutateUseVisitor<'tcx, F>
 /// A small structure that enables various metadata of the MIR to be queried
 /// without a reference to the MIR itself.
 #[derive(Clone, Copy)]
-struct MirSummary {
+pub struct MirSummary {
     arg_count: usize,
     var_count: usize,
     temp_count: usize,
 }
 
 impl MirSummary {
-    fn new(mir: &Mir) -> MirSummary {
+    pub fn new(mir: &Mir) -> MirSummary {
         MirSummary {
             arg_count: mir.arg_decls.len(),
             var_count: mir.var_decls.len(),
@@ -180,7 +180,7 @@ impl MirSummary {
         }
     }
 
-    fn local_index<'tcx>(&self, lvalue: &Lvalue<'tcx>) -> Option<Local> {
+    pub fn local_index<'tcx>(&self, lvalue: &Lvalue<'tcx>) -> Option<Local> {
         match *lvalue {
             Lvalue::Arg(arg) => Some(Local::new(arg.index())),
             Lvalue::Var(var) => Some(Local::new(var.index() + self.arg_count)),
