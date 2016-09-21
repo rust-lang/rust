@@ -238,7 +238,7 @@ fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
 }
 
 #[derive(PartialEq)]
-enum LastTokenKind {
+enum PrevTokenKind {
     DocComment,
     Comma,
     Interpolated,
@@ -258,7 +258,7 @@ pub struct Parser<'a> {
     pub prev_span: Span,
     pub cfg: CrateConfig,
     /// the previous token kind
-    last_token_kind: LastTokenKind,
+    prev_token_kind: PrevTokenKind,
     pub buffer: [TokenAndSpan; 4],
     pub buffer_start: isize,
     pub buffer_end: isize,
@@ -369,7 +369,7 @@ impl<'a> Parser<'a> {
             token: tok0.tok,
             span: span,
             prev_span: span,
-            last_token_kind: LastTokenKind::Other,
+            prev_token_kind: PrevTokenKind::Other,
             buffer: [
                 placeholder.clone(),
                 placeholder.clone(),
@@ -504,7 +504,7 @@ impl<'a> Parser<'a> {
                                  expr: PResult<'a, P<Expr>>)
                                  -> PResult<'a, (Span, P<Expr>)> {
         expr.map(|e| {
-            if self.last_token_kind == LastTokenKind::Interpolated {
+            if self.prev_token_kind == PrevTokenKind::Interpolated {
                 (self.prev_span, e)
             } else {
                 (e.span, e)
@@ -524,7 +524,7 @@ impl<'a> Parser<'a> {
                 self.bug("ident interpolation not converted to real token");
             }
             _ => {
-                Err(if self.last_token_kind == LastTokenKind::DocComment {
+                Err(if self.prev_token_kind == PrevTokenKind::DocComment {
                     self.span_fatal_help(self.prev_span,
                         "found a documentation comment that doesn't document anything",
                         "doc comments must come before what they document, maybe a comment was \
@@ -922,7 +922,7 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token
     pub fn bump(&mut self) {
-        if self.last_token_kind == LastTokenKind::Eof {
+        if self.prev_token_kind == PrevTokenKind::Eof {
             // Bumping after EOF is a bad sign, usually an infinite loop.
             self.bug("attempted to bump the parser past EOF (may be stuck in a loop)");
         }
@@ -930,12 +930,12 @@ impl<'a> Parser<'a> {
         self.prev_span = self.span;
 
         // Record last token kind for possible error recovery.
-        self.last_token_kind = match self.token {
-            token::DocComment(..) => LastTokenKind::DocComment,
-            token::Comma => LastTokenKind::Comma,
-            token::Interpolated(..) => LastTokenKind::Interpolated,
-            token::Eof => LastTokenKind::Eof,
-            _ => LastTokenKind::Other,
+        self.prev_token_kind = match self.token {
+            token::DocComment(..) => PrevTokenKind::DocComment,
+            token::Comma => PrevTokenKind::Comma,
+            token::Interpolated(..) => PrevTokenKind::Interpolated,
+            token::Eof => PrevTokenKind::Eof,
+            _ => PrevTokenKind::Other,
         };
 
         let next = if self.buffer_start == self.buffer_end {
@@ -976,8 +976,8 @@ impl<'a> Parser<'a> {
         self.prev_span = mk_sp(self.span.lo, lo);
         // It would be incorrect to record the kind of the current token, but
         // fortunately for tokens currently using `bump_with`, the
-        // last_token_kind will be of no use anyway.
-        self.last_token_kind = LastTokenKind::Other;
+        // prev_token_kind will be of no use anyway.
+        self.prev_token_kind = PrevTokenKind::Other;
         self.span = mk_sp(lo, hi);
         self.token = next;
         self.expected_tokens.clear();
@@ -2950,7 +2950,7 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
 
-            let lhs_span = if self.last_token_kind == LastTokenKind::Interpolated {
+            let lhs_span = if self.prev_token_kind == PrevTokenKind::Interpolated {
                 self.prev_span
             } else {
                 lhs.span
@@ -4019,7 +4019,7 @@ impl<'a> Parser<'a> {
                 None => {
                     let unused_attrs = |attrs: &[_], s: &mut Self| {
                         if attrs.len() > 0 {
-                            if s.last_token_kind == LastTokenKind::DocComment {
+                            if s.prev_token_kind == PrevTokenKind::DocComment {
                                 s.span_err_help(s.prev_span,
                                     "found a documentation comment that doesn't document anything",
                                     "doc comments must come before what they document, maybe a \
@@ -4338,7 +4338,7 @@ impl<'a> Parser<'a> {
 
         let missing_comma = !lifetimes.is_empty() &&
                             !self.token.is_like_gt() &&
-                            self.last_token_kind != LastTokenKind::Comma;
+                            self.prev_token_kind != PrevTokenKind::Comma;
 
         if missing_comma {
 
