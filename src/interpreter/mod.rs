@@ -907,9 +907,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Downcast(_, variant) => {
                         use rustc::ty::layout::Layout::*;
                         match *base_layout {
-                            General { discr, .. } => {
+                            General { ref variants, .. } => {
                                 return Ok(Lvalue {
-                                    ptr: base.ptr.offset(discr.size().bytes() as isize),
+                                    ptr: base.ptr.offset(variants[variant].field_offset(1).bytes() as isize),
                                     extra: LvalueExtra::DowncastVariant(variant),
                                 });
                             }
@@ -1188,13 +1188,7 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
                 ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[])
             }
         }
-        let inst = Instance(def_id, substs);
-        match ::std::panic::catch_unwind(|| {
-            format!("inside call to {}", inst)
-        }) {
-            Ok(msg) => err.span_note(span, &msg),
-            Err(_) => err.span_note(span, &format!("ppaux::parameterized failed: {:?}, {:?}", def_id, substs)),
-        };
+        err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
     }
     err.emit();
 }

@@ -15,6 +15,8 @@ use error::{EvalError, EvalResult};
 use memory::Pointer;
 use super::{EvalContext, IntegerExt, StackPopCleanup};
 
+mod intrinsics;
+
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub(super) fn goto_block(&mut self, target: mir::BasicBlock) {
@@ -218,7 +220,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Some((ptr, block)) => (Some(ptr), StackPopCleanup::Goto(block)),
                     None => (None, StackPopCleanup::None),
                 };
-                self.push_stack_frame(def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
+                self.push_stack_frame(resolved_def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
 
                 for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                     let dest = self.frame().locals[i];
@@ -268,152 +270,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
         assert!(nndiscr == 0 || nndiscr == 1);
         Ok(if not_null { nndiscr } else { 1 - nndiscr })
-    }
-
-    fn call_intrinsic(
-        &mut self,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
-        args: &[mir::Operand<'tcx>],
-        dest: Pointer,
-        dest_layout: &'tcx Layout,
-    ) -> EvalResult<'tcx, ()> {
-        // TODO(solson): We can probably remove this _to_ptr easily.
-        let args_res: EvalResult<Vec<Pointer>> = args.iter()
-            .map(|arg| self.eval_operand_to_ptr(arg))
-            .collect();
-        let args_ptrs = args_res?;
-        let pointer_size = self.memory.pointer_size();
-
-        match &self.tcx.item_name(def_id).as_str()[..] {
-            "add_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_layout)?,
-            "sub_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Sub, &args[0], &args[1], dest, dest_layout)?,
-            "mul_with_overflow" => self.intrinsic_with_overflow(mir::BinOp::Mul, &args[0], &args[1], dest, dest_layout)?,
-
-            "assume" => {
-                if !self.memory.read_bool(args_ptrs[0])? {
-                    return Err(EvalError::AssumptionNotHeld);
-                }
-            }
-
-            "copy_nonoverlapping" => {
-                let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty);
-                let elem_align = self.type_align(elem_ty);
-                let src = self.memory.read_ptr(args_ptrs[0])?;
-                let dest = self.memory.read_ptr(args_ptrs[1])?;
-                let count = self.memory.read_isize(args_ptrs[2])?;
-                self.memory.copy(src, dest, count as usize * elem_size, elem_align)?;
-            }
-
-            "ctpop" => {
-                let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty);
-                let num = self.memory.read_uint(args_ptrs[0], elem_size)?.count_ones();
-                self.memory.write_uint(dest, num.into(), elem_size)?;
-            }
-
-            "ctlz" => {
-                let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty);
-                let num = self.memory.read_uint(args_ptrs[0], elem_size)?.leading_zeros();
-                self.memory.write_uint(dest, num.into(), elem_size)?;
-            }
-
-            "discriminant_value" => {
-                let ty = substs.type_at(0);
-                let adt_ptr = self.memory.read_ptr(args_ptrs[0])?;
-                let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
-                self.memory.write_uint(dest, discr_val, 8)?;
-            }
-
-            "forget" => {}
-
-            "init" => self.memory.write_repeat(dest, 0, dest_layout.size(&self.tcx.data_layout).bytes() as usize)?,
-
-            "min_align_of" => {
-                let elem_ty = substs.type_at(0);
-                let elem_align = self.type_align(elem_ty);
-                self.memory.write_uint(dest, elem_align as u64, pointer_size)?;
-            }
-
-            "move_val_init" => {
-                let ty = substs.type_at(0);
-                let ptr = self.memory.read_ptr(args_ptrs[0])?;
-                self.move_(args_ptrs[1], ptr, ty)?;
-            }
-
-            "offset" => {
-                let pointee_ty = substs.type_at(0);
-                let pointee_size = self.type_size(pointee_ty) as isize;
-                let ptr_arg = args_ptrs[0];
-                let offset = self.memory.read_isize(args_ptrs[1])?;
-
-                match self.memory.read_ptr(ptr_arg) {
-                    Ok(ptr) => {
-                        let result_ptr = ptr.offset(offset as isize * pointee_size);
-                        self.memory.write_ptr(dest, result_ptr)?;
-                    }
-                    Err(EvalError::ReadBytesAsPointer) => {
-                        let addr = self.memory.read_isize(ptr_arg)?;
-                        let result_addr = addr + offset * pointee_size as i64;
-                        self.memory.write_isize(dest, result_addr)?;
-                    }
-                    Err(e) => return Err(e),
-                }
-            }
-
-            "overflowing_sub" => {
-                self.intrinsic_overflowing(mir::BinOp::Sub, &args[0], &args[1], dest)?;
-            }
-
-            "overflowing_mul" => {
-                self.intrinsic_overflowing(mir::BinOp::Mul, &args[0], &args[1], dest)?;
-            }
-
-            "overflowing_add" => {
-                self.intrinsic_overflowing(mir::BinOp::Add, &args[0], &args[1], dest)?;
-            }
-
-            "size_of" => {
-                let ty = substs.type_at(0);
-                let size = self.type_size(ty) as u64;
-                self.memory.write_uint(dest, size, pointer_size)?;
-            }
-
-            "size_of_val" => {
-                let ty = substs.type_at(0);
-                if self.type_is_sized(ty) {
-                    let size = self.type_size(ty) as u64;
-                    self.memory.write_uint(dest, size, pointer_size)?;
-                } else {
-                    match ty.sty {
-                        ty::TySlice(_) | ty::TyStr => {
-                            let elem_ty = ty.sequence_element_type(self.tcx);
-                            let elem_size = self.type_size(elem_ty) as u64;
-                            let ptr_size = self.memory.pointer_size() as isize;
-                            let n = self.memory.read_usize(args_ptrs[0].offset(ptr_size))?;
-                            self.memory.write_uint(dest, n * elem_size, pointer_size)?;
-                        }
-
-                        _ => return Err(EvalError::Unimplemented(format!("unimplemented: size_of_val::<{:?}>", ty))),
-                    }
-                }
-            }
-
-            "transmute" => {
-                let ty = substs.type_at(0);
-                self.move_(args_ptrs[0], dest, ty)?;
-            }
-            "uninit" => self.memory.mark_definedness(dest, dest_layout.size(&self.tcx.data_layout).bytes() as usize, false)?,
-
-            name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
-        }
-
-        // Since we pushed no stack frame, the main loop will act
-        // as if the call just completed and it's returning to the
-        // current frame.
-        Ok(())
     }
 
     fn call_c_abi(
@@ -512,7 +368,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     /// Trait method, which has to be resolved to an impl method.
     fn trait_method(
-        &self,
+        &mut self,
         trait_id: DefId,
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
@@ -527,13 +383,45 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let mname = self.tcx.item_name(def_id);
                 // Create a concatenated set of substitutions which includes those from the impl
                 // and those from the method:
-                let mth = get_impl_method(self.tcx, substs, impl_did, vtable_impl.substs, mname);
+                let (did, substs) = find_method(self.tcx, substs, impl_did, vtable_impl.substs, mname);
 
-                Ok((mth.method.def_id, mth.substs))
+                Ok((did, substs))
             }
 
-            traits::VtableClosure(vtable_closure) =>
-                Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs)),
+            traits::VtableClosure(vtable_closure) => {
+                let trait_closure_kind = self.tcx
+                    .lang_items
+                    .fn_trait_kind(trait_id)
+                    .expect("The substitutions should have no type parameters remaining after passing through fulfill_obligation");
+                let closure_kind = self.tcx.closure_kind(vtable_closure.closure_def_id);
+                trace!("closures {:?}, {:?}", closure_kind, trait_closure_kind);
+                match (closure_kind, trait_closure_kind) {
+                    (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+                    (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+                    (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) |
+                    (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {} // No adapter needed.
+                    (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+                    (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+                        // The closure fn is a `fn(&self, ...)` or `fn(&mut self, ...)`.
+                        // We want a `fn(self, ...)`.
+                        // We can produce this by doing something like:
+                        //
+                        //     fn call_once(self, ...) { call_mut(&self, ...) }
+                        //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+                        //
+                        // These are both the same at trans time.
+
+                        // interpreter magic: insert an intermediate pointer, so we can skip the intermediate function call
+                        // FIXME: this is a memory leak, should probably add the pointer to the current stack
+                        let ptr_size = self.memory.pointer_size();
+                        let first = self.memory.allocate(ptr_size, ptr_size)?;
+                        self.memory.copy(args[0].0, first, ptr_size, ptr_size)?;
+                        self.memory.write_ptr(args[0].0, first)?;
+                    }
+                    _ => bug!("cannot convert {:?} to {:?}", closure_kind, trait_closure_kind),
+                }
+                Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs))
+            }
 
             traits::VtableFnPointer(vtable_fn_ptr) => {
                 if let ty::TyFnDef(did, ref substs, _) = vtable_fn_ptr.fn_ty.sty {
@@ -630,6 +518,38 @@ pub(super) fn get_impl_method<'a, 'tcx>(
                 substs: substs,
                 is_provided: node_item.node.is_from_trait(),
             }
+        }
+        None => {
+            bug!("method {:?} not found in {:?}", name, impl_def_id)
+        }
+    }
+}
+
+/// Locates the applicable definition of a method, given its name.
+pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             substs: &'tcx Substs<'tcx>,
+                             impl_def_id: DefId,
+                             impl_substs: &'tcx Substs<'tcx>,
+                             name: ast::Name)
+                             -> (DefId, &'tcx Substs<'tcx>)
+{
+    assert!(!substs.needs_infer());
+
+    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
+
+    match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
+        Some(node_item) => {
+            let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+                let substs = substs.rebase_onto(tcx, trait_def_id, impl_substs);
+                let substs = traits::translate_substs(&infcx, impl_def_id, substs, node_item.node);
+                tcx.lift(&substs).unwrap_or_else(|| {
+                    bug!("find_method: translate_substs \
+                          returned {:?} which contains inference types/regions",
+                         substs);
+                })
+            });
+            (node_item.item.def_id, substs)
         }
         None => {
             bug!("method {:?} not found in {:?}", name, impl_def_id)
