@@ -83,7 +83,7 @@ impl Duration {
 
     /// Returns the number of whole seconds represented by this duration.
     ///
-    /// The extra precision represented by this duration is ignored (e.g. extra
+    /// The extra precision represented by this duration is ignored (i.e. extra
     /// nanoseconds are not represented in the returned value).
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
@@ -93,7 +93,7 @@ impl Duration {
     ///
     /// This method does **not** return the length of the duration when
     /// represented by nanoseconds. The returned number always represents a
-    /// fractional portion of a second (e.g. it is less than one billion).
+    /// fractional portion of a second (i.e. it is less than one billion).
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn subsec_nanos(&self) -> u32 { self.nanos }
