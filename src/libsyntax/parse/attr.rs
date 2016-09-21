@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
                 self.expect(&token::OpenDelim(token::Bracket))?;
                 let meta_item = self.parse_meta_item()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
-                let hi = self.last_span.hi;
+                let hi = self.prev_span.hi;
 
                 (mk_sp(lo, hi), meta_item, style)
             }
@@ -231,16 +231,16 @@ impl<'a> Parser<'a> {
             token::Eq => {
                 self.bump();
                 let lit = self.parse_unsuffixed_lit()?;
-                let hi = self.last_span.hi;
+                let hi = self.prev_span.hi;
                 Ok(P(spanned(lo, hi, ast::MetaItemKind::NameValue(name, lit))))
             }
             token::OpenDelim(token::Paren) => {
                 let inner_items = self.parse_meta_seq()?;
-                let hi = self.last_span.hi;
+                let hi = self.prev_span.hi;
                 Ok(P(spanned(lo, hi, ast::MetaItemKind::List(name, inner_items))))
             }
             _ => {
-                let hi = self.last_span.hi;
+                let hi = self.prev_span.hi;
                 Ok(P(spanned(lo, hi, ast::MetaItemKind::Word(name))))
             }
         }
@@ -253,14 +253,14 @@ impl<'a> Parser<'a> {
 
         match self.parse_unsuffixed_lit() {
             Ok(lit) => {
-                return Ok(spanned(lo, self.last_span.hi, ast::NestedMetaItemKind::Literal(lit)))
+                return Ok(spanned(lo, self.prev_span.hi, ast::NestedMetaItemKind::Literal(lit)))
             }
             Err(ref mut err) => self.diagnostic().cancel(err)
         }
 
         match self.parse_meta_item() {
             Ok(mi) => {
-                return Ok(spanned(lo, self.last_span.hi, ast::NestedMetaItemKind::MetaItem(mi)))
+                return Ok(spanned(lo, self.prev_span.hi, ast::NestedMetaItemKind::MetaItem(mi)))
             }
             Err(ref mut err) => self.diagnostic().cancel(err)
         }
