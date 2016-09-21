@@ -36,6 +36,7 @@ use value::Value;
 
 use syntax_pos::{Span, DUMMY_SP};
 
+use std::fmt;
 use std::ptr;
 
 use super::operand::{OperandRef, OperandValue};
@@ -144,6 +145,12 @@ impl<'tcx> Const<'tcx> {
             val: val,
             ty: self.ty
         }
+    }
+}
+
+impl<'tcx> fmt::Debug for Const<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Const({:?}: {:?})", Value(self.llval), self.ty)
     }
 }
 
@@ -466,7 +473,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
     fn const_operand(&self, operand: &mir::Operand<'tcx>, span: Span)
                      -> Result<Const<'tcx>, ConstEvalFailure> {
-        match *operand {
+        debug!("const_operand({:?} @ {:?})", operand, span);
+        let result = match *operand {
             mir::Operand::Consume(ref lvalue) => {
                 Ok(self.const_lvalue(lvalue, span)?.to_const(span))
             }
@@ -495,13 +503,33 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }
                 }
             }
-        }
+        };
+        debug!("const_operand({:?} @ {:?}) = {:?}", operand, span,
+               result.as_ref().ok());
+        result
+    }
+
+    fn const_array(&self, array_ty: Ty<'tcx>, fields: &[ValueRef])
+                   -> Const<'tcx>
+    {
+        let elem_ty = array_ty.builtin_index().unwrap_or_else(|| {
+            bug!("bad array type {:?}", array_ty)
+        });
+        let llunitty = type_of::type_of(self.ccx, elem_ty);
+        // If the array contains enums, an LLVM array won't work.
+        let val = if fields.iter().all(|&f| val_ty(f) == llunitty) {
+            C_array(llunitty, fields)
+        } else {
+            C_struct(self.ccx, fields, false)
+        };
+        Const::new(val, array_ty)
     }
 
     fn const_rvalue(&self, rvalue: &mir::Rvalue<'tcx>,
                     dest_ty: Ty<'tcx>, span: Span)
                     -> Result<Const<'tcx>, ConstEvalFailure> {
         let tcx = self.ccx.tcx();
+        debug!("const_rvalue({:?}: {:?} @ {:?})", rvalue, dest_ty, span);
         let val = match *rvalue {
             mir::Rvalue::Use(ref operand) => self.const_operand(operand, span)?,
 
@@ -509,15 +537,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let elem = self.const_operand(elem, span)?;
                 let size = count.value.as_u64(tcx.sess.target.uint_type);
                 let fields = vec![elem.llval; size as usize];
-
-                let llunitty = type_of::type_of(self.ccx, elem.ty);
-                // If the array contains enums, an LLVM array won't work.
-                let val = if val_ty(elem.llval) == llunitty {
-                    C_array(llunitty, &fields)
-                } else {
-                    C_struct(self.ccx, &fields, false)
-                };
-                Const::new(val, dest_ty)
+                self.const_array(dest_ty, &fields)
             }
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
@@ -541,22 +561,26 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                                         self.monomorphize(&substs));
                 }
 
-                let val = if let mir::AggregateKind::Adt(adt_def, index, _) = *kind {
-                    let repr = adt::represent_type(self.ccx, dest_ty);
-                    let disr = Disr::from(adt_def.variants[index].disr_val);
-                    adt::trans_const(self.ccx, &repr, disr, &fields)
-                } else if let ty::TyArray(elem_ty, _) = dest_ty.sty {
-                    let llunitty = type_of::type_of(self.ccx, elem_ty);
-                    // If the array contains enums, an LLVM array won't work.
-                    if fields.iter().all(|&f| val_ty(f) == llunitty) {
-                        C_array(llunitty, &fields)
-                    } else {
-                        C_struct(self.ccx, &fields, false)
+                match *kind {
+                    mir::AggregateKind::Vec => {
+                        self.const_array(dest_ty, &fields)
                     }
-                } else {
-                    C_struct(self.ccx, &fields, false)
-                };
-                Const::new(val, dest_ty)
+                    mir::AggregateKind::Adt(..) |
+                    mir::AggregateKind::Closure(..) |
+                    mir::AggregateKind::Tuple => {
+                        let disr = match *kind {
+                            mir::AggregateKind::Adt(adt_def, index, _) => {
+                                Disr::from(adt_def.variants[index].disr_val)
+                            }
+                            _ => Disr(0)
+                        };
+                        let repr = adt::represent_type(self.ccx, dest_ty);
+                        Const::new(
+                            adt::trans_const(self.ccx, &repr, disr, &fields),
+                            dest_ty
+                        )
+                    }
+                }
             }
 
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
@@ -780,6 +804,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             _ => span_bug!(span, "{:?} in constant", rvalue)
         };
 
+        debug!("const_rvalue({:?}: {:?} @ {:?}) = {:?}", rvalue, dest_ty, span, val);
+
         Ok(val)
     }
 
@@ -881,6 +907,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           constant: &mir::Constant<'tcx>)
                           -> Const<'tcx>
     {
+        debug!("trans_constant({:?})", constant);
         let ty = bcx.monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
             mir::Literal::Item { def_id, substs } => {
@@ -905,7 +932,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
         };
 
-        match result {
+        let result = match result {
             Ok(v) => v,
             Err(ConstEvalFailure::Compiletime(_)) => {
                 // We've errored, so we don't have to produce working code.
@@ -917,7 +944,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           "MIR constant {:?} results in runtime panic: {:?}",
                           constant, err.description())
             }
-        }
+        };
+
+        debug!("trans_constant({:?}) = {:?}", constant, result);
+        result
     }
 }
 
