@@ -154,7 +154,7 @@ Instead, the documentation process should immediately precede the move to stabil
 
 This need not be especially long, but it should be long enough for ordinary users to learn how to use the language feature *without reading the RFCs*.
 
-When the core team discusses whether to stabilize a feature in a given release, the reference material will now be a part of that decision. Once the feature *and* reference material are complete, it will be merged normally, and the pull request will simply include the reference material as well as the new feature.
+When the discussing whether to stabilize a feature in a given release, the reference material will now be a part of that decision. Once the feature *and* reference material are complete, it will be merged normally, and the pull request will simply include the reference material as well as the new feature.
 
 Given the current state of the reference, this may need to proceed in two steps:
 
@@ -183,13 +183,11 @@ Since this RFC promotes including this section, it includes it itself. (RFCs, un
 
 To be most effective, this will involve some changes both at a process and core-team level, and at a community level.
 
-From the process and core team side of things:
+1. The RFC template must be updated to include the new section for teaching.
 
-1. Update the RFC template to include the new section for teaching.
+2. The RFC process in the [RFCs README] must be updated, specifically by including "fail to include a plan for documenting the feature" in the list of possible problems in "Submit a pull request step" in [What the process is].
 
-2. Update the RFC process description in the [RFCs README], specifically by including "fail to include a plan for documenting the feature" in the list of possible problems in "Submit a pull request step" in [What the process is].
-
-3. Make documentation and teachability of new features *equally* high priority with the features themselves, and communicate this clearly in discussion of the features. (Core team members are already very good about including this in considerations of language design; this simply makes this an explicit goal of discussions around RFCs.)
+3. Make documentation and teachability of new features *equally* high priority with the features themselves, and communicate this clearly in discussion of the features. (Much of the community is already very good about including this in considerations of language design; this simply makes this an explicit goal of discussions around RFCs.)
 
 [RFCs README]: https://github.com/rust-lang/rfcs/blob/master/README.md
 [What the process is]: https://github.com/rust-lang/rfcs/blob/master/README.md#what-the-process-is
@@ -199,10 +197,6 @@ This is also an opportunity to allow/enable non-core-team members with less expe
 1. We should write issues for feature documentation, and flag them as approachable entry points for new users.
 
 2. We can use the more complicated language reference issues as points for mentoring developers interested in contributing to the compiler. Helping document a complex language feature may be a useful on-ramp for working on the compiler itself.
-
-3. We have formed a documentation subteam (under the leadership of the relevant core team representative), similar to what Ember has done, which will be responsible for shepherding these changes along.
-
-    Even with such a team in place, a major goal remains encouraging the community to take up a greater degree of responsibility for the state of the documentation, rather than it falling entirely on the shoulders of a single core team member or even the docs team. (Having a dedicated core team member focused solely on docs is *wonderful*, but it means we can sometimes leave it all to just one person, and Rust has far too much going on for any individual to manage on their own.)
 
 At a "messaging" level, we should continue to emphasize that *documentation is just as valuable as code*. For example (and there are many other similar opportunities): in addition to highlighting new language features in the release notes for each version, we might highlight any part of the documentation which saw substantial improvement in the release.
 
@@ -220,7 +214,7 @@ At a "messaging" level, we should continue to emphasize that *documentation is j
 
     For Rust to attain its goal of *stability without stagnation*, its documentation must also be stable and not stagnant.
 
-4. If the forthcoming docs team is unable to provide significant support for the core team member responsible for documentation, and perhaps equally if the rest of the community does not also increase involvement, this will simply not work. No individual can manage all of these docs alone.
+4. If the forthcoming docs team is unable to provide significant support, and perhaps equally if the rest of the community does not also increase involvement, this will simply not work. No individual can manage all of these docs alone.
 
 
 # Alternatives
