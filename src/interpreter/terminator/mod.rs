@@ -417,7 +417,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let first = self.memory.allocate(ptr_size, ptr_size)?;
                         self.memory.copy(args[0].0, first, ptr_size, ptr_size)?;
                         self.memory.write_ptr(args[0].0, first)?;
-                        self.memory.dump(args[0].0.alloc_id);
                     }
                     _ => bug!("cannot convert {:?} to {:?}", closure_kind, trait_closure_kind),
                 }
