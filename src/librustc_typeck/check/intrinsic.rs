@@ -379,7 +379,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                         span_err!(tcx.sess, it.span, E0444,
                                   "platform-specific intrinsic has invalid number of \
                                    arguments: found {}, expected {}",
-                                  intr.inputs.len(), sig.inputs.len());
+                                  sig.inputs.len(), intr.inputs.len());
                         return
                     }
                     let input_pairs = intr.inputs.iter().zip(&sig.inputs);
