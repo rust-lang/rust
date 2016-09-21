@@ -23,9 +23,9 @@ fn helper(_: usize) {
 pub fn ref_dst(s: &[u8]) {
     // We used to generate an extra alloca and memcpy to ref the dst, so check that we copy
     // directly to the alloca for "x"
-// CHECK: [[X0:%[0-9]+]] = getelementptr {{.*}} { i8*, [[USIZE]] }* %s, i32 0, i32 0
+// CHECK: [[X0:%[0-9]+]] = getelementptr {{.*}} { i8*, [[USIZE]] }* %x, i32 0, i32 0
 // CHECK: store i8* %0, i8** [[X0]]
-// CHECK: [[X1:%[0-9]+]] = getelementptr {{.*}} { i8*, [[USIZE]] }* %s, i32 0, i32 1
+// CHECK: [[X1:%[0-9]+]] = getelementptr {{.*}} { i8*, [[USIZE]] }* %x, i32 0, i32 1
 // CHECK: store [[USIZE]] %1, [[USIZE]]* [[X1]]
 
     let x = &*s;
