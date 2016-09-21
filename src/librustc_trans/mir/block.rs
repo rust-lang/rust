@@ -23,6 +23,7 @@ use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
 use debuginfo::DebugLoc;
 use Disr;
+use expr;
 use machine::{llalign_of_min, llbitsize_of_real};
 use meth;
 use type_of;
@@ -260,8 +261,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     bcx.with_block(|bcx| {
                         let scratch = base::alloc_ty(bcx, ty, "drop");
                         base::call_lifetime_start(bcx, scratch);
-                        build::Store(bcx, lvalue.llval, base::get_dataptr(bcx, scratch));
-                        build::Store(bcx, lvalue.llextra, base::get_meta(bcx, scratch));
+                        build::Store(bcx, lvalue.llval, expr::get_dataptr(bcx, scratch));
+                        build::Store(bcx, lvalue.llextra, expr::get_meta(bcx, scratch));
                         scratch
                     })
                 };
