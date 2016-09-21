@@ -178,9 +178,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Abi::Rust | Abi::RustCall => {
-                // TODO(solson): Adjust the first argument when calling a Fn or
-                // FnMut closure via FnOnce::call_once.
-
                 let mut arg_srcs = Vec::new();
                 for arg in args {
                     let src = self.eval_operand_to_ptr(arg)?;
@@ -195,25 +192,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     } else {
                         (def_id, substs)
                     };
-
-                if fn_ty.abi == Abi::RustCall {
-                    if let Some((last, last_ty)) = arg_srcs.pop() {
-                        let last_layout = self.type_layout(last_ty);
-                        match (&last_ty.sty, last_layout) {
-                            (&ty::TyTuple(fields),
-                             &Layout::Univariant { ref variant, .. }) => {
-                                let offsets = iter::once(0)
-                                    .chain(variant.offset_after_field.iter()
-                                        .map(|s| s.bytes()));
-                                for (offset, ty) in offsets.zip(fields) {
-                                    let src = last.offset(offset as isize);
-                                    arg_srcs.push((src, ty));
-                                }
-                            }
-                            ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
-                        }
-                    }
-                }
 
                 let mir = self.load_mir(resolved_def_id);
                 let (return_ptr, return_to_block) = match destination {
@@ -366,6 +344,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         })
     }
 
+    fn unpack_fn_args(&self, args: &mut Vec<(Pointer, Ty<'tcx>)>) {
+        if let Some((last, last_ty)) = args.pop() {
+            let last_layout = self.type_layout(last_ty);
+            match (&last_ty.sty, last_layout) {
+                (&ty::TyTuple(fields),
+                 &Layout::Univariant { ref variant, .. }) => {
+                    let offsets = iter::once(0)
+                        .chain(variant.offset_after_field.iter()
+                            .map(|s| s.bytes()));
+                    for (offset, ty) in offsets.zip(fields) {
+                        let src = last.offset(offset as isize);
+                        args.push((src, ty));
+                    }
+                }
+                ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
+            }
+        }
+    }
+
     /// Trait method, which has to be resolved to an impl method.
     fn trait_method(
         &mut self,
@@ -395,6 +392,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     .expect("The substitutions should have no type parameters remaining after passing through fulfill_obligation");
                 let closure_kind = self.tcx.closure_kind(vtable_closure.closure_def_id);
                 trace!("closures {:?}, {:?}", closure_kind, trait_closure_kind);
+                self.unpack_fn_args(args);
                 match (closure_kind, trait_closure_kind) {
                     (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
                     (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
@@ -426,6 +424,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             traits::VtableFnPointer(vtable_fn_ptr) => {
                 if let ty::TyFnDef(did, ref substs, _) = vtable_fn_ptr.fn_ty.sty {
                     args.remove(0);
+                    self.unpack_fn_args(args);
                     Ok((did, substs))
                 } else {
                     bug!("VtableFnPointer did not contain a concrete function: {:?}", vtable_fn_ptr)
