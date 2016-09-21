@@ -262,14 +262,15 @@ impl IdentMacroExpander for MacroRulesExpander {
             attrs: attrs,
         };
 
-        cx.insert_macro(def.clone());
-
         // If keep_macs is true, expands to a MacEager::items instead.
-        if cx.ecfg.keep_macs {
+        let result = if cx.ecfg.keep_macs {
             MacEager::items(placeholders::reconstructed_macro_rules(&def).make_items())
         } else {
             MacEager::items(placeholders::macro_scope_placeholder().make_items())
-        }
+        };
+
+        cx.resolver.add_macro(cx.current_expansion.mark, def);
+        result
     }
 }
 

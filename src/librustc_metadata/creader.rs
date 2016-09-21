@@ -17,6 +17,7 @@ use schema::CrateRoot;
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
+use rustc::middle::cstore::LoadedMacro;
 use rustc::session::{config, Session};
 use rustc::session::config::PanicStrategy;
 use rustc::session::search_paths::PathKind;
@@ -32,7 +33,6 @@ use std::rc::Rc;
 use std::fs;
 
 use syntax::ast;
-use syntax::ext::base::LoadedMacro;
 use syntax::abi::Abi;
 use syntax::parse;
 use syntax::attr;
