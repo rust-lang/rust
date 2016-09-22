@@ -68,8 +68,14 @@ mod imp;
 mod imp;
 
 // i686-pc-windows-gnu and all others
-#[cfg(any(unix, all(windows, target_arch = "x86", target_env = "gnu")))]
+#[cfg(any(all(unix, not(target_os = "emscripten")),
+          all(windows, target_arch = "x86", target_env = "gnu")))]
 #[path = "gcc.rs"]
+mod imp;
+
+// emscripten
+#[cfg(target_os = "emscripten")]
+#[path = "emcc.rs"]
 mod imp;
 
 mod dwarf;
