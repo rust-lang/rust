@@ -81,6 +81,7 @@ pub trait CodeMapper {
     fn span_to_string(&self, sp: Span) -> String;
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace>;
+    fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
 }
 
 impl CodeSuggestion {

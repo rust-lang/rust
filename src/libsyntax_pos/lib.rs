@@ -97,24 +97,6 @@ impl Span {
         self.lo == other.lo && self.hi == other.hi
     }
 
-    /// Returns `Some(span)`, a union of `self` and `other`, on overlap.
-    pub fn merge(self, other: Span) -> Option<Span> {
-        if self.expn_id != other.expn_id {
-            return None;
-        }
-
-        if (self.lo <= other.lo && self.hi > other.lo) ||
-           (self.lo >= other.lo && self.lo < other.hi) {
-            Some(Span {
-                lo: cmp::min(self.lo, other.lo),
-                hi: cmp::max(self.hi, other.hi),
-                expn_id: self.expn_id,
-            })
-        } else {
-            None
-        }
-    }
-
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`
     pub fn trim_start(self, other: Span) -> Option<Span> {
         if self.hi > other.hi {
