@@ -13,8 +13,12 @@
 struct S(u8, u16);
 
 fn main() {
-    let s = S{0b1: 10, 0: 11}; //~ ERROR struct `S` has no field named `0b1`
+    let s = S{0b1: 10, 0: 11};
+    //~^ ERROR struct `S` has no field named `0b1`
+    //~| NOTE field does not exist - did you mean `1`?
     match s {
-        S{0: a, 0x1: b, ..} => {} //~ ERROR does not have a field named `0x1`
+        S{0: a, 0x1: b, ..} => {}
+        //~^ ERROR does not have a field named `0x1`
+        //~| NOTE struct `S::{{constructor}}` does not have field `0x1`
     }
 }

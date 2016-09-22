@@ -2401,7 +2401,7 @@ impl usize {
 /// assert_eq!(nan.classify(), FpCategory::Nan);
 /// assert_eq!(sub.classify(), FpCategory::Subnormal);
 /// ```
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum FpCategory {
     /// "Not a Number", often obtained by dividing by zero.
@@ -2744,11 +2744,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
 /// on the primitive integer types, such as [`i8::from_str_radix()`].
 ///
 /// [`i8::from_str_radix()`]: ../../std/primitive.i8.html#method.from_str_radix
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseIntError { kind: IntErrorKind }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum IntErrorKind {
     Empty,
     InvalidDigit,

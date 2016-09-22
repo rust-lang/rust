@@ -21,7 +21,7 @@ impl U {
 fn main() {
     let u = U { principle: 0 };
     //~^ ERROR union `U` has no field named `principle`
-    //~| NOTE did you mean `principal`?
+    //~| NOTE field does not exist - did you mean `principal`?
     let w = u.principial; //~ ERROR attempted access of field `principial` on type `U`
                           //~^ HELP did you mean `principal`?
 
