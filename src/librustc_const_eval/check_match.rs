@@ -536,10 +536,10 @@ impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
                 }
                 PatKind::Box(inner) => PatKind::Box(self.fold_pat(inner)),
                 PatKind::Ref(inner, mutbl) => PatKind::Ref(self.fold_pat(inner), mutbl),
-                PatKind::Vec(before, slice, after) => {
-                    PatKind::Vec(before.move_map(|x| self.fold_pat(x)),
-                                 slice.map(|x| self.fold_pat(x)),
-                                 after.move_map(|x| self.fold_pat(x)))
+                PatKind::Slice(before, slice, after) => {
+                    PatKind::Slice(before.move_map(|x| self.fold_pat(x)),
+                                   slice.map(|x| self.fold_pat(x)),
+                                   after.move_map(|x| self.fold_pat(x)))
                 }
                 PatKind::Wild |
                 PatKind::Lit(_) |
