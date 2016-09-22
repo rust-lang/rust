@@ -2333,51 +2333,7 @@ impl<'a> Parser<'a> {
                             Restrictions::RESTRICTION_NO_STRUCT_LITERAL
                         );
                         if !prohibited {
-                            // It's a struct literal.
-                            self.bump();
-                            let mut fields = Vec::new();
-                            let mut base = None;
-
-                            attrs.extend(self.parse_inner_attributes()?);
-
-                            while self.token != token::CloseDelim(token::Brace) {
-                                if self.eat(&token::DotDot) {
-                                    match self.parse_expr() {
-                                        Ok(e) => {
-                                            base = Some(e);
-                                        }
-                                        Err(mut e) => {
-                                            e.emit();
-                                            self.recover_stmt();
-                                        }
-                                    }
-                                    break;
-                                }
-
-                                match self.parse_field() {
-                                    Ok(f) => fields.push(f),
-                                    Err(mut e) => {
-                                        e.emit();
-                                        self.recover_stmt();
-                                        break;
-                                    }
-                                }
-
-                                match self.expect_one_of(&[token::Comma],
-                                                         &[token::CloseDelim(token::Brace)]) {
-                                    Ok(()) => {}
-                                    Err(mut e) => {
-                                        e.emit();
-                                        self.recover_stmt();
-                                        break;
-                                    }
-                                }
-                            }
-
-                            hi = self.span.hi;
-                            self.expect(&token::CloseDelim(token::Brace))?;
-                            ex = ExprKind::Struct(pth, fields, base);
-                            return Ok(self.mk_expr(lo, hi, ex, attrs));
+                            return self.parse_struct_expr(lo, pth, attrs);
                         }
                     }
 
@@ -2401,6 +2357,53 @@ impl<'a> Parser<'a> {
         }
 
         return Ok(self.mk_expr(lo, hi, ex, attrs));
+    }
+
+    fn parse_struct_expr(&mut self, lo: BytePos, pth: ast::Path, mut attrs: ThinVec<Attribute>)
+                         -> PResult<'a, P<Expr>> {
+        self.bump();
+        let mut fields = Vec::new();
+        let mut base = None;
+
+        attrs.extend(self.parse_inner_attributes()?);
+
+        while self.token != token::CloseDelim(token::Brace) {
+            if self.eat(&token::DotDot) {
+                match self.parse_expr() {
+                    Ok(e) => {
+                        base = Some(e);
+                    }
+                    Err(mut e) => {
+                        e.emit();
+                        self.recover_stmt();
+                    }
+                }
+                break;
+            }
+
+            match self.parse_field() {
+                Ok(f) => fields.push(f),
+                Err(mut e) => {
+                    e.emit();
+                    self.recover_stmt();
+                    break;
+                }
+            }
+
+            match self.expect_one_of(&[token::Comma],
+                                     &[token::CloseDelim(token::Brace)]) {
+                Ok(()) => {}
+                Err(mut e) => {
+                    e.emit();
+                    self.recover_stmt();
+                    break;
+                }
+            }
+        }
+
+        let hi = self.span.hi;
+        self.expect(&token::CloseDelim(token::Brace))?;
+        return Ok(self.mk_expr(lo, hi, ExprKind::Struct(pth, fields, base), attrs));
     }
 
     fn parse_or_use_outer_attributes(&mut self,
