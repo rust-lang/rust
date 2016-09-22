@@ -246,7 +246,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_bytes(ptr, s.as_bytes())?;
                 self.memory.freeze(ptr.alloc_id)?;
                 Value::ByValPair(
-                    PrimVal::AbstractPtr(ptr),
+                    PrimVal::Ptr(ptr),
                     self.target_usize_primval(s.len() as u64)
                 )
             }
@@ -255,7 +255,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = self.memory.allocate(bs.len(), 1)?;
                 self.memory.write_bytes(ptr, bs)?;
                 self.memory.freeze(ptr.alloc_id)?;
-                Value::ByVal(PrimVal::AbstractPtr(ptr))
+                Value::ByVal(PrimVal::Ptr(ptr))
             }
 
             Struct(_)    => unimplemented!(),
@@ -1050,7 +1050,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             &ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                 if self.type_is_sized(ty) {
                     match self.memory.read_ptr(ptr) {
-                        Ok(p) => PrimVal::AbstractPtr(p),
+                        Ok(p) => PrimVal::Ptr(p),
                         Err(EvalError::ReadBytesAsPointer) => {
                             PrimVal::IntegerPtr(self.memory.read_usize(ptr)?)
                         }

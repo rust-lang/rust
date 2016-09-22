@@ -530,7 +530,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             PrimVal::F32(f) => self.write_f32(ptr, f),
             PrimVal::F64(f) => self.write_f64(ptr, f),
             PrimVal::FnPtr(p) |
-            PrimVal::AbstractPtr(p) => self.write_ptr(ptr, p),
+            PrimVal::Ptr(p) => self.write_ptr(ptr, p),
         }
     }
 

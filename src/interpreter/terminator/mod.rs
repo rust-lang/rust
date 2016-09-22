@@ -420,7 +420,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         // FIXME: this is a memory leak, should probably add the pointer to the
                         // current stack.
                         let first = self.value_to_ptr(args[0].0, args[0].1)?;
-                        args[0].0 = Value::ByVal(PrimVal::AbstractPtr(first));
+                        args[0].0 = Value::ByVal(PrimVal::Ptr(first));
                         args[0].1 = self.tcx.mk_mut_ptr(args[0].1);
                     }
 

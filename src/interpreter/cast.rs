@@ -28,7 +28,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             U64(u) |
             IntegerPtr(u) => self.cast_const_int(u, ty, false),
             FnPtr(ptr) |
-            AbstractPtr(ptr) => self.cast_ptr(ptr, ty),
+            Ptr(ptr) => self.cast_ptr(ptr, ty),
         }
     }
 
@@ -36,7 +36,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use primval::PrimVal::*;
         match ty.sty {
             ty::TyRef(..) |
-            ty::TyRawPtr(_) => Ok(AbstractPtr(ptr)),
+            ty::TyRawPtr(_) => Ok(Ptr(ptr)),
             ty::TyFnPtr(_) => Ok(FnPtr(ptr)),
             _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
         }
