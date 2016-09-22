@@ -8,8 +8,13 @@ gist_it() {
 }
 
 build() {
-    $CARGO build --target $TARGET
-    $CARGO build --target $TARGET --release
+    if [[ $WEAK ]]; then
+        $CARGO build --features weak --target $TARGET
+        $CARGO build --features weak --target $TARGET --release
+    else
+        $CARGO build --target $TARGET
+        $CARGO build --target $TARGET --release
+    fi
 }
 
 inspect() {
@@ -19,12 +24,21 @@ inspect() {
     $PREFIX$OBJDUMP -Cd target/**/release/*.rlib | gist_it
     set -e
 
-    # Check presence of weak symbols
-    if [[ $LINUX ]]; then
+    # Check presence/absence of weak symbols
+    if [[ $WEAK ]]; then
         local symbols=( memcmp memcpy memmove memset )
         for symbol in "${symbols[@]}"; do
-            $PREFIX$NM target/**/debug/deps/librlibc*.rlib | grep -q "W $symbol"
+            $PREFIX$NM target/$TARGET/debug/deps/librlibc-*.rlib | grep -q "W $symbol"
         done
+    else
+        set +e
+        ls target/$TARGET/debug/deps/librlibc-*.rlib
+
+        if [[ $? == 0 ]]; then
+            exit 1
+        fi
+
+        set -e
     fi
 
 }
@@ -50,6 +64,7 @@ main() {
                -e TRAVIS_BRANCH=$TRAVIS_BRANCH \
                -e TRAVIS_COMMIT=$TRAVIS_COMMIT \
                -e TRAVIS_OS_NAME=$TRAVIS_OS_NAME \
+               -e WEAK=$WEAK \
                -v $(pwd):/mnt \
                japaric/rustc-builtins \
                sh -c 'cd /mnt;

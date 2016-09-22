@@ -32,11 +32,19 @@ matrix:
       os: linux
     - env: TARGET=thumbv6m-none-eabi
       os: linux
+    - env: TARGET=thumbv6m-none-eabi WEAK=true
+      os: linux
     - env: TARGET=thumbv7em-none-eabi
+      os: linux
+    - env: TARGET=thumbv7em-none-eabi WEAK=true
       os: linux
     - env: TARGET=thumbv7em-none-eabihf
       os: linux
+    - env: TARGET=thumbv7em-none-eabihf WEAK=true
+      os: linux
     - env: TARGET=thumbv7m-none-eabi
+      os: linux
+    - env: TARGET=thumbv7m-none-eabi WEAK=true
       os: linux
     - env: TARGET=x86_64-apple-darwin
       language: ruby
