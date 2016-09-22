@@ -1,5 +1,6 @@
 [package]
 authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+build = "build.rs"
 name = "rustc_builtins"
 version = "0.1.0"
 
