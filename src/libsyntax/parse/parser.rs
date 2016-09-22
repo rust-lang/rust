@@ -542,11 +542,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ident_into_path(&mut self) -> PResult<'a, ast::Path> {
-        let ident = self.parse_ident()?;
-        Ok(ast::Path::from_ident(self.last_span, ident))
-    }
-
     /// Check if the next token is `tok`, and return `true` if so.
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
@@ -1202,14 +1197,11 @@ impl<'a> Parser<'a> {
                 None
             };
             (ident, TraitItemKind::Const(ty, default))
-        } else if !self.token.is_any_keyword()
-            && self.look_ahead(1, |t| *t == token::Not)
-            && (self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
-                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
+        } else if self.token.is_path_start() {
                 // trait item macro.
                 // code copied from parse_macro_use_or_failure... abstraction!
                 let lo = self.span.lo;
-                let pth = self.parse_ident_into_path()?;
+                let pth = self.parse_path(PathStyle::Mod)?;
                 self.expect(&token::Not)?;
 
                 // eat a matched-delimiter token tree:
@@ -4873,17 +4865,14 @@ impl<'a> Parser<'a> {
     fn parse_impl_method(&mut self, vis: &Visibility)
                          -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
-        if !self.token.is_any_keyword()
-            && self.look_ahead(1, |t| *t == token::Not)
-            && (self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
-                || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
+        if self.token.is_path_start() {
             // method macro.
 
             let last_span = self.last_span;
             self.complain_if_pub_macro(&vis, last_span);
 
             let lo = self.span.lo;
-            let pth = self.parse_ident_into_path()?;
+            let pth = self.parse_path(PathStyle::Mod)?;
             self.expect(&token::Not)?;
 
             // eat a matched-delimiter token tree:
@@ -5995,11 +5984,7 @@ impl<'a> Parser<'a> {
         lo: BytePos,
         visibility: Visibility
     ) -> PResult<'a, Option<P<Item>>> {
-        if macros_allowed && !self.token.is_any_keyword()
-                && self.look_ahead(1, |t| *t == token::Not)
-                && (self.look_ahead(2, |t| t.is_ident())
-                    || self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
-                    || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
+        if macros_allowed && self.token.is_path_start() {
             // MACRO INVOCATION ITEM
 
             let last_span = self.last_span;
@@ -6008,7 +5993,7 @@ impl<'a> Parser<'a> {
             let mac_lo = self.span.lo;
 
             // item macro.
-            let pth = self.parse_ident_into_path()?;
+            let pth = self.parse_path(PathStyle::Mod)?;
             self.expect(&token::Not)?;
 
             // a 'special' identifier (like what `macro_rules!` uses)
