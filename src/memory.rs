@@ -120,7 +120,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             bytes: Vec::new(),
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(0),
-            align: 1,
+            align: 8, // should be infinity?
             immutable: false, // must be mutable, because sometimes we "move out" of a ZST
         };
         mem.alloc_map.insert(ZST_ALLOC_ID, alloc);

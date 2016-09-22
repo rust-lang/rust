@@ -621,6 +621,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src = self.eval_operand_to_ptr(operand)?;
                         let src_ty = self.operand_ty(operand);
                         let dest_ty = self.monomorphize(dest_ty, self.substs());
+                        // FIXME: cases where dest_ty is not a fat pointer. e.g. Arc<Struct> -> Arc<Trait>
                         assert!(self.type_is_fat_ptr(dest_ty));
                         let (ptr, extra) = self.get_fat_ptr(dest);
                         self.move_(src, ptr, src_ty)?;
@@ -883,6 +884,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let offset = variant.field_offset(field.index()).bytes();
                         let ptr = base.ptr.offset(offset as isize);
                         match (&field_ty.sty, base.extra) {
+                            (&ty::TyStr, extra @ LvalueExtra::Length(_)) |
+                            (&ty::TySlice(_), extra @ LvalueExtra::Length(_)) |
                             (&ty::TyTrait(_), extra @ LvalueExtra::Vtable(_)) => return Ok(Lvalue {
                                 ptr: ptr,
                                 extra: extra,
