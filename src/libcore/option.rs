@@ -296,15 +296,13 @@ impl<T> Option<T> {
 
     /// Moves the value `v` out of the `Option<T>` if it is `Some(v)`.
     ///
-    /// # Panics
-    ///
-    /// Panics if the self value equals `None`.
-    ///
-    /// # Safety note
-    ///
     /// In general, because this function may panic, its use is discouraged.
     /// Instead, prefer to use pattern matching and handle the `None`
     /// case explicitly.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the self value equals `None`.
     ///
     /// # Examples
     ///
