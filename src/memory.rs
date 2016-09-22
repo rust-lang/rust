@@ -345,25 +345,26 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     /// Print an allocation and all allocations it points to, recursively.
     pub fn dump(&self, id: AllocId) {
+        use std::fmt::Write;
         let mut allocs_seen = HashSet::new();
         let mut allocs_to_print = VecDeque::new();
         allocs_to_print.push_back(id);
 
         while let Some(id) = allocs_to_print.pop_front() {
             allocs_seen.insert(id);
-            let prefix = format!("Alloc {:<5} ", format!("{}:", id));
-            print!("{}", prefix);
+            let mut msg = format!("Alloc {:<5} ", format!("{}:", id));
+            let prefix_len = msg.len();
             let mut relocations = vec![];
 
             let alloc = match (self.alloc_map.get(&id), self.functions.get(&id)) {
                 (Some(a), None) => a,
                 (None, Some(_)) => {
                     // FIXME: print function name
-                    println!("function pointer");
+                    trace!("{} function pointer", msg);
                     continue;
                 },
                 (None, None) => {
-                    println!("(deallocated)");
+                    trace!("{} (deallocated)", msg);
                     continue;
                 },
                 (Some(_), Some(_)) => bug!("miri invariant broken: an allocation id exists that points to both a function and a memory location"),
@@ -377,25 +378,26 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     relocations.push((i, target_id));
                 }
                 if alloc.undef_mask.is_range_defined(i, i + 1) {
-                    print!("{:02x} ", alloc.bytes[i]);
+                    write!(msg, "{:02x} ", alloc.bytes[i]).unwrap();
                 } else {
-                    print!("__ ");
+                    msg.push_str("__ ");
                 }
             }
 
             let immutable = if alloc.immutable { " (immutable)" } else { "" };
-            println!("({} bytes){}", alloc.bytes.len(), immutable);
+            trace!("{}({} bytes){}", msg, alloc.bytes.len(), immutable);
 
             if !relocations.is_empty() {
-                print!("{:1$}", "", prefix.len()); // Print spaces.
+                msg.clear();
+                write!(msg, "{:1$}", "", prefix_len).unwrap(); // Print spaces.
                 let mut pos = 0;
                 let relocation_width = (self.pointer_size() - 1) * 3;
                 for (i, target_id) in relocations {
-                    print!("{:1$}", "", (i - pos) * 3);
-                    print!("└{0:─^1$}┘ ", format!("({})", target_id), relocation_width);
+                    write!(msg, "{:1$}", "", (i - pos) * 3).unwrap();
+                    write!(msg, "└{0:─^1$}┘ ", format!("({})", target_id), relocation_width).unwrap();
                     pos = i + self.pointer_size();
                 }
-                println!("");
+                trace!("{}", msg);
             }
         }
     }
