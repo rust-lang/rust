@@ -524,7 +524,7 @@ pub mod os {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use sync::mpsc::{channel, Sender};
     use cell::{Cell, UnsafeCell};
@@ -541,7 +541,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn smoke_no_dtor() {
         thread_local!(static FOO: Cell<i32> = Cell::new(1));
 
@@ -564,7 +563,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn states() {
         struct Foo;
         impl Drop for Foo {
@@ -588,7 +586,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn smoke_dtor() {
         thread_local!(static FOO: UnsafeCell<Option<Foo>> = UnsafeCell::new(None));
 
@@ -603,7 +600,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn circular() {
         struct S1;
         struct S2;
@@ -644,7 +640,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn self_referential() {
         struct S1;
         thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
@@ -666,7 +661,6 @@ mod tests {
     // test on OSX.
     #[test]
     #[cfg_attr(target_os = "macos", ignore)]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn dtors_in_dtors_in_dtors() {
         struct S1(Sender<()>);
         thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));

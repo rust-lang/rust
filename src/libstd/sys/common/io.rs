@@ -50,7 +50,7 @@ pub unsafe fn read_to_end_uninitialized(r: &mut Read, buf: &mut Vec<u8>) -> io::
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 pub mod test {
     use path::{Path, PathBuf};
     use env;

@@ -146,7 +146,7 @@ impl<T> Drop for Queue<T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use sync::mpsc::channel;
     use super::{Queue, Data, Empty, Inconsistent};
@@ -161,7 +161,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test() {
         let nthreads = 8;
         let nmsgs = 1000;
