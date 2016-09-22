@@ -32,7 +32,7 @@ if [[ $TARGET != $HOST && ! $TARGET =~ ^i.86- ]]; then
             # `int main() { return 0; }`
             RUN_TESTS=n
             ;;
-        thumbv*-none-eabi)
+        thumbv*-none-eabi*)
             CARGO=xargo
             GCC_TRIPLE=arm-none-eabi
             # Bare metal targets. No `std` or `test` crates for these targets.
