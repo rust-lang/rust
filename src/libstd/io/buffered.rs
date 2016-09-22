@@ -216,8 +216,8 @@ impl<R: Seek> Seek for BufReader<R> {
     ///
     /// Seeking always discards the internal buffer, even if the seek position
     /// would otherwise fall within it. This guarantees that calling
-    /// `.unwrap()` immediately after a seek yields the underlying reader at
-    /// the same position.
+    /// `.into_inner()` immediately after a seek yields the underlying reader
+    /// at the same position.
     ///
     /// See `std::io::Seek` for more details.
     ///
