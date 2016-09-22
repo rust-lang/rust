@@ -83,9 +83,8 @@ use self::TupleArgumentsFlag::*;
 use astconv::{AstConv, ast_region_to_region, PathParamMode};
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
-use middle::cstore::LOCAL_CRATE;
 use hir::def::{Def, PathResolution};
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::pat_util;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
 use rustc::ty::subst::{Subst, Substs};
@@ -1349,8 +1348,12 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                            assoc_name: ast::Name)
                                            -> bool
     {
-        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
-        trait_def.associated_type_names.contains(&assoc_name)
+        self.tcx().impl_or_trait_items(trait_def_id).iter().any(|&def_id| {
+            match self.tcx().impl_or_trait_item(def_id) {
+                ty::TypeTraitItem(ref item) => item.name == assoc_name,
+                _ => false
+            }
+        })
     }
 
     fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
@@ -1450,7 +1453,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             writeback_errors: Cell::new(false),
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_ty: rty,
-            ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal, 0)),
+            ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
+                                                     ast::CRATE_NODE_ID)),
             inh: inh,
         }
     }
@@ -2117,7 +2121,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             .unwrap_or(type_variable::Default {
                                 ty: self.next_ty_var(),
                                 origin_span: syntax_pos::DUMMY_SP,
-                                def_id: self.tcx.map.local_def_id(0) // what do I put here?
+                                // what do I put here?
+                                def_id: self.tcx.map.local_def_id(ast::CRATE_NODE_ID)
                             });
 
                     // This is to ensure that we elimnate any non-determinism from the error
@@ -3219,7 +3224,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Def::Variant(type_did, _) | Def::Struct(type_did) | Def::Union(type_did) => {
+            Def::Variant(did) => {
+                let type_did = self.tcx.parent_def_id(did).unwrap();
+                Some((type_did, self.tcx.expect_variant_def(def)))
+            }
+            Def::Struct(type_did) | Def::Union(type_did) => {
                 Some((type_did, self.tcx.expect_variant_def(def)))
             }
             Def::TyAlias(did) => {
@@ -4110,10 +4119,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Case 1 and 1b. Reference to a *type* or *enum variant*.
             Def::Struct(def_id) |
             Def::Union(def_id) |
-            Def::Variant(_, def_id) |
+            Def::Variant(def_id) |
             Def::Enum(def_id) |
             Def::TyAlias(def_id) |
-            Def::AssociatedTy(_, def_id) |
+            Def::AssociatedTy(def_id) |
             Def::Trait(def_id) => {
                 // Everything but the final segment should have no
                 // parameters at all.
@@ -4161,7 +4170,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // here. If they do, an error will have been reported
             // elsewhere. (I hope)
             Def::Mod(..) |
-            Def::ForeignMod(..) |
             Def::PrimTy(..) |
             Def::SelfTy(..) |
             Def::TyParam(..) |
@@ -4187,7 +4195,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tcx.prohibit_type_params(&segments[..segments.len() - poly_segments]);
 
         match def {
-            Def::Local(_, nid) | Def::Upvar(_, nid, ..) => {
+            Def::Local(def_id) | Def::Upvar(def_id, ..) => {
+                let nid = self.tcx.map.as_local_node_id(def_id).unwrap();
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(node_id, ty);

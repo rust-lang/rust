@@ -57,6 +57,7 @@ fn main()
 {
     // simple case
     let bool_sized = &true;
+    //~ TRANS_ITEM drop-glue i8
     //~ TRANS_ITEM fn unsizing::{{impl}}[0]::foo[0]
     let _bool_unsized = bool_sized as &Trait;
 

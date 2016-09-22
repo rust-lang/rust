@@ -10,14 +10,13 @@
 
 //! Code to save/load the dep-graph from files.
 
-use rbml::Error;
-use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashSet;
 use rustc_serialize::Decodable as RustcDecodable;
+use rustc_serialize::opaque::Decoder;
 use std::io::Read;
 use std::fs::{self, File};
 use std::path::{Path};
@@ -121,7 +120,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   incremental_hashes_map: &IncrementalHashesMap,
                                   dep_graph_data: &[u8],
                                   work_products_data: &[u8])
-                                  -> Result<(), Error>
+                                  -> Result<(), String>
 {
     // Decode the list of work_products
     let mut work_product_decoder = Decoder::new(work_products_data, 0);

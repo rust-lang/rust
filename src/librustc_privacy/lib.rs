@@ -323,8 +323,13 @@ impl<'b, 'a, 'tcx: 'a, 'v> Visitor<'v> for ReachEverythingInTheInterfaceVisitor<
             let def = self.ev.tcx.expect_def(ty.id);
             match def {
                 Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
-                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
-                    if let Some(node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
+                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id) => {
+                    if let Some(mut node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
+                        // Check the trait for associated types.
+                        if let hir::map::NodeTraitItem(_) = self.ev.tcx.map.get(node_id) {
+                            node_id = self.ev.tcx.map.get_parent(node_id);
+                        }
+
                         let item = self.ev.tcx.map.expect_item(node_id);
                         if let Def::TyAlias(..) = def {
                             // Type aliases are substituted. Associated type aliases are not
@@ -947,9 +952,14 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                     return
                 }
                 Def::Struct(def_id) | Def::Union(def_id) | Def::Enum(def_id) |
-                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
+                Def::TyAlias(def_id) | Def::Trait(def_id) | Def::AssociatedTy(def_id) => {
                     // Non-local means public (private items can't leave their crate, modulo bugs)
-                    if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+                    if let Some(mut node_id) = self.tcx.map.as_local_node_id(def_id) {
+                        // Check the trait for associated types.
+                        if let hir::map::NodeTraitItem(_) = self.tcx.map.get(node_id) {
+                            node_id = self.tcx.map.get_parent(node_id);
+                        }
+
                         let item = self.tcx.map.expect_item(node_id);
                         let vis = match self.substituted_alias_visibility(item, path) {
                             Some(vis) => vis,

@@ -1154,7 +1154,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, lv) in freevars.iter().zip(lvs) {
-                                    let var_name = tcx.local_var_name_str(freevar.def.var_id());
+                                    let def_id = freevar.def.def_id();
+                                    let var_id = tcx.map.as_local_node_id(def_id).unwrap();
+                                    let var_name = tcx.local_var_name_str(var_id);
                                     struct_fmt.field(&var_name, lv);
                                 }
                             });

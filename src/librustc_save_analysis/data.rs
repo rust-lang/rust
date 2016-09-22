@@ -14,8 +14,8 @@
 //! retrieve the data from a crate.
 
 use rustc::hir;
-use rustc::hir::def_id::DefId;
-use syntax::ast::{self, CrateNum, NodeId};
+use rustc::hir::def_id::{CrateNum, DefId};
+use syntax::ast::{self, NodeId};
 use syntax_pos::Span;
 
 pub struct CrateData {

@@ -69,6 +69,7 @@ mod mod1 {
 
 //~ TRANS_ITEM fn vtable_through_const::main[0] @@ vtable_through_const[External]
 fn main() {
+    //~ TRANS_ITEM drop-glue i8 @@ vtable_through_const[Internal]
 
     // Since Trait1::do_something() is instantiated via its default implementation,
     // it is considered a generic and is instantiated here only because it is

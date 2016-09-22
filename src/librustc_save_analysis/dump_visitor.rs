@@ -29,7 +29,7 @@
 
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::map::{Node, NodeItem};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
@@ -37,7 +37,7 @@ use rustc::ty::{self, TyCtxt, ImplOrTraitItem, ImplOrTraitItemContainer};
 use std::collections::HashSet;
 use std::hash::*;
 
-use syntax::ast::{self, NodeId, PatKind, Attribute};
+use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string, bounds_to_string, generics_to_string};
@@ -95,7 +95,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             analysis: analysis,
             dumper: dumper,
             span: span_utils.clone(),
-            cur_scope: 0,
+            cur_scope: CRATE_NODE_ID,
             mac_defs: HashSet::new(),
             mac_uses: HashSet::new(),
         }
@@ -124,7 +124,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             let lo_loc = self.span.sess.codemap().lookup_char_pos(c.span.lo);
             ExternalCrateData {
                 name: c.name,
-                num: c.number,
+                num: CrateNum::from_u32(c.number),
                 file_name: SpanUtils::make_path_string(&lo_loc.file.name),
             }
         }).collect();
@@ -252,7 +252,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             ref_id: None,
             span: *span,
             qualname: qualname.to_owned(),
-            scope: 0
+            scope: CRATE_NODE_ID
         }.lower(self.tcx));
 
         // write the other sub-paths
@@ -293,8 +293,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
         let def = self.tcx.expect_def(ref_id);
         match def {
-            Def::Mod(_) |
-            Def::ForeignMod(_) => {
+            Def::Mod(_) => {
                 self.dumper.mod_ref(ModRefData {
                     span: sub_span.expect("No span found for mod ref"),
                     ref_id: Some(def_id),
@@ -368,7 +367,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         qualname: format!("{}::{}", qualname, path_to_string(p)),
                         type_value: typ,
                         value: String::new(),
-                        scope: 0,
+                        scope: CRATE_NODE_ID,
                         parent: None,
                         visibility: Visibility::Inherited,
                         docs: String::new(),
@@ -1044,7 +1043,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     qualname: format!("{}${}", path_to_string(p), id),
                     value: value,
                     type_value: typ,
-                    scope: 0,
+                    scope: CRATE_NODE_ID,
                     parent: None,
                     visibility: Visibility::Inherited,
                     docs: String::new(),
@@ -1239,7 +1238,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                 let alias_span = self.span.span_for_last_ident(item.span);
                 let cnum = match self.sess.cstore.extern_mod_stmt_cnum(item.id) {
                     Some(cnum) => cnum,
-                    None => 0,
+                    None => LOCAL_CRATE,
                 };
 
                 if !self.span.filter_generated(alias_span, item.span) {
@@ -1456,7 +1455,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
         // process collected paths
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
             match self.tcx.expect_def(id) {
-                Def::Local(_, id) => {
+                Def::Local(def_id) => {
+                    let id = self.tcx.map.as_local_node_id(def_id).unwrap();
                     let mut value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
                     } else {
@@ -1478,7 +1478,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor for DumpVisitor<'l, 'tcx, 'll, D> 
                             qualname: format!("{}${}", path_to_string(p), id),
                             value: value,
                             type_value: typ,
-                            scope: 0,
+                            scope: CRATE_NODE_ID,
                             parent: None,
                             visibility: Visibility::Inherited,
                             docs: String::new(),

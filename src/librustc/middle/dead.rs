@@ -108,8 +108,10 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             _ if self.ignore_non_const_paths => (),
             Def::PrimTy(_) => (),
             Def::SelfTy(..) => (),
-            Def::Variant(enum_id, variant_id) => {
-                self.check_def_id(enum_id);
+            Def::Variant(variant_id) => {
+                if let Some(enum_id) = self.tcx.parent_def_id(variant_id) {
+                    self.check_def_id(enum_id);
+                }
                 if !self.ignore_variant_stack.contains(&variant_id) {
                     self.check_def_id(variant_id);
                 }
@@ -470,13 +472,12 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        let impl_items = self.tcx.impl_items.borrow();
+        let impl_items = self.tcx.impl_or_trait_item_def_ids.borrow();
         if let Some(impl_list) =
                 self.tcx.inherent_impls.borrow().get(&self.tcx.map.local_def_id(id)) {
             for impl_did in impl_list.iter() {
-                for item_did in impl_items.get(impl_did).unwrap().iter() {
-                    if let Some(item_node_id) =
-                            self.tcx.map.as_local_node_id(item_did.def_id()) {
+                for &item_did in &impl_items[impl_did][..] {
+                    if let Some(item_node_id) = self.tcx.map.as_local_node_id(item_did) {
                         if self.live_symbols.contains(&item_node_id) {
                             return true;
                         }

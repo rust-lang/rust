@@ -44,29 +44,29 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         enum Namespace { Type, Value }
 
         fn name_and_namespace<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        item: &ty::ImplOrTraitItemId)
+                                        def_id: DefId)
                                         -> (ast::Name, Namespace)
         {
-            let name = tcx.impl_or_trait_item(item.def_id()).name();
-            (name, match *item {
-                ty::TypeTraitItemId(..) => Namespace::Type,
-                ty::ConstTraitItemId(..) => Namespace::Value,
-                ty::MethodTraitItemId(..) => Namespace::Value,
+            let item = tcx.impl_or_trait_item(def_id);
+            (item.name(), match item {
+                ty::TypeTraitItem(..) => Namespace::Type,
+                ty::ConstTraitItem(..) => Namespace::Value,
+                ty::MethodTraitItem(..) => Namespace::Value,
             })
         }
 
-        let impl_items = self.tcx.impl_items.borrow();
+        let impl_items = self.tcx.impl_or_trait_item_def_ids.borrow();
 
-        for item1 in &impl_items[&impl1] {
+        for &item1 in &impl_items[&impl1][..] {
             let (name, namespace) = name_and_namespace(self.tcx, item1);
 
-            for item2 in &impl_items[&impl2] {
+            for &item2 in &impl_items[&impl2][..] {
                 if (name, namespace) == name_and_namespace(self.tcx, item2) {
                     let msg = format!("duplicate definitions with name `{}`", name);
-                    let node_id = self.tcx.map.as_local_node_id(item1.def_id()).unwrap();
+                    let node_id = self.tcx.map.as_local_node_id(item1).unwrap();
                     self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
                                            node_id,
-                                           self.tcx.span_of_impl(item1.def_id()).unwrap(),
+                                           self.tcx.span_of_impl(item1).unwrap(),
                                            msg);
                 }
             }

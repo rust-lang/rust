@@ -14,7 +14,6 @@ use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ptr::P;
 
 use hir;
 
@@ -437,16 +436,6 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for P<[T]> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        self.iter().map(|t| t.fold_with(folder)).collect()
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.iter().any(|t| t.visit_with(visitor))
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TraitObject {
@@ -464,7 +453,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitObject<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx [Ty<'tcx>] {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<Ty<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let tys = self.iter().map(|t| t.fold_with(folder)).collect();
         folder.tcx().mk_type_list(tys)

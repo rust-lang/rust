@@ -174,7 +174,7 @@ pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
             PatKind::Path(..) |
             PatKind::Struct(..) => {
                 match dm.get(&p.id) {
-                    Some(&PathResolution { base_def: Def::Variant(_, id), .. }) => {
+                    Some(&PathResolution { base_def: Def::Variant(id), .. }) => {
                         variants.push(id);
                     }
                     _ => ()

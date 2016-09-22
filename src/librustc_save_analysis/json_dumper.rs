@@ -120,7 +120,7 @@ struct Id {
 impl From<DefId> for Id {
     fn from(id: DefId) -> Id {
         Id {
-            krate: id.krate,
+            krate: id.krate.as_u32(),
             index: id.index.as_u32(),
         }
     }

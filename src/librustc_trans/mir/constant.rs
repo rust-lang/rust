@@ -247,11 +247,15 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             let vtable = common::fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref);
             if let traits::VtableImpl(vtable_impl) = vtable {
                 let name = ccx.tcx().item_name(instance.def);
-                for ac in ccx.tcx().associated_consts(vtable_impl.impl_def_id) {
-                    if ac.name == name {
-                        instance = Instance::new(ac.def_id, vtable_impl.substs);
-                        break;
-                    }
+                let ac = ccx.tcx().impl_or_trait_items(vtable_impl.impl_def_id)
+                    .iter().filter_map(|&def_id| {
+                        match ccx.tcx().impl_or_trait_item(def_id) {
+                            ty::ConstTraitItem(ac) => Some(ac),
+                            _ => None
+                        }
+                    }).find(|ic| ic.name == name);
+                if let Some(ac) = ac {
+                    instance = Instance::new(ac.def_id, vtable_impl.substs);
                 }
             }
         }

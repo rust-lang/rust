@@ -557,9 +557,9 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
 
     let attempts;
     match hint {
-        attr::ReprInt(span, ity) => {
+        attr::ReprInt(ity) => {
             if !bounds_usable(cx, ity, bounds) {
-                span_bug!(span, "representation hint insufficient for discriminant range")
+                bug!("representation hint insufficient for discriminant range")
             }
             return ity;
         }

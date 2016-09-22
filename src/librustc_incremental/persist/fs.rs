@@ -114,8 +114,8 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
+use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::hir::svh::Svh;
-use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::fs as fs_util;
@@ -129,7 +129,6 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{UNIX_EPOCH, SystemTime, Duration};
 use std::__rand::{thread_rng, Rng};
-use syntax::ast;
 
 const LOCK_FILE_EXT: &'static str = ".lock";
 const DEP_GRAPH_FILENAME: &'static str = "dep-graph.bin";
@@ -580,7 +579,7 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path_tcx(tcx: TyCtxt, cnum: ast::CrateNum) -> PathBuf {
+fn crate_path_tcx(tcx: TyCtxt, cnum: CrateNum) -> PathBuf {
     crate_path(tcx.sess, &tcx.crate_name(cnum), &tcx.crate_disambiguator(cnum))
 }
 
@@ -592,7 +591,7 @@ fn crate_path_tcx(tcx: TyCtxt, cnum: ast::CrateNum) -> PathBuf {
 /// crate's (name, disambiguator) pair. The metadata hashes are only valid for
 /// the exact version of the binary we are reading from now (i.e. the hashes
 /// are part of the dependency graph of a specific compilation session).
-pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: ast::CrateNum) -> Option<PathBuf> {
+pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: CrateNum) -> Option<PathBuf> {
     let crate_directory = crate_path_tcx(tcx, cnum);
 
     if !crate_directory.exists() {

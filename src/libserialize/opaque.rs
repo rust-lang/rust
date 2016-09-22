@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use Error as DecodeError;
-use writer::EncodeResult;
 use leb128::{read_signed_leb128, read_unsigned_leb128, write_signed_leb128, write_unsigned_leb128};
 use std::io::{self, Write};
 use serialize;
@@ -17,6 +15,8 @@ use serialize;
 // -----------------------------------------------------------------------------
 // Encoder
 // -----------------------------------------------------------------------------
+
+pub type EncodeResult = io::Result<()>;
 
 pub struct Encoder<'a> {
     pub cursor: &'a mut io::Cursor<Vec<u8>>,
@@ -124,140 +124,11 @@ impl<'a> serialize::Encoder for Encoder<'a> {
         let _ = self.cursor.write_all(v.as_bytes());
         Ok(())
     }
-
-    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult
-        where F: FnOnce(&mut Self) -> EncodeResult
-    {
-        f(self)
-    }
-
-    fn emit_enum_variant<F>(&mut self,
-                            _v_name: &str,
-                            v_id: usize,
-                            _len: usize,
-                            f: F)
-                            -> EncodeResult
-        where F: FnOnce(&mut Self) -> EncodeResult
-    {
-        self.emit_usize(v_id)?;
-        f(self)
-    }
-
-    fn emit_enum_variant_arg<F>(&mut self, _: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        f(self)
-    }
-
-    fn emit_enum_struct_variant<F>(&mut self,
-                                   v_name: &str,
-                                   v_id: usize,
-                                   cnt: usize,
-                                   f: F)
-                                   -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_enum_variant(v_name, v_id, cnt, f)
-    }
-
-    fn emit_enum_struct_variant_field<F>(&mut self, _: &str, idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_enum_variant_arg(idx, f)
-    }
-
-    fn emit_struct<F>(&mut self, _: &str, _len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        f(self)
-    }
-
-    fn emit_struct_field<F>(&mut self, _name: &str, _: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        f(self)
-    }
-
-    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_seq(len, f)
-    }
-
-    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_seq_elt(idx, f)
-    }
-
-    fn emit_tuple_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_seq(len, f)
-    }
-
-    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_seq_elt(idx, f)
-    }
-
-    fn emit_option<F>(&mut self, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_enum("Option", f)
-    }
-
-    fn emit_option_none(&mut self) -> EncodeResult {
-        self.emit_enum_variant("None", 0, 0, |_| Ok(()))
-    }
-
-    fn emit_option_some<F>(&mut self, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_enum_variant("Some", 1, 1, f)
-    }
-
-    fn emit_seq<F>(&mut self, len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_usize(len)?;
-        f(self)
-    }
-
-    fn emit_seq_elt<F>(&mut self, _idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        f(self)
-    }
-
-    fn emit_map<F>(&mut self, len: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        self.emit_usize(len)?;
-        f(self)
-    }
-
-    fn emit_map_elt_key<F>(&mut self, _idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        f(self)
-    }
-
-    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult
-        where F: FnOnce(&mut Encoder<'a>) -> EncodeResult
-    {
-        f(self)
-    }
 }
 
 impl<'a> Encoder<'a> {
     pub fn position(&self) -> usize {
         self.cursor.position() as usize
-    }
-
-    pub fn from_rbml<'b: 'c, 'c>(rbml: &'c mut ::writer::Encoder<'b>) -> Encoder<'c> {
-        Encoder { cursor: rbml.writer }
     }
 }
 
@@ -305,7 +176,7 @@ macro_rules! read_sleb128 {
 
 
 impl<'a> serialize::Decoder for Decoder<'a> {
-    type Error = DecodeError;
+    type Error = String;
 
     fn read_nil(&mut self) -> Result<(), Self::Error> {
         Ok(())
@@ -382,138 +253,8 @@ impl<'a> serialize::Decoder for Decoder<'a> {
         Ok(s.to_string())
     }
 
-    fn read_enum<T, F>(&mut self, _name: &str, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        f(self)
-    }
-
-    fn read_enum_variant<T, F>(&mut self, _: &[&str], mut f: F) -> Result<T, Self::Error>
-        where F: FnMut(&mut Decoder<'a>, usize) -> Result<T, Self::Error>
-    {
-        let disr = self.read_usize()?;
-        f(self, disr)
-    }
-
-    fn read_enum_variant_arg<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        f(self)
-    }
-
-    fn read_enum_struct_variant<T, F>(&mut self, _: &[&str], mut f: F) -> Result<T, Self::Error>
-        where F: FnMut(&mut Decoder<'a>, usize) -> Result<T, Self::Error>
-    {
-        let disr = self.read_usize()?;
-        f(self, disr)
-    }
-
-    fn read_enum_struct_variant_field<T, F>(&mut self,
-                                            _name: &str,
-                                            _idx: usize,
-                                            f: F)
-                                            -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        f(self)
-    }
-
-    fn read_struct<T, F>(&mut self, _name: &str, _: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        f(self)
-    }
-
-    fn read_struct_field<T, F>(&mut self, _name: &str, _idx: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        f(self)
-    }
-
-    fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        self.read_seq(move |d, len| {
-            if len == tuple_len {
-                f(d)
-            } else {
-                let err = format!("Invalid tuple length. Expected {}, found {}",
-                                  tuple_len,
-                                  len);
-                Err(DecodeError::Expected(err))
-            }
-        })
-    }
-
-    fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        self.read_seq_elt(idx, f)
-    }
-
-    fn read_tuple_struct<T, F>(&mut self, _name: &str, len: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        self.read_tuple(len, f)
-    }
-
-    fn read_tuple_struct_arg<T, F>(&mut self, idx: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        self.read_tuple_arg(idx, f)
-    }
-
-    fn read_option<T, F>(&mut self, mut f: F) -> Result<T, Self::Error>
-        where F: FnMut(&mut Decoder<'a>, bool) -> Result<T, Self::Error>
-    {
-        self.read_enum("Option", move |this| {
-            this.read_enum_variant(&["None", "Some"], move |this, idx| {
-                match idx {
-                    0 => f(this, false),
-                    1 => f(this, true),
-                    _ => {
-                        let msg = format!("Invalid Option index: {}", idx);
-                        Err(DecodeError::Expected(msg))
-                    }
-                }
-            })
-        })
-    }
-
-    fn read_seq<T, F>(&mut self, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>, usize) -> Result<T, Self::Error>
-    {
-        let len = self.read_usize()?;
-        f(self, len)
-    }
-
-    fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        f(self)
-    }
-
-    fn read_map<T, F>(&mut self, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>, usize) -> Result<T, Self::Error>
-    {
-        let len = self.read_usize()?;
-        f(self, len)
-    }
-
-    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        f(self)
-    }
-
-    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Decoder<'a>) -> Result<T, Self::Error>
-    {
-        f(self)
-    }
-
     fn error(&mut self, err: &str) -> Self::Error {
-        DecodeError::ApplicationError(err.to_string())
+        err.to_string()
     }
 }
 

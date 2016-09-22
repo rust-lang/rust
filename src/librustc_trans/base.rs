@@ -1346,8 +1346,7 @@ fn write_metadata(cx: &SharedCrateContext,
                                           cx.export_map(),
                                           cx.link_meta(),
                                           reachable_ids,
-                                          cx.mir_map(),
-                                          cx.tcx().map.krate());
+                                          cx.mir_map());
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 

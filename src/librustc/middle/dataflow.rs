@@ -112,10 +112,10 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
            ps: &mut pprust::State,
            node: pprust::AnnNode) -> io::Result<()> {
         let id = match node {
-            pprust::NodeName(_) => 0,
+            pprust::NodeName(_) => ast::CRATE_NODE_ID,
             pprust::NodeExpr(expr) => expr.id,
             pprust::NodeBlock(blk) => blk.id,
-            pprust::NodeItem(_) | pprust::NodeSubItem(_) => 0,
+            pprust::NodeItem(_) | pprust::NodeSubItem(_) => ast::CRATE_NODE_ID,
             pprust::NodePat(pat) => pat.id
         };
 
