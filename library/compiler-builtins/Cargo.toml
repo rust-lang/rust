@@ -18,6 +18,6 @@ rand = "0.3.14"
 path = "gcc_s"
 
 [features]
-default = ["rlibc/weak"]
+weak = ["rlibc/weak"]
 
 [workspace]

@@ -23,7 +23,7 @@ extern crate gcc_s;
 #[cfg(test)]
 extern crate rand;
 
-#[cfg(all(not(windows), not(target_os = "macos")))]
+#[cfg(feature = "weak")]
 extern crate rlibc;
 
 pub mod int;
