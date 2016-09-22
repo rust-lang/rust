@@ -11,8 +11,7 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use middle::cstore::LOCAL_CRATE;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
 use syntax::ast;

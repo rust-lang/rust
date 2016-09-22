@@ -26,6 +26,7 @@ use CrateTranslation;
 use util::common::time;
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc::dep_graph::DepNode;
+use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
 use rustc_incremental::IncrementalHashesMap;
@@ -288,7 +289,7 @@ pub fn filename_for_input(sess: &Session,
 }
 
 pub fn each_linked_rlib(sess: &Session,
-                        f: &mut FnMut(ast::CrateNum, &Path)) {
+                        f: &mut FnMut(CrateNum, &Path)) {
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic).into_iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)
@@ -299,7 +300,7 @@ pub fn each_linked_rlib(sess: &Session,
         bug!("could not find formats for rlibs")
     });
     for (cnum, path) in crates {
-        match fmts[cnum as usize - 1] {
+        match fmts[cnum.as_usize() - 1] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => continue,
             _ => {}
         }
@@ -933,7 +934,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
-        match data[cnum as usize - 1] {
+        match data[cnum.as_usize() - 1] {
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
             _ if sess.cstore.is_compiler_builtins(cnum) => {
@@ -1003,7 +1004,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                         sess: &Session,
                         tmpdir: &Path,
                         crate_type: config::CrateType,
-                        cnum: ast::CrateNum) {
+                        cnum: CrateNum) {
         let src = sess.cstore.used_crate_source(cnum);
         let cratepath = &src.rlib.unwrap().0;
         if !sess.lto() && crate_type != config::CrateTypeDylib {

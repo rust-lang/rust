@@ -240,7 +240,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn enum_repr_type(self, opt_hint: Option<&attr::ReprAttr>) -> attr::IntType {
         match opt_hint {
             // Feed in the given type
-            Some(&attr::ReprInt(_, int_t)) => int_t,
+            Some(&attr::ReprInt(int_t)) => int_t,
             // ... but provide sensible default if none provided
             //
             // NB. Historically `fn enum_variants` generate i64 here, while
@@ -352,12 +352,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = TypeIdHasher {
-            tcx: self,
-            state: SipHasher::new()
-        };
+        let mut hasher = TypeIdHasher::new(self, SipHasher::new());
         hasher.visit_ty(ty);
-        hasher.state.finish()
+        hasher.finish()
     }
 
     /// Returns true if this ADT is a dtorck type.
@@ -391,14 +388,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, H> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    state: SipHasher
+    state: H
 }
 
-impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
-    fn hash<T: Hash>(&mut self, x: T) {
+impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, state: H) -> Self {
+        TypeIdHasher {
+            tcx: tcx,
+            state: state
+        }
+    }
+
+    pub fn hash<T: Hash>(&mut self, x: T) {
         x.hash(&mut self.state);
+    }
+
+    pub fn finish(self) -> u64 {
+        self.state.finish()
     }
 
     fn hash_discriminant_u8<T>(&mut self, x: &T) {
@@ -419,7 +427,7 @@ impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, H> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         // Distinguish between the Ty variants uniformly.
         self.hash_discriminant_u8(&ty.sty);
@@ -428,17 +436,18 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyInt(i) => self.hash(i),
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
-            TyAdt(d, _) => self.def_id(d.did),
             TyArray(_, n) => self.hash(n),
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
             TyAnon(def_id, _) |
             TyFnDef(def_id, ..) => self.def_id(def_id),
+            TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
                 self.hash(f.unsafety);
                 self.hash(f.abi);
                 self.hash(f.sig.variadic());
+                self.hash(f.sig.inputs().skip_binder().len());
             }
             TyTrait(ref data) => {
                 self.def_id(data.principal.def_id());
@@ -460,9 +469,10 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyChar |
             TyStr |
             TyBox(_) |
-            TySlice(_) |
-            TyError => {}
-            TyInfer(_) => bug!()
+            TySlice(_) => {}
+
+            TyError |
+            TyInfer(_) => bug!("TypeIdHasher: unexpected type {}", ty)
         }
 
         ty.super_visit_with(self)
@@ -470,7 +480,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
 
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
         match *r {
-            ty::ReStatic | ty::ReErased => {
+            ty::ReErased => {
                 self.hash::<u32>(0);
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
@@ -478,6 +488,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 self.hash::<u32>(db.depth);
                 self.hash(i);
             }
+            ty::ReStatic |
             ty::ReEmpty |
             ty::ReEarlyBound(..) |
             ty::ReLateBound(..) |
@@ -485,7 +496,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) => {
-                bug!("unexpected region found when hashing a type")
+                bug!("TypeIdHasher: unexpected region {:?}", r)
             }
         }
         false

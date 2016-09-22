@@ -895,7 +895,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         "packed" => Some(ReprPacked),
                         "simd" => Some(ReprSimd),
                         _ => match int_type_of_word(word) {
-                            Some(ity) => Some(ReprInt(item.span, ity)),
+                            Some(ity) => Some(ReprInt(ity)),
                             None => {
                                 // Not a word we recognize
                                 span_err!(diagnostic, item.span, E0552,
@@ -939,7 +939,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 #[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum ReprAttr {
     ReprAny,
-    ReprInt(Span, IntType),
+    ReprInt(IntType),
     ReprExtern,
     ReprPacked,
     ReprSimd,
@@ -949,7 +949,7 @@ impl ReprAttr {
     pub fn is_ffi_safe(&self) -> bool {
         match *self {
             ReprAny => false,
-            ReprInt(_sp, ity) => ity.is_ffi_safe(),
+            ReprInt(ity) => ity.is_ffi_safe(),
             ReprExtern => true,
             ReprPacked => false,
             ReprSimd => true,

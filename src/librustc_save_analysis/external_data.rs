@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
-use syntax::ast::{CrateNum, NodeId};
+use syntax::ast::NodeId;
 use syntax::codemap::CodeMap;
 use syntax_pos::Span;
 
@@ -28,7 +28,10 @@ pub fn make_def_id(id: NodeId, map: &Map) -> DefId {
 }
 
 pub fn null_def_id() -> DefId {
-    DefId { krate: u32::max_value(), index: DefIndex::from_u32(u32::max_value()) }
+    DefId {
+        krate: CrateNum::from_u32(u32::max_value()),
+        index: DefIndex::from_u32(u32::max_value())
+    }
 }
 
 #[derive(Clone, Debug, RustcEncodable)]

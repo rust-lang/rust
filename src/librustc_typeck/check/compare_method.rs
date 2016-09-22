@@ -577,7 +577,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 assoc::normalize_associated_types_in(&infcx,
                                                      &mut fulfillment_cx,
                                                      impl_c_span,
-                                                     0,
+                                                     ast::CRATE_NODE_ID,
                                                      &impl_ty);
 
             debug!("compare_const_impl: impl_ty={:?}",
@@ -587,7 +587,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 assoc::normalize_associated_types_in(&infcx,
                                                      &mut fulfillment_cx,
                                                      impl_c_span,
-                                                     0,
+                                                     ast::CRATE_NODE_ID,
                                                      &trait_ty);
 
             debug!("compare_const_impl: trait_ty={:?}",

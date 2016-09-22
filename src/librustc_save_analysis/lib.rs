@@ -52,7 +52,7 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use syntax::ast::{self, NodeId, PatKind, Attribute};
+use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token::{self, keywords, InternedString};
 use syntax::visit::{self, Visitor};
@@ -120,7 +120,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             };
             result.push(CrateData {
                 name: (&self.tcx.sess.cstore.crate_name(n)[..]).to_owned(),
-                number: n,
+                number: n.as_u32(),
                 span: span,
             });
         }
@@ -374,8 +374,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let qualname = format!("{}::{}", qualname, name);
 
         let def_id = self.tcx.map.local_def_id(id);
-        let decl_id = self.tcx.trait_item_of_item(def_id).and_then(|new_id| {
-            let new_def_id = new_id.def_id();
+        let decl_id = self.tcx.trait_item_of_item(def_id).and_then(|new_def_id| {
             if new_def_id != def_id {
                 Some(new_def_id)
             } else {
@@ -543,16 +542,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 .map(|mr| mr.def_id())
                         }
                         ty::ImplContainer(def_id) => {
-                            let impl_items = self.tcx.impl_items.borrow();
-                            Some(impl_items.get(&def_id)
-                                           .unwrap()
-                                           .iter()
-                                           .find(|mr| {
-                                               self.tcx.impl_or_trait_item(mr.def_id()).name() ==
-                                               ti.name()
-                                           })
-                                           .unwrap()
-                                           .def_id())
+                            Some(*self.tcx.impl_or_trait_items(def_id).iter().find(|&&mr| {
+                                self.tcx.impl_or_trait_item(mr).name() == ti.name()
+                            }).unwrap())
                         }
                     }
                 } else {
@@ -676,7 +668,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     #[inline]
     pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
-        self.tcx.map.get_enclosing_scope(id).unwrap_or(0)
+        self.tcx.map.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
     }
 }
 

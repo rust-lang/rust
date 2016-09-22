@@ -63,9 +63,8 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         return;
     }
 
-    let requested_node: Option<ast::NodeId> = env::var("RUST_REGION_GRAPH_NODE")
-                                                  .ok()
-                                                  .and_then(|s| s.parse().ok());
+    let requested_node = env::var("RUST_REGION_GRAPH_NODE")
+        .ok().and_then(|s| s.parse().map(ast::NodeId::new).ok());
 
     if requested_node.is_some() && requested_node != Some(subject_node) {
         return;

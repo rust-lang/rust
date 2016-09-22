@@ -920,7 +920,8 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(substs.upvar_tys) {
-                            let node_id = freevar.def.var_id();
+                            let def_id = freevar.def.def_id();
+                            let node_id = tcx.map.as_local_node_id(def_id).unwrap();
                             write!(f,
                                         "{}{}:{}",
                                         sep,

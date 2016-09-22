@@ -40,7 +40,7 @@ pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
 pub use self::specialize::{OverlapError, specialization_graph, specializes, translate_substs};
-pub use self::specialize::{SpecializesCache};
+pub use self::specialize::{SpecializesCache, find_method};
 pub use self::util::elaborate_predicates;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
@@ -527,6 +527,88 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     Ok(resolved_value)
 }
 
+/// Normalizes the predicates and checks whether they hold.  If this
+/// returns false, then either normalize encountered an error or one
+/// of the predicates did not hold. Used when creating vtables to
+/// check for unsatisfiable methods.
+pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                               predicates: Vec<ty::Predicate<'tcx>>)
+                                               -> bool
+{
+    debug!("normalize_and_test_predicates(predicates={:?})",
+           predicates);
+
+    tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+        let mut selcx = SelectionContext::new(&infcx);
+        let mut fulfill_cx = FulfillmentContext::new();
+        let cause = ObligationCause::dummy();
+        let Normalized { value: predicates, obligations } =
+            normalize(&mut selcx, cause.clone(), &predicates);
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+        }
+        for predicate in predicates {
+            let obligation = Obligation::new(cause.clone(), predicate);
+            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+        }
+
+        fulfill_cx.select_all_or_error(&infcx).is_ok()
+    })
+}
+
+/// Given a trait `trait_ref`, iterates the vtable entries
+/// that come from `trait_ref`, including its supertraits.
+#[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
+pub fn get_vtable_methods<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>)
+    -> impl Iterator<Item=Option<(DefId, &'tcx Substs<'tcx>)>> + 'a
+{
+    debug!("get_vtable_methods({:?})", trait_ref);
+
+    supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
+        tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
+
+        let trait_item_def_ids = tcx.impl_or_trait_items(trait_ref.def_id());
+        let trait_methods = (0..trait_item_def_ids.len()).filter_map(move |i| {
+            match tcx.impl_or_trait_item(trait_item_def_ids[i]) {
+                ty::MethodTraitItem(m) => Some(m),
+                _ => None
+            }
+        });
+
+        // Now list each method's DefId and Substs (for within its trait).
+        // If the method can never be called from this object, produce None.
+        trait_methods.map(move |trait_method| {
+            debug!("get_vtable_methods: trait_method={:?}", trait_method);
+
+            // Some methods cannot be called on an object; skip those.
+            if !tcx.is_vtable_safe_method(trait_ref.def_id(), &trait_method) {
+                debug!("get_vtable_methods: not vtable safe");
+                return None;
+            }
+
+            // the method may have some early-bound lifetimes, add
+            // regions for those
+            let substs = Substs::for_item(tcx, trait_method.def_id,
+                                            |_, _| tcx.mk_region(ty::ReErased),
+                                            |def, _| trait_ref.substs().type_for_def(def));
+
+            // It's possible that the method relies on where clauses that
+            // do not hold for this particular set of type parameters.
+            // Note that this method could then never be called, so we
+            // do not want to try and trans it, in that case (see #23435).
+            let predicates = trait_method.predicates.instantiate_own(tcx, substs);
+            if !normalize_and_test_predicates(tcx, predicates.predicates) {
+                debug!("get_vtable_methods: predicates do not hold");
+                return None;
+            }
+
+            Some((trait_method.def_id, substs))
+        })
+    })
+}
+
 impl<'tcx,O> Obligation<'tcx,O> {
     pub fn new(cause: ObligationCause<'tcx>,
                trait_ref: O)
@@ -571,7 +653,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, body_id: 0, code: MiscObligation }
+        ObligationCause { span: DUMMY_SP, body_id: ast::CRATE_NODE_ID, code: MiscObligation }
     }
 }
 

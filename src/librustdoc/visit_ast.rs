@@ -20,6 +20,7 @@ use syntax_pos::Span;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::FnvHashSet;
 
@@ -339,7 +340,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let cstore = &self.cx.sess().cstore;
                 om.extern_crates.push(ExternCrate {
                     cnum: cstore.extern_mod_stmt_cnum(item.id)
-                                .unwrap_or(ast::CrateNum::max_value()),
+                                .unwrap_or(LOCAL_CRATE),
                     name: name,
                     path: p.map(|x|x.to_string()),
                     vis: item.vis.clone(),

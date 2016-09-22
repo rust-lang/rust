@@ -27,7 +27,9 @@ use tokenstream::{TokenTree};
 
 use std::fmt;
 use std::rc::Rc;
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use std::u32;
+
+use serialize::{self, Encodable, Decodable, Encoder, Decoder};
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
@@ -298,17 +300,53 @@ pub struct ParenthesizedParameterData {
     pub output: Option<P<Ty>>,
 }
 
-pub type CrateNum = u32;
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash, Debug)]
+pub struct NodeId(u32);
 
-pub type NodeId = u32;
+impl NodeId {
+    pub fn new(x: usize) -> NodeId {
+        assert!(x < (u32::MAX as usize));
+        NodeId(x as u32)
+    }
+
+    pub fn from_u32(x: u32) -> NodeId {
+        NodeId(x)
+    }
+
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    pub fn as_u32(&self) -> u32 {
+        self.0
+    }
+}
+
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl serialize::UseSpecializedEncodable for NodeId {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_u32(self.0)
+    }
+}
+
+impl serialize::UseSpecializedDecodable for NodeId {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
+        d.read_u32().map(NodeId)
+    }
+}
 
 /// Node id used to represent the root of the crate.
-pub const CRATE_NODE_ID: NodeId = 0;
+pub const CRATE_NODE_ID: NodeId = NodeId(0);
 
 /// When parsing and doing expansions, we initially give all AST nodes this AST
 /// node value. Then later, in the renumber pass, we renumber them to have
 /// small, positive ids.
-pub const DUMMY_NODE_ID: NodeId = !0;
+pub const DUMMY_NODE_ID: NodeId = NodeId(!0);
 
 /// The AST represents all type param bounds as types.
 /// typeck::collect::compute_bounds matches these against

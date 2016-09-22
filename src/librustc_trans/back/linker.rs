@@ -21,10 +21,10 @@ use monomorphize::Instance;
 
 use back::archive;
 use middle::dependency_format::Linkage;
+use rustc::hir::def_id::CrateNum;
 use session::Session;
 use session::config::CrateType;
 use session::config;
-use syntax::ast;
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
@@ -473,7 +473,7 @@ fn exported_symbols(scx: &SharedCrateContext,
     let deps = formats[&crate_type].iter();
     symbols.extend(deps.enumerate().filter_map(|(i, f)| {
         if *f == Linkage::Static {
-            Some((i + 1) as ast::CrateNum)
+            Some(CrateNum::new(i + 1))
         } else {
             None
         }

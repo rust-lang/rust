@@ -61,7 +61,7 @@ use syntax_pos::Span;
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
-    sess: Option<&'a Session>,
+    sess: &'a Session,
     // As we walk the AST we must keep track of the current 'parent' def id (in
     // the form of a DefIndex) so that if we create a new node which introduces
     // a definition, then we can properly create the def id.
@@ -81,21 +81,7 @@ pub trait Resolver {
 
     // We must keep the set of definitions up to date as we add nodes that weren't in the AST.
     // This should only return `None` during testing.
-    fn definitions(&mut self) -> Option<&mut Definitions>;
-}
-
-pub struct DummyResolver;
-impl Resolver for DummyResolver {
-    fn resolve_generated_global_path(&mut self, _path: &hir::Path, _is_value: bool) -> Def {
-        Def::Err
-    }
-    fn get_resolution(&mut self, _id: NodeId) -> Option<PathResolution> {
-        None
-    }
-    fn record_resolution(&mut self, _id: NodeId, _def: Def) {}
-    fn definitions(&mut self) -> Option<&mut Definitions> {
-        None
-    }
+    fn definitions(&mut self) -> &mut Definitions;
 }
 
 pub fn lower_crate(sess: &Session,
@@ -115,22 +101,13 @@ pub fn lower_crate(sess: &Session,
         } else {
             Some("std")
         },
-        sess: Some(sess),
+        sess: sess,
         parent_def: None,
         resolver: resolver,
     }.lower_crate(krate)
 }
 
 impl<'a> LoweringContext<'a> {
-    pub fn testing_context(resolver: &'a mut Resolver) -> Self {
-        LoweringContext {
-            crate_root: None,
-            sess: None,
-            parent_def: None,
-            resolver: resolver,
-        }
-    }
-
     fn lower_crate(&mut self, c: &Crate) -> hir::Crate {
         struct ItemLowerer<'lcx, 'interner: 'lcx> {
             items: BTreeMap<NodeId, hir::Item>,
@@ -161,12 +138,11 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn next_id(&self) -> NodeId {
-        self.sess.map(Session::next_node_id).unwrap_or(0)
+        self.sess.next_node_id()
     }
 
     fn diagnostic(&self) -> &errors::Handler {
-        self.sess.map(Session::diagnostic)
-                 .unwrap_or_else(|| panic!("this lowerer cannot emit diagnostics"))
+        self.sess.diagnostic()
     }
 
     fn str_to_ident(&self, s: &'static str) -> Name {
@@ -177,9 +153,9 @@ impl<'a> LoweringContext<'a> {
         where F: FnOnce(&mut LoweringContext) -> T
     {
         let old_def = self.parent_def;
-        self.parent_def = match self.resolver.definitions() {
-            Some(defs) => Some(defs.opt_def_index(parent_id).unwrap()),
-            None => old_def,
+        self.parent_def = {
+            let defs = self.resolver.definitions();
+            Some(defs.opt_def_index(parent_id).unwrap())
         };
 
         let result = f(self);
@@ -1719,9 +1695,10 @@ impl<'a> LoweringContext<'a> {
         let expr_path = hir::ExprPath(None, self.path_ident(span, id));
         let expr = self.expr(span, expr_path, ThinVec::new());
 
-        let def = self.resolver.definitions().map(|defs| {
-            Def::Local(defs.local_def_id(binding), binding)
-        }).unwrap_or(Def::Err);
+        let def = {
+            let defs = self.resolver.definitions();
+            Def::Local(defs.local_def_id(binding))
+        };
         self.resolver.record_resolution(expr.id, def);
 
         expr
@@ -1869,11 +1846,12 @@ impl<'a> LoweringContext<'a> {
         let pat = self.pat(span, pat_ident);
 
         let parent_def = self.parent_def;
-        let def = self.resolver.definitions().map(|defs| {
+        let def = {
+            let defs = self.resolver.definitions();
             let def_path_data = DefPathData::Binding(name.as_str());
             let def_index = defs.create_def_with_parent(parent_def, pat.id, def_path_data);
-            Def::Local(DefId::local(def_index), pat.id)
-        }).unwrap_or(Def::Err);
+            Def::Local(DefId::local(def_index))
+        };
         self.resolver.record_resolution(pat.id, def);
 
         pat

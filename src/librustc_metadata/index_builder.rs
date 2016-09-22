@@ -28,10 +28,9 @@
 //! incremental compilation purposes.
 //!
 //! The `IndexBuilder` facilitates both of these. It is created
-//! with an RBML encoder isntance (`rbml_w`) along with an
-//! `EncodingContext` (`ecx`), which it encapsulates. It has one main
-//! method, `record()`. You invoke `record` like so to create a new
-//! `data_item` element in the list:
+//! with an `EncodingContext` (`ecx`), which it encapsulates.
+//! It has one main method, `record()`. You invoke `record`
+//! like so to create a new `data_item` element in the list:
 //!
 //! ```
 //! index.record(some_def_id, callback_fn, data)
@@ -39,17 +38,11 @@
 //!
 //! What record will do is to (a) record the current offset, (b) emit
 //! the `common::data_item` tag, and then call `callback_fn` with the
-//! given data as well as an `ItemContentBuilder`. Once `callback_fn`
+//! given data as well as the `EncodingContext`. Once `callback_fn`
 //! returns, the `common::data_item` tag will be closed.
 //!
-//! The `ItemContentBuilder` is another type that just offers access
-//! to the `ecx` and `rbml_w` that were given in, as well as
-//! maintaining a list of `xref` instances, which are used to extract
-//! common data so it is not re-serialized.
-//!
-//! `ItemContentBuilder` is a distinct type which does not offer the
-//! `record` method, so that we can ensure that `common::data_item` elements
-//! are never nested.
+//! `EncodingContext` does not offer the `record` method, so that we
+//! can ensure that `common::data_item` elements are never nested.
 //!
 //! In addition, while the `callback_fn` is executing, we will push a
 //! task `MetaData(some_def_id)`, which can then observe the
@@ -62,59 +55,51 @@
 //! give a callback fn, rather than taking a closure: it allows us to
 //! easily control precisely what data is given to that fn.
 
-use common::tag_items_data_item;
 use encoder::EncodeContext;
-use index::IndexData;
-use rbml::writer::Encoder;
+use index::Index;
+use schema::*;
+
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TyCtxt};
-use rustc_data_structures::fnv::FnvHashMap;
+use rustc::ty::TyCtxt;
 use syntax::ast;
+
+use std::ops::{Deref, DerefMut};
 
 /// Builder that can encode new items, adding them into the index.
 /// Item encoding cannot be nested.
-pub struct IndexBuilder<'a, 'tcx: 'a, 'encoder: 'a> {
-    items: IndexData,
-    builder: ItemContentBuilder<'a, 'tcx, 'encoder>,
+pub struct IndexBuilder<'a, 'b: 'a, 'tcx: 'b> {
+    items: Index,
+    pub ecx: &'a mut EncodeContext<'b, 'tcx>,
 }
 
-/// Builder that can encode the content of items, but can't start a
-/// new item itself. Most code is attached to here.
-pub struct ItemContentBuilder<'a, 'tcx: 'a, 'encoder: 'a> {
-    xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
-    pub ecx: &'a EncodeContext<'a, 'tcx>,
-    pub rbml_w: &'a mut Encoder<'encoder>,
-}
-
-/// "interned" entries referenced by id
-#[derive(PartialEq, Eq, Hash)]
-pub enum XRef<'tcx> { Predicate(ty::Predicate<'tcx>) }
-
-impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
-    pub fn new(ecx: &'a EncodeContext<'a, 'tcx>,
-               rbml_w: &'a mut Encoder<'encoder>)
-               -> Self {
-        IndexBuilder {
-            items: IndexData::new(ecx.tcx.map.num_local_def_ids()),
-            builder: ItemContentBuilder {
-                ecx: ecx,
-                xrefs: FnvHashMap(),
-                rbml_w: rbml_w,
-            },
-        }
+impl<'a, 'b, 'tcx> Deref for IndexBuilder<'a, 'b, 'tcx> {
+    type Target = EncodeContext<'b, 'tcx>;
+    fn deref(&self) -> &Self::Target {
+        self.ecx
     }
+}
 
-    pub fn ecx(&self) -> &'a EncodeContext<'a, 'tcx> {
-        self.builder.ecx()
+impl<'a, 'b, 'tcx> DerefMut for IndexBuilder<'a, 'b, 'tcx> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.ecx
+    }
+}
+
+impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
+    pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
+        IndexBuilder {
+            items: Index::new(ecx.tcx.map.num_local_def_ids()),
+            ecx: ecx,
+        }
     }
 
     /// Emit the data for a def-id to the metadata. The function to
     /// emit the data is `op`, and it will be given `data` as
-    /// arguments. This `record` function will start/end an RBML tag
-    /// and record the current offset for use in the index, calling
-    /// `op` to generate the data in the RBML tag.
+    /// arguments. This `record` function will call `op` to generate
+    /// the `Entry` (which may point to other encoded information)
+    /// and will then record the `Lazy<Entry>` for use in the index.
     ///
     /// In addition, it will setup a dep-graph task to track what data
     /// `op` accesses to generate the metadata, which is later used by
@@ -129,32 +114,18 @@ impl<'a, 'tcx, 'encoder> IndexBuilder<'a, 'tcx, 'encoder> {
     /// content system.
     pub fn record<DATA>(&mut self,
                         id: DefId,
-                        op: fn(&mut ItemContentBuilder<'a, 'tcx, 'encoder>, DATA),
+                        op: fn(&mut EncodeContext<'b, 'tcx>, DATA) -> Entry<'tcx>,
                         data: DATA)
         where DATA: DepGraphRead
     {
-        let position = self.builder.rbml_w.mark_stable_position();
-        self.items.record(id, position);
-        let _task = self.ecx().tcx.dep_graph.in_task(DepNode::MetaData(id));
-        self.builder.rbml_w.start_tag(tag_items_data_item).unwrap();
-        data.read(self.ecx().tcx);
-        op(&mut self.builder, data);
-        self.builder.rbml_w.end_tag().unwrap();
+        let _task = self.tcx.dep_graph.in_task(DepNode::MetaData(id));
+        data.read(self.tcx);
+        let entry = op(&mut self.ecx, data);
+        self.items.record(id, self.ecx.lazy(&entry));
     }
 
-    pub fn into_fields(self) -> (IndexData, FnvHashMap<XRef<'tcx>, u32>) {
-        (self.items, self.builder.xrefs)
-    }
-}
-
-impl<'a, 'tcx, 'encoder> ItemContentBuilder<'a, 'tcx, 'encoder> {
-    pub fn ecx(&self) -> &'a EncodeContext<'a, 'tcx> {
-        self.ecx
-    }
-
-    pub fn add_xref(&mut self, xref: XRef<'tcx>) -> u32 {
-        let old_len = self.xrefs.len() as u32;
-        *self.xrefs.entry(xref).or_insert(old_len)
+    pub fn into_items(self) -> Index {
+        self.items
     }
 }
 

@@ -1003,7 +1003,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // the leaves of the pattern tree structure.
         return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
             match tcx.expect_def_or_none(pat.id) {
-                Some(Def::Variant(enum_did, variant_did)) => {
+                Some(Def::Variant(variant_did)) => {
+                    let enum_did = tcx.parent_def_id(variant_did).unwrap();
                     let downcast_cmt = if tcx.lookup_adt_def(enum_did).is_univariant() {
                         cmt_pat
                     } else {
@@ -1029,7 +1030,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let id_var = freevar.def.var_id();
+                let def_id = freevar.def.def_id();
+                let id_var = self.tcx().map.as_local_node_id(def_id).unwrap();
                 let upvar_id = ty::UpvarId { var_id: id_var,
                                              closure_expr_id: closure_expr.id };
                 let upvar_capture = self.mc.infcx.upvar_capture(upvar_id).unwrap();
@@ -1061,7 +1063,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = upvar_def.var_id();
+        let var_id = self.tcx().map.as_local_node_id(upvar_def.def_id()).unwrap();
         let var_ty = self.mc.infcx.node_ty(var_id)?;
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }

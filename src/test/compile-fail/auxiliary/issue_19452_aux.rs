@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_19452_aux.rs
-extern crate issue_19452_aux;
-
-enum Homura {
+pub enum Homura {
     Madoka { age: u32 }
-}
-
-fn main() {
-    let homura = Homura::Madoka;
-    //~^ ERROR uses it like a function
-    //~| struct called like a function
-
-    let homura = issue_19452_aux::Homura::Madoka;
-    //~^ ERROR uses it like a function
-    //~| struct called like a function
 }

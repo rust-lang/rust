@@ -16,9 +16,8 @@ use CrateCtxt;
 use check::{FnCtxt};
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
-use middle::cstore;
 use hir::def::Def;
-use hir::def_id::DefId;
+use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
 use rustc::ty::subst::Substs;
 use rustc::traits::{Obligation, SelectionContext};
@@ -92,9 +91,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     CandidateSource::ImplSource(impl_did) => {
                         // Provide the best span we can. Use the item, if local to crate, else
                         // the impl, if local to crate (item may be defaulted), else nothing.
-                        let item = self.impl_item(impl_did, item_name)
+                        let item = self.impl_or_trait_item(impl_did, item_name)
                             .or_else(|| {
-                                self.trait_item(
+                                self.impl_or_trait_item(
                                     self.tcx.impl_trait_ref(impl_did).unwrap().def_id,
 
                                     item_name
@@ -127,7 +126,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                     CandidateSource::TraitSource(trait_did) => {
-                        let item = self.trait_item(trait_did, item_name).unwrap();
+                        let item = self.impl_or_trait_item(trait_did, item_name).unwrap();
                         let item_span = self.tcx.map.def_id_span(item.def_id(), span);
                         span_note!(err, item_span,
                                    "candidate #{} is defined in the trait `{}`",
@@ -321,7 +320,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // implementing a trait would be legal but is rejected
                 // here).
                 (type_is_local || info.def_id.is_local())
-                    && self.trait_item(info.def_id, item_name).is_some()
+                    && self.impl_or_trait_item(info.def_id, item_name).is_some()
             })
             .collect::<Vec<_>>();
 
@@ -449,34 +448,30 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
 
         // Cross-crate:
         let mut external_mods = FnvHashSet();
-        fn handle_external_def(traits: &mut AllTraitsVec,
+        fn handle_external_def(ccx: &CrateCtxt,
+                               traits: &mut AllTraitsVec,
                                external_mods: &mut FnvHashSet<DefId>,
-                               ccx: &CrateCtxt,
-                               cstore: &for<'a> cstore::CrateStore<'a>,
-                               dl: cstore::DefLike) {
-            match dl {
-                cstore::DlDef(Def::Trait(did)) => {
-                    traits.push(TraitInfo::new(did));
+                               def_id: DefId) {
+            match ccx.tcx.sess.cstore.describe_def(def_id) {
+                Some(Def::Trait(_)) => {
+                    traits.push(TraitInfo::new(def_id));
                 }
-                cstore::DlDef(Def::Mod(did)) => {
-                    if !external_mods.insert(did) {
+                Some(Def::Mod(_)) => {
+                    if !external_mods.insert(def_id) {
                         return;
                     }
-                    for child in cstore.item_children(did) {
-                        handle_external_def(traits, external_mods,
-                                            ccx, cstore, child.def)
+                    for child in ccx.tcx.sess.cstore.item_children(def_id) {
+                        handle_external_def(ccx, traits, external_mods, child.def_id)
                     }
                 }
                 _ => {}
             }
         }
-        let cstore = &*ccx.tcx.sess.cstore;
-
         for cnum in ccx.tcx.sess.cstore.crates() {
-            for child in cstore.crate_top_level_items(cnum) {
-                handle_external_def(&mut traits, &mut external_mods,
-                                    ccx, cstore, child.def)
-            }
+            handle_external_def(ccx, &mut traits, &mut external_mods, DefId {
+                krate: cnum,
+                index: CRATE_DEF_INDEX
+            });
         }
 
         *ccx.all_traits.borrow_mut() = Some(traits);
