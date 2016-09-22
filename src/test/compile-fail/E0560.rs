@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct BuildData {
-    foo: isize,
+struct Simba {
+    mother: u32,
 }
 
 fn main() {
-    let foo = BuildData {
-        foo: 0,
-        bar: 0
-        //~^ ERROR struct `BuildData` has no field named `bar`
-        //~| NOTE `BuildData` does not have this field
-    };
+    let s = Simba { mother: 1, father: 0 };
+    //~^ ERROR E0560
+    //~| NOTE `Simba` does not have this field
 }
