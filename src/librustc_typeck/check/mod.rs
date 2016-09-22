@@ -3099,7 +3099,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(field_name) = Self::suggest_field_name(variant,
                                                            &field.name,
                                                            skip_fields.collect()) {
-            err.span_label(field.name.span,&format!("did you mean `{}`?",field_name));
+            err.span_label(field.name.span,
+                           &format!("field does not exist - did you mean `{}`?", field_name));
+        } else {
+            match ty.sty {
+                ty::TyAdt(adt, ..) if adt.is_enum() => {
+                    err.span_label(field.name.span, &format!("`{}::{}` does not have this field",
+                                                             ty, variant.name.as_str()));
+                }
+                _ => {
+                    err.span_label(field.name.span, &format!("`{}` does not have this field", ty));
+                }
+            }
         };
         err.emit();
     }
