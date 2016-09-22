@@ -1037,7 +1037,7 @@ impl<T> [T] {
         self.sort_by(|a, b| a.cmp(b))
     }
 
-    /// Sorts the slice, in place, using `key` to extract a key by which to
+    /// Sorts the slice, in place, using `f` to extract a key by which to
     /// order the sort by.
     ///
     /// This sort is stable and `O(n log n)` worst-case but allocates
