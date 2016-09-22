@@ -38,6 +38,7 @@ pub mod env;
 pub mod ext;
 pub mod fd;
 pub mod fs;
+pub mod memchr;
 pub mod mutex;
 pub mod net;
 pub mod os;

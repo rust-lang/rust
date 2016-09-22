@@ -26,6 +26,7 @@ pub mod env;
 pub mod ext;
 pub mod fs;
 pub mod handle;
+pub mod memchr;
 pub mod mutex;
 pub mod net;
 pub mod os;
