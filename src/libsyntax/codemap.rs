@@ -20,16 +20,17 @@
 pub use self::ExpnFormat::*;
 
 use std::cell::RefCell;
-use std::path::{Path,PathBuf};
-use std::rc::Rc;
-
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{self, Read};
+use std::path::{Path,PathBuf};
+use std::rc::Rc;
+
+use ast::Name;
 pub use syntax_pos::*;
 use errors::CodeMapper;
 
-use ast::Name;
 
 /// Return the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
@@ -166,6 +167,41 @@ impl FileLoader for RealFileLoader {
         let mut src = String::new();
         fs::File::open(path)?.read_to_string(&mut src)?;
         Ok(src)
+    }
+}
+
+/// Tries to read a file from a list of replacements, and if the file is not
+/// there, then reads it from disk, by delegating to RealFileLoader.
+pub struct ReplacedFileLoader {
+    replacements: HashMap<PathBuf, String>,
+    real_file_loader: RealFileLoader,
+}
+
+impl ReplacedFileLoader {
+    pub fn new(replacements: HashMap<PathBuf, String>) -> ReplacedFileLoader {
+        ReplacedFileLoader {
+            replacements: replacements,
+            real_file_loader: RealFileLoader,
+        }
+    }
+}
+
+impl FileLoader for ReplacedFileLoader {
+    fn file_exists(&self, path: &Path) -> bool {
+        self.real_file_loader.file_exists(path)
+    }
+
+    fn abs_path(&self, path: &Path) -> Option<PathBuf> {
+        self.real_file_loader.abs_path(path)
+    }
+
+    fn read_file(&self, path: &Path) -> io::Result<String> {
+        if let Some(abs_path) = self.abs_path(path) {
+            if self.replacements.contains_key(&abs_path) {
+                return Ok(self.replacements[path].clone());
+            }
+        }
+        self.real_file_loader.read_file(path)
     }
 }
 

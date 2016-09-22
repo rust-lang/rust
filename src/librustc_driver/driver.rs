@@ -41,7 +41,7 @@ use rustc_passes::{ast_validation, no_asm, loops, consts, rvalues, static_recurs
 use rustc_const_eval::check_match;
 use super::Compilation;
 
-use serialize::json;
+use rustc_serialize::json;
 
 use std::env;
 use std::ffi::{OsString, OsStr};

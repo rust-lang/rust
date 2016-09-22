@@ -54,7 +54,7 @@ extern crate rustc_resolve;
 extern crate rustc_save_analysis;
 extern crate rustc_trans;
 extern crate rustc_typeck;
-extern crate serialize;
+extern crate serialize as rustc_serialize;
 extern crate rustc_llvm as llvm;
 #[macro_use]
 extern crate log;
@@ -74,6 +74,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::{get_unstable_features_setting, nightly_options};
+use rustc::session::early_error;
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::loader;
@@ -93,10 +94,10 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use rustc::session::early_error;
+use rustc_serialize::json as deserialize_json;
 
 use syntax::{ast, json};
-use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
+use syntax::codemap::{CodeMap, FileLoader, RealFileLoader, ReplacedFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::MultiSpan;
@@ -168,7 +169,8 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
                                             callbacks: &mut CompilerCalls<'a>,
                                             loader: Box<L>)
                                             -> (CompileResult, Option<Session>)
-    where L: FileLoader + 'static {
+    where L: FileLoader + 'static
+{
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
             Compilation::Stop => return (Ok(()), $sess),
@@ -205,6 +207,8 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
         },
     };
 
+    let loader = override_file_loader(&sopts, loader);
+
     let dep_graph = DepGraph::new(sopts.build_dep_graph());
     let cstore = Rc::new(CStore::new(&dep_graph));
     let codemap = Rc::new(CodeMap::with_file_loader(loader));
@@ -226,6 +230,40 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
     (driver::compile_input(&sess, &cstore, cfg, &input, &odir, &ofile,
                            Some(plugins), &control),
      Some(sess))
+}
+
+fn override_file_loader<L>(opts: &config::Options, default: Box<L>) -> Box<FileLoader + 'static>
+    where L: FileLoader + 'static
+{
+    #[derive(RustcDecodable)]
+    struct Replacement {
+        path: String,
+        text: String,
+    }
+
+    if opts.debugging_opts.replace_files {
+        // We expect to read a JSON map from stdin.
+        let mut buf = String::new();
+        if let Err(_) = io::stdin().read_to_string(&mut buf) {
+            early_error(opts.error_format, "Could not read file replacements from stdin");
+        }
+
+        // Parse JSON.
+        let replacements: Vec<Replacement> = match deserialize_json::decode(&buf) {
+            Ok(rs) => rs,
+            Err(_) => {
+                early_error(opts.error_format, "Could not parse file replacements from JSON");
+            }
+        };
+
+        let replace_map = replacements.into_iter()
+                                      .map(|r| (PathBuf::from(r.path), r.text))
+                                      .collect();
+
+        Box::new(ReplacedFileLoader::new(replace_map))
+    } else {
+        default
+    }
 }
 
 // Extract output directory and file from matches.
