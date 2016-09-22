@@ -3872,15 +3872,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_stmt_(&mut self, macro_expanded: bool) -> Option<Stmt> {
-        self.parse_stmt_without_recovery(macro_expanded).unwrap_or_else(|mut e| {
+    fn parse_stmt_(&mut self, macro_legacy_warnings: bool) -> Option<Stmt> {
+        self.parse_stmt_without_recovery(macro_legacy_warnings).unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break);
             None
         })
     }
 
-    fn parse_stmt_without_recovery(&mut self, macro_expanded: bool) -> PResult<'a, Option<Stmt>> {
+    fn parse_stmt_without_recovery(&mut self,
+                                   macro_legacy_warnings: bool)
+                                   -> PResult<'a, Option<Stmt>> {
         maybe_whole!(Some deref self, NtStmt);
 
         let attrs = self.parse_outer_attributes()?;
@@ -3950,7 +3952,7 @@ impl<'a> Parser<'a> {
                 // We used to incorrectly stop parsing macro-expanded statements here.
                 // If the next token will be an error anyway but could have parsed with the
                 // earlier behavior, stop parsing here and emit a warning to avoid breakage.
-                else if macro_expanded && self.token.can_begin_expr() && match self.token {
+                else if macro_legacy_warnings && self.token.can_begin_expr() && match self.token {
                     // These can continue an expression, so we can't stop parsing and warn.
                     token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
                     token::BinOp(token::Minus) | token::BinOp(token::Star) |
@@ -4125,8 +4127,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a statement, including the trailing semicolon.
-    pub fn parse_full_stmt(&mut self, macro_expanded: bool) -> PResult<'a, Option<Stmt>> {
-        let mut stmt = match self.parse_stmt_(macro_expanded) {
+    pub fn parse_full_stmt(&mut self, macro_legacy_warnings: bool) -> PResult<'a, Option<Stmt>> {
+        let mut stmt = match self.parse_stmt_(macro_legacy_warnings) {
             Some(stmt) => stmt,
             None => return Ok(None),
         };
@@ -4146,7 +4148,7 @@ impl<'a> Parser<'a> {
             }
             StmtKind::Local(..) => {
                 // We used to incorrectly allow a macro-expanded let statement to lack a semicolon.
-                if macro_expanded && self.token != token::Semi {
+                if macro_legacy_warnings && self.token != token::Semi {
                     self.warn_missing_semicolon();
                 } else {
                     self.expect_one_of(&[token::Semi], &[])?;
@@ -6167,6 +6169,17 @@ impl<'a> Parser<'a> {
                 Ok((s, style))
             }
             _ =>  Err(self.fatal("expected string literal"))
+        }
+    }
+
+    pub fn ensure_complete_parse<F>(&mut self, allow_semi: bool, on_err: F)
+        where F: FnOnce(&Parser)
+    {
+        if allow_semi && self.token == token::Semi {
+            self.bump();
+        }
+        if self.token != token::Eof {
+            on_err(self);
         }
     }
 }
