@@ -82,6 +82,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             // Miri can safely ignore these. Only translation needs them.
             StorageLive(_) | StorageDead(_) => {}
+
+            // Defined to do nothing. These are added by optimization passes, to avoid changing the
+            // size of MIR constantly.
+            Nop => {}
         }
 
         self.frame_mut().stmt += 1;
@@ -186,12 +190,18 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>, context: LvalueContext, location: mir::Location) {
+    fn visit_lvalue(
+        &mut self,
+        lvalue: &mir::Lvalue<'tcx>,
+        context: LvalueContext<'tcx>,
+        location: mir::Location
+    ) {
         self.super_lvalue(lvalue, context, location);
         if let mir::Lvalue::Static(def_id) = *lvalue {
             let substs = subst::Substs::empty(self.ecx.tcx);
             let span = self.span;
-            if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = self.ecx.tcx.map.get_if_local(def_id).expect("static not found") {
+            let node_item = self.ecx.tcx.map.get_if_local(def_id).expect("static not found");
+            if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = node_item {
                 if let hir::ItemStatic(_, m, _) = *node {
                     self.global_item(def_id, substs, span, m == hir::MutImmutable);
                     return;
