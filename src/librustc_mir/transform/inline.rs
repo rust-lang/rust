@@ -28,7 +28,11 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Subst,Substs};
 use rustc::util::nodemap::{DefIdMap, DefIdSet};
 
+use super::simplify_cfg::{remove_dead_blocks, CfgSimplifier};
+use super::copy_prop::CopyPropagation;
+
 use syntax::attr;
+use syntax::abi::Abi;
 use syntax_pos::Span;
 
 use callgraph;
@@ -50,7 +54,7 @@ impl<'tcx> MirMapPass<'tcx> for Inline {
         &mut self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         map: &mut MirMap<'tcx>,
-        _: &mut [Box<for<'s> MirPassHook<'s>>]) {
+        hooks: &mut [Box<for<'s> MirPassHook<'s>>]) {
 
         match tcx.sess.opts.debugging_opts.mir_opt_level {
             Some(0) |
@@ -68,9 +72,31 @@ impl<'tcx> MirMapPass<'tcx> for Inline {
             foreign_mirs: DefIdMap()
         };
 
+        let def_ids = map.map.keys();
+        for &def_id in &def_ids {
+            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
+            let mir = map.map.get_mut(&def_id).unwrap();
+            let id = tcx.map.as_local_node_id(def_id).unwrap();
+            let src = MirSource::from_node(tcx, id);
+
+            for hook in &mut *hooks {
+                hook.on_mir_pass(tcx, src, mir, self, false);
+            }
+        }
+
         for scc in callgraph.scc_iter() {
-            debug!("Inlining SCC {:?}", scc);
             inliner.inline_scc(map, &callgraph, &scc);
+        }
+
+        for def_id in def_ids {
+            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
+            let mir = map.map.get_mut(&def_id).unwrap();
+            let id = tcx.map.as_local_node_id(def_id).unwrap();
+            let src = MirSource::from_node(tcx, id);
+
+            for hook in &mut *hooks {
+                hook.on_mir_pass(tcx, src, mir, self, true);
+            }
         }
     }
 }
@@ -96,6 +122,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                             callgraph: &callgraph::CallGraph, scc: &[graph::NodeIndex]) -> bool {
         let mut callsites = Vec::new();
         let mut in_scc = DefIdSet();
+
+        let mut inlined_into = DefIdSet();
 
         for &node in scc {
             let def_id = callgraph.def_id(node);
@@ -190,6 +218,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     continue;
                 }
 
+                inlined_into.insert(callsite.caller);
+
                 // Add callsites from inlined function
                 for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated().skip(start) {
                     // Only consider direct calls to functions
@@ -228,6 +258,13 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             }
         }
 
+        // Simplify functions we inlined into.
+        for def_id in inlined_into {
+            let caller_mir = map.map.get_mut(&def_id).unwrap();
+            debug!("Running simplify cfg on {:?}", def_id);
+            CfgSimplifier::new(caller_mir).simplify();
+            remove_dead_blocks(caller_mir);
+        }
         changed
     }
 
@@ -266,7 +303,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let hinted = match hint {
             // Just treat inline(always) as a hint for now,
-            // there are cases that prevent unwinding that we
+            // there are cases that prevent inlining that we
             // need to check for first.
             attr::InlineAttr::Always => true,
             attr::InlineAttr::Never => return false,
@@ -318,31 +355,24 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // Don't count StorageLive/StorageDead in the inlining cost.
                 match stmt.kind {
                     StatementKind::StorageLive(_) |
-                    StatementKind::StorageDead(_) => {}
+                    StatementKind::StorageDead(_) |
+                    StatementKind::Nop => {}
                     _ => cost += INSTR_COST
                 }
             }
             match blk.terminator().kind {
-                TerminatorKind::Drop { ref location, unwind, .. } |
-                TerminatorKind::DropAndReplace { ref location, unwind, .. } => {
+                TerminatorKind::Drop { ref location, .. } |
+                TerminatorKind::DropAndReplace { ref location, .. } => {
                     // If the location doesn't actually need dropping, treat it like
                     // a regular goto.
                     let ty = location.ty(&callee_mir, tcx).subst(tcx, callsite.substs);
                     let ty = ty.to_ty(tcx);
                     if tcx.type_needs_drop_given_env(ty, &param_env) {
-                        if unwind.is_some() {
-                            // FIXME: Should be able to handle this better
-                            return false;
-                        } else {
-                            cost += CALL_PENALTY;
-                        }
+                        cost += CALL_PENALTY;
                     } else {
                         cost += INSTR_COST;
                     }
                 }
-                // FIXME: Should be able to handle this better
-                TerminatorKind::Call   { cleanup: Some(_), .. } |
-                TerminatorKind::Assert { cleanup: Some(_), .. } => return false,
 
                 TerminatorKind::Unreachable |
                 TerminatorKind::Call { destination: None, .. } if first_block => {
@@ -351,7 +381,16 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     threshold = 0;
                 }
 
-                TerminatorKind::Call   { .. } |
+                TerminatorKind::Call {func: Operand::Constant(ref f), .. } => {
+                    if let ty::TyFnDef(.., f) = f.ty.sty {
+                        // Don't give intrinsics the extra penalty for calls
+                        if f.abi == Abi::RustIntrinsic || f.abi == Abi::PlatformIntrinsic {
+                            cost += INSTR_COST;
+                        } else {
+                            cost += CALL_PENALTY;
+                        }
+                    }
+                }
                 TerminatorKind::Assert { .. } => cost += CALL_PENALTY,
                 _ => cost += INSTR_COST
             }
@@ -405,8 +444,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let terminator = caller_mir[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
-            TerminatorKind::Call {
-                func: _, args, destination: Some(destination), cleanup } => {
+            TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
 
                 debug!("Inlined {:?} into {:?}", callsite.callee, callsite.caller);
 
@@ -532,7 +570,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     inline_location: callsite.location,
                     destination: dest,
                     return_block: return_block,
-                    cleanup_block: cleanup
+                    cleanup_block: cleanup,
+                    in_cleanup_block: false
                 };
 
 
@@ -547,6 +586,15 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 };
 
                 caller_mir[callsite.bb].terminator = Some(terminator);
+
+                if let Some(id) = self.tcx.map.as_local_node_id(callsite.caller) {
+                    // Run copy propagation on the function to clean up any unnecessary
+                    // assignments from integration. This also increases the chance that
+                    // this function will be inlined as well
+                    debug!("Running copy propagation");
+                    let src = MirSource::from_node(self.tcx, id);
+                    CopyPropagation.run_pass(self.tcx, src, caller_mir);
+                };
 
                 true
             }
@@ -580,7 +628,8 @@ struct Integrator<'a, 'tcx: 'a> {
     inline_location: SourceInfo,
     destination: Lvalue<'tcx>,
     return_block: BasicBlock,
-    cleanup_block: Option<BasicBlock>
+    cleanup_block: Option<BasicBlock>,
+    in_cleanup_block: bool,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
@@ -594,29 +643,25 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
 impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     fn visit_lvalue(&mut self,
                     lvalue: &mut Lvalue<'tcx>,
-                    _ctxt: LvalueContext,
+                    _ctxt: LvalueContext<'tcx>,
                     _location: Location) {
         match *lvalue {
             Lvalue::Var(ref mut var) => {
                 if let Some(v) = self.var_map.get(*var).cloned() {
-                    debug!("Replacing {:?} with {:?}", var, v);
                     *var = v;
                 }
             }
             Lvalue::Temp(ref mut tmp) => {
                 if let Some(t) = self.tmp_map.get(*tmp).cloned() {
-                    debug!("Replacing {:?} with {:?}", tmp, t);
                     *tmp = t;
                 }
             }
             Lvalue::ReturnPointer => {
-                debug!("Replacing return pointer with {:?}", self.destination);
                 *lvalue = self.destination.clone();
             }
             Lvalue::Arg(arg) => {
                 let idx = arg.index();
                 if let Operand::Consume(ref lval) = self.args[idx] {
-                    debug!("Replacing {:?} with {:?}", lvalue, lval);
                     *lvalue = lval.clone();
                 }
             }
@@ -628,11 +673,16 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         if let Operand::Consume(Lvalue::Arg(arg)) = *operand {
             let idx = arg.index();
             let new_arg = self.args[idx].clone();
-            debug!("Replacing use of {:?} with {:?}", arg, new_arg);
             *operand = new_arg;
         } else {
             self.super_operand(operand, location);
         }
+    }
+
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+        self.in_cleanup_block = data.is_cleanup;
+        self.super_basic_block_data(block, data);
+        self.in_cleanup_block = false;
     }
 
     fn visit_terminator_kind(&mut self, block: BasicBlock,
@@ -656,44 +706,32 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 *target = self.update_target(*target);
                 if let Some(tgt) = *unwind {
                     *unwind = Some(self.update_target(tgt));
-                } else {
-                    if Some(*target) != self.cleanup_block {
-                        *unwind = self.cleanup_block;
-                    }
-                }
-
-                if Some(*target) == *unwind {
-                    *unwind == None;
+                } else if !self.in_cleanup_block {
+                    // Unless this drop is in a cleanup block, add an unwind edge to
+                    // the orignal call's cleanup block
+                    *unwind = self.cleanup_block;
                 }
             }
             TerminatorKind::Call { ref mut destination, ref mut cleanup, .. } => {
-                let mut target = None;
                 if let Some((_, ref mut tgt)) = *destination {
                     *tgt = self.update_target(*tgt);
-                    target = Some(*tgt);
                 }
                 if let Some(tgt) = *cleanup {
                     *cleanup = Some(self.update_target(tgt));
-                } else {
+                } else if !self.in_cleanup_block {
+                    // Unless this call is in a cleanup block, add an unwind edge to
+                    // the orignal call's cleanup block
                     *cleanup = self.cleanup_block;
-                }
-
-                if target == *cleanup {
-                    *cleanup == None;
                 }
             }
             TerminatorKind::Assert { ref mut target, ref mut cleanup, .. } => {
                 *target = self.update_target(*target);
                 if let Some(tgt) = *cleanup {
                     *cleanup = Some(self.update_target(tgt));
-                } else {
-                    if Some(*target) != self.cleanup_block {
-                        *cleanup = self.cleanup_block;
-                    }
-                }
-
-                if Some(*target) == *cleanup {
-                    *cleanup == None;
+                } else if !self.in_cleanup_block{
+                    // Unless this assert is in a cleanup block, add an unwind edge to
+                    // the orignal call's cleanup block
+                    *cleanup = self.cleanup_block;
                 }
             }
             TerminatorKind::Return => {
