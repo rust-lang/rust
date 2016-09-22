@@ -132,18 +132,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr_arg = args_ptrs[0];
                 let offset = self.memory.read_isize(args_ptrs[1])?;
 
-                match self.memory.read_ptr(ptr_arg) {
-                    Ok(ptr) => {
-                        let result_ptr = ptr.offset(offset as isize * pointee_size);
-                        self.memory.write_ptr(dest, result_ptr)?;
-                    }
-                    Err(EvalError::ReadBytesAsPointer) => {
-                        let addr = self.memory.read_isize(ptr_arg)?;
-                        let result_addr = addr + offset * pointee_size as i64;
-                        self.memory.write_isize(dest, result_addr)?;
-                    }
-                    Err(e) => return Err(e),
-                }
+                let ptr = self.memory.read_ptr(ptr_arg)?;
+                let result_ptr = ptr.offset(offset as isize * pointee_size);
+                self.memory.write_ptr(dest, result_ptr)?;
             }
 
             "overflowing_sub" => {

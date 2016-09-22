@@ -55,6 +55,12 @@ impl Pointer {
     pub fn points_to_zst(&self) -> bool {
         self.alloc_id == ZST_ALLOC_ID
     }
+    pub fn from_int(i: usize) -> Self {
+        Pointer {
+            alloc_id: ZST_ALLOC_ID,
+            offset: i,
+        }
+    }
     fn zst_ptr() -> Self {
         Pointer {
             alloc_id: ZST_ALLOC_ID,
@@ -279,7 +285,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
-                None if id == ZST_ALLOC_ID => Err(EvalError::ZstAllocAccess),
+                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -291,7 +297,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
-                None if id == ZST_ALLOC_ID => Err(EvalError::ZstAllocAccess),
+                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -511,7 +517,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         match alloc.relocations.get(&ptr.offset) {
             Some(&alloc_id) => Ok(Pointer { alloc_id: alloc_id, offset: offset }),
-            None => Err(EvalError::ReadBytesAsPointer),
+            None => Ok(Pointer::from_int(offset)),
         }
     }
 
@@ -522,7 +528,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
-        let pointer_size = self.pointer_size();
         match val {
             PrimVal::Bool(b) => self.write_bool(ptr, b),
             PrimVal::I8(n)   => self.write_int(ptr, n as i64, 1),
@@ -534,7 +539,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             PrimVal::U32(n)  => self.write_uint(ptr, n as u64, 4),
             PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
             PrimVal::Char(c) => self.write_uint(ptr, c as u64, 4),
-            PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, pointer_size),
             PrimVal::F32(f) => self.write_f32(ptr, f),
             PrimVal::F64(f) => self.write_f64(ptr, f),
             PrimVal::FnPtr(p) |

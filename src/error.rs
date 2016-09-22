@@ -10,7 +10,7 @@ use syntax::codemap::Span;
 pub enum EvalError<'tcx> {
     FunctionPointerTyMismatch(&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>),
     DanglingPointerDeref,
-    ZstAllocAccess,
+    InvalidMemoryAccess,
     InvalidFunctionPointer,
     InvalidBool,
     InvalidDiscriminant,
@@ -20,7 +20,6 @@ pub enum EvalError<'tcx> {
         allocation_size: usize,
     },
     ReadPointerAsBytes,
-    ReadBytesAsPointer,
     InvalidPointerMath,
     ReadUndefBytes,
     InvalidBoolOp(mir::BinOp),
@@ -54,8 +53,8 @@ impl<'tcx> Error for EvalError<'tcx> {
         match *self {
             EvalError::FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
-            EvalError::ZstAllocAccess =>
-                "tried to access the ZST allocation",
+            EvalError::InvalidMemoryAccess =>
+                "tried to access memory through an invalid pointer",
             EvalError::DanglingPointerDeref =>
                 "dangling pointer was dereferenced",
             EvalError::InvalidFunctionPointer =>
@@ -68,8 +67,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "pointer offset outside bounds of allocation",
             EvalError::ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
-            EvalError::ReadBytesAsPointer =>
-                "attempted to interpret some raw bytes as a pointer address",
             EvalError::InvalidPointerMath =>
                 "attempted to do math or a comparison on pointers into different allocations",
             EvalError::ReadUndefBytes =>

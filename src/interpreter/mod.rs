@@ -1064,13 +1064,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             &ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             &ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                 if self.type_is_sized(ty) {
-                    match self.memory.read_ptr(ptr) {
-                        Ok(p) => PrimVal::Ptr(p),
-                        Err(EvalError::ReadBytesAsPointer) => {
-                            PrimVal::IntegerPtr(self.memory.read_usize(ptr)?)
-                        }
-                        Err(e) => return Err(e),
-                    }
+                    PrimVal::Ptr(self.memory.read_ptr(ptr)?)
                 } else {
                     bug!("primitive read of fat pointer type: {:?}", ty);
                 }

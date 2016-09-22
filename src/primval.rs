@@ -14,7 +14,6 @@ pub enum PrimVal {
 
     Ptr(Pointer),
     FnPtr(Pointer),
-    IntegerPtr(u64),
     Char(char),
 
     F32(f32), F64(f64),
@@ -209,14 +208,8 @@ pub fn binary_op<'tcx>(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> Eva
             })
         }
 
-        (IntegerPtr(l), IntegerPtr(r)) => int_binops!(IntegerPtr, l, r),
-
-        (Ptr(_), IntegerPtr(_)) |
-        (IntegerPtr(_), Ptr(_)) |
         (FnPtr(_), Ptr(_)) |
-        (Ptr(_), FnPtr(_)) |
-        (FnPtr(_), IntegerPtr(_)) |
-        (IntegerPtr(_), FnPtr(_)) =>
+        (Ptr(_), FnPtr(_)) =>
             unrelated_ptr_ops(bin_op)?,
 
         (FnPtr(l_ptr), FnPtr(r_ptr)) => match bin_op {

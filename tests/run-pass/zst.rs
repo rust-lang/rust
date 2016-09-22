@@ -21,4 +21,6 @@ fn main() {
     assert_eq!(use_zst(), A);
     assert_eq!(&A as *const A as *const (), &() as *const _);
     assert_eq!(&A as *const A, &A as *const A);
+    let x = 42 as *mut ();
+    unsafe { *x = (); }
 }
