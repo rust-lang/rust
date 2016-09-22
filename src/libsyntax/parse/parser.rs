@@ -3625,29 +3625,16 @@ impl<'a> Parser<'a> {
                 pat = PatKind::Box(subpat);
             } else if self.token.is_path_start() {
                 // Parse pattern starting with a path
-                if self.token.is_ident() && self.look_ahead(1, |t| *t != token::DotDotDot &&
-                        *t != token::OpenDelim(token::Brace) &&
-                        *t != token::OpenDelim(token::Paren) &&
-                        *t != token::ModSep) {
-                    // Plain idents have some extra abilities here compared to general paths
-                    if self.look_ahead(1, |t| *t == token::Not) {
-                        // Parse macro invocation
-                        let path = self.parse_ident_into_path()?;
-                        self.bump();
-                        let delim = self.expect_open_delim()?;
-                        let tts = self.parse_seq_to_end(
-                            &token::CloseDelim(delim),
-                            SeqSep::none(), |p| p.parse_token_tree())?;
-                        let mac = Mac_ { path: path, tts: tts };
-                        pat = PatKind::Mac(codemap::Spanned {node: mac,
-                                                               span: mk_sp(lo, self.last_span.hi)});
-                    } else {
-                        // Parse ident @ pat
-                        // This can give false positives and parse nullary enums,
-                        // they are dealt with later in resolve
-                        let binding_mode = BindingMode::ByValue(Mutability::Immutable);
-                        pat = self.parse_pat_ident(binding_mode)?;
-                    }
+                if self.token.is_ident() && self.look_ahead(1, |t| match *t {
+                    token::OpenDelim(token::Paren) | token::OpenDelim(token::Brace) |
+                    token::DotDotDot | token::ModSep | token::Not => false,
+                    _ => true,
+                }) {
+                    // Parse ident @ pat
+                    // This can give false positives and parse nullary enums,
+                    // they are dealt with later in resolve
+                    let binding_mode = BindingMode::ByValue(Mutability::Immutable);
+                    pat = self.parse_pat_ident(binding_mode)?;
                 } else {
                     let (qself, path) = if self.eat_lt() {
                         // Parse a qualified path
@@ -3659,6 +3646,17 @@ impl<'a> Parser<'a> {
                         (None, self.parse_path(PathStyle::Expr)?)
                     };
                     match self.token {
+                      token::Not if qself.is_none() => {
+                        // Parse macro invocation
+                        self.bump();
+                        let delim = self.expect_open_delim()?;
+                        let tts = self.parse_seq_to_end(
+                            &token::CloseDelim(delim),
+                            SeqSep::none(), |p| p.parse_token_tree())?;
+                        let mac = Mac_ { path: path, tts: tts };
+                        pat = PatKind::Mac(codemap::Spanned {node: mac,
+                                                               span: mk_sp(lo, self.last_span.hi)});
+                      }
                       token::DotDotDot => {
                         // Parse range
                         let hi = self.last_span.hi;
@@ -3895,16 +3893,33 @@ impl<'a> Parser<'a> {
                 node: StmtKind::Local(self.parse_local(attrs.into())?),
                 span: mk_sp(lo, self.last_span.hi),
             }
-        } else if self.token.is_ident()
-            && !self.token.is_any_keyword()
-            && self.look_ahead(1, |t| *t == token::Not) {
-            // it's a macro invocation:
+        } else if self.token.is_path_start() && self.token != token::Lt && {
+            !self.check_keyword(keywords::Union) ||
+            self.look_ahead(1, |t| *t == token::Not || *t == token::ModSep)
+        } {
+            let pth = self.parse_path(PathStyle::Expr)?;
 
-            // Potential trouble: if we allow macros with paths instead of
-            // idents, we'd need to look ahead past the whole path here...
-            let pth = self.parse_ident_into_path()?;
-            self.bump();
+            if !self.eat(&token::Not) {
+                let expr = if self.check(&token::OpenDelim(token::Brace)) {
+                    self.parse_struct_expr(lo, pth, ThinVec::new())?
+                } else {
+                    let hi = self.last_span.hi;
+                    self.mk_expr(lo, hi, ExprKind::Path(None, pth), ThinVec::new())
+                };
 
+                let expr = self.with_res(Restrictions::RESTRICTION_STMT_EXPR, |this| {
+                    let expr = this.parse_dot_or_call_expr_with(expr, lo, attrs.into())?;
+                    this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
+                })?;
+
+                return Ok(Some(Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    node: StmtKind::Expr(expr),
+                    span: mk_sp(lo, self.last_span.hi),
+                }));
+            }
+
+            // it's a macro invocation
             let id = match self.token {
                 token::OpenDelim(_) => keywords::Invalid.ident(), // no special identifier
                 _ => self.parse_ident()?,
