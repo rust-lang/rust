@@ -5,6 +5,7 @@ dependencies = [
  "alloc 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
+ "unwind 0.0.0",
 ]
 
 [[package]]
@@ -23,5 +24,13 @@ name = "libc"
 version = "0.0.0"
 dependencies = [
  "core 0.0.0",
+]
+
+[[package]]
+name = "unwind"
+version = "0.0.0"
+dependencies = [
+ "core 0.0.0",
+ "libc 0.0.0",
 ]
 
