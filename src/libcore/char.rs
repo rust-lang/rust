@@ -800,7 +800,7 @@ pub fn decode_utf8<I: IntoIterator<Item = u8>>(i: I) -> DecodeUtf8<I::IntoIter> 
 
 /// `<DecodeUtf8 as Iterator>::next` returns this for an invalid input sequence.
 #[unstable(feature = "decode_utf8", issue = "33906")]
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct InvalidSequence(());
 
 #[unstable(feature = "decode_utf8", issue = "33906")]
