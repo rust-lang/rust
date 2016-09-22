@@ -1207,16 +1207,14 @@ impl<'a> Parser<'a> {
                 // eat a matched-delimiter token tree:
                 let delim = self.expect_open_delim()?;
                 let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
-                                             SeqSep::none(),
-                                             |pp| pp.parse_token_tree())?;
-                let m_ = Mac_ { path: pth, tts: tts };
-                let m: ast::Mac = codemap::Spanned { node: m_,
-                                                     span: mk_sp(lo,
-                                                                 self.last_span.hi) };
+                                                SeqSep::none(),
+                                                |pp| pp.parse_token_tree())?;
                 if delim != token::Brace {
                     self.expect(&token::Semi)?
                 }
-                (keywords::Invalid.ident(), ast::TraitItemKind::Macro(m))
+
+                let mac = spanned(lo, self.last_span.hi, Mac_ { path: pth, tts: tts });
+                (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac))
             } else {
                 let (constness, unsafety, abi) = match self.parse_fn_front_matter() {
                     Ok(cua) => cua,
@@ -1422,9 +1420,8 @@ impl<'a> Parser<'a> {
             TyKind::Path(Some(qself), path)
         } else if self.token.is_path_start() {
             let path = self.parse_path(PathStyle::Type)?;
-            if self.check(&token::Not) {
+            if self.eat(&token::Not) {
                 // MACRO INVOCATION
-                self.bump();
                 let delim = self.expect_open_delim()?;
                 let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
                                                 SeqSep::none(),
@@ -2302,21 +2299,14 @@ impl<'a> Parser<'a> {
                     let pth = self.parse_path(PathStyle::Expr)?;
 
                     // `!`, as an operator, is prefix, so we know this isn't that
-                    if self.check(&token::Not) {
+                    if self.eat(&token::Not) {
                         // MACRO INVOCATION expression
-                        self.bump();
-
                         let delim = self.expect_open_delim()?;
-                        let tts = self.parse_seq_to_end(
-                            &token::CloseDelim(delim),
-                            SeqSep::none(),
-                            |p| p.parse_token_tree())?;
+                        let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                                        SeqSep::none(),
+                                                        |p| p.parse_token_tree())?;
                         let hi = self.last_span.hi;
-
-                        return Ok(self.mk_mac_expr(lo,
-                                                   hi,
-                                                   Mac_ { path: pth, tts: tts },
-                                                   attrs));
+                        return Ok(self.mk_mac_expr(lo, hi, Mac_ { path: pth, tts: tts }, attrs));
                     }
                     if self.check(&token::OpenDelim(token::Brace)) {
                         // This is a struct literal, unless we're prohibited
@@ -4880,14 +4870,12 @@ impl<'a> Parser<'a> {
             let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
                                             SeqSep::none(),
                                             |p| p.parse_token_tree())?;
-            let m_ = Mac_ { path: pth, tts: tts };
-            let m: ast::Mac = codemap::Spanned { node: m_,
-                                                    span: mk_sp(lo,
-                                                                self.last_span.hi) };
             if delim != token::Brace {
                 self.expect(&token::Semi)?
             }
-            Ok((keywords::Invalid.ident(), vec![], ast::ImplItemKind::Macro(m)))
+
+            let mac = spanned(lo, self.last_span.hi, Mac_ { path: pth, tts: tts });
+            Ok((keywords::Invalid.ident(), vec![], ast::ImplItemKind::Macro(mac)))
         } else {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
@@ -6009,12 +5997,6 @@ impl<'a> Parser<'a> {
             let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
                                             SeqSep::none(),
                                             |p| p.parse_token_tree())?;
-            // single-variant-enum... :
-            let m = Mac_ { path: pth, tts: tts };
-            let m: ast::Mac = codemap::Spanned { node: m,
-                                                 span: mk_sp(mac_lo,
-                                                             self.last_span.hi) };
-
             if delim != token::Brace {
                 if !self.eat(&token::Semi) {
                     let last_span = self.last_span;
@@ -6025,14 +6007,9 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let item_ = ItemKind::Mac(m);
-            let last_span = self.last_span;
-            let item = self.mk_item(lo,
-                                    last_span.hi,
-                                    id,
-                                    item_,
-                                    visibility,
-                                    attrs);
+            let hi = self.last_span.hi;
+            let mac = spanned(mac_lo, hi, Mac_ { path: pth, tts: tts });
+            let item = self.mk_item(lo, hi, id, ItemKind::Mac(mac), visibility, attrs);
             return Ok(Some(item));
         }
 
