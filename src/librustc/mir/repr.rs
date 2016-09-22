@@ -1420,6 +1420,7 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             },
             StorageLive(ref lval) => StorageLive(lval.fold_with(folder)),
             StorageDead(ref lval) => StorageDead(lval.fold_with(folder)),
+            Nop => Nop,
         };
         Statement {
             source_info: self.source_info,
@@ -1434,7 +1435,8 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             Assign(ref lval, ref rval) => { lval.visit_with(visitor) || rval.visit_with(visitor) }
             SetDiscriminant { ref lvalue, .. } |
             StorageLive(ref lvalue) |
-            StorageDead(ref lvalue) => lvalue.visit_with(visitor)
+            StorageDead(ref lvalue) => lvalue.visit_with(visitor),
+            Nop => false,
         }
     }
 }
