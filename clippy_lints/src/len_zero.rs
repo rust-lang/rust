@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
+use rustc::ty::{self, ImplOrTraitItem};
 use rustc::hir::*;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::codemap::{Span, Spanned};
@@ -184,23 +184,20 @@ fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[P<Expr>], l
 /// Check if this type has an `is_empty` method.
 fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     /// Get an `ImplOrTraitItem` and return true if it matches `is_empty(self)`.
-    fn is_is_empty(cx: &LateContext, id: &ImplOrTraitItemId) -> bool {
-        if let MethodTraitItemId(def_id) = *id {
-            if let ty::MethodTraitItem(ref method) = cx.tcx.impl_or_trait_item(def_id) {
-                method.name.as_str() == "is_empty" && method.fty.sig.skip_binder().inputs.len() == 1
-            } else {
-                false
-            }
+    fn is_is_empty(item: &ImplOrTraitItem) -> bool {
+        if let ty::MethodTraitItem(ref method) = *item {
+            method.name.as_str() == "is_empty" && method.fty.sig.skip_binder().inputs.len() == 1
         } else {
             false
         }
     }
 
     /// Check the inherent impl's items for an `is_empty(self)` method.
-    fn has_is_empty_impl(cx: &LateContext, id: &DefId) -> bool {
-        let impl_items = cx.tcx.impl_items.borrow();
-        cx.tcx.inherent_impls.borrow().get(id).map_or(false, |ids| {
-            ids.iter().any(|iid| impl_items.get(iid).map_or(false, |iids| iids.iter().any(|i| is_is_empty(cx, i))))
+    fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
+        cx.tcx.inherent_impls.borrow()[&id].iter().any(|imp| {
+            cx.tcx.impl_or_trait_items(*imp).iter().any(|item| {
+                is_is_empty(&cx.tcx.impl_or_trait_item(*item))
+            })
         })
     }
 
@@ -208,13 +205,12 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     match ty.sty {
         ty::TyTrait(_) => {
             cx.tcx
-              .trait_item_def_ids
-              .borrow()
-              .get(&ty.ty_to_def_id().expect("trait impl not found"))
-              .map_or(false, |ids| ids.iter().any(|i| is_is_empty(cx, i)))
+              .impl_or_trait_items(ty.ty_to_def_id().expect("trait impl not found"))
+              .iter()
+              .any(|item| is_is_empty(&cx.tcx.impl_or_trait_item(*item)))
         }
-        ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, |id| has_is_empty_impl(cx, &id)),
-        ty::TyAdt(id, _) => has_is_empty_impl(cx, &id.did),
+        ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, |id| has_is_empty_impl(cx, id)),
+        ty::TyAdt(id, _) => has_is_empty_impl(cx, id.did),
         ty::TyArray(..) | ty::TyStr => true,
         _ => false,
     }

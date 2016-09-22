@@ -755,7 +755,10 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
                     if let Some(def) = def_map.get(&seqexpr.id) {
                         match def.base_def {
                             Def::Local(..) | Def::Upvar(..) => {
-                                let extent = self.cx.tcx.region_maps.var_scope(def.base_def.var_id());
+                                let def_id = def.base_def.def_id();
+                                let node_id = self.cx.tcx.map.as_local_node_id(def_id).unwrap();
+
+                                let extent = self.cx.tcx.region_maps.var_scope(node_id);
                                 self.indexed.insert(seqvar.segments[0].name, Some(extent));
                                 return;  // no need to walk further
                             }
@@ -1040,7 +1043,8 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
 
 fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
     if let Some(path_res) = cx.tcx.def_map.borrow().get(&expr.id) {
-        if let Def::Local(_, node_id) = path_res.base_def {
+        if let Def::Local(def_id) = path_res.base_def {
+            let node_id = cx.tcx.map.as_local_node_id(def_id).expect("That DefId should be valid");
             return Some(node_id);
         }
     }

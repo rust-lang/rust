@@ -443,7 +443,9 @@ fn in_attributes_expansion(cx: &LateContext, expr: &Expr) -> bool {
 /// Test whether `def` is a variable defined outside a macro.
 fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
     match *def {
-        def::Def::Local(_, id) | def::Def::Upvar(_, id, _, _) => {
+        def::Def::Local(id) | def::Def::Upvar(id, _, _) => {
+            let id = cx.tcx.map.as_local_node_id(id).expect("That DefId should be valid");
+
             if let Some(span) = cx.tcx.map.opt_span(id) {
                 !in_macro(cx, span)
             } else {

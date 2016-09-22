@@ -4,7 +4,6 @@ use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::map::Node::NodeItem;
 use rustc::lint::{LateLintPass, LintPass, LateContext, LintArray, LintContext};
-use rustc::middle::cstore::DefLike;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::span_lint;
@@ -61,7 +60,7 @@ impl EnumGlobUse {
                     } else {
                         let child = cx.sess().cstore.item_children(def.full_def().def_id());
                         if let Some(child) = child.first() {
-                            if let DefLike::DlDef(Def::Variant(..)) = child.def {
+                            if let Some(Def::Variant(..)) = cx.tcx.sess.cstore.describe_def(child.def_id) {
                                 span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
                             }
                         }
