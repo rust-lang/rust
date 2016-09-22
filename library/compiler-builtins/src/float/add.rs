@@ -183,19 +183,6 @@ macro_rules! add {
 add!(__addsf3: f32);
 add!(__adddf3: f64);
 
-// FIXME: Implement these using aliases
-#[cfg(target_arch = "arm")]
-#[cfg_attr(not(test), no_mangle)]
-pub extern fn __aeabi_dadd(a: f64, b: f64) -> f64 {
-    __adddf3(a, b)
-}
-
-#[cfg(target_arch = "arm")]
-#[cfg_attr(not(test), no_mangle)]
-pub extern fn __aeabi_fadd(a: f32, b: f32) -> f32 {
-    __addsf3(a, b)
-}
-
 #[cfg(test)]
 mod tests {
     use core::{f32, f64};
