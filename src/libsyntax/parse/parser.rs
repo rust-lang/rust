@@ -1198,88 +1198,86 @@ impl<'a> Parser<'a> {
             };
             (ident, TraitItemKind::Const(ty, default))
         } else if self.token.is_path_start() {
-                // trait item macro.
-                // code copied from parse_macro_use_or_failure... abstraction!
-                let lo = self.span.lo;
-                let pth = self.parse_path(PathStyle::Mod)?;
-                self.expect(&token::Not)?;
+            // trait item macro.
+            // code copied from parse_macro_use_or_failure... abstraction!
+            let lo = self.span.lo;
+            let pth = self.parse_path(PathStyle::Mod)?;
+            self.expect(&token::Not)?;
 
-                // eat a matched-delimiter token tree:
-                let delim = self.expect_open_delim()?;
-                let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
-                                                SeqSep::none(),
-                                                |pp| pp.parse_token_tree())?;
-                if delim != token::Brace {
-                    self.expect(&token::Semi)?
-                }
+            // eat a matched-delimiter token tree:
+            let delim = self.expect_open_delim()?;
+            let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                            SeqSep::none(),
+                                            |pp| pp.parse_token_tree())?;
+            if delim != token::Brace {
+                self.expect(&token::Semi)?
+            }
 
-                let mac = spanned(lo, self.last_span.hi, Mac_ { path: pth, tts: tts });
-                (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac))
-            } else {
-                let (constness, unsafety, abi) = match self.parse_fn_front_matter() {
-                    Ok(cua) => cua,
-                    Err(e) => {
-                        loop {
-                            match self.token {
-                                token::Eof => break,
-                                token::CloseDelim(token::Brace) |
-                                token::Semi => {
-                                    self.bump();
-                                    break;
-                                }
-                                token::OpenDelim(token::Brace) => {
-                                    self.parse_token_tree()?;
-                                    break;
-                                }
-                                _ => self.bump()
+            let mac = spanned(lo, self.last_span.hi, Mac_ { path: pth, tts: tts });
+            (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac))
+        } else {
+            let (constness, unsafety, abi) = match self.parse_fn_front_matter() {
+                Ok(cua) => cua,
+                Err(e) => {
+                    loop {
+                        match self.token {
+                            token::Eof => break,
+                            token::CloseDelim(token::Brace) |
+                            token::Semi => {
+                                self.bump();
+                                break;
                             }
+                            token::OpenDelim(token::Brace) => {
+                                self.parse_token_tree()?;
+                                break;
+                            }
+                            _ => self.bump(),
                         }
-
-                        return Err(e);
-                    }
-                };
-
-                let ident = self.parse_ident()?;
-                let mut generics = self.parse_generics()?;
-
-                let d = self.parse_fn_decl_with_self(|p: &mut Parser<'a>|{
-                    // This is somewhat dubious; We don't want to allow
-                    // argument names to be left off if there is a
-                    // definition...
-                    p.parse_arg_general(false)
-                })?;
-
-                generics.where_clause = self.parse_where_clause()?;
-                let sig = ast::MethodSig {
-                    unsafety: unsafety,
-                    constness: constness,
-                    decl: d,
-                    generics: generics,
-                    abi: abi,
-                };
-
-                let body = match self.token {
-                    token::Semi => {
-                        self.bump();
-                        debug!("parse_trait_methods(): parsing required method");
-                        None
-                    }
-                    token::OpenDelim(token::Brace) => {
-                        debug!("parse_trait_methods(): parsing provided method");
-                        let (inner_attrs, body) =
-                            self.parse_inner_attrs_and_block()?;
-                        attrs.extend(inner_attrs.iter().cloned());
-                        Some(body)
                     }
 
-                    _ => {
-                        let token_str = self.this_token_to_string();
-                        return Err(self.fatal(&format!("expected `;` or `{{`, found `{}`",
-                                                    token_str)[..]))
-                    }
-                };
-                (ident, ast::TraitItemKind::Method(sig, body))
+                    return Err(e);
+                }
             };
+
+            let ident = self.parse_ident()?;
+            let mut generics = self.parse_generics()?;
+
+            let d = self.parse_fn_decl_with_self(|p: &mut Parser<'a>|{
+                // This is somewhat dubious; We don't want to allow
+                // argument names to be left off if there is a
+                // definition...
+                p.parse_arg_general(false)
+            })?;
+
+            generics.where_clause = self.parse_where_clause()?;
+            let sig = ast::MethodSig {
+                unsafety: unsafety,
+                constness: constness,
+                decl: d,
+                generics: generics,
+                abi: abi,
+            };
+
+            let body = match self.token {
+                token::Semi => {
+                    self.bump();
+                    debug!("parse_trait_methods(): parsing required method");
+                    None
+                }
+                token::OpenDelim(token::Brace) => {
+                    debug!("parse_trait_methods(): parsing provided method");
+                    let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
+                    attrs.extend(inner_attrs.iter().cloned());
+                    Some(body)
+                }
+                _ => {
+                    let token_str = self.this_token_to_string();
+                    return Err(self.fatal(&format!("expected `;` or `{{`, found `{}`", token_str)));
+                }
+            };
+            (ident, ast::TraitItemKind::Method(sig, body))
+        };
+
         Ok(TraitItem {
             id: ast::DUMMY_NODE_ID,
             ident: name,
@@ -3562,39 +3560,37 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let pat;
         match self.token {
-          token::Underscore => {
-            // Parse _
-            self.bump();
-            pat = PatKind::Wild;
-          }
-          token::BinOp(token::And) | token::AndAnd => {
-            // Parse &pat / &mut pat
-            self.expect_and()?;
-            let mutbl = self.parse_mutability()?;
-            if let token::Lifetime(ident) = self.token {
-                return Err(self.fatal(&format!("unexpected lifetime `{}` in pattern", ident)));
+            token::Underscore => {
+                // Parse _
+                self.bump();
+                pat = PatKind::Wild;
             }
-
-            let subpat = self.parse_pat()?;
-            pat = PatKind::Ref(subpat, mutbl);
-          }
-          token::OpenDelim(token::Paren) => {
-            // Parse (pat,pat,pat,...) as tuple pattern
-            self.bump();
-            let (fields, ddpos) = self.parse_pat_tuple_elements(true)?;
-            self.expect(&token::CloseDelim(token::Paren))?;
-            pat = PatKind::Tuple(fields, ddpos);
-          }
-          token::OpenDelim(token::Bracket) => {
-            // Parse [pat,pat,...] as slice pattern
-            self.bump();
-            let (before, slice, after) = self.parse_pat_vec_elements()?;
-            self.expect(&token::CloseDelim(token::Bracket))?;
-            pat = PatKind::Vec(before, slice, after);
-          }
-          _ => {
+            token::BinOp(token::And) | token::AndAnd => {
+                // Parse &pat / &mut pat
+                self.expect_and()?;
+                let mutbl = self.parse_mutability()?;
+                if let token::Lifetime(ident) = self.token {
+                    return Err(self.fatal(&format!("unexpected lifetime `{}` in pattern", ident)));
+                }
+                let subpat = self.parse_pat()?;
+                pat = PatKind::Ref(subpat, mutbl);
+            }
+            token::OpenDelim(token::Paren) => {
+                // Parse (pat,pat,pat,...) as tuple pattern
+                self.bump();
+                let (fields, ddpos) = self.parse_pat_tuple_elements(true)?;
+                self.expect(&token::CloseDelim(token::Paren))?;
+                pat = PatKind::Tuple(fields, ddpos);
+            }
+            token::OpenDelim(token::Bracket) => {
+                // Parse [pat,pat,...] as slice pattern
+                self.bump();
+                let (before, slice, after) = self.parse_pat_vec_elements()?;
+                self.expect(&token::CloseDelim(token::Bracket))?;
+                pat = PatKind::Vec(before, slice, after);
+            }
             // At this point, token != _, &, &&, (, [
-            if self.eat_keyword(keywords::Mut) {
+            _ => if self.eat_keyword(keywords::Mut) {
                 // Parse mut ident @ pat
                 pat = self.parse_pat_ident(BindingMode::ByValue(Mutability::Mutable))?;
             } else if self.eat_keyword(keywords::Ref) {
@@ -3605,41 +3601,39 @@ impl<'a> Parser<'a> {
                 // Parse box pat
                 let subpat = self.parse_pat()?;
                 pat = PatKind::Box(subpat);
+            } else if self.token.is_ident() && self.token.is_path_start() &&
+                      self.look_ahead(1, |t| match *t {
+                          token::OpenDelim(token::Paren) | token::OpenDelim(token::Brace) |
+                          token::DotDotDot | token::ModSep | token::Not => false,
+                          _ => true,
+                      }) {
+                // Parse ident @ pat
+                // This can give false positives and parse nullary enums,
+                // they are dealt with later in resolve
+                let binding_mode = BindingMode::ByValue(Mutability::Immutable);
+                pat = self.parse_pat_ident(binding_mode)?;
             } else if self.token.is_path_start() {
                 // Parse pattern starting with a path
-                if self.token.is_ident() && self.look_ahead(1, |t| match *t {
-                    token::OpenDelim(token::Paren) | token::OpenDelim(token::Brace) |
-                    token::DotDotDot | token::ModSep | token::Not => false,
-                    _ => true,
-                }) {
-                    // Parse ident @ pat
-                    // This can give false positives and parse nullary enums,
-                    // they are dealt with later in resolve
-                    let binding_mode = BindingMode::ByValue(Mutability::Immutable);
-                    pat = self.parse_pat_ident(binding_mode)?;
+                let (qself, path) = if self.eat_lt() {
+                    // Parse a qualified path
+                    let (qself, path) = self.parse_qualified_path(PathStyle::Expr)?;
+                    (Some(qself), path)
                 } else {
-                    let (qself, path) = if self.eat_lt() {
-                        // Parse a qualified path
-                        let (qself, path) =
-                            self.parse_qualified_path(PathStyle::Expr)?;
-                        (Some(qself), path)
-                    } else {
-                        // Parse an unqualified path
-                        (None, self.parse_path(PathStyle::Expr)?)
-                    };
-                    match self.token {
-                      token::Not if qself.is_none() => {
+                    // Parse an unqualified path
+                    (None, self.parse_path(PathStyle::Expr)?)
+                };
+                match self.token {
+                    token::Not if qself.is_none() => {
                         // Parse macro invocation
                         self.bump();
                         let delim = self.expect_open_delim()?;
-                        let tts = self.parse_seq_to_end(
-                            &token::CloseDelim(delim),
-                            SeqSep::none(), |p| p.parse_token_tree())?;
-                        let mac = Mac_ { path: path, tts: tts };
-                        pat = PatKind::Mac(codemap::Spanned {node: mac,
-                                                               span: mk_sp(lo, self.last_span.hi)});
-                      }
-                      token::DotDotDot => {
+                        let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                                        SeqSep::none(),
+                                                        |p| p.parse_token_tree())?;
+                        let mac = spanned(lo, self.last_span.hi, Mac_ { path: path, tts: tts });
+                        pat = PatKind::Mac(mac);
+                    }
+                    token::DotDotDot => {
                         // Parse range
                         let hi = self.last_span.hi;
                         let begin =
@@ -3647,9 +3641,9 @@ impl<'a> Parser<'a> {
                         self.bump();
                         let end = self.parse_pat_range_end()?;
                         pat = PatKind::Range(begin, end);
-                      }
-                      token::OpenDelim(token::Brace) => {
-                         if qself.is_some() {
+                    }
+                    token::OpenDelim(token::Brace) => {
+                        if qself.is_some() {
                             return Err(self.fatal("unexpected `{` after qualified path"));
                         }
                         // Parse struct pattern
@@ -3661,8 +3655,8 @@ impl<'a> Parser<'a> {
                         });
                         self.bump();
                         pat = PatKind::Struct(path, fields, etc);
-                      }
-                      token::OpenDelim(token::Paren) => {
+                    }
+                    token::OpenDelim(token::Paren) => {
                         if qself.is_some() {
                             return Err(self.fatal("unexpected `(` after qualified path"));
                         }
@@ -3671,11 +3665,8 @@ impl<'a> Parser<'a> {
                         let (fields, ddpos) = self.parse_pat_tuple_elements(false)?;
                         self.expect(&token::CloseDelim(token::Paren))?;
                         pat = PatKind::TupleStruct(path, fields, ddpos)
-                      }
-                      _ => {
-                        pat = PatKind::Path(qself, path);
-                      }
                     }
+                    _ => pat = PatKind::Path(qself, path),
                 }
             } else {
                 // Try to parse everything else as literal with optional minus
@@ -3695,7 +3686,6 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-          }
         }
 
         let hi = self.last_span.hi;
