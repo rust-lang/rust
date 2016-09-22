@@ -10,6 +10,7 @@ use syntax::codemap::Span;
 pub enum EvalError<'tcx> {
     FunctionPointerTyMismatch(&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>),
     DanglingPointerDeref,
+    ZstAllocAccess,
     InvalidFunctionPointer,
     InvalidBool,
     InvalidDiscriminant,
@@ -53,6 +54,8 @@ impl<'tcx> Error for EvalError<'tcx> {
         match *self {
             EvalError::FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
+            EvalError::ZstAllocAccess =>
+                "tried to access the ZST allocation",
             EvalError::DanglingPointerDeref =>
                 "dangling pointer was dereferenced",
             EvalError::InvalidFunctionPointer =>
