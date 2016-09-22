@@ -246,7 +246,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_bytes(ptr, s.as_bytes())?;
                 self.memory.freeze(ptr.alloc_id)?;
                 Value::ByValPair(
-                    PrimVal::AbstractPtr(ptr),
+                    PrimVal::Ptr(ptr),
                     self.target_usize_primval(s.len() as u64)
                 )
             }
@@ -255,7 +255,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = self.memory.allocate(bs.len(), 1)?;
                 self.memory.write_bytes(ptr, bs)?;
                 self.memory.freeze(ptr.alloc_id)?;
-                Value::ByVal(PrimVal::AbstractPtr(ptr))
+                Value::ByVal(PrimVal::Ptr(ptr))
             }
 
             Struct(_)    => unimplemented!(),
@@ -782,31 +782,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     // remove it as soon as PrimVal can represent fat pointers.
     fn eval_operand_to_ptr(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Pointer> {
         let value = self.eval_operand(op)?;
-        match value {
-            Value::ByRef(ptr) => Ok(ptr),
-
-            Value::ByVal(primval) => {
-                let ty = self.operand_ty(op);
-                let size = self.type_size(ty);
-                let align = self.type_align(ty);
-                let ptr = self.memory.allocate(size, align)?;
-                self.memory.write_primval(ptr, primval)?;
-                Ok(ptr)
-            }
-
-            Value::ByValPair(primval1, primval2) => {
-                let ty = self.operand_ty(op);
-                let size = self.type_size(ty);
-                let align = self.type_align(ty);
-                let ptr = self.memory.allocate(size, align)?;
-
-                // FIXME(solson): Major dangerous assumptions here. Ideally obliterate this
-                // function.
-                self.memory.write_primval(ptr, primval1)?;
-                self.memory.write_primval(ptr.offset((size / 2) as isize), primval2)?;
-                Ok(ptr)
-            }
-        }
+        let ty = self.operand_ty(op);
+        self.value_to_ptr(value, ty)
     }
 
     fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
@@ -992,6 +969,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
+    // FIXME(solson): This method unnecessarily allocates and should not be necessary. We can
+    // remove it as soon as PrimVal can represent fat pointers.
+    fn value_to_ptr(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Pointer> {
+        match value {
+            Value::ByRef(ptr) => Ok(ptr),
+
+            Value::ByVal(primval) => {
+                let size = self.type_size(ty);
+                let align = self.type_align(ty);
+                let ptr = self.memory.allocate(size, align)?;
+                self.memory.write_primval(ptr, primval)?;
+                Ok(ptr)
+            }
+
+            Value::ByValPair(primval1, primval2) => {
+                let size = self.type_size(ty);
+                let align = self.type_align(ty);
+                let ptr = self.memory.allocate(size, align)?;
+
+                // FIXME(solson): Major dangerous assumptions here. Ideally obliterate this
+                // function.
+                self.memory.write_primval(ptr, primval1)?;
+                self.memory.write_primval(ptr.offset((size / 2) as isize), primval2)?;
+                Ok(ptr)
+            }
+        }
+    }
+
     fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match value {
             Value::ByRef(ptr) => self.read_primval(ptr, ty),
@@ -1057,7 +1062,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             &ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                 if self.type_is_sized(ty) {
                     match self.memory.read_ptr(ptr) {
-                        Ok(p) => PrimVal::AbstractPtr(p),
+                        Ok(p) => PrimVal::Ptr(p),
                         Err(EvalError::ReadBytesAsPointer) => {
                             PrimVal::IntegerPtr(self.memory.read_usize(ptr)?)
                         }

@@ -13,7 +13,8 @@ use syntax::{ast, attr};
 
 use error::{EvalError, EvalResult};
 use memory::Pointer;
-use super::{EvalContext, IntegerExt, StackPopCleanup};
+use primval::PrimVal;
+use super::{EvalContext, IntegerExt, StackPopCleanup, Value};
 
 mod intrinsics;
 
@@ -154,7 +155,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         substs: &'tcx Substs<'tcx>,
         fn_ty: &'tcx BareFnTy,
         destination: Option<(Pointer, mir::BasicBlock)>,
-        args: &[mir::Operand<'tcx>],
+        arg_operands: &[mir::Operand<'tcx>],
         span: Span,
     ) -> EvalResult<'tcx, ()> {
         use syntax::abi::Abi;
@@ -163,7 +164,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = fn_ty.sig.0.output;
                 let layout = self.type_layout(ty);
                 let (ret, target) = destination.unwrap();
-                self.call_intrinsic(def_id, substs, args, ret, layout)?;
+                self.call_intrinsic(def_id, substs, arg_operands, ret, layout)?;
                 self.goto_block(target);
                 Ok(())
             }
@@ -172,23 +173,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty = fn_ty.sig.0.output;
                 let size = self.type_size(ty);
                 let (ret, target) = destination.unwrap();
-                self.call_c_abi(def_id, args, ret, size)?;
+                self.call_c_abi(def_id, arg_operands, ret, size)?;
                 self.goto_block(target);
                 Ok(())
             }
 
             Abi::Rust | Abi::RustCall => {
-                let mut arg_srcs = Vec::new();
-                for arg in args {
-                    let src = self.eval_operand_to_ptr(arg)?;
-                    let src_ty = self.operand_ty(arg);
-                    arg_srcs.push((src, src_ty));
+                let mut args = Vec::new();
+                for arg in arg_operands {
+                    let arg_val = self.eval_operand(arg)?;
+                    let arg_ty = self.operand_ty(arg);
+                    args.push((arg_val, arg_ty));
                 }
 
                 // Only trait methods can have a Self parameter.
                 let (resolved_def_id, resolved_substs) =
                     if let Some(trait_id) = self.tcx.trait_of_item(def_id) {
-                        self.trait_method(trait_id, def_id, substs, &mut arg_srcs)?
+                        self.trait_method(trait_id, def_id, substs, &mut args)?
                     } else {
                         (def_id, substs)
                     };
@@ -200,9 +201,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 self.push_stack_frame(resolved_def_id, span, mir, resolved_substs, return_ptr, return_to_block)?;
 
-                for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
+                for (i, (arg_val, arg_ty)) in args.into_iter().enumerate() {
                     let dest = self.frame().locals[i];
-                    self.move_(src, dest, src_ty)?;
+                    self.write_value(arg_val, dest, arg_ty)?;
                 }
 
                 Ok(())
@@ -344,7 +345,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         })
     }
 
-    fn unpack_fn_args(&self, args: &mut Vec<(Pointer, Ty<'tcx>)>) {
+    fn unpack_fn_args(&self, args: &mut Vec<(Value, Ty<'tcx>)>) {
         if let Some((last, last_ty)) = args.pop() {
             let last_layout = self.type_layout(last_ty);
             match (&last_ty.sty, last_layout) {
@@ -353,9 +354,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let offsets = iter::once(0)
                         .chain(variant.offset_after_field.iter()
                             .map(|s| s.bytes()));
+                    let last_ptr = match last {
+                        Value::ByRef(ptr) => ptr,
+                        _ => bug!("rust-call ABI tuple argument wasn't Value::ByRef"),
+                    };
                     for (offset, ty) in offsets.zip(fields) {
-                        let src = last.offset(offset as isize);
-                        args.push((src, ty));
+                        let arg = Value::ByRef(last_ptr.offset(offset as isize));
+                        args.push((arg, ty));
                     }
                 }
                 ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
@@ -369,7 +374,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         trait_id: DefId,
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
-        args: &mut Vec<(Pointer, Ty<'tcx>)>,
+        args: &mut Vec<(Value, Ty<'tcx>)>,
     ) -> EvalResult<'tcx, (DefId, &'tcx Substs<'tcx>)> {
         let trait_ref = ty::TraitRef::from_method(self.tcx, trait_id, substs);
         let trait_ref = self.tcx.normalize_associated_type(&ty::Binder(trait_ref));
@@ -398,6 +403,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
                     (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) |
                     (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {} // No adapter needed.
+
                     (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
                     (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                         // The closure fn is a `fn(&self, ...)` or `fn(&mut self, ...)`.
@@ -409,13 +415,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         //
                         // These are both the same at trans time.
 
-                        // interpreter magic: insert an intermediate pointer, so we can skip the intermediate function call
-                        // FIXME: this is a memory leak, should probably add the pointer to the current stack
-                        let ptr_size = self.memory.pointer_size();
-                        let first = self.memory.allocate(ptr_size, ptr_size)?;
-                        self.memory.copy(args[0].0, first, ptr_size, ptr_size)?;
-                        self.memory.write_ptr(args[0].0, first)?;
+                        // Interpreter magic: insert an intermediate pointer, so we can skip the
+                        // intermediate function call.
+                        // FIXME: this is a memory leak, should probably add the pointer to the
+                        // current stack.
+                        let first = self.value_to_ptr(args[0].0, args[0].1)?;
+                        args[0].0 = Value::ByVal(PrimVal::Ptr(first));
+                        args[0].1 = self.tcx.mk_mut_ptr(args[0].1);
                     }
+
                     _ => bug!("cannot convert {:?} to {:?}", closure_kind, trait_closure_kind),
                 }
                 Ok((vtable_closure.closure_def_id, vtable_closure.substs.func_substs))
@@ -433,8 +441,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             traits::VtableObject(ref data) => {
                 let idx = self.tcx.get_vtable_index_of_object_method(data, def_id);
-                if let Some(&mut(first_arg, ref mut first_ty)) = args.get_mut(0) {
-                    let (_, vtable) = self.get_fat_ptr(first_arg);
+                if let Some(&mut(ref mut first_arg, ref mut first_ty)) = args.get_mut(0) {
+                    // FIXME(solson): Remove this allocating hack.
+                    let ptr = self.value_to_ptr(*first_arg, *first_ty)?;
+                    *first_arg = Value::ByRef(ptr);
+                    let (_, vtable) = self.get_fat_ptr(ptr);
                     let vtable = self.memory.read_ptr(vtable)?;
                     let idx = idx + 3;
                     let offset = idx * self.memory.pointer_size();
