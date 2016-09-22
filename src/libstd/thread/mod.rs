@@ -741,7 +741,7 @@ fn _assert_sync_and_send() {
 // Tests
 ////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use any::Any;
     use sync::mpsc::{channel, Sender};
@@ -755,7 +755,6 @@ mod tests {
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_unnamed_thread() {
         thread::spawn(move|| {
             assert!(thread::current().name().is_none());
@@ -763,7 +762,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_named_thread() {
         Builder::new().name("ada lovelace".to_string()).spawn(move|| {
             assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
@@ -772,13 +770,11 @@ mod tests {
 
     #[test]
     #[should_panic]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_invalid_named_thread() {
         let _ = Builder::new().name("ada l\0velace".to_string()).spawn(|| {});
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_run_basic() {
         let (tx, rx) = channel();
         thread::spawn(move|| {
@@ -788,7 +784,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_join_panic() {
         match thread::spawn(move|| {
             panic!()
@@ -799,7 +794,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_spawn_sched() {
         let (tx, rx) = channel();
 
@@ -819,7 +813,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_spawn_sched_childs_on_default_sched() {
         let (tx, rx) = channel();
 
@@ -848,7 +841,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_avoid_copying_the_body_spawn() {
         avoid_copying_the_body(|v| {
             thread::spawn(move || v());
@@ -856,7 +848,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_avoid_copying_the_body_thread_spawn() {
         avoid_copying_the_body(|f| {
             thread::spawn(move|| {
@@ -866,7 +857,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_avoid_copying_the_body_join() {
         avoid_copying_the_body(|f| {
             let _ = thread::spawn(move|| {
@@ -876,7 +866,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_child_doesnt_ref_parent() {
         // If the child refcounts the parent thread, this will stack overflow when
         // climbing the thread tree to dereference each ancestor. (See #1789)
@@ -894,13 +883,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_simple_newsched_spawn() {
         thread::spawn(move || {});
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_try_panic_message_static_str() {
         match thread::spawn(move|| {
             panic!("static string");
@@ -915,7 +902,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_try_panic_message_owned_str() {
         match thread::spawn(move|| {
             panic!("owned string".to_string());
@@ -930,7 +916,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_try_panic_message_any() {
         match thread::spawn(move|| {
             panic!(box 413u16 as Box<Any + Send>);
@@ -947,7 +932,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_try_panic_message_unit_struct() {
         struct Juju;
 
@@ -960,7 +944,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_park_timeout_unpark_before() {
         for _ in 0..10 {
             thread::current().unpark();
@@ -969,7 +952,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_park_timeout_unpark_not_called() {
         for _ in 0..10 {
             thread::park_timeout(Duration::from_millis(10));
@@ -977,7 +959,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn test_park_timeout_unpark_called_other_thread() {
         for _ in 0..10 {
             let th = thread::current();

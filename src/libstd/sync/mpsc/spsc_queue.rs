@@ -231,7 +231,7 @@ impl<T> Drop for Queue<T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use sync::Arc;
     use super::Queue;
@@ -305,7 +305,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
     fn stress() {
         unsafe {
             stress_bound(0);
