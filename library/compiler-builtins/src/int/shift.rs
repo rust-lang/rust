@@ -60,8 +60,11 @@ lshr!(__lshrdi3: u64);
 
 #[cfg(test)]
 mod tests {
-    use quickcheck::TestResult;
     use qc::{I64, U64};
+
+    use gcc_s;
+    use quickcheck::TestResult;
+    use rand;
 
     // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
     quickcheck! {
@@ -71,7 +74,13 @@ mod tests {
                 TestResult::discard()
             } else {
                 let r = super::__ashldi3(a, b);
-                TestResult::from_bool(r == a << b)
+
+                match gcc_s::ashldi3() {
+                    Some(ashldi3) if rand::random() => {
+                        TestResult::from_bool(r == unsafe { ashldi3(a, b) })
+                    },
+                    _ => TestResult::from_bool(r == a << b),
+                }
             }
         }
 
@@ -81,7 +90,13 @@ mod tests {
                 TestResult::discard()
             } else {
                 let r = super::__ashrdi3(a, b);
-                TestResult::from_bool(r == a >> b)
+
+                match gcc_s::ashrdi3() {
+                    Some(ashrdi3) if rand::random() => {
+                        TestResult::from_bool(r == unsafe { ashrdi3(a, b) })
+                    },
+                    _ => TestResult::from_bool(r == a >> b),
+                }
             }
         }
 
@@ -91,7 +106,13 @@ mod tests {
                 TestResult::discard()
             } else {
                 let r = super::__lshrdi3(a, b);
-                TestResult::from_bool(r == a >> b)
+
+                match gcc_s::lshrdi3() {
+                    Some(lshrdi3) if rand::random() => {
+                        TestResult::from_bool(r == unsafe { lshrdi3(a, b) })
+                    },
+                    _ => TestResult::from_bool(r == a >> b),
+                }
             }
         }
     }

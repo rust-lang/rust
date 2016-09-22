@@ -199,8 +199,12 @@ pub extern fn __aeabi_fadd(a: f32, b: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use core::{f32, f64};
-    use qc::{U32, U64};
+
     use float::Float;
+    use qc::{U32, U64};
+
+    use gcc_s;
+    use rand;
 
     // NOTE The tests below have special handing for NaN values.
     // Because NaN != NaN, the floating-point representations must be used
@@ -213,15 +217,30 @@ mod tests {
         fn addsf3(a: U32, b: U32) -> bool {
             let (a, b) = (f32::from_repr(a.0), f32::from_repr(b.0));
             let x = super::__addsf3(a, b);
-            let y = a + b;
-            x.eq_repr(y)
+
+            match gcc_s::addsf3() {
+                // NOTE(cfg) for some reason, on hard float targets, our implementation doesn't
+                // match the output of its gcc_s counterpart. Until we investigate further, we'll
+                // just avoid testing against gcc_s on those targets. Do note that our
+                // implementation matches the output of the FPU instruction on *hard* float targets
+                // and matches its gcc_s counterpart on *soft* float targets.
+                #[cfg(not(gnueabihf))]
+                Some(addsf3) if rand::random() => x.eq_repr(unsafe { addsf3(a, b) }),
+                _ => x.eq_repr(a + b),
+            }
         }
 
         fn adddf3(a: U64, b: U64) -> bool {
             let (a, b) = (f64::from_repr(a.0), f64::from_repr(b.0));
             let x = super::__adddf3(a, b);
-            let y = a + b;
-            x.eq_repr(y)
+
+            match gcc_s::adddf3() {
+                // NOTE(cfg) See NOTE above
+                #[cfg(not(gnueabihf))]
+                Some(adddf3) if rand::random() => x.eq_repr(unsafe { adddf3(a, b) }),
+                _ => x.eq_repr(a + b),
+
+            }
         }
     }
     

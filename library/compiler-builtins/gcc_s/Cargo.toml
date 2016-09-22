@@ -1,0 +1,7 @@
+[package]
+authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+name = "gcc_s"
+version = "0.1.0"
+
+[dependencies]
+libloading = "0.3.0"
