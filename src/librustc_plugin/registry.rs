@@ -15,8 +15,7 @@ use rustc::session::Session;
 
 use rustc::mir::transform::MirMapPass;
 
-use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
-use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};
+use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
 use syntax::ext::base::MacroExpanderFn;
 use syntax::parse::token;
 use syntax::ast;
@@ -109,8 +108,7 @@ impl<'a> Registry<'a> {
             IdentTT(ext, _, allow_internal_unstable) => {
                 IdentTT(ext, Some(self.krate_span), allow_internal_unstable)
             }
-            MultiDecorator(ext) => MultiDecorator(ext),
-            MultiModifier(ext) => MultiModifier(ext),
+            _ => extension,
         }));
     }
 

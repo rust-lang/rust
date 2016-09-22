@@ -21,9 +21,12 @@ use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
 use fold::*;
+use parse::{ParseSess, lexer};
+use parse::parser::Parser;
 use parse::token::{intern, keywords};
+use print::pprust;
 use ptr::P;
-use tokenstream::TokenTree;
+use tokenstream::{TokenTree, TokenStream};
 use util::small_vector::SmallVector;
 use visit::Visitor;
 
@@ -315,6 +318,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 items.push(item);
                 kind.expect_from_annotatables(items)
             }
+            SyntaxExtension::AttrProcMacro(ref mac) => {
+                let attr_toks = TokenStream::from_tts(tts_for_attr(&attr, &self.cx.parse_sess));
+                let item_toks = TokenStream::from_tts(tts_for_item(&item, &self.cx.parse_sess));
+
+                let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
+                let parser = self.cx.new_parser_from_tts(&tok_result.to_tts());
+                let result = Box::new(TokResult { parser: parser, span: attr.span });
+
+                kind.make_from(result).unwrap_or_else(|| {
+                    let msg = format!("macro could not be expanded into {} position", kind.name());
+                    self.cx.span_err(attr.span, &msg);
+                    kind.dummy(attr.span)
+                })
+            }
             _ => unreachable!(),
         }
     }
@@ -384,10 +401,40 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.make_from(expander.expand(self.cx, span, ident, marked_tts, attrs))
             }
 
-            MultiDecorator(..) | MultiModifier(..) => {
+            MultiDecorator(..) | MultiModifier(..) | SyntaxExtension::AttrProcMacro(..) => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", extname));
                 return kind.dummy(span);
+            }
+
+            SyntaxExtension::ProcMacro(ref expandfun) => {
+                if ident.name != keywords::Invalid.name() {
+                    let msg =
+                        format!("macro {}! expects no ident argument, given '{}'", extname, ident);
+                    self.cx.span_err(path.span, &msg);
+                    return kind.dummy(span);
+                }
+
+                self.cx.bt_push(ExpnInfo {
+                    call_site: span,
+                    callee: NameAndSpan {
+                        format: MacroBang(extname),
+                        // FIXME procedural macros do not have proper span info
+                        // yet, when they do, we should use it here.
+                        span: None,
+                        // FIXME probably want to follow macro_rules macros here.
+                        allow_internal_unstable: false,
+                    },
+                });
+
+
+                let tok_result = expandfun.expand(self.cx,
+                                                  span,
+                                                  TokenStream::from_tts(marked_tts));
+                let parser = self.cx.new_parser_from_tts(&tok_result.to_tts());
+                let result = Box::new(TokResult { parser: parser, span: span });
+                // FIXME better span info.
+                kind.make_from(result).map(|i| i.fold_with(&mut ChangeSpan { span: span }))
             }
         };
 
@@ -458,6 +505,36 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
         self.cfg.configure(node)
     }
+}
+
+// These are pretty nasty. Ideally, we would keep the tokens around, linked from
+// the AST. However, we don't so we need to create new ones. Since the item might
+// have come from a macro expansion (possibly only in part), we can't use the
+// existing codemap.
+//
+// Therefore, we must use the pretty printer (yuck) to turn the AST node into a
+// string, which we then re-tokenise (double yuck), but first we have to patch
+// the pretty-printed string on to the end of the existing codemap (infinity-yuck).
+fn tts_for_item(item: &Annotatable, parse_sess: &ParseSess) -> Vec<TokenTree> {
+    let text = match *item {
+        Annotatable::Item(ref i) => pprust::item_to_string(i),
+        Annotatable::TraitItem(ref ti) => pprust::trait_item_to_string(ti),
+        Annotatable::ImplItem(ref ii) => pprust::impl_item_to_string(ii),
+    };
+    string_to_tts(text, parse_sess)
+}
+
+fn tts_for_attr(attr: &ast::Attribute, parse_sess: &ParseSess) -> Vec<TokenTree> {
+    string_to_tts(pprust::attr_to_string(attr), parse_sess)
+}
+
+fn string_to_tts(text: String, parse_sess: &ParseSess) -> Vec<TokenTree> {
+    let filemap = parse_sess.codemap()
+                            .new_filemap(String::from("<macro expansion>"), None, text);
+
+    let lexer = lexer::StringReader::new(&parse_sess.span_diagnostic, filemap);
+    let mut parser = Parser::new(parse_sess, Vec::new(), Box::new(lexer));
+    panictry!(parser.parse_all_token_trees())
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {

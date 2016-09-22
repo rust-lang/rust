@@ -49,22 +49,19 @@ impl<'a> ParserAnyMacro<'a> {
     /// allowed to be there.
     fn ensure_complete_parse(&self, allow_semi: bool, context: &str) {
         let mut parser = self.parser.borrow_mut();
-        if allow_semi && parser.token == token::Semi {
-            parser.bump();
-        }
-        if parser.token != token::Eof {
+        parser.ensure_complete_parse(allow_semi, |parser| {
             let token_str = parser.this_token_to_string();
             let msg = format!("macro expansion ignores token `{}` and any \
                                following",
                               token_str);
             let span = parser.span;
-            let mut err = parser.diagnostic().struct_span_err(span, &msg[..]);
+            let mut err = parser.diagnostic().struct_span_err(span, &msg);
             let msg = format!("caused by the macro expansion here; the usage \
                                of `{}!` is likely invalid in {} context",
                                self.macro_ident, context);
-            err.span_note(self.site_span, &msg[..])
+            err.span_note(self.site_span, &msg)
                .emit();
-        }
+        });
     }
 }
 

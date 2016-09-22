@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::SyntaxExtension::*;
+pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT};
 
 use ast::{self, Attribute, Name, PatKind};
 use attr::HasAttrs;
@@ -18,8 +18,9 @@ use errors::DiagnosticBuilder;
 use ext::expand::{self, Invocation, Expansion};
 use ext::hygiene::Mark;
 use ext::tt::macro_rules;
+use fold;
 use parse;
-use parse::parser;
+use parse::parser::{self, Parser};
 use parse::token;
 use parse::token::{InternedString, str_to_ident};
 use ptr::P;
@@ -31,7 +32,8 @@ use feature_gate;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
-use tokenstream;
+use std::default::Default;
+use tokenstream::{self, TokenStream};
 
 
 #[derive(Debug,Clone)]
@@ -143,6 +145,190 @@ impl<F, T> MultiItemModifier for F
 impl Into<Vec<Annotatable>> for Annotatable {
     fn into(self) -> Vec<Annotatable> {
         vec![self]
+    }
+}
+
+pub trait ProcMacro {
+    fn expand<'cx>(&self,
+                   ecx: &'cx mut ExtCtxt,
+                   span: Span,
+                   ts: TokenStream)
+                   -> TokenStream;
+}
+
+impl<F> ProcMacro for F
+    where F: Fn(TokenStream) -> TokenStream
+{
+    fn expand<'cx>(&self,
+                   _ecx: &'cx mut ExtCtxt,
+                   _span: Span,
+                   ts: TokenStream)
+                   -> TokenStream {
+        // FIXME setup implicit context in TLS before calling self.
+        (*self)(ts)
+    }
+}
+
+pub trait AttrProcMacro {
+    fn expand<'cx>(&self,
+                   ecx: &'cx mut ExtCtxt,
+                   span: Span,
+                   annotation: TokenStream,
+                   annotated: TokenStream)
+                   -> TokenStream;
+}
+
+impl<F> AttrProcMacro for F
+    where F: Fn(TokenStream, TokenStream) -> TokenStream
+{
+    fn expand<'cx>(&self,
+                   _ecx: &'cx mut ExtCtxt,
+                   _span: Span,
+                   annotation: TokenStream,
+                   annotated: TokenStream)
+                   -> TokenStream {
+        // FIXME setup implicit context in TLS before calling self.
+        (*self)(annotation, annotated)
+    }
+}
+
+pub struct TokResult<'a> {
+    pub parser: Parser<'a>,
+    pub span: Span,
+}
+
+impl<'a> TokResult<'a> {
+    // There is quite a lot of overlap here with ParserAnyMacro in ext/tt/macro_rules.rs
+    // We could probably share more code.
+    // FIXME(#36641) Unify TokResult and ParserAnyMacro.
+    fn ensure_complete_parse(&mut self, allow_semi: bool) {
+        let macro_span = &self.span;
+        self.parser.ensure_complete_parse(allow_semi, |parser| {
+            let token_str = parser.this_token_to_string();
+            let msg = format!("macro expansion ignores token `{}` and any following", token_str);
+            let span = parser.span;
+            parser.diagnostic()
+                  .struct_span_err(span, &msg)
+                  .span_note(*macro_span, "caused by the macro expansion here")
+                  .emit();
+        });
+    }
+}
+
+impl<'a> MacResult for TokResult<'a> {
+    fn make_items(mut self: Box<Self>) -> Option<SmallVector<P<ast::Item>>> {
+        if self.parser.sess.span_diagnostic.has_errors() {
+            return Some(SmallVector::zero());
+        }
+
+        let mut items = SmallVector::zero();
+        loop {
+            match self.parser.parse_item() {
+                Ok(Some(item)) => items.push(item),
+                Ok(None) => {
+                    self.ensure_complete_parse(false);
+                    return Some(items);
+                }
+                Err(mut e) => {
+                    e.emit();
+                    return Some(SmallVector::zero());
+                }
+            }
+        }
+    }
+
+    fn make_impl_items(mut self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
+        let mut items = SmallVector::zero();
+        loop {
+            if self.parser.token == token::Eof {
+                break;
+            }
+            match self.parser.parse_impl_item() {
+                Ok(item) => items.push(item),
+                Err(mut e) => {
+                    e.emit();
+                    return Some(SmallVector::zero());
+                }
+            }
+        }
+        self.ensure_complete_parse(false);
+        Some(items)
+    }
+
+    fn make_trait_items(mut self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
+        let mut items = SmallVector::zero();
+        loop {
+            if self.parser.token == token::Eof {
+                break;
+            }
+            match self.parser.parse_trait_item() {
+                Ok(item) => items.push(item),
+                Err(mut e) => {
+                    e.emit();
+                    return Some(SmallVector::zero());
+                }
+            }
+        }
+        self.ensure_complete_parse(false);
+        Some(items)
+    }
+
+    fn make_expr(mut self: Box<Self>) -> Option<P<ast::Expr>> {
+        match self.parser.parse_expr() {
+            Ok(e) => {
+                self.ensure_complete_parse(true);
+                Some(e)
+            }
+            Err(mut e) => {
+                e.emit();
+                Some(DummyResult::raw_expr(self.span))
+            }
+        }
+    }
+
+    fn make_pat(mut self: Box<Self>) -> Option<P<ast::Pat>> {
+        match self.parser.parse_pat() {
+            Ok(e) => {
+                self.ensure_complete_parse(false);
+                Some(e)
+            }
+            Err(mut e) => {
+                e.emit();
+                Some(P(DummyResult::raw_pat(self.span)))
+            }
+        }
+    }
+
+    fn make_stmts(mut self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
+        let mut stmts = SmallVector::zero();
+        loop {
+            if self.parser.token == token::Eof {
+                break;
+            }
+            match self.parser.parse_full_stmt(false) {
+                Ok(Some(stmt)) => stmts.push(stmt),
+                Ok(None) => { /* continue */ }
+                Err(mut e) => {
+                    e.emit();
+                    return Some(SmallVector::zero());
+                }
+            }
+        }
+        self.ensure_complete_parse(false);
+        Some(stmts)
+    }
+
+    fn make_ty(mut self: Box<Self>) -> Option<P<ast::Ty>> {
+        match self.parser.parse_ty() {
+            Ok(e) => {
+                self.ensure_complete_parse(false);
+                Some(e)
+            }
+            Err(mut e) => {
+                e.emit();
+                Some(DummyResult::raw_ty(self.span))
+            }
+        }
     }
 }
 
@@ -439,11 +625,22 @@ pub enum SyntaxExtension {
     /// based upon it.
     ///
     /// `#[derive(...)]` is a `MultiItemDecorator`.
-    MultiDecorator(Box<MultiItemDecorator + 'static>),
+    ///
+    /// Prefer ProcMacro or MultiModifier since they are more flexible.
+    MultiDecorator(Box<MultiItemDecorator>),
 
     /// A syntax extension that is attached to an item and modifies it
-    /// in-place. More flexible version than Modifier.
-    MultiModifier(Box<MultiItemModifier + 'static>),
+    /// in-place. Also allows decoration, i.e., creating new items.
+    MultiModifier(Box<MultiItemModifier>),
+
+    /// A function-like procedural macro. TokenStream -> TokenStream.
+    ProcMacro(Box<ProcMacro>),
+
+    /// An attribute-like procedural macro. TokenStream, TokenStream -> TokenStream.
+    /// The first TokenSteam is the attribute, the second is the annotated item.
+    /// Allows modification of the input items and adding new items, similar to
+    /// MultiModifier, but uses TokenStreams, rather than AST nodes.
+    AttrProcMacro(Box<AttrProcMacro>),
 
     /// A normal, function-like syntax extension.
     ///
@@ -451,12 +648,12 @@ pub enum SyntaxExtension {
     ///
     /// The `bool` dictates whether the contents of the macro can
     /// directly use `#[unstable]` things (true == yes).
-    NormalTT(Box<TTMacroExpander + 'static>, Option<Span>, bool),
+    NormalTT(Box<TTMacroExpander>, Option<Span>, bool),
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
     ///
-    IdentTT(Box<IdentMacroExpander + 'static>, Option<Span>, bool),
+    IdentTT(Box<IdentMacroExpander>, Option<Span>, bool),
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
@@ -816,4 +1013,18 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
         }
     }
     Some(es)
+}
+
+pub struct ChangeSpan {
+    pub span: Span
+}
+
+impl Folder for ChangeSpan {
+    fn new_span(&mut self, _sp: Span) -> Span {
+        self.span
+    }
+
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+        fold::noop_fold_mac(mac, self)
+    }
 }
