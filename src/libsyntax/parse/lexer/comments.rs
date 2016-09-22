@@ -149,13 +149,13 @@ fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
     comments.push(Comment {
         style: BlankLine,
         lines: Vec::new(),
-        pos: rdr.last_pos,
+        pos: rdr.curr_pos,
     });
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: &mut StringReader, comments: &mut Vec<Comment>) {
     while is_pattern_whitespace(rdr.curr) && !rdr.is_eof() {
-        if rdr.col == CharPos(0) && rdr.curr_is('\n') {
+        if rdr.curr_col == CharPos(0) && rdr.curr_is('\n') {
             push_blank_line_comment(rdr, &mut *comments);
         }
         rdr.bump();
@@ -167,7 +167,7 @@ fn read_shebang_comment(rdr: &mut StringReader,
                         code_to_the_left: bool,
                         comments: &mut Vec<Comment>) {
     debug!(">>> shebang comment");
-    let p = rdr.last_pos;
+    let p = rdr.curr_pos;
     debug!("<<< shebang comment");
     comments.push(Comment {
         style: if code_to_the_left { Trailing } else { Isolated },
@@ -180,7 +180,7 @@ fn read_line_comments(rdr: &mut StringReader,
                       code_to_the_left: bool,
                       comments: &mut Vec<Comment>) {
     debug!(">>> line comments");
-    let p = rdr.last_pos;
+    let p = rdr.curr_pos;
     let mut lines: Vec<String> = Vec::new();
     while rdr.curr_is('/') && rdr.nextch_is('/') {
         let line = rdr.read_one_line_comment();
@@ -240,9 +240,9 @@ fn read_block_comment(rdr: &mut StringReader,
                       code_to_the_left: bool,
                       comments: &mut Vec<Comment>) {
     debug!(">>> block comment");
-    let p = rdr.last_pos;
+    let p = rdr.curr_pos;
     let mut lines: Vec<String> = Vec::new();
-    let col = rdr.col;
+    let curr_col = rdr.curr_col;
     rdr.bump();
     rdr.bump();
 
@@ -272,7 +272,7 @@ fn read_block_comment(rdr: &mut StringReader,
                 panic!(rdr.fatal("unterminated block comment"));
             }
             if rdr.curr_is('\n') {
-                trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
+                trim_whitespace_prefix_and_push_line(&mut lines, curr_line, curr_col);
                 curr_line = String::new();
                 rdr.bump();
             } else {
@@ -295,7 +295,7 @@ fn read_block_comment(rdr: &mut StringReader,
             }
         }
         if !curr_line.is_empty() {
-            trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
+            trim_whitespace_prefix_and_push_line(&mut lines, curr_line, curr_col);
         }
     }
 
@@ -369,7 +369,7 @@ pub fn gather_comments_and_literals(span_diagnostic: &errors::Handler,
         }
 
 
-        let bstart = rdr.last_pos;
+        let bstart = rdr.curr_pos;
         rdr.next_token();
         // discard, and look ahead; we're working with internal state
         let TokenAndSpan { tok, sp } = rdr.peek();
