@@ -184,13 +184,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         let err_count = self.cx.parse_sess.span_diagnostic.err_count();
 
-        let mut krate_item = placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
-            .make_items().pop().unwrap().unwrap();
-        krate_item.node = ast::ItemKind::Mod(krate.module);
-        let krate_item = Expansion::Items(SmallVector::one(P(krate_item)));
+        let krate_item = Expansion::Items(SmallVector::one(P(ast::Item {
+            attrs: krate.attrs,
+            span: krate.span,
+            node: ast::ItemKind::Mod(krate.module),
+            ident: keywords::Invalid.ident(),
+            id: ast::DUMMY_NODE_ID,
+            vis: ast::Visibility::Public,
+        })));
 
-        krate.module = match self.expand(krate_item).make_items().pop().unwrap().unwrap().node {
-            ast::ItemKind::Mod(module) => module,
+        match self.expand(krate_item).make_items().pop().unwrap().unwrap() {
+            ast::Item { attrs, node: ast::ItemKind::Mod(module), .. } => {
+                krate.attrs = attrs;
+                krate.module = module;
+            },
             _ => unreachable!(),
         };
         krate.exported_macros = mem::replace(&mut self.cx.exported_macros, Vec::new());
