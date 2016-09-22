@@ -5,11 +5,17 @@ name = "rustc_builtins"
 version = "0.1.0"
 
 [dependencies]
-rlibc = { git = "https://github.com/alexcrichton/rlibc", optional = true }
+
+[dependencies.rlibc]
+git = "https://github.com/alexcrichton/rlibc"
+optional = true
 
 [dev-dependencies]
-gcc_s = { path = "gcc_s" }
 quickcheck = "0.3.1"
+rand = "0.3.14"
+
+[dev-dependencies.gcc_s]
+path = "gcc_s"
 
 [features]
 default = ["rlibc/weak"]

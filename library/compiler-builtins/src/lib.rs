@@ -20,6 +20,9 @@ extern crate core;
 #[cfg(test)]
 extern crate gcc_s;
 
+#[cfg(test)]
+extern crate rand;
+
 #[cfg(all(not(windows), not(target_os = "macos")))]
 extern crate rlibc;
 

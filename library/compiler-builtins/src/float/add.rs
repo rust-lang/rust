@@ -200,9 +200,11 @@ pub extern fn __aeabi_fadd(a: f32, b: f32) -> f32 {
 mod tests {
     use core::{f32, f64};
 
-    use gcc_s;
-    use qc::{U32, U64};
     use float::Float;
+    use qc::{U32, U64};
+
+    use gcc_s;
+    use rand;
 
     // NOTE The tests below have special handing for NaN values.
     // Because NaN != NaN, the floating-point representations must be used
@@ -223,7 +225,7 @@ mod tests {
                 // implementation matches the output of the FPU instruction on *hard* float targets
                 // and matches its gcc_s counterpart on *soft* float targets.
                 #[cfg(not(gnueabihf))]
-                Some(addsf3) => x.eq_repr(unsafe { addsf3(a, b) }),
+                Some(addsf3) if rand::random() => x.eq_repr(unsafe { addsf3(a, b) }),
                 _ => x.eq_repr(a + b),
             }
         }
@@ -235,7 +237,7 @@ mod tests {
             match gcc_s::adddf3() {
                 // NOTE(cfg) See NOTE above
                 #[cfg(not(gnueabihf))]
-                Some(adddf3) => x.eq_repr(unsafe { adddf3(a, b) }),
+                Some(adddf3) if rand::random() => x.eq_repr(unsafe { adddf3(a, b) }),
                 _ => x.eq_repr(a + b),
 
             }
