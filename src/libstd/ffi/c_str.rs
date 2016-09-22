@@ -146,19 +146,19 @@ pub struct CStr {
 
 /// An error returned from `CString::new` to indicate that a nul byte was found
 /// in the vector provided.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
 
 /// An error returned from `CStr::from_bytes_with_nul` to indicate that a nul
 /// byte was found too early in the slice provided or one wasn't found at all.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub struct FromBytesWithNulError { _a: () }
 
 /// An error returned from `CString::into_string` to indicate that a UTF-8 error
 /// was encountered during the conversion.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
 pub struct IntoStringError {
     inner: CString,
