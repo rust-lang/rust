@@ -978,7 +978,7 @@ actual:\n\
 
     fn check_no_compiler_crash(&self, proc_res: &ProcRes) {
         for line in proc_res.stderr.lines() {
-            if line.starts_with("error: internal compiler error:") {
+            if line.contains("error: internal compiler error") {
                 self.fatal_proc_rec("compiler encountered internal error", proc_res);
             }
         }
