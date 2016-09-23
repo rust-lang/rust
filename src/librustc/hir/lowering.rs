@@ -391,9 +391,18 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_ty_param(&mut self, tp: &TyParam) -> hir::TyParam {
+        let mut name = tp.ident.name;
+
+        // Don't expose `Self` (recovered "keyword used as ident" parse error).
+        // `rustc::ty` expects `Self` to be only used for a trait's `Self`.
+        // Instead, use gensym("Self") to create a distinct name that looks the same.
+        if name == token::keywords::SelfType.name() {
+            name = token::gensym("Self");
+        }
+
         hir::TyParam {
             id: tp.id,
-            name: tp.ident.name,
+            name: name,
             bounds: self.lower_bounds(&tp.bounds),
             default: tp.default.as_ref().map(|x| self.lower_ty(x)),
             span: tp.span,
