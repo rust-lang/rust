@@ -21,7 +21,7 @@ A link name was given with an empty name. Erroneous code example:
 The rust compiler cannot link to an external library if you don't give it its
 name. Example:
 
-```
+```ignore
 #[link(name = "some_lib")] extern {} // ok!
 ```
 "##,
@@ -32,8 +32,8 @@ as frameworks are specific to that operating system.
 
 Erroneous code example:
 
-```compile_fail,E0455
-#[link(name = "FooCoreServices",  kind = "framework")] extern {}
+```ignore
+#[link(name = "FooCoreServices", kind = "framework")] extern {}
 // OS used to compile is Linux for example
 ```
 
@@ -72,7 +72,7 @@ A link was used without a name parameter. Erroneous code example:
 Please add the name parameter to allow the rust compiler to find the library
 you want. Example:
 
-```
+```ignore
 #[link(kind = "dylib", name = "some_lib")] extern {} // ok!
 ```
 "##,
@@ -91,6 +91,185 @@ You need to link your code to the relevant crate in order to be able to use it
 well, and you link to them the same way.
 "##,
 
+E0466: r##"
+Macro import declarations were malformed.
+
+Erroneous code examples:
+
+```compile_fail,E0466
+#[macro_use(a_macro(another_macro))] // error: invalid import declaration
+extern crate some_crate;
+
+#[macro_use(i_want = "some_macros")] // error: invalid import declaration
+extern crate another_crate;
+```
+
+This is a syntax error at the level of attribute declarations. The proper
+syntax for macro imports is the following:
+
+```ignore
+// In some_crate:
+#[macro_export]
+macro_rules! get_tacos {
+    ...
+}
+
+#[macro_export]
+macro_rules! get_pimientos {
+    ...
+}
+
+// In your crate:
+#[macro_use(get_tacos, get_pimientos)] // It imports `get_tacos` and
+extern crate some_crate;               // `get_pimientos` macros from some_crate
+```
+
+If you would like to import all exported macros, write `macro_use` with no
+arguments.
+"##,
+
+E0467: r##"
+Macro reexport declarations were empty or malformed.
+
+Erroneous code examples:
+
+```compile_fail,E0467
+#[macro_reexport]                    // error: no macros listed for export
+extern crate macros_for_good;
+
+#[macro_reexport(fun_macro = "foo")] // error: not a macro identifier
+extern crate other_macros_for_good;
+```
+
+This is a syntax error at the level of attribute declarations.
+
+Currently, `macro_reexport` requires at least one macro name to be listed.
+Unlike `macro_use`, listing no names does not reexport all macros from the
+given crate.
+
+Decide which macros you would like to export and list them properly.
+
+These are proper reexport declarations:
+
+```ignore
+#[macro_reexport(some_macro, another_macro)]
+extern crate macros_for_good;
+```
+"##,
+
+E0468: r##"
+A non-root module attempts to import macros from another crate.
+
+Example of erroneous code:
+
+```compile_fail,E0468
+mod foo {
+    #[macro_use(helpful_macro)] // error: must be at crate root to import
+    extern crate some_crate;    //        macros from another crate
+    helpful_macro!(...)
+}
+```
+
+Only `extern crate` imports at the crate root level are allowed to import
+macros.
+
+Either move the macro import to crate root or do without the foreign macros.
+This will work:
+
+```ignore
+#[macro_use(helpful_macro)]
+extern crate some_crate;
+
+mod foo {
+    helpful_macro!(...)
+}
+```
+"##,
+
+E0469: r##"
+A macro listed for import was not found.
+
+Erroneous code example:
+
+```compile_fail,E0469
+#[macro_use(drink, be_merry)] // error: imported macro not found
+extern crate collections;
+
+fn main() {
+    // ...
+}
+```
+
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
+
+This could be caused by a typo. Did you misspell the macro's name?
+
+Double-check the names of the macros listed for import, and that the crate
+in question exports them.
+
+A working version would be:
+
+```ignore
+// In some_crate crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+
+#[macro_export]
+macro_rules! drink {
+    ...
+}
+
+// In your crate:
+#[macro_use(eat, drink)]
+extern crate some_crate; //ok!
+```
+"##,
+
+E0470: r##"
+A macro listed for reexport was not found.
+
+Erroneous code example:
+
+```compile_fail,E0470
+#[macro_reexport(drink, be_merry)]
+extern crate collections;
+
+fn main() {
+    // ...
+}
+```
+
+Either the listed macro is not contained in the imported crate, or it is not
+exported from the given crate.
+
+This could be caused by a typo. Did you misspell the macro's name?
+
+Double-check the names of the macros listed for reexport, and that the crate
+in question exports them.
+
+A working version:
+
+```ignore
+// In some_crate crate:
+#[macro_export]
+macro_rules! eat {
+    ...
+}
+
+#[macro_export]
+macro_rules! drink {
+    ...
+}
+
+// In your_crate:
+#[macro_reexport(eat, drink)]
+extern crate some_crate;
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -102,11 +281,6 @@ register_diagnostics! {
     E0462, // found staticlib `..` instead of rlib or dylib
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
-    E0466, // bad macro import
-    E0467, // bad macro reexport
-    E0468, // an `extern crate` loading macros must be at the crate root
-    E0469, // imported macro not found
-    E0470, // reexported macro not found
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 }

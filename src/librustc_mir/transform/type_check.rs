@@ -20,6 +20,7 @@ use rustc::mir::tcx::LvalueTy;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::{self, Visitor};
 use std::fmt;
+use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -218,7 +219,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             }
             ProjectionElem::Downcast(adt_def1, index) =>
                 match base_ty.sty {
-                    ty::TyEnum(adt_def, substs) if adt_def == adt_def1 => {
+                    ty::TyAdt(adt_def, substs) if adt_def.is_enum() && adt_def == adt_def1 => {
                         if index >= adt_def.variants.len() {
                             LvalueTy::Ty {
                                 ty: span_mirbug_and_err!(
@@ -281,8 +282,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 (&adt_def.variants[variant_index], substs)
             }
             LvalueTy::Ty { ty } => match ty.sty {
-                ty::TyStruct(adt_def, substs) | ty::TyEnum(adt_def, substs)
-                    if adt_def.is_univariant() => {
+                ty::TyAdt(adt_def, substs) if adt_def.is_univariant() => {
                         (&adt_def.variants[0], substs)
                     }
                 ty::TyTuple(tys) | ty::TyClosure(_, ty::ClosureSubsts {
@@ -362,7 +362,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             StatementKind::SetDiscriminant{ ref lvalue, variant_index } => {
                 let lvalue_type = lvalue.ty(mir, tcx).to_ty(tcx);
                 let adt = match lvalue_type.sty {
-                    TypeVariants::TyEnum(adt, _) => adt,
+                    TypeVariants::TyAdt(adt, _) if adt.is_enum() => adt,
                     _ => {
                         span_bug!(stmt.source_info.span,
                                   "bad set discriminant ({:?} = {:?}): lhs is not an enum",
@@ -386,6 +386,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 }
             }
+            StatementKind::Nop => {}
         }
     }
 
@@ -442,9 +443,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             TerminatorKind::Switch { ref discr, adt_def, ref targets } => {
                 let discr_ty = discr.ty(mir, tcx).to_ty(tcx);
                 match discr_ty.sty {
-                    ty::TyEnum(def, _)
-                        if def == adt_def && adt_def.variants.len() == targets.len()
-                        => {},
+                    ty::TyAdt(def, _) if def.is_enum() &&
+                                         def == adt_def &&
+                                         adt_def.variants.len() == targets.len()
+                      => {},
                     _ => {
                         span_mirbug!(self, term, "bad Switch ({:?} on {:?})",
                                      adt_def, discr_ty);
@@ -455,7 +457,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let func_ty = func.ty(mir, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
                 let func_ty = match func_ty.sty {
-                    ty::TyFnDef(_, _, func_ty) | ty::TyFnPtr(func_ty) => func_ty,
+                    ty::TyFnDef(.., func_ty) | ty::TyFnPtr(func_ty) => func_ty,
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
                         return;
@@ -673,7 +675,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         where T: fmt::Debug + TypeFoldable<'tcx>
     {
         let mut selcx = traits::SelectionContext::new(self.infcx);
-        let cause = traits::ObligationCause::misc(self.last_span, 0);
+        let cause = traits::ObligationCause::misc(self.last_span, ast::CRATE_NODE_ID);
         let traits::Normalized { value, obligations } =
             traits::normalize(&mut selcx, cause, value);
 

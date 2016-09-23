@@ -45,6 +45,7 @@ pub struct TargetDataLayout {
 }
 
 impl Default for TargetDataLayout {
+    /// Creates an instance of `TargetDataLayout`.
     fn default() -> TargetDataLayout {
         TargetDataLayout {
             endian: Endian::Big,
@@ -366,7 +367,7 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    pub fn repr_discr(tcx: TyCtxt, hint: attr::ReprAttr, min: i64, max: i64)
+    pub fn repr_discr(tcx: TyCtxt, ty: Ty, hint: attr::ReprAttr, min: i64, max: i64)
                       -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
@@ -376,11 +377,12 @@ impl Integer {
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
         let at_least = match hint {
-            attr::ReprInt(span, ity) => {
+            attr::ReprInt(ity) => {
                 let discr = Integer::from_attr(&tcx.data_layout, ity);
                 let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
                 if discr < fit {
-                    span_bug!(span, "representation hint insufficient for discriminant range")
+                    bug!("Integer::repr_discr: `#[repr]` hint too small for \
+                          discriminant range of enum `{}", ty)
                 }
                 return (discr, ity.is_signed());
             }
@@ -396,10 +398,10 @@ impl Integer {
             }
             attr::ReprAny => I8,
             attr::ReprPacked => {
-                bug!("Integer::repr_discr: found #[repr(packed)] on an enum");
+                bug!("Integer::repr_discr: found #[repr(packed)] on enum `{}", ty);
             }
             attr::ReprSimd => {
-                bug!("Integer::repr_discr: found #[repr(simd)] on an enum");
+                bug!("Integer::repr_discr: found #[repr(simd)] on enum `{}", ty);
             }
         };
 
@@ -488,7 +490,7 @@ impl<'a, 'gcx, 'tcx> Struct {
 
         for field in fields {
             if !self.sized {
-                bug!("Struct::compute: field #{} of `{}` comes after unsized field",
+                bug!("Struct::extend: field #{} of `{}` comes after unsized field",
                      self.offset_after_field.len(), scapegoat);
             }
 
@@ -555,7 +557,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             }
 
             // Is this the NonZero lang item wrapping a pointer or integer type?
-            (&Univariant { non_zero: true, .. }, &ty::TyStruct(def, substs)) => {
+            (&Univariant { non_zero: true, .. }, &ty::TyAdt(def, substs)) => {
                 let fields = &def.struct_variant().fields;
                 assert_eq!(fields.len(), 1);
                 match *fields[0].ty(tcx, substs).layout(infcx)? {
@@ -573,7 +575,7 @@ impl<'a, 'gcx, 'tcx> Struct {
 
             // Perhaps one of the fields of this struct is non-zero
             // let's recurse and find out
-            (_, &ty::TyStruct(def, substs)) => {
+            (_, &ty::TyAdt(def, substs)) if def.is_struct() => {
                 Struct::non_zero_field_path(infcx, def.struct_variant().fields
                                                       .iter().map(|field| {
                     field.ty(tcx, substs)
@@ -623,6 +625,54 @@ impl<'a, 'gcx, 'tcx> Struct {
     }
 }
 
+/// An untagged union.
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct Union {
+    pub align: Align,
+
+    pub min_size: Size,
+
+    /// If true, no alignment padding is used.
+    pub packed: bool,
+}
+
+impl<'a, 'gcx, 'tcx> Union {
+    pub fn new(dl: &TargetDataLayout, packed: bool) -> Union {
+        Union {
+            align: if packed { dl.i8_align } else { dl.aggregate_align },
+            min_size: Size::from_bytes(0),
+            packed: packed,
+        }
+    }
+
+    /// Extend the Struct with more fields.
+    pub fn extend<I>(&mut self, dl: &TargetDataLayout,
+                     fields: I,
+                     scapegoat: Ty<'gcx>)
+                     -> Result<(), LayoutError<'gcx>>
+    where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
+        for (index, field) in fields.enumerate() {
+            let field = field?;
+            if field.is_unsized() {
+                bug!("Union::extend: field #{} of `{}` is unsized",
+                     index, scapegoat);
+            }
+
+            if !self.packed {
+                self.align = self.align.max(field.align(dl));
+            }
+            self.min_size = cmp::max(self.min_size, field.size(dl));
+        }
+
+        Ok(())
+    }
+
+    /// Get the size with trailing aligment padding.
+    pub fn stride(&self) -> Size {
+        self.min_size.abi_align(self.align)
+    }
+}
+
 /// The first half of a fat pointer.
 /// - For a trait object, this is the address of the box.
 /// - For a slice, this is the base address.
@@ -646,7 +696,7 @@ pub enum Layout {
         non_zero: bool
     },
 
-    /// SIMD vectors, from TyStruct marked with #[repr(simd)].
+    /// SIMD vectors, from structs marked with #[repr(simd)].
     Vector {
         element: Primitive,
         count: u64
@@ -667,7 +717,7 @@ pub enum Layout {
         non_zero: bool
     },
 
-    // Remaining variants are all ADTs such as TyStruct, TyEnum or TyTuple.
+    // Remaining variants are all ADTs such as structs, enums or tuples.
 
     /// C-like enums; basically an integer.
     CEnum {
@@ -688,6 +738,11 @@ pub enum Layout {
         // If true, the structure is NonZero.
         // FIXME(eddyb) use a newtype Layout kind for this.
         non_zero: bool
+    },
+
+    /// Untagged unions.
+    UntaggedUnion {
+        variants: Union,
     },
 
     /// General-case enums: for each case there is a struct, and they
@@ -803,10 +858,10 @@ impl<'a, 'gcx, 'tcx> Layout {
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
+                let pointee = normalize_associated_type(infcx, pointee);
                 if pointee.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
                     Scalar { value: Pointer, non_zero: non_zero }
                 } else {
-                    let pointee = normalize_associated_type(infcx, pointee);
                     let unsized_part = tcx.struct_tail(pointee);
                     let meta = match unsized_part.sty {
                         ty::TySlice(_) | ty::TyStr => {
@@ -865,38 +920,26 @@ impl<'a, 'gcx, 'tcx> Layout {
                 Univariant { variant: st, non_zero: false }
             }
 
-            // ADTs.
-            ty::TyStruct(def, substs) => {
-                if ty.is_simd() {
-                    // SIMD vector types.
-                    let element = ty.simd_type(tcx);
-                    match *element.layout(infcx)? {
-                        Scalar { value, .. } => {
-                            return success(Vector {
-                                element: value,
-                                count: ty.simd_size(tcx) as u64
-                            });
-                        }
-                        _ => {
-                            tcx.sess.fatal(&format!("monomorphising SIMD type `{}` with \
-                                                     a non-machine element type `{}`",
-                                                    ty, element));
-                        }
+            // SIMD vector types.
+            ty::TyAdt(def, ..) if def.is_simd() => {
+                let element = ty.simd_type(tcx);
+                match *element.layout(infcx)? {
+                    Scalar { value, .. } => {
+                        return success(Vector {
+                            element: value,
+                            count: ty.simd_size(tcx) as u64
+                        });
+                    }
+                    _ => {
+                        tcx.sess.fatal(&format!("monomorphising SIMD type `{}` with \
+                                                a non-machine element type `{}`",
+                                                ty, element));
                     }
                 }
-                let fields = def.struct_variant().fields.iter().map(|field| {
-                    field.ty(tcx, substs).layout(infcx)
-                });
-                let packed = tcx.lookup_packed(def.did);
-                let mut st = Struct::new(dl, packed);
-                st.extend(dl, fields, ty)?;
-
-                Univariant {
-                    variant: st,
-                    non_zero: Some(def.did) == tcx.lang_items.non_zero()
-                }
             }
-            ty::TyEnum(def, substs) => {
+
+            // ADTs.
+            ty::TyAdt(def, substs) => {
                 let hint = *tcx.lookup_repr_hints(def.did).get(0)
                     .unwrap_or(&attr::ReprAny);
 
@@ -911,7 +954,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
-                if def.variants.iter().all(|v| v.fields.is_empty()) {
+                if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
                     let (mut min, mut max) = (i64::MAX, i64::MIN);
                     for v in &def.variants {
@@ -920,7 +963,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         if x > max { max = x; }
                     }
 
-                    let (discr, signed) = Integer::repr_discr(tcx, hint, min, max);
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, hint, min, max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -929,26 +972,35 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
+                if def.variants.len() == 1 {
+                    // Struct, or union, or univariant enum equivalent to a struct.
+                    // (Typechecking will reject discriminant-sizing attrs.)
+                    assert!(!def.is_enum() || hint == attr::ReprAny);
+                    let fields = def.variants[0].fields.iter().map(|field| {
+                        field.ty(tcx, substs).layout(infcx)
+                    });
+                    let packed = tcx.lookup_packed(def.did);
+                    let layout = if def.is_union() {
+                        let mut un = Union::new(dl, packed);
+                        un.extend(dl, fields, ty)?;
+                        UntaggedUnion { variants: un }
+                    } else {
+                        let mut st = Struct::new(dl, packed);
+                        st.extend(dl, fields, ty)?;
+                        let non_zero = Some(def.did) == tcx.lang_items.non_zero();
+                        Univariant { variant: st, non_zero: non_zero }
+                    };
+                    return success(layout);
+                }
+
                 // Since there's at least one
                 // non-empty body, explicit discriminants should have
                 // been rejected by a checker before this point.
                 for (i, v) in def.variants.iter().enumerate() {
                     if i as u64 != v.disr_val.to_u64_unchecked() {
                         bug!("non-C-like enum {} with specified discriminants",
-                             tcx.item_path_str(def.did));
+                            tcx.item_path_str(def.did));
                     }
-                }
-
-                if def.variants.len() == 1 {
-                    // Equivalent to a struct/tuple/newtype.
-                    // (Typechecking will reject discriminant-sizing attrs.)
-                    assert_eq!(hint, attr::ReprAny);
-                    let fields = def.variants[0].fields.iter().map(|field| {
-                        field.ty(tcx, substs).layout(infcx)
-                    });
-                    let mut st = Struct::new(dl, false);
-                    st.extend(dl, fields, ty)?;
-                    return success(Univariant { variant: st, non_zero: false });
                 }
 
                 // Cache the substituted and normalized variant field types.
@@ -980,8 +1032,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                                 }
                                 _ => {
                                     bug!("Layout::compute: `{}`'s non-zero \
-                                          `{}` field not scalar?!",
-                                         ty, variants[discr][0])
+                                        `{}` field not scalar?!",
+                                        ty, variants[discr][0])
                                 }
                             }
                         }
@@ -1001,7 +1053,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // The general case.
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, hint, 0, discr_max);
+                let (min_ity, _) = Integer::repr_discr(tcx, ty, hint, 0, discr_max);
 
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
@@ -1115,7 +1167,7 @@ impl<'a, 'gcx, 'tcx> Layout {
     pub fn is_unsized(&self) -> bool {
         match *self {
             Scalar {..} | Vector {..} | FatPointer {..} |
-            CEnum {..} | General {..} |
+            CEnum {..} | UntaggedUnion {..} | General {..} |
             RawNullablePointer {..} |
             StructWrappedNullablePointer {..} => false,
 
@@ -1149,6 +1201,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             CEnum { discr, .. } => Int(discr).size(dl),
             Array { size, .. } | General { size, .. } => size,
+            UntaggedUnion { ref variants } => variants.stride(),
 
             Univariant { ref variant, .. } |
             StructWrappedNullablePointer { nonnull: ref variant, .. } => {
@@ -1188,6 +1241,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             CEnum { discr, .. } => Int(discr).align(dl),
             Array { align, .. } | General { align, .. } => align,
+            UntaggedUnion { ref variants } => variants.align,
 
             Univariant { ref variant, .. } |
             StructWrappedNullablePointer { nonnull: ref variant, .. } => {
@@ -1253,9 +1307,9 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
                 }
             }
 
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
-                if def.variants.is_empty() || def.variants.len() > 2 {
+                if def.is_union() || def.variants.is_empty() || def.variants.len() > 2 {
                     return Err(err);
                 }
 

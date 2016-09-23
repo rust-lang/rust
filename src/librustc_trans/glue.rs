@@ -19,7 +19,7 @@ use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
 use adt;
 use base::*;
 use build::*;
@@ -92,6 +92,8 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     t: Ty<'tcx>) -> Ty<'tcx> {
     assert!(t.is_normalized_for_trans());
 
+    let t = tcx.erase_regions(&t);
+
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
     if !type_is_sized(tcx, t) {
@@ -113,7 +115,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match t.sty {
         ty::TyBox(typ) if !type_needs_drop(tcx, typ)
                          && type_is_sized(tcx, typ) => {
-            tcx.normalizing_infer_ctxt(traits::Reveal::All).enter(|infcx| {
+            tcx.infer_ctxt(None, None, traits::Reveal::All).enter(|infcx| {
                 let layout = t.layout(&infcx).unwrap();
                 if layout.size(&tcx.data_layout).bytes() == 0 {
                     // `Box<ZeroSizeType>` does not allocate.
@@ -214,30 +216,14 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 g: DropGlueKind<'tcx>) -> ValueRef {
     let g = g.map_ty(|t| get_drop_glue_type(ccx.tcx(), t));
     match ccx.drop_glues().borrow().get(&g) {
-        Some(&(glue, _)) => return glue,
+        Some(&(glue, _)) => glue,
         None => {
-            debug!("Could not find drop glue for {:?} -- {} -- {}. \
-                    Falling back to on-demand instantiation.",
+            bug!("Could not find drop glue for {:?} -- {} -- {}.",
                     g,
                     TransItem::DropGlue(g).to_raw_string(),
                     ccx.codegen_unit().name());
         }
     }
-
-    // FIXME: #34151
-    // Normally, getting here would indicate a bug in trans::collector,
-    // since it seems to have missed a translation item. When we are
-    // translating with non-MIR-based trans, however, the results of the
-    // collector are not entirely reliable since it bases its analysis
-    // on MIR. Thus, we'll instantiate the missing function on demand in
-    // this codegen unit, so that things keep working.
-
-    TransItem::DropGlue(g).predefine(ccx, llvm::InternalLinkage);
-    TransItem::DropGlue(g).define(ccx);
-
-    // Now that we made sure that the glue function is in ccx.drop_glues,
-    // give it another try
-    get_drop_glue_core(ccx, g)
 }
 
 pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -265,12 +251,13 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     fcx.finish(bcx, DebugLoc::None);
 }
 
-fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn trans_custom_dtor<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  t: Ty<'tcx>,
-                                 v0: ValueRef)
+                                 v0: ValueRef,
+                                 shallow_drop: bool)
                                  -> Block<'blk, 'tcx>
 {
-    debug!("trans_struct_drop t: {}", t);
+    debug!("trans_custom_dtor t: {}", t);
     let tcx = bcx.tcx();
     let mut bcx = bcx;
 
@@ -286,13 +273,16 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Issue #23611: schedule cleanup of contents, re-inspecting the
     // discriminant (if any) in case of variant swap in drop code.
-    bcx.fcx.schedule_drop_adt_contents(contents_scope, v0, t);
+    if !shallow_drop {
+        bcx.fcx.schedule_drop_adt_contents(contents_scope, v0, t);
+    }
 
     let (sized_args, unsized_args);
     let args: &[ValueRef] = if type_is_sized(tcx, t) {
         sized_args = [v0];
         &sized_args
     } else {
+        // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
         unsized_args = [
             Load(bcx, get_dataptr(bcx, v0)),
             Load(bcx, get_meta(bcx, v0))
@@ -335,7 +325,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
         return (C_undef(llty), C_undef(llty));
     }
     match t.sty {
-        ty::TyStruct(def, substs) => {
+        ty::TyAdt(def, substs) => {
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
             // Don't use type_of::sizing_type_of because that expects t to be sized,
@@ -345,9 +335,20 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             let layout = ccx.layout_of(t);
             debug!("DST {} layout: {:?}", t, layout);
 
+            // Returns size in bytes of all fields except the last one
+            // (we will be recursing on the last one).
+            fn local_prefix_bytes(variant: &ty::layout::Struct) -> u64 {
+                let fields = variant.offset_after_field.len();
+                if fields > 1 {
+                    variant.offset_after_field[fields - 2].bytes()
+                } else {
+                    0
+                }
+            }
+
             let (sized_size, sized_align) = match *layout {
                 ty::layout::Layout::Univariant { ref variant, .. } => {
-                    (variant.min_size().bytes(), variant.align.abi())
+                    (local_prefix_bytes(variant), variant.align.abi())
                 }
                 _ => {
                     bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
@@ -426,7 +427,9 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     }
 }
 
-fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueKind<'tcx>)
+fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              v0: ValueRef,
+                              g: DropGlueKind<'tcx>)
                               -> Block<'blk, 'tcx> {
     let t = g.ty();
 
@@ -449,6 +452,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 let llval = get_dataptr(bcx, v0);
                 let llbox = Load(bcx, llval);
                 let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
+                // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
                 let info = get_meta(bcx, v0);
                 let info = Load(bcx, info);
                 let (llsize, llalign) =
@@ -474,6 +478,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             // No support in vtable for distinguishing destroying with
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.
+            // FIXME(#36457) -- we should pass unsized values to drop glue as two arguments
             assert!(!skip_dtor);
             let data_ptr = get_dataptr(bcx, v0);
             let vtable_ptr = Load(bcx, get_meta(bcx, v0));
@@ -484,9 +489,11 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                  DebugLoc::None);
             bcx
         }
-        ty::TyStruct(def, _) | ty::TyEnum(def, _)
-                if def.dtor_kind().is_present() && !skip_dtor => {
-            trans_struct_drop(bcx, t, v0)
+        ty::TyAdt(def, ..) if def.dtor_kind().is_present() && !skip_dtor => {
+            trans_custom_dtor(bcx, t, v0, def.is_union())
+        }
+        ty::TyAdt(def, ..) if def.is_union() => {
+            bcx
         }
         _ => {
             if bcx.fcx.type_needs_drop(t) {
@@ -527,6 +534,7 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let value = if type_is_sized(cx.tcx(), t) {
         adt::MaybeSizedValue::sized(av)
     } else {
+        // FIXME(#36457) -- we should pass unsized values as two arguments
         let data = Load(cx, get_dataptr(cx, av));
         let info = Load(cx, get_meta(cx, av));
         adt::MaybeSizedValue::unsized_(data, info)
@@ -534,23 +542,6 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     let mut cx = cx;
     match t.sty {
-        ty::TyStruct(..) => {
-            let repr = adt::represent_type(cx.ccx(), t);
-            let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
-            for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr::from(discr), i);
-
-                let val = if type_is_sized(cx.tcx(), field_ty) {
-                    llfld_a
-                } else {
-                    let scratch = alloc_ty(cx, field_ty, "__fat_ptr_iter");
-                    Store(cx, llfld_a, get_dataptr(cx, scratch));
-                    Store(cx, value.meta, get_meta(cx, scratch));
-                    scratch
-                };
-                cx = drop_ty(cx, val, field_ty, DebugLoc::None);
-            }
-        }
         ty::TyClosure(_, ref substs) => {
             let repr = adt::represent_type(cx.ccx(), t);
             for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
@@ -577,63 +568,87 @@ fn drop_structural_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 cx = drop_ty(cx, llfld_a, *arg, DebugLoc::None);
             }
         }
-        ty::TyEnum(en, substs) => {
-            let fcx = cx.fcx;
-            let ccx = fcx.ccx;
+        ty::TyAdt(adt, substs) => match adt.adt_kind() {
+            AdtKind::Struct => {
+                let repr = adt::represent_type(cx.ccx(), t);
+                let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
+                for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
+                    let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr::from(discr), i);
 
-            let repr = adt::represent_type(ccx, t);
-            let n_variants = en.variants.len();
-
-            // NB: we must hit the discriminant first so that structural
-            // comparison know not to proceed when the discriminants differ.
-
-            match adt::trans_switch(cx, &repr, av, false) {
-                (adt::BranchKind::Single, None) => {
-                    if n_variants != 0 {
-                        assert!(n_variants == 1);
-                        cx = iter_variant(cx, &repr, adt::MaybeSizedValue::sized(av),
-                                          &en.variants[0], substs);
-                    }
+                    let val = if type_is_sized(cx.tcx(), field_ty) {
+                        llfld_a
+                    } else {
+                        // FIXME(#36457) -- we should pass unsized values as two arguments
+                        let scratch = alloc_ty(cx, field_ty, "__fat_ptr_iter");
+                        Store(cx, llfld_a, get_dataptr(cx, scratch));
+                        Store(cx, value.meta, get_meta(cx, scratch));
+                        scratch
+                    };
+                    cx = drop_ty(cx, val, field_ty, DebugLoc::None);
                 }
-                (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
-                    cx = drop_ty(cx, lldiscrim_a, cx.tcx().types.isize, DebugLoc::None);
-
-                    // Create a fall-through basic block for the "else" case of
-                    // the switch instruction we're about to generate. Note that
-                    // we do **not** use an Unreachable instruction here, even
-                    // though most of the time this basic block will never be hit.
-                    //
-                    // When an enum is dropped it's contents are currently
-                    // overwritten to DTOR_DONE, which means the discriminant
-                    // could have changed value to something not within the actual
-                    // range of the discriminant. Currently this function is only
-                    // used for drop glue so in this case we just return quickly
-                    // from the outer function, and any other use case will only
-                    // call this for an already-valid enum in which case the `ret
-                    // void` will never be hit.
-                    let ret_void_cx = fcx.new_block("enum-iter-ret-void");
-                    RetVoid(ret_void_cx, DebugLoc::None);
-                    let llswitch = Switch(cx, lldiscrim_a, ret_void_cx.llbb, n_variants);
-                    let next_cx = fcx.new_block("enum-iter-next");
-
-                    for variant in &en.variants {
-                        let variant_cx = fcx.new_block(&format!("enum-iter-variant-{}",
-                                                                     &variant.disr_val
-                                                                             .to_string()));
-                        let case_val = adt::trans_case(cx, &repr, Disr::from(variant.disr_val));
-                        AddCase(llswitch, case_val, variant_cx.llbb);
-                        let variant_cx = iter_variant(variant_cx,
-                                                      &repr,
-                                                      value,
-                                                      variant,
-                                                      substs);
-                        Br(variant_cx, next_cx.llbb, DebugLoc::None);
-                    }
-                    cx = next_cx;
-                }
-                _ => ccx.sess().unimpl("value from adt::trans_switch in drop_structural_ty"),
             }
-        }
+            AdtKind::Union => {
+                bug!("Union in `glue::drop_structural_ty`");
+            }
+            AdtKind::Enum => {
+                let fcx = cx.fcx;
+                let ccx = fcx.ccx;
+
+                let repr = adt::represent_type(ccx, t);
+                let n_variants = adt.variants.len();
+
+                // NB: we must hit the discriminant first so that structural
+                // comparison know not to proceed when the discriminants differ.
+
+                match adt::trans_switch(cx, &repr, av, false) {
+                    (adt::BranchKind::Single, None) => {
+                        if n_variants != 0 {
+                            assert!(n_variants == 1);
+                            cx = iter_variant(cx, &repr, adt::MaybeSizedValue::sized(av),
+                                            &adt.variants[0], substs);
+                        }
+                    }
+                    (adt::BranchKind::Switch, Some(lldiscrim_a)) => {
+                        cx = drop_ty(cx, lldiscrim_a, cx.tcx().types.isize, DebugLoc::None);
+
+                        // Create a fall-through basic block for the "else" case of
+                        // the switch instruction we're about to generate. Note that
+                        // we do **not** use an Unreachable instruction here, even
+                        // though most of the time this basic block will never be hit.
+                        //
+                        // When an enum is dropped it's contents are currently
+                        // overwritten to DTOR_DONE, which means the discriminant
+                        // could have changed value to something not within the actual
+                        // range of the discriminant. Currently this function is only
+                        // used for drop glue so in this case we just return quickly
+                        // from the outer function, and any other use case will only
+                        // call this for an already-valid enum in which case the `ret
+                        // void` will never be hit.
+                        let ret_void_cx = fcx.new_block("enum-iter-ret-void");
+                        RetVoid(ret_void_cx, DebugLoc::None);
+                        let llswitch = Switch(cx, lldiscrim_a, ret_void_cx.llbb, n_variants);
+                        let next_cx = fcx.new_block("enum-iter-next");
+
+                        for variant in &adt.variants {
+                            let variant_cx = fcx.new_block(&format!("enum-iter-variant-{}",
+                                                                        &variant.disr_val
+                                                                                .to_string()));
+                            let case_val = adt::trans_case(cx, &repr, Disr::from(variant.disr_val));
+                            AddCase(llswitch, case_val, variant_cx.llbb);
+                            let variant_cx = iter_variant(variant_cx,
+                                                        &repr,
+                                                        value,
+                                                        variant,
+                                                        substs);
+                            Br(variant_cx, next_cx.llbb, DebugLoc::None);
+                        }
+                        cx = next_cx;
+                    }
+                    _ => ccx.sess().unimpl("value from adt::trans_switch in drop_structural_ty"),
+                }
+            }
+        },
+
         _ => {
             cx.sess().unimpl(&format!("type in drop_structural_ty: {}", t))
         }

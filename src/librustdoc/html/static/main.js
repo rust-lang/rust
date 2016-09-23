@@ -34,7 +34,8 @@
                      "primitive",
                      "associatedtype",
                      "constant",
-                     "associatedconstant"];
+                     "associatedconstant",
+                     "union"];
 
     // used for special search precedence
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");

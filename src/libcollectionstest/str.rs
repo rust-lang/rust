@@ -219,6 +219,20 @@ fn test_is_empty() {
 }
 
 #[test]
+fn test_replacen() {
+    assert_eq!("".replacen('a', "b", 5), "");
+    assert_eq!("acaaa".replacen("a", "b", 3), "bcbba");
+    assert_eq!("aaaa".replacen("a", "b", 0), "aaaa");
+
+    let test = "test";
+    assert_eq!(" test test ".replacen(test, "toast", 3), " toast toast ");
+    assert_eq!(" test test ".replacen(test, "toast", 0), " test test ");
+    assert_eq!(" test test ".replacen(test, "", 5), "   ");
+
+    assert_eq!("qwer123zxc789".replacen(char::is_numeric, "", 3), "qwerzxc789");
+}
+
+#[test]
 fn test_replace() {
     let a = "a";
     assert_eq!("".replace(a, "b"), "");

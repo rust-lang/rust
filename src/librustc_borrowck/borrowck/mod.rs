@@ -142,7 +142,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &hir::Item) {
     // loan step is intended for things that have a data
     // flow dependent conditions.
     match item.node {
-        hir::ItemStatic(_, _, ref ex) |
+        hir::ItemStatic(.., ref ex) |
         hir::ItemConst(_, ref ex) => {
             gather_loans::gather_loans_in_static_initializer(this, item.id, &ex);
         }
@@ -422,7 +422,7 @@ pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: TyCtxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
-            hir::ExprClosure(_, _, ref block, _) => {
+            hir::ExprClosure(.., ref block, _) => {
                 block.id
             }
             _ => {
@@ -442,7 +442,7 @@ impl<'a, 'tcx> LoanPath<'tcx> {
                 tcx.region_maps.node_extent(block_id)
             }
             LpDowncast(ref base, _) |
-            LpExtend(ref base, _, _) => base.kill_scope(tcx),
+            LpExtend(ref base, ..) => base.kill_scope(tcx),
         }
     }
 
@@ -464,7 +464,7 @@ impl<'a, 'tcx> LoanPath<'tcx> {
     fn depth(&self) -> usize {
         match self.kind {
             LpExtend(ref base, _, LpDeref(_)) => base.depth(),
-            LpExtend(ref base, _, LpInterior(_, _)) => base.depth() + 1,
+            LpExtend(ref base, _, LpInterior(..)) => base.depth() + 1,
             _ => 0,
         }
     }
@@ -477,8 +477,6 @@ impl<'a, 'tcx> LoanPath<'tcx> {
                     base.common(&base2).map(|x| {
                         let xd = x.depth();
                         if base.depth() == xd && base2.depth() == xd {
-                            assert_eq!(base.ty, base2.ty);
-                            assert_eq!(self.ty, other.ty);
                             LoanPath {
                                 kind: LpExtend(Rc::new(x), a, LpInterior(opt_variant_id, id)),
                                 ty: self.ty,
@@ -495,7 +493,6 @@ impl<'a, 'tcx> LoanPath<'tcx> {
             (_, &LpExtend(ref other, _, LpDeref(_))) => self.common(&other),
             (&LpVar(id), &LpVar(id2)) => {
                 if id == id2 {
-                    assert_eq!(self.ty, other.ty);
                     Some(LoanPath { kind: LpVar(id), ty: self.ty })
                 } else {
                     None
@@ -503,7 +500,6 @@ impl<'a, 'tcx> LoanPath<'tcx> {
             }
             (&LpUpvar(id), &LpUpvar(id2)) => {
                 if id == id2 {
-                    assert_eq!(self.ty, other.ty);
                     Some(LoanPath { kind: LpUpvar(id), ty: self.ty })
                 } else {
                     None
@@ -715,7 +711,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
             move_data::Captured =>
                 (match self.tcx.map.expect_expr(the_move.id).node {
-                    hir::ExprClosure(_, _, _, fn_decl_span) => fn_decl_span,
+                    hir::ExprClosure(.., fn_decl_span) => fn_decl_span,
                     ref r => bug!("Captured({}) maps to non-closure: {:?}",
                                   the_move.id, r),
                 }, " (into closure)"),
@@ -1028,6 +1024,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             err_out_of_scope(super_scope, sub_scope, cause) => {
+                let (value_kind, value_msg) = match err.cmt.cat {
+                    mc::Categorization::Rvalue(_) =>
+                        ("temporary value", "temporary value created here"),
+                    _ =>
+                        ("borrowed value", "does not live long enough")
+                };
                 match cause {
                     euv::ClosureCapture(s) => {
                         // The primary span starts out as the closure creation point.
@@ -1038,13 +1040,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             Some(primary) => {
                                 db.span = MultiSpan::from_span(s);
                                 db.span_label(primary, &format!("capture occurs here"));
-                                db.span_label(s, &format!("does not live long enough"));
+                                db.span_label(s, &value_msg);
                             }
                             None => ()
                         }
                     }
                     _ => {
-                        db.span_label(error_span, &format!("does not live long enough"));
+                        db.span_label(error_span, &value_msg);
                     }
                 }
 
@@ -1053,14 +1055,15 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 match (sub_span, super_span) {
                     (Some(s1), Some(s2)) if s1 == s2 => {
-                        db.span_label(s1, &"borrowed value dropped before borrower");
+                        db.span_label(s1, &format!("{} dropped before borrower", value_kind));
                         db.note("values in a scope are dropped in the opposite order \
                                 they are created");
                     }
                     _ => {
                         match sub_span {
                             Some(s) => {
-                                db.span_label(s, &"borrowed value must be valid until here");
+                                db.span_label(s, &format!("{} needs to live until here",
+                                                          value_kind));
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
@@ -1072,7 +1075,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         }
                         match super_span {
                             Some(s) => {
-                                db.span_label(s, &"borrowed value only valid until here");
+                                db.span_label(s, &format!("{} only lives until here", value_kind));
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
@@ -1085,9 +1088,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }
                 }
 
-                if let Some(span) = statement_scope_span(self.tcx, super_scope) {
-                    db.span_help(span,
-                                 "consider using a `let` binding to increase its lifetime");
+                if let Some(_) = statement_scope_span(self.tcx, super_scope) {
+                    db.note("consider using a `let` binding to increase its lifetime");
                 }
             }
 
@@ -1129,7 +1131,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push_str(&self.tcx.item_path_str(variant_def_id));
                 out.push(')');
             }
-
 
             LpExtend(ref lp_base, _, LpInterior(_, InteriorField(fname))) => {
                 self.append_autoderefd_loan_path_to_string(&lp_base, out);
@@ -1176,7 +1177,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push(')');
             }
 
-            LpVar(..) | LpUpvar(..) | LpExtend(_, _, LpInterior(..)) => {
+            LpVar(..) | LpUpvar(..) | LpExtend(.., LpInterior(..)) => {
                 self.append_loan_path_to_string(loan_path, out)
             }
         }

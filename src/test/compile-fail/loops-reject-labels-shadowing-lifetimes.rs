@@ -16,9 +16,10 @@
 #![allow(dead_code, unused_variables)]
 
 fn foo() {
-    fn foo<'a>() { //~ NOTE shadowed lifetime `'a` declared here
+    fn foo<'a>() { //~ NOTE first declared here
         'a: loop { break 'a; }
         //~^ WARN label name `'a` shadows a lifetime name that is already in scope
+        //~| NOTE lifetime 'a already in scope
     }
 
     struct Struct<'b, 'c> { _f: &'b i8, _g: &'c i8 }
@@ -40,76 +41,87 @@ fn foo() {
         }
     }
 
-    impl<'bad, 'c> Struct<'bad, 'c> { //~ NOTE shadowed lifetime `'bad` declared here
+    impl<'bad, 'c> Struct<'bad, 'c> { //~ NOTE first declared here
         fn meth_bad(&self) {
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
 
-    impl<'b, 'bad> Struct<'b, 'bad> { //~ NOTE shadowed lifetime `'bad` declared here
+    impl<'b, 'bad> Struct<'b, 'bad> { //~ NOTE first declared here
         fn meth_bad2(&self) {
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
 
     impl<'b, 'c> Struct<'b, 'c> {
-        fn meth_bad3<'bad>(x: &'bad i8) { //~ NOTE shadowed lifetime `'bad` declared here
+        fn meth_bad3<'bad>(x: &'bad i8) { //~ NOTE first declared here
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
 
         fn meth_bad4<'a,'bad>(x: &'a i8, y: &'bad i8) {
-            //~^ NOTE shadowed lifetime `'bad` declared here
+            //~^ NOTE first declared here
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
 
-    impl <'bad, 'e> Enum<'bad, 'e> { //~ NOTE shadowed lifetime `'bad` declared here
+    impl <'bad, 'e> Enum<'bad, 'e> { //~ NOTE first declared here
         fn meth_bad(&self) {
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
-    impl <'d, 'bad> Enum<'d, 'bad> { //~ NOTE shadowed lifetime `'bad` declared here
+    impl <'d, 'bad> Enum<'d, 'bad> { //~ NOTE first declared here
         fn meth_bad2(&self) {
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
     impl <'d, 'e> Enum<'d, 'e> {
-        fn meth_bad3<'bad>(x: &'bad i8) { //~ NOTE shadowed lifetime `'bad` declared here
+        fn meth_bad3<'bad>(x: &'bad i8) { //~ NOTE first declared here
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
 
-        fn meth_bad4<'a,'bad>(x: &'bad i8) { //~ NOTE shadowed lifetime `'bad` declared here
+        fn meth_bad4<'a,'bad>(x: &'bad i8) { //~ NOTE first declared here
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
 
-    trait HasDefaultMethod1<'bad> { //~ NOTE shadowed lifetime `'bad` declared here
+    trait HasDefaultMethod1<'bad> { //~ NOTE first declared here
         fn meth_okay() {
             'c: loop { break 'c; }
         }
         fn meth_bad(&self) {
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
-    trait HasDefaultMethod2<'a,'bad> { //~ NOTE shadowed lifetime `'bad` declared here
+    trait HasDefaultMethod2<'a,'bad> { //~ NOTE first declared here
         fn meth_bad(&self) {
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
     trait HasDefaultMethod3<'a,'b> {
-        fn meth_bad<'bad>(&self) { //~ NOTE shadowed lifetime `'bad` declared here
+        fn meth_bad<'bad>(&self) { //~ NOTE first declared here
             'bad: loop { break 'bad; }
             //~^ WARN label name `'bad` shadows a lifetime name that is already in scope
+            //~| NOTE lifetime 'bad already in scope
         }
     }
 }

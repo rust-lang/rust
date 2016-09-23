@@ -103,18 +103,13 @@ pub enum DepNode<D: Clone + Debug> {
     // table in the tcx (or elsewhere) maps to one of these
     // nodes. Often we map multiple tables to the same node if there
     // is no point in distinguishing them (e.g., both the type and
-    // predicates for an item wind up in `ItemSignature`). Other
-    // times, such as `ImplItems` vs `TraitItemDefIds`, tables which
-    // might be mergable are kept distinct because the sets of def-ids
-    // to which they apply are disjoint, and hence we might as well
-    // have distinct labels for easier debugging.
+    // predicates for an item wind up in `ItemSignature`).
     ImplOrTraitItems(D),
     ItemSignature(D),
     FieldTy(D),
     SizedConstraint(D),
-    TraitItemDefIds(D),
+    ImplOrTraitItemDefIds(D),
     InherentImpls(D),
-    ImplItems(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -132,7 +127,7 @@ pub enum DepNode<D: Clone + Debug> {
     // which would yield an overly conservative dep-graph.
     TraitItems(D),
     ReprHints(D),
-    TraitSelect(D, Vec<D>),
+    TraitSelect(Vec<D>),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -162,9 +157,8 @@ impl<D: Clone + Debug> DepNode<D> {
             ImplOrTraitItems,
             ItemSignature,
             FieldTy,
-            TraitItemDefIds,
+            ImplOrTraitItemDefIds,
             InherentImpls,
-            ImplItems,
             TraitImpls,
             ReprHints,
         }
@@ -231,16 +225,14 @@ impl<D: Clone + Debug> DepNode<D> {
             ItemSignature(ref d) => op(d).map(ItemSignature),
             FieldTy(ref d) => op(d).map(FieldTy),
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
-            TraitItemDefIds(ref d) => op(d).map(TraitItemDefIds),
+            ImplOrTraitItemDefIds(ref d) => op(d).map(ImplOrTraitItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
-            ImplItems(ref d) => op(d).map(ImplItems),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
-            TraitSelect(ref d, ref type_ds) => {
-                let d = try_opt!(op(d));
+            TraitSelect(ref type_ds) => {
                 let type_ds = try_opt!(type_ds.iter().map(|d| op(d)).collect());
-                Some(TraitSelect(d, type_ds))
+                Some(TraitSelect(type_ds))
             }
         }
     }

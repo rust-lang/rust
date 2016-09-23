@@ -19,7 +19,7 @@
 mod inline {
 
     // Important: This function should show up in all codegen units where it is inlined
-    //~ TRANS_ITEM fn local_inlining::inline[0]::inlined_function[0] @@ local_inlining-inline[External] local_inlining-user1[Available] local_inlining-user2[Available]
+    //~ TRANS_ITEM fn local_inlining::inline[0]::inlined_function[0] @@ local_inlining-user1[Internal] local_inlining-user2[Internal]
     #[inline(always)]
     pub fn inlined_function()
     {

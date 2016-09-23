@@ -24,12 +24,14 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
+#![feature(borrow_state)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(enumset)]
 #![feature(libc)]
 #![feature(nonzero)]
@@ -48,7 +50,6 @@ extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;
-extern crate rbml;
 extern crate rustc_llvm as llvm;
 extern crate rustc_back;
 extern crate rustc_data_structures;

@@ -15,6 +15,6 @@ fn main() {
     });
     //~^^ ERROR this function takes 2 parameters but 1 parameter was supplied
     //~| NOTE the following parameter types were expected
-    //~| NOTE expected 2 parameters
+    //~| NOTE _, _
     // the first error is, um, non-ideal.
 }

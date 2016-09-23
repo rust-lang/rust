@@ -200,7 +200,7 @@ impl OpenOptions {
         const ERROR_INVALID_PARAMETER: i32 = 87;
 
         match (self.read, self.write, self.append, self.access_mode) {
-            (_, _, _, Some(mode)) => Ok(mode),
+            (.., Some(mode)) => Ok(mode),
             (true,  false, false, None) => Ok(c::GENERIC_READ),
             (false, true,  false, None) => Ok(c::GENERIC_WRITE),
             (true,  true,  false, None) => Ok(c::GENERIC_READ | c::GENERIC_WRITE),

@@ -28,6 +28,7 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(question_mark)]
+#![feature(specialization)]
 
 use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
@@ -96,24 +97,6 @@ impl Span {
         self.lo == other.lo && self.hi == other.hi
     }
 
-    /// Returns `Some(span)`, a union of `self` and `other`, on overlap.
-    pub fn merge(self, other: Span) -> Option<Span> {
-        if self.expn_id != other.expn_id {
-            return None;
-        }
-
-        if (self.lo <= other.lo && self.hi > other.lo) ||
-           (self.lo >= other.lo && self.lo < other.hi) {
-            Some(Span {
-                lo: cmp::min(self.lo, other.lo),
-                hi: cmp::max(self.hi, other.hi),
-                expn_id: self.expn_id,
-            })
-        } else {
-            None
-        }
-    }
-
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`
     pub fn trim_start(self, other: Span) -> Option<Span> {
         if self.hi > other.hi {
@@ -137,8 +120,8 @@ pub struct SpanLabel {
     pub label: Option<String>,
 }
 
-impl Encodable for Span {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl serialize::UseSpecializedEncodable for Span {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("Span", 2, |s| {
             s.emit_struct_field("lo", 0, |s| {
                 self.lo.encode(s)
@@ -151,17 +134,11 @@ impl Encodable for Span {
     }
 }
 
-impl Decodable for Span {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
+impl serialize::UseSpecializedDecodable for Span {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
         d.read_struct("Span", 2, |d| {
-            let lo = d.read_struct_field("lo", 0, |d| {
-                BytePos::decode(d)
-            })?;
-
-            let hi = d.read_struct_field("hi", 1, |d| {
-                BytePos::decode(d)
-            })?;
-
+            let lo = d.read_struct_field("lo", 0, Decodable::decode)?;
+            let hi = d.read_struct_field("hi", 1, Decodable::decode)?;
             Ok(mk_sp(lo, hi))
         })
     }
@@ -507,6 +484,39 @@ impl FileMap {
     pub fn count_lines(&self) -> usize {
         self.lines.borrow().len()
     }
+
+    /// Find the line containing the given position. The return value is the
+    /// index into the `lines` array of this FileMap, not the 1-based line
+    /// number. If the filemap is empty or the position is located before the
+    /// first line, None is returned.
+    pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
+        let lines = self.lines.borrow();
+        if lines.len() == 0 {
+            return None;
+        }
+
+        let line_index = lookup_line(&lines[..], pos);
+        assert!(line_index < lines.len() as isize);
+        if line_index >= 0 {
+            Some(line_index as usize)
+        } else {
+            None
+        }
+    }
+
+    pub fn line_bounds(&self, line_index: usize) -> (BytePos, BytePos) {
+        if self.start_pos == self.end_pos {
+            return (self.start_pos, self.end_pos);
+        }
+
+        let lines = self.lines.borrow();
+        assert!(line_index < lines.len());
+        if line_index == (lines.len() - 1) {
+            (lines[line_index], self.end_pos)
+        } else {
+            (lines[line_index], lines[line_index + 1])
+        }
+    }
 }
 
 // _____________________________________________________________________________
@@ -688,3 +698,34 @@ pub struct MalformedCodemapPositions {
     pub end_pos: BytePos
 }
 
+// Given a slice of line start positions and a position, returns the index of
+// the line the position is on. Returns -1 if the position is located before
+// the first line.
+fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
+    match lines.binary_search(&pos) {
+        Ok(line) => line as isize,
+        Err(line) => line as isize - 1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{lookup_line, BytePos};
+
+    #[test]
+    fn test_lookup_line() {
+
+        let lines = &[BytePos(3), BytePos(17), BytePos(28)];
+
+        assert_eq!(lookup_line(lines, BytePos(0)), -1);
+        assert_eq!(lookup_line(lines, BytePos(3)),  0);
+        assert_eq!(lookup_line(lines, BytePos(4)),  0);
+
+        assert_eq!(lookup_line(lines, BytePos(16)), 0);
+        assert_eq!(lookup_line(lines, BytePos(17)), 1);
+        assert_eq!(lookup_line(lines, BytePos(18)), 1);
+
+        assert_eq!(lookup_line(lines, BytePos(28)), 2);
+        assert_eq!(lookup_line(lines, BytePos(29)), 2);
+    }
+}

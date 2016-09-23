@@ -12,8 +12,12 @@ use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
-    // NOTE(zEC12) matches C toolchain
-    base.cpu = "zEC12".to_string();
+    // z10 is the oldest CPU supported by LLVM
+    base.cpu = "z10".to_string();
+    // FIXME: The data_layout string below and the ABI implementation in
+    // cabi_s390x.rs are for now hard-coded to assume the no-vector ABI.
+    // Pass the -vector feature string to LLVM to respect this assumption.
+    base.features = "-vector".to_string();
     base.max_atomic_width = 64;
 
     Ok(Target {

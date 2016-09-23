@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::cstore::LOCAL_CRATE;
-use hir::def_id::{DefId, DefIndex};
+use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map::def_collector::DefCollector;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::fmt::Write;
 use std::hash::{Hash, Hasher, SipHasher};
 use syntax::{ast, visit};
-use syntax::parse::token::InternedString;
+use syntax::parse::token::{self, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
 
@@ -70,7 +69,7 @@ pub struct DefPath {
     pub data: Vec<DisambiguatedDefPathData>,
 
     /// what krate root is this path relative to?
-    pub krate: ast::CrateNum,
+    pub krate: CrateNum,
 }
 
 impl DefPath {
@@ -78,7 +77,7 @@ impl DefPath {
         self.krate == LOCAL_CRATE
     }
 
-    pub fn make<FN>(start_krate: ast::CrateNum,
+    pub fn make<FN>(start_krate: CrateNum,
                     start_index: DefIndex,
                     mut get_key: FN) -> DefPath
         where FN: FnMut(DefIndex) -> DefKey
@@ -116,11 +115,7 @@ impl DefPath {
     pub fn to_string(&self, tcx: TyCtxt) -> String {
         let mut s = String::with_capacity(self.data.len() * 16);
 
-        if self.krate == LOCAL_CRATE {
-            s.push_str(&tcx.crate_name(self.krate));
-        } else {
-            s.push_str(&tcx.sess.cstore.original_crate_name(self.krate));
-        }
+        s.push_str(&tcx.original_crate_name(self.krate));
         s.push_str("/");
         s.push_str(&tcx.crate_disambiguator(self.krate));
 
@@ -142,7 +137,7 @@ impl DefPath {
     }
 
     pub fn deterministic_hash_to<H: Hasher>(&self, tcx: TyCtxt, state: &mut H) {
-        tcx.crate_name(self.krate).hash(state);
+        tcx.original_crate_name(self.krate).hash(state);
         tcx.crate_disambiguator(self.krate).hash(state);
         self.data.hash(state);
     }
@@ -327,6 +322,30 @@ impl Definitions {
 }
 
 impl DefPathData {
+    pub fn get_opt_name(&self) -> Option<ast::Name> {
+        use self::DefPathData::*;
+        match *self {
+            TypeNs(ref name) |
+            ValueNs(ref name) |
+            Module(ref name) |
+            MacroDef(ref name) |
+            TypeParam(ref name) |
+            LifetimeDef(ref name) |
+            EnumVariant(ref name) |
+            Binding(ref name) |
+            Field(ref name) => Some(token::intern(name)),
+
+            Impl |
+            CrateRoot |
+            InlinedRoot(_) |
+            Misc |
+            ClosureExpr |
+            StructCtor |
+            Initializer |
+            ImplTrait => None
+        }
+    }
+
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         match *self {

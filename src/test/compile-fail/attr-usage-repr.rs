@@ -11,7 +11,7 @@
 #![allow(dead_code)]
 #![feature(repr_simd)]
 
-#[repr(C)] //~ ERROR: attribute should be applied to struct or enum
+#[repr(C)] //~ ERROR: attribute should be applied to struct, enum or union
 fn f() {}
 
 #[repr(C)]

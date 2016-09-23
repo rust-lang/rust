@@ -80,7 +80,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
         debug!("visit_item item={}", tcx.map.node_to_string(item.id));
 
         match item.node {
-            hir::ItemEnum(..) | hir::ItemStruct(..) => {
+            hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemUnion(..) => {
                 let scheme = tcx.lookup_item_type(did);
 
                 // Not entirely obvious: constraints on structs/enums do not
@@ -185,6 +185,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                         hir::ItemTy(..) |
                         hir::ItemEnum(..) |
                         hir::ItemStruct(..) |
+                        hir::ItemUnion(..) |
                         hir::ItemTrait(..)   => is_inferred = true,
                         hir::ItemFn(..)      => is_inferred = false,
                         _                    => cannot_happen!(),
@@ -343,8 +344,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyEnum(def, substs) |
-            ty::TyStruct(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 let item_type = self.tcx().lookup_item_type(def.did);
 
                 // This edge is actually implied by the call to
@@ -413,7 +413,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyFnDef(_, _, &ty::BareFnTy { ref sig, .. }) |
+            ty::TyFnDef(.., &ty::BareFnTy { ref sig, .. }) |
             ty::TyFnPtr(&ty::BareFnTy { ref sig, .. }) => {
                 self.add_constraints_from_sig(generics, sig, variance);
             }

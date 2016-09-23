@@ -5,10 +5,10 @@ error: `x` does not live long enough
    |                                    ^
    |                                    |
    |                                    does not live long enough
-   |                                    borrowed value only valid until here
+   |                                    borrowed value only lives until here
 ...
 23 | }
-   | - borrowed value must be valid until here
+   | - borrowed value needs to live until here
 
 error: aborting due to previous error
 

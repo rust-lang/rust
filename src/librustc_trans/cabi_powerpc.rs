@@ -28,11 +28,7 @@ fn align(off: usize, ty: Type) -> usize {
 
 fn ty_align(ty: Type) -> usize {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as usize) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as usize) + 7) / 8,
         Pointer => 4,
         Float => 4,
         Double => 8,
@@ -54,11 +50,7 @@ fn ty_align(ty: Type) -> usize {
 
 fn ty_size(ty: Type) -> usize {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as usize) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as usize) + 7) / 8,
         Pointer => 4,
         Float => 4,
         Double => 8,

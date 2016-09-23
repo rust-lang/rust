@@ -13,7 +13,7 @@
 
 macro_rules! foo (
     () => (
-        #[derive_Clone] //~ WARN attributes of the form
+        #[derive_Clone] //~ ERROR attributes of the form
         struct T;
     );
 );
@@ -25,9 +25,8 @@ macro_rules! bar (
 foo!();
 
 bar!(
-    #[derive_Clone] //~ WARN attributes of the form
+    #[derive_Clone] //~ ERROR attributes of the form
     struct S;
 );
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+fn main() {}

@@ -112,7 +112,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                           ref trait_ref, ref self_ty, _) => {
                 self.check_impl(item, self_ty, trait_ref);
             }
-            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, Some(_), _, _) => {
+            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, Some(_), ..) => {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = ccx.tcx.impl_trait_ref(ccx.tcx.map.local_def_id(item.id)).unwrap();
@@ -126,7 +126,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                     }
                 }
             }
-            hir::ItemFn(_, _, _, _, _, ref body) => {
+            hir::ItemFn(.., ref body) => {
                 self.check_item_fn(item, body);
             }
             hir::ItemStatic(..) => {
@@ -136,20 +136,27 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
                 self.check_item_type(item);
             }
             hir::ItemStruct(ref struct_def, ref ast_generics) => {
-                self.check_type_defn(item, |fcx| {
+                self.check_type_defn(item, false, |fcx| {
+                    vec![fcx.struct_variant(struct_def)]
+                });
+
+                self.check_variances_for_type_defn(item, ast_generics);
+            }
+            hir::ItemUnion(ref struct_def, ref ast_generics) => {
+                self.check_type_defn(item, true, |fcx| {
                     vec![fcx.struct_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
             hir::ItemEnum(ref enum_def, ref ast_generics) => {
-                self.check_type_defn(item, |fcx| {
+                self.check_type_defn(item, false, |fcx| {
                     fcx.enum_variants(enum_def)
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
-            hir::ItemTrait(_, _, _, ref items) => {
+            hir::ItemTrait(.., ref items) => {
                 self.check_trait(item, items);
             }
             _ => {}
@@ -216,24 +223,22 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-    fn check_type_defn<F>(&mut self, item: &hir::Item, mut lookup_fields: F) where
-        F: for<'fcx, 'tcx> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx>)
-                                 -> Vec<AdtVariant<'tcx>>
+    fn check_type_defn<F>(&mut self, item: &hir::Item, all_sized: bool, mut lookup_fields: F)
+        where F: for<'fcx, 'tcx> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx>) -> Vec<AdtVariant<'tcx>>
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let variants = lookup_fields(fcx);
 
             for variant in &variants {
                 // For DST, all intermediate types must be sized.
-                if let Some((_, fields)) = variant.fields.split_last() {
-                    for field in fields {
-                        fcx.register_builtin_bound(
-                            field.ty,
-                            ty::BoundSized,
-                            traits::ObligationCause::new(field.span,
-                                                         fcx.body_id,
-                                                         traits::FieldSized));
-                    }
+                let unsized_len = if all_sized || variant.fields.is_empty() { 0 } else { 1 };
+                for field in &variant.fields[..variant.fields.len() - unsized_len] {
+                    fcx.register_builtin_bound(
+                        field.ty,
+                        ty::BoundSized,
+                        traits::ObligationCause::new(field.span,
+                                                     fcx.body_id,
+                                                     traits::FieldSized));
                 }
 
                 // All field types must be well-formed.
@@ -251,6 +256,76 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         });
     }
 
+    fn check_auto_trait(&mut self,
+                        trait_def_id: DefId,
+                        items: &[hir::TraitItem],
+                        span: Span)
+    {
+        // We want to ensure:
+        //
+        // 1) that there are no items contained within
+        // the trait defintion
+        //
+        // 2) that the definition doesn't violate the no-super trait rule
+        // for auto traits.
+        //
+        // 3) that the trait definition does not have any type parameters
+
+        let predicates = self.tcx().lookup_predicates(trait_def_id);
+
+        // We must exclude the Self : Trait predicate contained by all
+        // traits.
+        let has_predicates =
+            predicates.predicates.iter().any(|predicate| {
+                match predicate {
+                    &ty::Predicate::Trait(ref poly_trait_ref) => {
+                        let self_ty = poly_trait_ref.0.self_ty();
+                        !(self_ty.is_self() && poly_trait_ref.def_id() == trait_def_id)
+                    },
+                    _ => true,
+                }
+            });
+
+        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
+
+        let has_ty_params =
+            trait_def.generics
+                      .types
+                      .len() > 1;
+
+        // We use an if-else here, since the generics will also trigger
+        // an extraneous error message when we find predicates like
+        // `T : Sized` for a trait like: `trait Magic<T>`.
+        //
+        // We also put the check on the number of items here,
+        // as it seems confusing to report an error about
+        // extraneous predicates created by things like
+        // an associated type inside the trait.
+        let mut err = None;
+        if !items.is_empty() {
+            error_380(self.ccx, span);
+        } else if has_ty_params {
+            err = Some(struct_span_err!(self.tcx().sess, span, E0567,
+                "traits with auto impls (`e.g. impl \
+                    Trait for ..`) can not have type parameters"));
+        } else if has_predicates {
+            err = Some(struct_span_err!(self.tcx().sess, span, E0568,
+                "traits with auto impls (`e.g. impl \
+                    Trait for ..`) cannot have predicates"));
+        }
+
+        // Finally if either of the above conditions apply we should add a note
+        // indicating that this error is the result of a recent soundness fix.
+        match err {
+            None => {},
+            Some(mut e) => {
+                e.note("the new auto trait rules are the result of a \
+                          recent soundness fix; see #29859 for more details");
+                e.emit();
+            }
+        }
+    }
+
     fn check_trait(&mut self,
                    item: &hir::Item,
                    items: &[hir::TraitItem])
@@ -258,9 +333,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let trait_def_id = self.tcx().map.local_def_id(item.id);
 
         if self.tcx().trait_has_default_impl(trait_def_id) {
-            if !items.is_empty() {
-                error_380(self.ccx, item.span);
-            }
+            self.check_auto_trait(trait_def_id, items, item.span);
         }
 
         self.for_item(item).with_fcx(|fcx, this| {
@@ -281,7 +354,7 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
             let type_scheme = fcx.tcx.lookup_item_type(fcx.tcx.map.local_def_id(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span, free_substs, &type_scheme.ty);
             let bare_fn_ty = match item_ty.sty {
-                ty::TyFnDef(_, _, ref bare_fn_ty) => bare_fn_ty,
+                ty::TyFnDef(.., ref bare_fn_ty) => bare_fn_ty,
                 _ => {
                     span_bug!(item.span, "Fn item without fn type");
                 }
@@ -457,41 +530,29 @@ impl<'ccx, 'gcx> CheckTypeWellFormedVisitor<'ccx, 'gcx> {
         let variances = self.tcx().item_variances(item_def_id);
 
         let mut constrained_parameters: FnvHashSet<_> =
-            variances[ast_generics.lifetimes.len()..]
-                     .iter().enumerate()
+            variances.iter().enumerate()
                      .filter(|&(_, &variance)| variance != ty::Bivariant)
-                     .map(|(index, _)| self.param_ty(ast_generics, index))
-                     .map(|p| Parameter::Type(p))
+                     .map(|(index, _)| Parameter(index as u32))
                      .collect();
 
         identify_constrained_type_params(ty_predicates.predicates.as_slice(),
                                          None,
                                          &mut constrained_parameters);
 
-        for (index, &variance) in variances.iter().enumerate() {
-            let (span, name) = if index < ast_generics.lifetimes.len() {
-                if variance != ty::Bivariant {
-                    continue;
-                }
+        for (index, _) in variances.iter().enumerate() {
+            if constrained_parameters.contains(&Parameter(index as u32)) {
+                continue;
+            }
 
+            let (span, name) = if index < ast_generics.lifetimes.len() {
                 (ast_generics.lifetimes[index].lifetime.span,
                  ast_generics.lifetimes[index].lifetime.name)
             } else {
                 let index = index - ast_generics.lifetimes.len();
-                let param_ty = self.param_ty(ast_generics, index);
-                if constrained_parameters.contains(&Parameter::Type(param_ty)) {
-                    continue;
-                }
-                (ast_generics.ty_params[index].span, param_ty.name)
+                (ast_generics.ty_params[index].span,
+                 ast_generics.ty_params[index].name)
             };
             self.report_bivariance(span, name);
-        }
-    }
-
-    fn param_ty(&self, ast_generics: &hir::Generics, index: usize) -> ty::ParamTy {
-        ty::ParamTy {
-            idx: index as u32,
-            name: ast_generics.ty_params[index].name
         }
     }
 
@@ -633,7 +694,7 @@ fn error_192(ccx: &CrateCtxt, span: Span) {
 
 fn error_380(ccx: &CrateCtxt, span: Span) {
     span_err!(ccx.tcx.sess, span, E0380,
-              "traits with default impls (`e.g. unsafe impl \
+              "traits with default impls (`e.g. impl \
                Trait for ..`) must have no methods or associated items")
 }
 

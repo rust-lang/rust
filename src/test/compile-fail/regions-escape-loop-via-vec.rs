@@ -24,8 +24,8 @@ fn broken() {
         x += 1; //~ ERROR cannot assign
         //~^ NOTE assignment to borrowed `x` occurs here
     }
-    //~^ NOTE borrowed value only valid until here
+    //~^ NOTE borrowed value only lives until here
 }
-//~^ NOTE borrowed value must be valid until here
+//~^ NOTE borrowed value needs to live until here
 
 fn main() { }

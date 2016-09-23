@@ -160,7 +160,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 &format!("symbol `{}` is already defined", symbol_name))
         });
 
-        unsafe { llvm::LLVMSetLinkage(g, linkage) };
+        unsafe { llvm::LLVMRustSetLinkage(g, linkage) };
 
         let instance = Instance::mono(ccx.shared(), def_id);
         ccx.instances().borrow_mut().insert(instance, g);
@@ -176,14 +176,14 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         let item_ty = ccx.tcx().lookup_item_type(instance.def).ty;
         let item_ty = ccx.tcx().erase_regions(&item_ty);
-        let mono_ty = monomorphize::apply_param_substs(ccx.tcx(), instance.substs, &item_ty);
+        let mono_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &item_ty);
 
         let attrs = ccx.tcx().get_attrs(instance.def);
         let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
-        unsafe { llvm::LLVMSetLinkage(lldecl, linkage) };
+        unsafe { llvm::LLVMRustSetLinkage(lldecl, linkage) };
         base::set_link_section(ccx, lldecl, &attrs);
-        if linkage == llvm::LinkOnceODRLinkage ||
-            linkage == llvm::WeakODRLinkage {
+        if linkage == llvm::Linkage::LinkOnceODRLinkage ||
+            linkage == llvm::Linkage::WeakODRLinkage {
             llvm::SetUniqueComdat(ccx.llmod(), lldecl);
         }
 
@@ -214,9 +214,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         assert!(declare::get_defined_value(ccx, symbol_name).is_none());
         let llfn = declare::declare_cfn(ccx, symbol_name, llfnty);
-        unsafe { llvm::LLVMSetLinkage(llfn, linkage) };
-        if linkage == llvm::LinkOnceODRLinkage ||
-           linkage == llvm::WeakODRLinkage {
+        unsafe { llvm::LLVMRustSetLinkage(llfn, linkage) };
+        if linkage == llvm::Linkage::LinkOnceODRLinkage ||
+           linkage == llvm::Linkage::WeakODRLinkage {
             llvm::SetUniqueComdat(ccx.llmod(), llfn);
         }
         attributes::set_frame_pointer_elimination(ccx, llfn);
@@ -241,19 +241,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn requests_inline(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
-        match *self {
-            TransItem::Fn(ref instance) => {
-                instance.substs.types().next().is_some() || {
-                    let attributes = tcx.get_attrs(instance.def);
-                    attr::requests_inline(&attributes[..])
-                }
-            }
-            TransItem::DropGlue(..) => true,
-            TransItem::Static(..)   => false,
-        }
-    }
-
     pub fn is_from_extern_crate(&self) -> bool {
         match *self {
             TransItem::Fn(ref instance) => !instance.def.is_local(),
@@ -262,10 +249,18 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn is_instantiated_only_on_demand(&self) -> bool {
+    /// True if the translation item should only be translated to LLVM IR if
+    /// it is referenced somewhere (like inline functions, for example).
+    pub fn is_instantiated_only_on_demand(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        if self.explicit_linkage(tcx).is_some() {
+            return false;
+        }
+
         match *self {
             TransItem::Fn(ref instance) => {
-                !instance.def.is_local() || instance.substs.types().next().is_some()
+                !instance.def.is_local() ||
+                instance.substs.types().next().is_some() ||
+                attr::requests_inline(&tcx.get_attrs(instance.def)[..])
             }
             TransItem::DropGlue(..) => true,
             TransItem::Static(..)   => false,
@@ -280,6 +275,18 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::DropGlue(..) |
             TransItem::Static(..)   => false,
         }
+    }
+
+    /// Returns true if there has to be a local copy of this TransItem in every
+    /// codegen unit that references it (as with inlined functions, for example)
+    pub fn needs_local_copy(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        // Currently everything that is instantiated only on demand is done so
+        // with "internal" linkage, so we need a copy to be present in every
+        // codegen unit.
+        // This is coincidental: We could also instantiate something only if it
+        // is referenced (e.g. a regular, private function) but place it in its
+        // own codegen unit with "external" linkage.
+        self.is_instantiated_only_on_demand(tcx)
     }
 
     pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
@@ -396,8 +403,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyUint(ast::UintTy::U64)  => output.push_str("u64"),
         ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
         ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
-        ty::TyStruct(adt_def, substs) |
-        ty::TyEnum(adt_def, substs) => {
+        ty::TyAdt(adt_def, substs) => {
             push_item_name(tcx, adt_def.did, output);
             push_type_params(tcx, substs, &[], output);
         },
@@ -453,7 +459,7 @@ pub fn push_unique_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              &trait_data.projection_bounds,
                              output);
         },
-        ty::TyFnDef(_, _, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+        ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
         ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");

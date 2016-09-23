@@ -10,9 +10,15 @@
 
 fn f(a: u16, b: &str) {}
 
+fn f2(a: u16) {}
+
 fn main() {
     f(0);
     //~^ ERROR E0061
-    //~| NOTE expected 2 parameters
-    //~| NOTE the following parameter types were expected
+    //~| NOTE the following parameter types were expected:
+    //~| NOTE u16, &str
+
+    f2();
+    //~^ ERROR E0061
+    //~| NOTE the following parameter type was expected: u16
 }

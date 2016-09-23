@@ -20,6 +20,7 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
@@ -420,7 +421,7 @@ fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> 
     let mut pm = plugins::PluginManager::new(PathBuf::from(path));
     for pass in &passes {
         let plugin = match PASSES.iter()
-                                 .position(|&(p, _, _)| {
+                                 .position(|&(p, ..)| {
                                      p == *pass
                                  }) {
             Some(i) => PASSES[i].1,

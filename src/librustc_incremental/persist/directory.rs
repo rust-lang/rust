@@ -15,13 +15,11 @@
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map::DefPath;
-use rustc::hir::def_id::DefId;
-use rustc::middle::cstore::LOCAL_CRATE;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::DefIdMap;
 use std::fmt::{self, Debug};
 use std::iter::once;
-use syntax::ast;
 use std::collections::HashMap;
 
 /// Index into the DefIdDirectory
@@ -44,7 +42,7 @@ pub struct DefIdDirectory {
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct CrateInfo {
-    krate: ast::CrateNum,
+    krate: CrateNum,
     name: String,
     disambiguator: String,
 }
@@ -54,7 +52,7 @@ impl DefIdDirectory {
         DefIdDirectory { paths: vec![], krates: krates }
     }
 
-    fn max_current_crate(&self, tcx: TyCtxt) -> ast::CrateNum {
+    fn max_current_crate(&self, tcx: TyCtxt) -> CrateNum {
         tcx.sess.cstore.crates()
                        .into_iter()
                        .max()
@@ -73,8 +71,8 @@ impl DefIdDirectory {
 
     pub fn krate_still_valid(&self,
                              tcx: TyCtxt,
-                             max_current_crate: ast::CrateNum,
-                             krate: ast::CrateNum) -> bool {
+                             max_current_crate: CrateNum,
+                             krate: CrateNum) -> bool {
         // Check that the crate-number still matches. For now, if it
         // doesn't, just return None. We could do better, such as
         // finding the new number.
@@ -82,7 +80,7 @@ impl DefIdDirectory {
         if krate > max_current_crate {
             false
         } else {
-            let old_info = &self.krates[krate as usize];
+            let old_info = &self.krates[krate.as_usize()];
             assert_eq!(old_info.krate, krate);
             let old_name: &str = &old_info.name;
             let old_disambiguator: &str = &old_info.disambiguator;
@@ -107,7 +105,7 @@ impl DefIdDirectory {
 
         let ids = self.paths.iter()
                             .map(|path| {
-                                let old_krate_id = path.krate as usize;
+                                let old_krate_id = path.krate.as_usize();
                                 assert!(old_krate_id < self.krates.len());
                                 let old_crate_info = &self.krates[old_krate_id];
                                 let old_crate_key = make_key(&old_crate_info.name,

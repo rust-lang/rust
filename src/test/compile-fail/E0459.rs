@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[link(kind = "dylib")] extern {} //~ ERROR E0459
+                                  //~| NOTE missing `name` argument
 
 fn main() {
 }

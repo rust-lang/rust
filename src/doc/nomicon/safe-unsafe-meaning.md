@@ -26,10 +26,6 @@ can therefore be trusted. You can use `unsafe` on a trait implementation
 to declare that the implementation of that trait has adhered to whatever
 contracts the trait's documentation requires.
 
-There is also the `#[unsafe_no_drop_flag]` attribute, which exists for
-historic reasons and is being phased out. See the section on [drop flags]
-for details.
-
 The standard library has a number of unsafe functions, including:
 
 * `slice::get_unchecked`, which performs unchecked indexing, allowing

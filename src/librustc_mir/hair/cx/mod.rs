@@ -53,8 +53,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             MirSource::Fn(id) => {
                 let fn_like = FnLikeNode::from_node(infcx.tcx.map.get(id));
                 match fn_like.map(|f| f.kind()) {
-                    Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => c,
-                    Some(FnKind::Method(_, m, _, _)) => m.constness,
+                    Some(FnKind::ItemFn(_, _, _, c, ..)) => c,
+                    Some(FnKind::Method(_, m, ..)) => m.constness,
                     _ => hir::Constness::NotConst
                 }
             }

@@ -16,7 +16,6 @@ use rustc::ty;
 use syntax::ast;
 use syntax_pos;
 use errors::DiagnosticBuilder;
-use rustc::hir;
 
 pub struct MoveErrorCollector<'tcx> {
     errors: Vec<MoveError<'tcx>>
@@ -117,9 +116,9 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                        move_from: mc::cmt<'tcx>)
                                        -> DiagnosticBuilder<'a> {
     match move_from.cat {
-        Categorization::Deref(_, _, mc::BorrowedPtr(..)) |
-        Categorization::Deref(_, _, mc::Implicit(..)) |
-        Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+        Categorization::Deref(.., mc::BorrowedPtr(..)) |
+        Categorization::Deref(.., mc::Implicit(..)) |
+        Categorization::Deref(.., mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             let mut err = struct_span_err!(bccx, move_from.span, E0507,
                              "cannot move out of {}",
@@ -131,25 +130,27 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             err
         }
 
-        Categorization::Interior(ref b, mc::InteriorElement(Kind::Index, _)) => {
-            let expr = bccx.tcx.map.expect_expr(move_from.id);
-            if let hir::ExprIndex(..) = expr.node {
-                let mut err = struct_span_err!(bccx, move_from.span, E0508,
-                                               "cannot move out of type `{}`, \
-                                               a non-copy fixed-size array",
-                                               b.ty);
-                err.span_label(move_from.span, &format!("cannot move out of here"));
-                err
-            } else {
-                span_bug!(move_from.span, "this path should not cause illegal move");
+        Categorization::Interior(ref b, mc::InteriorElement(ik, _)) => {
+            match (&b.ty.sty, ik) {
+                (&ty::TySlice(..), _) |
+                (_, Kind::Index) => {
+                    let mut err = struct_span_err!(bccx, move_from.span, E0508,
+                                                   "cannot move out of type `{}`, \
+                                                    a non-copy array",
+                                                   b.ty);
+                    err.span_label(move_from.span, &format!("cannot move out of here"));
+                    err
+                }
+                (_, Kind::Pattern) => {
+                    span_bug!(move_from.span, "this path should not cause illegal move");
+                }
             }
         }
 
         Categorization::Downcast(ref b, _) |
         Categorization::Interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
-                ty::TyStruct(def, _) |
-                ty::TyEnum(def, _) if def.has_dtor() => {
+                ty::TyAdt(def, _) if def.has_dtor() => {
                     let mut err = struct_span_err!(bccx, move_from.span, E0509,
                                                    "cannot move out of type `{}`, \
                                                    which implements the `Drop` trait",

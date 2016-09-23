@@ -882,34 +882,45 @@ impl Destination {
         match style {
             Style::FileNameStyle | Style::LineAndColumn => {}
             Style::LineNumber => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE)));
+                self.start_attr(term::Attr::Bold)?;
+                if cfg!(windows) {
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN))?;
+                } else {
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE))?;
+                }
             }
             Style::ErrorCode => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_MAGENTA)));
+                self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_MAGENTA))?;
             }
             Style::Quotation => {}
             Style::OldSchoolNote => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_GREEN)));
+                self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_GREEN))?;
             }
             Style::OldSchoolNoteText | Style::HeaderMsg => {
-                try!(self.start_attr(term::Attr::Bold));
+                self.start_attr(term::Attr::Bold)?;
+                if cfg!(windows) {
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_WHITE))?;
+                }
             }
             Style::UnderlinePrimary | Style::LabelPrimary => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(lvl.color())));
+                self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(lvl.color()))?;
             }
             Style::UnderlineSecondary |
             Style::LabelSecondary => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE)));
+                self.start_attr(term::Attr::Bold)?;
+                if cfg!(windows) {
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_CYAN))?;
+                } else {
+                    self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE))?;
+                }
             }
             Style::NoStyle => {}
             Style::Level(l) => {
-                try!(self.start_attr(term::Attr::Bold));
-                try!(self.start_attr(term::Attr::ForegroundColor(l.color())));
+                self.start_attr(term::Attr::Bold)?;
+                self.start_attr(term::Attr::ForegroundColor(l.color()))?;
             }
         }
         Ok(())

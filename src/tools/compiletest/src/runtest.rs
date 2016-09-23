@@ -2113,23 +2113,23 @@ actual:\n\
     }
 
     fn aggressive_rm_rf(&self, path: &Path) -> io::Result<()> {
-        for e in try!(path.read_dir()) {
-            let entry = try!(e);
+        for e in path.read_dir()? {
+            let entry = e?;
             let path = entry.path();
-            if try!(entry.file_type()).is_dir() {
-                try!(self.aggressive_rm_rf(&path));
+            if entry.file_type()?.is_dir() {
+                self.aggressive_rm_rf(&path)?;
             } else {
                 // Remove readonly files as well on windows (by default we can't)
-                try!(fs::remove_file(&path).or_else(|e| {
+                fs::remove_file(&path).or_else(|e| {
                     if cfg!(windows) && e.kind() == io::ErrorKind::PermissionDenied {
-                        let mut meta = try!(entry.metadata()).permissions();
+                        let mut meta = entry.metadata()?.permissions();
                         meta.set_readonly(false);
-                        try!(fs::set_permissions(&path, meta));
+                        fs::set_permissions(&path, meta)?;
                         fs::remove_file(&path)
                     } else {
                         Err(e)
                     }
-                }))
+                })?;
             }
         }
         fs::remove_dir(path)

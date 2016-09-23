@@ -16,12 +16,14 @@
 //! compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
+use std::cmp;
 use std::collections::HashMap;
-use std::fs;
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use build_helper::output;
+use filetime::FileTime;
 
 use util::{exe, staticlib, libdir, mtime, is_dylib, copy};
 use {Build, Compiler, Mode};
@@ -35,13 +37,23 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
 
-    // Move compiler-rt into place as it'll be required by the compiler when
-    // building the standard library to link the dylib of libstd
     let libdir = build.sysroot_libdir(compiler, target);
     let _ = fs::remove_dir_all(&libdir);
     t!(fs::create_dir_all(&libdir));
-    copy(&build.compiler_rt_built.borrow()[target],
-         &libdir.join(staticlib("compiler-rt", target)));
+    // FIXME(stage0) remove this `if` after the next snapshot
+    // The stage0 compiler still passes the `-lcompiler-rt` flag to the linker but now `bootstrap`
+    // never builds a `libcopmiler-rt.a`! We'll fill the hole by simply copying stage0's
+    // `libcompiler-rt.a` to where the stage1's one is expected (though we could as well just use
+    // an empty `.a` archive). Note that the symbols of that stage0 `libcompiler-rt.a` won't make
+    // it to the final binary because now `libcore.rlib` also contains the symbols that
+    // `libcompiler-rt.a` provides. Since that rlib appears first in the linker arguments, its
+    // symbols are used instead of `libcompiler-rt.a`'s.
+    if compiler.stage == 0 {
+        let rtlib = &staticlib("compiler-rt", target);
+        let src = build.rustc.parent().unwrap().parent().unwrap().join("lib").join("rustlib")
+            .join(target).join("lib").join(rtlib);
+        copy(&src, &libdir.join(rtlib));
+    }
 
     // Some platforms have startup objects that may be required to produce the
     // libstd dynamic library, for example.
@@ -59,13 +71,14 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
             cargo.env("JEMALLOC_OVERRIDE", jemalloc);
         }
     }
-    if let Some(ref p) = build.config.musl_root {
-        if target.contains("musl") {
+    if target.contains("musl") {
+        if let Some(p) = build.musl_root(target) {
             cargo.env("MUSL_ROOT", p);
         }
     }
 
     build.run(&mut cargo);
+    update_mtime(&libstd_stamp(build, compiler, target));
     std_link(build, target, compiler, compiler.host);
 }
 
@@ -83,26 +96,24 @@ pub fn std_link(build: &Build,
 
     // If we're linking one compiler host's output into another, then we weren't
     // called from the `std` method above. In that case we clean out what's
-    // already there and then also link compiler-rt into place.
+    // already there.
     if host != compiler.host {
         let _ = fs::remove_dir_all(&libdir);
         t!(fs::create_dir_all(&libdir));
-        copy(&build.compiler_rt_built.borrow()[target],
-             &libdir.join(staticlib("compiler-rt", target)));
     }
     add_to_sysroot(&out_dir, &libdir);
 
     if target.contains("musl") && !target.contains("mips") {
-        copy_third_party_objects(build, target, &libdir);
+        copy_musl_third_party_objects(build, &libdir);
     }
 }
 
 /// Copies the crt(1,i,n).o startup objects
 ///
 /// Only required for musl targets that statically link to libc
-fn copy_third_party_objects(build: &Build, target: &str, into: &Path) {
+fn copy_musl_third_party_objects(build: &Build, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-        copy(&compiler_file(build.cc(target), obj), &into.join(obj));
+        copy(&build.config.musl_root.as_ref().unwrap().join("lib").join(obj), &into.join(obj));
     }
 }
 
@@ -117,14 +128,16 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
         return
     }
     let compiler = Compiler::new(0, &build.config.build);
-    let compiler = build.compiler_path(&compiler);
+    let compiler_path = build.compiler_path(&compiler);
 
     for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
         let file = t!(file);
-        build.run(Command::new(&compiler)
-                          .arg("--emit=obj")
-                          .arg("--out-dir").arg(into)
-                          .arg(file.path()));
+        let mut cmd = Command::new(&compiler_path);
+        build.add_bootstrap_key(&compiler, &mut cmd);
+        build.run(cmd.arg("--target").arg(target)
+                     .arg("--emit=obj")
+                     .arg("--out-dir").arg(into)
+                     .arg(file.path()));
     }
 
     for obj in ["crt2.o", "dllcrt2.o"].iter() {
@@ -141,11 +154,12 @@ pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
-    build.clear_if_dirty(&out_dir, &libstd_shim(build, compiler, target));
+    build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
     build.run(&mut cargo);
+    update_mtime(&libtest_stamp(build, compiler, target));
     test_link(build, target, compiler, compiler.host);
 }
 
@@ -173,7 +187,7 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
              compiler.stage, compiler.host, target);
 
     let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
-    build.clear_if_dirty(&out_dir, &libtest_shim(build, compiler, target));
+    build.clear_if_dirty(&out_dir, &libtest_stamp(build, compiler, target));
 
     let mut cargo = build.cargo(compiler, Mode::Librustc, target, "build");
     cargo.arg("--features").arg(build.rustc_features())
@@ -203,6 +217,10 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
     cargo.env("LLVM_CONFIG", build.llvm_config(target));
+    let target_config = build.config.target_config.get(target);
+    if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+        cargo.env("CFG_LLVM_ROOT", s);
+    }
     if build.config.llvm_static_stdcpp {
         cargo.env("LLVM_STATIC_STDCPP",
                   compiler_file(build.cxx(target), "libstdc++.a"));
@@ -234,14 +252,14 @@ pub fn rustc_link(build: &Build,
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-fn libstd_shim(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
-    build.cargo_out(compiler, Mode::Libstd, target).join("libstd_shim.rlib")
+fn libstd_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+    build.cargo_out(compiler, Mode::Libstd, target).join(".libstd.stamp")
 }
 
 /// Cargo's output path for libtest in a given stage, compiled by a particular
 /// compiler for the specified target.
-fn libtest_shim(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
-    build.cargo_out(compiler, Mode::Libtest, target).join("libtest_shim.rlib")
+fn libtest_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+    build.cargo_out(compiler, Mode::Libtest, target).join(".libtest.stamp")
 }
 
 fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
@@ -354,10 +372,35 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
     //        Maybe when libstd is compiled it should clear out the rustc of the
     //        corresponding stage?
     // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
-    // build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
+    // build.clear_if_dirty(&out_dir, &libstd_stamp(build, stage, &host, target));
 
     let mut cargo = build.cargo(&compiler, Mode::Tool, host, "build");
     cargo.arg("--manifest-path")
          .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
     build.run(&mut cargo);
+}
+
+/// Updates the mtime of a stamp file if necessary, only changing it if it's
+/// older than some other file in the same directory.
+///
+/// We don't know what file Cargo is going to output (because there's a hash in
+/// the file name) but we know where it's going to put it. We use this helper to
+/// detect changes to that output file by looking at the modification time for
+/// all files in a directory and updating the stamp if any are newer.
+fn update_mtime(path: &Path) {
+    let mut max = None;
+    if let Ok(entries) = path.parent().unwrap().read_dir() {
+        for entry in entries.map(|e| t!(e)) {
+            if t!(entry.file_type()).is_file() {
+                let meta = t!(entry.metadata());
+                let time = FileTime::from_last_modification_time(&meta);
+                max = cmp::max(max, Some(time));
+            }
+        }
+    }
+
+    if !max.is_none() && max <= Some(mtime(path)) {
+        return
+    }
+    t!(File::create(path));
 }

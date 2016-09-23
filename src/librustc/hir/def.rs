@@ -16,23 +16,20 @@ use hir;
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
     Fn(DefId),
-    SelfTy(Option<DefId> /* trait */, Option<ast::NodeId> /* impl */),
+    SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     Mod(DefId),
-    ForeignMod(DefId),
     Static(DefId, bool /* is_mutbl */),
     Const(DefId),
     AssociatedConst(DefId),
-    Local(DefId, // def id of variable
-             ast::NodeId), // node id of variable
-    Variant(DefId /* enum */, DefId /* variant */),
+    Local(DefId),
+    Variant(DefId),
     Enum(DefId),
     TyAlias(DefId),
-    AssociatedTy(DefId /* trait */, DefId),
+    AssociatedTy(DefId),
     Trait(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
     Upvar(DefId,        // def id of closed over local
-             ast::NodeId,  // node id of closed over local
              usize,        // index in the freevars list of the closure
              ast::NodeId), // expr node that creates the closure
 
@@ -41,6 +38,7 @@ pub enum Def {
     // If Def::Struct lives in value namespace (e.g. tuple struct, unit struct expressions)
     // it denotes a constructor and its DefId refers to NodeId of the struct's constructor.
     Struct(DefId),
+    Union(DefId),
     Label(ast::NodeId),
     Method(DefId),
     Err,
@@ -93,37 +91,20 @@ pub type DefMap = NodeMap<PathResolution>;
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct Export {
     pub name: ast::Name,    // The name of the target.
     pub def_id: DefId, // The definition of the target.
 }
 
 impl Def {
-    pub fn var_id(&self) -> ast::NodeId {
-        match *self {
-            Def::Local(_, id) |
-            Def::Upvar(_, id, _, _) => {
-                id
-            }
-
-            Def::Fn(..) | Def::Mod(..) | Def::ForeignMod(..) | Def::Static(..) |
-            Def::Variant(..) | Def::Enum(..) | Def::TyAlias(..) | Def::AssociatedTy(..) |
-            Def::TyParam(..) | Def::Struct(..) | Def::Trait(..) |
-            Def::Method(..) | Def::Const(..) | Def::AssociatedConst(..) |
-            Def::PrimTy(..) | Def::Label(..) | Def::SelfTy(..) | Def::Err => {
-                bug!("attempted .var_id() on invalid {:?}", self)
-            }
-        }
-    }
-
     pub fn def_id(&self) -> DefId {
         match *self {
-            Def::Fn(id) | Def::Mod(id) | Def::ForeignMod(id) | Def::Static(id, _) |
-            Def::Variant(_, id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(_, id) |
-            Def::TyParam(id) | Def::Struct(id) | Def::Trait(id) |
+            Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
+            Def::Variant(id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(id) |
+            Def::TyParam(id) | Def::Struct(id) | Def::Union(id) | Def::Trait(id) |
             Def::Method(id) | Def::Const(id) | Def::AssociatedConst(id) |
-            Def::Local(id, _) | Def::Upvar(id, _, _, _) => {
+            Def::Local(id) | Def::Upvar(id, ..) => {
                 id
             }
 
@@ -140,13 +121,13 @@ impl Def {
         match *self {
             Def::Fn(..) => "function",
             Def::Mod(..) => "module",
-            Def::ForeignMod(..) => "foreign module",
             Def::Static(..) => "static",
             Def::Variant(..) => "variant",
             Def::Enum(..) => "enum",
             Def::TyAlias(..) => "type",
             Def::AssociatedTy(..) => "associated type",
             Def::Struct(..) => "struct",
+            Def::Union(..) => "union",
             Def::Trait(..) => "trait",
             Def::Method(..) => "method",
             Def::Const(..) => "constant",

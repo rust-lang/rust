@@ -13,9 +13,14 @@ use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::util::nodemap::FnvHashSet;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Parameter {
-    Type(ty::ParamTy),
-    Region(ty::EarlyBoundRegion),
+pub struct Parameter(pub u32);
+
+impl From<ty::ParamTy> for Parameter {
+    fn from(param: ty::ParamTy) -> Self { Parameter(param.idx) }
+}
+
+impl From<ty::EarlyBoundRegion> for Parameter {
+    fn from(param: ty::EarlyBoundRegion) -> Self { Parameter(param.index) }
 }
 
 /// If `include_projections` is false, returns the list of parameters that are
@@ -49,8 +54,8 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
                 // projections are not injective
                 return false;
             }
-            ty::TyParam(ref d) => {
-                self.parameters.push(Parameter::Type(d.clone()));
+            ty::TyParam(data) => {
+                self.parameters.push(Parameter::from(data));
             }
             _ => {}
         }
@@ -61,7 +66,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
         match *r {
             ty::ReEarlyBound(data) => {
-                self.parameters.push(Parameter::Region(data));
+                self.parameters.push(Parameter::from(data));
             }
             _ => {}
         }
@@ -141,13 +146,15 @@ pub fn setup_constraining_predicates<'tcx>(predicates: &mut [ty::Predicate<'tcx>
     //   * <U as Iterator>::Item = T
     //   * T: Debug
     //   * U: Iterator
+    debug!("setup_constraining_predicates: predicates={:?} \
+            impl_trait_ref={:?} input_parameters={:?}",
+           predicates, impl_trait_ref, input_parameters);
     let mut i = 0;
     let mut changed = true;
     while changed {
         changed = false;
 
         for j in i..predicates.len() {
-
             if let ty::Predicate::Projection(ref poly_projection) = predicates[j] {
                 // Note that we can skip binder here because the impl
                 // trait ref never contains any late-bound regions.
@@ -181,5 +188,8 @@ pub fn setup_constraining_predicates<'tcx>(predicates: &mut [ty::Predicate<'tcx>
             i += 1;
             changed = true;
         }
+        debug!("setup_constraining_predicates: predicates={:?} \
+                i={} impl_trait_ref={:?} input_parameters={:?}",
+           predicates, i, impl_trait_ref, input_parameters);
     }
 }

@@ -15,9 +15,9 @@ before_install:
 script:
   - docker run -v `pwd`:/build rust
     sh -c "
-      ./configure --llvm-root=/usr/lib/llvm-3.7 &&
+      ./configure --enable-rustbuild --llvm-root=/usr/lib/llvm-3.7 &&
       make tidy &&
-      make check-notidy -j4
+      make check -j4
     "
 
 # Real testing happens on http://buildbot.rust-lang.org/

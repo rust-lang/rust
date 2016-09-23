@@ -29,8 +29,10 @@ Core encoding and decoding interfaces.
 
 #![feature(box_syntax)]
 #![feature(collections)]
+#![feature(core_intrinsics)]
 #![feature(enumset)]
 #![feature(rustc_private)]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unicode)]
 #![feature(question_mark)]
@@ -43,14 +45,19 @@ Core encoding and decoding interfaces.
 extern crate rustc_unicode;
 extern crate collections;
 
-pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
-                          DecoderHelpers, EncoderHelpers};
+pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};
+
+pub use self::serialize::{SpecializationError, SpecializedEncoder, SpecializedDecoder};
+pub use self::serialize::{UseSpecializedEncodable, UseSpecializedDecodable};
 
 mod serialize;
 mod collection_impls;
 
 pub mod hex;
 pub mod json;
+
+pub mod opaque;
+pub mod leb128;
 
 mod rustc_serialize {
     pub use serialize::*;

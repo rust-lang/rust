@@ -1677,6 +1677,7 @@ There are also some platform-specific ABI strings:
 * `extern "cdecl"` -- The default for x86\_32 C code.
 * `extern "stdcall"` -- The default for the Win32 API on x86\_32.
 * `extern "win64"` -- The default for C code on x86\_64 Windows.
+* `extern "sysv64"` -- The default for C code on non-Windows x86\_64.
 * `extern "aapcs"` -- The default for ARM.
 * `extern "fastcall"` -- The `fastcall` ABI -- corresponds to MSVC's
   `__fastcall` and GCC and clang's `__attribute__((fastcall))`
@@ -2058,10 +2059,6 @@ macro scope.
   outside of its dynamic extent), and thus this attribute has the word
   "unsafe" in its name. To use this, the
   `unsafe_destructor_blind_to_params` feature gate must be enabled.
-- `unsafe_no_drop_flag` - on structs, remove the flag that prevents
-  destructors from being run twice. Destructors might be run multiple times on
-  the same object with this attribute. To use this, the `unsafe_no_drop_flag` feature
-  gate must be enabled.
 - `doc` - Doc comments such as `/// foo` are equivalent to `#[doc = "foo"]`.
 - `rustc_on_unimplemented` - Write a custom note to be shown along with the error
    when the trait is found to be unimplemented on a type.
@@ -2070,6 +2067,9 @@ macro scope.
    trait of the same name. `{Self}` will be replaced with the type that is supposed
    to implement the trait but doesn't. To use this, the `on_unimplemented` feature gate
    must be enabled.
+- `must_use` - on structs and enums, will warn if a value of this type isn't used or
+   assigned to a variable. You may also include an optional message by using
+   `#[must_use = "message"]` which will be given alongside the warning.
 
 ### Conditional compilation
 
@@ -2441,6 +2441,9 @@ The currently implemented features of the reference compiler are:
             into a Rust program. This capability, especially the signature for the
             annotated function, is subject to change.
 
+* `static_in_const` - Enables lifetime elision with a `'static` default for
+                      `const` and `static` item declarations.
+
 * `thread_local` - The usage of the `#[thread_local]` attribute is experimental
                    and should be seen as unstable. This attribute is used to
                    declare a `static` as being unique per-thread leveraging
@@ -2453,12 +2456,6 @@ The currently implemented features of the reference compiler are:
 
 * `unboxed_closures` - Rust's new closure design, which is currently a work in
                        progress feature with many known bugs.
-
-* `unsafe_no_drop_flag` - Allows use of the `#[unsafe_no_drop_flag]` attribute,
-                          which removes hidden flag added to a type that
-                          implements the `Drop` trait. The design for the
-                          `Drop` flag is subject to change, and this feature
-                          may be removed in the future.
 
 * `unmarked_api` - Allows use of items within a `#![staged_api]` crate
                    which have not been marked with a stability marker.
@@ -2484,6 +2481,9 @@ The currently implemented features of the reference compiler are:
                              (e.g. `extern "vectorcall" func fn_();`)
 
 * - `dotdot_in_tuple_patterns` - Allows `..` in tuple (struct) patterns.
+
+* - `abi_sysv64` - Allows the usage of the system V AMD64 calling convention
+                             (e.g. `extern "sysv64" func fn_();`)
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled

@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item = self.trait_item(trait_def_id, m_name).unwrap();
+        let method_item = self.impl_or_trait_item(trait_def_id, m_name).unwrap();
         let method_ty = method_item.as_opt_method().unwrap();
         assert_eq!(method_ty.generics.types.len(), 0);
         assert_eq!(method_ty.generics.regions.len(), 0);
@@ -359,29 +359,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         Ok(def)
     }
 
-    /// Find item with name `item_name` defined in `trait_def_id`
-    /// and return it, or `None`, if no such item.
-    pub fn trait_item(&self,
-                      trait_def_id: DefId,
-                      item_name: ast::Name)
-                      -> Option<ty::ImplOrTraitItem<'tcx>>
+    /// Find item with name `item_name` defined in impl/trait `def_id`
+    /// and return it, or `None`, if no such item was defined there.
+    pub fn impl_or_trait_item(&self,
+                              def_id: DefId,
+                              item_name: ast::Name)
+                              -> Option<ty::ImplOrTraitItem<'tcx>>
     {
-        let trait_items = self.tcx.trait_items(trait_def_id);
-        trait_items.iter()
-                   .find(|item| item.name() == item_name)
-                   .cloned()
-    }
-
-    pub fn impl_item(&self,
-                     impl_def_id: DefId,
-                     item_name: ast::Name)
-                     -> Option<ty::ImplOrTraitItem<'tcx>>
-    {
-        let impl_items = self.tcx.impl_items.borrow();
-        let impl_items = impl_items.get(&impl_def_id).unwrap();
-        impl_items
+        self.tcx.impl_or_trait_items(def_id)
             .iter()
-            .map(|&did| self.tcx.impl_or_trait_item(did.def_id()))
+            .map(|&did| self.tcx.impl_or_trait_item(did))
             .find(|m| m.name() == item_name)
     }
 }

@@ -72,7 +72,7 @@ impl LintPass for WhileTrue {
 
 impl LateLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprWhile(ref cond, _, _) = e.node {
+        if let hir::ExprWhile(ref cond, ..) = e.node {
             if let hir::ExprLit(ref lit) = cond.node {
                 if let ast::LitKind::Bool(true) = lit.node {
                     cx.span_lint(WHILE_TRUE, e.span,
@@ -116,7 +116,8 @@ impl LateLintPass for BoxPointers {
             hir::ItemFn(..) |
             hir::ItemTy(..) |
             hir::ItemEnum(..) |
-            hir::ItemStruct(..) =>
+            hir::ItemStruct(..) |
+            hir::ItemUnion(..) =>
                 self.check_heap_type(cx, it.span,
                                      cx.tcx.node_id_to_type(it.id)),
             _ => ()
@@ -124,7 +125,8 @@ impl LateLintPass for BoxPointers {
 
         // If it's a struct, we also have to check the fields' types
         match it.node {
-            hir::ItemStruct(ref struct_def, _) => {
+            hir::ItemStruct(ref struct_def, _) |
+            hir::ItemUnion(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
                     self.check_heap_type(cx, struct_field.span,
                                          cx.tcx.node_id_to_type(struct_field.id));
@@ -201,10 +203,10 @@ impl LateLintPass for UnsafeCode {
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemTrait(hir::Unsafety::Unsafe, _, _, _) =>
+            hir::ItemTrait(hir::Unsafety::Unsafe, ..) =>
                 cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` trait"),
 
-            hir::ItemImpl(hir::Unsafety::Unsafe, _, _, _, _, _) =>
+            hir::ItemImpl(hir::Unsafety::Unsafe, ..) =>
                 cx.span_lint(UNSAFE_CODE, it.span, "implementation of an `unsafe` trait"),
 
             _ => return,
@@ -214,10 +216,10 @@ impl LateLintPass for UnsafeCode {
     fn check_fn(&mut self, cx: &LateContext, fk: FnKind, _: &hir::FnDecl,
                 _: &hir::Block, span: Span, _: ast::NodeId) {
         match fk {
-            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, _, _, _, _) =>
+            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, ..) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            FnKind::Method(_, sig, _, _) => {
+            FnKind::Method(_, sig, ..) => {
                 if sig.unsafety == hir::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
@@ -348,7 +350,8 @@ impl LateLintPass for MissingDoc {
             hir::ItemMod(..) => "a module",
             hir::ItemEnum(..) => "an enum",
             hir::ItemStruct(..) => "a struct",
-            hir::ItemTrait(_, _, _, ref items) => {
+            hir::ItemUnion(..) => "a union",
+            hir::ItemTrait(.., ref items) => {
                 // Issue #11592, traits are always considered exported, even when private.
                 if it.vis == hir::Visibility::Inherited {
                     self.private_traits.insert(it.id);
@@ -360,7 +363,7 @@ impl LateLintPass for MissingDoc {
                 "a trait"
             },
             hir::ItemTy(..) => "a type alias",
-            hir::ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) => {
+            hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_items) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = cx.tcx.expect_def(trait_ref.ref_id).def_id();
@@ -465,14 +468,21 @@ impl LateLintPass for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
-                (def, cx.tcx.mk_struct(def, Substs::empty(cx.tcx)))
+                (def, cx.tcx.mk_adt(def, Substs::empty(cx.tcx)))
+            }
+            hir::ItemUnion(_, ref ast_generics) => {
+                if ast_generics.is_parameterized() {
+                    return;
+                }
+                let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
+                (def, cx.tcx.mk_adt(def, Substs::empty(cx.tcx)))
             }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
                 let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
-                (def, cx.tcx.mk_enum(def, Substs::empty(cx.tcx)))
+                (def, cx.tcx.mk_adt(def, Substs::empty(cx.tcx)))
             }
             _ => return,
         };
@@ -523,7 +533,7 @@ impl LateLintPass for MissingDebugImplementations {
         }
 
         match item.node {
-            hir::ItemStruct(..) | hir::ItemEnum(..) => {},
+            hir::ItemStruct(..) | hir::ItemUnion(..) | hir::ItemEnum(..) => {},
             _ => return,
         }
 
@@ -1027,7 +1037,7 @@ impl LintPass for InvalidNoMangleItems {
 impl LateLintPass for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemFn(_, _, _, _, ref generics, _) => {
+            hir::ItemFn(.., ref generics, _) => {
                 if attr::contains_name(&it.attrs, "no_mangle") {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = format!("function {} is marked #[no_mangle], but not exported",
@@ -1106,7 +1116,7 @@ impl LateLintPass for MutableTransmutes {
                 }
                 let typ = cx.tcx.node_id_to_type(expr.id);
                 match typ.sty {
-                    ty::TyFnDef(_, _, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
+                    ty::TyFnDef(.., ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         let from = bare_fn.sig.0.inputs[0];
                         let to = bare_fn.sig.0.output;
                         return Some((&from.sty, &to.sty));
@@ -1119,7 +1129,7 @@ impl LateLintPass for MutableTransmutes {
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
             match cx.tcx.lookup_item_type(def_id).ty.sty {
-                ty::TyFnDef(_, _, ref bfty) if bfty.abi == RustIntrinsic => (),
+                ty::TyFnDef(.., ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false
             }
             cx.tcx.item_name(def_id).as_str() == "transmute"
@@ -1149,6 +1159,39 @@ impl LateLintPass for UnstableFeatures {
             if let Some(items) = attr.meta().meta_item_list() {
                 for item in items {
                     ctx.span_lint(UNSTABLE_FEATURES, item.span(), "unstable feature");
+                }
+            }
+        }
+    }
+}
+
+/// Lint for unions that contain fields with possibly non-trivial destructors.
+pub struct UnionsWithDropFields;
+
+declare_lint! {
+    UNIONS_WITH_DROP_FIELDS,
+    Warn,
+    "use of unions that contain fields with possibly non-trivial drop code"
+}
+
+impl LintPass for UnionsWithDropFields {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNIONS_WITH_DROP_FIELDS)
+    }
+}
+
+impl LateLintPass for UnionsWithDropFields {
+    fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
+        if let hir::ItemUnion(ref vdata, _) = item.node {
+            let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
+            for field in vdata.fields() {
+                let field_ty = ctx.tcx.node_id_to_type(field.id);
+                if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
+                    ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
+                                  field.span,
+                                  "union contains a field with possibly non-trivial drop code, \
+                                   drop code of union fields is ignored when dropping the union");
+                    return;
                 }
             }
         }

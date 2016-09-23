@@ -285,15 +285,6 @@ impl<'ast> visit::Visitor for DefCollector<'ast> {
 
 // We walk the HIR rather than the AST when reading items from metadata.
 impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
-    /// Because we want to track parent items and so forth, enable
-    /// deep walking so that we walk nested items in the context of
-    /// their outer items.
-    fn visit_nested_item(&mut self, item_id: hir::ItemId) {
-        debug!("visit_nested_item: {:?}", item_id);
-        let item = self.hir_crate.unwrap().item(item_id.id);
-        self.visit_item(item)
-    }
-
     fn visit_item(&mut self, i: &'ast hir::Item) {
         debug!("visit_item: {:?}", i);
 
@@ -302,9 +293,9 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
         let def_data = match i.node {
             hir::ItemDefaultImpl(..) | hir::ItemImpl(..) =>
                 DefPathData::Impl,
-            hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemTrait(..) |
-            hir::ItemExternCrate(..) | hir::ItemMod(..) | hir::ItemForeignMod(..) |
-            hir::ItemTy(..) =>
+            hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemUnion(..) |
+            hir::ItemTrait(..) | hir::ItemExternCrate(..) | hir::ItemMod(..) |
+            hir::ItemForeignMod(..) | hir::ItemTy(..) =>
                 DefPathData::TypeNs(i.name.as_str()),
             hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) =>
                 DefPathData::ValueNs(i.name.as_str()),
@@ -331,7 +322,8 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
                         });
                     }
                 }
-                hir::ItemStruct(ref struct_def, _) => {
+                hir::ItemStruct(ref struct_def, _) |
+                hir::ItemUnion(ref struct_def, _) => {
                     // If this is a tuple-like struct, register the constructor.
                     if !struct_def.is_struct() {
                         this.create_def(struct_def.id(),

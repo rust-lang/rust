@@ -24,6 +24,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_syntax)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -107,7 +108,7 @@ pub mod test;
 pub mod driver;
 pub mod pretty;
 pub mod target_features;
-
+mod derive_registrar;
 
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
@@ -555,7 +556,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 
 fn save_analysis(sess: &Session) -> bool {
     sess.opts.debugging_opts.save_analysis ||
-    sess.opts.debugging_opts.save_analysis_csv
+    sess.opts.debugging_opts.save_analysis_csv ||
+    sess.opts.debugging_opts.save_analysis_api
 }
 
 fn save_analysis_format(sess: &Session) -> save::Format {
@@ -563,6 +565,8 @@ fn save_analysis_format(sess: &Session) -> save::Format {
         save::Format::Json
     } else if sess.opts.debugging_opts.save_analysis_csv {
         save::Format::Csv
+    } else if sess.opts.debugging_opts.save_analysis_api {
+        save::Format::JsonApi
     } else {
         unreachable!();
     }
@@ -802,7 +806,7 @@ Available lint options:
     let (plugin_groups, builtin_groups): (Vec<_>, _) = lint_store.get_lint_groups()
                                                                  .iter()
                                                                  .cloned()
-                                                                 .partition(|&(_, _, p)| p);
+                                                                 .partition(|&(.., p)| p);
     let plugin_groups = sort_lint_groups(plugin_groups);
     let builtin_groups = sort_lint_groups(builtin_groups);
 
@@ -877,7 +881,7 @@ Available lint options:
             println!("Compiler plugins can provide additional lints and lint groups. To see a \
                       listing of these, re-run `rustc -W help` with a crate filename.");
         }
-        (false, _, _) => panic!("didn't load lint plugins but got them anyway!"),
+        (false, ..) => panic!("didn't load lint plugins but got them anyway!"),
         (true, 0, 0) => println!("This crate does not load any lint plugins or lint groups."),
         (true, l, g) => {
             if l > 0 {
@@ -1050,7 +1054,8 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
-    const STACK_SIZE: usize = 8 * 1024 * 1024; // 8MB
+    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
+    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
     struct Sink(Arc<Mutex<Vec<u8>>>);
     impl Write for Sink {
@@ -1135,6 +1140,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }

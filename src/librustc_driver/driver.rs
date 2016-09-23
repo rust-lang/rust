@@ -50,10 +50,13 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
+use syntax::ext::base::ExtCtxt;
 use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
 use syntax;
 use syntax_ext;
+
+use derive_registrar;
 
 #[derive(Clone)]
 pub struct Resolutions {
@@ -97,7 +100,7 @@ pub fn compile_input(sess: &Session,
             }
         };
 
-        let krate = {
+        let (krate, registry) = {
             let mut compile_state = CompileState::state_after_parse(input,
                                                                     sess,
                                                                     outdir,
@@ -109,14 +112,14 @@ pub fn compile_input(sess: &Session,
                                     compile_state,
                                     Ok(()));
 
-            compile_state.krate.unwrap()
+            (compile_state.krate.unwrap(), compile_state.registry)
         };
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let crate_name = link::find_crate_name(Some(sess), &krate.attrs, input);
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
-                sess, &cstore, krate, &crate_name, addl_plugins, control.make_glob_map,
+                sess, &cstore, krate, registry, &crate_name, addl_plugins, control.make_glob_map,
                 |expanded_crate| {
                     let mut state = CompileState::state_after_expand(
                         input, sess, outdir, output, &cstore, expanded_crate, &crate_name,
@@ -233,6 +236,10 @@ pub fn compile_input(sess: &Session,
     // any more, we can finalize it (which involves renaming it)
     rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
 
+    if sess.opts.debugging_opts.perf_stats {
+        sess.print_perf_stats();
+    }
+
     controller_entry_point!(compilation_done,
                             sess,
                             CompileState::state_when_compilation_done(input, sess, outdir, output),
@@ -248,7 +255,8 @@ fn keep_hygiene_data(sess: &Session) -> bool {
 fn keep_ast(sess: &Session) -> bool {
     sess.opts.debugging_opts.keep_ast ||
     sess.opts.debugging_opts.save_analysis ||
-    sess.opts.debugging_opts.save_analysis_csv
+    sess.opts.debugging_opts.save_analysis_csv ||
+    sess.opts.debugging_opts.save_analysis_api
 }
 
 /// The name used for source code that doesn't originate in a file
@@ -329,6 +337,7 @@ pub struct CompileState<'a, 'b, 'ast: 'a, 'tcx: 'b> where 'ast: 'tcx {
     pub input: &'a Input,
     pub session: &'ast Session,
     pub krate: Option<ast::Crate>,
+    pub registry: Option<Registry<'a>>,
     pub cstore: Option<&'a CStore>,
     pub crate_name: Option<&'a str>,
     pub output_filenames: Option<&'a OutputFilenames>,
@@ -357,6 +366,7 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
             out_file: None,
             arenas: None,
             krate: None,
+            registry: None,
             cstore: None,
             crate_name: None,
             output_filenames: None,
@@ -379,6 +389,8 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
                          cstore: &'a CStore)
                          -> CompileState<'a, 'b, 'ast, 'tcx> {
         CompileState {
+            // Initialize the registry before moving `krate`
+            registry: Some(Registry::new(&session, krate.span)),
             krate: Some(krate),
             cstore: Some(cstore),
             out_file: out_file.as_ref().map(|s| &**s),
@@ -544,7 +556,8 @@ pub struct ExpansionResult<'a> {
 /// Returns `None` if we're aborting after handling -W help.
 pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                            cstore: &CStore,
-                                           mut krate: ast::Crate,
+                                           krate: ast::Crate,
+                                           registry: Option<Registry>,
                                            crate_name: &'a str,
                                            addl_plugins: Option<Vec<String>>,
                                            make_glob_map: MakeGlobMap,
@@ -554,21 +567,9 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
 {
     let time_passes = sess.time_passes();
 
-    // strip before anything else because crate metadata may use #[cfg_attr]
-    // and so macros can depend on configuration variables, such as
-    //
-    //   #[macro_use] #[cfg(foo)]
-    //   mod bar { macro_rules! baz!(() => {{}}) }
-    //
-    // baz! should not use this definition unless foo is enabled.
-
-    krate = time(time_passes, "configuration", || {
-        let (krate, features) =
-            syntax::config::strip_unconfigured_items(krate, &sess.parse_sess, sess.opts.test);
-        // these need to be set "early" so that expansion sees `quote` if enabled.
-        *sess.features.borrow_mut() = features;
-        krate
-    });
+    let (mut krate, features) = syntax::config::features(krate, &sess.parse_sess, sess.opts.test);
+    // these need to be set "early" so that expansion sees `quote` if enabled.
+    *sess.features.borrow_mut() = features;
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
     *sess.crate_disambiguator.borrow_mut() =
@@ -592,7 +593,7 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
                                    addl_plugins.take().unwrap())
     });
 
-    let mut registry = Registry::new(sess, &krate);
+    let mut registry = registry.unwrap_or(Registry::new(sess, krate.span));
 
     time(time_passes, "plugin registration", || {
         if sess.features.borrow().rustc_diagnostic_macros {
@@ -638,6 +639,13 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
     }
     sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
+    let mut macro_loader =
+        macro_import::MacroLoader::new(sess, &cstore, crate_name, krate.config.clone());
+
+    let resolver_arenas = Resolver::arenas();
+    let mut resolver = Resolver::new(sess, make_glob_map, &mut macro_loader, &resolver_arenas);
+    syntax_ext::register_builtins(&mut resolver, sess.features.borrow().quote);
+
     krate = time(time_passes, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
@@ -666,40 +674,40 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &Session,
         }
         let features = sess.features.borrow();
         let cfg = syntax::ext::expand::ExpansionConfig {
-            crate_name: crate_name.to_string(),
             features: Some(&features),
             recursion_limit: sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
+            ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())
         };
-        let mut loader = macro_import::MacroLoader::new(sess,
-                                                        &cstore,
-                                                        crate_name,
-                                                        krate.config.clone());
-        let mut ecx = syntax::ext::base::ExtCtxt::new(&sess.parse_sess,
-                                                      krate.config.clone(),
-                                                      cfg,
-                                                      &mut loader);
-        syntax_ext::register_builtins(&mut ecx.syntax_env);
+        let mut ecx = ExtCtxt::new(&sess.parse_sess, krate.config.clone(), cfg, &mut resolver);
         let ret = syntax::ext::expand::expand_crate(&mut ecx, syntax_exts, krate);
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
-        *sess.available_macros.borrow_mut() = ecx.syntax_env.names;
         ret
     });
 
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess,
+                                         &mut resolver,
                                          sess.opts.test,
                                          krate,
                                          sess.diagnostic())
     });
 
-    let resolver_arenas = Resolver::arenas();
-    let mut resolver = Resolver::new(sess, make_glob_map, &resolver_arenas);
-
-    let krate = time(sess.time_passes(), "assigning node ids", || resolver.assign_node_ids(krate));
+    krate = time(time_passes, "maybe creating a macro crate", || {
+        let crate_types = sess.crate_types.borrow();
+        let is_rustc_macro_crate = crate_types.contains(&config::CrateTypeRustcMacro);
+        let num_crate_types = crate_types.len();
+        syntax_ext::rustc_macro_registrar::modify(&sess.parse_sess,
+                                                  &mut resolver,
+                                                  krate,
+                                                  is_rustc_macro_crate,
+                                                  num_crate_types,
+                                                  sess.diagnostic(),
+                                                  &sess.features.borrow())
+    });
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
@@ -838,6 +846,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     sess.plugin_registrar_fn.set(time(time_passes, "looking for plugin registrar", || {
         plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)
     }));
+    sess.derive_registrar_fn.set(derive_registrar::find(&hir_map));
 
     let region_map = time(time_passes,
                           "region resolution",
@@ -1008,6 +1017,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("no-landing-pads"));
 
+        // From here on out, regions are gone.
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
 
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
@@ -1015,7 +1025,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg::new("elaborate-drops"));
 
+        // No lifetime analysis based on borrowing can be done from here on out.
+        passes.push_pass(box mir::transform::instcombine::InstCombine::new());
         passes.push_pass(box mir::transform::deaggregator::Deaggregator);
+        passes.push_pass(box mir::transform::copy_prop::CopyPropagation);
 
         passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box mir::transform::dump_mir::Marker("PreTrans"));
@@ -1170,6 +1183,9 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                          }
                          Some(ref n) if *n == "staticlib" => {
                              Some(config::CrateTypeStaticlib)
+                         }
+                         Some(ref n) if *n == "rustc-macro" => {
+                             Some(config::CrateTypeRustcMacro)
                          }
                          Some(ref n) if *n == "bin" => Some(config::CrateTypeExecutable),
                          Some(_) => {

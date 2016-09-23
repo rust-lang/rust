@@ -234,10 +234,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
 
         match item.node {
             hir::ItemEnum(_, ref generics) |
-            hir::ItemStruct(_, ref generics) => {
+            hir::ItemStruct(_, ref generics) |
+            hir::ItemUnion(_, ref generics) => {
                 self.add_inferreds_for_item(item.id, false, generics);
             }
-            hir::ItemTrait(_, ref generics, _, _) => {
+            hir::ItemTrait(_, ref generics, ..) => {
                 // Note: all inputs for traits are ultimately
                 // constrained to be invariant. See `visit_item` in
                 // the impl for `ConstraintContext` in `constraints.rs`.

@@ -269,6 +269,7 @@ class RustBuild:
             sys.exit(ret)
 
     def build_triple(self):
+        default_encoding = sys.getdefaultencoding()
         config = self.get_toml('build')
         if config:
             return config
@@ -276,8 +277,8 @@ class RustBuild:
         if config:
             return config
         try:
-            ostype = subprocess.check_output(['uname', '-s']).strip()
-            cputype = subprocess.check_output(['uname', '-m']).strip()
+            ostype = subprocess.check_output(['uname', '-s']).strip().decode(default_encoding)
+            cputype = subprocess.check_output(['uname', '-m']).strip().decode(default_encoding)
         except (subprocess.CalledProcessError, WindowsError):
             if sys.platform == 'win32':
                 return 'x86_64-pc-windows-msvc'
@@ -289,7 +290,8 @@ class RustBuild:
         # Darwin's `uname -s` lies and always returns i386. We have to use
         # sysctl instead.
         if ostype == 'Darwin' and cputype == 'i686':
-            sysctl = subprocess.check_output(['sysctl', 'hw.optional.x86_64'])
+            args = ['sysctl', 'hw.optional.x86_64']
+            sysctl = subprocess.check_output(args).decode(default_encoding)
             if ': 1' in sysctl:
                 cputype = 'x86_64'
 

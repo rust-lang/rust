@@ -75,6 +75,12 @@ pub fn check(build: &mut Build) {
 
     need_cmd("python".as_ref());
 
+    // If a manual nodejs was added to the config,
+    // of if a nodejs install is detected through config, use it.
+    if let Some(ref s) = build.config.nodejs {
+        need_cmd(s.as_ref());
+    }
+
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in build.config.target.iter() {
@@ -111,8 +117,8 @@ pub fn check(build: &mut Build) {
 
         // Make sure musl-root is valid if specified
         if target.contains("musl") && !target.contains("mips") {
-            match build.config.musl_root {
-                Some(ref root) => {
+            match build.musl_root(target) {
+                Some(root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {
                         panic!("couldn't find libc.a in musl dir: {}",
                                root.join("lib").display());
@@ -123,8 +129,9 @@ pub fn check(build: &mut Build) {
                     }
                 }
                 None => {
-                    panic!("when targeting MUSL the build.musl-root option \
-                            must be specified in config.toml")
+                    panic!("when targeting MUSL either the build.musl-root \
+                            option or the target.$TARGET.musl-root one must \
+                            be specified in config.toml")
                 }
             }
         }

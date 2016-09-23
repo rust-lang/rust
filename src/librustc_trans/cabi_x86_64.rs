@@ -182,7 +182,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
             (SSEDs,       SSEUp) |
             (SSEInt(_),   SSEUp) => return,
 
-            (_,           _) => newv
+            (..) => newv
         };
         cls[i] = to_write;
     }

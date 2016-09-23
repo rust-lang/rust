@@ -25,9 +25,9 @@ fn f() {
 
     v3.push(&'x');           // statement 6
     //~^ ERROR borrowed value does not live long enough
-    //~| NOTE does not live long enough
-    //~| NOTE borrowed value only valid until here
-    //~| HELP consider using a `let` binding to increase its lifetime
+    //~| NOTE temporary value created here
+    //~| NOTE temporary value only lives until here
+    //~| NOTE consider using a `let` binding to increase its lifetime
 
     {
 
@@ -35,26 +35,26 @@ fn f() {
 
         v4.push(&'y');
         //~^ ERROR borrowed value does not live long enough
-        //~| NOTE does not live long enough
-        //~| NOTE borrowed value only valid until here
-        //~| HELP consider using a `let` binding to increase its lifetime
+        //~| NOTE temporary value created here
+        //~| NOTE temporary value only lives until here
+        //~| NOTE consider using a `let` binding to increase its lifetime
 
     }                       // (statement 7)
-    //~^ NOTE borrowed value must be valid until here
+    //~^ NOTE temporary value needs to live until here
 
     let mut v5 = Vec::new(); // statement 8
 
     v5.push(&'z');
     //~^ ERROR borrowed value does not live long enough
-    //~| NOTE does not live long enough
-    //~| NOTE borrowed value only valid until here
-    //~| HELP consider using a `let` binding to increase its lifetime
+    //~| NOTE temporary value created here
+    //~| NOTE temporary value only lives until here
+    //~| NOTE consider using a `let` binding to increase its lifetime
 
     v1.push(&old[0]);
 }
 //~^ NOTE borrowed value dropped before borrower
-//~| NOTE borrowed value must be valid until here
-//~| NOTE borrowed value must be valid until here
+//~| NOTE temporary value needs to live until here
+//~| NOTE temporary value needs to live until here
 
 fn main() {
     f();

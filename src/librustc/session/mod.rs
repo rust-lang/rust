@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::DepGraph;
-use hir::def_id::DefIndex;
+use hir::def_id::{CrateNum, DefIndex};
 use hir::svh::Svh;
 use lint;
 use middle::cstore::CrateStore;
@@ -18,9 +18,10 @@ use session::search_paths::PathKind;
 use session::config::{DebugInfoLevel, PanicStrategy};
 use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
+use util::common::duration_to_secs_str;
 use mir::transform as mir_pass;
 
-use syntax::ast::{NodeId, Name};
+use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder};
 use errors::emitter::{Emitter, EmitterWriter};
 use syntax::json::JsonEmitter;
@@ -38,11 +39,12 @@ use llvm;
 
 use std::path::{Path, PathBuf};
 use std::cell::{self, Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::env;
 use std::ffi::CString;
 use std::rc::Rc;
 use std::fmt;
+use std::time::Duration;
 use libc::c_int;
 
 pub mod config;
@@ -62,6 +64,7 @@ pub struct Session {
     pub entry_fn: RefCell<Option<(NodeId, Span)>>,
     pub entry_type: Cell<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
+    pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
     // The name of the root source file of the crate, in the local file system.
     // The path is always expected to be absolute. `None` means that there is no
@@ -90,12 +93,8 @@ pub struct Session {
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
-    pub injected_allocator: Cell<Option<ast::CrateNum>>,
-    pub injected_panic_runtime: Cell<Option<ast::CrateNum>>,
-
-    /// Names of all bang-style macros and syntax extensions
-    /// available in this crate
-    pub available_macros: RefCell<HashSet<Name>>,
+    pub injected_allocator: Cell<Option<CrateNum>>,
+    pub injected_panic_runtime: Cell<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -104,7 +103,21 @@ pub struct Session {
 
     incr_comp_session: RefCell<IncrCompSession>,
 
+    /// Some measurements that are being gathered during compilation.
+    pub perf_stats: PerfStats,
+
     next_node_id: Cell<ast::NodeId>,
+}
+
+pub struct PerfStats {
+    // The accumulated time needed for computing the SVH of the crate
+    pub svh_time: Cell<Duration>,
+    // The accumulated time spent on computing incr. comp. hashes
+    pub incr_comp_hashes_time: Cell<Duration>,
+    // The number of incr. comp. hash computations performed
+    pub incr_comp_hashes_count: Cell<u64>,
+    // The accumulated time spent on computing symbol hashes
+    pub symbol_hash_time: Cell<Duration>,
 }
 
 impl Session {
@@ -253,11 +266,13 @@ impl Session {
         }
         lints.insert(id, vec!((lint_id, sp, msg)));
     }
-    pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
+    pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();
 
-        match id.checked_add(count) {
-            Some(next) => self.next_node_id.set(next),
+        match id.as_usize().checked_add(count) {
+            Some(next) => {
+                self.next_node_id.set(ast::NodeId::new(next));
+            }
             None => bug!("Input too large, ran out of node ids!")
         }
 
@@ -312,6 +327,12 @@ impl Session {
     pub fn generate_plugin_registrar_symbol(&self, svh: &Svh, index: DefIndex)
                                             -> String {
         format!("__rustc_plugin_registrar__{}_{}", svh, index.as_usize())
+    }
+
+    pub fn generate_derive_registrar_symbol(&self,
+                                            svh: &Svh,
+                                            index: DefIndex) -> String {
+        format!("__rustc_derive_registrar__{}_{}", svh, index.as_usize())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {
@@ -403,6 +424,17 @@ impl Session {
         } else {
             None
         }
+    }
+
+    pub fn print_perf_stats(&self) {
+        println!("Total time spent computing SVHs:               {}",
+                 duration_to_secs_str(self.perf_stats.svh_time.get()));
+        println!("Total time spent computing incr. comp. hashes: {}",
+                 duration_to_secs_str(self.perf_stats.incr_comp_hashes_time.get()));
+        println!("Total number of incr. comp. hashes computed:   {}",
+                 self.perf_stats.incr_comp_hashes_count.get());
+        println!("Total time spent computing symbol hashes:      {}",
+                 duration_to_secs_str(self.perf_stats.symbol_hash_time.get()));
     }
 }
 
@@ -501,6 +533,7 @@ pub fn build_session_(sopts: config::Options,
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
         plugin_registrar_fn: Cell::new(None),
+        derive_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
         local_crate_source_file: local_crate_source_file,
         working_dir: env::current_dir().unwrap(),
@@ -514,12 +547,17 @@ pub fn build_session_(sopts: config::Options,
         crate_disambiguator: RefCell::new(token::intern("").as_str()),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
-        next_node_id: Cell::new(1),
+        next_node_id: Cell::new(NodeId::new(1)),
         injected_allocator: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
-        available_macros: RefCell::new(HashSet::new()),
         imported_macro_spans: RefCell::new(HashMap::new()),
         incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
+        perf_stats: PerfStats {
+            svh_time: Cell::new(Duration::from_secs(0)),
+            incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),
+            incr_comp_hashes_count: Cell::new(0),
+            symbol_hash_time: Cell::new(Duration::from_secs(0)),
+        }
     };
 
     init_llvm(&sess);

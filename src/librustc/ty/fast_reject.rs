@@ -22,14 +22,13 @@ pub enum SimplifiedType {
     IntSimplifiedType(ast::IntTy),
     UintSimplifiedType(ast::UintTy),
     FloatSimplifiedType(ast::FloatTy),
-    EnumSimplifiedType(DefId),
+    AdtSimplifiedType(DefId),
     StrSimplifiedType,
     VecSimplifiedType,
     PtrSimplifiedType,
     NeverSimplifiedType,
     TupleSimplifiedType(usize),
     TraitSimplifiedType(DefId),
-    StructSimplifiedType(DefId),
     ClosureSimplifiedType(DefId),
     AnonSimplifiedType(DefId),
     FunctionSimplifiedType(usize),
@@ -56,15 +55,12 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyInt(int_type) => Some(IntSimplifiedType(int_type)),
         ty::TyUint(uint_type) => Some(UintSimplifiedType(uint_type)),
         ty::TyFloat(float_type) => Some(FloatSimplifiedType(float_type)),
-        ty::TyEnum(def, _) => Some(EnumSimplifiedType(def.did)),
+        ty::TyAdt(def, _) => Some(AdtSimplifiedType(def.did)),
         ty::TyStr => Some(StrSimplifiedType),
         ty::TyArray(..) | ty::TySlice(_) => Some(VecSimplifiedType),
         ty::TyRawPtr(_) => Some(PtrSimplifiedType),
         ty::TyTrait(ref trait_info) => {
             Some(TraitSimplifiedType(trait_info.principal.def_id()))
-        }
-        ty::TyStruct(def, _) => {
-            Some(StructSimplifiedType(def.did))
         }
         ty::TyRef(_, mt) => {
             // since we introduce auto-refs during method lookup, we
@@ -75,7 +71,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyBox(_) => {
             // treat like we would treat `Box`
             match tcx.lang_items.require_owned_box() {
-                Ok(def_id) => Some(StructSimplifiedType(def_id)),
+                Ok(def_id) => Some(AdtSimplifiedType(def_id)),
                 Err(msg) => tcx.sess.fatal(&msg),
             }
         }
@@ -86,7 +82,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyTuple(ref tys) => {
             Some(TupleSimplifiedType(tys.len()))
         }
-        ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
+        ty::TyFnDef(.., ref f) | ty::TyFnPtr(ref f) => {
             Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
         ty::TyProjection(_) | ty::TyParam(_) => {

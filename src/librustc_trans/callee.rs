@@ -17,7 +17,6 @@
 pub use self::CalleeData::*;
 
 use arena::TypedArena;
-use back::symbol_names;
 use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
@@ -28,7 +27,7 @@ use base;
 use base::*;
 use build::*;
 use closure;
-use common::{self, Block, Result, CrateContext, FunctionContext};
+use common::{self, Block, Result, CrateContext, FunctionContext, SharedCrateContext};
 use consts;
 use debuginfo::DebugLoc;
 use declare;
@@ -37,7 +36,7 @@ use monomorphize::{self, Instance};
 use trans_item::TransItem;
 use type_of;
 use Disr;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::hir;
 
 use syntax_pos::DUMMY_SP;
@@ -97,8 +96,8 @@ impl<'tcx> Callee<'tcx> {
             return Callee::trait_method(ccx, trait_id, def_id, substs);
         }
 
-        let fn_ty = def_ty(tcx, def_id, substs);
-        if let ty::TyFnDef(_, _, f) = fn_ty.sty {
+        let fn_ty = def_ty(ccx.shared(), def_id, substs);
+        if let ty::TyFnDef(.., f) = fn_ty.sty {
             if f.abi == Abi::RustIntrinsic || f.abi == Abi::PlatformIntrinsic {
                 return Callee {
                     data: Intrinsic,
@@ -133,42 +132,44 @@ impl<'tcx> Callee<'tcx> {
         let trait_ref = tcx.normalize_associated_type(&ty::Binder(trait_ref));
         match common::fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref) {
             traits::VtableImpl(vtable_impl) => {
-                let impl_did = vtable_impl.impl_def_id;
-                let mname = tcx.item_name(def_id);
-                // create a concatenated set of substitutions which includes
-                // those from the impl and those from the method:
-                let mth = meth::get_impl_method(tcx, substs, impl_did, vtable_impl.substs, mname);
+                let name = tcx.item_name(def_id);
+                let (def_id, substs) = traits::find_method(tcx, name, substs, &vtable_impl);
 
                 // Translate the function, bypassing Callee::def.
                 // That is because default methods have the same ID as the
                 // trait method used to look up the impl method that ended
                 // up here, so calling Callee::def would infinitely recurse.
-                let (llfn, ty) = get_fn(ccx, mth.method.def_id, mth.substs);
+                let (llfn, ty) = get_fn(ccx, def_id, substs);
                 Callee::ptr(llfn, ty)
             }
             traits::VtableClosure(vtable_closure) => {
                 // The substitutions should have no type parameters remaining
                 // after passing through fulfill_obligation
                 let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+                let instance = Instance::new(def_id, substs);
                 let llfn = closure::trans_closure_method(ccx,
                                                          vtable_closure.closure_def_id,
                                                          vtable_closure.substs,
+                                                         instance,
                                                          trait_closure_kind);
 
-                let method_ty = def_ty(tcx, def_id, substs);
+                let method_ty = def_ty(ccx.shared(), def_id, substs);
                 Callee::ptr(llfn, method_ty)
             }
             traits::VtableFnPointer(vtable_fn_pointer) => {
                 let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-                let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, vtable_fn_pointer.fn_ty);
+                let instance = Instance::new(def_id, substs);
+                let llfn = trans_fn_pointer_shim(ccx, instance,
+                                                 trait_closure_kind,
+                                                 vtable_fn_pointer.fn_ty);
 
-                let method_ty = def_ty(tcx, def_id, substs);
+                let method_ty = def_ty(ccx.shared(), def_id, substs);
                 Callee::ptr(llfn, method_ty)
             }
             traits::VtableObject(ref data) => {
                 Callee {
                     data: Virtual(tcx.get_vtable_index_of_object_method(data, def_id)),
-                    ty: def_ty(tcx, def_id, substs)
+                    ty: def_ty(ccx.shared(), def_id, substs)
                 }
             }
             vtable => {
@@ -217,9 +218,7 @@ impl<'tcx> Callee<'tcx> {
     pub fn reify<'a>(self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         match self.data {
             Fn(llfn) => llfn,
-            Virtual(idx) => {
-                meth::trans_object_shim(ccx, self.ty, idx)
-            }
+            Virtual(_) => meth::trans_object_shim(ccx, self),
             NamedTupleConstructor(disr) => match self.ty.sty {
                 ty::TyFnDef(def_id, substs, _) => {
                     let instance = Instance::new(def_id, substs);
@@ -244,12 +243,12 @@ impl<'tcx> Callee<'tcx> {
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
-fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                     def_id: DefId,
                     substs: &'tcx Substs<'tcx>)
                     -> Ty<'tcx> {
-    let ty = tcx.lookup_item_type(def_id).ty;
-    monomorphize::apply_param_substs(tcx, substs, &ty)
+    let ty = shared.tcx().lookup_item_type(def_id).ty;
+    monomorphize::apply_param_substs(shared, substs, &ty)
 }
 
 /// Translates an adapter that implements the `Fn` trait for a fn
@@ -264,8 +263,9 @@ fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// ```
 ///
 /// but for the bare function type given.
-pub fn trans_fn_pointer_shim<'a, 'tcx>(
+fn trans_fn_pointer_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
+    method_instance: Instance<'tcx>,
     closure_kind: ty::ClosureKind,
     bare_fn_ty: Ty<'tcx>)
     -> ValueRef
@@ -314,7 +314,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
     let sig = match bare_fn_ty.sty {
-        ty::TyFnDef(_, _,
+        ty::TyFnDef(..,
                     &ty::BareFnTy { unsafety: hir::Unsafety::Normal,
                                     abi: Abi::Rust,
                                     ref sig }) |
@@ -345,10 +345,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
-    let function_name =
-        symbol_names::internal_name_from_type_and_suffix(ccx,
-                                                         bare_fn_ty,
-                                                         "fn_pointer_shim");
+    let function_name = method_instance.symbol_name(ccx.shared());
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
@@ -407,7 +404,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let substs = tcx.normalize_associated_type(&substs);
     let instance = Instance::new(def_id, substs);
     let item_ty = ccx.tcx().lookup_item_type(def_id).ty;
-    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), substs, &item_ty);
+    let fn_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &item_ty);
 
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         return (llfn, fn_ty);
@@ -442,7 +439,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // other weird situations. Annoying.
 
     let fn_ptr_ty = match fn_ty.sty {
-        ty::TyFnDef(_, _, fty) => {
+        ty::TyFnDef(.., fty) => {
             // Create a fn pointer with the substituted signature.
             tcx.mk_fn_ptr(fty)
         }
@@ -472,7 +469,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // FIXME(eddyb) Doubt all extern fn should allow unwinding.
             attributes::unwind(llfn, true);
             unsafe {
-                llvm::LLVMSetLinkage(llfn, llvm::ExternalLinkage);
+                llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
             }
         }
 

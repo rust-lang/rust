@@ -20,7 +20,6 @@ use dep_graph::DepNode;
 use hir::map as ast_map;
 use session::Session;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
-use middle::cstore::InlinedItem;
 use ty;
 
 use std::cell::RefCell;
@@ -956,7 +955,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
     ///        | box P&
     fn is_binding_pat(pat: &hir::Pat) -> bool {
         match pat.node {
-            PatKind::Binding(hir::BindByRef(_), _, _) => true,
+            PatKind::Binding(hir::BindByRef(_), ..) => true,
 
             PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))
@@ -1255,20 +1254,4 @@ pub fn resolve_crate(sess: &Session, map: &ast_map::Map) -> RegionMaps {
         krate.visit_all_items(&mut visitor);
     }
     return maps;
-}
-
-pub fn resolve_inlined_item(sess: &Session,
-                            region_maps: &RegionMaps,
-                            item: &InlinedItem) {
-    let mut visitor = RegionResolutionVisitor {
-        sess: sess,
-        region_maps: region_maps,
-        cx: Context {
-            root_id: None,
-            parent: ROOT_CODE_EXTENT,
-            var_parent: ROOT_CODE_EXTENT
-        },
-        terminating_scopes: NodeSet()
-    };
-    item.visit(&mut visitor);
 }

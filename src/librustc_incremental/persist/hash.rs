@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rbml::Error;
-use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::svh::Svh;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::flock;
 use rustc_serialize::Decodable;
+use rustc_serialize::opaque::Decoder;
 use std::io::{ErrorKind, Read};
 use std::fs::File;
-use syntax::ast;
 
 use IncrementalHashesMap;
 use super::data::*;
@@ -29,7 +27,7 @@ pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     incremental_hashes_map: &'a IncrementalHashesMap,
     item_metadata_hashes: FnvHashMap<DefId, u64>,
-    crate_hashes: FnvHashMap<ast::CrateNum, Svh>,
+    crate_hashes: FnvHashMap<CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
@@ -121,7 +119,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    fn load_data(&mut self, cnum: ast::CrateNum) {
+    fn load_data(&mut self, cnum: CrateNum) {
         debug!("load_data(cnum={})", cnum);
 
         let svh = self.tcx.sess.cstore.crate_hash(cnum);
@@ -187,14 +185,14 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
     }
 
     fn load_from_data(&mut self,
-                      cnum: ast::CrateNum,
+                      cnum: CrateNum,
                       data: &[u8],
-                      expected_svh: Svh) -> Result<(), Error> {
+                      expected_svh: Svh) -> Result<(), String> {
         debug!("load_from_data(cnum={})", cnum);
 
         // Load up the hashes for the def-ids from this crate.
         let mut decoder = Decoder::new(data, 0);
-        let svh_in_hashes_file = try!(Svh::decode(&mut decoder));
+        let svh_in_hashes_file = Svh::decode(&mut decoder)?;
 
         if svh_in_hashes_file != expected_svh {
             // We should not be able to get here. If we do, then
@@ -202,7 +200,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             bug!("mismatch between SVH in crate and SVH in incr. comp. hashes")
         }
 
-        let serialized_hashes = try!(SerializedMetadataHashes::decode(&mut decoder));
+        let serialized_hashes = SerializedMetadataHashes::decode(&mut decoder)?;
         for serialized_hash in serialized_hashes.hashes {
             // the hashes are stored with just a def-index, which is
             // always relative to the old crate; convert that to use

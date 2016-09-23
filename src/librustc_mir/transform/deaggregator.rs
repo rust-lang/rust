@@ -57,7 +57,7 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
                 _ => span_bug!(src_info.span, "expected aggregate, not {:?}", rhs),
             };
             let (adt_def, variant, substs) = match agg_kind {
-                &AggregateKind::Adt(adt_def, variant, substs) => (adt_def, variant, substs),
+                &AggregateKind::Adt(adt_def, variant, substs, None) => (adt_def, variant, substs),
                 _ => span_bug!(src_info.span, "expected struct, not {:?}", rhs),
             };
             let n = bb.statements.len();
@@ -120,7 +120,7 @@ fn get_aggregate_statement_index<'a, 'tcx, 'b>(start: usize,
             _ => continue,
         };
         let (adt_def, variant) = match kind {
-            &AggregateKind::Adt(adt_def, variant, _) => (adt_def, variant),
+            &AggregateKind::Adt(adt_def, variant, _, None) => (adt_def, variant),
             _ => continue,
         };
         if operands.len() == 0 {

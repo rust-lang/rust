@@ -66,4 +66,11 @@ impl EdgeFilter {
             })
         }
     }
+
+    pub fn test<D: Clone + Debug>(&self,
+                                  source: &DepNode<D>,
+                                  target: &DepNode<D>)
+                                  -> bool {
+        self.source.test(source) && self.target.test(target)
+    }
 }

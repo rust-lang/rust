@@ -129,7 +129,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 /// This trait can be used with `#[derive]`. When `derive`d, because `Eq` has
 /// no extra methods, it is only informing the compiler that this is an
 /// equivalence relation rather than a partial equivalence relation. Note that
-/// the `derive` strategy requires all fields are `PartialEq`, which isn't
+/// the `derive` strategy requires all fields are `Eq`, which isn't
 /// always desired.
 ///
 /// ## How can I implement `Eq`?
@@ -164,6 +164,17 @@ pub trait Eq: PartialEq<Self> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
 }
+
+// FIXME: this struct is used solely by #[derive] to
+// assert that every component of a type implements Eq.
+//
+// This struct should never appear in user code.
+#[doc(hidden)]
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "derive_eq",
+           reason = "deriving hack, should not be public",
+           issue = "0")]
+pub struct AssertParamIsEq<T: Eq + ?Sized> { _field: ::marker::PhantomData<T> }
 
 /// An `Ordering` is the result of a comparison between two values.
 ///

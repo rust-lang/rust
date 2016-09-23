@@ -40,7 +40,7 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
             LvalueTy::Ty { ty } =>
                 ty,
             LvalueTy::Downcast { adt_def, substs, variant_index: _ } =>
-                tcx.mk_enum(adt_def, substs),
+                tcx.mk_adt(adt_def, substs),
         }
     }
 
@@ -75,7 +75,8 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
             }
             ProjectionElem::Downcast(adt_def1, index) =>
                 match self.to_ty(tcx).sty {
-                    ty::TyEnum(adt_def, substs) => {
+                    ty::TyAdt(adt_def, substs) => {
+                        assert!(adt_def.is_enum());
                         assert!(index < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
                         LvalueTy::Downcast { adt_def: adt_def,
@@ -83,7 +84,7 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                                              variant_index: index }
                     }
                     _ => {
-                        bug!("cannot downcast non-enum type: `{:?}`", self)
+                        bug!("cannot downcast non-ADT type: `{:?}`", self)
                     }
                 },
             ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }
@@ -153,7 +154,7 @@ impl<'tcx> Rvalue<'tcx> {
                 ))
             }
             &Rvalue::Len(..) => Some(tcx.types.usize),
-            &Rvalue::Cast(_, _, ty) => Some(ty),
+            &Rvalue::Cast(.., ty) => Some(ty),
             &Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
                 let lhs_ty = lhs.ty(mir, tcx);
                 let rhs_ty = rhs.ty(mir, tcx);
@@ -187,7 +188,7 @@ impl<'tcx> Rvalue<'tcx> {
                             ops.iter().map(|op| op.ty(mir, tcx)).collect()
                         ))
                     }
-                    AggregateKind::Adt(def, _, substs) => {
+                    AggregateKind::Adt(def, _, substs, _) => {
                         Some(tcx.lookup_item_type(def.did).ty.subst(tcx, substs))
                     }
                     AggregateKind::Closure(did, substs) => {

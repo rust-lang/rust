@@ -52,7 +52,7 @@ pub fn slice_for_each<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let current = Phi(header_bcx, val_ty(start), &[start], &[bcx.llbb]);
 
     let keep_going =
-        ICmp(header_bcx, llvm::IntULT, current, end, DebugLoc::None);
+        ICmp(header_bcx, llvm::IntNE, current, end, DebugLoc::None);
     CondBr(header_bcx, keep_going, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
 
     let body_bcx = f(body_bcx, if zst { data_ptr } else { current });

@@ -472,7 +472,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                    i, expr, autoderef_count);
 
             if autoderef_count > 0 {
-                let mut autoderef = self.autoderef(expr.span, self.expr_ty(expr));
+                let mut autoderef = self.autoderef(expr.span, self.node_ty(expr.id));
                 autoderef.nth(autoderef_count).unwrap_or_else(|| {
                     span_bug!(expr.span, "expr was deref-able {} times but now isn't?",
                               autoderef_count);
@@ -501,7 +501,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                 assert!(adr.unsize.is_none());
                                 (adr.autoderefs, None)
                             }
-                            Some(AutoPtr(_, _)) => {
+                            Some(AutoPtr(..)) => {
                                 (adr.autoderefs, adr.unsize.map(|target| {
                                     target.builtin_deref(false, NoPreference)
                                             .expect("fixup: AutoPtr is not &T").ty
@@ -532,7 +532,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                 unsize: None
                             }))), false)
                     };
-                    let index_expr_ty = self.expr_ty(&index_expr);
+                    let index_expr_ty = self.node_ty(index_expr.id);
 
                     let result = self.try_index_step(
                         ty::MethodCall::expr(expr.id),
@@ -547,7 +547,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     if let Some((input_ty, return_ty)) = result {
                         self.demand_suptype(index_expr.span, input_ty, index_expr_ty);
 
-                        let expr_ty = self.expr_ty(&expr);
+                        let expr_ty = self.node_ty(expr.id);
                         self.demand_suptype(expr.span, expr_ty, return_ty);
                     }
                 }
@@ -558,7 +558,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     if self.tables.borrow().method_map.contains_key(&method_call) {
                         let method = self.try_overloaded_deref(expr.span,
                             Some(&base_expr),
-                            self.expr_ty(&base_expr),
+                            self.node_ty(base_expr.id),
                             PreferMutLvalue);
                         let method = method.expect("re-trying deref failed");
                         self.tables.borrow_mut().method_map.insert(method_call, method);

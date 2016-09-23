@@ -19,13 +19,14 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(not(stage0), deny(warnings))]
 
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(question_mark)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(rand)]
+#![feature(core_intrinsics)]
 
 extern crate graphviz;
-extern crate rbml;
 #[macro_use] extern crate rustc;
 extern crate rustc_data_structures;
 extern crate serialize as rustc_serialize;

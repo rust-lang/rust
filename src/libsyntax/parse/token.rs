@@ -14,7 +14,7 @@ pub use self::DelimToken::*;
 pub use self::Lit::*;
 pub use self::Token::*;
 
-use ast::{self, BinOpKind};
+use ast::{self};
 use ptr::P;
 use util::interner::Interner;
 use tokenstream;
@@ -180,7 +180,7 @@ impl Token {
             Ident(..)                   => true,
             Underscore                  => true,
             Tilde                       => true,
-            Literal(_, _)               => true,
+            Literal(..)                 => true,
             Not                         => true,
             BinOp(Minus)                => true,
             BinOp(Star)                 => true,
@@ -202,8 +202,8 @@ impl Token {
     /// Returns `true` if the token is any literal
     pub fn is_lit(&self) -> bool {
         match *self {
-            Literal(_, _) => true,
-            _             => false,
+            Literal(..) => true,
+            _           => false,
         }
     }
 
@@ -256,31 +256,6 @@ impl Token {
     pub fn is_path_start(&self) -> bool {
         self == &ModSep || self == &Lt || self.is_path() ||
         self.is_path_segment_keyword() || self.is_ident() && !self.is_any_keyword()
-    }
-
-    /// Maps a token to its corresponding binary operator.
-    pub fn to_binop(&self) -> Option<BinOpKind> {
-        match *self {
-            BinOp(Star)     => Some(BinOpKind::Mul),
-            BinOp(Slash)    => Some(BinOpKind::Div),
-            BinOp(Percent)  => Some(BinOpKind::Rem),
-            BinOp(Plus)     => Some(BinOpKind::Add),
-            BinOp(Minus)    => Some(BinOpKind::Sub),
-            BinOp(Shl)      => Some(BinOpKind::Shl),
-            BinOp(Shr)      => Some(BinOpKind::Shr),
-            BinOp(And)      => Some(BinOpKind::BitAnd),
-            BinOp(Caret)    => Some(BinOpKind::BitXor),
-            BinOp(Or)       => Some(BinOpKind::BitOr),
-            Lt              => Some(BinOpKind::Lt),
-            Le              => Some(BinOpKind::Le),
-            Ge              => Some(BinOpKind::Ge),
-            Gt              => Some(BinOpKind::Gt),
-            EqEq            => Some(BinOpKind::Eq),
-            Ne              => Some(BinOpKind::Ne),
-            AndAnd          => Some(BinOpKind::And),
-            OrOr            => Some(BinOpKind::Or),
-            _               => None,
-        }
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.

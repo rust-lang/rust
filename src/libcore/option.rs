@@ -10,9 +10,9 @@
 
 //! Optional values.
 //!
-//! Type `Option` represents an optional value: every `Option`
-//! is either `Some` and contains a value, or `None`, and
-//! does not. `Option` types are very common in Rust code, as
+//! Type [`Option`] represents an optional value: every [`Option`]
+//! is either [`Some`] and contains a value, or [`None`], and
+//! does not. [`Option`] types are very common in Rust code, as
 //! they have a number of uses:
 //!
 //! * Initial values
@@ -26,8 +26,8 @@
 //! * Nullable pointers
 //! * Swapping things out of difficult situations
 //!
-//! Options are commonly paired with pattern matching to query the presence
-//! of a value and take action, always accounting for the `None` case.
+//! [`Option`]s are commonly paired with pattern matching to query the presence
+//! of a value and take action, always accounting for the [`None`] case.
 //!
 //! ```
 //! fn divide(numerator: f64, denominator: f64) -> Option<f64> {
@@ -57,13 +57,13 @@
 //!
 //! Rust's pointer types must always point to a valid location; there are
 //! no "null" pointers. Instead, Rust has *optional* pointers, like
-//! the optional owned box, `Option<Box<T>>`.
+//! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
 //!
-//! The following example uses `Option` to create an optional box of
-//! `i32`. Notice that in order to use the inner `i32` value first the
+//! The following example uses [`Option`] to create an optional box of
+//! [`i32`]. Notice that in order to use the inner [`i32`] value first the
 //! `check_optional` function needs to use pattern matching to
-//! determine whether the box has a value (i.e. it is `Some(...)`) or
-//! not (`None`).
+//! determine whether the box has a value (i.e. it is [`Some(...)`][`Some`]) or
+//! not ([`None`]).
 //!
 //! ```
 //! let optional: Option<Box<i32>> = None;
@@ -80,14 +80,14 @@
 //! }
 //! ```
 //!
-//! This usage of `Option` to create safe nullable pointers is so
+//! This usage of [`Option`] to create safe nullable pointers is so
 //! common that Rust does special optimizations to make the
-//! representation of `Option<Box<T>>` a single pointer. Optional pointers
+//! representation of [`Option`]`<`[`Box<T>`]`>` a single pointer. Optional pointers
 //! in Rust are stored as efficiently as any other pointer type.
 //!
 //! # Examples
 //!
-//! Basic pattern matching on `Option`:
+//! Basic pattern matching on [`Option`]:
 //!
 //! ```
 //! let msg = Some("howdy");
@@ -101,7 +101,7 @@
 //! let unwrapped_msg = msg.unwrap_or("default message");
 //! ```
 //!
-//! Initialize a result to `None` before a loop:
+//! Initialize a result to [`None`] before a loop:
 //!
 //! ```
 //! enum Kingdom { Plant(u32, &'static str), Animal(u32, &'static str) }
@@ -136,6 +136,12 @@
 //!     None => println!("there are no animals :("),
 //! }
 //! ```
+//!
+//! [`Option`]: enum.Option.html
+//! [`Some`]: enum.Option.html#variant.Some
+//! [`None`]: enum.Option.html#variant.None
+//! [`Box<T>`]: ../../std/boxed/struct.Box.html
+//! [`i32`]: ../../std/primitive.i32.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -156,7 +162,7 @@ pub enum Option<T> {
     None,
     /// Some value `T`
     #[stable(feature = "rust1", since = "1.0.0")]
-    Some(#[stable(feature = "rust1", since = "1.0.0")] T)
+    Some(#[stable(feature = "rust1", since = "1.0.0")] T),
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -168,7 +174,7 @@ impl<T> Option<T> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Returns `true` if the option is a `Some` value
+    /// Returns `true` if the option is a `Some` value.
     ///
     /// # Examples
     ///
@@ -188,7 +194,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns `true` if the option is a `None` value
+    /// Returns `true` if the option is a `None` value.
     ///
     /// # Examples
     ///
@@ -209,14 +215,16 @@ impl<T> Option<T> {
     // Adapter for working with references
     /////////////////////////////////////////////////////////////////////////
 
-    /// Converts from `Option<T>` to `Option<&T>`
+    /// Converts from `Option<T>` to `Option<&T>`.
     ///
     /// # Examples
     ///
     /// Convert an `Option<String>` into an `Option<usize>`, preserving the original.
-    /// The `map` method takes the `self` argument by value, consuming the original,
+    /// The [`map`] method takes the `self` argument by value, consuming the original,
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
+    ///
+    /// [`map`]: enum.Option.html#method.map
     ///
     /// ```
     /// let num_as_str: Option<String> = Some("10".to_string());
@@ -234,7 +242,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Converts from `Option<T>` to `Option<&mut T>`
+    /// Converts from `Option<T>` to `Option<&mut T>`.
     ///
     /// # Examples
     ///
@@ -357,7 +365,7 @@ impl<T> Option<T> {
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value
+    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value.
     ///
     /// # Examples
     ///
@@ -423,8 +431,12 @@ impl<T> Option<T> {
         }
     }
 
-    /// Transforms the `Option<T>` into a `Result<T, E>`, mapping `Some(v)` to
-    /// `Ok(v)` and `None` to `Err(err)`.
+    /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping `Some(v)` to
+    /// [`Ok(v)`] and `None` to [`Err(err)`][Err].
+    ///
+    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
+    /// [`Ok(v)`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [Err]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -444,8 +456,12 @@ impl<T> Option<T> {
         }
     }
 
-    /// Transforms the `Option<T>` into a `Result<T, E>`, mapping `Some(v)` to
-    /// `Ok(v)` and `None` to `Err(err())`.
+    /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping `Some(v)` to
+    /// [`Ok(v)`] and `None` to [`Err(err())`][Err].
+    ///
+    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
+    /// [`Ok(v)`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [Err]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -698,6 +714,7 @@ fn expect_failed(msg: &str) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
+    /// Returns None.
     #[inline]
     fn default() -> Option<T> { None }
 }
@@ -789,7 +806,9 @@ impl<A> DoubleEndedIterator for Item<A> {
 impl<A> ExactSizeIterator for Item<A> {}
 impl<A> FusedIterator for Item<A> {}
 
-/// An iterator over a reference of the contained item in an Option.
+/// An iterator over a reference of the contained item in an [`Option`].
+///
+/// [`Option`]: enum.Option.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Iter<'a, A: 'a> { inner: Item<&'a A> }
@@ -823,7 +842,9 @@ impl<'a, A> Clone for Iter<'a, A> {
     }
 }
 
-/// An iterator over a mutable reference of the contained item in an Option.
+/// An iterator over a mutable reference of the contained item in an [`Option`].
+///
+/// [`Option`]: enum.Option.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IterMut<'a, A: 'a> { inner: Item<&'a mut A> }
@@ -850,7 +871,9 @@ impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, A> FusedIterator for IterMut<'a, A> {}
 
-/// An iterator over the item contained inside an Option.
+/// An iterator over the item contained inside an [`Option`].
+///
+/// [`Option`]: enum.Option.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> { inner: Item<A> }

@@ -17,7 +17,7 @@ use rustc::mir::transform::MirMapPass;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};
-use syntax::ext::base::{MacroExpanderFn, MacroRulesTT};
+use syntax::ext::base::MacroExpanderFn;
 use syntax::parse::token;
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
@@ -69,11 +69,11 @@ pub struct Registry<'a> {
 
 impl<'a> Registry<'a> {
     #[doc(hidden)]
-    pub fn new(sess: &'a Session, krate: &ast::Crate) -> Registry<'a> {
+    pub fn new(sess: &'a Session, krate_span: Span) -> Registry<'a> {
         Registry {
             sess: sess,
             args_hidden: None,
-            krate_span: krate.span,
+            krate_span: krate_span,
             syntax_exts: vec!(),
             early_lint_passes: vec!(),
             late_lint_passes: vec!(),
@@ -111,10 +111,6 @@ impl<'a> Registry<'a> {
             }
             MultiDecorator(ext) => MultiDecorator(ext),
             MultiModifier(ext) => MultiModifier(ext),
-            MacroRulesTT => {
-                self.sess.err("plugin tried to register a new MacroRulesTT");
-                return;
-            }
         }));
     }
 
@@ -155,7 +151,6 @@ impl<'a> Registry<'a> {
     pub fn register_llvm_pass(&mut self, name: &str) {
         self.llvm_passes.push(name.to_owned());
     }
-
 
     /// Register an attribute with an attribute type.
     ///

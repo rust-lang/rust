@@ -136,13 +136,6 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FnvHashSet<traits::TraitErrorKey<'tcx>>>,
 
-    // This is a temporary field used for toggling on normalization in the inference context,
-    // as we move towards the approach described here:
-    // https://internals.rust-lang.org/t/flattening-the-contexts-for-fun-and-profit/2293
-    // At a point sometime in the future normalization will be done by the typing context
-    // directly.
-    normalize: bool,
-
     // Sadly, the behavior of projection varies a bit depending on the
     // stage of compilation. The specifics are given in the
     // documentation for `Reveal`.
@@ -232,7 +225,7 @@ impl TypeOrigin {
             &TypeOrigin::RelateOutputImplTypes(_) |
             &TypeOrigin::ExprAssignable(_) => "mismatched types",
             &TypeOrigin::MethodCompatCheck(_) => "method not compatible with trait",
-            &TypeOrigin::MatchExpressionArm(_, _, source) => match source {
+            &TypeOrigin::MatchExpressionArm(.., source) => match source {
                 hir::MatchSource::IfLetDesugar{..} => "`if let` arms have incompatible types",
                 _ => "match arms have incompatible types",
             },
@@ -255,7 +248,7 @@ impl TypeOrigin {
             &TypeOrigin::RelateOutputImplTypes(_) => {
                 "trait type parameters matches those specified on the impl"
             }
-            &TypeOrigin::MatchExpressionArm(_, _, _) => "match arms have compatible types",
+            &TypeOrigin::MatchExpressionArm(..) => "match arms have compatible types",
             &TypeOrigin::IfExpression(_) => "if and else have compatible types",
             &TypeOrigin::IfExpressionWithNoElse(_) => "if missing an else returns ()",
             &TypeOrigin::RangeExpression(_) => "start and end of range have compatible types",
@@ -458,7 +451,6 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tables: Option<RefCell<ty::Tables<'tcx>>>,
     param_env: Option<ty::ParameterEnvironment<'gcx>>,
     projection_mode: Reveal,
-    normalize: bool
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
@@ -473,19 +465,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             tables: tables.map(RefCell::new),
             param_env: param_env,
             projection_mode: projection_mode,
-            normalize: false
-        }
-    }
-
-    pub fn normalizing_infer_ctxt(self, projection_mode: Reveal)
-                                  -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
-        InferCtxtBuilder {
-            global_tcx: self,
-            arenas: ty::CtxtArenas::new(),
-            tables: None,
-            param_env: None,
-            projection_mode: projection_mode,
-            normalize: false
         }
     }
 
@@ -506,7 +485,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FnvHashSet()),
-            normalize: false,
             projection_mode: Reveal::NotSpecializable,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
@@ -525,7 +503,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             ref tables,
             ref mut param_env,
             projection_mode,
-            normalize
         } = *self;
         let tables = if let Some(ref tables) = *tables {
             InferTables::Local(tables)
@@ -547,7 +524,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FnvHashSet()),
-            normalize: normalize,
             projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
@@ -683,6 +659,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
     }
 
+    /// Finishes processes any obligations that remain in the
+    /// fulfillment context, and then returns the result with all type
+    /// variables removed and regions erased. Because this is intended
+    /// for use after type-check has completed, if any errors occur,
+    /// it will panic. It is used during normalization and other cases
+    /// where processing the obligations in `fulfill_cx` may cause
+    /// type inference variables that appear in `result` to be
+    /// unified, and hence we need to process those obligations to get
+    /// the complete picture of the type.
     pub fn drain_fulfillment_cx_or_panic<T>(&self,
                                             span: Span,
                                             fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
@@ -692,45 +677,26 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("drain_fulfillment_cx_or_panic()");
 
-        let when = "resolving bounds after type-checking";
-        let v = match self.drain_fulfillment_cx(fulfill_cx, result) {
-            Ok(v) => v,
-            Err(errors) => {
-                span_bug!(span, "Encountered errors `{:?}` {}", errors, when);
-            }
-        };
-
-        match self.tcx.lift_to_global(&v) {
-            Some(v) => v,
-            None => {
-                span_bug!(span, "Uninferred types/regions in `{:?}` {}", v, when);
-            }
-        }
-    }
-
-    /// Finishes processes any obligations that remain in the fulfillment
-    /// context, and then "freshens" and returns `result`. This is
-    /// primarily used during normalization and other cases where
-    /// processing the obligations in `fulfill_cx` may cause type
-    /// inference variables that appear in `result` to be unified, and
-    /// hence we need to process those obligations to get the complete
-    /// picture of the type.
-    pub fn drain_fulfillment_cx<T>(&self,
-                                   fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                   result: &T)
-                                   -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
-        where T : TypeFoldable<'tcx>
-    {
-        debug!("drain_fulfillment_cx(result={:?})",
-               result);
-
         // In principle, we only need to do this so long as `result`
         // contains unbound type parameters. It could be a slight
         // optimization to stop iterating early.
-        fulfill_cx.select_all_or_error(self)?;
+        match fulfill_cx.select_all_or_error(self) {
+            Ok(()) => { }
+            Err(errors) => {
+                span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
+                          errors);
+            }
+        }
 
         let result = self.resolve_type_vars_if_possible(result);
-        Ok(self.tcx.erase_regions(&result))
+        let result = self.tcx.erase_regions(&result);
+
+        match self.tcx.lift_to_global(&result) {
+            Some(result) => result,
+            None => {
+                span_bug!(span, "Uninferred types/regions in `{:?}`", result);
+            }
+        }
     }
 
     pub fn projection_mode(&self) -> Reveal {
@@ -862,6 +828,33 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut fields = self.combine_fields(trace);
         let result = fields.glb(a_is_expected).relate(a, b);
         result.map(move |t| InferOk { value: t, obligations: fields.obligations })
+    }
+
+    // Clear the "obligations in snapshot" flag, invoke the closure,
+    // then restore the flag to its original value. This flag is a
+    // debugging measure designed to detect cases where we start a
+    // snapshot, create type variables, register obligations involving
+    // those type variables in the fulfillment cx, and then have to
+    // unroll the snapshot, leaving "dangling type variables" behind.
+    // In such cases, the flag will be set by the fulfillment cx, and
+    // an assertion will fail when rolling the snapshot back.  Very
+    // useful, much better than grovelling through megabytes of
+    // RUST_LOG output.
+    //
+    // HOWEVER, in some cases the flag is wrong. In particular, we
+    // sometimes create a "mini-fulfilment-cx" in which we enroll
+    // obligations. As long as this fulfillment cx is fully drained
+    // before we return, this is not a problem, as there won't be any
+    // escaping obligations in the main cx. In those cases, you can
+    // use this function.
+    pub fn save_and_restore_obligations_in_snapshot_flag<F, R>(&self, func: F) -> R
+        where F: FnOnce(&Self) -> R
+    {
+        let flag = self.obligations_in_snapshot.get();
+        self.obligations_in_snapshot.set(false);
+        let result = func(self);
+        self.obligations_in_snapshot.set(flag);
+        result
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
@@ -1702,17 +1695,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let closure_ty = self.tcx.closure_type(def_id, substs);
-        if self.normalize {
-            let closure_ty = self.tcx.erase_regions(&closure_ty);
-
-            if !closure_ty.has_projection_types() {
-                return closure_ty;
-            }
-
-            self.normalize_projections_in(&closure_ty)
-        } else {
-            closure_ty
-        }
+        closure_ty
     }
 }
 
@@ -1756,7 +1739,7 @@ impl TypeOrigin {
             TypeOrigin::ExprAssignable(span) => span,
             TypeOrigin::Misc(span) => span,
             TypeOrigin::RelateOutputImplTypes(span) => span,
-            TypeOrigin::MatchExpressionArm(match_span, _, _) => match_span,
+            TypeOrigin::MatchExpressionArm(match_span, ..) => match_span,
             TypeOrigin::IfExpression(span) => span,
             TypeOrigin::IfExpressionWithNoElse(span) => span,
             TypeOrigin::RangeExpression(span) => span,
@@ -1809,7 +1792,7 @@ impl RegionVariableOrigin {
             Autoref(a) => a,
             Coercion(a) => a,
             EarlyBoundRegion(a, _) => a,
-            LateBoundRegion(a, _, _) => a,
+            LateBoundRegion(a, ..) => a,
             BoundRegionInCoherence(_) => syntax_pos::DUMMY_SP,
             UpvarRegion(_, a) => a
         }

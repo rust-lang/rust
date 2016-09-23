@@ -12,8 +12,7 @@
 
 use super::{SelectionContext, Obligation, ObligationCause};
 
-use middle::cstore::LOCAL_CRATE;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use infer::{InferCtxt, TypeOrigin};
 use syntax_pos::DUMMY_SP;
@@ -224,7 +223,7 @@ fn fundamental_ty(tcx: TyCtxt, ty: Ty) -> bool {
     match ty.sty {
         ty::TyBox(..) | ty::TyRef(..) =>
             true,
-        ty::TyEnum(def, _) | ty::TyStruct(def, _) =>
+        ty::TyAdt(def, _) =>
             def.is_fundamental(),
         ty::TyTrait(ref data) =>
             tcx.has_attr(data.principal.def_id(), "fundamental"),
@@ -260,8 +259,7 @@ fn ty_is_local_constructor(tcx: TyCtxt, ty: Ty, infer_is_local: InferIsLocal)-> 
             infer_is_local.0
         }
 
-        ty::TyEnum(def, _) |
-        ty::TyStruct(def, _) => {
+        ty::TyAdt(def, _) => {
             def.did.is_local()
         }
 

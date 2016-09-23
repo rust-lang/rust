@@ -136,6 +136,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (Some(llfn), _) => {
             Call(bcx, llfn, &llargs, call_debug_location)
         }
+        (_, "likely") => {
+            let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
+            Call(bcx, expect, &[llargs[0], C_bool(ccx, true)], call_debug_location)
+        }
+        (_, "unlikely") => {
+            let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
+            Call(bcx, expect, &[llargs[0], C_bool(ccx, false)], call_debug_location)
+        }
         (_, "try") => {
             bcx = try_intrinsic(bcx, llargs[0], llargs[1], llargs[2], llresult,
                                 call_debug_location);
@@ -186,6 +194,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let ptr = if is_sized {
                 llargs[0]
             } else {
+                // FIXME(#36457) -- we should pass unsized values as two arguments
                 let scratch = alloc_ty(bcx, tp_ty, "drop");
                 call_lifetime_start(bcx, scratch);
                 Store(bcx, llargs[0], get_dataptr(bcx, scratch));
@@ -408,7 +417,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "discriminant_value") => {
             let val_ty = substs.type_at(0);
             match val_ty.sty {
-                ty::TyEnum(..) => {
+                ty::TyAdt(adt, ..) if adt.is_enum() => {
                     let repr = adt::represent_type(ccx, val_ty);
                     adt::trans_get_discr(bcx, &repr, llargs[0],
                                          Some(llret_ty), true)
@@ -544,7 +553,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         }
 
-        (_, _) => {
+        (..) => {
             let intr = match Intrinsic::find(&name) {
                 Some(intr) => intr,
                 None => bug!("unknown intrinsic '{}'", name),

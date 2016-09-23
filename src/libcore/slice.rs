@@ -520,8 +520,8 @@ impl<T> ops::Index<usize> for [T] {
     type Output = T;
 
     fn index(&self, index: usize) -> &T {
-        assert!(index < self.len());
-        unsafe { self.get_unchecked(index) }
+        // NB built-in indexing
+        &(*self)[index]
     }
 }
 
@@ -530,8 +530,8 @@ impl<T> ops::Index<usize> for [T] {
 impl<T> ops::IndexMut<usize> for [T] {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
-        assert!(index < self.len());
-        unsafe { self.get_unchecked_mut(index) }
+        // NB built-in indexing
+        &mut (*self)[index]
     }
 }
 
@@ -755,11 +755,13 @@ impl<T> ops::IndexMut<ops::RangeToInclusive<usize>> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Default for &'a [T] {
+    /// Creates an empty slice.
     fn default() -> &'a [T] { &[] }
 }
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
 impl<'a, T> Default for &'a mut [T] {
+    /// Creates a mutable empty slice.
     fn default() -> &'a mut [T] { &mut [] }
 }
 
@@ -1821,7 +1823,8 @@ impl<T: PartialOrd> PartialOrd for [T] {
 // intermediate trait for specialization of slice's PartialEq
 trait SlicePartialEq<B> {
     fn equal(&self, other: &[B]) -> bool;
-    fn not_equal(&self, other: &[B]) -> bool;
+
+    fn not_equal(&self, other: &[B]) -> bool { !self.equal(other) }
 }
 
 // Generic slice equality
@@ -1841,20 +1844,6 @@ impl<A, B> SlicePartialEq<B> for [A]
 
         true
     }
-
-    default fn not_equal(&self, other: &[B]) -> bool {
-        if self.len() != other.len() {
-            return true;
-        }
-
-        for i in 0..self.len() {
-            if self[i].ne(&other[i]) {
-                return true;
-            }
-        }
-
-        false
-    }
 }
 
 // Use memcmp for bytewise equality when the types allow
@@ -1873,10 +1862,6 @@ impl<A> SlicePartialEq<A> for [A]
             memcmp(self.as_ptr() as *const u8,
                    other.as_ptr() as *const u8, size) == 0
         }
-    }
-
-    fn not_equal(&self, other: &[A]) -> bool {
-        !self.equal(other)
     }
 }
 

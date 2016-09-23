@@ -1,0 +1,11 @@
+error[E0493]: constants are not allowed to have destructors
+  --> $DIR/E0493.rs:27:17
+   |
+16 |     fn drop(&mut self) {}
+   |     --------------------- destructor defined here
+...
+27 | const F : Foo = Foo { a : 0 };
+   |                 ^^^^^^^^^^^^^ constants cannot have destructors
+
+error: aborting due to previous error
+

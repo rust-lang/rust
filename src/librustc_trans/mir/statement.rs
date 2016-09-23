@@ -78,6 +78,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::StatementKind::StorageDead(ref lvalue) => {
                 self.trans_storage_liveness(bcx, lvalue, base::Lifetime::End)
             }
+            mir::StatementKind::Nop => bcx,
         }
     }
 

@@ -67,7 +67,6 @@ macro_rules! hir_vec {
 pub mod check_attr;
 pub mod def;
 pub mod def_id;
-pub mod fold;
 pub mod intravisit;
 pub mod lowering;
 pub mod map;
@@ -469,7 +468,7 @@ impl Pat {
         }
 
         match self.node {
-            PatKind::Binding(_, _, Some(ref p)) => p.walk_(it),
+            PatKind::Binding(.., Some(ref p)) => p.walk_(it),
             PatKind::Struct(_, ref fields, _) => {
                 fields.iter().all(|field| field.node.pat.walk_(it))
             }
@@ -486,7 +485,7 @@ impl Pat {
             }
             PatKind::Wild |
             PatKind::Lit(_) |
-            PatKind::Range(_, _) |
+            PatKind::Range(..) |
             PatKind::Binding(..) |
             PatKind::Path(..) => {
                 true
@@ -1483,6 +1482,8 @@ pub enum Item_ {
     ItemEnum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
     ItemStruct(VariantData, Generics),
+    /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
+    ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Unsafety, Generics, TyParamBounds, HirVec<TraitItem>),
 
@@ -1512,6 +1513,7 @@ impl Item_ {
             ItemTy(..) => "type alias",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",
+            ItemUnion(..) => "union",
             ItemTrait(..) => "trait",
             ItemImpl(..) |
             ItemDefaultImpl(..) => "item",

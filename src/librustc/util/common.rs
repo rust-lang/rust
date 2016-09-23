@@ -17,7 +17,7 @@ use std::fmt::Debug;
 use std::hash::{Hash, BuildHasher};
 use std::iter::repeat;
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use hir;
 use hir::intravisit;
@@ -47,12 +47,6 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
     let rv = f();
     let dur = start.elapsed();
 
-    // Hack up our own formatting for the duration to make it easier for scripts
-    // to parse (always use the same number of decimal places and the same unit).
-    const NANOS_PER_SEC: f64 = 1_000_000_000.0;
-    let secs = dur.as_secs() as f64;
-    let secs = secs + dur.subsec_nanos() as f64 / NANOS_PER_SEC;
-
     let mem_string = match get_resident() {
         Some(n) => {
             let mb = n as f64 / 1_000_000.0;
@@ -60,11 +54,34 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
         }
         None => "".to_owned(),
     };
-    println!("{}time: {:.3}{}\t{}", repeat("  ").take(old).collect::<String>(),
-             secs, mem_string, what);
+    println!("{}time: {}{}\t{}",
+             repeat("  ").take(old).collect::<String>(),
+             duration_to_secs_str(dur),
+             mem_string,
+             what);
 
     DEPTH.with(|slot| slot.set(old));
 
+    rv
+}
+
+// Hack up our own formatting for the duration to make it easier for scripts
+// to parse (always use the same number of decimal places and the same unit).
+pub fn duration_to_secs_str(dur: Duration) -> String {
+    const NANOS_PER_SEC: f64 = 1_000_000_000.0;
+    let secs = dur.as_secs() as f64 +
+               dur.subsec_nanos() as f64 / NANOS_PER_SEC;
+
+    format!("{:.3}", secs)
+}
+
+pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
+    F: FnOnce() -> T,
+{
+    let start = Instant::now();
+    let rv = f();
+    let duration = start.elapsed();
+    accu.set(duration + accu.get());
     rv
 }
 

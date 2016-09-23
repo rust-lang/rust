@@ -348,26 +348,10 @@ impl CodeMap {
         let files = self.files.borrow();
         let f = (*files)[idx].clone();
 
-        let len = f.lines.borrow().len();
-        if len == 0 {
-            return Err(f);
+        match f.lookup_line(pos) {
+            Some(line) => Ok(FileMapAndLine { fm: f, line: line }),
+            None => Err(f)
         }
-
-        let mut a = 0;
-        {
-            let lines = f.lines.borrow();
-            let mut b = lines.len();
-            while b - a > 1 {
-                let m = (a + b) / 2;
-                if (*lines)[m] > pos {
-                    b = m;
-                } else {
-                    a = m;
-                }
-            }
-            assert!(a <= lines.len());
-        }
-        Ok(FileMapAndLine { fm: f, line: a })
     }
 
     pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
@@ -377,6 +361,46 @@ impl CodeMap {
             line: loc.line,
             col: loc.col,
             file: Some(loc.file)
+        }
+    }
+
+    /// Returns `Some(span)`, a union of the lhs and rhs span.  The lhs must precede the rhs. If
+    /// there are gaps between lhs and rhs, the resulting union will cross these gaps.
+    /// For this to work, the spans have to be:
+    ///    * the expn_id of both spans much match
+    ///    * the lhs span needs to end on the same line the rhs span begins
+    ///    * the lhs span must start at or before the rhs span
+    pub fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
+        use std::cmp;
+
+        // make sure we're at the same expansion id
+        if sp_lhs.expn_id != sp_rhs.expn_id {
+            return None;
+        }
+
+        let lhs_end = match self.lookup_line(sp_lhs.hi) {
+            Ok(x) => x,
+            Err(_) => return None
+        };
+        let rhs_begin = match self.lookup_line(sp_rhs.lo) {
+            Ok(x) => x,
+            Err(_) => return None
+        };
+
+        // if we must cross lines to merge, don't merge
+        if lhs_end.line != rhs_begin.line {
+            return None;
+        }
+
+        // ensure these follow the expected order and we don't overlap
+        if (sp_lhs.lo <= sp_rhs.lo) && (sp_lhs.hi <= sp_rhs.lo) {
+            Some(Span {
+                lo: cmp::min(sp_lhs.lo, sp_rhs.lo),
+                hi: cmp::max(sp_lhs.hi, sp_rhs.hi),
+                expn_id: sp_lhs.expn_id,
+            })
+        } else {
+            None
         }
     }
 
@@ -691,7 +715,7 @@ impl CodeMap {
     }
 
     // Return the index of the filemap (in self.files) which contains pos.
-    fn lookup_filemap_idx(&self, pos: BytePos) -> usize {
+    pub fn lookup_filemap_idx(&self, pos: BytePos) -> usize {
         let files = self.files.borrow();
         let files = &*files;
         let count = files.len();
@@ -834,6 +858,9 @@ impl CodeMapper for CodeMap {
     }
     fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace> {
         self.macro_backtrace(span)
+    }
+    fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
+        self.merge_spans(sp_lhs, sp_rhs)
     }
 }
 
@@ -1086,6 +1113,40 @@ mod tests {
         assert_eq!(sstr,
                    "blork.rs:2:1: 2:12\n`second line`\n  Callsite:\n  \
                     blork.rs:1:1: 1:12\n  `first line.`\n");
+    }
+
+    /// Test merging two spans on the same line
+    #[test]
+    fn span_merging() {
+        let cm = CodeMap::new();
+        let inputtext  = "bbbb BB bb CCC\n";
+        let selection1 = "     ~~       \n";
+        let selection2 = "           ~~~\n";
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
+        let span1 = span_from_selection(inputtext, selection1);
+        let span2 = span_from_selection(inputtext, selection2);
+
+        if let Some(sp) = cm.merge_spans(span1, span2) {
+            let sstr = cm.span_to_expanded_string(sp);
+            assert_eq!(sstr, "blork.rs:1:6: 1:15\n`BB bb CCC`\n");
+        }
+        else {
+            assert!(false);
+        }
+    }
+
+    /// Test failing to merge two spans on different lines
+    #[test]
+    fn span_merging_fail() {
+        let cm = CodeMap::new();
+        let inputtext  = "bbbb BB\ncc CCC\n";
+        let selection1 = "     ~~\n      \n";
+        let selection2 = "       \n   ~~~\n";
+        cm.new_filemap_and_lines("blork.rs", None, inputtext);
+        let span1 = span_from_selection(inputtext, selection1);
+        let span2 = span_from_selection(inputtext, selection2);
+
+        assert!(cm.merge_spans(span1, span2).is_none());
     }
 
     /// Returns the span corresponding to the `n`th occurrence of
