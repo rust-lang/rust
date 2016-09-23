@@ -23,7 +23,7 @@ use std::io::Write;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
-use {Build, Compiler};
+use {Build, Compiler, Triple};
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
 use regex::{RegexSet, quote};
 
@@ -47,7 +47,7 @@ fn tmpdir(build: &Build) -> PathBuf {
 /// Builds the `rust-docs` installer component.
 ///
 /// Slurps up documentation from the `stage`'s `host`.
-pub fn docs(build: &Build, stage: u32, host: &str) {
+pub fn docs(build: &Build, stage: u32, host: &Triple) {
     println!("Dist docs stage{} ({})", stage, host);
     let name = format!("rust-docs-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, name));
@@ -75,7 +75,7 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
 
     // As part of this step, *also* copy the docs directory to a directory which
     // buildbot typically uploads.
-    if host == build.config.build {
+    if host == &build.config.build {
         let dst = distdir(build).join("doc").join(&build.package_vers);
         t!(fs::create_dir_all(&dst));
         cp_r(&src, &dst);
@@ -88,7 +88,7 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
 /// without any extra installed software (e.g. we bundle gcc, libraries, etc).
 /// Currently just shells out to a python script, but that should be rewritten
 /// in Rust.
-pub fn mingw(build: &Build, host: &str) {
+pub fn mingw(build: &Build, host: &Triple) {
     println!("Dist mingw ({})", host);
     let name = format!("rust-mingw-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, host));
@@ -123,7 +123,7 @@ pub fn mingw(build: &Build, host: &str) {
 }
 
 /// Creates the `rustc` installer component.
-pub fn rustc(build: &Build, stage: u32, host: &str) {
+pub fn rustc(build: &Build, stage: u32, host: &Triple) {
     println!("Dist rustc stage{} ({})", stage, host);
     let name = format!("rustc-{}", package_vers(build));
     let image = tmpdir(build).join(format!("{}-{}-image", name, host));
@@ -159,7 +159,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     // licenses, so to be safe we just include it here in all MinGW packages.
     //
     // FIXME: this script should be rewritten into Rust
-    if host.contains("pc-windows-gnu") {
+    if host.is_pc_windows_gnu() {
         let mut cmd = Command::new("python");
         cmd.arg(build.src.join("src/etc/make-win-dist.py"))
            .arg(&image)
@@ -189,7 +189,8 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     t!(fs::remove_dir_all(&image));
     t!(fs::remove_dir_all(&overlay));
 
-    fn prepare_image(build: &Build, stage: u32, host: &str, image: &Path) {
+    fn prepare_image(build: &Build, stage: u32, host: &Triple,
+                     image: &Path) {
         let src = build.sysroot(&Compiler::new(stage, host));
         let libdir = libdir(host);
 
@@ -230,13 +231,13 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
 /// Copies debugger scripts for `host` into the `sysroot` specified.
 pub fn debugger_scripts(build: &Build,
                         sysroot: &Path,
-                        host: &str) {
+                        host: &Triple) {
     let cp_debugger_script = |file: &str| {
         let dst = sysroot.join("lib/rustlib/etc");
         t!(fs::create_dir_all(&dst));
         install(&build.src.join("src/etc/").join(file), &dst, 0o644);
     };
-    if host.contains("windows-msvc") {
+    if host.is_windows_msvc() {
         // no debugger scripts
     } else {
         cp_debugger_script("debugger_pretty_printers_common.py");
@@ -258,7 +259,7 @@ pub fn debugger_scripts(build: &Build,
 
 /// Creates the `rust-std` installer component as compiled by `compiler` for the
 /// target `target`.
-pub fn std(build: &Build, compiler: &Compiler, target: &str) {
+pub fn std(build: &Build, compiler: &Compiler, target: &Triple) {
     println!("Dist std stage{} ({} -> {})", compiler.stage, compiler.host,
              target);
     let name = format!("rust-std-{}", package_vers(build));

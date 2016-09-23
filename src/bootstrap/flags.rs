@@ -20,6 +20,8 @@ use std::slice;
 
 use getopts::Options;
 
+use Triple;
+
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
     pub verbose: bool,
@@ -36,7 +38,7 @@ pub struct Flags {
 }
 
 pub struct Filter {
-    values: Vec<String>,
+    values: Vec<Triple>,
 }
 
 impl Flags {
@@ -81,8 +83,18 @@ impl Flags {
             clean: m.opt_present("clean"),
             stage: m.opt_str("stage").map(|j| j.parse().unwrap()),
             build: m.opt_str("build").unwrap(),
-            host: Filter { values: m.opt_strs("host") },
-            target: Filter { values: m.opt_strs("target") },
+            host: Filter {
+                values: m.opt_strs("host")
+                         .into_iter()
+                         .map(|s| s.into())
+                         .collect()
+            },
+            target: Filter {
+                values: m.opt_strs("target")
+                         .into_iter()
+                         .map(|s| s.into())
+                         .collect()
+            },
             step: m.opt_strs("step"),
             config: cfg_file,
             src: m.opt_str("src").map(PathBuf::from),
@@ -93,11 +105,11 @@ impl Flags {
 }
 
 impl Filter {
-    pub fn contains(&self, name: &str) -> bool {
+    pub fn contains(&self, name: &Triple) -> bool {
         self.values.len() == 0 || self.values.iter().any(|s| s == name)
     }
 
-    pub fn iter(&self) -> slice::Iter<String> {
+    pub fn iter(&self) -> slice::Iter<Triple> {
         self.values.iter()
     }
 }

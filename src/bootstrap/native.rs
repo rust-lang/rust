@@ -26,11 +26,11 @@ use build_helper::output;
 use cmake;
 use gcc;
 
-use Build;
+use {Build, Triple};
 use util::up_to_date;
 
 /// Compile LLVM for `target`.
-pub fn llvm(build: &Build, target: &str) {
+pub fn llvm(build: &Build, target: &Triple) {
     // If we're using a custom LLVM bail out here, but we can only use a
     // custom LLVM for the build triple.
     if let Some(config) = build.config.target_config.get(target) {
@@ -60,8 +60,8 @@ pub fn llvm(build: &Build, target: &str) {
     if build.config.ninja {
         cfg.generator("Ninja");
     }
-    cfg.target(target)
-       .host(&build.config.build)
+    cfg.target(&target.0)
+       .host(&build.config.build.0)
        .out_dir(&dst)
        .profile(if build.config.llvm_optimize {"Release"} else {"Debug"})
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
@@ -75,24 +75,24 @@ pub fn llvm(build: &Build, target: &str) {
        .define("LLVM_ENABLE_LIBEDIT", "OFF")
        .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string());
 
-    if target.starts_with("i686") {
+    if target.is_i686() {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
     }
 
     // http://llvm.org/docs/HowToCrossCompileLLVM.html
-    if target != build.config.build {
+    if target != &build.config.build {
         // FIXME: if the llvm root for the build triple is overridden then we
         //        should use llvm-tblgen from there, also should verify that it
         //        actually exists most of the time in normal installs of LLVM.
         let host = build.llvm_out(&build.config.build).join("bin/llvm-tblgen");
         cfg.define("CMAKE_CROSSCOMPILING", "True")
-           .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
+           .define("LLVM_TARGET_ARCH", target.arch())
            .define("LLVM_TABLEGEN", &host)
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
     }
 
     // MSVC handles compiler business itself
-    if !target.contains("msvc") {
+    if !target.is_msvc() {
         if build.config.ccache {
            cfg.define("CMAKE_C_COMPILER", "ccache")
               .define("CMAKE_C_COMPILER_ARG1", build.cc(target))
@@ -133,7 +133,7 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
 
 /// Compiles the `rust_test_helpers.c` library which we used in various
 /// `run-pass` test suites for ABI testing.
-pub fn test_helpers(build: &Build, target: &str) {
+pub fn test_helpers(build: &Build, target: &Triple) {
     let dst = build.test_helpers_out(target);
     let src = build.src.join("src/rt/rust_test_helpers.c");
     if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
@@ -145,8 +145,8 @@ pub fn test_helpers(build: &Build, target: &str) {
     let mut cfg = gcc::Config::new();
     cfg.cargo_metadata(false)
        .out_dir(&dst)
-       .target(target)
-       .host(&build.config.build)
+       .target(&target.0)
+       .host(&build.config.build.0)
        .opt_level(0)
        .debug(false)
        .file(build.src.join("src/rt/rust_test_helpers.c"))

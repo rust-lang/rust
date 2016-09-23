@@ -22,7 +22,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::Command;
 
-use {Build, Compiler, Mode};
+use {Build, Compiler, Mode, Triple};
 use util::{up_to_date, cp_r};
 
 /// Invoke `rustbook` as compiled in `stage` for `target` for the doc book
@@ -30,7 +30,8 @@ use util::{up_to_date, cp_r};
 ///
 /// This will not actually generate any documentation if the documentation has
 /// already been generated.
-pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str, out: &Path) {
+pub fn rustbook(build: &Build, stage: u32, target: &Triple, name: &str,
+                out: &Path) {
     t!(fs::create_dir_all(out));
 
     let out = out.join(name);
@@ -57,7 +58,7 @@ pub fn rustbook(build: &Build, stage: u32, target: &str, name: &str, out: &Path)
 /// `STAMP` alongw ith providing the various header/footer HTML we've cutomized.
 ///
 /// In the end, this is just a glorified wrapper around rustdoc!
-pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn standalone(build: &Build, stage: u32, target: &Triple, out: &Path) {
     println!("Documenting stage{} standalone ({})", stage, target);
     t!(fs::create_dir_all(out));
 
@@ -131,7 +132,7 @@ pub fn standalone(build: &Build, stage: u32, target: &str, out: &Path) {
 ///
 /// This will generate all documentation for the standard library and its
 /// dependencies. This is largely just a wrapper around `cargo doc`.
-pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn std(build: &Build, stage: u32, target: &Triple, out: &Path) {
     println!("Documenting stage{} std ({})", stage, target);
     t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);
@@ -153,7 +154,7 @@ pub fn std(build: &Build, stage: u32, target: &str, out: &Path) {
 ///
 /// This will generate all documentation for libtest and its dependencies. This
 /// is largely just a wrapper around `cargo doc`.
-pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn test(build: &Build, stage: u32, target: &Triple, out: &Path) {
     println!("Documenting stage{} test ({})", stage, target);
     t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);
@@ -174,7 +175,7 @@ pub fn test(build: &Build, stage: u32, target: &str, out: &Path) {
 ///
 /// This will generate all documentation for the compiler libraries and their
 /// dependencies. This is largely just a wrapper around `cargo doc`.
-pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn rustc(build: &Build, stage: u32, target: &Triple, out: &Path) {
     println!("Documenting stage{} compiler ({})", stage, target);
     t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);
@@ -194,7 +195,7 @@ pub fn rustc(build: &Build, stage: u32, target: &str, out: &Path) {
 
 /// Generates the HTML rendered error-index by running the
 /// `error_index_generator` tool.
-pub fn error_index(build: &Build, stage: u32, target: &str, out: &Path) {
+pub fn error_index(build: &Build, stage: u32, target: &Triple, out: &Path) {
     println!("Documenting stage{} error index ({})", stage, target);
     t!(fs::create_dir_all(out));
     let compiler = Compiler::new(stage, &build.config.build);

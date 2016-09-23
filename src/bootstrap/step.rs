@@ -22,12 +22,12 @@
 
 use std::collections::HashSet;
 
-use {Build, Compiler};
+use {Build, Compiler, Triple};
 
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub struct Step<'a> {
     pub src: Source<'a>,
-    pub target: &'a str,
+    pub target: &'a Triple,
 }
 
 /// Macro used to iterate over all targets that are recognized by the build
@@ -56,15 +56,15 @@ macro_rules! targets {
             // host's directory also provided.
             (libstd_link, LibstdLink {
                 compiler: Compiler<'a>,
-                host: &'a str
+                host: &'a Triple
             }),
             (libtest_link, LibtestLink {
                 compiler: Compiler<'a>,
-                host: &'a str
+                host: &'a Triple
             }),
             (librustc_link, LibrustcLink {
                 compiler: Compiler<'a>,
-                host: &'a str
+                host: &'a Triple
             }),
 
             // Various tools that we can build as part of the build.
@@ -204,8 +204,7 @@ fn top_level(build: &Build) -> Vec<Step> {
     };
     let target = Step {
         src: Source::Llvm { _dummy: () },
-        target: build.flags.target.iter().next().map(|x| &x[..])
-                     .unwrap_or(host.target)
+        target: build.flags.target.iter().next().unwrap_or(host.target)
     };
 
     // First, try to find steps on the command line.
@@ -225,7 +224,7 @@ fn top_level(build: &Build) -> Vec<Step> {
                 continue
             }
             let host = t.target(host);
-            if host.target == build.config.build {
+            if host.target == &build.config.build {
                 targets.push(host.librustc(host.compiler(stage)));
             } else {
                 targets.push(host.librustc_link(t.compiler(stage), host.target));
@@ -235,7 +234,7 @@ fn top_level(build: &Build) -> Vec<Step> {
                     continue
                 }
 
-                if host.target == build.config.build {
+                if host.target == &build.config.build {
                     targets.push(host.target(target)
                                      .libtest(host.compiler(stage)));
                 } else {
@@ -259,7 +258,7 @@ fn add_steps<'a>(build: &'a Build,
         stage: u32,
         compiler: Compiler<'a>,
         _dummy: (),
-        host: &'a str,
+        host: &'a Triple,
     }
     for step in build.flags.step.iter() {
 
@@ -305,7 +304,7 @@ impl<'a> Step<'a> {
         Compiler::new(stage, self.target)
     }
 
-    fn target(&self, target: &'a str) -> Step<'a> {
+    fn target(&self, target: &'a Triple) -> Step<'a> {
         Step { target: target, src: self.src.clone() }
     }
 
@@ -421,7 +420,7 @@ impl<'a> Step<'a> {
                 // If we're testing the build triple, then we know we can
                 // actually run binaries and such, so we run all possible tests
                 // that we know about.
-                if self.target == build.config.build {
+                if self.target == &build.config.build {
                     base.extend(vec![
                         // docs-related
                         self.check_docs(compiler),
@@ -493,7 +492,7 @@ impl<'a> Step<'a> {
                     self.target(compiler.host).tool_compiletest(compiler.stage),
                     self.test_helpers(()),
                 ];
-                if self.target.contains("android") {
+                if self.target.is_android() {
                     base.push(self.android_copy_libs(compiler));
                 }
                 base
@@ -572,7 +571,7 @@ impl<'a> Step<'a> {
                     let host = self.target(host);
                     base.push(host.dist_src(()));
                     base.push(host.dist_rustc(stage));
-                    if host.target.contains("windows-gnu") {
+                    if host.target.is_windows_gnu() {
                         base.push(host.dist_mingw(()));
                     }
 

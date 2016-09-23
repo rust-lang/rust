@@ -36,7 +36,7 @@ use std::process::Command;
 use build_helper::{cc2ar, output};
 use gcc;
 
-use Build;
+use {Build, Triple};
 use config::Target;
 
 pub fn find(build: &mut Build) {
@@ -45,7 +45,7 @@ pub fn find(build: &mut Build) {
     for target in build.config.target.iter() {
         let mut cfg = gcc::Config::new();
         cfg.cargo_metadata(false).opt_level(0).debug(false)
-           .target(target).host(&build.config.build);
+           .target(&target.0).host(&build.config.build.0);
 
         let config = build.config.target_config.get(target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
@@ -55,19 +55,19 @@ pub fn find(build: &mut Build) {
         }
 
         let compiler = cfg.get_compiler();
-        let ar = cc2ar(compiler.path(), target);
+        let ar = cc2ar(compiler.path(), &target.0);
         build.verbose(&format!("CC_{} = {:?}", target, compiler.path()));
         if let Some(ref ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", target, ar));
         }
-        build.cc.insert(target.to_string(), (compiler, ar));
+        build.cc.insert(target.clone(), (compiler, ar));
     }
 
     // For all host triples we need to find a C++ compiler as well
     for host in build.config.host.iter() {
         let mut cfg = gcc::Config::new();
         cfg.cargo_metadata(false).opt_level(0).debug(false).cpp(true)
-           .target(host).host(&build.config.build);
+           .target(&host.0).host(&build.config.build.0);
         let config = build.config.target_config.get(host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
@@ -76,21 +76,21 @@ pub fn find(build: &mut Build) {
         }
         let compiler = cfg.get_compiler();
         build.verbose(&format!("CXX_{} = {:?}", host, compiler.path()));
-        build.cxx.insert(host.to_string(), compiler);
+        build.cxx.insert(host.clone(), compiler);
     }
 }
 
 fn set_compiler(cfg: &mut gcc::Config,
                 gnu_compiler: &str,
-                target: &str,
+                target: &Triple,
                 config: Option<&Target>) {
     match target {
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
         // compiler already takes into account the triple in question.
-        t if t.contains("android") => {
+        t if t.is_android() => {
             if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
-                let target = target.replace("armv7", "arm");
+                let target = target.0.replace("armv7", "arm");
                 let compiler = format!("{}-{}", target, gnu_compiler);
                 cfg.compiler(ndk.join("bin").join(compiler));
             }
@@ -98,7 +98,7 @@ fn set_compiler(cfg: &mut gcc::Config,
 
         // The default gcc version from OpenBSD may be too old, try using egcc,
         // which is a gcc version from ports, if this is the case.
-        t if t.contains("openbsd") => {
+        t if t.is_openbsd() => {
             let c = cfg.get_compiler();
             if !c.path().ends_with(gnu_compiler) {
                 return
