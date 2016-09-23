@@ -618,11 +618,15 @@ pub fn fmt_impl_for_trait_page(i: &clean::Impl, f: &mut fmt::Formatter) -> fmt::
 impl fmt::Display for clean::Arguments {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, input) in self.values.iter().enumerate() {
-            if i > 0 { write!(f, ", ")?; }
+            write!(f, "\n    ")?;
             if !input.name.is_empty() {
                 write!(f, "{}: ", input.name)?;
             }
             write!(f, "{}", input.type_)?;
+            if i + 1 < self.values.len() { write!(f, ",")?; }
+        }
+        if !self.values.is_empty() {
+            write!(f, "\n")?;
         }
         Ok(())
     }
