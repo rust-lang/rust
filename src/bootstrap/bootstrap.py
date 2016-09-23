@@ -21,6 +21,11 @@ import tempfile
 
 from time import time
 
+try:
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
+
 
 def get(url, path, verbose=False):
     sha_url = url + ".sha256"
@@ -30,7 +35,7 @@ def get(url, path, verbose=False):
         sha_path = sha_file.name
 
     try:
-        download(sha_path, sha_url, verbose)
+        download(sha_path, sha_url)
         if os.path.exists(path):
             if verify(path, sha_path, False):
                 print("using already-download file " + path)
@@ -38,7 +43,7 @@ def get(url, path, verbose=False):
             else:
                 print("ignoring already-download file " + path + " due to failed verification")
                 os.unlink(path)
-        download(temp_path, url, verbose)
+        download(temp_path, url)
         if not verify(temp_path, sha_path, True):
             raise RuntimeError("failed verification")
         print("moving {} to {}".format(temp_path, path))
@@ -54,16 +59,11 @@ def delete_if_present(path):
         os.unlink(path)
 
 
-def download(path, url, verbose):
+def download(path, url):
     print("downloading {} to {}".format(url, path))
-    # see http://serverfault.com/questions/301128/how-to-download
-    if sys.platform == 'win32':
-        run(["PowerShell.exe", "/nologo", "-Command",
-             "(New-Object System.Net.WebClient)"
-             ".DownloadFile('{}', '{}')".format(url, path)],
-            verbose=verbose)
-    else:
-        run(["curl", "-o", path, url], verbose=verbose)
+    request = urlopen(url)
+    with open(path, 'wb') as file_:
+        file_.write(request.read())
 
 
 def verify(path, sha_path, verbose):
