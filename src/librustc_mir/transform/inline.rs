@@ -449,7 +449,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 debug!("Inlined {:?} into {:?}", callsite.callee, callsite.caller);
 
                 let call_scope = terminator.source_info.scope;
-                let call_span = terminator.source_info.span;
+                //let call_span = terminator.source_info.span;
                 let bb_len = caller_mir.basic_blocks().len();
 
                 let mut var_map = IndexVec::with_capacity(callee_mir.var_decls.len());
@@ -462,7 +462,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         scope.parent_scope = Some(call_scope);
                     }
 
-                    scope.span = call_span;
+                    //scope.span = call_span;
 
                     let idx = caller_mir.visibility_scopes.push(scope);
                     scope_map.push(idx);
@@ -567,7 +567,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     tmp_map: temp_map,
                     scope_map: scope_map,
                     promoted_map: promoted_map,
-                    inline_location: callsite.location,
+                    //inline_location: callsite.location,
                     destination: dest,
                     return_block: return_block,
                     cleanup_block: cleanup,
@@ -622,7 +622,7 @@ struct Integrator<'a, 'tcx: 'a> {
     tmp_map: IndexVec<Temp, Temp>,
     scope_map: IndexVec<VisibilityScope, VisibilityScope>,
     promoted_map: IndexVec<Promoted, Promoted>,
-    inline_location: SourceInfo,
+    //inline_location: SourceInfo,
     destination: Lvalue<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
@@ -747,10 +747,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     fn visit_visibility_scope(&mut self, scope: &mut VisibilityScope) {
         *scope = self.scope_map[*scope];
     }
-    fn visit_span(&mut self, span: &mut Span) {
+    fn visit_span(&mut self, _: &mut Span) {
         // FIXME: probably shouldn't use the inline location span,
         // but not doing so causes errors
-        *span = self.inline_location.span;
+        //*span = self.inline_location.span;
     }
 
     fn visit_literal(&mut self, literal: &mut Literal<'tcx>, loc: Location) {
