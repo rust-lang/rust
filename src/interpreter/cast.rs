@@ -28,6 +28,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             U64(u) => self.cast_const_int(u, ty, false),
             FnPtr(ptr) |
             Ptr(ptr) => self.cast_ptr(ptr, ty),
+            VtablePtr(..) | SlicePtr(..) => unimplemented!(),
         }
     }
 

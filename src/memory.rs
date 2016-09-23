@@ -55,6 +55,9 @@ impl Pointer {
     pub fn points_to_zst(&self) -> bool {
         self.alloc_id == ZST_ALLOC_ID
     }
+    pub fn to_int(&self) -> usize {
+        self.offset
+    }
     pub fn from_int(i: usize) -> Self {
         Pointer {
             alloc_id: ZST_ALLOC_ID,
@@ -543,6 +546,20 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             PrimVal::F64(f) => self.write_f64(ptr, f),
             PrimVal::FnPtr(p) |
             PrimVal::Ptr(p) => self.write_ptr(ptr, p),
+            PrimVal::VtablePtr(p, v) => {
+                assert_eq!(layout::FAT_PTR_ADDR, 0);
+                assert_eq!(layout::FAT_PTR_EXTRA, 1);
+                self.write_ptr(ptr, p)?;
+                let vptr = ptr.offset(self.pointer_size() as isize);
+                self.write_ptr(vptr, v)
+            }
+            PrimVal::SlicePtr(p, n) => {
+                assert_eq!(layout::FAT_PTR_ADDR, 0);
+                assert_eq!(layout::FAT_PTR_EXTRA, 1);
+                self.write_ptr(ptr, p)?;
+                let nptr = ptr.offset(self.pointer_size() as isize);
+                self.write_usize(nptr, n)
+            }
         }
     }
 

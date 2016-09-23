@@ -14,6 +14,8 @@ pub enum PrimVal {
 
     Ptr(Pointer),
     FnPtr(Pointer),
+    VtablePtr(Pointer, Pointer),
+    SlicePtr(Pointer, u64),
     Char(char),
 
     F32(f32), F64(f64),
@@ -32,7 +34,10 @@ macro_rules! declare_expect_fn {
 
 impl PrimVal {
     declare_expect_fn!(expect_bool, Bool, bool);
+    declare_expect_fn!(expect_f32, F32, f32);
+    declare_expect_fn!(expect_f64, F64, f64);
     declare_expect_fn!(expect_fn_ptr, FnPtr, Pointer);
+    declare_expect_fn!(expect_ptr, Ptr, Pointer);
 
     pub fn expect_uint(self, error_msg: &str) -> u64 {
         use self::PrimVal::*;
@@ -41,6 +46,19 @@ impl PrimVal {
             U16(u) => u as u64,
             U32(u) => u as u64,
             U64(u) => u,
+            Ptr(ptr) => ptr.to_int() as u64,
+            _ => bug!("{}", error_msg),
+        }
+    }
+
+    pub fn expect_int(self, error_msg: &str) -> i64 {
+        use self::PrimVal::*;
+        match self {
+            I8(i)  => i as i64,
+            I16(i) => i as i64,
+            I32(i) => i as i64,
+            I64(i) => i,
+            Ptr(ptr) => ptr.to_int() as i64,
             _ => bug!("{}", error_msg),
         }
     }
