@@ -1055,6 +1055,15 @@ impl DirEntry {
     }
 }
 
+#[stable(feature = "dir_entry_debug", since = "1.13.0")]
+impl fmt::Debug for DirEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("DirEntry")
+            .field(&self.path())
+            .finish()
+    }
+}
+
 impl AsInner<fs_imp::DirEntry> for DirEntry {
     fn as_inner(&self) -> &fs_imp::DirEntry { &self.0 }
 }
@@ -2639,6 +2648,17 @@ mod tests {
                 f => panic!("unknown file name: {:?}", f),
             }
         }
+    }
+
+    #[test]
+    fn dir_entry_debug() {
+        let tmpdir = tmpdir();
+        File::create(&tmpdir.join("b")).unwrap();
+        let mut read_dir = tmpdir.path().read_dir().unwrap();
+        let dir_entry = read_dir.next().unwrap().unwrap();
+        let actual = format!("{:?}", dir_entry);
+        let expected = format!("DirEntry({:?})", dir_entry.0.path());
+        assert_eq!(actual, expected);
     }
 
     #[test]
