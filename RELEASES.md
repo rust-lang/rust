@@ -144,8 +144,6 @@ Libraries
   (https://github.com/rust-lang/rust/pull/34951)
 * [`Cow<str>` implements `FromIterator` for `char`, `&str` and `String`]
   (https://github.com/rust-lang/rust/pull/35064)
-* [`String` implements `From<Vec<char>>` and `From<&[char]>`]
-  (https://github.com/rust-lang/rust/pull/35054)
 * [Sockets on Linux are correctly closed in subprocesses via `SOCK_CLOEXEC`]
   (https://github.com/rust-lang/rust/pull/34946)
 * [`hash_map::Entry`, `hash_map::VacantEntry` and `hash_map::OccupiedEntry`
