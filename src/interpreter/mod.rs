@@ -610,8 +610,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let dest_ty = self.monomorphize(dest_ty, self.substs());
                         // FIXME: cases where dest_ty is not a fat pointer. e.g. Arc<Struct> -> Arc<Trait>
                         assert!(self.type_is_fat_ptr(dest_ty));
-                        let (ptr, extra) = self.get_fat_ptr(dest);
-                        self.move_value(src, ptr, src_ty)?;
                         let src_pointee_ty = pointee_type(src_ty).unwrap();
                         let dest_pointee_ty = pointee_type(dest_ty).unwrap();
 
@@ -620,20 +618,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                                self.memory.write_usize(extra, length as u64)?;
+                                let ptr = src.read_ptr(&self.memory)?;
+                                self.memory.write_primval(dest, PrimVal::SlicePtr(ptr, length as u64))?;
                             }
                             (&ty::TyTrait(_), &ty::TyTrait(_)) => {
                                 // For now, upcasts are limited to changes in marker
                                 // traits, and hence never actually require an actual
                                 // change to the vtable.
-                                let src_extra = src.expect_fat_ptr_extra(&self.memory)?;
-                                self.memory.write_primval(extra, src_extra)?;
+                                self.write_value(src, dest, dest_ty)?;
                             },
                             (_, &ty::TyTrait(ref data)) => {
                                 let trait_ref = data.principal.with_self_ty(self.tcx, src_pointee_ty);
                                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                                 let vtable = self.get_vtable(trait_ref)?;
-                                self.memory.write_ptr(extra, vtable)?;
+                                let ptr = src.read_ptr(&self.memory)?;
+                                self.memory.write_primval(dest, PrimVal::VtablePtr(ptr, vtable))?;
                             },
 
                             _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
