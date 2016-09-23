@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{Block, Crate, Ident, Mac_, PatKind};
-use ast::{MacStmtStyle, StmtKind, ItemKind};
+use ast::{Name, MacStmtStyle, StmtKind, ItemKind};
 use ast;
 use ext::hygiene::Mark;
 use ext::placeholders::{placeholder, PlaceholderExpander};
@@ -299,10 +299,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         attr::mark_used(&attr);
+        let name = intern(&attr.name());
         self.cx.bt_push(ExpnInfo {
             call_site: attr.span,
             callee: NameAndSpan {
-                format: MacroAttribute(intern(&attr.name())),
+                format: MacroAttribute(name),
                 span: Some(attr.span),
                 allow_internal_unstable: false,
             }
@@ -325,7 +326,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let item_toks = TokenStream::from_tts(tts_for_item(&item, &self.cx.parse_sess));
 
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
-                self.parse_expansion(tok_result, kind, attr.span)
+                self.parse_expansion(tok_result, kind, name, attr.span)
             }
             _ => unreachable!(),
         }
@@ -424,7 +425,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 let toks = TokenStream::from_tts(marked_tts);
                 let tok_result = expandfun.expand(self.cx, span, toks);
-                Some(self.parse_expansion(tok_result, kind, span))
+                Some(self.parse_expansion(tok_result, kind, extname, span))
             }
         };
 
@@ -443,7 +444,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         })
     }
 
-    fn parse_expansion(&mut self, toks: TokenStream, kind: ExpansionKind, span: Span) -> Expansion {
+    fn parse_expansion(&mut self, toks: TokenStream, kind: ExpansionKind, name: Name, span: Span)
+                       -> Expansion {
         let mut parser = self.cx.new_parser_from_tts(&toks.to_tts());
         let expansion = match parser.parse_expansion(kind, false) {
             Ok(expansion) => expansion,
@@ -452,13 +454,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 return kind.dummy(span);
             }
         };
-        parser.ensure_complete_parse(kind == ExpansionKind::Expr, |parser| {
-            let msg = format!("macro expansion ignores token `{}` and any following",
-                              parser.this_token_to_string());
-            parser.diagnostic().struct_span_err(parser.span, &msg)
-                .span_note(span, "caused by the macro expansion here")
-                .emit();
-        });
+        parser.ensure_complete_parse(name, kind.name(), span);
         // FIXME better span info
         expansion.fold_with(&mut ChangeSpan { span: span })
     }

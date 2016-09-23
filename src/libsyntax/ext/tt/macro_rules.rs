@@ -39,32 +39,19 @@ pub struct ParserAnyMacro<'a> {
 }
 
 impl<'a> ParserAnyMacro<'a> {
-    /// Make sure we don't have any tokens left to parse, so we don't
-    /// silently drop anything. `allow_semi` is so that "optional"
-    /// semicolons at the end of normal expressions aren't complained
-    /// about e.g. the semicolon in `macro_rules! kapow { () => {
-    /// panic!(); } }` doesn't get picked up by .parse_expr(), but it's
-    /// allowed to be there.
-    fn ensure_complete_parse(&mut self, allow_semi: bool, context: &str) {
-        let ParserAnyMacro { site_span, macro_ident, ref mut parser } = *self;
-        parser.ensure_complete_parse(allow_semi, |parser| {
-            let token_str = parser.this_token_to_string();
-            let msg = format!("macro expansion ignores token `{}` and any \
-                               following",
-                              token_str);
-            let span = parser.span;
-            let mut err = parser.diagnostic().struct_span_err(span, &msg);
-            let msg = format!("caused by the macro expansion here; the usage \
-                               of `{}!` is likely invalid in {} context",
-                               macro_ident, context);
-            err.span_note(site_span, &msg)
-               .emit();
-        });
-    }
-
     pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: ExpansionKind) -> Expansion {
-        let expansion = panictry!(self.parser.parse_expansion(kind, true));
-        self.ensure_complete_parse(kind == ExpansionKind::Expr, kind.name());
+        let ParserAnyMacro { site_span, macro_ident, ref mut parser } = *self;
+        let expansion = panictry!(parser.parse_expansion(kind, true));
+
+        // We allow semicolons at the end of expressions -- e.g. the semicolon in
+        // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
+        // but `m!()` is allowed in expression positions (c.f. issue #34706).
+        if kind == ExpansionKind::Expr && parser.token == token::Semi {
+            parser.bump();
+        }
+
+        // Make sure we don't have any tokens left to parse so we don't silently drop anything.
+        parser.ensure_complete_parse(macro_ident.name, kind.name(), site_span);
         expansion
     }
 }

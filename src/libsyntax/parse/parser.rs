@@ -6172,14 +6172,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn ensure_complete_parse<F>(&mut self, allow_semi: bool, on_err: F)
-        where F: FnOnce(&Parser)
-    {
-        if allow_semi && self.token == token::Semi {
-            self.bump();
+    pub fn ensure_complete_parse(&mut self, macro_name: ast::Name, kind_name: &str, span: Span) {
+        if self.token == token::Eof {
+            return
         }
-        if self.token != token::Eof {
-            on_err(self);
-        }
+
+        let msg = format!("macro expansion ignores token `{}` and any following",
+                          self.this_token_to_string());
+        let mut err = self.diagnostic().struct_span_err(self.span, &msg);
+        let msg = format!("caused by the macro expansion here; the usage \
+                           of `{}!` is likely invalid in {} context",
+                           macro_name, kind_name);
+        err.span_note(span, &msg).emit();
     }
 }
