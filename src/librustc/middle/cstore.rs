@@ -25,7 +25,7 @@
 use hir::def::{self, Def};
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
-use hir::map::definitions::DefKey;
+use hir::map::definitions::{Definitions, DefKey};
 use hir::svh::Svh;
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt};
@@ -422,6 +422,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 
-pub trait MacroLoader {
-     fn load_crate(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro>;
+pub trait CrateLoader {
+    fn load_macros(&mut self, extern_crate: &ast::Item, allows_macros: bool) -> Vec<LoadedMacro>;
+    fn process_item(&mut self, item: &ast::Item, defs: &Definitions);
+    fn postprocess(&mut self, krate: &ast::Crate);
 }

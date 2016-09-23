@@ -79,6 +79,8 @@ impl<'b> Resolver<'b> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item) {
+        self.crate_loader.process_item(item, &self.definitions);
+
         let parent = self.current_module;
         let name = item.ident.name;
         let sp = item.span;
