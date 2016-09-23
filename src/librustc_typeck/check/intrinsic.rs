@@ -53,7 +53,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     if i_n_tps != n_tps {
         let span = match it.node {
             hir::ForeignItemFn(_, ref generics) => generics.span,
-            hir::ForeignItemStatic(_, _) => it.span
+            hir::ForeignItemStatic(..) => it.span
         };
 
         struct_span_err!(tcx.sess, span, E0094,
@@ -285,6 +285,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
 
             "assume" => (0, vec![tcx.types.bool], tcx.mk_nil()),
+            "likely" => (0, vec![tcx.types.bool], tcx.types.bool),
+            "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
             "discriminant_value" => (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),

@@ -9,9 +9,11 @@
 // except according to those terms.
 
 #[inline(always)] //~ ERROR E0518
+                  //~| requires a function
 struct Foo;
 
 #[inline(never)] //~ ERROR E0518
+                 //~| requires a function
 impl Foo {
 }
 

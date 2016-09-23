@@ -51,14 +51,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rbml"
-version = "0.0.0"
-dependencies = [
- "log 0.0.0",
- "serialize 0.0.0",
-]
-
-[[package]]
 name = "rustc"
 version = "0.0.0"
 dependencies = [
@@ -67,7 +59,6 @@ dependencies = [
  "fmt_macros 0.0.0",
  "graphviz 0.0.0",
  "log 0.0.0",
- "rbml 0.0.0",
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",
@@ -185,7 +176,6 @@ version = "0.0.0"
 dependencies = [
  "graphviz 0.0.0",
  "log 0.0.0",
- "rbml 0.0.0",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
@@ -215,21 +205,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_macro"
+version = "0.0.0"
+dependencies = [
+ "syntax 0.0.0",
+]
+
+[[package]]
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
  "flate 0.0.0",
  "log 0.0.0",
- "rbml 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
- "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_llvm 0.0.0",
+ "rustc_macro 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
+ "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
 ]
 
@@ -400,6 +397,7 @@ dependencies = [
  "fmt_macros 0.0.0",
  "log 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_macro 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]

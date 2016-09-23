@@ -78,7 +78,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
 
     let mut stmts = match *substr.fields {
         Struct(_, ref fields) |
-        EnumMatching(_, _, ref fields) => {
+        EnumMatching(.., ref fields) => {
             let mut stmts = vec![];
             if !is_struct {
                 // tuple struct/"normal" variant

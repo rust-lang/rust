@@ -130,11 +130,11 @@ code, pre {
     font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
     white-space: pre-wrap;
 }
-.docblock code {
+.docblock code, .docblock-short code {
     border-radius: 3px;
     padding: 0 0.2em;
 }
-.docblock pre code {
+.docblock pre code, .docblock-short pre code {
     padding: 0;
 }
 pre {
@@ -239,23 +239,23 @@ nav.sub {
 }
 .line-numbers span { cursor: pointer; }
 
-.docblock.short p {
+.docblock-short p {
     display: inline;
 }
 
-.docblock.short.nowrap {
+.docblock-short.nowrap {
     display: block;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-.docblock.short p {
+.docblock-short p {
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
 }
-.docblock.short code { white-space: nowrap; }
+.docblock-short code { white-space: nowrap; }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
     border-bottom: 1px solid;
@@ -409,7 +409,7 @@ a {
     background: transparent;
 }
 
-.docblock a:hover, .stability a {
+.docblock a:hover, .docblock-short a:hover, .stability a {
     text-decoration: underline;
 }
 
@@ -568,14 +568,17 @@ pre.rust .lifetime { color: #B76514; }
 .rusttest { display: none; }
 pre.rust { position: relative; }
 a.test-arrow {
+    background-color: rgba(78, 139, 202, 0.2);
     display: inline-block;
     position: absolute;
-    background-color: #4e8bca;
     padding: 5px 10px 5px 10px;
     border-radius: 5px;
     font-size: 130%;
     top: 5px;
     right: 5px;
+}
+a.test-arrow:hover{
+    background-color: #4e8bca;
 }
 
 .section-header:hover a:after {

@@ -105,6 +105,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             match item.node {
                 hir::ItemImpl(..) => "impl",
                 hir::ItemStruct(..) => "struct",
+                hir::ItemUnion(..) => "union",
                 hir::ItemEnum(..) => "enum",
                 hir::ItemTrait(..) => "trait",
                 hir::ItemFn(..) => "function body",
@@ -139,9 +140,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Some(ast_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
                         hir::ExprMethodCall(..) => "method call",
-                        hir::ExprMatch(_, _, hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                        hir::ExprMatch(_, _, hir::MatchSource::WhileLetDesugar) =>  "while let",
-                        hir::ExprMatch(_, _, hir::MatchSource::ForLoopDesugar) =>  "for",
+                        hir::ExprMatch(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
+                        hir::ExprMatch(.., hir::MatchSource::WhileLetDesugar) =>  "while let",
+                        hir::ExprMatch(.., hir::MatchSource::ForLoopDesugar) =>  "for",
                         hir::ExprMatch(..) => "match",
                         _ => "expression",
                     },
@@ -487,10 +488,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
                 match (&exp_found.expected.sty, &exp_found.found.sty) {
-                    (&ty::TyEnum(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) |
-                    (&ty::TyStruct(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
-                    (&ty::TyEnum(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
-                    (&ty::TyStruct(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) => {
+                    (&ty::TyAdt(exp_adt, _), &ty::TyAdt(found_adt, _)) => {
                         report_path_match(err, exp_adt.did, found_adt.did);
                     },
                     _ => ()
@@ -549,7 +547,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             };
 
             if !is_simple_error {
-                diag.note_expected_found(&"type", &expected, &found);
+                if expected == found {
+                    if let &TypeError::Sorts(ref values) = terr {
+                        diag.note_expected_found_extra(
+                            &"type", &expected, &found,
+                            &format!(" ({})", values.expected.sort_string(self.tcx)),
+                            &format!(" ({})", values.found.sort_string(self.tcx)));
+                    } else {
+                        diag.note_expected_found(&"type", &expected, &found);
+                    }
+                } else {
+                    diag.note_expected_found(&"type", &expected, &found);
+                }
             }
         }
 
@@ -1370,7 +1379,8 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 }
                 hir::TyPath(ref maybe_qself, ref path) => {
                     match self.tcx.expect_def(cur_ty.id) {
-                        Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
+                        Def::Enum(did) | Def::TyAlias(did) |
+                        Def::Struct(did) | Def::Union(did) => {
                             let generics = self.tcx.lookup_generics(did);
 
                             let expected =
@@ -1785,7 +1795,7 @@ fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let method_id_opt = match tcx.map.find(parent) {
         Some(node) => match node {
             ast_map::NodeItem(item) => match item.node {
-                hir::ItemFn(_, _, _, _, ref gen, _) => {
+                hir::ItemFn(.., ref gen, _) => {
                     taken.extend_from_slice(&gen.lifetimes);
                     None
                 },
@@ -1809,7 +1819,7 @@ fn lifetimes_in_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         if let Some(node) = tcx.map.find(parent) {
             match node {
                 ast_map::NodeItem(item) => match item.node {
-                    hir::ItemImpl(_, _, ref gen, _, _, _) => {
+                    hir::ItemImpl(_, _, ref gen, ..) => {
                         taken.extend_from_slice(&gen.lifetimes);
                     }
                     _ => ()

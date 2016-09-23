@@ -117,6 +117,7 @@
 //! inlining, even when they are not marked #[inline].
 
 use collector::InliningMap;
+use context::SharedCrateContext;
 use llvm;
 use monomorphize;
 use rustc::dep_graph::{DepNode, WorkProductId};
@@ -132,7 +133,7 @@ use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
 use syntax::parse::token::{self, InternedString};
 use trans_item::TransItem;
-use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
+use util::nodemap::{FnvHashMap, FnvHashSet};
 
 pub enum PartitioningStrategy {
     /// Generate one codegen unit per source-level module.
@@ -250,26 +251,20 @@ impl<'tcx> CodegenUnit<'tcx> {
 // Anything we can't find a proper codegen unit for goes into this.
 const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
-pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                               trans_items: I,
                               strategy: PartitioningStrategy,
-                              inlining_map: &InliningMap<'tcx>,
-                              reachable: &NodeSet)
+                              inlining_map: &InliningMap<'tcx>)
                               -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
-    if let PartitioningStrategy::FixedUnitCount(1) = strategy {
-        // If there is only a single codegen-unit, we can use a very simple
-        // scheme and don't have to bother with doing much analysis.
-        return vec![single_codegen_unit(tcx, trans_items, reachable)];
-    }
+    let tcx = scx.tcx();
 
     // In the first step, we place all regular translation items into their
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
-    let mut initial_partitioning = place_root_translation_items(tcx,
-                                                                trans_items,
-                                                                reachable);
+    let mut initial_partitioning = place_root_translation_items(scx,
+                                                                trans_items);
 
     debug_dump(tcx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
 
@@ -306,20 +301,20 @@ struct PreInliningPartitioning<'tcx> {
 
 struct PostInliningPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
 
-fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                             trans_items: I,
-                                             _reachable: &NodeSet)
+fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
+                                             trans_items: I)
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
+    let tcx = scx.tcx();
     let mut roots = FnvHashSet();
     let mut codegen_units = FnvHashMap();
 
     for trans_item in trans_items {
-        let is_root = !trans_item.is_instantiated_only_on_demand();
+        let is_root = !trans_item.is_instantiated_only_on_demand(tcx);
 
         if is_root {
-            let characteristic_def_id = characteristic_def_id_of_trans_item(tcx, trans_item);
+            let characteristic_def_id = characteristic_def_id_of_trans_item(scx, trans_item);
             let is_volatile = trans_item.is_generic_fn();
 
             let codegen_unit_name = match characteristic_def_id {
@@ -346,6 +341,10 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 // This is a non-generic functions, we always
                                 // make it visible externally on the chance that
                                 // it might be used in another codegen unit.
+                                // Later on base::internalize_symbols() will
+                                // assign "internal" linkage to those symbols
+                                // that are not referenced from other codegen
+                                // units (and are not publicly visible).
                                 llvm::ExternalLinkage
                             } else {
                                 // In the current setup, generic functions cannot
@@ -450,7 +449,6 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
                 // reliably in that case.
                 new_codegen_unit.items.insert(trans_item, llvm::InternalLinkage);
             } else {
-                assert!(trans_item.is_instantiated_only_on_demand());
                 // We can't be sure if this will also be instantiated
                 // somewhere else, so we add an instance here with
                 // InternalLinkage so we don't get any conflicts.
@@ -477,9 +475,10 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
     }
 }
 
-fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                                  trans_item: TransItem<'tcx>)
                                                  -> Option<DefId> {
+    let tcx = scx.tcx();
     match trans_item {
         TransItem::Fn(instance) => {
             // If this is a method, we want to put it into the same module as
@@ -497,7 +496,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // self-type is:
                 let impl_self_ty = tcx.lookup_item_type(impl_def_id).ty;
                 let impl_self_ty = tcx.erase_regions(&impl_self_ty);
-                let impl_self_ty = monomorphize::apply_param_substs(tcx,
+                let impl_self_ty = monomorphize::apply_param_substs(scx,
                                                                     instance.substs,
                                                                     &impl_self_ty);
 
@@ -543,68 +542,6 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     return token::intern_and_get_ident(&mod_path[..]);
-}
-
-fn single_codegen_unit<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    trans_items: I,
-                                    reachable: &NodeSet)
-                                    -> CodegenUnit<'tcx>
-    where I: Iterator<Item = TransItem<'tcx>>
-{
-    let mut items = FnvHashMap();
-
-    for trans_item in trans_items {
-        let linkage = trans_item.explicit_linkage(tcx).unwrap_or_else(|| {
-            match trans_item {
-                TransItem::Static(node_id) => {
-                    if reachable.contains(&node_id) {
-                        llvm::ExternalLinkage
-                    } else {
-                        llvm::PrivateLinkage
-                    }
-                }
-                TransItem::DropGlue(_) => {
-                    llvm::InternalLinkage
-                }
-                TransItem::Fn(instance) => {
-                    if trans_item.is_generic_fn() {
-                        // FIXME(mw): Assigning internal linkage to all
-                        // monomorphizations is potentially a waste of space
-                        // since monomorphizations could be shared between
-                        // crates. The main reason for making them internal is
-                        // a limitation in MingW's binutils that cannot deal
-                        // with COFF object that have more than 2^15 sections,
-                        // which is something that can happen for large programs
-                        // when every function gets put into its own COMDAT
-                        // section.
-                        llvm::InternalLinkage
-                    } else if trans_item.is_from_extern_crate() {
-                        // FIXME(mw): It would be nice if we could mark these as
-                        // `AvailableExternallyLinkage`, since they should have
-                        // been instantiated in the extern crate. But this
-                        // sometimes leads to crashes on Windows because LLVM
-                        // does not handle exception handling table instantiation
-                        // reliably in that case.
-                        llvm::InternalLinkage
-                    } else if reachable.contains(&tcx.map
-                                                     .as_local_node_id(instance.def)
-                                                     .unwrap()) {
-                        llvm::ExternalLinkage
-                    } else {
-                        // Functions that are not visible outside this crate can
-                        // be marked as internal.
-                        llvm::InternalLinkage
-                    }
-                }
-            }
-        });
-
-        items.insert(trans_item, linkage);
-    }
-
-    CodegenUnit::new(
-        numbered_codegen_unit_name(&tcx.crate_name[..], 0),
-        items)
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {

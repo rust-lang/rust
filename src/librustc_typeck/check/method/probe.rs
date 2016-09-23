@@ -292,8 +292,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 self.assemble_inherent_candidates_from_object(self_ty, data.principal);
                 self.assemble_inherent_impl_candidates_for_type(data.principal.def_id());
             }
-            ty::TyEnum(def, _) |
-            ty::TyStruct(def, _) => {
+            ty::TyAdt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
             ty::TyBox(_) => {
@@ -404,7 +403,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
-        let item = match self.impl_item(impl_def_id) {
+        let item = match self.impl_or_trait_item(impl_def_id) {
             Some(m) => m,
             None => { return; } // No method with correct name on this impl
         };
@@ -496,7 +495,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
                     ty::Predicate::ClosureKind(..) |
-                    ty::Predicate::Rfc1592(..) |
                     ty::Predicate::TypeOutlives(..) => {
                         None
                     }
@@ -557,7 +555,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
-            let item = match self.trait_item(bound_trait_ref.def_id()) {
+            let item = match self.impl_or_trait_item(bound_trait_ref.def_id()) {
                 Some(v) => v,
                 None => { continue; }
             };
@@ -1294,18 +1292,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         self.tcx.erase_late_bound_regions(value)
     }
 
-    fn impl_item(&self, impl_def_id: DefId)
-                 -> Option<ty::ImplOrTraitItem<'tcx>>
+    /// Find item with name `item_name` defined in impl/trait `def_id`
+    /// and return it, or `None`, if no such item was defined there.
+    fn impl_or_trait_item(&self, def_id: DefId)
+                          -> Option<ty::ImplOrTraitItem<'tcx>>
     {
-        self.fcx.impl_item(impl_def_id, self.item_name)
-    }
-
-    /// Find item with name `item_name` defined in `trait_def_id`
-    /// and return it, or `None`, if no such item.
-    fn trait_item(&self, trait_def_id: DefId)
-                  -> Option<ty::ImplOrTraitItem<'tcx>>
-    {
-        self.fcx.trait_item(trait_def_id, self.item_name)
+        self.fcx.impl_or_trait_item(def_id, self.item_name)
     }
 }
 
@@ -1314,8 +1306,8 @@ impl<'tcx> Candidate<'tcx> {
         Pick {
             item: self.item.clone(),
             kind: match self.kind {
-                InherentImplCandidate(_, _) => InherentImplPick,
-                ExtensionImplCandidate(def_id, _, _) => {
+                InherentImplCandidate(..) => InherentImplPick,
+                ExtensionImplCandidate(def_id, ..) => {
                     ExtensionImplPick(def_id)
                 }
                 ObjectCandidate => ObjectPick,
@@ -1340,10 +1332,10 @@ impl<'tcx> Candidate<'tcx> {
 
     fn to_source(&self) -> CandidateSource {
         match self.kind {
-            InherentImplCandidate(_, _) => {
+            InherentImplCandidate(..) => {
                 ImplSource(self.item.container().id())
             }
-            ExtensionImplCandidate(def_id, _, _) => ImplSource(def_id),
+            ExtensionImplCandidate(def_id, ..) => ImplSource(def_id),
             ObjectCandidate |
             TraitCandidate |
             WhereClauseCandidate(_) => TraitSource(self.item.container().id()),

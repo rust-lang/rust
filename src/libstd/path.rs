@@ -332,7 +332,7 @@ impl<'a> Prefix<'a> {
     pub fn is_verbatim(&self) -> bool {
         use self::Prefix::*;
         match *self {
-            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(_, _) => true,
+            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..) => true,
             _ => false,
         }
     }
@@ -1169,9 +1169,9 @@ impl PathBuf {
     /// let mut p = PathBuf::from("/test/test.rs");
     ///
     /// p.pop();
-    /// assert_eq!(Path::new("/test"), p.as_path());
+    /// assert_eq!(Path::new("/test"), p);
     /// p.pop();
-    /// assert_eq!(Path::new("/"), p.as_path());
+    /// assert_eq!(Path::new("/"), p);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> bool {

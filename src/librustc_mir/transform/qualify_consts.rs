@@ -18,6 +18,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::dep_graph::DepNode;
 use rustc::hir;
+use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::map::blocks::FnLikeNode;
@@ -119,10 +120,10 @@ fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         let fn_like = FnLikeNode::from_node(tcx.map.get(node_id));
         match fn_like.map(|f| f.kind()) {
-            Some(FnKind::ItemFn(_, _, _, c, _, _, _)) => {
+            Some(FnKind::ItemFn(_, _, _, c, ..)) => {
                 c == hir::Constness::Const
             }
-            Some(FnKind::Method(_, m, _, _)) => {
+            Some(FnKind::Method(_, m, ..)) => {
                 m.constness == hir::Constness::Const
             }
             _ => false
@@ -252,12 +253,44 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         let mut err =
             struct_span_err!(self.tcx.sess, self.span, E0493, "{}", msg);
+
         if self.mode != Mode::Const {
             help!(&mut err,
                   "in Nightly builds, add `#![feature(drop_types_in_const)]` \
                    to the crate attributes to enable");
+        } else {
+            self.find_drop_implementation_method_span()
+                .map(|span| err.span_label(span, &format!("destructor defined here")));
+
+            err.span_label(self.span, &format!("constants cannot have destructors"));
         }
+
         err.emit();
+    }
+
+    fn find_drop_implementation_method_span(&self) -> Option<Span> {
+        self.tcx.lang_items
+            .drop_trait()
+            .and_then(|drop_trait_id| {
+                let mut span = None;
+
+                self.tcx
+                    .lookup_trait_def(drop_trait_id)
+                    .for_each_relevant_impl(self.tcx, self.mir.return_ty, |impl_did| {
+                        self.tcx.map
+                            .as_local_node_id(impl_did)
+                            .and_then(|impl_node_id| self.tcx.map.find(impl_node_id))
+                            .map(|node| {
+                                if let hir_map::NodeItem(item) = node {
+                                    if let hir::ItemImpl(_, _, _, _, _, ref methods) = item.node {
+                                        span = methods.first().map(|method| method.span);
+                                    }
+                                }
+                            });
+                    });
+
+                span
+            })
     }
 
     /// Check if an Lvalue with the current qualifications could
@@ -442,7 +475,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
 impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
-    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext, location: Location) {
+    fn visit_lvalue(&mut self,
+                    lvalue: &Lvalue<'tcx>,
+                    context: LvalueContext<'tcx>,
+                    location: Location) {
         match *lvalue {
             Lvalue::Arg(_) => {
                 self.add(Qualif::FN_ARGUMENT);
@@ -576,9 +612,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Repeat(..) |
             Rvalue::UnaryOp(..) |
             Rvalue::CheckedBinaryOp(..) |
-            Rvalue::Cast(CastKind::ReifyFnPointer, _, _) |
-            Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
-            Rvalue::Cast(CastKind::Unsize, _, _) => {}
+            Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
+            Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
+            Rvalue::Cast(CastKind::Unsize, ..) => {}
 
             Rvalue::Len(_) => {
                 // Static lvalues in consts would have errored already,
@@ -705,7 +741,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::Aggregate(ref kind, _) => {
-                if let AggregateKind::Adt(def, _, _) = *kind {
+                if let AggregateKind::Adt(def, ..) = *kind {
                     if def.has_dtor() {
                         self.add(Qualif::NEEDS_DROP);
                         self.deny_drop();
@@ -877,7 +913,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
                 StatementKind::SetDiscriminant { .. } |
                 StatementKind::StorageLive(_) |
-                StatementKind::StorageDead(_) => {}
+                StatementKind::StorageDead(_) |
+                StatementKind::Nop => {}
             }
         });
     }
@@ -1018,10 +1055,6 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
                     fulfillment_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
                     if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
                         infcx.report_fulfillment_errors(&err);
-                    }
-
-                    if let Err(errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
-                        infcx.report_fulfillment_errors_as_warnings(&errors, id);
                     }
                 });
             }

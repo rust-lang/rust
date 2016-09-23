@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rbml::opaque::Encoder;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
@@ -16,6 +15,7 @@ use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_serialize::Encodable as RustcEncodable;
+use rustc_serialize::opaque::Encoder;
 use std::hash::{Hash, Hasher, SipHasher};
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
@@ -110,7 +110,7 @@ pub fn encode_dep_graph(preds: &Predecessors,
                         -> io::Result<()> {
     // First encode the commandline arguments hash
     let tcx = builder.tcx();
-    try!(tcx.sess.opts.dep_tracking_hash().encode(encoder));
+    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
     // Create a flat list of (Input, WorkProduct) edges for
     // serialization.
@@ -149,8 +149,8 @@ pub fn encode_dep_graph(preds: &Predecessors,
     debug!("graph = {:#?}", graph);
 
     // Encode the directory and then the graph data.
-    try!(builder.directory().encode(encoder));
-    try!(graph.encode(encoder));
+    builder.directory().encode(encoder)?;
+    graph.encode(encoder)?;
 
     Ok(())
 }
@@ -222,8 +222,8 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
     }
 
     // Encode everything.
-    try!(svh.encode(encoder));
-    try!(serialized_hashes.encode(encoder));
+    svh.encode(encoder)?;
+    serialized_hashes.encode(encoder)?;
 
     Ok(())
 }

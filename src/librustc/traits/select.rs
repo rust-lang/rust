@@ -513,8 +513,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         match obligation.predicate {
-            ty::Predicate::Rfc1592(..) => EvaluatedToOk,
-
             ty::Predicate::Trait(ref t) => {
                 assert!(!t.has_escaping_regions());
                 let obligation = obligation.with(t.clone());
@@ -816,7 +814,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn filter_negative_impls(&self, candidate: SelectionCandidate<'tcx>)
                              -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let ImplCandidate(def_id) = candidate {
-            if self.tcx().trait_impl_polarity(def_id) == Some(hir::ImplPolarity::Negative) {
+            if self.tcx().trait_impl_polarity(def_id) == hir::ImplPolarity::Negative {
                 return Err(Unimplemented)
             }
         }
@@ -1381,7 +1379,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // provide an impl, but only for suitable `fn` pointers
-            ty::TyFnDef(_, _, &ty::BareFnTy {
+            ty::TyFnDef(.., &ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -1637,10 +1635,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // [T; n] -> [T].
-            (&ty::TyArray(_, _), &ty::TySlice(_)) => true,
+            (&ty::TyArray(..), &ty::TySlice(_)) => true,
 
             // Struct<T> -> Struct<U>.
-            (&ty::TyStruct(def_id_a, _), &ty::TyStruct(def_id_b, _)) => {
+            (&ty::TyAdt(def_id_a, _), &ty::TyAdt(def_id_b, _)) if def_id_a.is_struct() => {
                 def_id_a == def_id_b
             }
 
@@ -1779,11 +1777,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyStr | ty::TySlice(_) | ty::TyTrait(..) => Never,
 
             ty::TyTuple(tys) => {
-                // FIXME(#33242) we only need to constrain the last field
-                Where(ty::Binder(tys.to_vec()))
+                Where(ty::Binder(tys.last().into_iter().cloned().collect()))
             }
 
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
                 Where(ty::Binder(match sized_crit.sty {
@@ -1839,8 +1836,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(tys.to_vec()))
             }
 
-            ty::TyStruct(..) | ty::TyEnum(..) |
-            ty::TyProjection(..) | ty::TyParam(..) | ty::TyAnon(..) => {
+            ty::TyAdt(..) | ty::TyProjection(..) | ty::TyParam(..) | ty::TyAnon(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
@@ -1932,11 +1928,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // for `PhantomData<T>`, we pass `T`
-            ty::TyStruct(def, substs) if def.is_phantom_data() => {
+            ty::TyAdt(def, substs) if def.is_phantom_data() => {
                 substs.types().collect()
             }
 
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 def.all_fields()
                     .map(|f| f.ty(self.tcx(), substs))
                     .collect()
@@ -2508,12 +2504,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             // T -> Trait.
             (_, &ty::TyTrait(ref data)) => {
-                let mut object_dids = Some(data.principal.def_id()).into_iter();
-                // FIXME(#33243)
-//                    data.builtin_bounds.iter().flat_map(|bound| {
-//                        tcx.lang_items.from_builtin_kind(bound).ok()
-//                    })
-//                    .chain(Some(data.principal.def_id()));
+                let mut object_dids =
+                    data.builtin_bounds.iter().flat_map(|bound| {
+                        tcx.lang_items.from_builtin_kind(bound).ok()
+                    })
+                    .chain(Some(data.principal.def_id()));
                 if let Some(did) = object_dids.find(|did| {
                     !tcx.is_object_safe(*did)
                 }) {
@@ -2569,7 +2564,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // Struct<T> -> Struct<U>.
-            (&ty::TyStruct(def, substs_a), &ty::TyStruct(_, substs_b)) => {
+            (&ty::TyAdt(def, substs_a), &ty::TyAdt(_, substs_b)) => {
                 let fields = def
                     .all_fields()
                     .map(|f| f.unsubst_ty())
@@ -2624,7 +2619,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         k
                     }
                 });
-                let new_struct = tcx.mk_struct(def, Substs::new(tcx, params));
+                let new_struct = tcx.mk_adt(def, Substs::new(tcx, params));
                 let origin = TypeOrigin::Misc(obligation.cause.span);
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, origin, new_struct, target)

@@ -11,8 +11,7 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use middle::cstore::LOCAL_CRATE;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
 use syntax::ast;
@@ -68,15 +67,14 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     fn check_item(&self, item: &hir::Item) {
         let def_id = self.tcx.map.local_def_id(item.id);
         match item.node {
-            hir::ItemImpl(_, _, _, None, ref ty, _) => {
+            hir::ItemImpl(.., None, ref ty, _) => {
                 // For inherent impls, self type must be a nominal type
                 // defined in this crate.
                 debug!("coherence2::orphan check: inherent impl {}",
                        self.tcx.map.node_to_string(item.id));
                 let self_ty = self.tcx.lookup_item_type(def_id).ty;
                 match self_ty.sty {
-                    ty::TyEnum(def, _) |
-                    ty::TyStruct(def, _) => {
+                    ty::TyAdt(def, _) => {
                         self.check_def_id(item, def.did);
                     }
                     ty::TyTrait(ref data) => {
@@ -221,7 +219,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                     }
                 }
             }
-            hir::ItemImpl(_, _, _, Some(_), _, _) => {
+            hir::ItemImpl(.., Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}",
                        self.tcx.map.node_to_string(item.id));
@@ -293,12 +291,9 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
-                        ty::TyStruct(self_def, _) | ty::TyEnum(self_def, _) =>
-                            Some(self_def.did),
-                        ty::TyBox(..) =>
-                            self.tcx.lang_items.owned_box(),
-                        _ =>
-                            None
+                        ty::TyAdt(self_def, _) => Some(self_def.did),
+                        ty::TyBox(..) => self.tcx.lang_items.owned_box(),
+                        _ => None,
                     };
 
                     let msg = match opt_self_def_id {

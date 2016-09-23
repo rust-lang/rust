@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:assertion failed: index < self.len()
+// error-pattern:index out of bounds
 
 use std::usize;
 use std::mem::size_of;

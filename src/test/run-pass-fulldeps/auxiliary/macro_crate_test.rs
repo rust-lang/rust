@@ -10,6 +10,7 @@
 
 // force-host
 
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(plugin_registrar, quote, rustc_private)]
 
 extern crate syntax;
@@ -81,7 +82,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
         Annotatable::ImplItem(_it) => vec![
             quote_item!(cx, impl X { fn foo(&self) -> i32 { 42 } }).unwrap().and_then(|i| {
                 match i.node {
-                    ItemKind::Impl(_, _, _, _, _, mut items) => {
+                    ItemKind::Impl(.., mut items) => {
                         Annotatable::ImplItem(P(items.pop().expect("impl method not found")))
                     }
                     _ => unreachable!("impl parsed to something other than impl")
@@ -91,7 +92,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
         Annotatable::TraitItem(_it) => vec![
             quote_item!(cx, trait X { fn foo(&self) -> i32 { 0 } }).unwrap().and_then(|i| {
                 match i.node {
-                    ItemKind::Trait(_, _, _, mut items) => {
+                    ItemKind::Trait(.., mut items) => {
                         Annotatable::TraitItem(P(items.pop().expect("trait method not found")))
                     }
                     _ => unreachable!("trait parsed to something other than trait")
@@ -165,7 +166,7 @@ fn expand_caller(cx: &mut ExtCtxt,
                  push: &mut FnMut(Annotatable)) {
     let (orig_fn_name, ret_type) = match *it {
         Annotatable::Item(ref item) => match item.node {
-            ItemKind::Fn(ref decl, _, _, _, _, _) => {
+            ItemKind::Fn(ref decl, ..) => {
                 (item.ident, &decl.output)
             }
             _ => cx.span_fatal(item.span, "Only functions with return types can be annotated.")

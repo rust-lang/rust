@@ -12,7 +12,7 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{Layout, Primitive};
 use rustc::traits::Reveal;
 use middle::const_val::ConstVal;
@@ -92,7 +92,7 @@ pub struct TypeLimits {
 impl TypeLimits {
     pub fn new() -> TypeLimits {
         TypeLimits {
-            negated_expr_id: !0,
+            negated_expr_id: ast::DUMMY_NODE_ID,
         }
     }
 }
@@ -377,7 +377,8 @@ enum FfiResult {
     FfiSafe,
     FfiUnsafe(&'static str),
     FfiBadStruct(DefId, &'static str),
-    FfiBadEnum(DefId, &'static str)
+    FfiBadUnion(DefId, &'static str),
+    FfiBadEnum(DefId, &'static str),
 }
 
 /// Check if this enum can be safely exported based on the
@@ -430,90 +431,112 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match ty.sty {
-            ty::TyStruct(def, substs) => {
-                if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
-                    return FfiUnsafe(
-                        "found struct without foreign-function-safe \
-                         representation annotation in foreign module, \
-                         consider adding a #[repr(C)] attribute to \
-                         the type");
-                }
-
-                // We can't completely trust repr(C) markings; make sure the
-                // fields are actually safe.
-                if def.struct_variant().fields.is_empty() {
-                    return FfiUnsafe(
-                        "found zero-size struct in foreign module, consider \
-                         adding a member to this struct");
-                }
-
-                for field in &def.struct_variant().fields {
-                    let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
-                    let r = self.check_type_for_ffi(cache, field_ty);
-                    match r {
-                        FfiSafe => {}
-                        FfiBadStruct(..) | FfiBadEnum(..) => { return r; }
-                        FfiUnsafe(s) => { return FfiBadStruct(def.did, s); }
+            ty::TyAdt(def, substs) => match def.adt_kind() {
+                AdtKind::Struct => {
+                    if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
+                        return FfiUnsafe(
+                            "found struct without foreign-function-safe \
+                            representation annotation in foreign module, \
+                            consider adding a #[repr(C)] attribute to \
+                            the type");
                     }
-                }
-                FfiSafe
-            }
-            ty::TyEnum(def, substs) => {
-                if def.variants.is_empty() {
-                    // Empty enums are okay... although sort of useless.
-                    return FfiSafe
-                }
 
-                // Check for a repr() attribute to specify the size of the
-                // discriminant.
-                let repr_hints = cx.lookup_repr_hints(def.did);
-                match &repr_hints[..] {
-                    &[] => {
-                        // Special-case types like `Option<extern fn()>`.
-                        if !is_repr_nullable_ptr(cx, def, substs) {
-                            return FfiUnsafe(
-                                "found enum without foreign-function-safe \
-                                 representation annotation in foreign module, \
-                                 consider adding a #[repr(...)] attribute to \
-                                 the type")
+                    // We can't completely trust repr(C) markings; make sure the
+                    // fields are actually safe.
+                    if def.struct_variant().fields.is_empty() {
+                        return FfiUnsafe(
+                            "found zero-size struct in foreign module, consider \
+                            adding a member to this struct");
+                    }
+
+                    for field in &def.struct_variant().fields {
+                        let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
+                        let r = self.check_type_for_ffi(cache, field_ty);
+                        match r {
+                            FfiSafe => {}
+                            FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => { return r; }
+                            FfiUnsafe(s) => { return FfiBadStruct(def.did, s); }
                         }
                     }
-                    &[ref hint] => {
-                        if !hint.is_ffi_safe() {
+                    FfiSafe
+                }
+                AdtKind::Union => {
+                    if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
+                        return FfiUnsafe(
+                            "found union without foreign-function-safe \
+                            representation annotation in foreign module, \
+                            consider adding a #[repr(C)] attribute to \
+                            the type");
+                    }
+
+                    for field in &def.struct_variant().fields {
+                        let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
+                        let r = self.check_type_for_ffi(cache, field_ty);
+                        match r {
+                            FfiSafe => {}
+                            FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => { return r; }
+                            FfiUnsafe(s) => { return FfiBadUnion(def.did, s); }
+                        }
+                    }
+                    FfiSafe
+                }
+                AdtKind::Enum => {
+                    if def.variants.is_empty() {
+                        // Empty enums are okay... although sort of useless.
+                        return FfiSafe
+                    }
+
+                    // Check for a repr() attribute to specify the size of the
+                    // discriminant.
+                    let repr_hints = cx.lookup_repr_hints(def.did);
+                    match &repr_hints[..] {
+                        &[] => {
+                            // Special-case types like `Option<extern fn()>`.
+                            if !is_repr_nullable_ptr(cx, def, substs) {
+                                return FfiUnsafe(
+                                    "found enum without foreign-function-safe \
+                                    representation annotation in foreign module, \
+                                    consider adding a #[repr(...)] attribute to \
+                                    the type")
+                            }
+                        }
+                        &[ref hint] => {
+                            if !hint.is_ffi_safe() {
+                                // FIXME: This shouldn't be reachable: we should check
+                                // this earlier.
+                                return FfiUnsafe(
+                                    "enum has unexpected #[repr(...)] attribute")
+                            }
+
+                            // Enum with an explicitly sized discriminant; either
+                            // a C-style enum or a discriminated union.
+
+                            // The layout of enum variants is implicitly repr(C).
+                            // FIXME: Is that correct?
+                        }
+                        _ => {
                             // FIXME: This shouldn't be reachable: we should check
                             // this earlier.
                             return FfiUnsafe(
-                                "enum has unexpected #[repr(...)] attribute")
-                        }
-
-                        // Enum with an explicitly sized discriminant; either
-                        // a C-style enum or a discriminated union.
-
-                        // The layout of enum variants is implicitly repr(C).
-                        // FIXME: Is that correct?
-                    }
-                    _ => {
-                        // FIXME: This shouldn't be reachable: we should check
-                        // this earlier.
-                        return FfiUnsafe(
-                            "enum has too many #[repr(...)] attributes");
-                    }
-                }
-
-                // Check the contained variants.
-                for variant in &def.variants {
-                    for field in &variant.fields {
-                        let arg = cx.normalize_associated_type(&field.ty(cx, substs));
-                        let r = self.check_type_for_ffi(cache, arg);
-                        match r {
-                            FfiSafe => {}
-                            FfiBadStruct(..) | FfiBadEnum(..) => { return r; }
-                            FfiUnsafe(s) => { return FfiBadEnum(def.did, s); }
+                                "enum has too many #[repr(...)] attributes");
                         }
                     }
+
+                    // Check the contained variants.
+                    for variant in &def.variants {
+                        for field in &variant.fields {
+                            let arg = cx.normalize_associated_type(&field.ty(cx, substs));
+                            let r = self.check_type_for_ffi(cache, arg);
+                            match r {
+                                FfiSafe => {}
+                                FfiBadStruct(..) | FfiBadUnion(..) | FfiBadEnum(..) => { return r; }
+                                FfiUnsafe(s) => { return FfiBadEnum(def.did, s); }
+                            }
+                        }
+                    }
+                    FfiSafe
                 }
-                FfiSafe
-            }
+            },
 
             ty::TyChar => {
                 FfiUnsafe("found Rust type `char` in foreign module, while \
@@ -546,7 +569,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::TyTuple(_) => {
                 FfiUnsafe("found Rust tuple type in foreign module; \
-                           consider using a struct instead`")
+                           consider using a struct instead")
             }
 
             ty::TyRawPtr(ref m) | ty::TyRef(_, ref m) => {
@@ -613,6 +636,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                     &format!("found non-foreign-function-safe member in \
                               struct marked #[repr(C)]: {}", s));
+            }
+            FfiResult::FfiBadUnion(_, s) => {
+                // FIXME: This diagnostic is difficult to read, and doesn't
+                // point at the relevant field.
+                self.cx.span_lint(IMPROPER_CTYPES, sp,
+                    &format!("found non-foreign-function-safe member in \
+                              union marked #[repr(C)]: {}", s));
             }
             FfiResult::FfiBadEnum(_, s) => {
                 // FIXME: This diagnostic is difficult to read, and doesn't
@@ -691,7 +721,7 @@ impl LateLintPass for VariantSizeDifferences {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {  // sizes only make sense for non-generic types
                 let t = cx.tcx.node_id_to_type(it.id);
-                let layout = cx.tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+                let layout = cx.tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
                     let ty = cx.tcx.erase_regions(&t);
                     ty.layout(&infcx).unwrap_or_else(|e| {
                         bug!("failed to get layout for `{}`: {}", t, e)

@@ -247,3 +247,24 @@ double rust_interesting_average(uint64_t n, ...) {
 int32_t rust_int8_to_int32(int8_t x) {
     return (int32_t)x;
 }
+
+typedef union LARGE_INTEGER {
+  struct {
+    uint32_t LowPart;
+    uint32_t HighPart;
+  };
+  struct {
+    uint32_t LowPart;
+    uint32_t HighPart;
+  } u;
+  uint64_t QuadPart;
+} LARGE_INTEGER;
+
+LARGE_INTEGER increment_all_parts(LARGE_INTEGER li) {
+    li.LowPart += 1;
+    li.HighPart += 1;
+    li.u.LowPart += 1;
+    li.u.HighPart += 1;
+    li.QuadPart += 1;
+    return li;
+}

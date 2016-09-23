@@ -414,14 +414,14 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
                 let impl_self_ty = cx.tcx().lookup_item_type(impl_def_id).ty;
                 let impl_self_ty = cx.tcx().erase_regions(&impl_self_ty);
-                let impl_self_ty = monomorphize::apply_param_substs(cx.tcx(),
+                let impl_self_ty = monomorphize::apply_param_substs(cx.shared(),
                                                                     instance.substs,
                                                                     &impl_self_ty);
 
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).
                 match impl_self_ty.sty {
-                    ty::TyStruct(..) | ty::TyEnum(..) => {
+                    ty::TyAdt(..) => {
                         Some(type_metadata(cx, impl_self_ty, syntax_pos::DUMMY_SP))
                     }
                     _ => None

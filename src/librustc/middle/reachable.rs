@@ -46,8 +46,8 @@ fn item_might_be_inlined(item: &hir::Item) -> bool {
     }
 
     match item.node {
-        hir::ItemImpl(_, _, ref generics, _, _, _) |
-        hir::ItemFn(_, _, _, _, ref generics, _) => {
+        hir::ItemImpl(_, _, ref generics, ..) |
+        hir::ItemFn(.., ref generics, _) => {
             generics_require_inlining(generics)
         }
         _ => false,
@@ -138,7 +138,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Creates a new reachability computation context.
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ReachableContext<'a, 'tcx> {
         let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
-            *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib
+            *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||
+            *ty == config::CrateTypeRustcMacro
         });
         ReachableContext {
             tcx: tcx,
@@ -186,7 +187,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // does too.
                             let impl_node_id = self.tcx.map.as_local_node_id(impl_did).unwrap();
                             match self.tcx.map.expect_item(impl_node_id).node {
-                                hir::ItemImpl(_, _, ref generics, _, _, _) => {
+                                hir::ItemImpl(_, _, ref generics, ..) => {
                                     generics_require_inlining(generics)
                                 }
                                 _ => false
@@ -225,7 +226,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
             if let ast_map::NodeItem(item) = *node {
-                let reachable = if let hir::ItemFn(_, _, _, abi, _, _) = item.node {
+                let reachable = if let hir::ItemFn(.., abi, _, _) = item.node {
                     abi != Abi::Rust
                 } else {
                     false
@@ -247,7 +248,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    hir::ItemFn(_, _, _, _, _, ref search_block) => {
+                    hir::ItemFn(.., ref search_block) => {
                         if item_might_be_inlined(&item) {
                             intravisit::walk_block(self, &search_block)
                         }
@@ -264,11 +265,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
                     hir::ItemExternCrate(_) | hir::ItemUse(_) |
-                    hir::ItemTy(..) | hir::ItemStatic(_, _, _) |
+                    hir::ItemTy(..) | hir::ItemStatic(..) |
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
                     hir::ItemImpl(..) | hir::ItemTrait(..) |
                     hir::ItemStruct(..) | hir::ItemEnum(..) |
-                    hir::ItemDefaultImpl(..) => {}
+                    hir::ItemUnion(..) | hir::ItemDefaultImpl(..) => {}
                 }
             }
             ast_map::NodeTraitItem(trait_method) => {
@@ -328,7 +329,7 @@ struct CollectPrivateImplItemsVisitor<'a> {
 impl<'a, 'v> Visitor<'v> for CollectPrivateImplItemsVisitor<'a> {
     fn visit_item(&mut self, item: &hir::Item) {
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemImpl(_, _, _, Some(_), _, ref impl_items) = item.node {
+        if let hir::ItemImpl(.., Some(_), _, ref impl_items) = item.node {
             if !self.access_levels.is_reachable(item.id) {
                 for impl_item in impl_items {
                     self.worklist.push(impl_item.id);

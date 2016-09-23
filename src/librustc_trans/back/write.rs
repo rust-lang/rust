@@ -1130,10 +1130,10 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
     // inline with lifetime intrinsics, and O2+ we add an inliner with a
     // thresholds copied from clang.
     match (opt_level, opt_size, inline_threshold) {
-        (_, _, Some(t)) => {
+        (.., Some(t)) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t as u32);
         }
-        (llvm::CodeGenOptLevel::Aggressive, _, _) => {
+        (llvm::CodeGenOptLevel::Aggressive, ..) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);
         }
         (_, llvm::CodeGenOptSizeDefault, _) => {
@@ -1142,16 +1142,16 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
         (_, llvm::CodeGenOptSizeAggressive, _) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 25);
         }
-        (llvm::CodeGenOptLevel::None, _, _) => {
+        (llvm::CodeGenOptLevel::None, ..) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, false);
         }
-        (llvm::CodeGenOptLevel::Less, _, _) => {
+        (llvm::CodeGenOptLevel::Less, ..) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, true);
         }
-        (llvm::CodeGenOptLevel::Default, _, _) => {
+        (llvm::CodeGenOptLevel::Default, ..) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 225);
         }
-        (llvm::CodeGenOptLevel::Other, _, _) => {
+        (llvm::CodeGenOptLevel::Other, ..) => {
             bug!("CodeGenOptLevel::Other selected")
         }
     }

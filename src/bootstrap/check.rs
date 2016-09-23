@@ -148,6 +148,9 @@ pub fn compiletest(build: &Build,
     if let Some(ref dir) = build.lldb_python_dir {
         cmd.arg("--lldb-python-dir").arg(dir);
     }
+    let llvm_config = build.llvm_config(target);
+    let llvm_version = output(Command::new(&llvm_config).arg("--version"));
+    cmd.arg("--llvm-version").arg(llvm_version);
 
     cmd.args(&build.flags.args);
 
@@ -158,7 +161,6 @@ pub fn compiletest(build: &Build,
     // Only pass correct values for these flags for the `run-make` suite as it
     // requires that a C++ compiler was configured which isn't always the case.
     if suite == "run-make" {
-        let llvm_config = build.llvm_config(target);
         let llvm_components = output(Command::new(&llvm_config).arg("--components"));
         let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
         cmd.arg("--cc").arg(build.cc(target))

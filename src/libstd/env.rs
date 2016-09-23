@@ -83,7 +83,7 @@ pub struct VarsOs { inner: os_imp::Env }
 /// environment variables of the current process.
 ///
 /// The returned iterator contains a snapshot of the process's environment
-/// variables at the time of this invocation, modifications to environment
+/// variables at the time of this invocation. Modifications to environment
 /// variables afterwards will not be reflected in the returned iterator.
 ///
 /// # Panics
@@ -112,7 +112,7 @@ pub fn vars() -> Vars {
 /// environment variables of the current process.
 ///
 /// The returned iterator contains a snapshot of the process's environment
-/// variables at the time of this invocation, modifications to environment
+/// variables at the time of this invocation. Modifications to environment
 /// variables afterwards will not be reflected in the returned iterator.
 ///
 /// # Examples
@@ -659,8 +659,10 @@ pub mod consts {
     /// - arm
     /// - aarch64
     /// - mips
+    /// - mips64
     /// - powerpc
     /// - powerpc64
+    /// - s390x
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &'static str = super::arch::ARCH;
 
@@ -926,6 +928,11 @@ mod arch {
     pub const ARCH: &'static str = "mips";
 }
 
+#[cfg(target_arch = "mips64")]
+mod arch {
+    pub const ARCH: &'static str = "mips64";
+}
+
 #[cfg(target_arch = "powerpc")]
 mod arch {
     pub const ARCH: &'static str = "powerpc";
@@ -934,6 +941,11 @@ mod arch {
 #[cfg(target_arch = "powerpc64")]
 mod arch {
     pub const ARCH: &'static str = "powerpc64";
+}
+
+#[cfg(target_arch = "s390x")]
+mod arch {
+    pub const ARCH: &'static str = "s390x";
 }
 
 #[cfg(target_arch = "le32")]

@@ -14,7 +14,7 @@ use hir::def_id::DefId;
 use infer::InferCtxt;
 use hir::pat_util;
 use traits::{self, Reveal};
-use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
+use ty::{self, Ty, AdtKind, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
@@ -138,28 +138,30 @@ impl<'tcx> ParameterEnvironment<'tcx> {
         // FIXME: (@jroesch) float this code up
         tcx.infer_ctxt(None, Some(self.clone()), Reveal::ExactMatch).enter(|infcx| {
             let adt = match self_type.sty {
-                ty::TyStruct(struct_def, substs) => {
-                    for field in struct_def.all_fields() {
-                        let field_ty = field.ty(tcx, substs);
-                        if infcx.type_moves_by_default(field_ty, span) {
-                            return Err(CopyImplementationError::InfrigingField(
-                                field.name))
-                        }
-                    }
-                    struct_def
-                }
-                ty::TyEnum(enum_def, substs) => {
-                    for variant in &enum_def.variants {
-                        for field in &variant.fields {
+                ty::TyAdt(adt, substs) => match adt.adt_kind() {
+                    AdtKind::Struct | AdtKind::Union => {
+                        for field in adt.all_fields() {
                             let field_ty = field.ty(tcx, substs);
                             if infcx.type_moves_by_default(field_ty, span) {
-                                return Err(CopyImplementationError::InfrigingVariant(
-                                    variant.name))
+                                return Err(CopyImplementationError::InfrigingField(
+                                    field.name))
                             }
                         }
+                        adt
                     }
-                    enum_def
-                }
+                    AdtKind::Enum => {
+                        for variant in &adt.variants {
+                            for field in &variant.fields {
+                                let field_ty = field.ty(tcx, substs);
+                                if infcx.type_moves_by_default(field_ty, span) {
+                                    return Err(CopyImplementationError::InfrigingVariant(
+                                        variant.name))
+                                }
+                            }
+                        }
+                        adt
+                    }
+                },
                 _ => return Err(CopyImplementationError::NotAnAdt)
             };
 
@@ -183,7 +185,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 for field in def.all_fields() {
                     let field_ty = field.ty(self, substs);
                     if let TyError = field_ty.sty {
@@ -203,15 +205,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  i: usize,
                                  variant: Option<DefId>) -> Option<Ty<'tcx>> {
         match (&ty.sty, variant) {
-            (&TyStruct(def, substs), None) => {
-                def.struct_variant().fields.get(i).map(|f| f.ty(self, substs))
+            (&TyAdt(adt, substs), Some(vid)) => {
+                adt.variant_with_id(vid).fields.get(i).map(|f| f.ty(self, substs))
             }
-            (&TyEnum(def, substs), Some(vid)) => {
-                def.variant_with_id(vid).fields.get(i).map(|f| f.ty(self, substs))
-            }
-            (&TyEnum(def, substs), None) => {
-                assert!(def.is_univariant());
-                def.variants[0].fields.get(i).map(|f| f.ty(self, substs))
+            (&TyAdt(adt, substs), None) => {
+                // Don't use `struct_variant`, this may be a univariant enum.
+                adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
             }
             (&TyTuple(ref v), None) => v.get(i).cloned(),
             _ => None
@@ -225,11 +224,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                             n: Name,
                             variant: Option<DefId>) -> Option<Ty<'tcx>> {
         match (&ty.sty, variant) {
-            (&TyStruct(def, substs), None) => {
-                def.struct_variant().find_field_named(n).map(|f| f.ty(self, substs))
+            (&TyAdt(adt, substs), Some(vid)) => {
+                adt.variant_with_id(vid).find_field_named(n).map(|f| f.ty(self, substs))
             }
-            (&TyEnum(def, substs), Some(vid)) => {
-                def.variant_with_id(vid).find_field_named(n).map(|f| f.ty(self, substs))
+            (&TyAdt(adt, substs), None) => {
+                adt.struct_variant().find_field_named(n).map(|f| f.ty(self, substs))
             }
             _ => return None
         }
@@ -241,7 +240,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn enum_repr_type(self, opt_hint: Option<&attr::ReprAttr>) -> attr::IntType {
         match opt_hint {
             // Feed in the given type
-            Some(&attr::ReprInt(_, int_t)) => int_t,
+            Some(&attr::ReprInt(int_t)) => int_t,
             // ... but provide sensible default if none provided
             //
             // NB. Historically `fn enum_variants` generate i64 here, while
@@ -254,7 +253,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// if not a structure at all. Corresponds to the only possible unsized
     /// field, and its type can be used to determine unsizing strategy.
     pub fn struct_tail(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        while let TyStruct(def, substs) = ty.sty {
+        while let TyAdt(def, substs) = ty.sty {
+            if !def.is_struct() {
+                break
+            }
             match def.struct_variant().fields.last() {
                 Some(f) => ty = f.ty(self, substs),
                 None => break
@@ -273,15 +275,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  target: Ty<'tcx>)
                                  -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
-        while let (&TyStruct(a_def, a_substs), &TyStruct(b_def, b_substs)) = (&a.sty, &b.sty) {
-            if a_def != b_def {
-                break;
+        while let (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) = (&a.sty, &b.sty) {
+            if a_def != b_def || !a_def.is_struct() {
+                break
             }
-            if let Some(f) = a_def.struct_variant().fields.last() {
-                a = f.ty(self, a_substs);
-                b = f.ty(self, b_substs);
-            } else {
-                break;
+            match a_def.struct_variant().fields.last() {
+                Some(f) => {
+                    a = f.ty(self, a_substs);
+                    b = f.ty(self, b_substs);
+                }
+                _ => break
             }
         }
         (a, b)
@@ -318,7 +321,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match predicate {
                     ty::Predicate::Projection(..) |
                     ty::Predicate::Trait(..) |
-                    ty::Predicate::Rfc1592(..) |
                     ty::Predicate::Equate(..) |
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
@@ -350,12 +352,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = TypeIdHasher {
-            tcx: self,
-            state: SipHasher::new()
-        };
+        let mut hasher = TypeIdHasher::new(self, SipHasher::new());
         hasher.visit_ty(ty);
-        hasher.state.finish()
+        hasher.finish()
     }
 
     /// Returns true if this ADT is a dtorck type.
@@ -389,14 +388,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, H> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    state: SipHasher
+    state: H
 }
 
-impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
-    fn hash<T: Hash>(&mut self, x: T) {
+impl<'a, 'gcx, 'tcx, H: Hasher> TypeIdHasher<'a, 'gcx, 'tcx, H> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, state: H) -> Self {
+        TypeIdHasher {
+            tcx: tcx,
+            state: state
+        }
+    }
+
+    pub fn hash<T: Hash>(&mut self, x: T) {
         x.hash(&mut self.state);
+    }
+
+    pub fn finish(self) -> u64 {
+        self.state.finish()
     }
 
     fn hash_discriminant_u8<T>(&mut self, x: &T) {
@@ -409,19 +419,15 @@ impl<'a, 'gcx, 'tcx> TypeIdHasher<'a, 'gcx, 'tcx> {
     }
 
     fn def_id(&mut self, did: DefId) {
-        // Hash the crate identification information.
-        let name = self.tcx.crate_name(did.krate);
-        let disambiguator = self.tcx.crate_disambiguator(did.krate);
-        self.hash((name, disambiguator));
-
-        // Hash the item path within that crate.
-        // FIXME(#35379) This should use a deterministic
-        // DefPath hashing mechanism, not the DefIndex.
-        self.hash(did.index);
+        // Hash the DefPath corresponding to the DefId, which is independent
+        // of compiler internal state.
+        let tcx = self.tcx;
+        let def_path = tcx.def_path(did);
+        def_path.deterministic_hash_to(tcx, &mut self.state);
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx, H: Hasher> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, H> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         // Distinguish between the Ty variants uniformly.
         self.hash_discriminant_u8(&ty.sty);
@@ -430,47 +436,22 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyInt(i) => self.hash(i),
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
-            TyStruct(d, _) |
-            TyEnum(d, _) => self.def_id(d.did),
             TyArray(_, n) => self.hash(n),
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
             TyAnon(def_id, _) |
-            TyFnDef(def_id, _, _) => self.def_id(def_id),
+            TyFnDef(def_id, ..) => self.def_id(def_id),
+            TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
                 self.hash(f.unsafety);
                 self.hash(f.abi);
                 self.hash(f.sig.variadic());
+                self.hash(f.sig.inputs().skip_binder().len());
             }
             TyTrait(ref data) => {
-                // Trait objects have a list of projection bounds
-                // that are not guaranteed to be sorted in an order
-                // that gets preserved across crates, so we need
-                // to sort them again by the name, in string form.
-
-                // Hash the whole principal trait ref.
                 self.def_id(data.principal.def_id());
-                data.principal.visit_with(self);
-
-                // Hash region and builtin bounds.
-                data.region_bound.visit_with(self);
                 self.hash(data.builtin_bounds);
-
-                // Only projection bounds are left, sort and hash them.
-                let mut projection_bounds: Vec<_> = data.projection_bounds
-                                                        .iter()
-                                                        .map(|b| (b.item_name().as_str(), b))
-                                                        .collect();
-                projection_bounds.sort_by_key(|&(ref name, _)| name.clone());
-                for (name, bound) in projection_bounds {
-                    self.def_id(bound.0.trait_ref.def_id);
-                    self.hash(name);
-                    bound.visit_with(self);
-                }
-
-                // Bypass super_visit_with, we've visited everything.
-                return false;
             }
             TyTuple(tys) => {
                 self.hash(tys.len());
@@ -488,9 +469,10 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             TyChar |
             TyStr |
             TyBox(_) |
-            TySlice(_) |
-            TyError => {}
-            TyInfer(_) => bug!()
+            TySlice(_) => {}
+
+            TyError |
+            TyInfer(_) => bug!("TypeIdHasher: unexpected type {}", ty)
         }
 
         ty.super_visit_with(self)
@@ -498,7 +480,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
 
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
         match *r {
-            ty::ReStatic | ty::ReErased => {
+            ty::ReErased => {
                 self.hash::<u32>(0);
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
@@ -506,6 +488,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
                 self.hash::<u32>(db.depth);
                 self.hash(i);
             }
+            ty::ReStatic |
             ty::ReEmpty |
             ty::ReEarlyBound(..) |
             ty::ReLateBound(..) |
@@ -513,7 +496,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx> {
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) => {
-                bug!("unexpected region found when hashing a type")
+                bug!("TypeIdHasher: unexpected region {:?}", r)
             }
         }
         false
@@ -558,8 +541,8 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 mutbl: hir::MutMutable, ..
             }) => Some(true),
 
-            TyArray(..) | TySlice(_) | TyTrait(..) | TyTuple(..) |
-            TyClosure(..) | TyEnum(..) | TyStruct(..) | TyAnon(..) |
+            TyArray(..) | TySlice(..) | TyTrait(..) | TyTuple(..) |
+            TyClosure(..) | TyAdt(..) | TyAnon(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
         }.unwrap_or_else(|| !self.impls_bound(tcx, param_env, ty::BoundCopy, span));
 
@@ -599,7 +582,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
             TyStr | TyTrait(..) | TySlice(_) => Some(false),
 
-            TyEnum(..) | TyStruct(..) | TyProjection(..) | TyParam(..) |
+            TyAdt(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyAnon(..) | TyError => None
         }.unwrap_or_else(|| self.impls_bound(tcx, param_env, ty::BoundSized, span));
 
@@ -661,7 +644,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 TyArray(ty, _) => {
                     is_type_structurally_recursive(tcx, sp, seen, ty)
                 }
-                TyStruct(def, substs) | TyEnum(def, substs) => {
+                TyAdt(def, substs) => {
                     find_nonrepresentable(tcx,
                                           sp,
                                           seen,
@@ -678,7 +661,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
         fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: ty::AdtDef<'tcx>) -> bool {
             match ty.sty {
-                TyStruct(ty_def, _) | TyEnum(ty_def, _) => {
+                TyAdt(ty_def, _) => {
                      ty_def == def
                 }
                 _ => false
@@ -687,8 +670,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
         fn same_type<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
             match (&a.sty, &b.sty) {
-                (&TyStruct(did_a, ref substs_a), &TyStruct(did_b, ref substs_b)) |
-                (&TyEnum(did_a, ref substs_a), &TyEnum(did_b, ref substs_b)) => {
+                (&TyAdt(did_a, substs_a), &TyAdt(did_b, substs_b)) => {
                     if did_a != did_b {
                         return false;
                     }
@@ -710,7 +692,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             debug!("is_type_structurally_recursive: {:?}", ty);
 
             match ty.sty {
-                TyStruct(def, _) | TyEnum(def, _) => {
+                TyAdt(def, _) => {
                     {
                         // Iterate through stack of previously seen types.
                         let mut iter = seen.iter();

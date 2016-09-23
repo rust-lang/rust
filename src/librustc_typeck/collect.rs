@@ -67,7 +67,7 @@ use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{eval_const_expr_partial, report_const_eval_err};
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
-use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
+use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use rustc::ty::{VariantKind};
 use rustc::ty::util::IntTypeExt;
 use rscope::*;
@@ -361,10 +361,15 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
                                            -> bool
     {
         if let Some(trait_id) = self.tcx().map.as_local_node_id(trait_def_id) {
-            trait_defines_associated_type_named(self.ccx, trait_id, assoc_name)
+            trait_associated_type_names(self.tcx(), trait_id)
+                .any(|name| name == assoc_name)
         } else {
-            let trait_def = self.tcx().lookup_trait_def(trait_def_id);
-            trait_def.associated_type_names.contains(&assoc_name)
+            self.tcx().impl_or_trait_items(trait_def_id).iter().any(|&def_id| {
+                match self.tcx().impl_or_trait_item(def_id) {
+                    ty::TypeTraitItem(ref item) => item.name == assoc_name,
+                    _ => false
+                }
+            })
         }
     }
 
@@ -477,7 +482,6 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ty::GenericPredicates<'tcx> {
                 ty::Predicate::TypeOutlives(ref data) => {
                     data.skip_binder().0.is_param(def.index)
                 }
-                ty::Predicate::Rfc1592(..) |
                 ty::Predicate::Equate(..) |
                 ty::Predicate::RegionOutlives(..) |
                 ty::Predicate::WellFormed(..) |
@@ -564,6 +568,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             vis: &hir::Visibility,
                             sig: &hir::MethodSig,
                             defaultness: hir::Defaultness,
+                            has_body: bool,
                             untransformed_rcvr_ty: Ty<'tcx>,
                             rcvr_ty_predicates: &ty::GenericPredicates<'tcx>) {
     let def_id = ccx.tcx.map.local_def_id(id);
@@ -581,15 +586,18 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               sig, untransformed_rcvr_ty, anon_scope)
     };
 
-    let ty_method = ty::Method::new(name,
-                                    ty_generics,
-                                    ty_generic_predicates,
-                                    fty,
-                                    explicit_self_category,
-                                    ty::Visibility::from_hir(vis, id, ccx.tcx),
-                                    defaultness,
-                                    def_id,
-                                    container);
+    let ty_method = ty::Method {
+        name: name,
+        generics: ty_generics,
+        predicates: ty_generic_predicates,
+        fty: fty,
+        explicit_self: explicit_self_category,
+        vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
+        defaultness: defaultness,
+        has_body: has_body,
+        def_id: def_id,
+        container: container,
+    };
 
     let substs = mk_item_substs(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
                                 ccx.tcx.map.span(id), def_id);
@@ -666,6 +674,13 @@ fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      defaultness: hir::Defaultness,
                                      ty: Option<Ty<'tcx>>)
 {
+    let predicates = ty::GenericPredicates {
+        parent: Some(container.id()),
+        predicates: vec![]
+    };
+    ccx.tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(id),
+                                           predicates);
+
     let associated_type = Rc::new(ty::AssociatedType {
         name: name,
         vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
@@ -741,7 +756,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             tcx.impl_trait_refs.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
                                                     Some(trait_ref));
         }
-        hir::ItemImpl(_, _,
+        hir::ItemImpl(..,
                       ref generics,
                       ref opt_trait_ref,
                       ref selfty,
@@ -823,6 +838,9 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             // Convert all the associated types.
             for impl_item in impl_items {
                 if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
+                    let type_def_id = ccx.tcx.map.local_def_id(impl_item.id);
+                    generics_of_def_id(ccx, type_def_id);
+
                     if opt_trait_ref.is_none() {
                         span_err!(tcx.sess, impl_item.span, E0202,
                                   "associated types are not allowed in inherent impls");
@@ -844,14 +862,14 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
                     convert_method(ccx, ImplContainer(def_id),
                                    impl_item.name, impl_item.id, method_vis,
-                                   sig, impl_item.defaultness, selfty,
+                                   sig, impl_item.defaultness, true, selfty,
                                    &ty_predicates);
                 }
             }
 
             enforce_impl_lifetimes_are_constrained(ccx, generics, def_id, impl_items);
         },
-        hir::ItemTrait(_, _, _, ref trait_items) => {
+        hir::ItemTrait(.., ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
             let def_id = trait_def.trait_ref.def_id;
             let _: Result<(), ErrorReported> = // any error is already reported, can ignore
@@ -890,6 +908,9 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             // Convert all the associated types.
             for trait_item in trait_items {
                 if let hir::TypeTraitItem(_, ref opt_ty) = trait_item.node {
+                    let type_def_id = ccx.tcx.map.local_def_id(trait_item.id);
+                    generics_of_def_id(ccx, type_def_id);
+
                     let typ = opt_ty.as_ref().map({
                         |ty| ccx.icx(&trait_predicates).to_ty(&ExplicitRscope, &ty)
                     });
@@ -906,7 +927,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Convert all the methods
             for trait_item in trait_items {
-                if let hir::MethodTraitItem(ref sig, _) = trait_item.node {
+                if let hir::MethodTraitItem(ref sig, ref body) = trait_item.node {
                     convert_method(ccx,
                                    container,
                                    trait_item.name,
@@ -914,6 +935,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                    &hir::Inherited,
                                    sig,
                                    hir::Defaultness::Default,
+                                   body.is_some(),
                                    tcx.mk_self_type(),
                                    &trait_predicates);
 
@@ -922,17 +944,13 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Add an entry mapping
             let trait_item_def_ids = Rc::new(trait_items.iter().map(|trait_item| {
-                let def_id = ccx.tcx.map.local_def_id(trait_item.id);
-                match trait_item.node {
-                    hir::ConstTraitItem(..) => ty::ConstTraitItemId(def_id),
-                    hir::MethodTraitItem(..) => ty::MethodTraitItemId(def_id),
-                    hir::TypeTraitItem(..) => ty::TypeTraitItemId(def_id)
-                }
+                ccx.tcx.map.local_def_id(trait_item.id)
             }).collect());
-            tcx.trait_item_def_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
-                                                       trait_item_def_ids);
+            tcx.impl_or_trait_item_def_ids.borrow_mut().insert(ccx.tcx.map.local_def_id(it.id),
+                                                               trait_item_def_ids);
         },
-        hir::ItemStruct(ref struct_def, _) => {
+        hir::ItemStruct(ref struct_def, _) |
+        hir::ItemUnion(ref struct_def, _) => {
             let def_id = ccx.tcx.map.local_def_id(it.id);
             let scheme = type_scheme_of_def_id(ccx, def_id);
             let predicates = predicates_of_item(ccx, it);
@@ -1062,12 +1080,22 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ctor_id = if !def.is_struct() { Some(ccx.tcx.map.local_def_id(def.id())) } else { None };
     let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name,
                                                ConstInt::Infer(0), def)];
-    let adt = ccx.tcx.intern_adt_def(did, ty::AdtKind::Struct, variants);
+    let adt = ccx.tcx.intern_adt_def(did, AdtKind::Struct, variants);
     if let Some(ctor_id) = ctor_id {
         // Make adt definition available through constructor id as well.
         ccx.tcx.insert_adt_def(ctor_id, adt);
     }
     adt
+}
+
+fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                it: &hir::Item,
+                                def: &hir::VariantData)
+                                -> ty::AdtDefMaster<'tcx>
+{
+    let did = ccx.tcx.map.local_def_id(it.id);
+    let variants = vec![convert_struct_variant(ccx, did, it.name, ConstInt::Infer(0), def)];
+    ccx.tcx.intern_adt_def(did, AdtKind::Union, variants)
 }
 
     fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, e: &hir::Expr)
@@ -1147,7 +1175,7 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let did = tcx.map.local_def_id(v.node.data.id());
         convert_struct_variant(ccx, did, v.node.name, disr, &v.node.data)
     }).collect();
-    tcx.intern_adt_def(tcx.map.local_def_id(it.id), ty::AdtKind::Enum, variants)
+    tcx.intern_adt_def(tcx.map.local_def_id(it.id), AdtKind::Enum, variants)
 }
 
 /// Ensures that the super-predicates of the trait with def-id
@@ -1251,9 +1279,9 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return def.clone();
     }
 
-    let (unsafety, generics, items) = match it.node {
-        hir::ItemTrait(unsafety, ref generics, _, ref items) => {
-            (unsafety, generics, items)
+    let (unsafety, generics) = match it.node {
+        hir::ItemTrait(unsafety, ref generics, _, _) => {
+            (unsafety, generics)
         }
         _ => span_bug!(it.span, "trait_def_of_item invoked on non-trait"),
     };
@@ -1273,42 +1301,33 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ty_generics = generics_of_def_id(ccx, def_id);
     let substs = mk_item_substs(&ccx.icx(generics), it.span, def_id);
 
-    let associated_type_names: Vec<_> = items.iter().filter_map(|trait_item| {
-        match trait_item.node {
-            hir::TypeTraitItem(..) => Some(trait_item.name),
-            _ => None,
-        }
-    }).collect();
+    let def_path_hash = tcx.def_path(def_id).deterministic_hash(tcx);
 
     let trait_ref = ty::TraitRef::new(def_id, substs);
-    let trait_def = ty::TraitDef::new(unsafety,
-                                      paren_sugar,
-                                      ty_generics,
-                                      trait_ref,
-                                      associated_type_names);
+    let trait_def = ty::TraitDef::new(unsafety, paren_sugar, ty_generics, trait_ref,
+                                      def_path_hash);
 
     tcx.intern_trait_def(trait_def)
 }
 
-fn trait_defines_associated_type_named(ccx: &CrateCtxt,
-                                       trait_node_id: ast::NodeId,
-                                       assoc_name: ast::Name)
-                                       -> bool
+pub fn trait_associated_type_names<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                   trait_node_id: ast::NodeId)
+                                                   -> impl Iterator<Item=ast::Name> + 'a
 {
-    let item = match ccx.tcx.map.get(trait_node_id) {
+    let item = match tcx.map.get(trait_node_id) {
         hir_map::NodeItem(item) => item,
         _ => bug!("trait_node_id {} is not an item", trait_node_id)
     };
 
     let trait_items = match item.node {
-        hir::ItemTrait(_, _, _, ref trait_items) => trait_items,
+        hir::ItemTrait(.., ref trait_items) => trait_items,
         _ => bug!("trait_node_id {} is not a trait", trait_node_id)
     };
 
-    trait_items.iter().any(|trait_item| {
+    trait_items.iter().filter_map(|trait_item| {
         match trait_item.node {
-            hir::TypeTraitItem(..) => trait_item.name == assoc_name,
-            _ => false,
+            hir::TypeTraitItem(..) => Some(trait_item.name),
+            _ => None,
         }
     })
 }
@@ -1435,17 +1454,18 @@ fn generics_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
             NodeItem(item) => {
                 match item.node {
-                    ItemFn(_, _, _, _, ref generics, _) |
-                    ItemImpl(_, _, ref generics, _, _, _) => generics,
+                    ItemFn(.., ref generics, _) |
+                    ItemImpl(_, _, ref generics, ..) => generics,
 
                     ItemTy(_, ref generics) |
                     ItemEnum(_, ref generics) |
-                    ItemStruct(_, ref generics) => {
+                    ItemStruct(_, ref generics) |
+                    ItemUnion(_, ref generics) => {
                         allow_defaults = true;
                         generics
                     }
 
-                    ItemTrait(_, ref generics, _, _) => {
+                    ItemTrait(_, ref generics, ..) => {
                         // Add in the self type parameter.
                         //
                         // Something of a hack: use the node id for the trait, also as
@@ -1555,8 +1575,8 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let ty = match ccx.tcx.map.get(node_id) {
             NodeItem(item) => {
                 match item.node {
-                    ItemStatic(ref t, _, _) | ItemConst(ref t, _) => {
-                        ccx.icx(&()).to_ty(&ExplicitRscope, &t)
+                    ItemStatic(ref t, ..) | ItemConst(ref t, _) => {
+                        ccx.icx(&()).to_ty(&StaticRscope::new(&ccx.tcx), &t)
                     }
                     ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
                         let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl,
@@ -1570,12 +1590,17 @@ fn type_of_def_id<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     ItemEnum(ref ei, ref generics) => {
                         let def = convert_enum_def(ccx, item, ei);
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
-                        ccx.tcx.mk_enum(def, substs)
+                        ccx.tcx.mk_adt(def, substs)
                     }
                     ItemStruct(ref si, ref generics) => {
                         let def = convert_struct_def(ccx, item, si);
                         let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
-                        ccx.tcx.mk_struct(def, substs)
+                        ccx.tcx.mk_adt(def, substs)
+                    }
+                    ItemUnion(ref un, ref generics) => {
+                        let def = convert_union_def(ccx, item, un);
+                        let substs = mk_item_substs(&ccx.icx(generics), item.span, def_id);
+                        ccx.tcx.mk_adt(def, substs)
                     }
                     ItemDefaultImpl(..) |
                     ItemTrait(..) |
@@ -1635,10 +1660,11 @@ fn predicates_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let no_generics = hir::Generics::empty();
     let generics = match it.node {
-        hir::ItemFn(_, _, _, _, ref generics, _) |
+        hir::ItemFn(.., ref generics, _) |
         hir::ItemTy(_, ref generics) |
         hir::ItemEnum(_, ref generics) |
-        hir::ItemStruct(_, ref generics) => generics,
+        hir::ItemStruct(_, ref generics) |
+        hir::ItemUnion(_, ref generics) => generics,
         _ => &no_generics
     };
 
@@ -2158,7 +2184,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ty_generics = generics_of_def_id(ccx, impl_def_id);
     for (ty_param, param) in ty_generics.types.iter().zip(&generics.ty_params) {
         let param_ty = ty::ParamTy::for_def(ty_param);
-        if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
+        if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
             report_unused_parameter(ccx, param.span, "type", &param_ty.to_string());
         }
     }
@@ -2189,23 +2215,19 @@ fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
         })
         .flat_map(|ty| ctp::parameters_for(&ty, true))
-        .filter_map(|p| match p {
-            ctp::Parameter::Type(_) => None,
-            ctp::Parameter::Region(r) => Some(r),
-        })
         .collect();
 
-    for (index, lifetime_def) in ast_generics.lifetimes.iter().enumerate() {
-        let region = ty::EarlyBoundRegion {
-            index: index as u32,
-            name: lifetime_def.lifetime.name
-        };
+    for (ty_lifetime, lifetime) in impl_scheme.generics.regions.iter()
+        .zip(&ast_generics.lifetimes)
+    {
+        let param = ctp::Parameter::from(ty_lifetime.to_early_bound_region_data());
+
         if
-            lifetimes_in_associated_types.contains(&region) && // (*)
-            !input_parameters.contains(&ctp::Parameter::Region(region))
+            lifetimes_in_associated_types.contains(&param) && // (*)
+            !input_parameters.contains(&param)
         {
-            report_unused_parameter(ccx, lifetime_def.lifetime.span,
-                                    "lifetime", &region.name.to_string());
+            report_unused_parameter(ccx, lifetime.lifetime.span,
+                                    "lifetime", &lifetime.lifetime.name.to_string());
         }
     }
 

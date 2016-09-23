@@ -11,7 +11,7 @@
 
 use llvm;
 use llvm::{SetUnnamedAddr};
-use llvm::{InternalLinkage, ValueRef, True};
+use llvm::{ValueRef, True};
 use rustc_const_eval::ConstEvalErr;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
@@ -53,7 +53,7 @@ pub fn addr_of_mut(ccx: &CrateContext,
         });
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetAlignment(gv, align);
-        llvm::LLVMSetLinkage(gv, InternalLinkage);
+        llvm::LLVMRustSetLinkage(gv, llvm::Linkage::InternalLinkage);
         SetUnnamedAddr(gv, true);
         gv
     }
@@ -142,7 +142,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     unsafe {
                         // Declare a symbol `foo` with the desired linkage.
                         let g1 = declare::declare_global(ccx, &sym, llty2);
-                        llvm::LLVMSetLinkage(g1, linkage);
+                        llvm::LLVMRustSetLinkage(g1, linkage);
 
                         // Declare an internal global `extern_with_linkage_foo` which
                         // is initialized with the address of `foo`.  If `foo` is
@@ -156,7 +156,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                             ccx.sess().span_fatal(span,
                                 &format!("symbol `{}` is already defined", &sym))
                         });
-                        llvm::LLVMSetLinkage(g2, llvm::InternalLinkage);
+                        llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
                         llvm::LLVMSetInitializer(g2, g1);
                         g2
                     }

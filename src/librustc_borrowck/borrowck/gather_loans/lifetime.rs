@@ -74,9 +74,9 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             Categorization::Rvalue(..) |
             Categorization::Local(..) |                         // L-Local
             Categorization::Upvar(..) |
-            Categorization::Deref(_, _, mc::BorrowedPtr(..)) |  // L-Deref-Borrowed
-            Categorization::Deref(_, _, mc::Implicit(..)) |
-            Categorization::Deref(_, _, mc::UnsafePtr(..)) => {
+            Categorization::Deref(.., mc::BorrowedPtr(..)) |  // L-Deref-Borrowed
+            Categorization::Deref(.., mc::Implicit(..)) |
+            Categorization::Deref(.., mc::UnsafePtr(..)) => {
                 self.check_scope(self.scope(cmt))
             }
 
@@ -119,11 +119,11 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
                     self.bccx.tcx.region_maps.var_scope(local_id)))
             }
             Categorization::StaticItem |
-            Categorization::Deref(_, _, mc::UnsafePtr(..)) => {
+            Categorization::Deref(.., mc::UnsafePtr(..)) => {
                 self.bccx.tcx.mk_region(ty::ReStatic)
             }
-            Categorization::Deref(_, _, mc::BorrowedPtr(_, r)) |
-            Categorization::Deref(_, _, mc::Implicit(_, r)) => {
+            Categorization::Deref(.., mc::BorrowedPtr(_, r)) |
+            Categorization::Deref(.., mc::Implicit(_, r)) => {
                 r
             }
             Categorization::Downcast(ref cmt, _) |

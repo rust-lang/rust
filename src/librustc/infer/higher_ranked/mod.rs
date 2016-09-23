@@ -130,7 +130,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             debug!("higher_ranked_match: skol_map={:?}", skol_map);
 
             // Equate types now that bound regions have been replaced.
-            try!(self.equate(a_is_expected).relate(&a_match, &b_match));
+            self.equate(a_is_expected).relate(&a_match, &b_match)?;
 
             // Map each skolemized region to a vector of other regions that it
             // must be equated with. (Note that this vector may include other
@@ -684,7 +684,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             warnings.extend(
                                 match self.region_vars.var_origin(vid) {
                                     LateBoundRegion(_,
-                                                    ty::BrNamed(_, _, wc),
+                                                    ty::BrNamed(.., wc),
                                                     _) => Some(wc),
                                     _ => None,
                                 });

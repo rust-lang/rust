@@ -14,7 +14,7 @@
 
 #![feature(optin_builtin_traits)]
 
-trait Magic: Copy {}
+trait Magic: Copy {} //~ ERROR E0568
 impl Magic for .. {}
 
 fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
@@ -23,6 +23,6 @@ fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
 struct NoClone;
 
 fn main() {
-    let (a, b) = copy(NoClone); //~ ERROR E0277
+    let (a, b) = copy(NoClone);
     println!("{:?} {:?}", a, b);
 }

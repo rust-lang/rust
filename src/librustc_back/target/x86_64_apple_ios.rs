@@ -12,7 +12,7 @@ use target::{Target, TargetOptions, TargetResult};
 use super::apple_ios_base::{opts, Arch};
 
 pub fn target() -> TargetResult {
-    let base = try!(opts(Arch::X86_64));
+    let base = opts(Arch::X86_64)?;
     Ok(Target {
         llvm_target: "x86_64-apple-ios".to_string(),
         target_endian: "little".to_string(),

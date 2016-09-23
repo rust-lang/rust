@@ -44,7 +44,9 @@ impl EarlyProps {
                 (config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) ||
                 (config.target != config.host &&
                  parse_name_directive(ln, "ignore-cross-compile")) ||
-                ignore_gdb(config, ln) || ignore_lldb(config, ln);
+                ignore_gdb(config, ln) ||
+                ignore_lldb(config, ln) ||
+                ignore_llvm(config, ln);
 
             props.should_fail = props.should_fail || parse_name_directive(ln, "should-fail");
         });
@@ -108,6 +110,24 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     lldb_version_to_int(actual_version) < lldb_version_to_int(min_version)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+
+        fn ignore_llvm(config: &Config, line: &str) -> bool {
+            if let Some(ref actual_version) = config.llvm_version {
+                if line.contains("min-llvm-version") {
+                    let min_version = line.trim()
+                        .split(' ')
+                        .last()
+                        .expect("Malformed llvm version directive");
+                    // Ignore if actual version is smaller the minimum required
+                    // version
+                    &actual_version[..] < min_version
                 } else {
                     false
                 }

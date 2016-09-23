@@ -467,8 +467,7 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         // This can be extended to enums and tuples in the future.
-        // (&ty::TyEnum(def_id_a, _), &ty::TyEnum(def_id_b, _)) |
-        (&ty::TyStruct(def_a, _), &ty::TyStruct(def_b, _)) => {
+        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
             let src_repr = adt::represent_type(bcx.ccx(), src_ty);
@@ -924,7 +923,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
         let (param_substs, def_id) = match definition {
-            Some((instance, _, _)) => {
+            Some((instance, ..)) => {
                 common::validate_substs(instance.substs);
                 (instance.substs, Some(instance.def))
             }
@@ -1128,7 +1127,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     let fn_ty = ccx.tcx().lookup_item_type(instance.def).ty;
     let fn_ty = ccx.tcx().erase_regions(&fn_ty);
-    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), instance.substs, &fn_ty);
+    let fn_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &fn_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
     let sig = ccx.tcx().normalize_associated_type(&sig);
@@ -1151,7 +1150,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     attributes::set_frame_pointer_elimination(ccx, llfndecl);
 
     let ctor_ty = ccx.tcx().lookup_item_type(def_id).ty;
-    let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), substs, &ctor_ty);
+    let ctor_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &ctor_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
     let sig = ccx.tcx().normalize_associated_type(&sig);
@@ -1198,17 +1197,17 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
     // and don't have to be, LLVM treats them as no-ops.
     match name {
-        "appending" => Some(llvm::AppendingLinkage),
-        "available_externally" => Some(llvm::AvailableExternallyLinkage),
-        "common" => Some(llvm::CommonLinkage),
-        "extern_weak" => Some(llvm::ExternalWeakLinkage),
-        "external" => Some(llvm::ExternalLinkage),
-        "internal" => Some(llvm::InternalLinkage),
-        "linkonce" => Some(llvm::LinkOnceAnyLinkage),
-        "linkonce_odr" => Some(llvm::LinkOnceODRLinkage),
-        "private" => Some(llvm::PrivateLinkage),
-        "weak" => Some(llvm::WeakAnyLinkage),
-        "weak_odr" => Some(llvm::WeakODRLinkage),
+        "appending" => Some(llvm::Linkage::AppendingLinkage),
+        "available_externally" => Some(llvm::Linkage::AvailableExternallyLinkage),
+        "common" => Some(llvm::Linkage::CommonLinkage),
+        "extern_weak" => Some(llvm::Linkage::ExternalWeakLinkage),
+        "external" => Some(llvm::Linkage::ExternalLinkage),
+        "internal" => Some(llvm::Linkage::InternalLinkage),
+        "linkonce" => Some(llvm::Linkage::LinkOnceAnyLinkage),
+        "linkonce_odr" => Some(llvm::Linkage::LinkOnceODRLinkage),
+        "private" => Some(llvm::Linkage::PrivateLinkage),
+        "weak" => Some(llvm::Linkage::WeakAnyLinkage),
+        "weak_odr" => Some(llvm::Linkage::WeakODRLinkage),
         _ => None,
     }
 }
@@ -1347,8 +1346,7 @@ fn write_metadata(cx: &SharedCrateContext,
                                           cx.export_map(),
                                           cx.link_meta(),
                                           reachable_ids,
-                                          cx.mir_map(),
-                                          cx.tcx().map.krate());
+                                          cx.mir_map());
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
@@ -1401,10 +1399,10 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
         // are referenced via a declaration in some other codegen unit.
         for ccx in ccxs.iter_need_trans() {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
-                let linkage = llvm::LLVMGetLinkage(val);
+                let linkage = llvm::LLVMRustGetLinkage(val);
                 // We only care about external declarations (not definitions)
                 // and available_externally definitions.
-                let is_available_externally = linkage == llvm::AvailableExternallyLinkage as c_uint;
+                let is_available_externally = linkage == llvm::Linkage::AvailableExternallyLinkage;
                 let is_decl = llvm::LLVMIsDeclaration(val) != 0;
 
                 if is_decl || is_available_externally {
@@ -1422,21 +1420,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
             .iter()
             .cloned()
             .filter(|trans_item|{
-                let def_id = match *trans_item {
-                    TransItem::DropGlue(..) => {
-                        return false
-                    },
-                    TransItem::Fn(ref instance) => {
-                        instance.def
-                    }
-                    TransItem::Static(node_id) => {
-                        tcx.map.local_def_id(node_id)
-                    }
-                };
-
-                trans_item.explicit_linkage(tcx).is_some() ||
-                attr::contains_extern_indicator(tcx.sess.diagnostic(),
-                                                &tcx.get_attrs(def_id))
+                trans_item.explicit_linkage(tcx).is_some()
             })
             .map(|trans_item| symbol_map.get_or_compute(scx, trans_item))
             .collect();
@@ -1446,11 +1430,11 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
         // then give it internal linkage.
         for ccx in ccxs.iter_need_trans() {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
-                let linkage = llvm::LLVMGetLinkage(val);
+                let linkage = llvm::LLVMRustGetLinkage(val);
 
-                let is_externally_visible = (linkage == llvm::ExternalLinkage as c_uint) ||
-                                            (linkage == llvm::LinkOnceODRLinkage as c_uint) ||
-                                            (linkage == llvm::WeakODRLinkage as c_uint);
+                let is_externally_visible = (linkage == llvm::Linkage::ExternalLinkage) ||
+                                            (linkage == llvm::Linkage::LinkOnceODRLinkage) ||
+                                            (linkage == llvm::Linkage::WeakODRLinkage);
                 let is_definition = llvm::LLVMIsDeclaration(val) == 0;
 
                 // If this is a definition (as opposed to just a declaration)
@@ -1465,7 +1449,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
                     let has_fixed_linkage = linkage_fixed_explicitly.contains(&name_cow);
 
                     if !is_referenced_somewhere && !is_reachable && !has_fixed_linkage {
-                        llvm::LLVMSetLinkage(val, llvm::InternalLinkage);
+                        llvm::LLVMRustSetLinkage(val, llvm::Linkage::InternalLinkage);
                         llvm::LLVMSetDLLStorageClass(val,
                                                      llvm::DLLStorageClass::Default);
                         llvm::UnsetComdat(val);
@@ -1495,8 +1479,8 @@ fn create_imps(cx: &CrateContextList) {
         for ccx in cx.iter_need_trans() {
             let exported: Vec<_> = iter_globals(ccx.llmod())
                                        .filter(|&val| {
-                                           llvm::LLVMGetLinkage(val) ==
-                                           llvm::ExternalLinkage as c_uint &&
+                                           llvm::LLVMRustGetLinkage(val) ==
+                                           llvm::Linkage::ExternalLinkage &&
                                            llvm::LLVMIsDeclaration(val) == 0
                                        })
                                        .collect();
@@ -1512,7 +1496,7 @@ fn create_imps(cx: &CrateContextList) {
                                               imp_name.as_ptr() as *const _);
                 let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
                 llvm::LLVMSetInitializer(imp, init);
-                llvm::LLVMSetLinkage(imp, llvm::ExternalLinkage);
+                llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
             }
         }
     }
@@ -1592,7 +1576,11 @@ pub fn filter_reachable_ids(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.map.local_def_id(id);
                 let generics = tcx.lookup_generics(def_id);
-                generics.parent_types == 0 && generics.types.is_empty()
+                let attributes = tcx.get_attrs(def_id);
+                (generics.parent_types == 0 && generics.types.is_empty()) &&
+                // Functions marked with #[inline] are only ever translated
+                // with "internal" linkage and are never exported.
+                !attr::requests_inline(&attributes[..])
             }
 
             _ => false
@@ -1894,11 +1882,10 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     };
 
     let codegen_units = time(time_passes, "codegen unit partitioning", || {
-        partitioning::partition(scx.tcx(),
+        partitioning::partition(scx,
                                 items.iter().cloned(),
                                 strategy,
-                                &inlining_map,
-                                scx.reachable())
+                                &inlining_map)
     });
 
     assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||
@@ -1937,17 +1924,17 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
                     output.push_str(&cgu_name[..]);
 
                     let linkage_abbrev = match linkage {
-                        llvm::ExternalLinkage => "External",
-                        llvm::AvailableExternallyLinkage => "Available",
-                        llvm::LinkOnceAnyLinkage => "OnceAny",
-                        llvm::LinkOnceODRLinkage => "OnceODR",
-                        llvm::WeakAnyLinkage => "WeakAny",
-                        llvm::WeakODRLinkage => "WeakODR",
-                        llvm::AppendingLinkage => "Appending",
-                        llvm::InternalLinkage => "Internal",
-                        llvm::PrivateLinkage => "Private",
-                        llvm::ExternalWeakLinkage => "ExternalWeak",
-                        llvm::CommonLinkage => "Common",
+                        llvm::Linkage::ExternalLinkage => "External",
+                        llvm::Linkage::AvailableExternallyLinkage => "Available",
+                        llvm::Linkage::LinkOnceAnyLinkage => "OnceAny",
+                        llvm::Linkage::LinkOnceODRLinkage => "OnceODR",
+                        llvm::Linkage::WeakAnyLinkage => "WeakAny",
+                        llvm::Linkage::WeakODRLinkage => "WeakODR",
+                        llvm::Linkage::AppendingLinkage => "Appending",
+                        llvm::Linkage::InternalLinkage => "Internal",
+                        llvm::Linkage::PrivateLinkage => "Private",
+                        llvm::Linkage::ExternalWeakLinkage => "ExternalWeak",
+                        llvm::Linkage::CommonLinkage => "Common",
                     };
 
                     output.push_str("[");

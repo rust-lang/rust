@@ -39,30 +39,8 @@ fn test_hash() {
   assert!(::hash(&x) == ::hash(&y));
 }
 
-struct Counter<'a, 'b> {
-    i: &'a mut usize,
-    expected: &'b [i32],
-}
-
-impl<'a, 'b, 'c> FnMut<(&'c i32,)> for Counter<'a, 'b> {
-    extern "rust-call" fn call_mut(&mut self, (&x,): (&'c i32,)) -> bool {
-        assert_eq!(x, self.expected[*self.i]);
-        *self.i += 1;
-        true
-    }
-}
-
-impl<'a, 'b, 'c> FnOnce<(&'c i32,)> for Counter<'a, 'b> {
-    type Output = bool;
-
-    extern "rust-call" fn call_once(mut self, args: (&'c i32,)) -> bool {
-        self.call_mut(args)
-    }
-}
-
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F) where
-    // FIXME Replace Counter with `Box<FnMut(_) -> _>`
-    F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, Counter) -> bool,
+    F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut FnMut(&i32) -> bool) -> bool,
 {
     let mut set_a = BTreeSet::new();
     let mut set_b = BTreeSet::new();
@@ -71,7 +49,11 @@ fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F) where
     for y in b { assert!(set_b.insert(*y)) }
 
     let mut i = 0;
-    f(&set_a, &set_b, Counter { i: &mut i, expected: expected });
+    f(&set_a, &set_b, &mut |&x| {
+        assert_eq!(x, expected[i]);
+        i += 1;
+        true
+    });
     assert_eq!(i, expected.len());
 }
 

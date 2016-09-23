@@ -13,15 +13,15 @@
 use self::RootUnsafeContext::*;
 
 use dep_graph::DepNode;
-use hir::def::Def;
 use ty::{self, Ty, TyCtxt};
 use ty::MethodCall;
+use lint;
 
 use syntax::ast;
 use syntax_pos::Span;
-use hir;
-use hir::intravisit;
-use hir::intravisit::{FnKind, Visitor};
+use hir::{self, PatKind};
+use hir::def::Def;
+use hir::intravisit::{self, FnKind, Visitor};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -44,7 +44,7 @@ enum RootUnsafeContext {
 
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
-        ty::TyFnDef(_, _, ref f) |
+        ty::TyFnDef(.., ref f) |
         ty::TyFnPtr(ref f) => f.unsafety == hir::Unsafety::Unsafe,
         _ => false,
     }
@@ -58,16 +58,25 @@ struct EffectCheckVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
-    fn require_unsafe(&mut self, span: Span, description: &str) {
+    fn require_unsafe_ext(&mut self, node_id: ast::NodeId, span: Span,
+                          description: &str, is_lint: bool) {
         if self.unsafe_context.push_unsafe_count > 0 { return; }
         match self.unsafe_context.root {
             SafeContext => {
-                // Report an error.
-                struct_span_err!(
-                    self.tcx.sess, span, E0133,
-                    "{} requires unsafe function or block", description)
-                    .span_label(span, &description)
-                    .emit();
+                if is_lint {
+                    self.tcx.sess.add_lint(lint::builtin::SAFE_EXTERN_STATICS,
+                                           node_id,
+                                           span,
+                                           format!("{} requires unsafe function or \
+                                                    block (error E0133)", description));
+                } else {
+                    // Report an error.
+                    struct_span_err!(
+                        self.tcx.sess, span, E0133,
+                        "{} requires unsafe function or block", description)
+                        .span_label(span, &description)
+                        .emit();
+                }
             }
             UnsafeBlock(block_id) => {
                 // OK, but record this.
@@ -77,6 +86,10 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
             UnsafeFn => {}
         }
     }
+
+    fn require_unsafe(&mut self, span: Span, description: &str) {
+        self.require_unsafe_ext(ast::DUMMY_NODE_ID, span, description, false)
+    }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
@@ -84,9 +97,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 block: &'v hir::Block, span: Span, id: ast::NodeId) {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
-            FnKind::ItemFn(_, _, unsafety, _, _, _, _) =>
+            FnKind::ItemFn(_, _, unsafety, ..) =>
                 (true, unsafety == hir::Unsafety::Unsafe),
-            FnKind::Method(_, sig, _, _) =>
+            FnKind::Method(_, sig, ..) =>
                 (true, sig.unsafety == hir::Unsafety::Unsafe),
             _ => (false, false),
         };
@@ -144,7 +157,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            hir::ExprMethodCall(_, _, _) => {
+            hir::ExprMethodCall(..) => {
                 let method_call = MethodCall::expr(expr.id);
                 let base_type = self.tcx.tables.borrow().method_map[&method_call].ty;
                 debug!("effect: method call case, base type is {:?}",
@@ -174,14 +187,43 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.require_unsafe(expr.span, "use of inline assembly");
             }
             hir::ExprPath(..) => {
-                if let Def::Static(_, true) = self.tcx.expect_def(expr.id) {
-                    self.require_unsafe(expr.span, "use of mutable static");
+                if let Def::Static(def_id, mutbl) = self.tcx.expect_def(expr.id) {
+                    if mutbl {
+                        self.require_unsafe(expr.span, "use of mutable static");
+                    } else if match self.tcx.map.get_if_local(def_id) {
+                        Some(hir::map::NodeForeignItem(..)) => true,
+                        Some(..) => false,
+                        None => self.tcx.sess.cstore.is_foreign_item(def_id),
+                    } {
+                        self.require_unsafe_ext(expr.id, expr.span, "use of extern static", true);
+                    }
+                }
+            }
+            hir::ExprField(ref base_expr, field) => {
+                if let ty::TyAdt(adt, ..) = self.tcx.expr_ty_adjusted(base_expr).sty {
+                    if adt.is_union() {
+                        self.require_unsafe(field.span, "access to union field");
+                    }
                 }
             }
             _ => {}
         }
 
         intravisit::walk_expr(self, expr);
+    }
+
+    fn visit_pat(&mut self, pat: &hir::Pat) {
+        if let PatKind::Struct(_, ref fields, _) = pat.node {
+            if let ty::TyAdt(adt, ..) = self.tcx.pat_ty(pat).sty {
+                if adt.is_union() {
+                    for field in fields {
+                        self.require_unsafe(field.span, "matching on union field");
+                    }
+                }
+            }
+        }
+
+        intravisit::walk_pat(self, pat);
     }
 }
 

@@ -88,8 +88,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         return false;
     }
     match ty.sty {
-        ty::TyStruct(..) | ty::TyEnum(..) | ty::TyTuple(..) | ty::TyArray(_, _) |
-        ty::TyClosure(..) => {
+        ty::TyAdt(..) | ty::TyTuple(..) | ty::TyArray(..) | ty::TyClosure(..) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
         }
@@ -101,7 +100,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
 pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                                   -> Option<[Ty<'tcx>; 2]> {
     match ty.sty {
-        ty::TyEnum(adt, substs) | ty::TyStruct(adt, substs) => {
+        ty::TyAdt(adt, substs) => {
             assert_eq!(adt.variants.len(), 1);
             let fields = &adt.variants[0].fields;
             if fields.len() != 2 {
@@ -151,15 +150,6 @@ pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     llsize_of_alloc(ccx, llty) == 0
 }
 
-/// Generates a unique symbol based off the name given. This is used to create
-/// unique symbols for things like closures.
-pub fn gensym_name(name: &str) -> ast::Name {
-    let num = token::gensym(name).0;
-    // use one colon which will get translated to a period by the mangler, and
-    // we're guaranteed that `num` is globally unique for this crate.
-    token::gensym(&format!("{}:{}", name, num))
-}
-
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
 *
@@ -205,7 +195,7 @@ impl<'a, 'tcx> VariantInfo<'tcx> {
                    -> Self
     {
         match ty.sty {
-            ty::TyStruct(adt, substs) | ty::TyEnum(adt, substs) => {
+            ty::TyAdt(adt, substs) => {
                 let variant = match opt_def {
                     None => adt.struct_variant(),
                     Some(def) => adt.variant_of_def(def)
@@ -350,7 +340,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        monomorphize::apply_param_substs(self.ccx.tcx(),
+        monomorphize::apply_param_substs(self.ccx.shared(),
                                          self.param_substs,
                                          value)
     }
@@ -519,7 +509,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        monomorphize::apply_param_substs(self.tcx(),
+        monomorphize::apply_param_substs(self.fcx.ccx.shared(),
                                          self.fcx.param_substs,
                                          value)
     }
@@ -817,7 +807,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         });
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
-        llvm::LLVMSetLinkage(g, llvm::InternalLinkage);
+        llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
 
         cx.const_cstr_cache().borrow_mut().insert(s, g);
         g
@@ -955,7 +945,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
+        tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
 
             let obligation_cause = traits::ObligationCause::misc(span,
@@ -1000,35 +990,6 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
             vtable
         })
-    })
-}
-
-/// Normalizes the predicates and checks whether they hold.  If this
-/// returns false, then either normalize encountered an error or one
-/// of the predicates did not hold. Used when creating vtables to
-/// check for unsatisfiable methods.
-pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               predicates: Vec<ty::Predicate<'tcx>>)
-                                               -> bool
-{
-    debug!("normalize_and_test_predicates(predicates={:?})",
-           predicates);
-
-    tcx.normalizing_infer_ctxt(Reveal::All).enter(|infcx| {
-        let mut selcx = SelectionContext::new(&infcx);
-        let mut fulfill_cx = traits::FulfillmentContext::new();
-        let cause = traits::ObligationCause::dummy();
-        let traits::Normalized { value: predicates, obligations } =
-            traits::normalize(&mut selcx, cause.clone(), &predicates);
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
-        for predicate in predicates {
-            let obligation = traits::Obligation::new(cause.clone(), predicate);
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
-
-        infcx.drain_fulfillment_cx(&mut fulfill_cx, &()).is_ok()
     })
 }
 

@@ -10,14 +10,13 @@
 
 //! Code to save/load the dep-graph from files.
 
-use rbml::Error;
-use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::FnvHashSet;
 use rustc_serialize::Decodable as RustcDecodable;
+use rustc_serialize::opaque::Decoder;
 use std::io::Read;
 use std::fs::{self, File};
 use std::path::{Path};
@@ -121,15 +120,15 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   incremental_hashes_map: &IncrementalHashesMap,
                                   dep_graph_data: &[u8],
                                   work_products_data: &[u8])
-                                  -> Result<(), Error>
+                                  -> Result<(), String>
 {
     // Decode the list of work_products
     let mut work_product_decoder = Decoder::new(work_products_data, 0);
-    let work_products = try!(<Vec<SerializedWorkProduct>>::decode(&mut work_product_decoder));
+    let work_products = <Vec<SerializedWorkProduct>>::decode(&mut work_product_decoder)?;
 
     // Deserialize the directory and dep-graph.
     let mut dep_graph_decoder = Decoder::new(dep_graph_data, 0);
-    let prev_commandline_args_hash = try!(u64::decode(&mut dep_graph_decoder));
+    let prev_commandline_args_hash = u64::decode(&mut dep_graph_decoder)?;
 
     if prev_commandline_args_hash != tcx.sess.opts.dep_tracking_hash() {
         // We can't reuse the cache, purge it.
@@ -142,8 +141,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return Ok(());
     }
 
-    let directory = try!(DefIdDirectory::decode(&mut dep_graph_decoder));
-    let serialized_dep_graph = try!(SerializedDepGraph::decode(&mut dep_graph_decoder));
+    let directory = DefIdDirectory::decode(&mut dep_graph_decoder)?;
+    let serialized_dep_graph = SerializedDepGraph::decode(&mut dep_graph_decoder)?;
 
     // Retrace the paths in the directory to find their current location (if any).
     let retraced = directory.retrace(tcx);

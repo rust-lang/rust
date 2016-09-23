@@ -44,8 +44,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyInt(int_ty) => output.push_str(int_ty.ty_to_string()),
         ty::TyUint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
         ty::TyFloat(float_ty) => output.push_str(float_ty.ty_to_string()),
-        ty::TyStruct(def, substs) |
-        ty::TyEnum(def, substs) => {
+        ty::TyAdt(def, substs) => {
             push_item_name(cx, def.did, qualified, output);
             push_type_params(cx, substs, output);
         },
@@ -99,7 +98,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_item_name(cx, principal.def_id, false, output);
             push_type_params(cx, principal.substs, output);
         },
-        ty::TyFnDef(_, _, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+        ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
         ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");

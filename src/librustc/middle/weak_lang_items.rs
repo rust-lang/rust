@@ -70,6 +70,7 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
     let needs_check = sess.crate_types.borrow().iter().any(|kind| {
         match *kind {
             config::CrateTypeDylib |
+            config::CrateTypeRustcMacro |
             config::CrateTypeCdylib |
             config::CrateTypeExecutable |
             config::CrateTypeStaticlib => true,

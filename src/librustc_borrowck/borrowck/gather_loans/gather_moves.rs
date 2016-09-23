@@ -161,9 +161,9 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                cmt: &mc::cmt<'tcx>)
                                                -> Option<mc::cmt<'tcx>> {
     match cmt.cat {
-        Categorization::Deref(_, _, mc::BorrowedPtr(..)) |
-        Categorization::Deref(_, _, mc::Implicit(..)) |
-        Categorization::Deref(_, _, mc::UnsafePtr(..)) |
+        Categorization::Deref(.., mc::BorrowedPtr(..)) |
+        Categorization::Deref(.., mc::Implicit(..)) |
+        Categorization::Deref(.., mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             Some(cmt.clone())
         }
@@ -178,13 +178,14 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Interior(ref b, mc::InteriorField(_)) |
         Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
             match b.ty.sty {
-                ty::TyStruct(def, _) | ty::TyEnum(def, _) => {
+                ty::TyAdt(def, _) => {
                     if def.has_dtor() {
                         Some(cmt.clone())
                     } else {
                         check_and_get_illegal_move_origin(bccx, b)
                     }
                 }
+                ty::TySlice(..) => Some(cmt.clone()),
                 _ => {
                     check_and_get_illegal_move_origin(bccx, b)
                 }

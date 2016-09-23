@@ -47,7 +47,7 @@ macro_rules! setter {
 }
 
 macro_rules! declare_features {
-    ($((active, $feature: ident, $ver: expr, $issue: expr)),+) => {
+    ($((active, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
         const ACTIVE_FEATURES: &'static [(&'static str, &'static str,
@@ -75,14 +75,14 @@ macro_rules! declare_features {
         }
     };
 
-    ($((removed, $feature: ident, $ver: expr, $issue: expr)),+) => {
+    ($((removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Represents features which has since been removed (it was once Active)
         const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     };
 
-    ($((accepted, $feature: ident, $ver: expr, $issue: expr)),+) => {
+    ($((accepted, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Those language feature has since been Accepted (it was once Active)
         const ACCEPTED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
@@ -281,7 +281,27 @@ declare_features! (
     (active, never_type, "1.13.0", Some(35121)),
 
     // Allows all literals in attribute lists and values of key-value pairs.
-    (active, attr_literals, "1.13.0", Some(34981))
+    (active, attr_literals, "1.13.0", Some(34981)),
+
+    // Allows the sysV64 ABI to be specified on all platforms
+    // instead of just the platforms on which it is the C ABI
+    (active, abi_sysv64, "1.13.0", Some(36167)),
+
+    // Use the import semantics from RFC 1560.
+    (active, item_like_imports, "1.13.0", Some(35120)),
+
+    // Macros 1.1
+    (active, rustc_macro, "1.13.0", Some(35900)),
+
+    // Allows untagged unions `union U { ... }`
+    (active, untagged_unions, "1.13.0", Some(32836)),
+
+    // elide `'static` lifetimes in `static`s and `const`s
+    (active, static_in_const, "1.13.0", Some(35897)),
+
+    // Used to identify the `compiler_builtins` crate
+    // rustc internal
+    (active, compiler_builtins, "1.13.0", None),
 );
 
 declare_features! (
@@ -295,7 +315,7 @@ declare_features! (
     (removed, struct_inherit, "1.0.0", None),
     (removed, test_removed_feature, "1.0.0", None),
     (removed, visible_private_types, "1.0.0", None),
-    (removed, unsafe_no_drop_flag, "1.0.0", None)
+    (removed, unsafe_no_drop_flag, "1.0.0", None),
 );
 
 declare_features! (
@@ -323,7 +343,7 @@ declare_features! (
     (accepted, type_macros, "1.13.0", Some(27245)),
     (accepted, while_let, "1.0.0", None),
     // Allows `#[deprecated]` attribute
-    (accepted, deprecated, "1.9.0", Some(29935))
+    (accepted, deprecated, "1.9.0", Some(29935)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -521,6 +541,12 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                                           libcore functions that are inlined \
                                                           across crates and will never be stable",
                                                           cfg_fn!(rustc_attrs))),
+    ("compiler_builtins", Whitelisted, Gated("compiler_builtins",
+                                             "the `#[compiler_builtins]` attribute is used to \
+                                              identify the `compiler_builtins` crate which \
+                                              contains compiler-rt intrinsics and will never be \
+                                              stable",
+                                          cfg_fn!(compiler_builtins))),
 
     ("allow_internal_unstable", Normal, Gated("allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
@@ -535,6 +561,15 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                   "the `#[linked_from]` attribute \
                                    is an experimental feature",
                                   cfg_fn!(linked_from))),
+
+    ("rustc_macro_derive", Normal, Gated("rustc_macro",
+                                         "the `#[rustc_macro_derive]` attribute \
+                                          is an experimental feature",
+                                         cfg_fn!(rustc_macro))),
+
+    ("rustc_copy_clone_marker", Whitelisted, Gated("rustc_attrs",
+                                                   "internal implementation detail",
+                                                   cfg_fn!(rustc_attrs))),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted, Ungated),
@@ -609,6 +644,7 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
+    ("rustc_macro", "rustc_macro", cfg_fn!(rustc_macro)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]
@@ -811,21 +847,26 @@ macro_rules! gate_feature_post {
 impl<'a> PostExpansionVisitor<'a> {
     fn check_abi(&self, abi: Abi, span: Span) {
         match abi {
-            Abi::RustIntrinsic =>
+            Abi::RustIntrinsic => {
                 gate_feature_post!(&self, intrinsics, span,
-                                   "intrinsics are subject to change"),
+                                   "intrinsics are subject to change");
+            },
             Abi::PlatformIntrinsic => {
                 gate_feature_post!(&self, platform_intrinsics, span,
-                                   "platform intrinsics are experimental and possibly buggy")
+                                   "platform intrinsics are experimental and possibly buggy");
             },
             Abi::Vectorcall => {
                 gate_feature_post!(&self, abi_vectorcall, span,
-                                   "vectorcall is experimental and subject to change")
-            }
+                                   "vectorcall is experimental and subject to change");
+            },
             Abi::RustCall => {
                 gate_feature_post!(&self, unboxed_closures, span,
                                    "rust-call ABI is subject to change");
-            }
+            },
+            Abi::SysV64 => {
+                gate_feature_post!(&self, abi_sysv64, span,
+                                   "sysv64 ABI is experimental and subject to change");
+            },
             _ => {}
         }
     }
@@ -927,6 +968,12 @@ impl<'a> Visitor for PostExpansionVisitor<'a> {
                         }
                     }
                 }
+            }
+
+            ast::ItemKind::Union(..) => {
+                gate_feature_post!(&self, untagged_unions,
+                                   i.span,
+                                   "unions are unstable and possibly buggy");
             }
 
             ast::ItemKind::DefaultImpl(..) => {

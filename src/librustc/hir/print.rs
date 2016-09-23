@@ -752,7 +752,10 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "struct"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
-
+            hir::ItemUnion(ref struct_def, ref generics) => {
+                self.head(&visibility_qualified(&item.vis, "union"))?;
+                self.print_struct(struct_def, generics, item.name, item.span, true)?;
+            }
             hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
@@ -1753,9 +1756,9 @@ impl<'a> State<'a> {
                         self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p))?;
                     }
                 } else {
-                    try!(self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p)));
+                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p))?;
                 }
-                try!(self.pclose());
+                self.pclose()?;
             }
             PatKind::Path(None, ref path) => {
                 self.print_path(path, true, 0)?;

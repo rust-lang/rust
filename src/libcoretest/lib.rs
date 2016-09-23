@@ -32,6 +32,8 @@
 #![feature(try_from)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(iter_max_by)]
+#![feature(iter_min_by)]
 
 extern crate core;
 extern crate test;

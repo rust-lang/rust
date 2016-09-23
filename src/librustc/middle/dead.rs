@@ -86,8 +86,6 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_definition(&mut self, id: ast::NodeId) {
-        use ty::TypeVariants::{TyEnum, TyStruct};
-
         let def = self.tcx.expect_def(id);
 
         // If `bar` is a trait item, make sure to mark Foo as alive in `Foo::bar`
@@ -95,11 +93,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Def::AssociatedTy(..) | Def::Method(_) | Def::AssociatedConst(_)
             if self.tcx.trait_of_item(def.def_id()).is_some() => {
                 if let Some(substs) = self.tcx.tables.borrow().item_substs.get(&id) {
-                    match substs.substs.type_at(0).sty {
-                        TyEnum(tyid, _) | TyStruct(tyid, _) => {
-                            self.check_def_id(tyid.did)
-                        }
-                        _ => {}
+                    if let ty::TyAdt(tyid, _) = substs.substs.type_at(0).sty {
+                        self.check_def_id(tyid.did);
                     }
                 }
             }
@@ -113,8 +108,10 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             _ if self.ignore_non_const_paths => (),
             Def::PrimTy(_) => (),
             Def::SelfTy(..) => (),
-            Def::Variant(enum_id, variant_id) => {
-                self.check_def_id(enum_id);
+            Def::Variant(variant_id) => {
+                if let Some(enum_id) = self.tcx.parent_def_id(variant_id) {
+                    self.check_def_id(enum_id);
+                }
                 if !self.ignore_variant_stack.contains(&variant_id) {
                     self.check_def_id(variant_id);
                 }
@@ -132,23 +129,28 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
-        if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
-            self.insert_def_id(def.struct_variant().field_named(name).did);
-        } else {
-            span_bug!(lhs.span, "named field access on non-struct")
+        match self.tcx.expr_ty_adjusted(lhs).sty {
+            ty::TyAdt(def, _) => {
+                self.insert_def_id(def.struct_variant().field_named(name).did);
+            }
+            _ => span_bug!(lhs.span, "named field access on non-ADT"),
         }
     }
 
     fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
-        if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
-            self.insert_def_id(def.struct_variant().fields[idx].did);
+        match self.tcx.expr_ty_adjusted(lhs).sty {
+            ty::TyAdt(def, _) => {
+                self.insert_def_id(def.struct_variant().fields[idx].did);
+            }
+            ty::TyTuple(..) => {}
+            _ => span_bug!(lhs.span, "numeric field access on non-ADT"),
         }
     }
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat,
                                   pats: &[codemap::Spanned<hir::FieldPat>]) {
         let variant = match self.tcx.node_id_to_type(lhs.id).sty {
-            ty::TyStruct(adt, _) | ty::TyEnum(adt, _) => {
+            ty::TyAdt(adt, _) => {
                 adt.variant_of_def(self.tcx.expect_def(lhs.id))
             }
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
@@ -185,7 +187,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    hir::ItemStruct(..) => {
+                    hir::ItemStruct(..) | hir::ItemUnion(..) => {
                         self.struct_has_extern_repr = item.attrs.iter().any(|attr| {
                             attr::find_repr_attrs(self.tcx.sess.diagnostic(), attr)
                                 .contains(&attr::ReprExtern)
@@ -343,7 +345,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
                 self.worklist.extend(enum_def.variants.iter()
                                                       .map(|variant| variant.node.data.id()));
             }
-            hir::ItemTrait(_, _, _, ref trait_items) => {
+            hir::ItemTrait(.., ref trait_items) => {
                 for trait_item in trait_items {
                     match trait_item.node {
                         hir::ConstTraitItem(_, Some(_)) |
@@ -356,7 +358,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
                     }
                 }
             }
-            hir::ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
+            hir::ItemImpl(.., ref opt_trait, _, ref impl_items) => {
                 for impl_item in impl_items {
                     if opt_trait.is_some() ||
                             has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
@@ -423,7 +425,8 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             | hir::ItemConst(..)
             | hir::ItemFn(..)
             | hir::ItemEnum(..)
-            | hir::ItemStruct(..) => true,
+            | hir::ItemStruct(..)
+            | hir::ItemUnion(..) => true,
             _ => false
         };
         let ctor_id = get_struct_ctor_id(item);
@@ -469,13 +472,12 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        let impl_items = self.tcx.impl_items.borrow();
+        let impl_items = self.tcx.impl_or_trait_item_def_ids.borrow();
         if let Some(impl_list) =
                 self.tcx.inherent_impls.borrow().get(&self.tcx.map.local_def_id(id)) {
             for impl_did in impl_list.iter() {
-                for item_did in impl_items.get(impl_did).unwrap().iter() {
-                    if let Some(item_node_id) =
-                            self.tcx.map.as_local_node_id(item_did.def_id()) {
+                for &item_did in &impl_items[impl_did][..] {
+                    if let Some(item_node_id) = self.tcx.map.as_local_node_id(item_did) {
                         if self.live_symbols.contains(&item_node_id) {
                             return true;
                         }
@@ -546,7 +548,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_struct_field(&mut self, field: &hir::StructField) {
         if self.should_warn_about_field(&field) {
             self.warn_dead_code(field.id, field.span,
-                                field.name, "struct field");
+                                field.name, "field");
         }
 
         intravisit::walk_struct_field(self, field);

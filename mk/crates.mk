@@ -51,7 +51,7 @@
 
 TARGET_CRATES := libc std term \
                  getopts collections test rand \
-                 core alloc \
+                 compiler_builtins core alloc \
                  rustc_unicode rustc_bitflags \
 		 alloc_system alloc_jemalloc \
 		 panic_abort panic_unwind unwind
@@ -59,12 +59,13 @@ RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_platform_intrinsics rustc_errors \
                 rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
-                rustc_const_eval rustc_const_math rustc_incremental
+                rustc_const_eval rustc_const_math rustc_incremental rustc_macro
 HOST_CRATES := syntax syntax_ext proc_macro syntax_pos $(RUSTC_CRATES) rustdoc fmt_macros \
-		flate arena graphviz rbml log serialize
+		flate arena graphviz log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
 DEPS_core :=
+DEPS_compiler_builtins := core
 DEPS_alloc := core libc alloc_system
 DEPS_alloc_system := core libc
 DEPS_alloc_jemalloc := core libc native:jemalloc
@@ -77,12 +78,14 @@ DEPS_panic_abort := libc alloc
 DEPS_panic_unwind := libc alloc unwind
 DEPS_unwind := libc
 
+RUSTFLAGS_compiler_builtins := -lstatic=compiler-rt
+
 # FIXME(stage0): change this to just `RUSTFLAGS_panic_abort := ...`
 RUSTFLAGS1_panic_abort := -C panic=abort
 RUSTFLAGS2_panic_abort := -C panic=abort
 RUSTFLAGS3_panic_abort := -C panic=abort
 
-DEPS_std := core libc rand alloc collections rustc_unicode \
+DEPS_std := core libc rand alloc collections compiler_builtins rustc_unicode \
 	native:backtrace \
 	alloc_system panic_abort panic_unwind unwind
 DEPS_arena := std
@@ -93,13 +96,12 @@ DEPS_getopts := std
 DEPS_graphviz := std
 DEPS_log := std
 DEPS_num := std
-DEPS_rbml := std log serialize
 DEPS_serialize := std log
 DEPS_term := std
 DEPS_test := std getopts term native:rust_test_helpers
 
 DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode rustc_errors syntax_pos
-DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros
+DEPS_syntax_ext := syntax syntax_pos rustc_errors fmt_macros rustc_macro
 DEPS_proc_macro := syntax syntax_pos rustc_plugin log
 DEPS_syntax_pos := serialize
 
@@ -107,7 +109,7 @@ DEPS_rustc_const_math := std syntax log serialize
 DEPS_rustc_const_eval := rustc_const_math rustc syntax log serialize \
 			     rustc_back graphviz syntax_pos
 
-DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml \
+DEPS_rustc := syntax fmt_macros flate arena serialize getopts \
               log graphviz rustc_llvm rustc_back rustc_data_structures\
 	      rustc_const_math syntax_pos rustc_errors
 DEPS_rustc_back := std syntax flate log libc
@@ -118,11 +120,13 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
                      rustc_trans rustc_privacy rustc_lint rustc_plugin \
                      rustc_metadata syntax_ext proc_macro \
                      rustc_passes rustc_save_analysis rustc_const_eval \
-                     rustc_incremental syntax_pos rustc_errors
+                     rustc_incremental syntax_pos rustc_errors rustc_macro
 DEPS_rustc_errors := log libc serialize syntax_pos
 DEPS_rustc_lint := rustc log syntax syntax_pos rustc_const_eval
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
-DEPS_rustc_metadata := rustc syntax syntax_pos rustc_errors rbml rustc_const_math
+DEPS_rustc_macro := std syntax
+DEPS_rustc_metadata := rustc syntax syntax_pos rustc_errors rustc_const_math \
+			rustc_macro syntax_ext
 DEPS_rustc_passes := syntax syntax_pos rustc core rustc_const_eval rustc_errors
 DEPS_rustc_mir := rustc syntax syntax_pos rustc_const_math rustc_const_eval rustc_bitflags
 DEPS_rustc_resolve := arena rustc log syntax syntax_pos rustc_errors
@@ -132,7 +136,7 @@ DEPS_rustc_privacy := rustc log syntax syntax_pos
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
                     log syntax serialize rustc_llvm rustc_platform_intrinsics \
                     rustc_const_math rustc_const_eval rustc_incremental rustc_errors syntax_pos
-DEPS_rustc_incremental := rbml rustc syntax_pos serialize rustc_data_structures
+DEPS_rustc_incremental := rustc syntax_pos serialize rustc_data_structures
 DEPS_rustc_save_analysis := rustc log syntax syntax_pos serialize
 DEPS_rustc_typeck := rustc syntax syntax_pos rustc_platform_intrinsics rustc_const_math \
                      rustc_const_eval rustc_errors
@@ -151,6 +155,7 @@ TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustbook := $(S)src/tools/rustbook/main.rs
 TOOL_SOURCE_error_index_generator := $(S)src/tools/error_index_generator/main.rs
 
+ONLY_RLIB_compiler_builtins := 1
 ONLY_RLIB_core := 1
 ONLY_RLIB_libc := 1
 ONLY_RLIB_alloc := 1

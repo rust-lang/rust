@@ -4072,4 +4072,6 @@ register_diagnostics! {
     E0563, // cannot determine a type for this `impl Trait`: {}
     E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
+    E0567, // auto traits can not have type parameters
+    E0568, // auto-traits can not have predicates,
 }

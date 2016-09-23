@@ -360,6 +360,13 @@ abs_path() {
     (unset CDPATH && cd "$_path" > /dev/null && pwd)
 }
 
+HELP=0
+for arg; do
+    case "$arg" in
+        --help) HELP=1;;
+    esac
+done
+
 msg "looking for configure programs"
 need_cmd cmp
 need_cmd mkdir
@@ -517,6 +524,10 @@ case $CFG_CPUTYPE in
         CFG_CPUTYPE=powerpc64le
         ;;
 
+    s390x)
+        CFG_CPUTYPE=s390x
+        ;;
+
     x86_64 | x86-64 | x64 | amd64)
         CFG_CPUTYPE=x86_64
         ;;
@@ -566,11 +577,8 @@ esac
 
 
 OPTIONS=""
-HELP=0
-if [ "$1" = "--help" ]
+if [ "$HELP" -eq 1 ]
 then
-    HELP=1
-    shift
     echo
     echo "Usage: $CFG_SELF [options]"
     echo
@@ -609,7 +617,6 @@ opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
 opt rustbuild 0 "use the rust and cargo based build system"
-opt orbit 1 "get MIR where it belongs - everywhere; most importantly, in orbit"
 opt codegen-tests 1 "run the src/test/codegen tests"
 opt option-checking 1 "complain about unrecognized options in this configure script"
 opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)"
@@ -630,6 +637,7 @@ valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt llvm-root "" "set LLVM root"
 valopt python "" "set path to python"
+valopt nodejs "" "set path to nodejs"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "" "Android NDK standalone path (deprecated)"
@@ -668,6 +676,7 @@ valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
+valopt_nosave docdir "${CFG_PREFIX}/share/doc/rust" "install man pages in PATH"
 
 # On Windows this determines root of the subtree for target libraries.
 # Host runtime libs always go to 'bin'.
@@ -744,6 +753,9 @@ python_version=$($CFG_PYTHON -V 2>&1)
 if [ $(echo $python_version | grep -c '^Python 2\.7') -ne 1 ]; then
     err "Found $python_version, but Python 2.7 is required"
 fi
+
+# Checking for node, but not required
+probe CFG_NODEJS nodejs node
 
 # If we have no git directory then we are probably a tarball distribution
 # and shouldn't attempt to load submodules
@@ -897,7 +909,7 @@ then
     fi
 
     CMD="${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF}"
-    LRV=`$CMD --version`
+    LRV=`LD_LIBRARY_PATH=${CFG_LOCAL_RUST_ROOT}/lib $CMD --version`
     if [ $? -ne 0 ]
     then
         step_msg "failure while running $CMD --version"
@@ -1113,6 +1125,7 @@ putvar CFG_STDCPP_NAME
 # a little post-processing of various config values
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
+CFG_DOCDIR=${CFG_DOCDIR%/}
 CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
 CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
 CFG_SUPPORTED_TARGET=""
@@ -1794,6 +1807,7 @@ putvar CFG_ARMV7_LINUX_ANDROIDEABI_NDK
 putvar CFG_I686_LINUX_ANDROID_NDK
 putvar CFG_NACL_CROSS_PATH
 putvar CFG_MANDIR
+putvar CFG_DOCDIR
 putvar CFG_USING_LIBCPP
 
 # Avoid spurious warnings from clang by feeding it original source on

@@ -665,9 +665,21 @@ fn test_max_by_key() {
 }
 
 #[test]
+fn test_max_by() {
+    let xs: &[isize] = &[-3, 0, 1, 5, -10];
+    assert_eq!(*xs.iter().max_by(|x, y| x.abs().cmp(&y.abs())).unwrap(), -10);
+}
+
+#[test]
 fn test_min_by_key() {
     let xs: &[isize] = &[-3, 0, 1, 5, -10];
     assert_eq!(*xs.iter().min_by_key(|x| x.abs()).unwrap(), 0);
+}
+
+#[test]
+fn test_min_by() {
+    let xs: &[isize] = &[-3, 0, 1, 5, -10];
+    assert_eq!(*xs.iter().min_by(|x, y| x.abs().cmp(&y.abs())).unwrap(), 0);
 }
 
 #[test]

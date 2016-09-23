@@ -27,6 +27,7 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(dotdot_in_tuple_patterns)]
 #![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(quote)]
@@ -68,7 +69,6 @@ pub use base::trans_crate;
 pub use disr::Disr;
 
 pub mod back {
-    pub use rustc_back::rpath;
     pub use rustc::hir::svh;
 
     pub mod archive;
@@ -78,6 +78,7 @@ pub mod back {
     pub mod symbol_names;
     pub mod write;
     pub mod msvc;
+    pub mod rpath;
 }
 
 pub mod diagnostics;
@@ -98,8 +99,10 @@ mod cabi_aarch64;
 mod cabi_arm;
 mod cabi_asmjs;
 mod cabi_mips;
+mod cabi_mips64;
 mod cabi_powerpc;
 mod cabi_powerpc64;
+mod cabi_s390x;
 mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;

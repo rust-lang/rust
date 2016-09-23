@@ -38,7 +38,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      impl_m_span: Span,
                                      impl_m_body_id: ast::NodeId,
                                      trait_m: &ty::Method<'tcx>,
-                                     impl_trait_ref: &ty::TraitRef<'tcx>) {
+                                     impl_trait_ref: &ty::TraitRef<'tcx>,
+                                     trait_item_span: Option<Span>) {
     debug!("compare_impl_method(impl_trait_ref={:?})",
            impl_trait_ref);
 
@@ -97,14 +98,42 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let num_impl_m_type_params = impl_m.generics.types.len();
     let num_trait_m_type_params = trait_m.generics.types.len();
     if num_impl_m_type_params != num_trait_m_type_params {
-        span_err!(tcx.sess, impl_m_span, E0049,
+        let impl_m_node_id = tcx.map.as_local_node_id(impl_m.def_id).unwrap();
+        let span = match tcx.map.expect_impl_item(impl_m_node_id).node {
+            ImplItemKind::Method(ref impl_m_sig, _) => {
+                if impl_m_sig.generics.is_parameterized() {
+                    impl_m_sig.generics.span
+                } else {
+                    impl_m_span
+                }
+            }
+            _ => bug!("{:?} is not a method", impl_m)
+        };
+
+        struct_span_err!(tcx.sess, span, E0049,
             "method `{}` has {} type parameter{} \
              but its trait declaration has {} type parameter{}",
             trait_m.name,
             num_impl_m_type_params,
             if num_impl_m_type_params == 1 {""} else {"s"},
             num_trait_m_type_params,
-            if num_trait_m_type_params == 1 {""} else {"s"});
+            if num_trait_m_type_params == 1 {""} else {"s"})
+            .span_label(trait_item_span.unwrap(),
+                        &format!("expected {}",
+                                 &if num_trait_m_type_params != 1 {
+                                     format!("{} type parameters",
+                                             num_trait_m_type_params)
+                                 } else {
+                                     format!("{} type parameter",
+                                             num_trait_m_type_params)
+                                 }))
+            .span_label(span, &format!("found {}",
+                                       &if num_impl_m_type_params != 1 {
+                                           format!("{} type parameters", num_impl_m_type_params)
+                                       } else {
+                                           format!("1 type parameter")
+                                       }))
+            .emit();
         return;
     }
 
@@ -548,7 +577,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 assoc::normalize_associated_types_in(&infcx,
                                                      &mut fulfillment_cx,
                                                      impl_c_span,
-                                                     0,
+                                                     ast::CRATE_NODE_ID,
                                                      &impl_ty);
 
             debug!("compare_const_impl: impl_ty={:?}",
@@ -558,7 +587,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 assoc::normalize_associated_types_in(&infcx,
                                                      &mut fulfillment_cx,
                                                      impl_c_span,
-                                                     0,
+                                                     ast::CRATE_NODE_ID,
                                                      &trait_ty);
 
             debug!("compare_const_impl: trait_ty={:?}",

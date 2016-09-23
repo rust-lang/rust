@@ -40,7 +40,7 @@ fn c() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        &mut [_a, //~ ERROR cannot move out of borrowed content
+        &mut [_a, //~ ERROR cannot move out
             //~| cannot move out
             //~| to prevent move
             ..

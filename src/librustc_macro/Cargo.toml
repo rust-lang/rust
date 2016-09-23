@@ -1,0 +1,12 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_macro"
+version = "0.0.0"
+
+[lib]
+name = "rustc_macro"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+syntax = { path = "../libsyntax" }

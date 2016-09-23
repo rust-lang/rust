@@ -49,8 +49,8 @@ pub enum FnKind<'a> {
 impl<'a> FnKind<'a> {
     pub fn attrs(&self) -> &'a [Attribute] {
         match *self {
-            FnKind::ItemFn(_, _, _, _, _, _, attrs) => attrs,
-            FnKind::Method(_, _, _, attrs) => attrs,
+            FnKind::ItemFn(.., attrs) => attrs,
+            FnKind::Method(.., attrs) => attrs,
             FnKind::Closure(attrs) => attrs,
         }
     }
@@ -341,14 +341,15 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemImpl(_, _, ref type_parameters, ref opt_trait_reference, ref typ, ref impl_items) => {
+        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_items) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_impl_item, impl_items);
         }
-        ItemStruct(ref struct_definition, ref generics) => {
+        ItemStruct(ref struct_definition, ref generics) |
+        ItemUnion(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_id(item.id);
             visitor.visit_variant_data(struct_definition, item.name, generics, item.id, item.span);
@@ -621,10 +622,10 @@ pub fn walk_fn_decl_nopat<'v, V: Visitor<'v>>(visitor: &mut V, function_declarat
 
 pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'v>) {
     match function_kind {
-        FnKind::ItemFn(_, generics, _, _, _, _, _) => {
+        FnKind::ItemFn(_, generics, ..) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(_, sig, _, _) => {
+        FnKind::Method(_, sig, ..) => {
             visitor.visit_generics(&sig.generics);
         }
         FnKind::Closure(_) => {}
@@ -880,8 +881,8 @@ pub struct IdRange {
 impl IdRange {
     pub fn max() -> IdRange {
         IdRange {
-            min: u32::MAX,
-            max: u32::MIN,
+            min: NodeId::from_u32(u32::MAX),
+            max: NodeId::from_u32(u32::MIN),
         }
     }
 
@@ -895,7 +896,7 @@ impl IdRange {
 
     pub fn add(&mut self, id: NodeId) {
         self.min = cmp::min(self.min, id);
-        self.max = cmp::max(self.max, id + 1);
+        self.max = cmp::max(self.max, NodeId::from_u32(id.as_u32() + 1));
     }
 
 }

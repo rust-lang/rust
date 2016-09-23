@@ -15,12 +15,12 @@ fn match_vecs<'a, T>(l1: &'a [T], l2: &'a [T]) {
         (&[], &[]) => println!("both empty"),
         (&[], &[hd, ..]) | (&[hd, ..], &[])
             => println!("one empty"),
-        //~^^ ERROR: cannot move out of borrowed content
-        //~^^^ ERROR: cannot move out of borrowed content
+        //~^^ ERROR: cannot move out of type `[T]`, a non-copy array
+        //~^^^ ERROR: cannot move out of type `[T]`, a non-copy array
         (&[hd1, ..], &[hd2, ..])
             => println!("both nonempty"),
-        //~^^ ERROR: cannot move out of borrowed content
-        //~^^^ ERROR: cannot move out of borrowed content
+        //~^^ ERROR: cannot move out of type `[T]`, a non-copy array
+        //~^^^ ERROR: cannot move out of type `[T]`, a non-copy array
     }
 }
 

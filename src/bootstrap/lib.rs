@@ -28,7 +28,6 @@ extern crate rustc_serialize;
 extern crate toml;
 extern crate regex;
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File};
@@ -46,7 +45,7 @@ use util::{exe, mtime, libdir, add_lib_path};
 /// * The error itself
 ///
 /// This is currently used judiciously throughout the build system rather than
-/// using a `Result` with `try!`, but this may change on day...
+/// using a `Result` with `try!`, but this may change one day...
 macro_rules! t {
     ($e:expr) => (match $e {
         Ok(e) => e,
@@ -131,7 +130,6 @@ pub struct Build {
     // Runtime state filled in later on
     cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
     cxx: HashMap<String, gcc::Tool>,
-    compiler_rt_built: RefCell<HashMap<String, PathBuf>>,
 }
 
 /// The various "modes" of invoking Cargo.
@@ -198,7 +196,6 @@ impl Build {
             package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
-            compiler_rt_built: RefCell::new(HashMap::new()),
             gdb_version: None,
             lldb_version: None,
             lldb_python_dir: None,
@@ -251,9 +248,6 @@ impl Build {
             match target.src {
                 Llvm { _dummy } => {
                     native::llvm(self, target.target);
-                }
-                CompilerRt { _dummy } => {
-                    native::compiler_rt(self, target.target);
                 }
                 TestHelpers { _dummy } => {
                     native::test_helpers(self, target.target);
@@ -585,6 +579,8 @@ impl Build {
         if mtime(&stamp) < mtime(input) {
             self.verbose(&format!("Dirty - {}", dir.display()));
             let _ = fs::remove_dir_all(dir);
+        } else if stamp.exists() {
+            return
         }
         t!(fs::create_dir_all(dir));
         t!(File::create(stamp));
@@ -839,11 +835,6 @@ impl Build {
         }
     }
 
-    /// Root output directory for compiler-rt compiled for `target`
-    fn compiler_rt_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("compiler-rt")
-    }
-
     /// Root output directory for rust_test_helpers library compiled for
     /// `target`
     fn test_helpers_out(&self, target: &str) -> PathBuf {
@@ -976,6 +967,13 @@ impl Build {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
         return base
+    }
+
+    /// Returns the "musl root" for this `target`, if defined
+    fn musl_root(&self, target: &str) -> Option<&Path> {
+        self.config.target_config[target].musl_root.as_ref()
+            .or(self.config.musl_root.as_ref())
+            .map(|p| &**p)
     }
 }
 

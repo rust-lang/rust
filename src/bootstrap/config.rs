@@ -76,9 +76,11 @@ pub struct Config {
 
     // misc
     pub channel: String,
+    // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<String>,
     pub codegen_tests: bool,
+    pub nodejs: Option<PathBuf>,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -89,6 +91,7 @@ pub struct Target {
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
+    pub musl_root: Option<PathBuf>,
 }
 
 /// Structure of the `config.toml` file that configuration is read from.
@@ -144,6 +147,7 @@ struct Rust {
     rpath: Option<bool>,
     optimize_tests: Option<bool>,
     debuginfo_tests: Option<bool>,
+    codegen_tests: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -232,6 +236,7 @@ impl Config {
             set(&mut config.rust_optimize, rust.optimize);
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
+            set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.debug_jemalloc, rust.debug_jemalloc);
             set(&mut config.use_jemalloc, rust.use_jemalloc);
@@ -390,6 +395,9 @@ impl Config {
                 "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {
                     self.rustc = Some(PathBuf::from(value).join("bin/rustc"));
                     self.cargo = Some(PathBuf::from(value).join("bin/cargo"));
+                }
+                "CFG_NODEJS" if value.len() > 0 => {
+                    self.nodejs = Some(PathBuf::from(value));
                 }
                 _ => {}
             }

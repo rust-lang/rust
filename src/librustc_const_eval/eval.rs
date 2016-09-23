@@ -57,7 +57,6 @@ macro_rules! math {
 }
 
 fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  enum_def: DefId,
                                   variant_def: DefId)
                                   -> Option<&'tcx Expr> {
     fn variant_expr<'a>(variants: &'a [hir::Variant], id: ast::NodeId)
@@ -70,8 +69,8 @@ fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         None
     }
 
-    if let Some(enum_node_id) = tcx.map.as_local_node_id(enum_def) {
-        let variant_node_id = tcx.map.as_local_node_id(variant_def).unwrap();
+    if let Some(variant_node_id) = tcx.map.as_local_node_id(variant_def) {
+        let enum_node_id = tcx.map.get_parent(variant_node_id);
         match tcx.map.find(enum_node_id) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
@@ -106,7 +105,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => None
             },
             Some(ast_map::NodeTraitItem(ti)) => match ti.node {
-                hir::ConstTraitItem(_, _) => {
+                hir::ConstTraitItem(..) => {
                     if let Some(substs) = substs {
                         // If we have a trait item and the substitutions for it,
                         // `resolve_trait_associated_const` will select an impl
@@ -151,7 +150,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => None
             },
             Some((&InlinedItem::TraitItem(trait_id, ref ti), _)) => match ti.node {
-                hir::ConstTraitItem(_, _) => {
+                hir::ConstTraitItem(..) => {
                     used_substs = true;
                     if let Some(substs) = substs {
                         // As mentioned in the comments above for in-crate
@@ -228,10 +227,10 @@ pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     };
 
     match fn_like.kind() {
-        FnKind::ItemFn(_, _, _, hir::Constness::Const, _, _, _) => {
+        FnKind::ItemFn(_, _, _, hir::Constness::Const, ..) => {
             Some(fn_like)
         }
-        FnKind::Method(_, m, _, _) => {
+        FnKind::Method(_, m, ..) => {
             if m.constness == hir::Constness::Const {
                 Some(fn_like)
             } else {
@@ -257,8 +256,11 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 span,
                 format!("floating point constants cannot be used in patterns"));
         }
-        ty::TyEnum(adt_def, _) |
-        ty::TyStruct(adt_def, _) => {
+        ty::TyAdt(adt_def, _) if adt_def.is_union() => {
+            // Matching on union fields is unsafe, we can't hide it in constants
+            tcx.sess.span_err(span, "cannot use unions in constant patterns");
+        }
+        ty::TyAdt(adt_def, _) => {
             if !tcx.has_attr(adt_def.did, "structural_match") {
                 tcx.sess.add_lint(
                     lint::builtin::ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
@@ -275,9 +277,9 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
     let pat = match expr.node {
         hir::ExprTup(ref exprs) =>
-            PatKind::Tuple(try!(exprs.iter()
-                                     .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
-                                     .collect()), None),
+            PatKind::Tuple(exprs.iter()
+                                .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
+                                .collect::<Result<_, _>>()?, None),
 
         hir::ExprCall(ref callee, ref args) => {
             let def = tcx.expect_def(callee.id);
@@ -286,7 +288,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             let path = match def {
                 Def::Struct(def_id) => def_to_path(tcx, def_id),
-                Def::Variant(_, variant_did) => def_to_path(tcx, variant_did),
+                Def::Variant(variant_did) => def_to_path(tcx, variant_did),
                 Def::Fn(..) | Def::Method(..) => return Ok(P(hir::Pat {
                     id: expr.id,
                     node: PatKind::Lit(P(expr.clone())),
@@ -294,34 +296,31 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 })),
                 _ => bug!()
             };
-            let pats = try!(args.iter()
-                                .map(|expr| const_expr_to_pat(tcx, &**expr,
-                                                              pat_id, span))
-                                .collect());
+            let pats = args.iter()
+                           .map(|expr| const_expr_to_pat(tcx, &**expr, pat_id, span))
+                           .collect::<Result<_, _>>()?;
             PatKind::TupleStruct(path, pats, None)
         }
 
         hir::ExprStruct(ref path, ref fields, None) => {
             let field_pats =
-                try!(fields.iter()
-                           .map(|field| Ok(codemap::Spanned {
-                               span: syntax_pos::DUMMY_SP,
-                               node: hir::FieldPat {
-                                   name: field.name.node,
-                                   pat: try!(const_expr_to_pat(tcx, &field.expr,
-                                                               pat_id, span)),
-                                   is_shorthand: false,
-                               },
-                           }))
-                           .collect());
+                fields.iter()
+                      .map(|field| Ok(codemap::Spanned {
+                          span: syntax_pos::DUMMY_SP,
+                          node: hir::FieldPat {
+                              name: field.name.node,
+                              pat: const_expr_to_pat(tcx, &field.expr, pat_id, span)?,
+                              is_shorthand: false,
+                          },
+                      }))
+                      .collect::<Result<_, _>>()?;
             PatKind::Struct(path.clone(), field_pats, false)
         }
 
         hir::ExprVec(ref exprs) => {
-            let pats = try!(exprs.iter()
-                                 .map(|expr| const_expr_to_pat(tcx, &expr,
-                                                               pat_id, span))
-                                 .collect());
+            let pats = exprs.iter()
+                            .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
+                            .collect::<Result<_, _>>()?;
             PatKind::Vec(pats, None, hir::HirVec::new())
         }
 
@@ -808,8 +807,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       signal!(e, NonConstPath);
                   }
               },
-              Def::Variant(enum_def, variant_def) => {
-                  if let Some(const_expr) = lookup_variant_by_id(tcx, enum_def, variant_def) {
+              Def::Variant(variant_def) => {
+                  if let Some(const_expr) = lookup_variant_by_id(tcx, variant_def) {
                       match eval_const_expr_partial(tcx, const_expr, ty_hint, None) {
                           Ok(val) => val,
                           Err(err) => {
@@ -824,7 +823,8 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               Def::Struct(..) => {
                   ConstVal::Struct(e.id)
               }
-              Def::Local(_, id) => {
+              Def::Local(def_id) => {
+                  let id = tcx.map.as_local_node_id(def_id).unwrap();
                   debug!("Def::Local({:?}): {:?}", id, fn_args);
                   if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
                       val.clone()
@@ -1035,7 +1035,7 @@ fn infer<'a, 'tcx>(i: ConstInt,
         (&ty::TyInt(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
         (&ty::TyUint(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
 
-        (&ty::TyEnum(ref adt, _), i) => {
+        (&ty::TyAdt(adt, _), i) if adt.is_enum() => {
             let hints = tcx.lookup_repr_hints(adt.did);
             let int_ty = tcx.enum_repr_type(hints.iter().next());
             infer(i, tcx, &int_ty.to_ty(tcx).sty)
@@ -1079,8 +1079,14 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // when constructing the inference context above.
         match selection {
             traits::VtableImpl(ref impl_data) => {
-                match tcx.associated_consts(impl_data.impl_def_id)
-                        .iter().find(|ic| ic.name == ti.name) {
+                let ac = tcx.impl_or_trait_items(impl_data.impl_def_id)
+                    .iter().filter_map(|&def_id| {
+                        match tcx.impl_or_trait_item(def_id) {
+                            ty::ConstTraitItem(ic) => Some(ic),
+                            _ => None
+                        }
+                    }).find(|ic| ic.name == ti.name);
+                match ac {
                     Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                     None => match ti.node {
                         hir::ConstTraitItem(ref ty, Some(ref expr)) => {
@@ -1226,7 +1232,7 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
                     infer(Infer(n), tcx, &ty::TyUint(uty)).map(Integral)
                 },
                 None => Ok(Integral(Infer(n))),
-                Some(&ty::TyEnum(ref adt, _)) => {
+                Some(&ty::TyAdt(adt, _)) => {
                     let hints = tcx.lookup_repr_hints(adt.did);
                     let int_ty = tcx.enum_repr_type(hints.iter().next());
                     infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty).map(Integral)

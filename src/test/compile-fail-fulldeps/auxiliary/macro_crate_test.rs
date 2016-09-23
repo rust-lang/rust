@@ -10,6 +10,7 @@
 
 // force-host
 
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(plugin_registrar, quote, rustc_private)]
 
 extern crate syntax;
@@ -75,7 +76,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
         Annotatable::ImplItem(_) => {
             quote_item!(cx, impl X { fn foo(&self) -> i32 { 42 } }).unwrap().and_then(|i| {
                 match i.node {
-                    ItemKind::Impl(_, _, _, _, _, mut items) => {
+                    ItemKind::Impl(.., mut items) => {
                         Annotatable::ImplItem(P(items.pop().expect("impl method not found")))
                     }
                     _ => unreachable!("impl parsed to something other than impl")
@@ -85,7 +86,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
         Annotatable::TraitItem(_) => {
             quote_item!(cx, trait X { fn foo(&self) -> i32 { 0 } }).unwrap().and_then(|i| {
                 match i.node {
-                    ItemKind::Trait(_, _, _, mut items) => {
+                    ItemKind::Trait(.., mut items) => {
                         Annotatable::TraitItem(P(items.pop().expect("trait method not found")))
                     }
                     _ => unreachable!("trait parsed to something other than trait")

@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use hir::def_id::DefId;
 use ty::subst::{self, Subst, Substs};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
-use ty::{TyBool, TyChar, TyStruct, TyEnum};
+use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::TyClosure;
@@ -487,9 +486,6 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::Predicate::Trait(ref a) => write!(f, "{:?}", a),
-            ty::Predicate::Rfc1592(ref a) => {
-                write!(f, "RFC1592({:?})", a)
-            }
             ty::Predicate::Equate(ref pair) => write!(f, "{:?}", pair),
             ty::Predicate::RegionOutlives(ref pair) => write!(f, "{:?}", pair),
             ty::Predicate::TypeOutlives(ref pair) => write!(f, "{:?}", pair),
@@ -872,7 +868,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
-            TyEnum(def, substs) | TyStruct(def, substs) => {
+            TyAdt(def, substs) => {
                 ty::tls::with(|tcx| {
                     if def.did.is_local() &&
                           !tcx.tcache.borrow().contains_key(&def.did) {
@@ -924,7 +920,8 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(substs.upvar_tys) {
-                            let node_id = freevar.def.var_id();
+                            let def_id = freevar.def.def_id();
+                            let node_id = tcx.map.as_local_node_id(def_id).unwrap();
                             write!(f,
                                         "{}{}:{}",
                                         sep,
@@ -1083,7 +1080,6 @@ impl<'tcx> fmt::Display for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::Predicate::Trait(ref data) => write!(f, "{}", data),
-            ty::Predicate::Rfc1592(ref data) => write!(f, "{}", data),
             ty::Predicate::Equate(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::RegionOutlives(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::TypeOutlives(ref predicate) => write!(f, "{}", predicate),

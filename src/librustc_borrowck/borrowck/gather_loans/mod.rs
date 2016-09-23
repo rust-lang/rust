@@ -205,7 +205,7 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                         alias_cause);
             Err(())
         }
-        (_, _) => {
+        (..) => {
             Ok(())
         }
     }

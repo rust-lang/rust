@@ -46,7 +46,7 @@ impl DepGraph {
             data: Rc::new(DepGraphData {
                 thread: DepGraphThreadData::new(enabled),
                 previous_work_products: RefCell::new(FnvHashMap()),
-                work_products: RefCell::new(FnvHashMap())
+                work_products: RefCell::new(FnvHashMap()),
             })
         }
     }

@@ -193,12 +193,18 @@ macro_rules! assert_approx_eq {
 pub mod builtin {
     /// The core macro for formatted string creation & output.
     ///
-    /// This macro produces a value of type `fmt::Arguments`. This value can be
-    /// passed to the functions in `std::fmt` for performing useful functions.
-    /// All other formatting macros (`format!`, `write!`, `println!`, etc) are
+    /// This macro produces a value of type [`fmt::Arguments`]. This value can be
+    /// passed to the functions in [`std::fmt`] for performing useful functions.
+    /// All other formatting macros ([`format!`], [`write!`], [`println!`], etc) are
     /// proxied through this one.
     ///
-    /// For more information, see the documentation in `std::fmt`.
+    /// For more information, see the documentation in [`std::fmt`].
+    ///
+    /// [`fmt::Arguments`]: ../std/fmt/struct.Arguments.html
+    /// [`std::fmt`]: ../std/fmt/index.html
+    /// [`format!`]: ../std/macro.format.html
+    /// [`write!`]: ../std/macro.write.html
+    /// [`println!`]: ../std/macro.println.html
     ///
     /// # Examples
     ///

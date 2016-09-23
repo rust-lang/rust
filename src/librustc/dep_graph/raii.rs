@@ -47,3 +47,4 @@ impl<'graph> Drop for IgnoreTask<'graph> {
         self.data.enqueue(DepMessage::PopIgnore);
     }
 }
+

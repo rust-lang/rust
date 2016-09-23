@@ -479,6 +479,40 @@ impl<T: ?Sized> PartialEq for *mut T {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Eq for *mut T {}
 
+/// Compare raw pointers for equality.
+///
+/// This is the same as using the `==` operator, but less generic:
+/// the arguments have to be `*const T` raw pointers,
+/// not anything that implements `PartialEq`.
+///
+/// This can be used to compare `&T` references (which coerce to `*const T` implicitly)
+/// by their address rather than comparing the values they point to
+/// (which is what the `PartialEq for &T` implementation does).
+///
+/// # Examples
+///
+/// ```
+/// #![feature(ptr_eq)]
+/// use std::ptr;
+///
+/// let five = 5;
+/// let other_five = 5;
+/// let five_ref = &five;
+/// let same_five_ref = &five;
+/// let other_five_ref = &other_five;
+///
+/// assert!(five_ref == same_five_ref);
+/// assert!(five_ref == other_five_ref);
+///
+/// assert!(ptr::eq(five_ref, same_five_ref));
+/// assert!(!ptr::eq(five_ref, other_five_ref));
+/// ```
+#[unstable(feature = "ptr_eq", reason = "newly added", issue = "36497")]
+#[inline]
+pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
+    a == b
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Clone for *const T {
     #[inline]

@@ -15,11 +15,11 @@ use std::iter::once;
 use syntax::ast;
 use rustc::hir;
 
-use rustc::middle::cstore;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::DefPathData;
 use rustc::hir::print as pprust;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, VariantKind};
 use rustc::util::nodemap::FnvHashSet;
 
 use rustc_const_eval::lookup_const_by_id;
@@ -83,20 +83,25 @@ fn try_inline_def<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         Def::Struct(did)
                 // If this is a struct constructor, we skip it
-                if tcx.sess.cstore.tuple_struct_definition_if_ctor(did).is_none() => {
+                if tcx.def_key(did).disambiguated_data.data != DefPathData::StructCtor => {
             record_extern_fqn(cx, did, clean::TypeStruct);
             ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
         }
+        Def::Union(did) => {
+            record_extern_fqn(cx, did, clean::TypeUnion);
+            ret.extend(build_impls(cx, tcx, did));
+            clean::UnionItem(build_union(cx, tcx, did))
+        }
         Def::TyAlias(did) => {
             record_extern_fqn(cx, did, clean::TypeTypedef);
             ret.extend(build_impls(cx, tcx, did));
-            build_type(cx, tcx, did)
+            clean::TypedefItem(build_type_alias(cx, tcx, did), false)
         }
         Def::Enum(did) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
             ret.extend(build_impls(cx, tcx, did));
-            build_type(cx, tcx, did)
+            clean::EnumItem(build_enum(cx, tcx, did))
         }
         // Assume that the enum type is reexported next to the variant, and
         // variants don't show up in documentation specially.
@@ -175,7 +180,7 @@ fn build_external_function<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx
                                      did: DefId) -> clean::Function {
     let t = tcx.lookup_item_type(did);
     let (decl, style, abi) = match t.ty.sty {
-        ty::TyFnDef(_, _, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
+        ty::TyFnDef(.., ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
         _ => panic!("bad function"),
     };
 
@@ -195,6 +200,18 @@ fn build_external_function<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx
     }
 }
 
+fn build_enum<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        did: DefId) -> clean::Enum {
+    let t = tcx.lookup_item_type(did);
+    let predicates = tcx.lookup_predicates(did);
+
+    clean::Enum {
+        generics: (t.generics, &predicates).clean(cx),
+        variants_stripped: false,
+        variants: tcx.lookup_adt_def(did).variants.clean(cx),
+    }
+}
+
 fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           did: DefId) -> clean::Struct {
     let t = tcx.lookup_item_type(did);
@@ -202,11 +219,10 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let variant = tcx.lookup_adt_def(did).struct_variant();
 
     clean::Struct {
-        struct_type: match &variant.fields[..] {
-            &[] => doctree::Unit,
-            &[_] if variant.kind == ty::VariantKind::Tuple => doctree::Newtype,
-            &[..] if variant.kind == ty::VariantKind::Tuple => doctree::Tuple,
-            _ => doctree::Plain,
+        struct_type: match variant.kind {
+            VariantKind::Struct => doctree::Plain,
+            VariantKind::Tuple => doctree::Tuple,
+            VariantKind::Unit => doctree::Unit,
         },
         generics: (t.generics, &predicates).clean(cx),
         fields: variant.fields.clean(cx),
@@ -214,25 +230,29 @@ fn build_struct<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn build_type<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        did: DefId) -> clean::ItemEnum {
+fn build_union<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          did: DefId) -> clean::Union {
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
-    match t.ty.sty {
-        ty::TyEnum(edef, _) if !tcx.sess.cstore.is_typedef(did) => {
-            return clean::EnumItem(clean::Enum {
-                generics: (t.generics, &predicates).clean(cx),
-                variants_stripped: false,
-                variants: edef.variants.clean(cx),
-            })
-        }
-        _ => {}
-    }
+    let variant = tcx.lookup_adt_def(did).struct_variant();
 
-    clean::TypedefItem(clean::Typedef {
+    clean::Union {
+        struct_type: doctree::Plain,
+        generics: (t.generics, &predicates).clean(cx),
+        fields: variant.fields.clean(cx),
+        fields_stripped: false,
+    }
+}
+
+fn build_type_alias<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              did: DefId) -> clean::Typedef {
+    let t = tcx.lookup_item_type(did);
+    let predicates = tcx.lookup_predicates(did);
+
+    clean::Typedef {
         type_: t.ty.clean(cx),
         generics: (t.generics, &predicates).clean(cx),
-    }, false)
+    }
 }
 
 pub fn build_impls<'a, 'tcx>(cx: &DocContext,
@@ -246,32 +266,49 @@ pub fn build_impls<'a, 'tcx>(cx: &DocContext,
             build_impl(cx, tcx, did, &mut impls);
         }
     }
-
-    // If this is the first time we've inlined something from this crate, then
-    // we inline *all* impls from the crate into this crate. Note that there's
+    // If this is the first time we've inlined something from another crate, then
+    // we inline *all* impls from all the crates into this crate. Note that there's
     // currently no way for us to filter this based on type, and we likely need
     // many impls for a variety of reasons.
     //
     // Primarily, the impls will be used to populate the documentation for this
     // type being inlined, but impls can also be used when generating
     // documentation for primitives (no way to find those specifically).
-    if cx.populated_crate_impls.borrow_mut().insert(did.krate) {
-        for item in tcx.sess.cstore.crate_top_level_items(did.krate) {
-            populate_impls(cx, tcx, item.def, &mut impls);
-        }
+    if cx.populated_all_crate_impls.get() {
+        return impls;
+    }
 
-        fn populate_impls<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    def: cstore::DefLike,
-                                    impls: &mut Vec<clean::Item>) {
-            match def {
-                cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
-                cstore::DlDef(Def::Mod(did)) => {
-                    for item in tcx.sess.cstore.item_children(did) {
-                        populate_impls(cx, tcx, item.def, impls)
-                    }
-                }
-                _ => {}
-            }
+    cx.populated_all_crate_impls.set(true);
+
+    for did in tcx.sess.cstore.implementations_of_trait(None) {
+        build_impl(cx, tcx, did, &mut impls);
+    }
+
+    // Also try to inline primitive impls from other crates.
+    let primitive_impls = [
+        tcx.lang_items.isize_impl(),
+        tcx.lang_items.i8_impl(),
+        tcx.lang_items.i16_impl(),
+        tcx.lang_items.i32_impl(),
+        tcx.lang_items.i64_impl(),
+        tcx.lang_items.usize_impl(),
+        tcx.lang_items.u8_impl(),
+        tcx.lang_items.u16_impl(),
+        tcx.lang_items.u32_impl(),
+        tcx.lang_items.u64_impl(),
+        tcx.lang_items.f32_impl(),
+        tcx.lang_items.f64_impl(),
+        tcx.lang_items.char_impl(),
+        tcx.lang_items.str_impl(),
+        tcx.lang_items.slice_impl(),
+        tcx.lang_items.slice_impl(),
+        tcx.lang_items.const_ptr_impl()
+    ];
+
+    for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
+        if !def_id.is_local() {
+            tcx.populate_implementations_for_primitive_if_necessary(def_id);
+            build_impl(cx, tcx, def_id, &mut impls);
         }
     }
 
@@ -330,12 +367,10 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
     }
 
     let predicates = tcx.lookup_predicates(did);
-    let trait_items = tcx.sess.cstore.impl_items(did)
+    let trait_items = tcx.sess.cstore.impl_or_trait_items(did)
             .iter()
-            .filter_map(|did| {
-        let did = did.def_id();
-        let impl_item = tcx.impl_or_trait_item(did);
-        match impl_item {
+            .filter_map(|&did| {
+        match tcx.impl_or_trait_item(did) {
             ty::ConstTraitItem(ref assoc_const) => {
                 let did = assoc_const.def_id;
                 let type_scheme = tcx.lookup_item_type(did);
@@ -435,7 +470,7 @@ pub fn build_impl<'a, 'tcx>(cx: &DocContext,
             for_: for_,
             generics: (ty.generics, &predicates).clean(cx),
             items: trait_items,
-            polarity: polarity.map(|p| { p.clean(cx) }),
+            polarity: Some(polarity.clean(cx)),
         }),
         source: clean::Span::empty(),
         name: None,
@@ -463,20 +498,13 @@ fn build_module<'a, 'tcx>(cx: &DocContext, tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // visit each node at most once.
         let mut visited = FnvHashSet();
         for item in tcx.sess.cstore.item_children(did) {
-            match item.def {
-                cstore::DlDef(Def::ForeignMod(did)) => {
-                    fill_in(cx, tcx, did, items);
-                }
-                cstore::DlDef(def) if item.vis == ty::Visibility::Public => {
-                    if !visited.insert(def) { continue }
+            if tcx.sess.cstore.visibility(item.def_id) == ty::Visibility::Public {
+                if !visited.insert(item.def_id) { continue }
+                if let Some(def) = tcx.sess.cstore.describe_def(item.def_id) {
                     if let Some(i) = try_inline_def(cx, tcx, def) {
                         items.extend(i)
                     }
                 }
-                cstore::DlDef(..) => {}
-                // All impls were inlined above
-                cstore::DlImpl(..) => {}
-                cstore::DlField => panic!("unimplemented field"),
             }
         }
     }

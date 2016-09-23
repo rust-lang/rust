@@ -22,6 +22,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 #![feature(associated_consts)]
 #![feature(box_patterns)]
+#![feature(dotdot_in_tuple_patterns)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -45,8 +46,10 @@ extern crate rustc_const_eval;
 pub mod diagnostics;
 
 pub mod build;
+pub mod def_use;
 pub mod graphviz;
 mod hair;
 pub mod mir_map;
 pub mod pretty;
 pub mod transform;
+

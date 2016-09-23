@@ -475,6 +475,7 @@ pub enum CrateType {
     CrateTypeRlib,
     CrateTypeStaticlib,
     CrateTypeCdylib,
+    CrateTypeRustcMacro,
 }
 
 #[derive(Clone, Hash)]
@@ -492,7 +493,7 @@ impl Passes {
     }
 }
 
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum PanicStrategy {
     Unwind,
     Abort,
@@ -848,9 +849,13 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate"),
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
-        "write syntax and type analysis (in JSON format) information in addition to normal output"),
+        "write syntax and type analysis (in JSON format) information, in \
+         addition to normal output"),
     save_analysis_csv: bool = (false, parse_bool, [UNTRACKED],
-        "write syntax and type analysis (in CSV format) information in addition to normal output"),
+        "write syntax and type analysis (in CSV format) information, in addition to normal output"),
+    save_analysis_api: bool = (false, parse_bool, [UNTRACKED],
+        "write syntax and type analysis information for opaque libraries (in JSON format), \
+         in addition to normal output"),
     print_move_fragments: bool = (false, parse_bool, [UNTRACKED],
         "print out move-fragment data for every fn"),
     flowgraph_print_loans: bool = (false, parse_bool, [UNTRACKED],
@@ -908,6 +913,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "dump MIR state at various points in translation"),
     dump_mir_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "the directory the MIR is dumped into"),
+    perf_stats: bool = (false, parse_bool, [UNTRACKED],
+          "print some performance-related statistics"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -961,6 +968,9 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     }
     if sess.opts.debug_assertions {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
+    }
+    if sess.opts.crate_types.contains(&CrateTypeRustcMacro) {
+        ret.push(attr::mk_word_item(InternedString::new("rustc_macro")));
     }
     return ret;
 }
@@ -1531,8 +1541,8 @@ pub fn get_unstable_features_setting() -> UnstableFeatures {
     let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
     match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
         (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
-        (true, _, _) => UnstableFeatures::Disallow,
-        (false, _, _) => UnstableFeatures::Allow
+        (true, ..) => UnstableFeatures::Disallow,
+        (false, ..) => UnstableFeatures::Allow
     }
 }
 
@@ -1547,6 +1557,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                 "dylib"     => CrateTypeDylib,
                 "cdylib"    => CrateTypeCdylib,
                 "bin"       => CrateTypeExecutable,
+                "rustc-macro" => CrateTypeRustcMacro,
                 _ => {
                     return Err(format!("unknown crate type: `{}`",
                                        part));
@@ -1635,6 +1646,7 @@ impl fmt::Display for CrateType {
             CrateTypeRlib => "rlib".fmt(f),
             CrateTypeStaticlib => "staticlib".fmt(f),
             CrateTypeCdylib => "cdylib".fmt(f),
+            CrateTypeRustcMacro => "rustc-macro".fmt(f),
         }
     }
 }
@@ -2358,6 +2370,8 @@ mod tests {
         opts.debugging_opts.save_analysis = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.save_analysis_csv = true;
+        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+        opts.debugging_opts.save_analysis_api = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.print_move_fragments = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());

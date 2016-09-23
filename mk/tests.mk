@@ -27,7 +27,7 @@ TEST_TARGET_CRATES = $(filter-out core rustc_unicode alloc_system libc \
 				  panic_abort,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES) arena flate fmt_macros getopts graphviz \
-                log rand rbml serialize syntax term test
+                log rand serialize syntax term test
 TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve \
 		   		rustc_trans rustc_lint,\
                      $(HOST_CRATES))
@@ -649,6 +649,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) = \
 	--lldb-python $$(CFG_LLDB_PYTHON) \
         --gdb-version="$(CFG_GDB_VERSION)" \
         --lldb-version="$(CFG_LLDB_VERSION)" \
+        --llvm-version="$$(LLVM_VERSION_$(3))" \
         --android-cross-path=$(CFG_ARM_LINUX_ANDROIDEABI_NDK) \
         --adb-path=$(CFG_ADB) \
         --adb-test-dir=$(CFG_ADB_TEST_DIR) \

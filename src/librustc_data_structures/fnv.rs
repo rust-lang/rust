@@ -35,6 +35,7 @@ pub fn FnvHashSet<V: Hash + Eq>() -> FnvHashSet<V> {
 pub struct FnvHasher(u64);
 
 impl Default for FnvHasher {
+    /// Creates a `FnvHasher`, with a 64-bit hex initial value.
     #[inline]
     fn default() -> FnvHasher {
         FnvHasher(0xcbf29ce484222325)
@@ -56,4 +57,10 @@ impl Hasher for FnvHasher {
     fn finish(&self) -> u64 {
         self.0
     }
+}
+
+pub fn hash<T: Hash>(v: &T) -> u64 {
+    let mut state = FnvHasher::default();
+    v.hash(&mut state);
+    state.finish()
 }

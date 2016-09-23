@@ -156,7 +156,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
             TokenTree::Token(_, MatchNt(..)) => {
                 1
             }
-            TokenTree::Token(_, _) => 0,
+            TokenTree::Token(..) => 0,
         }
     })
 }
@@ -231,7 +231,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
             TokenTree::Token(sp, SubstNt(..)) => {
                 return Err((sp, "missing fragment specifier".to_string()))
             }
-            TokenTree::Token(_, _) => (),
+            TokenTree::Token(..) => (),
         }
 
         Ok(())

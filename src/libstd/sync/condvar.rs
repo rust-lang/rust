@@ -241,6 +241,7 @@ impl Condvar {
 
 #[stable(feature = "condvar_default", since = "1.9.0")]
 impl Default for Condvar {
+    /// Creates a `Condvar` which is ready to be waited on and notified.
     fn default() -> Condvar {
         Condvar::new()
     }

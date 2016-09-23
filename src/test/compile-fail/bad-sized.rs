@@ -13,5 +13,7 @@ trait Trait {}
 pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();
     //~^ ERROR `Trait + Sized: std::marker::Sized` is not satisfied
+    //~| ERROR the trait `std::marker::Sized` cannot be made into an object
     //~| ERROR `Trait + Sized: std::marker::Sized` is not satisfied
+    //~| ERROR the trait `std::marker::Sized` cannot be made into an object
 }
