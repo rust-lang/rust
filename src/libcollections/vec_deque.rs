@@ -726,18 +726,18 @@ impl<T> VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut vector: VecDeque<u32> = VecDeque::new();
+    /// let mut vector = VecDeque::new();
     ///
     /// vector.push_back(0);
     /// vector.push_back(1);
     /// vector.push_back(2);
     ///
-    /// assert_eq!(vector.as_slices(), (&[0u32, 1, 2] as &[u32], &[] as &[u32]));
+    /// assert_eq!(vector.as_slices(), (&[0, 1, 2][..], &[][..]));
     ///
     /// vector.push_front(10);
     /// vector.push_front(9);
     ///
-    /// assert_eq!(vector.as_slices(), (&[9u32, 10] as &[u32], &[0u32, 1, 2] as &[u32]));
+    /// assert_eq!(vector.as_slices(), (&[9, 10][..], &[0, 1, 2][..]));
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
@@ -764,7 +764,7 @@ impl<T> VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut vector: VecDeque<u32> = VecDeque::new();
+    /// let mut vector = VecDeque::new();
     ///
     /// vector.push_back(0);
     /// vector.push_back(1);
@@ -774,7 +774,7 @@ impl<T> VecDeque<T> {
     ///
     /// vector.as_mut_slices().0[0] = 42;
     /// vector.as_mut_slices().1[0] = 24;
-    /// assert_eq!(vector.as_slices(), (&[42u32, 10] as &[u32], &[24u32, 1] as &[u32]));
+    /// assert_eq!(vector.as_slices(), (&[42, 10][..], &[24, 1][..]));
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
