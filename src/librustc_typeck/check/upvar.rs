@@ -120,7 +120,8 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
 
         self.fcx.tcx.with_freevars(expr.id, |freevars| {
             for freevar in freevars {
-                let var_node_id = freevar.def.var_id();
+                let def_id = freevar.def.def_id();
+                let var_node_id = self.fcx.tcx.map.as_local_node_id(def_id).unwrap();
                 let upvar_id = ty::UpvarId { var_id: var_node_id,
                                              closure_expr_id: expr.id };
                 debug!("seed upvar_id {:?}", upvar_id);
@@ -236,31 +237,30 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         // implemented.
         let tcx = self.fcx.tcx;
         tcx.with_freevars(closure_id, |freevars| {
-            freevars.iter()
-                    .map(|freevar| {
-                        let freevar_node_id = freevar.def.var_id();
-                        let freevar_ty = self.fcx.node_ty(freevar_node_id);
-                        let upvar_id = ty::UpvarId {
-                            var_id: freevar_node_id,
-                            closure_expr_id: closure_id
-                        };
-                        let capture = self.fcx.upvar_capture(upvar_id).unwrap();
+            freevars.iter().map(|freevar| {
+                let def_id = freevar.def.def_id();
+                let var_id = tcx.map.as_local_node_id(def_id).unwrap();
+                let freevar_ty = self.fcx.node_ty(var_id);
+                let upvar_id = ty::UpvarId {
+                    var_id: var_id,
+                    closure_expr_id: closure_id
+                };
+                let capture = self.fcx.upvar_capture(upvar_id).unwrap();
 
-                        debug!("freevar_node_id={:?} freevar_ty={:?} capture={:?}",
-                               freevar_node_id, freevar_ty, capture);
+                debug!("var_id={:?} freevar_ty={:?} capture={:?}",
+                       var_id, freevar_ty, capture);
 
-                        match capture {
-                            ty::UpvarCapture::ByValue => freevar_ty,
-                            ty::UpvarCapture::ByRef(borrow) =>
-                                tcx.mk_ref(borrow.region,
-                                           ty::TypeAndMut {
-                                               ty: freevar_ty,
-                                               mutbl: borrow.kind.to_mutbl_lossy(),
-                                           }),
-                        }
-                    })
-                    .collect()
-            })
+                match capture {
+                    ty::UpvarCapture::ByValue => freevar_ty,
+                    ty::UpvarCapture::ByRef(borrow) =>
+                        tcx.mk_ref(borrow.region,
+                                    ty::TypeAndMut {
+                                        ty: freevar_ty,
+                                        mutbl: borrow.kind.to_mutbl_lossy(),
+                                    }),
+                }
+            }).collect()
+        })
     }
 
     fn adjust_upvar_borrow_kind_for_consume(&mut self,

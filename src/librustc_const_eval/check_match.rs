@@ -26,8 +26,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::{cmt};
 use rustc::hir::pat_util::*;
 use rustc::traits::Reveal;
-use rustc::ty::*;
-use rustc::ty;
+use rustc::ty::{self, Ty, TyCtxt};
 use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
@@ -40,11 +39,10 @@ use rustc_back::slice;
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
 use syntax::codemap::Spanned;
 use syntax_pos::{Span, DUMMY_SP};
-use rustc::hir::fold::{Folder, noop_fold_pat};
 use rustc::hir::print::pat_to_string;
 use syntax::ptr::P;
+use syntax::util::move_map::MoveMap;
 use rustc::util::common::ErrorReported;
-use rustc::util::nodemap::FnvHashMap;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
@@ -111,7 +109,7 @@ impl<'a, 'tcx> FromIterator<Vec<(&'a Pat, Option<Ty<'tcx>>)>> for Matrix<'a, 'tc
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub param_env: ParameterEnvironment<'tcx>,
+    pub param_env: ty::ParameterEnvironment<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -182,7 +180,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 }
             }
 
-            let mut static_inliner = StaticInliner::new(cx.tcx, None);
+            let mut static_inliner = StaticInliner::new(cx.tcx);
             let inlined_arms = arms.iter().map(|arm| {
                 (arm.pats.iter().map(|pat| {
                     static_inliner.fold_pat((*pat).clone())
@@ -249,7 +247,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                 if edef.is_enum() {
                     if let Def::Local(..) = cx.tcx.expect_def(p.id) {
                         if edef.variants.iter().any(|variant| {
-                            variant.name == name.node && variant.kind == VariantKind::Unit
+                            variant.name == name.node && variant.kind == ty::VariantKind::Unit
                         }) {
                             let ty_path = cx.tcx.item_path_str(edef.did);
                             let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
@@ -460,60 +458,37 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
         _ => bug!()
     };
     P(hir::Expr {
-        id: 0,
+        id: DUMMY_NODE_ID,
         node: hir::ExprLit(P(Spanned { node: node, span: DUMMY_SP })),
         span: DUMMY_SP,
         attrs: ast::ThinVec::new(),
     })
 }
 
-pub struct StaticInliner<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub failed: bool,
-    pub renaming_map: Option<&'a mut FnvHashMap<(NodeId, Span), NodeId>>,
+struct StaticInliner<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    failed: bool
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-                   renaming_map: Option<&'b mut FnvHashMap<(NodeId, Span), NodeId>>)
-                   -> StaticInliner<'b, 'tcx> {
+    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> StaticInliner<'b, 'tcx> {
         StaticInliner {
             tcx: tcx,
-            failed: false,
-            renaming_map: renaming_map
+            failed: false
         }
     }
 }
 
-struct RenamingRecorder<'map> {
-    substituted_node_id: NodeId,
-    origin_span: Span,
-    renaming_map: &'map mut FnvHashMap<(NodeId, Span), NodeId>
-}
-
-impl<'v, 'map> Visitor<'v> for RenamingRecorder<'map> {
-    fn visit_id(&mut self, node_id: NodeId) {
-        let key = (node_id, self.origin_span);
-        self.renaming_map.insert(key, self.substituted_node_id);
-    }
-}
-
-impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
+impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
-        return match pat.node {
+        match pat.node {
             PatKind::Path(..) => {
                 match self.tcx.expect_def(pat.id) {
                     Def::AssociatedConst(did) | Def::Const(did) => {
                         let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
                         if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
                             match const_expr_to_pat(self.tcx, const_expr, pat.id, pat.span) {
-                                Ok(new_pat) => {
-                                    if let Some(ref mut map) = self.renaming_map {
-                                        // Record any renamings we do here
-                                        record_renamings(const_expr, &pat, map);
-                                    }
-                                    new_pat
-                                }
+                                Ok(new_pat) => return new_pat,
                                 Err(def_id) => {
                                     self.failed = true;
                                     self.tcx.sess.span_err(
@@ -521,33 +496,62 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                                         &format!("constants of the type `{}` \
                                                   cannot be used in patterns",
                                                  self.tcx.item_path_str(def_id)));
-                                    pat
                                 }
                             }
                         } else {
                             self.failed = true;
                             span_err!(self.tcx.sess, pat.span, E0158,
                                 "statics cannot be referenced in patterns");
-                            pat
                         }
                     }
-                    _ => noop_fold_pat(pat, self)
+                    _ => {}
                 }
             }
-            _ => noop_fold_pat(pat, self)
-        };
-
-        fn record_renamings(const_expr: &hir::Expr,
-                            substituted_pat: &hir::Pat,
-                            renaming_map: &mut FnvHashMap<(NodeId, Span), NodeId>) {
-            let mut renaming_recorder = RenamingRecorder {
-                substituted_node_id: substituted_pat.id,
-                origin_span: substituted_pat.span,
-                renaming_map: renaming_map,
-            };
-
-            renaming_recorder.visit_expr(const_expr);
+            _ => {}
         }
+
+        pat.map(|Pat { id, node, span }| {
+            let node = match node {
+                PatKind::Binding(binding_mode, pth1, sub) => {
+                    PatKind::Binding(binding_mode, pth1, sub.map(|x| self.fold_pat(x)))
+                }
+                PatKind::TupleStruct(pth, pats, ddpos) => {
+                    PatKind::TupleStruct(pth, pats.move_map(|x| self.fold_pat(x)), ddpos)
+                }
+                PatKind::Struct(pth, fields, etc) => {
+                    let fs = fields.move_map(|f| {
+                        Spanned {
+                            span: f.span,
+                            node: hir::FieldPat {
+                                name: f.node.name,
+                                pat: self.fold_pat(f.node.pat),
+                                is_shorthand: f.node.is_shorthand,
+                            },
+                        }
+                    });
+                    PatKind::Struct(pth, fs, etc)
+                }
+                PatKind::Tuple(elts, ddpos) => {
+                    PatKind::Tuple(elts.move_map(|x| self.fold_pat(x)), ddpos)
+                }
+                PatKind::Box(inner) => PatKind::Box(self.fold_pat(inner)),
+                PatKind::Ref(inner, mutbl) => PatKind::Ref(self.fold_pat(inner), mutbl),
+                PatKind::Vec(before, slice, after) => {
+                    PatKind::Vec(before.move_map(|x| self.fold_pat(x)),
+                                 slice.map(|x| self.fold_pat(x)),
+                                 after.move_map(|x| self.fold_pat(x)))
+                }
+                PatKind::Wild |
+                PatKind::Lit(_) |
+                PatKind::Range(..) |
+                PatKind::Path(..) => node
+            };
+            Pat {
+                id: id,
+                node: node,
+                span: span
+            }
+        })
     }
 }
 
@@ -574,7 +578,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         ty::TyAdt(adt, _) => {
             let v = ctor.variant_for_adt(adt);
             match v.kind {
-                VariantKind::Struct => {
+                ty::VariantKind::Struct => {
                     let field_pats: hir::HirVec<_> = v.fields.iter()
                         .zip(pats)
                         .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
@@ -589,10 +593,10 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     let has_more_fields = field_pats.len() < pats_len;
                     PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
                 }
-                VariantKind::Tuple => {
+                ty::VariantKind::Tuple => {
                     PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
                 }
-                VariantKind::Unit => {
+                ty::VariantKind::Unit => {
                     PatKind::Path(None, def_to_path(cx.tcx, v.did))
                 }
             }
@@ -625,7 +629,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
     };
 
     P(hir::Pat {
-        id: 0,
+        id: DUMMY_NODE_ID,
         node: pat,
         span: DUMMY_SP
     })
@@ -634,7 +638,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 impl Constructor {
     fn variant_for_adt<'tcx, 'container, 'a>(&self,
                                              adt: &'a ty::AdtDefData<'tcx, 'container>)
-                                             -> &'a VariantDefData<'tcx, 'container> {
+                                             -> &'a ty::VariantDefData<'tcx, 'container> {
         match self {
             &Variant(vid) => adt.variant_with_id(vid),
             _ => adt.struct_variant()
@@ -797,7 +801,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     match pat.node {
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
             match cx.tcx.expect_def(pat.id) {
-                Def::Variant(_, id) => vec![Variant(id)],
+                Def::Variant(id) => vec![Variant(id)],
                 Def::Struct(..) | Def::Union(..) |
                 Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
                 Def::Const(..) | Def::AssociatedConst(..) =>
@@ -873,7 +877,7 @@ fn wrap_pat<'a, 'b, 'tcx>(cx: &MatchCheckCtxt<'b, 'tcx>,
     let pat_ty = cx.tcx.pat_ty(pat);
     (pat, Some(match pat.node {
         PatKind::Binding(hir::BindByRef(..), ..) => {
-            pat_ty.builtin_deref(false, NoPreference).unwrap().ty
+            pat_ty.builtin_deref(false, ty::NoPreference).unwrap().ty
         }
         _ => pat_ty
     }))
@@ -909,7 +913,7 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::Variant(_, id) if *constructor != Variant(id) => None,
+                Def::Variant(id) if *constructor != Variant(id) => None,
                 Def::Variant(..) | Def::Struct(..) => Some(Vec::new()),
                 def => span_bug!(pat_span, "specialize: unexpected \
                                           definition {:?}", def),
@@ -921,7 +925,7 @@ pub fn specialize<'a, 'b, 'tcx>(
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(pat_span, "const pattern should've \
                                          been rewritten"),
-                Def::Variant(_, id) if *constructor != Variant(id) => None,
+                Def::Variant(id) if *constructor != Variant(id) => None,
                 Def::Variant(..) | Def::Struct(..) => {
                     match ddpos {
                         Some(ddpos) => {
@@ -1047,7 +1051,7 @@ pub fn specialize<'a, 'b, 'tcx>(
 fn check_local(cx: &mut MatchCheckCtxt, loc: &hir::Local) {
     intravisit::walk_local(cx, loc);
 
-    let pat = StaticInliner::new(cx.tcx, None).fold_pat(loc.pat.clone());
+    let pat = StaticInliner::new(cx.tcx).fold_pat(loc.pat.clone());
     check_irrefutable(cx, &pat, false);
 
     // Check legality of move bindings and `@` patterns.
@@ -1063,7 +1067,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             fn_id: NodeId) {
     match kind {
         FnKind::Closure(_) => {}
-        _ => cx.param_env = ParameterEnvironment::for_item(cx.tcx, fn_id),
+        _ => cx.param_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_id),
     }
 
     intravisit::walk_fn(cx, kind, decl, body, sp, fn_id);
@@ -1182,17 +1186,17 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
               _: NodeId,
               span: Span,
               _: cmt,
-              _: &'tcx Region,
-              kind: BorrowKind,
+              _: &'tcx ty::Region,
+              kind:ty:: BorrowKind,
               _: LoanCause) {
         match kind {
-            MutBorrow => {
+            ty::MutBorrow => {
                 struct_span_err!(self.cx.tcx.sess, span, E0301,
                           "cannot mutably borrow in a pattern guard")
                     .span_label(span, &format!("borrowed mutably in pattern guard"))
                     .emit();
             }
-            ImmBorrow | UniqueImmBorrow => {}
+            ty::ImmBorrow | ty::UniqueImmBorrow => {}
         }
     }
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}

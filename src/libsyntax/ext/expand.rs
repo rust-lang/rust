@@ -184,13 +184,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         let err_count = self.cx.parse_sess.span_diagnostic.err_count();
 
-        let mut krate_item = placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
-            .make_items().pop().unwrap().unwrap();
-        krate_item.node = ast::ItemKind::Mod(krate.module);
-        let krate_item = Expansion::Items(SmallVector::one(P(krate_item)));
+        let krate_item = Expansion::Items(SmallVector::one(P(ast::Item {
+            attrs: krate.attrs,
+            span: krate.span,
+            node: ast::ItemKind::Mod(krate.module),
+            ident: keywords::Invalid.ident(),
+            id: ast::DUMMY_NODE_ID,
+            vis: ast::Visibility::Public,
+        })));
 
-        krate.module = match self.expand(krate_item).make_items().pop().unwrap().unwrap().node {
-            ast::ItemKind::Mod(module) => module,
+        match self.expand(krate_item).make_items().pop().unwrap().unwrap() {
+            ast::Item { attrs, node: ast::ItemKind::Mod(module), .. } => {
+                krate.attrs = attrs;
+                krate.module = module;
+            },
             _ => unreachable!(),
         };
         krate.exported_macros = mem::replace(&mut self.cx.exported_macros, Vec::new());
@@ -242,11 +249,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
                 let expansion = expansion.fold_with(&mut placeholder_expander);
-                placeholder_expander.add(mark, expansion);
+                placeholder_expander.add(ast::NodeId::from_u32(mark), expansion);
             }
         }
 
-        placeholder_expander.remove(0)
+        placeholder_expander.remove(ast::NodeId::from_u32(0))
     }
 
     fn collect_invocations(&mut self, expansion: Expansion) -> (Expansion, Vec<Invocation>) {
@@ -424,7 +431,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             expansion_kind: expansion_kind,
             expansion_data: ExpansionData { mark: mark, ..self.cx.current_expansion.clone() },
         });
-        placeholder(expansion_kind, mark.as_u32())
+        placeholder(expansion_kind, ast::NodeId::from_u32(mark.as_u32()))
     }
 
     fn collect_bang(

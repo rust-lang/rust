@@ -1134,16 +1134,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             return tcx.types.err;
         }
 
-        let mut associated_types: FnvHashSet<(DefId, ast::Name)> =
-            traits::supertraits(tcx, principal)
-            .flat_map(|tr| {
-                let trait_def = tcx.lookup_trait_def(tr.def_id());
-                trait_def.associated_type_names
-                    .clone()
-                    .into_iter()
-                    .map(move |associated_type_name| (tr.def_id(), associated_type_name))
-            })
-            .collect();
+        let mut associated_types = FnvHashSet::default();
+        for tr in traits::supertraits(tcx, principal) {
+            if let Some(trait_id) = tcx.map.as_local_node_id(tr.def_id()) {
+                use collect::trait_associated_type_names;
+
+                associated_types.extend(trait_associated_type_names(tcx, trait_id)
+                    .map(|name| (tr.def_id(), name)))
+            } else {
+                let trait_items = tcx.impl_or_trait_items(tr.def_id());
+                associated_types.extend(trait_items.iter().filter_map(|&def_id| {
+                    match tcx.impl_or_trait_item(def_id) {
+                        ty::TypeTraitItem(ref item) => Some(item.name),
+                        _ => None
+                    }
+                }).map(|name| (tr.def_id(), name)));
+            }
+        }
 
         for projection_bound in &projection_bounds {
             let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
@@ -1284,23 +1291,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&ty.sty, ty_path_def) {
-            (_, Def::SelfTy(Some(trait_did), Some(impl_id))) => {
-                // For Def::SelfTy() values inlined from another crate, the
-                // impl_id will be DUMMY_NODE_ID, which would cause problems
-                // here. But we should never run into an impl from another crate
-                // in this pass.
-                assert!(impl_id != ast::DUMMY_NODE_ID);
-
+            (_, Def::SelfTy(Some(_), Some(impl_def_id))) => {
                 // `Self` in an impl of a trait - we have a concrete self type and a
                 // trait reference.
-                let trait_ref = tcx.impl_trait_ref(tcx.map.local_def_id(impl_id)).unwrap();
+                let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_ref = if let Some(free_substs) = self.get_free_substs() {
                     trait_ref.subst(tcx, free_substs)
                 } else {
                     trait_ref
                 };
 
-                if self.ensure_super_predicates(span, trait_did).is_err() {
+                if self.ensure_super_predicates(span, trait_ref.def_id).is_err() {
                     return (tcx.types.err, Def::Err);
                 }
 
@@ -1372,7 +1373,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             item.expect("missing associated type").def_id()
         };
 
-        (ty, Def::AssociatedTy(trait_did, item_did))
+        (ty, Def::AssociatedTy(item_did))
     }
 
     fn qpath_to_ty(&self,
@@ -1504,16 +1505,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     tcx.types.err
                 }
             }
-            Def::SelfTy(_, Some(impl_id)) => {
+            Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).
 
-                // For Def::SelfTy() values inlined from another crate, the
-                // impl_id will be DUMMY_NODE_ID, which would cause problems
-                // here. But we should never run into an impl from another crate
-                // in this pass.
-                assert!(impl_id != ast::DUMMY_NODE_ID);
-
                 tcx.prohibit_type_params(base_segments);
+                let impl_id = tcx.map.as_local_node_id(def_id).unwrap();
                 let ty = tcx.node_id_to_type(impl_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)
@@ -1526,8 +1522,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.prohibit_type_params(base_segments);
                 tcx.mk_self_type()
             }
-            Def::AssociatedTy(trait_did, _) => {
+            Def::AssociatedTy(def_id) => {
                 tcx.prohibit_type_params(&base_segments[..base_segments.len()-2]);
+                let trait_did = tcx.parent_def_id(def_id).unwrap();
                 self.qpath_to_ty(rscope,
                                  span,
                                  param_mode,

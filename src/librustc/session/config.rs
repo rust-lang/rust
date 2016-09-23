@@ -493,7 +493,7 @@ impl Passes {
     }
 }
 
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum PanicStrategy {
     Unwind,
     Abort,
@@ -770,7 +770,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     no_vectorize_slp: bool = (false, parse_bool, [TRACKED],
         "don't run LLVM's SLP vectorization pass"),
     soft_float: bool = (false, parse_bool, [TRACKED],
-        "generate software floating point library calls"),
+        "use soft float ABI (*eabihf targets only)"),
     prefer_dynamic: bool = (false, parse_bool, [TRACKED],
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool, [TRACKED],

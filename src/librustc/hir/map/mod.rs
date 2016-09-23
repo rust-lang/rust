@@ -22,17 +22,15 @@ use middle::cstore::InlinedItem as II;
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 
 use syntax::abi::Abi;
-use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, };
+use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax_pos::Span;
 
 use hir::*;
-use hir::fold::Folder;
 use hir::print as pprust;
 
 use arena::TypedArena;
 use std::cell::RefCell;
-use std::cmp;
 use std::io;
 use std::mem;
 
@@ -240,7 +238,7 @@ impl<'ast> Map<'ast> {
         let mut id = id0;
         if !self.is_inlined_node_id(id) {
             loop {
-                match map[id as usize] {
+                match map[id.as_usize()] {
                     EntryItem(_, item) => {
                         let def_id = self.local_def_id(item.id);
                         // NB                          ^~~~~~~
@@ -295,7 +293,7 @@ impl<'ast> Map<'ast> {
             // reading from an inlined def-id is really a read out of
             // the metadata from which we loaded the item.
             loop {
-                match map[id as usize] {
+                match map[id.as_usize()] {
                     EntryItem(p, _) |
                     EntryForeignItem(p, _) |
                     EntryTraitItem(p, _) |
@@ -373,7 +371,7 @@ impl<'ast> Map<'ast> {
     }
 
     fn find_entry(&self, id: NodeId) -> Option<MapEntry<'ast>> {
-        self.map.borrow().get(id as usize).cloned()
+        self.map.borrow().get(id.as_usize()).cloned()
     }
 
     pub fn krate(&self) -> &'ast Crate {
@@ -456,8 +454,8 @@ impl<'ast> Map<'ast> {
         let mut id = start_id;
         loop {
             let parent_node = self.get_parent_node(id);
-            if parent_node == 0 {
-                return Ok(0);
+            if parent_node == CRATE_NODE_ID {
+                return Ok(CRATE_NODE_ID);
             }
             if parent_node == id {
                 return Err(id);
@@ -582,22 +580,24 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn expect_struct(&self, id: NodeId) -> &'ast VariantData {
+    pub fn expect_variant_data(&self, id: NodeId) -> &'ast VariantData {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
-                    ItemStruct(ref struct_def, _) => struct_def,
-                    _ => bug!("struct ID bound to non-struct")
+                    ItemStruct(ref struct_def, _) |
+                    ItemUnion(ref struct_def, _) => struct_def,
+                    _ => {
+                        bug!("struct ID bound to non-struct {}",
+                             self.node_to_string(id));
+                    }
                 }
             }
-            Some(NodeVariant(variant)) => {
-                if variant.node.data.is_struct() {
-                    &variant.node.data
-                } else {
-                    bug!("struct ID bound to enum variant that isn't struct-like")
-                }
+            Some(NodeStructCtor(data)) => data,
+            Some(NodeVariant(variant)) => &variant.node.data,
+            _ => {
+                bug!("expected struct or variant, found {}",
+                     self.node_to_string(id));
             }
-            _ => bug!("expected struct, found {}", self.node_to_string(id)),
         }
     }
 
@@ -680,7 +680,7 @@ impl<'ast> Map<'ast> {
             map: self,
             item_name: parts.last().unwrap(),
             in_which: &parts[..parts.len() - 1],
-            idx: 0,
+            idx: CRATE_NODE_ID,
         }
     }
 
@@ -801,10 +801,10 @@ impl<'a, 'ast> Iterator for NodesMatchingSuffix<'a, 'ast> {
     fn next(&mut self) -> Option<NodeId> {
         loop {
             let idx = self.idx;
-            if idx as usize >= self.map.entry_count() {
+            if idx.as_usize() >= self.map.entry_count() {
                 return None;
             }
-            self.idx += 1;
+            self.idx = NodeId::from_u32(self.idx.as_u32() + 1);
             let name = match self.map.find_entry(idx) {
                 Some(EntryItem(_, n))       => n.name(),
                 Some(EntryForeignItem(_, n))=> n.name(),
@@ -832,57 +832,6 @@ impl Named for Variant_ { fn name(&self) -> Name { self.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
-pub trait FoldOps {
-    fn new_id(&self, id: NodeId) -> NodeId {
-        id
-    }
-    fn new_def_id(&self, def_id: DefId) -> DefId {
-        def_id
-    }
-    fn new_span(&self, span: Span) -> Span {
-        span
-    }
-}
-
-/// A Folder that updates IDs and Span's according to fold_ops.
-pub struct IdAndSpanUpdater<F> {
-    fold_ops: F,
-    min_id_assigned: NodeId,
-    max_id_assigned: NodeId,
-}
-
-impl<F: FoldOps> IdAndSpanUpdater<F> {
-    pub fn new(fold_ops: F) -> IdAndSpanUpdater<F> {
-        IdAndSpanUpdater {
-            fold_ops: fold_ops,
-            min_id_assigned: ::std::u32::MAX,
-            max_id_assigned: ::std::u32::MIN,
-        }
-    }
-
-    pub fn id_range(&self) -> intravisit::IdRange {
-        intravisit::IdRange {
-            min: self.min_id_assigned,
-            max: self.max_id_assigned + 1,
-        }
-    }
-}
-
-impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
-    fn new_id(&mut self, id: NodeId) -> NodeId {
-        let id = self.fold_ops.new_id(id);
-
-        self.min_id_assigned = cmp::min(self.min_id_assigned, id);
-        self.max_id_assigned = cmp::max(self.max_id_assigned, id);
-
-        id
-    }
-
-    fn new_span(&mut self, span: Span) -> Span {
-        self.fold_ops.new_span(span)
-    }
-}
-
 pub fn map_crate<'ast>(forest: &'ast mut Forest,
                        definitions: Definitions)
                        -> Map<'ast> {
@@ -906,7 +855,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
               entries, vector_length, (entries as f64 / vector_length as f64) * 100.);
     }
 
-    let local_node_id_watermark = map.len() as NodeId;
+    let local_node_id_watermark = NodeId::new(map.len());
     let local_def_id_watermark = definitions.len();
 
     Map {
@@ -921,36 +870,15 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest,
 
 /// Used for items loaded from external crate that are being inlined into this
 /// crate.
-pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
-                                          parent_def_path: DefPath,
-                                          parent_def_id: DefId,
-                                          ii: InlinedItem,
-                                          fold_ops: F)
-                                          -> &'ast InlinedItem {
+pub fn map_decoded_item<'ast>(map: &Map<'ast>,
+                              parent_def_path: DefPath,
+                              parent_def_id: DefId,
+                              ii: InlinedItem,
+                              ii_parent_id: NodeId)
+                              -> &'ast InlinedItem {
     let _ignore = map.forest.dep_graph.in_ignore();
 
-    let mut fld = IdAndSpanUpdater::new(fold_ops);
-    let ii = match ii {
-        II::Item(d, i) => II::Item(fld.fold_ops.new_def_id(d),
-                                   i.map(|i| fld.fold_item(i))),
-        II::TraitItem(d, ti) => {
-            II::TraitItem(fld.fold_ops.new_def_id(d),
-                          ti.map(|ti| fld.fold_trait_item(ti)))
-        }
-        II::ImplItem(d, ii) => {
-            II::ImplItem(fld.fold_ops.new_def_id(d),
-                         ii.map(|ii| fld.fold_impl_item(ii)))
-        }
-    };
-
     let ii = map.forest.inlined_items.alloc(ii);
-    let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
-
-    // Assert that the ii_parent_id is the last NodeId in our reserved range
-    assert!(ii_parent_id == fld.max_id_assigned);
-    // Assert that we did not violate the invariant that all inlined HIR items
-    // have NodeIds greater than or equal to `local_node_id_watermark`
-    assert!(fld.min_id_assigned >= map.local_node_id_watermark);
 
     let defs = &mut *map.definitions.borrow_mut();
     let mut def_collector = DefCollector::extend(ii_parent_id,

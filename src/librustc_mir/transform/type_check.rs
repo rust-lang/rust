@@ -20,6 +20,7 @@ use rustc::mir::tcx::LvalueTy;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::{self, Visitor};
 use std::fmt;
+use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -674,7 +675,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         where T: fmt::Debug + TypeFoldable<'tcx>
     {
         let mut selcx = traits::SelectionContext::new(self.infcx);
-        let cause = traits::ObligationCause::misc(self.last_span, 0);
+        let cause = traits::ObligationCause::misc(self.last_span, ast::CRATE_NODE_ID);
         let traits::Normalized { value, obligations } =
             traits::normalize(&mut selcx, cause, value);
 

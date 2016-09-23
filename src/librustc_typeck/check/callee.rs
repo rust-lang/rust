@@ -12,9 +12,8 @@ use super::{DeferredCallResolution, Expectation, FnCtxt,
             TupleArgumentsFlag};
 
 use CrateCtxt;
-use middle::cstore::LOCAL_CRATE;
 use hir::def::Def;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
 use rustc::ty::{self, LvaluePreference, Ty};
 use syntax::parse::token;

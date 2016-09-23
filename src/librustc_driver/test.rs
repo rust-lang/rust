@@ -166,16 +166,17 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn create_simple_region_hierarchy(&self) {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
+
+        let node = ast::NodeId::from_u32;
         let dscope = self.infcx
                          .tcx
                          .region_maps
-                         .intern_code_extent(CodeExtentData::DestructionScope(1),
+                         .intern_code_extent(CodeExtentData::DestructionScope(node(1)),
                                              region::ROOT_CODE_EXTENT);
         self.create_region_hierarchy(&RH {
-                                         id: 1,
-                                         sub: &[RH { id: 10, sub: &[] }, RH { id: 11, sub: &[] }],
-                                     },
-                                     dscope);
+            id: node(1),
+            sub: &[RH { id: node(10), sub: &[] }, RH { id: node(11), sub: &[] }],
+        }, dscope);
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
@@ -315,8 +316,8 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
-    pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
-        let r = ty::ReScope(self.tcx().region_maps.node_extent(id));
+    pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
+        let r = ty::ReScope(self.tcx().region_maps.node_extent(ast::NodeId::from_u32(id)));
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
@@ -327,8 +328,8 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         }))
     }
 
-    pub fn t_rptr_free(&self, nid: ast::NodeId, id: u32) -> Ty<'tcx> {
-        let r = self.re_free(nid, id);
+    pub fn t_rptr_free(&self, nid: u32, id: u32) -> Ty<'tcx> {
+        let r = self.re_free(ast::NodeId::from_u32(nid), id);
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 

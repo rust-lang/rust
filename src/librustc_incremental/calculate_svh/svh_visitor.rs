@@ -602,7 +602,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             // def-id is the same, so it suffices to hash the def-id
             Def::Fn(..) |
             Def::Mod(..) |
-            Def::ForeignMod(..) |
             Def::Static(..) |
             Def::Variant(..) |
             Def::Enum(..) |

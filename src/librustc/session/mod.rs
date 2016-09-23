@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::DepGraph;
-use hir::def_id::DefIndex;
+use hir::def_id::{CrateNum, DefIndex};
 use hir::svh::Svh;
 use lint;
 use middle::cstore::CrateStore;
@@ -93,8 +93,8 @@ pub struct Session {
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
-    pub injected_allocator: Cell<Option<ast::CrateNum>>,
-    pub injected_panic_runtime: Cell<Option<ast::CrateNum>>,
+    pub injected_allocator: Cell<Option<CrateNum>>,
+    pub injected_panic_runtime: Cell<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -266,11 +266,13 @@ impl Session {
         }
         lints.insert(id, vec!((lint_id, sp, msg)));
     }
-    pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
+    pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();
 
-        match id.checked_add(count) {
-            Some(next) => self.next_node_id.set(next),
+        match id.as_usize().checked_add(count) {
+            Some(next) => {
+                self.next_node_id.set(ast::NodeId::new(next));
+            }
             None => bug!("Input too large, ran out of node ids!")
         }
 
@@ -545,7 +547,7 @@ pub fn build_session_(sopts: config::Options,
         crate_disambiguator: RefCell::new(token::intern("").as_str()),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
-        next_node_id: Cell::new(1),
+        next_node_id: Cell::new(NodeId::new(1)),
         injected_allocator: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
         imported_macro_spans: RefCell::new(HashMap::new()),

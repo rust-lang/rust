@@ -54,6 +54,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
 use abi::FAT_PTR_ADDR;
+use base;
 use build::*;
 use common::*;
 use debuginfo::DebugLoc;
@@ -556,9 +557,9 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
 
     let attempts;
     match hint {
-        attr::ReprInt(span, ity) => {
+        attr::ReprInt(ity) => {
             if !bounds_usable(cx, ity, bounds) {
-                span_bug!(span, "representation hint insufficient for discriminant range")
+                bug!("representation hint insufficient for discriminant range")
             }
             return ity;
         }
@@ -963,14 +964,30 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                 Store(bcx, C_null(llptrty), val);
             }
         }
-        StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
+        StructWrappedNullablePointer { nndiscr, ref discrfield, ref nonnull, .. } => {
             if discr != nndiscr {
-                let llptrptr = GEPi(bcx, val, &discrfield[..]);
-                let llptrty = val_ty(llptrptr).element_type();
-                Store(bcx, C_null(llptrty), llptrptr);
+                if target_sets_discr_via_memset(bcx) {
+                    // Issue #34427: As workaround for LLVM bug on
+                    // ARM, use memset of 0 on whole struct rather
+                    // than storing null to single target field.
+                    let b = B(bcx);
+                    let llptr = b.pointercast(val, Type::i8(b.ccx).ptr_to());
+                    let fill_byte = C_u8(b.ccx, 0);
+                    let size = C_uint(b.ccx, nonnull.size);
+                    let align = C_i32(b.ccx, nonnull.align as i32);
+                    base::call_memset(&b, llptr, fill_byte, size, align, false);
+                } else {
+                    let llptrptr = GEPi(bcx, val, &discrfield[..]);
+                    let llptrty = val_ty(llptrptr).element_type();
+                    Store(bcx, C_null(llptrty), llptrptr);
+                }
             }
         }
     }
+}
+
+fn target_sets_discr_via_memset<'blk, 'tcx>(bcx: Block<'blk, 'tcx>) -> bool {
+    bcx.sess().target.target.arch == "arm" || bcx.sess().target.target.arch == "aarch64"
 }
 
 fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {

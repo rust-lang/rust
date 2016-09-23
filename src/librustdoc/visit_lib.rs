@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::cstore::{CrateStore, ChildItem, DefLike};
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::{AccessLevels, AccessLevel};
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty::Visibility;
-use syntax::ast;
 
 use std::cell::RefMut;
 
@@ -42,7 +41,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    pub fn visit_lib(&mut self, cnum: ast::CrateNum) {
+    pub fn visit_lib(&mut self, cnum: CrateNum) {
         let did = DefId { krate: cnum, index: CRATE_DEF_INDEX };
         self.update(did, Some(AccessLevel::Public));
         self.visit_mod(did);
@@ -65,45 +64,27 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    pub fn visit_mod(&mut self, did: DefId) {
-        for item in self.cstore.item_children(did) {
-            if let DefLike::DlDef(def) = item.def {
-                match def {
-                    Def::Mod(did) |
-                    Def::ForeignMod(did) |
-                    Def::Trait(did) |
-                    Def::Struct(did) |
-                    Def::Union(did) |
-                    Def::Enum(did) |
-                    Def::TyAlias(did) |
-                    Def::Fn(did) |
-                    Def::Method(did) |
-                    Def::Static(did, _) |
-                    Def::Const(did) => self.visit_item(did, item),
-                    _ => {}
-                }
-            }
+    pub fn visit_mod(&mut self, def_id: DefId) {
+        for item in self.cstore.item_children(def_id) {
+            self.visit_item(item.def_id);
         }
     }
 
-    fn visit_item(&mut self, did: DefId, item: ChildItem) {
-        let inherited_item_level = match item.def {
-            DefLike::DlImpl(..) | DefLike::DlField => unreachable!(),
-            DefLike::DlDef(def) => {
-                match def {
-                    Def::ForeignMod(..) => self.prev_level,
-                    _ => if item.vis == Visibility::Public { self.prev_level } else { None }
-                }
-            }
+    fn visit_item(&mut self, def_id: DefId) {
+        let vis = self.cstore.visibility(def_id);
+        let inherited_item_level = if vis == Visibility::Public {
+            self.prev_level
+        } else {
+            None
         };
 
-        let item_level = self.update(did, inherited_item_level);
+        let item_level = self.update(def_id, inherited_item_level);
 
-        if let DefLike::DlDef(Def::Mod(did)) = item.def {
+        if let Some(Def::Mod(_)) = self.cstore.describe_def(def_id) {
             let orig_level = self.prev_level;
 
             self.prev_level = item_level;
-            self.visit_mod(did);
+            self.visit_mod(def_id);
             self.prev_level = orig_level;
         }
     }

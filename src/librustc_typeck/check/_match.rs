@@ -134,7 +134,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // what the type of the binding `x` ought to be
                 match tcx.expect_def(pat.id) {
                     Def::Err => {}
-                    Def::Local(_, var_id) => {
+                    Def::Local(def_id) => {
+                        let var_id = tcx.map.as_local_node_id(def_id).unwrap();
                         if var_id != pat.id {
                             let vt = self.local_ty(pat.span, var_id);
                             self.demand_eqtype(pat.span, vt, typ);
