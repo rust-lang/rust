@@ -667,7 +667,7 @@ pub trait Resolver {
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>);
 
     fn find_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
-    fn resolve_invoc(&mut self, invoc: &Invocation) -> Option<Rc<SyntaxExtension>>;
+    fn resolve_invoc(&mut self, scope: Mark, invoc: &Invocation) -> Option<Rc<SyntaxExtension>>;
 }
 
 pub enum LoadedMacro {
@@ -688,7 +688,9 @@ impl Resolver for DummyResolver {
     fn add_expansions_at_stmt(&mut self, _id: ast::NodeId, _macros: Vec<Mark>) {}
 
     fn find_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
-    fn resolve_invoc(&mut self, _invoc: &Invocation) -> Option<Rc<SyntaxExtension>> { None }
+    fn resolve_invoc(&mut self, _scope: Mark, _invoc: &Invocation) -> Option<Rc<SyntaxExtension>> {
+        None
+    }
 }
 
 #[derive(Clone)]

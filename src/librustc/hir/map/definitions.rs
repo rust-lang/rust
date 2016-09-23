@@ -225,7 +225,8 @@ impl Definitions {
     }
 
     pub fn collect(&mut self, krate: &ast::Crate) {
-        let mut def_collector = DefCollector::root(self);
+        let mut def_collector = DefCollector::new(self);
+        def_collector.collect_root();
         visit::walk_crate(&mut def_collector, krate);
     }
 

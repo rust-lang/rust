@@ -168,10 +168,6 @@ impl Invocation {
             InvocationKind::Attr { ref attr, .. } => attr.span,
         }
     }
-
-    pub fn mark(&self) -> Mark {
-        self.expansion_data.mark
-    }
 }
 
 pub struct MacroExpander<'a, 'b:'a> {
@@ -229,7 +225,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let ExpansionData { depth, mark, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
 
-            let expansion = match self.cx.resolver.resolve_invoc(&invoc) {
+            let scope = if self.monotonic { mark } else { orig_expansion_data.mark };
+            self.cx.current_expansion.mark = scope;
+            let expansion = match self.cx.resolver.resolve_invoc(scope, &invoc) {
                 Some(ext) => self.expand_invoc(invoc, ext),
                 None => invoc.expansion_kind.dummy(invoc.span()),
             };
@@ -277,8 +275,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
         self.cx.cfg = crate_config;
 
-        let mark = self.cx.current_expansion.mark;
-        self.cx.resolver.visit_expansion(mark, &result.0);
+        if self.monotonic {
+            let mark = self.cx.current_expansion.mark;
+            self.cx.resolver.visit_expansion(mark, &result.0);
+        }
+
         result
     }
 
@@ -338,7 +339,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     /// Expand a macro invocation. Returns the result of expansion.
     fn expand_bang_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
-        let (mark, kind) = (invoc.mark(), invoc.expansion_kind);
+        let (mark, kind) = (invoc.expansion_data.mark, invoc.expansion_kind);
         let (attrs, mac, ident, span) = match invoc.kind {
             InvocationKind::Bang { attrs, mac, ident, span } => (attrs, mac, ident, span),
             _ => unreachable!(),

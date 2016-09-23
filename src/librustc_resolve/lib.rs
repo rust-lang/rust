@@ -41,7 +41,6 @@ use self::TypeParameters::*;
 use self::RibKind::*;
 use self::UseLexicalScopeFlag::*;
 use self::ModulePrefixResult::*;
-use self::ParentLink::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
@@ -61,6 +60,7 @@ use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
+use syntax::attr;
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
@@ -753,18 +753,15 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
-/// The link from a module up to its nearest parent node.
-#[derive(Clone,Debug)]
-enum ParentLink<'a> {
-    NoParentLink,
-    ModuleParentLink(Module<'a>, Name),
-    BlockParentLink(Module<'a>, NodeId),
+enum ModuleKind {
+    Block(NodeId),
+    Def(Def, Name),
 }
 
 /// One node in the tree of modules.
 pub struct ModuleS<'a> {
-    parent_link: ParentLink<'a>,
-    def: Option<Def>,
+    parent: Option<Module<'a>>,
+    kind: ModuleKind,
 
     // The node id of the closest normal module (`mod`) ancestor (including this module).
     normal_ancestor_id: Option<NodeId>,
@@ -775,7 +772,7 @@ pub struct ModuleS<'a> {
 
     resolutions: RefCell<FnvHashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
 
-    no_implicit_prelude: Cell<bool>,
+    no_implicit_prelude: bool,
 
     glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
@@ -792,19 +789,18 @@ pub struct ModuleS<'a> {
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
-    fn new(parent_link: ParentLink<'a>, def: Option<Def>, normal_ancestor_id: Option<NodeId>)
-           -> Self {
+    fn new(parent: Option<Module<'a>>, kind: ModuleKind) -> Self {
         ModuleS {
-            parent_link: parent_link,
-            def: def,
-            normal_ancestor_id: normal_ancestor_id,
+            parent: parent,
+            kind: kind,
+            normal_ancestor_id: None,
             extern_crate_id: None,
             resolutions: RefCell::new(FnvHashMap()),
-            no_implicit_prelude: Cell::new(false),
+            no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
-            populated: Cell::new(normal_ancestor_id.is_some()),
+            populated: Cell::new(true),
         }
     }
 
@@ -814,36 +810,36 @@ impl<'a> ModuleS<'a> {
         }
     }
 
+    fn def(&self) -> Option<Def> {
+        match self.kind {
+            ModuleKind::Def(def, _) => Some(def),
+            _ => None,
+        }
+    }
+
     fn def_id(&self) -> Option<DefId> {
-        self.def.as_ref().map(Def::def_id)
+        self.def().as_ref().map(Def::def_id)
     }
 
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(&self) -> bool {
-        match self.def {
-            Some(Def::Mod(_)) => true,
+        match self.kind {
+            ModuleKind::Def(Def::Mod(_), _) => true,
             _ => false,
         }
     }
 
     fn is_trait(&self) -> bool {
-        match self.def {
-            Some(Def::Trait(_)) => true,
+        match self.kind {
+            ModuleKind::Def(Def::Trait(_), _) => true,
             _ => false,
-        }
-    }
-
-    fn parent(&self) -> Option<&'a Self> {
-        match self.parent_link {
-            ModuleParentLink(parent, _) | BlockParentLink(parent, _) => Some(parent),
-            NoParentLink => None,
         }
     }
 }
 
 impl<'a> fmt::Debug for ModuleS<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.def)
+        write!(f, "{:?}", self.def())
     }
 }
 
@@ -903,7 +899,7 @@ impl<'a> NameBinding<'a> {
     fn def(&self) -> Def {
         match self.kind {
             NameBindingKind::Def(def) => def,
-            NameBindingKind::Module(module) => module.def.unwrap(),
+            NameBindingKind::Module(module) => module.def().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
             NameBindingKind::Ambiguity { .. } => Def::Err,
         }
@@ -1074,7 +1070,7 @@ pub struct Resolver<'a> {
     macro_names: FnvHashSet<Name>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
-    expansion_data: Vec<macros::ExpansionData>,
+    expansion_data: FnvHashMap<u32, macros::ExpansionData>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1111,7 +1107,7 @@ impl<'a> ResolverArenas<'a> {
 impl<'a> ty::NodeIdTree for Resolver<'a> {
     fn is_descendant_of(&self, mut node: NodeId, ancestor: NodeId) -> bool {
         while node != ancestor {
-            node = match self.module_map[&node].parent() {
+            node = match self.module_map[&node].parent {
                 Some(parent) => parent.normal_ancestor_id.unwrap(),
                 None => return false,
             }
@@ -1174,16 +1170,22 @@ impl Named for hir::PathSegment {
 
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
+               krate: &Crate,
                make_glob_map: MakeGlobMap,
                macro_loader: &'a mut MacroLoader,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
-        let root_def_id = DefId::local(CRATE_DEF_INDEX);
-        let graph_root =
-            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), Some(CRATE_NODE_ID));
-        let graph_root = arenas.alloc_module(graph_root);
+        let root_def = Def::Mod(DefId::local(CRATE_DEF_INDEX));
+        let graph_root = arenas.alloc_module(ModuleS {
+            normal_ancestor_id: Some(CRATE_NODE_ID),
+            no_implicit_prelude: attr::contains_name(&krate.attrs, "no_implicit_prelude"),
+            ..ModuleS::new(None, ModuleKind::Def(root_def, keywords::Invalid.name()))
+        });
         let mut module_map = NodeMap();
         module_map.insert(CRATE_NODE_ID, graph_root);
+
+        let mut expansion_data = FnvHashMap();
+        expansion_data.insert(0, macros::ExpansionData::default()); // Crate root expansion
 
         Resolver {
             session: session,
@@ -1240,7 +1242,7 @@ impl<'a> Resolver<'a> {
 
             macro_loader: macro_loader,
             macro_names: FnvHashSet(),
-            expansion_data: vec![macros::ExpansionData::default()],
+            expansion_data: expansion_data,
         }
     }
 
@@ -1263,20 +1265,12 @@ impl<'a> Resolver<'a> {
         self.report_errors();
     }
 
-    fn new_module(&self,
-                  parent_link: ParentLink<'a>,
-                  def: Option<Def>,
-                  normal_ancestor_id: Option<NodeId>)
-                  -> Module<'a> {
-        self.arenas.alloc_module(ModuleS::new(parent_link, def, normal_ancestor_id))
-    }
-
-    fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def, local_node_id: NodeId)
-                               -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), Some(local_node_id));
-        module.extern_crate_id = Some(local_node_id);
-        module.populated.set(false);
-        self.arenas.modules.alloc(module)
+    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, local: bool) -> Module<'a> {
+        self.arenas.alloc_module(ModuleS {
+            normal_ancestor_id: if local { self.current_module.normal_ancestor_id } else { None },
+            populated: Cell::new(local),
+            ..ModuleS::new(Some(parent), kind)
+        })
     }
 
     fn get_ribs<'b>(&'b mut self, ns: Namespace) -> &'b mut Vec<Rib<'a>> {
@@ -1336,11 +1330,10 @@ impl<'a> Resolver<'a> {
                                        -> Option<Module<'a>> {
             match this.resolve_name_in_module(module, needle, TypeNS, false, None) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
-                _ => match module.parent_link {
-                    ModuleParentLink(ref parent, _) => {
-                        search_parent_externals(this, needle, parent)
-                    }
-                    _ => None,
+                _ => if let (&ModuleKind::Def(..), Some(parent)) = (&module.kind, module.parent) {
+                    search_parent_externals(this, needle, parent)
+                } else {
+                    None
                 },
             }
         }
@@ -1516,15 +1509,13 @@ impl<'a> Resolver<'a> {
                     return Some(LexicalScopeBinding::Item(binding));
                 }
 
-                // We can only see through anonymous modules
-                if module.def.is_some() {
-                    return match self.prelude {
-                        Some(prelude) if !module.no_implicit_prelude.get() => {
-                            self.resolve_name_in_module(prelude, name, ns, false, None).success()
-                                .map(LexicalScopeBinding::Item)
-                        }
-                        _ => None,
-                    };
+                if let ModuleKind::Block(..) = module.kind { // We can see through blocks
+                } else if !module.no_implicit_prelude {
+                    return self.prelude.and_then(|prelude| {
+                        self.resolve_name_in_module(prelude, name, ns, false, None).success()
+                    }).map(LexicalScopeBinding::Item)
+                } else {
+                    return None;
                 }
             }
 
@@ -1561,7 +1552,7 @@ impl<'a> Resolver<'a> {
         while i < module_path.len() && "super" == module_path[i].as_str() {
             debug!("(resolving module prefix) resolving `super` at {}",
                    module_to_string(&containing_module));
-            if let Some(parent) = containing_module.parent() {
+            if let Some(parent) = containing_module.parent {
                 containing_module = self.module_map[&parent.normal_ancestor_id.unwrap()];
                 i += 1;
             } else {
@@ -2954,7 +2945,7 @@ impl<'a> Resolver<'a> {
                                                                    UseLexicalScope,
                                                                    Some(expr.span)) {
                                         Success(e) => {
-                                            if let Some(def_type) = e.def {
+                                            if let Some(def_type) = e.def() {
                                                 def = def_type;
                                             }
                                             context = UnresolvedNameContext::PathIsMod(parent);
@@ -3163,16 +3154,13 @@ impl<'a> Resolver<'a> {
             };
             search_in_module(self, search_module);
 
-            match search_module.parent_link {
-                NoParentLink | ModuleParentLink(..) => {
-                    if !search_module.no_implicit_prelude.get() {
-                        self.prelude.map(|prelude| search_in_module(self, prelude));
-                    }
-                    break;
+            if let ModuleKind::Block(..) = search_module.kind {
+                search_module = search_module.parent.unwrap();
+            } else {
+                if !search_module.no_implicit_prelude {
+                    self.prelude.map(|prelude| search_in_module(self, prelude));
                 }
-                BlockParentLink(parent_module, _) => {
-                    search_module = parent_module;
-                }
+                break;
             }
         }
 
@@ -3240,9 +3228,9 @@ impl<'a> Resolver<'a> {
                 // collect submodules to explore
                 if let Ok(module) = name_binding.module() {
                     // form the path
-                    let path_segments = match module.parent_link {
-                        NoParentLink => path_segments.clone(),
-                        ModuleParentLink(_, name) => {
+                    let path_segments = match module.kind {
+                        _ if module.parent.is_none() => path_segments.clone(),
+                        ModuleKind::Def(_, name) => {
                             let mut paths = path_segments.clone();
                             let ident = ast::Ident::with_empty_ctxt(name);
                             let params = PathParameters::none();
@@ -3259,7 +3247,7 @@ impl<'a> Resolver<'a> {
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
-                        if !worklist.iter().any(|&(m, ..)| m.def == module.def) {
+                        if !worklist.iter().any(|&(m, ..)| m.def() == module.def()) {
                             worklist.push((module, path_segments, is_extern));
                         }
                     }
@@ -3294,7 +3282,7 @@ impl<'a> Resolver<'a> {
         let mut path_resolution = err_path_resolution();
         let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, Some(path.span)) {
             Success(module) => {
-                path_resolution = PathResolution::new(module.def.unwrap());
+                path_resolution = PathResolution::new(module.def().unwrap());
                 ty::Visibility::Restricted(module.normal_ancestor_id.unwrap())
             }
             Indeterminate => unreachable!(),
@@ -3360,10 +3348,10 @@ impl<'a> Resolver<'a> {
             return self.report_conflict(parent, name, ns, old_binding, binding);
         }
 
-        let container = match parent.def {
-            Some(Def::Mod(_)) => "module",
-            Some(Def::Trait(_)) => "trait",
-            None => "block",
+        let container = match parent.kind {
+            ModuleKind::Def(Def::Mod(_), _) => "module",
+            ModuleKind::Def(Def::Trait(_), _) => "trait",
+            ModuleKind::Block(..) => "block",
             _ => "enum",
         };
 
@@ -3510,17 +3498,15 @@ fn module_to_string(module: Module) -> String {
     let mut names = Vec::new();
 
     fn collect_mod(names: &mut Vec<ast::Name>, module: Module) {
-        match module.parent_link {
-            NoParentLink => {}
-            ModuleParentLink(ref module, name) => {
+        if let ModuleKind::Def(_, name) = module.kind {
+            if let Some(parent) = module.parent {
                 names.push(name);
-                collect_mod(names, module);
+                collect_mod(names, parent);
             }
-            BlockParentLink(ref module, _) => {
-                // danger, shouldn't be ident?
-                names.push(token::intern("<opaque>"));
-                collect_mod(names, module);
-            }
+        } else {
+            // danger, shouldn't be ident?
+            names.push(token::intern("<opaque>"));
+            collect_mod(names, module);
         }
     }
     collect_mod(&mut names, module);
