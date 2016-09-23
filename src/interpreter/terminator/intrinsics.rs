@@ -199,14 +199,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (size, _) = self.size_and_align_of_dst(ty, args_ptrs[0])?;
                 self.memory.write_uint(dest, size, pointer_size)?;
             }
-            // FIXME: wait for eval_operand_to_ptr to be gone
-            /*
             "type_name" => {
                 let ty = substs.type_at(0);
                 let ty_name = ty.to_string();
-                let s = self.str_to_value(&ty_name)?;
-                self.memory.write_ptr(dest, s)?;
-            }*/
+                let s = self.str_to_primval(&ty_name)?;
+                self.memory.write_primval(dest, s)?;
+            }
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);

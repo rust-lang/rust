@@ -204,42 +204,45 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
+    pub fn str_to_primval(&mut self, s: &str) -> EvalResult<'tcx, PrimVal> {
+        // FIXME: cache these allocs
+        let ptr = self.memory.allocate(s.len(), 1)?;
+        self.memory.write_bytes(ptr, s.as_bytes())?;
+        self.memory.freeze(ptr.alloc_id)?;
+        Ok(PrimVal::SlicePtr(ptr, s.len() as u64))
+    }
+
+    fn const_to_primval(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, PrimVal> {
         use rustc::middle::const_val::ConstVal::*;
         use rustc_const_math::{ConstInt, ConstIsize, ConstUsize, ConstFloat};
 
         let primval = match *const_val {
-            Integral(ConstInt::I8(i)) => Value::ByVal(PrimVal::I8(i)),
-            Integral(ConstInt::U8(i)) => Value::ByVal(PrimVal::U8(i)),
+            Integral(ConstInt::I8(i)) => PrimVal::I8(i),
+            Integral(ConstInt::U8(i)) => PrimVal::U8(i),
             Integral(ConstInt::Isize(ConstIsize::Is16(i))) |
-            Integral(ConstInt::I16(i)) => Value::ByVal(PrimVal::I16(i)),
+            Integral(ConstInt::I16(i)) => PrimVal::I16(i),
             Integral(ConstInt::Usize(ConstUsize::Us16(i))) |
-            Integral(ConstInt::U16(i)) => Value::ByVal(PrimVal::U16(i)),
+            Integral(ConstInt::U16(i)) => PrimVal::U16(i),
             Integral(ConstInt::Isize(ConstIsize::Is32(i))) |
-            Integral(ConstInt::I32(i)) => Value::ByVal(PrimVal::I32(i)),
+            Integral(ConstInt::I32(i)) => PrimVal::I32(i),
             Integral(ConstInt::Usize(ConstUsize::Us32(i))) |
-            Integral(ConstInt::U32(i)) => Value::ByVal(PrimVal::U32(i)),
+            Integral(ConstInt::U32(i)) => PrimVal::U32(i),
             Integral(ConstInt::Isize(ConstIsize::Is64(i))) |
-            Integral(ConstInt::I64(i)) => Value::ByVal(PrimVal::I64(i)),
+            Integral(ConstInt::I64(i)) => PrimVal::I64(i),
             Integral(ConstInt::Usize(ConstUsize::Us64(i))) |
-            Integral(ConstInt::U64(i)) => Value::ByVal(PrimVal::U64(i)),
-            Float(ConstFloat::F32(f)) => Value::ByVal(PrimVal::F32(f)),
-            Float(ConstFloat::F64(f)) => Value::ByVal(PrimVal::F64(f)),
-            Bool(b) => Value::ByVal(PrimVal::Bool(b)),
-            Char(c) => Value::ByVal(PrimVal::Char(c)),
+            Integral(ConstInt::U64(i)) => PrimVal::U64(i),
+            Float(ConstFloat::F32(f)) => PrimVal::F32(f),
+            Float(ConstFloat::F64(f)) => PrimVal::F64(f),
+            Bool(b) => PrimVal::Bool(b),
+            Char(c) => PrimVal::Char(c),
 
-            Str(ref s) => {
-                let ptr = self.memory.allocate(s.len(), 1)?;
-                self.memory.write_bytes(ptr, s.as_bytes())?;
-                self.memory.freeze(ptr.alloc_id)?;
-                Value::ByVal(PrimVal::SlicePtr(ptr, s.len() as u64))
-            }
+            Str(ref s) => self.str_to_primval(s)?,
 
             ByteStr(ref bs) => {
                 let ptr = self.memory.allocate(bs.len(), 1)?;
                 self.memory.write_bytes(ptr, bs)?;
                 self.memory.freeze(ptr.alloc_id)?;
-                Value::ByVal(PrimVal::Ptr(ptr))
+                PrimVal::Ptr(ptr)
             }
 
             Struct(_)    => unimplemented!(),
@@ -787,7 +790,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal;
                 let value = match *literal {
-                    Literal::Value { ref value } => self.const_to_value(value)?,
+                    Literal::Value { ref value } => Value::ByVal(self.const_to_primval(value)?),
 
                     Literal::Item { def_id, substs } => {
                         if let ty::TyFnDef(..) = ty.sty {
