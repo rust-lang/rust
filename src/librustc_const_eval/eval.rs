@@ -868,7 +868,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           debug!("const call({:?})", call_args);
           eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
       },
-      hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety, lit.span) {
+      hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety) {
           Ok(val) => val,
           Err(err) => signal!(e, err),
       },
@@ -1210,8 +1210,7 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstVal, ty: ty::Ty) 
 
 fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          ty_hint: Option<Ty<'tcx>>,
-                          span: Span)
+                          ty_hint: Option<Ty<'tcx>>)
                           -> Result<ConstVal, ErrKind> {
     use syntax::ast::*;
     use syntax::ast::LitIntType::*;
@@ -1245,21 +1244,22 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
         },
 
         LitKind::Float(ref n, fty) => {
-            Ok(Float(parse_float(n, Some(fty), span)))
+            parse_float(n, Some(fty)).map(Float)
         }
         LitKind::FloatUnsuffixed(ref n) => {
             let fty_hint = match ty_hint.map(|t| &t.sty) {
                 Some(&ty::TyFloat(fty)) => Some(fty),
                 _ => None
             };
-            Ok(Float(parse_float(n, fty_hint, span)))
+            parse_float(n, fty_hint).map(Float)
         }
         LitKind::Bool(b) => Ok(Bool(b)),
         LitKind::Char(c) => Ok(Char(c)),
     }
 }
 
-fn parse_float(num: &str, fty_hint: Option<ast::FloatTy>, span: Span) -> ConstFloat {
+fn parse_float(num: &str, fty_hint: Option<ast::FloatTy>)
+               -> Result<ConstFloat, ErrKind> {
     let val = match fty_hint {
         Some(ast::FloatTy::F32) => num.parse::<f32>().map(F32),
         Some(ast::FloatTy::F64) => num.parse::<f64>().map(F64),
@@ -1271,9 +1271,9 @@ fn parse_float(num: &str, fty_hint: Option<ast::FloatTy>, span: Span) -> ConstFl
             })
         }
     };
-    val.unwrap_or_else(|_| {
+    val.map_err(|_| {
         // FIXME(#31407) this is only necessary because float parsing is buggy
-        span_bug!(span, "could not evaluate float literal (see issue #31407)");
+        UnimplementedConstVal("could not evaluate float literal (see issue #31407)")
     })
 }
 
