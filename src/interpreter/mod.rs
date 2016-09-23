@@ -579,15 +579,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Ref(_, _, ref lvalue) => {
                 let lv = self.eval_lvalue(lvalue)?;
-                let (ptr, extra) = self.get_fat_ptr(dest);
-                self.memory.write_ptr(ptr, lv.ptr)?;
                 match lv.extra {
-                    LvalueExtra::None => {},
+                    LvalueExtra::None => self.memory.write_ptr(dest, lv.ptr)?,
                     LvalueExtra::Length(len) => {
-                        self.memory.write_usize(extra, len)?;
+                        self.memory.write_primval(dest, PrimVal::SlicePtr(lv.ptr, len))?;
                     }
                     LvalueExtra::Vtable(ptr) => {
-                        self.memory.write_ptr(extra, ptr)?;
+                        self.memory.write_primval(dest, PrimVal::VtablePtr(lv.ptr, ptr))?;
                     },
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
@@ -902,21 +900,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     },
 
                     Deref => {
-                        let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
-                        let pointee_ty = self.tcx.struct_tail(pointee_ty);
-                        let ptr = self.memory.read_ptr(base.ptr)?;
-                        let extra = match pointee_ty.sty {
-                            ty::TySlice(_) | ty::TyStr => {
-                                let (_, extra) = self.get_fat_ptr(base.ptr);
-                                let len = self.memory.read_usize(extra)?;
-                                LvalueExtra::Length(len)
-                            }
-                            ty::TyTrait(_) => {
-                                let (_, extra) = self.get_fat_ptr(base.ptr);
-                                let vtable = self.memory.read_ptr(extra)?;
-                                LvalueExtra::Vtable(vtable)
-                            },
-                            _ => LvalueExtra::None,
+                        let (ptr, extra) = match self.read_primval(base.ptr, base_ty)? {
+                            PrimVal::SlicePtr(ptr, n) => (ptr, LvalueExtra::Length(n)),
+                            PrimVal::VtablePtr(ptr, vptr) => (ptr, LvalueExtra::Vtable(vptr)),
+                            PrimVal::Ptr(ptr) => (ptr, LvalueExtra::None),
+                            _ => bug!("can't deref non pointer types"),
                         };
                         return Ok(Lvalue { ptr: ptr, extra: extra });
                     }
@@ -940,12 +928,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
 
         Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
-    }
-
-    fn get_fat_ptr(&self, ptr: Pointer) -> (Pointer, Pointer) {
-        assert_eq!(layout::FAT_PTR_ADDR, 0);
-        assert_eq!(layout::FAT_PTR_EXTRA, 1);
-        (ptr, ptr.offset(self.memory.pointer_size() as isize))
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
@@ -1038,12 +1020,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 PrimVal::FnPtr(self.memory.create_fn_ptr(def_id, substs, fn_ty))
             },
             &ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::FnPtr)?,
+            &ty::TyBox(ty) |
             &ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             &ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                let p = self.memory.read_ptr(ptr)?;
                 if self.type_is_sized(ty) {
-                    PrimVal::Ptr(self.memory.read_ptr(ptr)?)
+                    PrimVal::Ptr(p)
                 } else {
-                    bug!("primitive read of fat pointer type: {:?}", ty);
+                    // FIXME: extract the offset to the tail field for `Box<(i64, i32, [u8])>`
+                    let extra = ptr.offset(self.memory.pointer_size() as isize);
+                    match self.tcx.struct_tail(ty).sty {
+                        ty::TyTrait(..) => PrimVal::VtablePtr(p, self.memory.read_ptr(extra)?),
+                        ty::TySlice(..) |
+                        ty::TyStr => PrimVal::SlicePtr(p, self.memory.read_usize(extra)?),
+                        _ => bug!("unsized primval ptr read from {:?}", ty),
+                    }
                 }
             }
 
