@@ -51,7 +51,6 @@ pub enum DepNode<D: Clone + Debug> {
     WorkProduct(Arc<WorkProductId>),
 
     // Represents different phases in the compiler.
-    CrateReader,
     CollectLanguageItems,
     CheckStaticRecursion,
     ResolveLifetimes,
@@ -171,7 +170,6 @@ impl<D: Clone + Debug> DepNode<D> {
 
         match *self {
             Krate => Some(Krate),
-            CrateReader => Some(CrateReader),
             CollectLanguageItems => Some(CollectLanguageItems),
             CheckStaticRecursion => Some(CheckStaticRecursion),
             ResolveLifetimes => Some(ResolveLifetimes),
