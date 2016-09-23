@@ -107,7 +107,7 @@ nav.main .current {
     border-bottom-color: #000;
 }
 nav.main .separator {
-    border-color: 1px solid #000;
+    border: 1px solid #000;
 }
 a {
     color: #000;
