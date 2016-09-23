@@ -243,7 +243,14 @@ impl Build {
         // Almost all of these are simple one-liners that shell out to the
         // corresponding functionality in the extra modules, where more
         // documentation can be found.
-        for target in step::all(self) {
+        let steps = step::all(self);
+
+        self.verbose("bootstrap build plan:");
+        for step in &steps {
+            self.verbose(&format!("{:?}", step));
+        }
+
+        for target in steps {
             let doc_out = self.out.join(&target.target).join("doc");
             match target.src {
                 Llvm { _dummy } => {
