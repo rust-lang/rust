@@ -11,7 +11,7 @@
 use {Module, Resolver};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefIndex};
-use rustc::hir::map::DefCollector;
+use rustc::hir::map::{self, DefCollector};
 use std::rc::Rc;
 use syntax::ast;
 use syntax::errors::DiagnosticBuilder;
@@ -27,6 +27,9 @@ use syntax::util::lev_distance::find_best_match_for_name;
 pub struct ExpansionData<'a> {
     pub module: Module<'a>,
     def_index: DefIndex,
+    // True if this expansion is in a `const_integer` position, for example `[u32; m!()]`.
+    // c.f. `DefCollector::visit_ast_const_integer`.
+    const_integer: bool,
 }
 
 impl<'a> ExpansionData<'a> {
@@ -34,6 +37,7 @@ impl<'a> ExpansionData<'a> {
         ExpansionData {
             module: graph_root,
             def_index: CRATE_DEF_INDEX,
+            const_integer: false,
         }
     }
 }
@@ -49,6 +53,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.expansion_data.insert(mark.as_u32(), ExpansionData {
             module: module,
             def_index: module.def_id().unwrap().index,
+            const_integer: false,
         });
         mark
     }
@@ -156,17 +161,21 @@ impl<'a> Resolver<'a> {
 
     fn collect_def_ids(&mut self, mark: Mark, expansion: &Expansion) {
         let expansion_data = &mut self.expansion_data;
-        let module = self.current_module;
-        let def_index = expansion_data[&mark.as_u32()].def_index;
-        let visit_macro_invoc = &mut |id: ast::NodeId, def_index| {
-            expansion_data.insert(id.as_u32(), ExpansionData {
-                def_index: def_index,
+        let ExpansionData { def_index, const_integer, module } = expansion_data[&mark.as_u32()];
+        let visit_macro_invoc = &mut |invoc: map::MacroInvocationData| {
+            expansion_data.entry(invoc.id.as_u32()).or_insert(ExpansionData {
+                def_index: invoc.def_index,
+                const_integer: invoc.const_integer,
                 module: module,
             });
         };
 
         let mut def_collector = DefCollector::new(&mut self.definitions);
         def_collector.visit_macro_invoc = Some(visit_macro_invoc);
-        def_collector.with_parent(def_index, |def_collector| expansion.visit_with(def_collector));
+        def_collector.with_parent(def_index, |def_collector| if !const_integer {
+            expansion.visit_with(def_collector)
+        } else if let Expansion::Expr(ref expr) = *expansion {
+            def_collector.visit_ast_const_integer(expr);
+        });
     }
 }
