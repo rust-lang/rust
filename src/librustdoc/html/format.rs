@@ -657,7 +657,6 @@ impl<'a> fmt::Display for Method<'a> {
         let decl = self.0;
         let mut args = String::new();
         for (i, input) in decl.inputs.values.iter().enumerate() {
-            if i > 0 || !args.is_empty() { args.push_str(", "); }
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => args.push_str("self"),
@@ -672,11 +671,16 @@ impl<'a> fmt::Display for Method<'a> {
                     }
                 }
             } else {
+                args.push_str("\n    ");
                 if !input.name.is_empty() {
                     args.push_str(&format!("{}: ", input.name));
                 }
                 args.push_str(&format!("{}", input.type_));
             }
+            if i + 1 < decl.inputs.values.len() { args.push_str(","); }
+        }
+        if let Some(None) = decl.inputs.values.iter().last().map(|val| val.to_self()) {
+            args.push_str("\n");
         }
         write!(f, "({args}){arrow}", args = args, arrow = decl.output)
     }
