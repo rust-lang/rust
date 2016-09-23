@@ -21,9 +21,9 @@ use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
 use fold::*;
-use parse::{ParseSess, lexer};
+use parse::{ParseSess, PResult, lexer};
 use parse::parser::Parser;
-use parse::token::{intern, keywords};
+use parse::token::{self, intern, keywords};
 use print::pprust;
 use ptr::P;
 use tokenstream::{TokenTree, TokenStream};
@@ -38,12 +38,12 @@ macro_rules! expansions {
     ($($kind:ident: $ty:ty [$($vec:ident, $ty_elt:ty)*], $kind_name:expr, .$make:ident,
             $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
             $(.$visit:ident)*  $(lift .$visit_elt:ident)*;)*) => {
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, PartialEq, Eq)]
         pub enum ExpansionKind { OptExpr, $( $kind, )*  }
         pub enum Expansion { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
 
         impl ExpansionKind {
-            fn name(self) -> &'static str {
+            pub fn name(self) -> &'static str {
                 match self {
                     ExpansionKind::OptExpr => "expression",
                     $( ExpansionKind::$kind => $kind_name, )*
@@ -105,6 +105,12 @@ macro_rules! expansions {
             $($(fn $fold_elt(&mut self, node: $ty_elt) -> $ty {
                 self.expand(Expansion::$kind(SmallVector::one(node))).$make()
             })*)*
+        }
+
+        impl<'a> MacResult for ::ext::tt::macro_rules::ParserAnyMacro<'a> {
+            $(fn $make(self: Box<::ext::tt::macro_rules::ParserAnyMacro<'a>>) -> Option<$ty> {
+                Some(self.make(ExpansionKind::$kind).$make())
+            })*
         }
     }
 }
@@ -446,6 +452,47 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         expanded.fold_with(&mut Marker {
             mark: mark,
             expn_id: Some(self.cx.backtrace()),
+        })
+    }
+}
+
+impl<'a> Parser<'a> {
+    pub fn parse_expansion(&mut self, kind: ExpansionKind) -> PResult<'a, Expansion> {
+        Ok(match kind {
+            ExpansionKind::Items => {
+                let mut items = SmallVector::zero();
+                while let Some(item) = self.parse_item()? {
+                    items.push(item);
+                }
+                Expansion::Items(items)
+            }
+            ExpansionKind::TraitItems => {
+                let mut items = SmallVector::zero();
+                while self.token != token::Eof {
+                    items.push(self.parse_trait_item()?);
+                }
+                Expansion::TraitItems(items)
+            }
+            ExpansionKind::ImplItems => {
+                let mut items = SmallVector::zero();
+                while self.token != token::Eof {
+                    items.push(self.parse_impl_item()?);
+                }
+                Expansion::ImplItems(items)
+            }
+            ExpansionKind::Stmts => {
+                let mut stmts = SmallVector::zero();
+                while self.token != token::Eof {
+                    if let Some(stmt) = self.parse_full_stmt(true)? {
+                        stmts.push(stmt);
+                    }
+                }
+                Expansion::Stmts(stmts)
+            }
+            ExpansionKind::Expr => Expansion::Expr(self.parse_expr()?),
+            ExpansionKind::OptExpr => Expansion::OptExpr(Some(self.parse_expr()?)),
+            ExpansionKind::Ty => Expansion::Ty(self.parse_ty()?),
+            ExpansionKind::Pat => Expansion::Pat(self.parse_pat()?),
         })
     }
 }
