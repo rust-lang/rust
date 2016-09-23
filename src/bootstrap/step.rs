@@ -418,7 +418,6 @@ impl<'a> Step<'a> {
                     self.check_crate_std(compiler),
                     self.check_crate_test(compiler),
                     self.check_debuginfo(compiler),
-                    self.dist(stage),
                 ];
 
                 // If we're testing the build triple, then we know we can
@@ -463,6 +462,9 @@ impl<'a> Step<'a> {
                         // misc
                         self.check_linkcheck(stage),
                         self.check_tidy(stage),
+
+                        // can we make the distributables?
+                        self.dist(stage),
                     ]);
                 }
                 return base
