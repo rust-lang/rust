@@ -14,10 +14,9 @@
 //! any imports resolved.
 
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
-use Module;
+use {Module, ModuleS, ModuleKind};
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind, ToNameBinding};
-use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
@@ -34,7 +33,7 @@ use syntax::parse::token;
 
 use syntax::ast::{Block, Crate};
 use syntax::ast::{ForeignItem, ForeignItemKind, Item, ItemKind};
-use syntax::ast::{Mutability, StmtKind, TraitItemKind};
+use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::parse::token::keywords;
 use syntax::visit::{self, Visitor};
@@ -56,8 +55,6 @@ impl<'a> ToNameBinding<'a> for (Def, Span, ty::Visibility) {
 impl<'b> Resolver<'b> {
     /// Constructs the reduced graph for the entire crate.
     pub fn build_reduced_graph(&mut self, krate: &Crate) {
-        let no_implicit_prelude = attr::contains_name(&krate.attrs, "no_implicit_prelude");
-        self.graph_root.no_implicit_prelude.set(no_implicit_prelude);
         visit::walk_crate(&mut BuildReducedGraphVisitor { resolver: self }, krate);
     }
 
@@ -196,9 +193,11 @@ impl<'b> Resolver<'b> {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
                     };
-                    let parent_link = ModuleParentLink(parent, name);
-                    let def = Def::Mod(def_id);
-                    let module = self.new_extern_crate_module(parent_link, def, item.id);
+                    let module = self.arenas.alloc_module(ModuleS {
+                        extern_crate_id: Some(item.id),
+                        populated: Cell::new(false),
+                        ..ModuleS::new(Some(parent), ModuleKind::Def(Def::Mod(def_id), name))
+                    });
                     self.define(parent, name, TypeNS, (module, sp, vis));
 
                     self.populate_module_if_necessary(module);
@@ -206,12 +205,13 @@ impl<'b> Resolver<'b> {
             }
 
             ItemKind::Mod(..) => {
-                let parent_link = ModuleParentLink(parent, name);
                 let def = Def::Mod(self.definitions.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), Some(item.id));
-                module.no_implicit_prelude.set({
-                    parent.no_implicit_prelude.get() ||
+                let module = self.arenas.alloc_module(ModuleS {
+                    no_implicit_prelude: parent.no_implicit_prelude || {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
+                    },
+                    normal_ancestor_id: Some(item.id),
+                    ..ModuleS::new(Some(parent), ModuleKind::Def(def, name))
                 });
                 self.define(parent, name, TypeNS, (module, sp, vis));
                 self.module_map.insert(item.id, module);
@@ -244,9 +244,8 @@ impl<'b> Resolver<'b> {
             }
 
             ItemKind::Enum(ref enum_definition, _) => {
-                let parent_link = ModuleParentLink(parent, name);
                 let def = Def::Enum(self.definitions.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), parent.normal_ancestor_id);
+                let module = self.new_module(parent, ModuleKind::Def(def, name), true);
                 self.define(parent, name, TypeNS, (module, sp, vis));
 
                 for variant in &(*enum_definition).variants {
@@ -293,40 +292,17 @@ impl<'b> Resolver<'b> {
 
             ItemKind::DefaultImpl(..) | ItemKind::Impl(..) => {}
 
-            ItemKind::Trait(.., ref items) => {
+            ItemKind::Trait(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.
-                let parent_link = ModuleParentLink(parent, name);
-                let def = Def::Trait(def_id);
-                let module_parent =
-                    self.new_module(parent_link, Some(def), parent.normal_ancestor_id);
-                self.define(parent, name, TypeNS, (module_parent, sp, vis));
-
-                // Add the names of all the items to the trait info.
-                for item in items {
-                    let item_def_id = self.definitions.local_def_id(item.id);
-                    let mut is_static_method = false;
-                    let (def, ns) = match item.node {
-                        TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS),
-                        TraitItemKind::Method(ref sig, _) => {
-                            is_static_method = !sig.decl.has_self();
-                            (Def::Method(item_def_id), ValueNS)
-                        }
-                        TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
-                        TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
-                    };
-
-                    self.define(module_parent, item.ident.name, ns, (def, item.span, vis));
-
-                    self.trait_item_map.insert((item.ident.name, def_id), is_static_method);
-                }
+                let module =
+                    self.new_module(parent, ModuleKind::Def(Def::Trait(def_id), name), true);
+                self.define(parent, name, TypeNS, (module, sp, vis));
+                self.current_module = module;
             }
             ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
         }
-
-        visit::walk_item(&mut BuildReducedGraphVisitor { resolver: self }, item);
-        self.current_module = parent;
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
@@ -375,14 +351,10 @@ impl<'b> Resolver<'b> {
                     {}",
                    block_id);
 
-            let parent_link = BlockParentLink(parent, block_id);
-            let new_module = self.new_module(parent_link, None, parent.normal_ancestor_id);
+            let new_module = self.new_module(parent, ModuleKind::Block(block_id), true);
             self.module_map.insert(block_id, new_module);
             self.current_module = new_module; // Descend into the block.
         }
-
-        visit::walk_block(&mut BuildReducedGraphVisitor { resolver: self }, block);
-        self.current_module = parent;
     }
 
     /// Builds the reduced graph for a single item in an external crate.
@@ -407,8 +379,7 @@ impl<'b> Resolver<'b> {
             Def::Mod(_) | Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {:?}",
                        name, vis);
-                let parent_link = ModuleParentLink(parent, name);
-                let module = self.new_module(parent_link, Some(def), None);
+                let module = self.new_module(parent, ModuleKind::Def(def, name), false);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::Variant(variant_id) => {
@@ -451,8 +422,7 @@ impl<'b> Resolver<'b> {
                     self.trait_item_map.insert((trait_item_name, def_id), false);
                 }
 
-                let parent_link = ModuleParentLink(parent, name);
-                let module = self.new_module(parent_link, Some(def), None);
+                let module = self.new_module(parent, ModuleKind::Def(def, name), false);
                 let _ = self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::TyAlias(..) | Def::AssociatedTy(..) => {
@@ -512,7 +482,10 @@ struct BuildReducedGraphVisitor<'a, 'b: 'a> {
 
 impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &Item) {
+        let parent = self.resolver.current_module;
         self.resolver.build_reduced_graph_for_item(item);
+        visit::walk_item(self, item);
+        self.resolver.current_module = parent;
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
@@ -520,6 +493,36 @@ impl<'a, 'b> Visitor for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_block(&mut self, block: &Block) {
+        let parent = self.resolver.current_module;
         self.resolver.build_reduced_graph_for_block(block);
+        visit::walk_block(self, block);
+        self.resolver.current_module = parent;
+    }
+
+    fn visit_trait_item(&mut self, item: &TraitItem) {
+        let parent = self.resolver.current_module;
+        let def_id = parent.def_id().unwrap();
+
+        // Add the item to the trait info.
+        let item_def_id = self.resolver.definitions.local_def_id(item.id);
+        let mut is_static_method = false;
+        let (def, ns) = match item.node {
+            TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS),
+            TraitItemKind::Method(ref sig, _) => {
+                is_static_method = !sig.decl.has_self();
+                (Def::Method(item_def_id), ValueNS)
+            }
+            TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
+            TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
+        };
+
+        self.resolver.trait_item_map.insert((item.ident.name, def_id), is_static_method);
+
+        let vis = ty::Visibility::Public;
+        self.resolver.define(parent, item.ident.name, ns, (def, item.span, vis));
+
+        self.resolver.current_module = parent.parent.unwrap(); // nearest normal ancestor
+        visit::walk_trait_item(self, item);
+        self.resolver.current_module = parent;
     }
 }
