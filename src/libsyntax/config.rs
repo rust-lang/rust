@@ -303,6 +303,6 @@ fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name("cfg")
 }
 
-fn is_test_or_bench(attr: &ast::Attribute) -> bool {
+pub fn is_test_or_bench(attr: &ast::Attribute) -> bool {
     attr.check_name("test") || attr.check_name("bench")
 }

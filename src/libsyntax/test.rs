@@ -119,7 +119,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         }
         debug!("current path: {}", path_name_i(&self.cx.path));
 
-        let i = if is_test_fn(&self.cx, &i) || is_bench_fn(&self.cx, &i) {
+        if is_test_fn(&self.cx, &i) || is_bench_fn(&self.cx, &i) {
             match i.node {
                 ast::ItemKind::Fn(_, ast::Unsafety::Unsafe, _, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
@@ -136,54 +136,37 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
-                    // debug!("have {} test/bench functions",
-                    //        cx.testfns.len());
-
-                    // Make all tests public so we can call them from outside
-                    // the module (note that the tests are re-exported and must
-                    // be made public themselves to avoid privacy errors).
-                    i.map(|mut i| {
-                        i.vis = ast::Visibility::Public;
-                        i
-                    })
                 }
             }
-        } else {
-            i
-        };
+        }
 
+        let mut item = i.unwrap();
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        let res = match i.node {
-            ast::ItemKind::Mod(..) => fold::noop_fold_item(i, self),
-            _ => SmallVector::one(i),
-        };
+        if let ast::ItemKind::Mod(module) = item.node {
+            let tests = mem::replace(&mut self.tests, Vec::new());
+            let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
+            let mut mod_folded = fold::noop_fold_mod(module, self);
+            let tests = mem::replace(&mut self.tests, tests);
+            let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);
+
+            if !tests.is_empty() || !tested_submods.is_empty() {
+                let (it, sym) = mk_reexport_mod(&mut self.cx, item.id, tests, tested_submods);
+                mod_folded.items.push(it);
+
+                if !self.cx.path.is_empty() {
+                    self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
+                } else {
+                    debug!("pushing nothing, sym: {:?}", sym);
+                    self.cx.toplevel_reexport = Some(sym);
+                }
+            }
+            item.node = ast::ItemKind::Mod(mod_folded);
+        }
         if ident.name != keywords::Invalid.name() {
             self.cx.path.pop();
         }
-        res
-    }
-
-    fn fold_mod(&mut self, m: ast::Mod) -> ast::Mod {
-        let tests = mem::replace(&mut self.tests, Vec::new());
-        let tested_submods = mem::replace(&mut self.tested_submods, Vec::new());
-        let mut mod_folded = fold::noop_fold_mod(m, self);
-        let tests = mem::replace(&mut self.tests, tests);
-        let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);
-
-        if !tests.is_empty() || !tested_submods.is_empty() {
-            let (it, sym) = mk_reexport_mod(&mut self.cx, tests, tested_submods);
-            mod_folded.items.push(it);
-
-            if !self.cx.path.is_empty() {
-                self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
-            } else {
-                debug!("pushing nothing, sym: {:?}", sym);
-                self.cx.toplevel_reexport = Some(sym);
-            }
-        }
-
-        mod_folded
+        SmallVector::one(P(item))
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
@@ -239,7 +222,7 @@ impl fold::Folder for EntryPointCleaner {
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
 }
 
-fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
+fn mk_reexport_mod(cx: &mut TestCtxt, parent: ast::NodeId, tests: Vec<ast::Ident>,
                    tested_submods: Vec<(ast::Ident, ast::Ident)>) -> (P<ast::Item>, ast::Ident) {
     let super_ = token::str_to_ident("super");
 
@@ -257,6 +240,8 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     };
 
     let sym = token::gensym_ident("__test_reexports");
+    let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
+    cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().fold_item(P(ast::Item {
         ident: sym.clone(),
         attrs: Vec::new(),

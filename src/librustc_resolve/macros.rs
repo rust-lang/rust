@@ -43,6 +43,16 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.session.next_node_id()
     }
 
+    fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
+        let mark = Mark::fresh();
+        let module = self.module_map[&id];
+        self.expansion_data.insert(mark.as_u32(), ExpansionData {
+            module: module,
+            def_index: module.def_id().unwrap().index,
+        });
+        mark
+    }
+
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion) {
         self.collect_def_ids(mark, expansion);
         self.current_module = self.expansion_data[&mark.as_u32()].module;
