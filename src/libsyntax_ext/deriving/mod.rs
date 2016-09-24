@@ -221,7 +221,7 @@ pub fn expand_derive(cx: &mut ExtCtxt,
         // the old custom derive mechanism. If the feature isn't enabled, we
         // issue an error, otherwise manufacture the `derive_Foo` attribute.
         } else if !cx.ecfg.enable_custom_derive() {
-            feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+            feature_gate::emit_feature_err(&cx.parse_sess,
                                            "custom_derive",
                                            titem.span,
                                            feature_gate::GateIssue::Language,
