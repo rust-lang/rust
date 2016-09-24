@@ -17,7 +17,6 @@ use rustc::hir::def_id::DefId;
 use rustc::traits;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
-use adt;
 use base;
 use builder::Builder;
 use common::BuilderRef_res;
@@ -142,7 +141,6 @@ pub struct LocalCrateContext<'tcx> {
 
     lltypes: RefCell<FnvHashMap<Ty<'tcx>, Type>>,
     llsizingtypes: RefCell<FnvHashMap<Ty<'tcx>, Type>>,
-    adt_reprs: RefCell<FnvHashMap<Ty<'tcx>, Rc<adt::Repr<'tcx>>>>,
     type_hashcodes: RefCell<FnvHashMap<Ty<'tcx>, String>>,
     int_type: Type,
     opaque_vec_type: Type,
@@ -677,7 +675,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 statics_to_rauw: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FnvHashMap()),
                 llsizingtypes: RefCell::new(FnvHashMap()),
-                adt_reprs: RefCell::new(FnvHashMap()),
                 type_hashcodes: RefCell::new(FnvHashMap()),
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
@@ -916,10 +913,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Type>> {
         &self.local().llsizingtypes
-    }
-
-    pub fn adt_reprs<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Rc<adt::Repr<'tcx>>>> {
-        &self.local().adt_reprs
     }
 
     pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
