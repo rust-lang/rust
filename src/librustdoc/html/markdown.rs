@@ -477,13 +477,10 @@ impl LangString {
         let mut data = LangString::all_false();
         let mut allow_compile_fail = false;
         let mut allow_error_code_check = false;
-        match UnstableFeatures::from_environment() {
-            UnstableFeatures::Allow | UnstableFeatures::Cheat => {
-                allow_compile_fail = true;
-                allow_error_code_check = true;
-            }
-            _ => {},
-        };
+        if UnstableFeatures::from_environment().is_nightly_build() {
+            allow_compile_fail = true;
+            allow_error_code_check = true;
+        }
 
         let tokens = string.split(|c: char|
             !(c == '_' || c == '-' || c.is_alphanumeric())
