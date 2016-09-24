@@ -621,11 +621,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src = self.eval_operand_to_ptr(operand)?;
                         let src_ty = self.operand_ty(operand);
                         let dest_ty = self.monomorphize(dest_ty, self.substs());
+                        // FIXME: cases where dest_ty is not a fat pointer. e.g. Arc<Struct> -> Arc<Trait>
                         assert!(self.type_is_fat_ptr(dest_ty));
                         let (ptr, extra) = self.get_fat_ptr(dest);
                         self.move_(src, ptr, src_ty)?;
                         let src_pointee_ty = pointee_type(src_ty).unwrap();
                         let dest_pointee_ty = pointee_type(dest_ty).unwrap();
+
+                        // A<Struct> -> A<Trait> conversion
+                        let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(src_pointee_ty, dest_pointee_ty);
 
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
@@ -858,7 +862,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
-                    Field(field, _) => {
+                    Field(field, field_ty) => {
                         use rustc::ty::layout::Layout::*;
                         let variant = match *base_layout {
                             Univariant { ref variant, .. } => variant,
@@ -878,7 +882,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         };
 
                         let offset = variant.field_offset(field.index()).bytes();
-                        base.ptr.offset(offset as isize)
+                        let ptr = base.ptr.offset(offset as isize);
+                        match (&field_ty.sty, base.extra) {
+                            (&ty::TyStr, extra @ LvalueExtra::Length(_)) |
+                            (&ty::TySlice(_), extra @ LvalueExtra::Length(_)) |
+                            (&ty::TyTrait(_), extra @ LvalueExtra::Vtable(_)) => return Ok(Lvalue {
+                                ptr: ptr,
+                                extra: extra,
+                            }),
+                            (&ty::TyTrait(_), _) => bug!("trait field without vtable"),
+                            _ => ptr,
+                        }
                     },
 
                     Downcast(_, variant) => {
@@ -899,6 +913,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Deref => {
                         let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
+                        let pointee_ty = self.tcx.struct_tail(pointee_ty);
                         let ptr = self.memory.read_ptr(base.ptr)?;
                         let extra = match pointee_ty.sty {
                             ty::TySlice(_) | ty::TyStr => {
@@ -1049,13 +1064,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             &ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             &ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                 if self.type_is_sized(ty) {
-                    match self.memory.read_ptr(ptr) {
-                        Ok(p) => PrimVal::Ptr(p),
-                        Err(EvalError::ReadBytesAsPointer) => {
-                            PrimVal::IntegerPtr(self.memory.read_usize(ptr)?)
-                        }
-                        Err(e) => return Err(e),
-                    }
+                    PrimVal::Ptr(self.memory.read_ptr(ptr)?)
                 } else {
                     bug!("primitive read of fat pointer type: {:?}", ty);
                 }

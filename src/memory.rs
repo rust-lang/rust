@@ -55,6 +55,12 @@ impl Pointer {
     pub fn points_to_zst(&self) -> bool {
         self.alloc_id == ZST_ALLOC_ID
     }
+    pub fn from_int(i: usize) -> Self {
+        Pointer {
+            alloc_id: ZST_ALLOC_ID,
+            offset: i,
+        }
+    }
     fn zst_ptr() -> Self {
         Pointer {
             alloc_id: ZST_ALLOC_ID,
@@ -105,7 +111,7 @@ const ZST_ALLOC_ID: AllocId = AllocId(0);
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn new(layout: &'a TargetDataLayout, max_memory: usize) -> Self {
-        let mut mem = Memory {
+        Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
@@ -113,21 +119,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             layout: layout,
             memory_size: max_memory,
             memory_usage: 0,
-        };
-        // alloc id 0 is reserved for ZSTs, this is an optimization to prevent ZST
-        // (e.g. function items, (), [], ...) from requiring memory
-        let alloc = Allocation {
-            bytes: Vec::new(),
-            relocations: BTreeMap::new(),
-            undef_mask: UndefMask::new(0),
-            align: 1,
-            immutable: false, // must be mutable, because sometimes we "move out" of a ZST
-        };
-        mem.alloc_map.insert(ZST_ALLOC_ID, alloc);
-        // check that additional zst allocs work
-        debug_assert!(mem.allocate(0, 1).unwrap().points_to_zst());
-        debug_assert!(mem.get(ZST_ALLOC_ID).is_ok());
-        mem
+        }
     }
 
     pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation> {
@@ -293,6 +285,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
+                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -304,6 +297,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
+                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -345,25 +339,30 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     /// Print an allocation and all allocations it points to, recursively.
     pub fn dump(&self, id: AllocId) {
+        use std::fmt::Write;
         let mut allocs_seen = HashSet::new();
         let mut allocs_to_print = VecDeque::new();
         allocs_to_print.push_back(id);
 
         while let Some(id) = allocs_to_print.pop_front() {
             allocs_seen.insert(id);
-            let prefix = format!("Alloc {:<5} ", format!("{}:", id));
-            print!("{}", prefix);
+            let mut msg = format!("Alloc {:<5} ", format!("{}:", id));
+            if id == ZST_ALLOC_ID {
+                trace!("{} zst allocation", msg);
+                continue;
+            }
+            let prefix_len = msg.len();
             let mut relocations = vec![];
 
             let alloc = match (self.alloc_map.get(&id), self.functions.get(&id)) {
                 (Some(a), None) => a,
                 (None, Some(_)) => {
                     // FIXME: print function name
-                    println!("function pointer");
+                    trace!("{} function pointer", msg);
                     continue;
                 },
                 (None, None) => {
-                    println!("(deallocated)");
+                    trace!("{} (deallocated)", msg);
                     continue;
                 },
                 (Some(_), Some(_)) => bug!("miri invariant broken: an allocation id exists that points to both a function and a memory location"),
@@ -377,25 +376,26 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     relocations.push((i, target_id));
                 }
                 if alloc.undef_mask.is_range_defined(i, i + 1) {
-                    print!("{:02x} ", alloc.bytes[i]);
+                    write!(msg, "{:02x} ", alloc.bytes[i]).unwrap();
                 } else {
-                    print!("__ ");
+                    msg.push_str("__ ");
                 }
             }
 
             let immutable = if alloc.immutable { " (immutable)" } else { "" };
-            println!("({} bytes){}", alloc.bytes.len(), immutable);
+            trace!("{}({} bytes){}", msg, alloc.bytes.len(), immutable);
 
             if !relocations.is_empty() {
-                print!("{:1$}", "", prefix.len()); // Print spaces.
+                msg.clear();
+                write!(msg, "{:1$}", "", prefix_len).unwrap(); // Print spaces.
                 let mut pos = 0;
                 let relocation_width = (self.pointer_size() - 1) * 3;
                 for (i, target_id) in relocations {
-                    print!("{:1$}", "", (i - pos) * 3);
-                    print!("└{0:─^1$}┘ ", format!("({})", target_id), relocation_width);
+                    write!(msg, "{:1$}", "", (i - pos) * 3).unwrap();
+                    write!(msg, "└{0:─^1$}┘ ", format!("({})", target_id), relocation_width).unwrap();
                     pos = i + self.pointer_size();
                 }
-                println!("");
+                trace!("{}", msg);
             }
         }
     }
@@ -404,6 +404,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 /// Byte accessors
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn get_bytes_unchecked(&self, ptr: Pointer, size: usize) -> EvalResult<'tcx, &[u8]> {
+        if size == 0 {
+            return Ok(&[]);
+        }
         let alloc = self.get(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
             return Err(EvalError::PointerOutOfBounds {
@@ -416,6 +419,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     fn get_bytes_unchecked_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<'tcx, &mut [u8]> {
+        if size == 0 {
+            return Ok(&mut []);
+        }
         let alloc = self.get_mut(ptr.alloc_id)?;
         if ptr.offset + size > alloc.bytes.len() {
             return Err(EvalError::PointerOutOfBounds {
@@ -428,6 +434,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     fn get_bytes(&self, ptr: Pointer, size: usize, align: usize) -> EvalResult<'tcx, &[u8]> {
+        if size == 0 {
+            return Ok(&[]);
+        }
         self.check_align(ptr, align)?;
         if self.relocations(ptr, size)?.count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
@@ -437,6 +446,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: usize, align: usize) -> EvalResult<'tcx, &mut [u8]> {
+        if size == 0 {
+            return Ok(&mut []);
+        }
         self.check_align(ptr, align)?;
         self.clear_relocations(ptr, size)?;
         self.mark_definedness(ptr, size, true)?;
@@ -447,8 +459,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn freeze(&mut self, alloc_id: AllocId) -> EvalResult<'tcx, ()> {
-        // Never freeze the zero-sized allocation. If you do that, then getting a mutable handle to
-        // _any_ ZST becomes an error, since they all share the same allocation.
+        // It's not possible to freeze the zero-sized allocation, because it doesn't exist.
         if alloc_id != ZST_ALLOC_ID {
             self.get_mut(alloc_id)?.immutable = true;
         }
@@ -456,6 +467,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize, align: usize) -> EvalResult<'tcx, ()> {
+        if size == 0 {
+            return Ok(());
+        }
         self.check_relocation_edges(src, size)?;
 
         let src_bytes = self.get_bytes_unchecked(src, size)?.as_ptr();
@@ -503,7 +517,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         match alloc.relocations.get(&ptr.offset) {
             Some(&alloc_id) => Ok(Pointer { alloc_id: alloc_id, offset: offset }),
-            None => Err(EvalError::ReadBytesAsPointer),
+            None => Ok(Pointer::from_int(offset)),
         }
     }
 
@@ -514,7 +528,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<'tcx, ()> {
-        let pointer_size = self.pointer_size();
         match val {
             PrimVal::Bool(b) => self.write_bool(ptr, b),
             PrimVal::I8(n)   => self.write_int(ptr, n as i64, 1),
@@ -526,7 +539,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             PrimVal::U32(n)  => self.write_uint(ptr, n as u64, 4),
             PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
             PrimVal::Char(c) => self.write_uint(ptr, c as u64, 4),
-            PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, pointer_size),
             PrimVal::F32(f) => self.write_f32(ptr, f),
             PrimVal::F64(f) => self.write_f64(ptr, f),
             PrimVal::FnPtr(p) |
@@ -712,6 +724,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn mark_definedness(&mut self, ptr: Pointer, size: usize, new_state: bool)
         -> EvalResult<'tcx, ()>
     {
+        if size == 0 {
+            return Ok(())
+        }
         let mut alloc = self.get_mut(ptr.alloc_id)?;
         alloc.undef_mask.set_range(ptr.offset, ptr.offset + size, new_state);
         Ok(())

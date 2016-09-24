@@ -132,18 +132,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr_arg = args_ptrs[0];
                 let offset = self.memory.read_isize(args_ptrs[1])?;
 
-                match self.memory.read_ptr(ptr_arg) {
-                    Ok(ptr) => {
-                        let result_ptr = ptr.offset(offset as isize * pointee_size);
-                        self.memory.write_ptr(dest, result_ptr)?;
-                    }
-                    Err(EvalError::ReadBytesAsPointer) => {
-                        let addr = self.memory.read_isize(ptr_arg)?;
-                        let result_addr = addr + offset * pointee_size as i64;
-                        self.memory.write_isize(dest, result_addr)?;
-                    }
-                    Err(e) => return Err(e),
-                }
+                let ptr = self.memory.read_ptr(ptr_arg)?;
+                let result_ptr = ptr.offset(offset as isize * pointee_size);
+                self.memory.write_ptr(dest, result_ptr)?;
             }
 
             "overflowing_sub" => {
@@ -188,22 +179,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "size_of_val" => {
                 let ty = substs.type_at(0);
-                if self.type_is_sized(ty) {
-                    let size = self.type_size(ty) as u64;
-                    self.memory.write_uint(dest, size, pointer_size)?;
-                } else {
-                    match ty.sty {
-                        ty::TySlice(_) | ty::TyStr => {
-                            let elem_ty = ty.sequence_element_type(self.tcx);
-                            let elem_size = self.type_size(elem_ty) as u64;
-                            let ptr_size = self.memory.pointer_size() as isize;
-                            let n = self.memory.read_usize(args_ptrs[0].offset(ptr_size))?;
-                            self.memory.write_uint(dest, n * elem_size, pointer_size)?;
-                        }
-
-                        _ => return Err(EvalError::Unimplemented(format!("unimplemented: size_of_val::<{:?}>", ty))),
-                    }
-                }
+                let (size, _) = self.size_and_align_of_dst(ty, args_ptrs[0])?;
+                self.memory.write_uint(dest, size, pointer_size)?;
             }
             // FIXME: wait for eval_operand_to_ptr to be gone
             /*
@@ -247,5 +224,115 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // as if the call just completed and it's returning to the
         // current frame.
         Ok(())
+    }
+
+    fn size_and_align_of_dst(
+        &self,
+        ty: ty::Ty<'tcx>,
+        value: Pointer,
+    ) -> EvalResult<'tcx, (u64, u64)> {
+        let pointer_size = self.memory.pointer_size();
+        if self.type_is_sized(ty) {
+            Ok((self.type_size(ty) as u64, self.type_align(ty) as u64))
+        } else {
+            match ty.sty {
+                ty::TyAdt(def, substs) => {
+                    // First get the size of all statically known fields.
+                    // Don't use type_of::sizing_type_of because that expects t to be sized,
+                    // and it also rounds up to alignment, which we want to avoid,
+                    // as the unsized field's alignment could be smaller.
+                    assert!(!ty.is_simd());
+                    let layout = self.type_layout(ty);
+                    debug!("DST {} layout: {:?}", ty, layout);
+
+                    // Returns size in bytes of all fields except the last one
+                    // (we will be recursing on the last one).
+                    fn local_prefix_bytes(variant: &ty::layout::Struct) -> u64 {
+                        let fields = variant.offset_after_field.len();
+                        if fields > 1 {
+                            variant.offset_after_field[fields - 2].bytes()
+                        } else {
+                            0
+                        }
+                    }
+
+                    let (sized_size, sized_align) = match *layout {
+                        ty::layout::Layout::Univariant { ref variant, .. } => {
+                            (local_prefix_bytes(variant), variant.align.abi())
+                        }
+                        _ => {
+                            bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
+                                 ty, layout);
+                        }
+                    };
+                    debug!("DST {} statically sized prefix size: {} align: {}",
+                           ty, sized_size, sized_align);
+
+                    // Recurse to get the size of the dynamically sized field (must be
+                    // the last field).
+                    let last_field = def.struct_variant().fields.last().unwrap();
+                    let field_ty = self.field_ty(substs, last_field);
+                    let (unsized_size, unsized_align) = self.size_and_align_of_dst(field_ty, value)?;
+
+                    // FIXME (#26403, #27023): We should be adding padding
+                    // to `sized_size` (to accommodate the `unsized_align`
+                    // required of the unsized field that follows) before
+                    // summing it with `sized_size`. (Note that since #26403
+                    // is unfixed, we do not yet add the necessary padding
+                    // here. But this is where the add would go.)
+
+                    // Return the sum of sizes and max of aligns.
+                    let size = sized_size + unsized_size;
+
+                    // Choose max of two known alignments (combined value must
+                    // be aligned according to more restrictive of the two).
+                    let align = ::std::cmp::max(sized_align, unsized_align);
+
+                    // Issue #27023: must add any necessary padding to `size`
+                    // (to make it a multiple of `align`) before returning it.
+                    //
+                    // Namely, the returned size should be, in C notation:
+                    //
+                    //   `size + ((size & (align-1)) ? align : 0)`
+                    //
+                    // emulated via the semi-standard fast bit trick:
+                    //
+                    //   `(size + (align-1)) & -align`
+
+                    if size & (align - 1) != 0 {
+                        Ok((size + align, align))
+                    } else {
+                        Ok((size, align))
+                    }
+                }
+                ty::TyTrait(..) => {
+                    let (_, vtable) = self.get_fat_ptr(value);
+                    let vtable = self.memory.read_ptr(vtable)?;
+                    // the second entry in the vtable is the dynamic size of the object.
+                    let size = self.memory.read_usize(vtable.offset(pointer_size as isize))?;
+                    let align = self.memory.read_usize(vtable.offset(pointer_size as isize * 2))?;
+                    Ok((size, align))
+                }
+
+                ty::TySlice(_) | ty::TyStr => {
+                    let elem_ty = ty.sequence_element_type(self.tcx);
+                    let elem_size = self.type_size(elem_ty) as u64;
+                    let (_, len_ptr) = self.get_fat_ptr(value);
+                    let n = self.memory.read_usize(len_ptr)?;
+                    let align = self.type_align(elem_ty);
+                    Ok((n * elem_size, align as u64))
+                }
+
+                _ => bug!("size_of_val::<{:?}>", ty),
+            }
+        }
+    }
+    /// Returns the normalized type of a struct field
+    fn field_ty(
+        &self,
+        param_substs: &Substs<'tcx>,
+        f: ty::FieldDef<'tcx>,
+    )-> ty::Ty<'tcx> {
+        self.tcx.normalize_associated_type(&f.ty(self.tcx, param_substs))
     }
 }

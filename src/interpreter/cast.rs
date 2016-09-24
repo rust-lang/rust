@@ -25,8 +25,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             U16(u) => self.cast_const_int(u as u64, ty, false),
             U32(u) => self.cast_const_int(u as u64, ty, false),
             Char(c) => self.cast_const_int(c as u64, ty, false),
-            U64(u) |
-            IntegerPtr(u) => self.cast_const_int(u, ty, false),
+            U64(u) => self.cast_const_int(u, ty, false),
             FnPtr(ptr) |
             Ptr(ptr) => self.cast_ptr(ptr, ty),
         }
@@ -74,7 +73,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyFloat(ast::FloatTy::F64) => Ok(F64(v as f64)),
             ty::TyFloat(ast::FloatTy::F32) if negative => Ok(F32(v as i64 as f32)),
             ty::TyFloat(ast::FloatTy::F32) => Ok(F32(v as f32)),
-            ty::TyRawPtr(_) => Ok(IntegerPtr(v)),
+            ty::TyRawPtr(_) => Ok(Ptr(Pointer::from_int(v as usize))),
             ty::TyChar if v as u8 as u64 == v => Ok(Char(v as u8 as char)),
             ty::TyChar => Err(EvalError::InvalidChar(v)),
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
