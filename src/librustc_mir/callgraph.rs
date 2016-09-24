@@ -55,7 +55,7 @@ impl CallGraph {
     }
 
     // Iterate over the strongly-connected components of the graph
-    pub fn scc_iter<'g>(&'g self) -> SCCIterator<'g> {
+    pub fn scc_iter(&self) -> SCCIterator {
         SCCIterator::new(&self.graph)
     }
 

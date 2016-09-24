@@ -284,6 +284,8 @@ impl DiagnosticSpanLine {
                          index: usize,
                          h_start: usize,
                          h_end: usize) -> Option<DiagnosticSpanLine> {
+        // MIR inlining can cause diagnostics that reference a file we
+        // don't have any source for
         fm.get_line(index).map(|text| {
             DiagnosticSpanLine {
                 text: text.to_owned(),

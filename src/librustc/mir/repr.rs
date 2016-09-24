@@ -1339,9 +1339,9 @@ impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
             visibility_scopes: self.visibility_scopes.clone(),
             promoted: self.promoted.fold_with(folder),
             return_ty: self.return_ty.fold_with(folder),
-            var_decls:   self.var_decls.fold_with(folder),
-            arg_decls:   self.arg_decls.fold_with(folder),
-            temp_decls:  self.temp_decls.fold_with(folder),
+            var_decls: self.var_decls.fold_with(folder),
+            arg_decls: self.arg_decls.fold_with(folder),
+            temp_decls: self.temp_decls.fold_with(folder),
             upvar_decls: self.upvar_decls.clone(),
             span: self.span,
             cache: Cache::new()
@@ -1416,7 +1416,7 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
 
         let kind = match self.kind {
             Assign(ref lval, ref rval) => Assign(lval.fold_with(folder), rval.fold_with(folder)),
-            SetDiscriminant { ref lvalue, variant_index } => SetDiscriminant{
+            SetDiscriminant { ref lvalue, variant_index } => SetDiscriminant {
                 lvalue: lvalue.fold_with(folder),
                 variant_index: variant_index
             },
@@ -1476,9 +1476,9 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 unwind: unwind
             },
             Call { ref func, ref args, ref destination, cleanup } => {
-                let dest = if let Some((ref loc, dest)) = *destination {
-                    Some((loc.fold_with(folder), dest))
-                } else { None };
+                let dest = destination.as_ref().map(|&(ref loc, dest)| {
+                    (loc.fold_with(folder), dest)
+                });
 
                 Call {
                     func: func.fold_with(folder),

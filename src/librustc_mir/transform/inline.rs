@@ -9,9 +9,6 @@
 // except according to those terms.
 
 //! Inlining pass for MIR functions
-//!
-//! Inlines functions. Is quite conservative in it's conditions, functions
-//! that can unwind are not inlined.
 
 use rustc::hir::def_id::DefId;
 
@@ -312,8 +309,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // Only inline local functions if they would be eligible for
         // cross-crate inlining. This ensures that any symbols they
         // use are reachable cross-crate
-        // FIXME: This shouldn't be necessary, trans should generate
-        // the reachable set from the MIR.
+        // FIXME(#36594): This shouldn't be necessary, and is more conservative
+        // than it could be, but trans should generate the reachable set from
+        // the MIR anyway, making any check obsolete.
         if callsite.callee.is_local() {
             // No type substs and no inline hint means this function
             // wouldn't be eligible for cross-crate inlining
@@ -341,6 +339,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             threshold += threshold / 4;
         }
 
+        // FIXME: Give a bonus to functions with only a single caller
 
         let id = tcx.map.as_local_node_id(callsite.caller).expect("Caller not local");
         let param_env = ty::ParameterEnvironment::for_item(tcx, id);
@@ -431,7 +430,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     }
 
 
-    fn inline_call(&self, callsite: CallSite,
+    fn inline_call(&self, callsite: CallSite<'tcx>,
                              caller_mir: &mut Mir<'tcx>, callee_mir: Mir<'tcx>) -> bool {
 
         // Don't inline a function into itself
@@ -532,81 +531,19 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     assert!(args.len() == 1);
                     // box_free takes a Box, but is defined with a *mut T, inlining
                     // needs to generate the cast.
+                    // FIXME: we should probably just generate correct MIR in the first place...
 
                     let arg = if let Operand::Consume(ref lval) = args[0] {
                         lval.clone()
                     } else {
                         bug!("Constant arg to \"box_free\"");
                     };
-                    let arg = Rvalue::Ref(
-                        self.tcx.mk_region(ty::ReErased),
-                        BorrowKind::Mut,
-                        arg.deref());
-
-                    let ty = arg.ty(caller_mir, self.tcx).expect("Rvalue has no type!");
-                    let temp = TempDecl { ty: ty };
-                    let tmp = caller_mir.temp_decls.push(temp);
-                    let tmp = Lvalue::Temp(tmp);
-
-                    let stmt = Statement {
-                        source_info: callsite.location,
-                        kind: StatementKind::Assign(tmp.clone(), arg)
-                    };
-
-                    caller_mir[callsite.bb]
-                        .statements.push(stmt);
 
                     let ptr_ty = args[0].ty(caller_mir, self.tcx);
-                    let pointee_ty = match ptr_ty.sty {
-                        ty::TyBox(ty) => ty,
-                        ty::TyRawPtr(tm) | ty::TyRef(_, tm) => tm.ty,
-                        _ => bug!("Invalid type `{:?}` for call to box_free", ptr_ty)
-                    };
-                    let ptr_ty = self.tcx.mk_mut_ptr(pointee_ty);
-
-                    let raw_ptr = Rvalue::Cast(CastKind::Misc, Operand::Consume(tmp), ptr_ty);
-
-                    let temp = TempDecl { ty: ptr_ty };
-                    let tmp = caller_mir.temp_decls.push(temp);
-                    let tmp = Lvalue::Temp(tmp);
-
-                    let stmt = Statement {
-                        source_info: callsite.location,
-                        kind: StatementKind::Assign(tmp.clone(), raw_ptr)
-                    };
-
-                    caller_mir[callsite.bb]
-                        .statements.push(stmt);
-
-                    vec![Operand::Consume(tmp)]
+                    vec![self.cast_box_free_arg(arg, ptr_ty, &callsite, caller_mir)]
                 } else {
                     // Copy the arguments if needed.
-                    let tcx = self.tcx;
-                    // FIXME: Analysis of the usage of the arguments to avoid
-                    // unnecessary temporaries.
-                    args.iter().map(|a| {
-                        if let Operand::Consume(Lvalue::Temp(_)) = *a {
-                            // Reuse the operand if it's a temporary already
-                            a.clone()
-                        } else {
-                            debug!("Creating temp for argument");
-                            // Otherwise, create a temporary for the arg
-                            let arg = Rvalue::Use(a.clone());
-
-                            let ty = arg.ty(caller_mir, tcx).expect("arg has no type!");
-
-                            let temp = TempDecl { ty: ty };
-                            let tmp = caller_mir.temp_decls.push(temp);
-                            let tmp = Lvalue::Temp(tmp);
-
-                            let stmt = Statement {
-                                source_info: callsite.location,
-                                kind: StatementKind::Assign(tmp.clone(), arg)
-                            };
-                            caller_mir[callsite.bb].statements.push(stmt);
-                            Operand::Consume(tmp)
-                        }
-                    }).collect()
+                    self.make_call_args(args, &callsite, caller_mir)
                 };
 
                 let bb_len = caller_mir.basic_blocks.len();
@@ -655,6 +592,80 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 false
             }
         }
+    }
+
+    fn cast_box_free_arg(&self, arg: Lvalue<'tcx>, ptr_ty: Ty<'tcx>,
+                         callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Operand<'tcx> {
+        let arg = Rvalue::Ref(
+            self.tcx.mk_region(ty::ReErased),
+            BorrowKind::Mut,
+            arg.deref());
+
+        let ty = arg.ty(caller_mir, self.tcx).expect("Rvalue has no type!");
+        let ref_tmp = TempDecl { ty: ty };
+        let ref_tmp = caller_mir.temp_decls.push(ref_tmp);
+        let ref_tmp = Lvalue::Temp(ref_tmp);
+
+        let ref_stmt = Statement {
+            source_info: callsite.location,
+            kind: StatementKind::Assign(ref_tmp.clone(), arg)
+        };
+
+        caller_mir[callsite.bb]
+            .statements.push(ref_stmt);
+
+        let pointee_ty = match ptr_ty.sty {
+            ty::TyBox(ty) => ty,
+            ty::TyRawPtr(tm) | ty::TyRef(_, tm) => tm.ty,
+            _ => bug!("Invalid type `{:?}` for call to box_free", ptr_ty)
+        };
+        let ptr_ty = self.tcx.mk_mut_ptr(pointee_ty);
+
+        let raw_ptr = Rvalue::Cast(CastKind::Misc, Operand::Consume(ref_tmp), ptr_ty);
+
+        let cast_tmp = TempDecl { ty: ptr_ty };
+        let cast_tmp = caller_mir.temp_decls.push(cast_tmp);
+        let cast_tmp = Lvalue::Temp(cast_tmp);
+
+        let cast_stmt = Statement {
+            source_info: callsite.location,
+            kind: StatementKind::Assign(cast_tmp.clone(), raw_ptr)
+        };
+
+        caller_mir[callsite.bb]
+            .statements.push(cast_stmt);
+
+        Operand::Consume(cast_tmp)
+    }
+
+    fn make_call_args(&self, args: Vec<Operand<'tcx>>,
+                      callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Vec<Operand<'tcx>> {
+        let tcx = self.tcx;
+        // FIXME: Analysis of the usage of the arguments to avoid
+        // unnecessary temporaries.
+        args.into_iter().map(|a| {
+            if let Operand::Consume(Lvalue::Temp(_)) = a {
+                // Reuse the operand if it's a temporary already
+                return a;
+            }
+
+            debug!("Creating temp for argument");
+            // Otherwise, create a temporary for the arg
+            let arg = Rvalue::Use(a);
+
+            let ty = arg.ty(caller_mir, tcx).expect("arg has no type!");
+
+            let arg_tmp = TempDecl { ty: ty };
+            let arg_tmp = caller_mir.temp_decls.push(arg_tmp);
+            let arg_tmp = Lvalue::Temp(arg_tmp);
+
+            let stmt = Statement {
+                source_info: callsite.location,
+                kind: StatementKind::Assign(arg_tmp.clone(), arg)
+            };
+            caller_mir[callsite.bb].statements.push(stmt);
+            Operand::Consume(arg_tmp)
+        }).collect()
     }
 }
 
@@ -787,7 +798,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 *target = self.update_target(*target);
                 if let Some(tgt) = *cleanup {
                     *cleanup = Some(self.update_target(tgt));
-                } else if !self.in_cleanup_block{
+                } else if !self.in_cleanup_block {
                     // Unless this assert is in a cleanup block, add an unwind edge to
                     // the orignal call's cleanup block
                     *cleanup = self.cleanup_block;

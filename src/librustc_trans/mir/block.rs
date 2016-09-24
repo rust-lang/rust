@@ -374,7 +374,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 if const_cond == Some(!expected) {
                     if let Some(err) = const_err {
                         if let Some(span) = self.diag_span(span, terminator.source_info.scope) {
-                            let err = ConstEvalErr{ span: span, kind: err };
+                            let err = ConstEvalErr { span: span, kind: err };
                             let mut diag = bcx.tcx().sess.struct_span_warn(
                                 span, "this expression will panic at run-time");
                             note_const_eval_err(bcx.tcx(), &err, span, "expression", &mut diag);
