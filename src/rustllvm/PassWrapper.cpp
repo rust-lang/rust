@@ -22,6 +22,9 @@
 #include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
+#if LLVM_VERSION_GE(4, 0)
+#include "llvm/Transforms/IPO/AlwaysInliner.h"
+#endif
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
@@ -539,7 +542,11 @@ LLVMRustPrintPasses() {
 
 extern "C" void
 LLVMRustAddAlwaysInlinePass(LLVMPassManagerBuilderRef PMB, bool AddLifetimes) {
+#if LLVM_VERSION_GE(4, 0)
+    unwrap(PMB)->Inliner = llvm::createAlwaysInlinerLegacyPass(AddLifetimes);
+#else
     unwrap(PMB)->Inliner = createAlwaysInlinerPass(AddLifetimes);
+#endif
 }
 
 extern "C" void
