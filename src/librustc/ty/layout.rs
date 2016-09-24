@@ -650,6 +650,15 @@ impl<'a, 'gcx, 'tcx> Struct {
         }
         Ok(None)
     }
+
+    pub fn offset_of_field(&self, index: usize) -> Size {
+        assert!(index < self.offset_after_field.len());
+        if index == 0 {
+            Size::from_bytes(0)
+        } else {
+            self.offset_after_field[index-1]
+        }
+    }
 }
 
 /// An untagged union.

@@ -41,7 +41,6 @@
 //!   used unboxed and any field can have pointers (including mutable)
 //!   taken to it, implementing them for Rust seems difficult.
 
-pub use self::Repr::*;
 use super::Disr;
 
 use std;
@@ -50,7 +49,6 @@ use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
 use rustc::ty::{self, Ty, AdtKind};
 use syntax::attr;
-use syntax::attr::IntType;
 use build::*;
 use common::*;
 use debuginfo::DebugLoc;
@@ -69,66 +67,6 @@ pub enum BranchKind {
 }
 
 type Hint = attr::ReprAttr;
-
-/// Representations.
-#[derive(Eq, PartialEq, Debug)]
-pub enum Repr<'tcx> {
-    /// C-like enums; basically an int.
-    CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
-    /// Single-case variants, and structs/tuples/records.
-    Univariant(Struct<'tcx>),
-    /// Untagged unions.
-    UntaggedUnion(Union<'tcx>),
-    /// General-case enums: for each case there is a struct, and they
-    /// all start with a field for the discriminant.
-    General(IntType, Vec<Struct<'tcx>>),
-    /// Two cases distinguished by a nullable pointer: the case with discriminant
-    /// `nndiscr` must have single field which is known to be nonnull due to its type.
-    /// The other case is known to be zero sized. Hence we represent the enum
-    /// as simply a nullable pointer: if not null it indicates the `nndiscr` variant,
-    /// otherwise it indicates the other case.
-    RawNullablePointer {
-        nndiscr: Disr,
-        nnty: Ty<'tcx>,
-        nullfields: Vec<Ty<'tcx>>
-    },
-    /// Two cases distinguished by a nullable pointer: the case with discriminant
-    /// `nndiscr` is represented by the struct `nonnull`, where the `discrfield`th
-    /// field is known to be nonnull due to its type; if that field is null, then
-    /// it represents the other case, which is inhabited by at most one value
-    /// (and all other fields are undefined/unused).
-    ///
-    /// For example, `std::option::Option` instantiated at a safe pointer type
-    /// is represented such that `None` is a null pointer and `Some` is the
-    /// identity function.
-    StructWrappedNullablePointer {
-        nonnull: Struct<'tcx>,
-        nndiscr: Disr,
-        discrfield: DiscrField,
-        nullfields: Vec<Ty<'tcx>>,
-    }
-}
-
-/// For structs, and struct-like parts of anything fancier.
-#[derive(Eq, PartialEq, Debug)]
-pub struct Struct<'tcx> {
-    // If the struct is DST, then the size and alignment do not take into
-    // account the unsized fields of the struct.
-    pub size: u64,
-    pub align: u32,
-    pub sized: bool,
-    pub packed: bool,
-    pub fields: Vec<Ty<'tcx>>,
-}
-
-/// For untagged unions.
-#[derive(Eq, PartialEq, Debug)]
-pub struct Union<'tcx> {
-    pub min_size: u64,
-    pub align: u32,
-    pub packed: bool,
-    pub fields: Vec<Ty<'tcx>>,
-}
 
 #[derive(Copy, Clone)]
 pub struct MaybeSizedValue {
@@ -696,14 +634,8 @@ fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
     let meta = val.meta;
 
-    // Calculate the unaligned offset of the unsized field.
-    let mut offset = 0;
-    for &ty in &fields[0..ix] {
-        let llty = type_of::sizing_type_of(ccx, ty);
-        let type_align = type_of::align_of(ccx, ty);
-        offset = roundup(offset, type_align);
-        offset += machine::llsize_of_alloc(ccx, llty);
-    }
+
+    let offset = st.offset_of_field(ix).bytes();
     let unaligned_offset = C_uint(bcx.ccx(), offset);
 
     // Get the alignment of the field
