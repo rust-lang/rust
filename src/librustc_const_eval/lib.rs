@@ -47,6 +47,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 pub mod diagnostics;
 
 mod eval;
+mod _match;
 pub mod check_match;
 pub mod pattern;
 
