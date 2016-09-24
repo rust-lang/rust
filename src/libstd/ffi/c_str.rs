@@ -228,9 +228,14 @@ impl CString {
 
     /// Retakes ownership of a `CString` that was transferred to C.
     ///
+    /// Additionally, the length of the string will be recalculated from the pointer.
+    ///
+    /// # Safety
+    ///
     /// This should only ever be called with a pointer that was earlier
-    /// obtained by calling `into_raw` on a `CString`. Additionally, the length
-    /// of the string will be recalculated from the pointer.
+    /// obtained by calling `into_raw` on a `CString`. Other usage (e.g. trying to take
+    /// ownership of a string that was allocated by foreign code) is likely to lead
+    /// to undefined behavior or allocator corruption.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte

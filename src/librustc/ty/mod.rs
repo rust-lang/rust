@@ -2808,7 +2808,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// See `ParameterEnvironment` struct def'n for details.
     /// If you were using `free_id: NodeId`, you might try `self.region_maps.item_extent(free_id)`
-    /// for the `free_id_outlive` parameter. (But note that that is not always quite right.)
+    /// for the `free_id_outlive` parameter. (But note that this is not always quite right.)
     pub fn construct_parameter_environment(self,
                                            span: Span,
                                            def_id: DefId,
