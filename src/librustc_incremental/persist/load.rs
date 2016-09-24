@@ -12,9 +12,10 @@
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
+use rustc::hir::svh::Svh;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::fnv::FnvHashSet;
+use rustc_data_structures::fnv::{FnvHashSet, FnvHashMap};
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::io::Read;
@@ -224,6 +225,9 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     dirty_clean::check_dirty_clean_annotations(tcx, &dirty_raw_source_nodes, &retraced);
 
+    load_prev_metadata_hashes(tcx,
+                              &retraced,
+                              &mut *incremental_hashes_map.prev_metadata_hashes.borrow_mut());
     Ok(())
 }
 
@@ -241,6 +245,9 @@ fn dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if let Some(dep_node) = retraced.map(&hash.dep_node) {
             let current_hash = hcx.hash(&dep_node).unwrap();
             if current_hash == hash.hash {
+                debug!("initial_dirty_nodes: {:?} is clean (hash={:?})",
+                   dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
+                   current_hash);
                 continue;
             }
             debug!("initial_dirty_nodes: {:?} is dirty as hash is {:?}, was {:?}",
@@ -303,4 +310,51 @@ fn delete_dirty_work_product(tcx: TyCtxt,
             }
         }
     }
+}
+
+fn load_prev_metadata_hashes(tcx: TyCtxt,
+                             retraced: &RetracedDefIdDirectory,
+                             output: &mut FnvHashMap<DefId, u64>) {
+    if !tcx.sess.opts.debugging_opts.query_dep_graph {
+        return
+    }
+
+    debug!("load_prev_metadata_hashes() - Loading previous metadata hashes");
+
+    let file_path = metadata_hash_export_path(tcx.sess);
+
+    if !file_path.exists() {
+        debug!("load_prev_metadata_hashes() - Couldn't find file containing \
+                hashes at `{}`", file_path.display());
+        return
+    }
+
+    debug!("load_prev_metadata_hashes() - File: {}", file_path.display());
+
+    let mut data = vec![];
+    if !File::open(&file_path)
+             .and_then(|mut file| file.read_to_end(&mut data)).is_ok() {
+        debug!("load_prev_metadata_hashes() - Couldn't read file containing \
+                hashes at `{}`", file_path.display());
+        return
+    }
+
+    debug!("load_prev_metadata_hashes() - Decoding hashes");
+    let mut decoder = Decoder::new(&mut data, 0);
+    let _ = Svh::decode(&mut decoder).unwrap();
+    let serialized_hashes = SerializedMetadataHashes::decode(&mut decoder).unwrap();
+
+    debug!("load_prev_metadata_hashes() - Mapping DefIds");
+
+    assert_eq!(serialized_hashes.index_map.len(), serialized_hashes.hashes.len());
+    for serialized_hash in serialized_hashes.hashes {
+        let def_path_index = serialized_hashes.index_map[&serialized_hash.def_index];
+        if let Some(def_id) = retraced.def_id(def_path_index) {
+            let old = output.insert(def_id, serialized_hash.hash);
+            assert!(old.is_none(), "already have hash for {:?}", def_id);
+        }
+    }
+
+    debug!("load_prev_metadata_hashes() - successfully loaded {} hashes",
+           serialized_hashes.index_map.len());
 }

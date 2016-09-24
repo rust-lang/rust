@@ -129,13 +129,21 @@ impl<'test> TestCx<'test> {
     fn run_cfail_test(&self) {
         let proc_res = self.compile_test();
 
-        if proc_res.status.success() {
-            self.fatal_proc_rec(
-                &format!("{} test compiled successfully!", self.config.mode)[..],
-                &proc_res);
-        }
+        if self.props.must_compile_successfully {
+            if !proc_res.status.success() {
+                self.fatal_proc_rec(
+                    "test compilation failed although it shouldn't!",
+                    &proc_res);
+            }
+        } else {
+            if proc_res.status.success() {
+                self.fatal_proc_rec(
+                    &format!("{} test compiled successfully!", self.config.mode)[..],
+                    &proc_res);
+            }
 
-        self.check_correct_failure_status(&proc_res);
+            self.check_correct_failure_status(&proc_res);
+        }
 
         let output_to_check = self.get_output(&proc_res);
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
@@ -147,6 +155,7 @@ impl<'test> TestCx<'test> {
         } else {
             self.check_error_patterns(&output_to_check, &proc_res);
         }
+
         self.check_no_compiler_crash(&proc_res);
         self.check_forbid_output(&output_to_check, &proc_res);
     }
@@ -943,8 +952,12 @@ actual:\n\
                             output_to_check: &str,
                             proc_res: &ProcRes) {
         if self.props.error_patterns.is_empty() {
-            self.fatal(&format!("no error pattern specified in {:?}",
-                                self.testpaths.file.display()));
+            if self.props.must_compile_successfully {
+                return
+            } else {
+                self.fatal(&format!("no error pattern specified in {:?}",
+                                    self.testpaths.file.display()));
+            }
         }
         let mut next_err_idx = 0;
         let mut next_err_pat = self.props.error_patterns[next_err_idx].trim();

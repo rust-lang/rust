@@ -27,6 +27,7 @@ use super::directory::*;
 use super::hash::*;
 use super::preds::*;
 use super::fs::*;
+use super::dirty_clean;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 incremental_hashes_map: &IncrementalHashesMap,
@@ -37,16 +38,32 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if sess.opts.incremental.is_none() {
         return;
     }
-    let mut hcx = HashContext::new(tcx, incremental_hashes_map);
+
     let mut builder = DefIdDirectoryBuilder::new(tcx);
     let query = tcx.dep_graph.query();
+    let mut hcx = HashContext::new(tcx, incremental_hashes_map);
     let preds = Predecessors::new(&query, &mut hcx);
+    let mut current_metadata_hashes = FnvHashMap();
+
+    // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
+    //            since metadata-encoding might add new entries to the
+    //            DefIdDirectory (which is saved in the dep-graph file).
+    save_in(sess,
+            metadata_hash_export_path(sess),
+            |e| encode_metadata_hashes(tcx,
+                                       svh,
+                                       &preds,
+                                       &mut builder,
+                                       &mut current_metadata_hashes,
+                                       e));
     save_in(sess,
             dep_graph_path(sess),
             |e| encode_dep_graph(&preds, &mut builder, e));
-    save_in(sess,
-            metadata_hash_export_path(sess),
-            |e| encode_metadata_hashes(tcx, svh, &preds, &mut builder, e));
+
+    let prev_metadata_hashes = incremental_hashes_map.prev_metadata_hashes.borrow();
+    dirty_clean::check_dirty_clean_metadata(tcx,
+                                            &*prev_metadata_hashes,
+                                            &current_metadata_hashes);
 }
 
 pub fn save_work_products(sess: &Session) {
@@ -63,13 +80,17 @@ pub fn save_work_products(sess: &Session) {
 fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     where F: FnOnce(&mut Encoder) -> io::Result<()>
 {
+    debug!("save: storing data in {}", path_buf.display());
+
     // delete the old dep-graph, if any
     // Note: It's important that we actually delete the old file and not just
     // truncate and overwrite it, since it might be a shared hard-link, the
     // underlying data of which we don't want to modify
     if path_buf.exists() {
         match fs::remove_file(&path_buf) {
-            Ok(()) => {}
+            Ok(()) => {
+                debug!("save: remove old file");
+            }
             Err(err) => {
                 sess.err(&format!("unable to delete old dep-graph at `{}`: {}",
                                   path_buf.display(),
@@ -94,7 +115,9 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     // write the data out
     let data = wr.into_inner();
     match File::create(&path_buf).and_then(|mut file| file.write_all(&data)) {
-        Ok(_) => {}
+        Ok(_) => {
+            debug!("save: data written to disk successfully");
+        }
         Err(err) => {
             sess.err(&format!("failed to write dep-graph to `{}`: {}",
                               path_buf.display(),
@@ -159,18 +182,9 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
                               svh: Svh,
                               preds: &Predecessors,
                               builder: &mut DefIdDirectoryBuilder,
+                              current_metadata_hashes: &mut FnvHashMap<DefId, u64>,
                               encoder: &mut Encoder)
                               -> io::Result<()> {
-    let mut def_id_hashes = FnvHashMap();
-    let mut def_id_hash = |def_id: DefId| -> u64 {
-        *def_id_hashes.entry(def_id)
-            .or_insert_with(|| {
-                let index = builder.add(def_id);
-                let path = builder.lookup_def_path(index);
-                path.deterministic_hash(tcx)
-            })
-    };
-
     // For each `MetaData(X)` node where `X` is local, accumulate a
     // hash.  These are the metadata items we export. Downstream
     // crates will want to see a hash that tells them whether we might
@@ -178,7 +192,13 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
     // compiled.
     //
     // (I initially wrote this with an iterator, but it seemed harder to read.)
-    let mut serialized_hashes = SerializedMetadataHashes { hashes: vec![] };
+    let mut serialized_hashes = SerializedMetadataHashes {
+        hashes: vec![],
+        index_map: FnvHashMap()
+    };
+
+    let mut def_id_hashes = FnvHashMap();
+
     for (&target, sources) in &preds.inputs {
         let def_id = match *target {
             DepNode::MetaData(def_id) => {
@@ -186,6 +206,15 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
                 def_id
             }
             _ => continue,
+        };
+
+        let mut def_id_hash = |def_id: DefId| -> u64 {
+            *def_id_hashes.entry(def_id)
+                .or_insert_with(|| {
+                    let index = builder.add(def_id);
+                    let path = builder.lookup_def_path(index);
+                    path.deterministic_hash(tcx)
+                })
         };
 
         // To create the hash for each item `X`, we don't hash the raw
@@ -219,6 +248,22 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
             def_index: def_id.index,
             hash: hash,
         });
+    }
+
+    if tcx.sess.opts.debugging_opts.query_dep_graph {
+        for serialized_hash in &serialized_hashes.hashes {
+            let def_id = DefId::local(serialized_hash.def_index);
+
+            // Store entry in the index_map
+            let def_path_index = builder.add(def_id);
+            serialized_hashes.index_map.insert(def_id.index, def_path_index);
+
+            // Record hash in current_metadata_hashes
+            current_metadata_hashes.insert(def_id, serialized_hash.hash);
+        }
+
+        debug!("save: stored index_map (len={}) for serialized hashes",
+               serialized_hashes.index_map.len());
     }
 
     // Encode everything.
