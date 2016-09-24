@@ -73,7 +73,7 @@ use rustc_trans::back::write::{create_target_machine, RELOC_MODEL_ARGS, CODE_GEN
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
-use rustc::session::config::{get_unstable_features_setting, nightly_options};
+use rustc::session::config::nightly_options;
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::loader;
@@ -649,7 +649,7 @@ impl RustcDefaultCalls {
                     }
                 }
                 PrintRequest::Cfg => {
-                    let allow_unstable_cfg = match get_unstable_features_setting() {
+                    let allow_unstable_cfg = match UnstableFeatures::from_environment() {
                         UnstableFeatures::Disallow => false,
                         _ => true,
                     };
