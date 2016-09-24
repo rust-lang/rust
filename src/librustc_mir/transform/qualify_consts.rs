@@ -20,8 +20,6 @@ use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::FnKind;
-use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::cast::CastTy;
@@ -113,23 +111,6 @@ impl fmt::Display for Mode {
             Mode::ConstFn => write!(f, "constant function"),
             Mode::Fn => write!(f, "function")
         }
-    }
-}
-
-fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
-    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        let fn_like = FnLikeNode::from_node(tcx.map.get(node_id));
-        match fn_like.map(|f| f.kind()) {
-            Some(FnKind::ItemFn(_, _, _, c, ..)) => {
-                c == hir::Constness::Const
-            }
-            Some(FnKind::Method(_, m, ..)) => {
-                m.constness == hir::Constness::Const
-            }
-            _ => false
-        }
-    } else {
-        tcx.sess.cstore.is_const_fn(def_id)
     }
 }
 
@@ -778,7 +759,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 ty::TyFnDef(def_id, _, f) => {
                     (f.abi == Abi::PlatformIntrinsic &&
                      self.tcx.item_name(def_id).as_str().starts_with("simd_shuffle"),
-                     is_const_fn(self.tcx, def_id))
+                     self.tcx.is_const_fn(def_id))
                 }
                 _ => (false, false)
             };
@@ -997,7 +978,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
             let src = MirSource::from_node(tcx, id);
             let mode = match src {
                 MirSource::Fn(_) => {
-                    if is_const_fn(tcx, def_id) {
+                    if tcx.is_const_fn(def_id) {
                         Mode::ConstFn
                     } else {
                         Mode::Fn

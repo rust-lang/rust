@@ -41,6 +41,12 @@ impl Pass for CopyPropagation {}
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
     fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
+        self.propagate_copies(mir);
+    }
+}
+
+impl CopyPropagation {
+    pub fn propagate_copies<'tcx>(&self, mir: &mut Mir<'tcx>) {
         loop {
             let mut def_use_analysis = DefUseAnalysis::new(mir);
             def_use_analysis.analyze(mir);
@@ -175,6 +181,14 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                 break
             }
         }
+
+        // Strip out nops
+        for blk in mir.basic_blocks_mut() {
+            blk.statements.retain(|stmt| if let StatementKind::Nop = stmt.kind {
+                false
+            } else {
+                true
+            })
+        }
     }
 }
-
