@@ -1572,10 +1572,7 @@ pub mod nightly_options {
 
     pub fn check_nightly_options(matches: &getopts::Matches, flags: &[RustcOptGroup]) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options = match UnstableFeatures::from_environment() {
-            UnstableFeatures::Disallow => false,
-            _ => true,
-        };
+        let really_allows_unstable_options = UnstableFeatures::from_environment().is_nightly_build();
 
         for opt in flags.iter() {
             if opt.stability == OptionStability::Stable {
