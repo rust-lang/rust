@@ -851,8 +851,11 @@ pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> us
         ty::TyBox(_) => 1,
         ty::TySlice(_) => match *ctor {
             Slice(length) => length,
-            ConstantValue(_) => 0,
-            _ => bug!()
+            ConstantValue(_) => {
+                // TODO: this is utterly wrong, but required for byte arrays
+                0
+            }
+            _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
         },
         ty::TyRef(..) => 1,
         ty::TyAdt(adt, _) => {
@@ -981,20 +984,25 @@ pub fn specialize<'a, 'b, 'tcx>(
             Some(vec![wpat(&**inner)]),
 
         PatKind::Lit(ref expr) => {
-            if let Some(&ty::TyS { sty: ty::TyRef(_, mt), .. }) = r[col].1 {
-                // HACK: handle string literals. A string literal pattern
-                // serves both as an unary reference pattern and as a
-                // nullary value pattern, depending on the type.
-                Some(vec![(pat, Some(mt.ty))])
-            } else {
-                let expr_value = eval_const_expr(cx.tcx, &expr);
-                match range_covered_by_constructor(
-                    cx.tcx, expr.span, constructor, &expr_value, &expr_value
-                ) {
-                    Ok(true) => Some(vec![]),
-                    Ok(false) => None,
-                    Err(ErrorReported) => None,
+            match r[col].1 {
+                Some(&ty::TyS { sty: ty::TyRef(_, mt), .. }) => {
+                    // HACK: handle string literals. A string literal pattern
+                    // serves both as an unary reference pattern and as a
+                    // nullary value pattern, depending on the type.
+                    Some(vec![(pat, Some(mt.ty))])
                 }
+                Some(ty) => {
+                    assert_eq!(constructor_arity(cx, constructor, ty), 0);
+                    let expr_value = eval_const_expr(cx.tcx, &expr);
+                    match range_covered_by_constructor(
+                        cx.tcx, expr.span, constructor, &expr_value, &expr_value
+                            ) {
+                        Ok(true) => Some(vec![]),
+                        Ok(false) => None,
+                        Err(ErrorReported) => None,
+                    }
+                }
+                None => span_bug!(pat.span, "literal pattern {:?} has no type", pat)
             }
         }
 
