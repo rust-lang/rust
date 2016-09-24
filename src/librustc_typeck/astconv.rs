@@ -795,7 +795,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // For now, require that parenthetical notation be used
                 // only with `Fn()` etc.
                 if !self.tcx().sess.features.borrow().unboxed_closures && trait_def.paren_sugar {
-                    emit_feature_err(&self.tcx().sess.parse_sess.span_diagnostic,
+                    emit_feature_err(&self.tcx().sess.parse_sess,
                                      "unboxed_closures", span, GateIssue::Language,
                                      "\
                         the precise format of `Fn`-family traits' \
@@ -807,7 +807,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // For now, require that parenthetical notation be used
                 // only with `Fn()` etc.
                 if !self.tcx().sess.features.borrow().unboxed_closures && !trait_def.paren_sugar {
-                    emit_feature_err(&self.tcx().sess.parse_sess.span_diagnostic,
+                    emit_feature_err(&self.tcx().sess.parse_sess,
                                      "unboxed_closures", span, GateIssue::Language,
                                      "\
                         parenthetical notation is only stable when used with `Fn`-family traits");
