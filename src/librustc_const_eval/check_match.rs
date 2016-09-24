@@ -297,7 +297,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
             let witnesses = if pats.is_empty() {
                 vec![DUMMY_WILD_PAT]
             } else {
-                pats.iter().map(|w| &**w).collect()
+                pats.iter().map(|w| w.single_pattern()).collect()
             };
             match source {
                 hir::MatchSource::ForLoopDesugar => {
@@ -484,7 +484,7 @@ fn check_irrefutable(cx: &MatchCheckCtxt, pat: &Pat, is_fn_arg: bool) {
     };
 
     is_refutable(cx, pat, |uncovered_pat| {
-        let pattern_string = pat_to_string(uncovered_pat);
+        let pattern_string = pat_to_string(uncovered_pat.single_pattern());
         struct_span_err!(cx.tcx.sess, pat.span, E0005,
             "refutable pattern in {}: `{}` not covered",
             origin,
