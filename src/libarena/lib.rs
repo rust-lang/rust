@@ -52,9 +52,6 @@ use alloc::raw_vec::RawVec;
 
 /// An arena that can hold objects of only one type.
 pub struct TypedArena<T> {
-    /// The capacity of the first chunk (once it is allocated).
-    first_chunk_capacity: usize,
-
     /// A pointer to the next object to be allocated.
     ptr: Cell<*mut T>,
 
@@ -122,17 +119,7 @@ impl<T> TypedArena<T> {
     /// Creates a new `TypedArena`.
     #[inline]
     pub fn new() -> TypedArena<T> {
-        // Reserve at least one page.
-        let elem_size = cmp::max(1, mem::size_of::<T>());
-        TypedArena::with_capacity(PAGE / elem_size)
-    }
-
-    /// Creates a new `TypedArena`. Each chunk used within the arena will have
-    /// space for at least the given number of objects.
-    #[inline]
-    pub fn with_capacity(capacity: usize) -> TypedArena<T> {
         TypedArena {
-            first_chunk_capacity: cmp::max(1, capacity),
             // We set both `ptr` and `end` to 0 so that the first call to
             // alloc() will trigger a grow().
             ptr: Cell::new(0 as *mut T),
@@ -183,7 +170,8 @@ impl<T> TypedArena<T> {
                     new_capacity = prev_capacity.checked_mul(2).unwrap();
                 }
             } else {
-                new_capacity = self.first_chunk_capacity;
+                let elem_size = cmp::max(1, mem::size_of::<T>());
+                new_capacity = cmp::max(1, PAGE / elem_size);
             }
             chunk = TypedArenaChunk::<T>::new(new_capacity);
             self.ptr.set(chunk.start());
@@ -191,6 +179,7 @@ impl<T> TypedArena<T> {
             chunks.push(chunk);
         }
     }
+
     /// Clears the arena. Deallocates all but the longest chunk which may be reused.
     pub fn clear(&mut self) {
         unsafe {
