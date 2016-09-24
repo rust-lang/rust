@@ -36,6 +36,7 @@ use parse::ParseSess;
 use parse::token::InternedString;
 
 use std::ascii::AsciiExt;
+use std::env;
 
 macro_rules! setter {
     ($field: ident) => {{
@@ -1294,6 +1295,23 @@ pub enum UnstableFeatures {
     /// because the build turns on warnings-as-errors and uses lots of unstable
     /// features. As a result, this is always required for building Rust itself.
     Cheat
+}
+
+impl UnstableFeatures {
+    pub fn from_environment() -> UnstableFeatures {
+        // Whether this is a feature-staged build, i.e. on the beta or stable channel
+        let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+        // The secret key needed to get through the rustc build itself by
+        // subverting the unstable features lints
+        let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
+        // The matching key to the above, only known by the build system
+        let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
+        match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
+            (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
+            (true, _, _) => UnstableFeatures::Disallow,
+            (false, _, _) => UnstableFeatures::Allow
+        }
+    }
 }
 
 fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate,
