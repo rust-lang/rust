@@ -29,6 +29,8 @@ pub struct CallGraph {
 }
 
 impl CallGraph {
+    // FIXME: allow for construction of a callgraph that inspects
+    // cross-crate MIRs if available.
     pub fn build<'tcx>(map: &MirMap<'tcx>) -> CallGraph {
         let def_ids = map.map.keys();
 
@@ -52,10 +54,12 @@ impl CallGraph {
         callgraph
     }
 
+    // Iterate over the strongly-connected components of the graph
     pub fn scc_iter<'g>(&'g self) -> SCCIterator<'g> {
         SCCIterator::new(&self.graph)
     }
 
+    // Get the def_id for the given graph node
     pub fn def_id(&self, node: graph::NodeIndex) -> DefId {
         *self.graph.node_data(node)
     }
@@ -93,6 +97,11 @@ struct StackElement<'g> {
     children: graph::AdjacentTargets<'g, DefId, ()>
 }
 
+/**
+ * Iterator over strongly-connected-components using Tarjan's algorithm[1]
+ *
+ * [1]: https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+ */
 pub struct SCCIterator<'g> {
     graph: &'g graph::Graph<DefId, ()>,
     index: usize,

@@ -284,7 +284,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let tcx = self.tcx;
 
-        // Don't inline closures
+        // Don't inline closures that have captures
+        // FIXME: Handle closures better
         if callee_mir.upvar_decls.len() > 0 {
             return false;
         }
@@ -441,12 +442,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let terminator = caller_mir[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
+            // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
 
                 debug!("Inlined {:?} into {:?}", callsite.callee, callsite.caller);
 
                 let is_box_free = Some(callsite.callee) == self.tcx.lang_items.box_free_fn();
-                let bb_len = caller_mir.basic_blocks().len();
 
                 let mut var_map = IndexVec::with_capacity(callee_mir.var_decls.len());
                 let mut temp_map = IndexVec::with_capacity(callee_mir.temp_decls.len());
@@ -527,7 +528,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 let return_block = destination.1;
 
-                // Copy the arguments if needed.
                 let args : Vec<_> = if is_box_free {
                     assert!(args.len() == 1);
                     // box_free takes a Box, but is defined with a *mut T, inlining
@@ -580,7 +580,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                     vec![Operand::Consume(tmp)]
                 } else {
+                    // Copy the arguments if needed.
                     let tcx = self.tcx;
+                    // FIXME: Analysis of the usage of the arguments to avoid
+                    // unnecessary temporaries.
                     args.iter().map(|a| {
                         if let Operand::Consume(Lvalue::Temp(_)) = *a {
                             // Reuse the operand if it's a temporary already
@@ -606,6 +609,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     }).collect()
                 };
 
+                let bb_len = caller_mir.basic_blocks.len();
                 let mut integrator = Integrator {
                     block_idx: bb_len,
                     args: &args,
@@ -663,6 +667,13 @@ fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParameterE
     })
 }
 
+/**
+ * Integrator.
+ *
+ * Integrates blocks from the callee function into the calling function.
+ * Updates block indices, references to locals and other control flow
+ * stuff.
+ */
 struct Integrator<'a, 'tcx: 'a> {
     block_idx: usize,
     args: &'a [Operand<'tcx>],
@@ -707,6 +718,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 let idx = arg.index();
                 if let Operand::Consume(ref lval) = self.args[idx] {
                     *lvalue = lval.clone();
+                } else {
+                    bug!("Arg operand `{:?}` is not an Lvalue use.", arg)
                 }
             }
             _ => self.super_lvalue(lvalue, _ctxt, _location)

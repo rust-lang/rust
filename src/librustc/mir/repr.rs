@@ -1576,7 +1576,8 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Ref(region, bk, ref lval) => Ref(region.fold_with(folder), bk, lval.fold_with(folder)),
             Len(ref lval) => Len(lval.fold_with(folder)),
             Cast(kind, ref op, ty) => Cast(kind, op.fold_with(folder), ty.fold_with(folder)),
-            BinaryOp(op, ref rhs, ref lhs) => BinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder)),
+            BinaryOp(op, ref rhs, ref lhs) =>
+                BinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder)),
             CheckedBinaryOp(op, ref rhs, ref lhs) =>
                 CheckedBinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder)),
             UnaryOp(op, ref val) => UnaryOp(op, val.fold_with(folder)),
@@ -1587,7 +1588,8 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                     AggregateKind::Tuple => AggregateKind::Tuple,
                     AggregateKind::Adt(def, v, substs, n) =>
                         AggregateKind::Adt(def, v, substs.fold_with(folder), n),
-                    AggregateKind::Closure(id, substs) => AggregateKind::Closure(id, substs.fold_with(folder))
+                    AggregateKind::Closure(id, substs) =>
+                        AggregateKind::Closure(id, substs.fold_with(folder))
                 };
                 Aggregate(kind, fields.fold_with(folder))
             }
@@ -1608,7 +1610,8 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Len(ref lval) => lval.visit_with(visitor),
             Cast(_, ref op, ty) => op.visit_with(visitor) || ty.visit_with(visitor),
             BinaryOp(_, ref rhs, ref lhs) |
-            CheckedBinaryOp(_, ref rhs, ref lhs) => rhs.visit_with(visitor) || lhs.visit_with(visitor),
+            CheckedBinaryOp(_, ref rhs, ref lhs) =>
+                rhs.visit_with(visitor) || lhs.visit_with(visitor),
             UnaryOp(_, ref val) => val.visit_with(visitor),
             Box(ty) => ty.visit_with(visitor),
             Aggregate(ref kind, ref fields) => {
@@ -1619,7 +1622,8 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                     AggregateKind::Closure(_, substs) => substs.visit_with(visitor)
                 }) || fields.visit_with(visitor)
             }
-            InlineAsm { ref outputs, ref inputs, .. } => outputs.visit_with(visitor) || inputs.visit_with(visitor)
+            InlineAsm { ref outputs, ref inputs, .. } =>
+                outputs.visit_with(visitor) || inputs.visit_with(visitor)
         }
     }
 }
