@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use hair::cx::Cx;
+use hair::Pattern;
+
 use rustc::middle::region::{CodeExtent, CodeExtentData, ROOT_CODE_EXTENT};
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
@@ -339,7 +341,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let lvalue = Lvalue::Local(Local::new(index + 1));
 
             if let Some(pattern) = pattern {
-                let pattern = self.hir.irrefutable_pat(pattern);
+                let pattern = Pattern::from_hir(self.hir.tcx(), pattern);
                 scope = self.declare_bindings(scope, ast_block.span, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }

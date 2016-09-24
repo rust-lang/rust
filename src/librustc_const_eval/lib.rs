@@ -36,6 +36,7 @@
 #[macro_use] extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_const_math;
+extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate graphviz;
 extern crate syntax_pos;
@@ -47,6 +48,7 @@ pub mod diagnostics;
 
 mod eval;
 pub mod check_match;
+pub mod pattern;
 
 pub use eval::*;
 
