@@ -74,21 +74,6 @@ impl<'a, 'tcx> Pattern<'a, 'tcx> {
         return pat;
     }
 
-
-    /// Checks for common cases of "catchall" patterns that may not be intended as such.
-    fn is_catchall(self, dm: &DefMap) -> bool {
-        fn is_catchall(dm: &DefMap, pat: &Pat) -> bool {
-            match pat.node {
-                PatKind::Binding(.., None) => true,
-                PatKind::Binding(.., Some(ref s)) => is_catchall(dm, s),
-                PatKind::Ref(ref s, _) => is_catchall(dm, s),
-                PatKind::Tuple(ref v, _) => v.iter().all(|p|is_catchall(dm, &p)),
-                _ => false
-            }
-        }
-        is_catchall(dm, self.pat)
-    }
-
     fn span(self) -> Span {
         self.pat.span
     }
@@ -339,11 +324,25 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
     });
 }
 
+/// Checks for common cases of "catchall" patterns that may not be intended as such.
+fn pat_is_catchall(dm: &DefMap, pat: &Pat) -> bool {
+    match pat.node {
+        PatKind::Binding(.., None) => true,
+        PatKind::Binding(.., Some(ref s)) => pat_is_catchall(dm, s),
+        PatKind::Ref(ref s, _) => pat_is_catchall(dm, s),
+        PatKind::Tuple(ref v, _) => v.iter().all(|p| {
+            pat_is_catchall(dm, &p)
+        }),
+        _ => false
+    }
+}
+
 // Check for unreachable patterns
 fn check_arms(cx: &MatchCheckCtxt,
               arms: &[(Vec<P<Pat>>, Option<&hir::Expr>)],
               source: hir::MatchSource) {
     let mut seen = Matrix(vec![]);
+    let mut catchall = None;
     let mut printed_if_let_err = false;
     for &(ref pats, guard) in arms {
         for pat in pats {
@@ -393,11 +392,8 @@ fn check_arms(cx: &MatchCheckCtxt,
                                                            "unreachable pattern");
                             err.span_label(pat.span, &format!("this is an unreachable pattern"));
                             // if we had a catchall pattern, hint at that
-                            for row in &seen.0 {
-                                if row[0].is_catchall(&cx.tcx.def_map.borrow()) {
-                                    span_note!(err, row[0].span(),
-                                               "this pattern matches any value");
-                                }
+                            if let Some(catchall) = catchall {
+                                err.span_note(catchall, "this pattern matches any value");
                             }
                             err.emit();
                         },
@@ -414,6 +410,10 @@ fn check_arms(cx: &MatchCheckCtxt,
                 let Matrix(mut rows) = seen;
                 rows.push(v);
                 seen = Matrix(rows);
+                if catchall.is_none() && pat_is_catchall(&cx.tcx.def_map.borrow(), pat) {
+                    catchall = Some(pat.span);
+                }
+
             }
         }
     }
