@@ -33,7 +33,6 @@ use super::copy_prop::CopyPropagation;
 
 use syntax::attr;
 use syntax::abi::Abi;
-use syntax_pos::Span;
 
 use callgraph;
 
@@ -56,12 +55,7 @@ impl<'tcx> MirMapPass<'tcx> for Inline {
         map: &mut MirMap<'tcx>,
         hooks: &mut [Box<for<'s> MirPassHook<'s>>]) {
 
-        match tcx.sess.opts.debugging_opts.mir_opt_level {
-            Some(0) |
-            Some(1) |
-            None => { return; },
-            _ => {}
-        };
+        if tcx.sess.opts.mir_opt_level < 2 { return; }
 
         let _ignore = tcx.dep_graph.in_ignore();
 
@@ -142,6 +136,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     continue;
                 };
                 for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
+                    // Don't inline calls that are in cleanup blocks.
+                    if bb_data.is_cleanup { continue; }
+
                     // Only consider direct calls to functions
                     let terminator = bb_data.terminator();
                     if let TerminatorKind::Call {
@@ -448,8 +445,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 debug!("Inlined {:?} into {:?}", callsite.callee, callsite.caller);
 
-                let call_scope = terminator.source_info.scope;
-                let call_span = terminator.source_info.span;
+                let is_box_free = Some(callsite.callee) == self.tcx.lang_items.box_free_fn();
                 let bb_len = caller_mir.basic_blocks().len();
 
                 let mut var_map = IndexVec::with_capacity(callee_mir.var_decls.len());
@@ -459,10 +455,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 for mut scope in callee_mir.visibility_scopes {
                     if scope.parent_scope.is_none() {
-                        scope.parent_scope = Some(call_scope);
+                        scope.parent_scope = Some(callsite.location.scope);
                     }
 
-                    scope.span = call_span;
+                    scope.span = callsite.location.span;
 
                     let idx = caller_mir.visibility_scopes.push(scope);
                     scope_map.push(idx);
@@ -532,8 +528,58 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let return_block = destination.1;
 
                 // Copy the arguments if needed.
-                let args : Vec<_> = {
+                let args : Vec<_> = if is_box_free {
+                    assert!(args.len() == 1);
+                    // box_free takes a Box, but is defined with a *mut T, inlining
+                    // needs to generate the cast.
 
+                    let arg = if let Operand::Consume(ref lval) = args[0] {
+                        lval.clone()
+                    } else {
+                        bug!("Constant arg to \"box_free\"");
+                    };
+                    let arg = Rvalue::Ref(
+                        self.tcx.mk_region(ty::ReErased),
+                        BorrowKind::Mut,
+                        arg.deref());
+
+                    let ty = arg.ty(caller_mir, self.tcx).expect("Rvalue has no type!");
+                    let temp = TempDecl { ty: ty };
+                    let tmp = caller_mir.temp_decls.push(temp);
+                    let tmp = Lvalue::Temp(tmp);
+
+                    let stmt = Statement {
+                        source_info: callsite.location,
+                        kind: StatementKind::Assign(tmp.clone(), arg)
+                    };
+
+                    caller_mir[callsite.bb]
+                        .statements.push(stmt);
+
+                    let ptr_ty = args[0].ty(caller_mir, self.tcx);
+                    let pointee_ty = match ptr_ty.sty {
+                        ty::TyBox(ty) => ty,
+                        ty::TyRawPtr(tm) | ty::TyRef(_, tm) => tm.ty,
+                        _ => bug!("Invalid type `{:?}` for call to box_free", ptr_ty)
+                    };
+                    let ptr_ty = self.tcx.mk_mut_ptr(pointee_ty);
+
+                    let raw_ptr = Rvalue::Cast(CastKind::Misc, Operand::Consume(tmp), ptr_ty);
+
+                    let temp = TempDecl { ty: ptr_ty };
+                    let tmp = caller_mir.temp_decls.push(temp);
+                    let tmp = Lvalue::Temp(tmp);
+
+                    let stmt = Statement {
+                        source_info: callsite.location,
+                        kind: StatementKind::Assign(tmp.clone(), raw_ptr)
+                    };
+
+                    caller_mir[callsite.bb]
+                        .statements.push(stmt);
+
+                    vec![Operand::Consume(tmp)]
+                } else {
                     let tcx = self.tcx;
                     args.iter().map(|a| {
                         if let Operand::Consume(Lvalue::Temp(_)) = *a {
@@ -567,7 +613,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     tmp_map: temp_map,
                     scope_map: scope_map,
                     promoted_map: promoted_map,
-                    inline_location: callsite.location,
                     destination: dest,
                     return_block: return_block,
                     cleanup_block: cleanup,
@@ -581,7 +626,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 }
 
                 let terminator = Terminator {
-                    source_info: terminator.source_info,
+                    source_info: callsite.location,
                     kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) }
                 };
 
@@ -625,7 +670,6 @@ struct Integrator<'a, 'tcx: 'a> {
     tmp_map: IndexVec<Temp, Temp>,
     scope_map: IndexVec<VisibilityScope, VisibilityScope>,
     promoted_map: IndexVec<Promoted, Promoted>,
-    inline_location: SourceInfo,
     destination: Lvalue<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
@@ -687,6 +731,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn visit_terminator_kind(&mut self, block: BasicBlock,
                              kind: &mut TerminatorKind<'tcx>, loc: Location) {
+        self.super_terminator_kind(block, kind, loc);
+
         match *kind {
             TerminatorKind::Goto { ref mut target} => {
                 *target = self.update_target(*target);
@@ -744,16 +790,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             }
             TerminatorKind::Unreachable => { }
         }
-
-        self.super_terminator_kind(block, kind, loc);
     }
     fn visit_visibility_scope(&mut self, scope: &mut VisibilityScope) {
         *scope = self.scope_map[*scope];
-    }
-    fn visit_span(&mut self, span: &mut Span) {
-        // FIXME: probably shouldn't use the inline location span,
-        // but not doing so causes errors
-        *span = self.inline_location.span;
     }
 
     fn visit_literal(&mut self, literal: &mut Literal<'tcx>, loc: Location) {
