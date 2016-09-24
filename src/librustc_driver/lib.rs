@@ -649,7 +649,8 @@ impl RustcDefaultCalls {
                     }
                 }
                 PrintRequest::Cfg => {
-                    let allow_unstable_cfg = UnstableFeatures::from_environment().is_nightly_build();
+                    let allow_unstable_cfg = UnstableFeatures::from_environment()
+                        .is_nightly_build();
 
                     for cfg in cfg {
                         if !allow_unstable_cfg && GatedCfg::gate(&*cfg).is_some() {
