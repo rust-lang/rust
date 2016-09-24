@@ -18,27 +18,28 @@ fn main() {
     let c = 1;
 }
 
+// TODO The StorageDead for local1 (a) after local6's (c) is missing!
+
 // END RUST SOURCE
 // START rustc.node4.TypeckMir.before.mir
 //     bb0: {
-//         StorageLive(var0);               // scope 0 at storage_ranges.rs:14:9: 14:10
-//         var0 = const 0i32;               // scope 0 at storage_ranges.rs:14:13: 14:14
-//         StorageLive(var1);               // scope 1 at storage_ranges.rs:16:13: 16:14
-//         StorageLive(tmp1);               // scope 1 at storage_ranges.rs:16:18: 16:25
-//         StorageLive(tmp2);               // scope 1 at storage_ranges.rs:16:23: 16:24
-//         tmp2 = var0;                     // scope 1 at storage_ranges.rs:16:23: 16:24
-//         tmp1 = std::option::Option<i32>::Some(tmp2,); // scope 1 at storage_ranges.rs:16:18: 16:25
-//         var1 = &tmp1;                    // scope 1 at storage_ranges.rs:16:17: 16:25
-//         StorageDead(tmp2);               // scope 1 at storage_ranges.rs:16:23: 16:24
-//         tmp0 = ();                       // scope 2 at storage_ranges.rs:15:5: 17:6
-//         StorageDead(tmp1);               // scope 1 at storage_ranges.rs:16:18: 16:25
-//         StorageDead(var1);               // scope 1 at storage_ranges.rs:16:13: 16:14
-//         StorageLive(var2);               // scope 1 at storage_ranges.rs:18:9: 18:10
-//         var2 = const 1i32;               // scope 1 at storage_ranges.rs:18:13: 18:14
-//         return = ();                     // scope 3 at storage_ranges.rs:13:11: 19:2
-//         StorageDead(var2);               // scope 1 at storage_ranges.rs:18:9: 18:10
-//         StorageDead(var0);               // scope 0 at storage_ranges.rs:14:9: 14:10
-//         goto -> bb1;                     // scope 0 at storage_ranges.rs:13:1: 19:2
+//         StorageLive(local1);             // scope 0 at storage_ranges.rs:12:9: 12:10
+//         local1 = const 0i32;             // scope 0 at storage_ranges.rs:12:13: 12:14
+//         StorageLive(local3);             // scope 1 at storage_ranges.rs:14:13: 14:14
+//         StorageLive(local4);             // scope 1 at storage_ranges.rs:14:18: 14:25
+//         StorageLive(local5);             // scope 1 at storage_ranges.rs:14:23: 14:24
+//         local5 = local1;                 // scope 1 at storage_ranges.rs:14:23: 14:24
+//         local4 = std::option::Option<i32>::Some(local5,); // scope 1 at storage_ranges.rs:14:18: 14:25
+//         local3 = &local4;                // scope 1 at storage_ranges.rs:14:17: 14:25
+//         StorageDead(local5);             // scope 1 at storage_ranges.rs:14:23: 14:24
+//         local2 = ();                     // scope 2 at storage_ranges.rs:13:5: 15:6
+//         StorageDead(local4);             // scope 1 at storage_ranges.rs:14:18: 14:25
+//         StorageDead(local3);             // scope 1 at storage_ranges.rs:14:13: 14:14
+//         StorageLive(local6);             // scope 1 at storage_ranges.rs:16:9: 16:10
+//         local6 = const 1i32;             // scope 1 at storage_ranges.rs:16:13: 16:14
+//         local0 = ();                     // scope 3 at storage_ranges.rs:11:11: 17:2
+//         StorageDead(local6);             // scope 1 at storage_ranges.rs:16:9: 16:10
+//         goto -> bb1;                     // scope 0 at storage_ranges.rs:11:1: 17:2
 //     }
 //
 //     bb1: {

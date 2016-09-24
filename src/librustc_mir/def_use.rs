@@ -12,13 +12,12 @@
 
 use rustc::mir::repr::{Local, Location, Lvalue, Mir};
 use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::IndexVec;
 use std::marker::PhantomData;
 use std::mem;
 
 pub struct DefUseAnalysis<'tcx> {
     info: IndexVec<Local, Info<'tcx>>,
-    mir_summary: MirSummary,
 }
 
 #[derive(Clone)]
@@ -35,15 +34,13 @@ pub struct Use<'tcx> {
 impl<'tcx> DefUseAnalysis<'tcx> {
     pub fn new(mir: &Mir<'tcx>) -> DefUseAnalysis<'tcx> {
         DefUseAnalysis {
-            info: IndexVec::from_elem_n(Info::new(), mir.count_locals()),
-            mir_summary: MirSummary::new(mir),
+            info: IndexVec::from_elem_n(Info::new(), mir.local_decls.len()),
         }
     }
 
     pub fn analyze(&mut self, mir: &Mir<'tcx>) {
         let mut finder = DefUseFinder {
             info: mem::replace(&mut self.info, IndexVec::new()),
-            mir_summary: self.mir_summary,
         };
         finder.visit_mir(mir);
         self.info = finder.info
@@ -64,7 +61,6 @@ impl<'tcx> DefUseAnalysis<'tcx> {
         for lvalue_use in &self.info[local].defs_and_uses {
             MutateUseVisitor::new(local,
                                   &mut callback,
-                                  self.mir_summary,
                                   mir).visit_location(mir, lvalue_use.location)
         }
     }
@@ -80,13 +76,17 @@ impl<'tcx> DefUseAnalysis<'tcx> {
 
 struct DefUseFinder<'tcx> {
     info: IndexVec<Local, Info<'tcx>>,
-    mir_summary: MirSummary,
 }
 
 impl<'tcx> DefUseFinder<'tcx> {
     fn lvalue_mut_info(&mut self, lvalue: &Lvalue<'tcx>) -> Option<&mut Info<'tcx>> {
         let info = &mut self.info;
-        self.mir_summary.local_index(lvalue).map(move |local| &mut info[local])
+
+        if let Lvalue::Local(local) = *lvalue {
+            Some(&mut info[local])
+        } else {
+            None
+        }
     }
 }
 
@@ -132,18 +132,16 @@ impl<'tcx> Info<'tcx> {
 struct MutateUseVisitor<'tcx, F> {
     query: Local,
     callback: F,
-    mir_summary: MirSummary,
     phantom: PhantomData<&'tcx ()>,
 }
 
 impl<'tcx, F> MutateUseVisitor<'tcx, F> {
-    fn new(query: Local, callback: F, mir_summary: MirSummary, _: &Mir<'tcx>)
+    fn new(query: Local, callback: F, _: &Mir<'tcx>)
            -> MutateUseVisitor<'tcx, F>
            where F: for<'a> FnMut(&'a mut Lvalue<'tcx>, LvalueContext<'tcx>, Location) {
         MutateUseVisitor {
             query: query,
             callback: callback,
-            mir_summary: mir_summary,
             phantom: PhantomData,
         }
     }
@@ -155,43 +153,11 @@ impl<'tcx, F> MutVisitor<'tcx> for MutateUseVisitor<'tcx, F>
                     lvalue: &mut Lvalue<'tcx>,
                     context: LvalueContext<'tcx>,
                     location: Location) {
-        if self.mir_summary.local_index(lvalue) == Some(self.query) {
-            (self.callback)(lvalue, context, location)
+        if let Lvalue::Local(local) = *lvalue {
+            if local == self.query {
+                (self.callback)(lvalue, context, location)
+            }
         }
         self.super_lvalue(lvalue, context, location)
     }
 }
-
-/// A small structure that enables various metadata of the MIR to be queried
-/// without a reference to the MIR itself.
-#[derive(Clone, Copy)]
-pub struct MirSummary {
-    arg_count: usize,
-    var_count: usize,
-    temp_count: usize,
-}
-
-impl MirSummary {
-    pub fn new(mir: &Mir) -> MirSummary {
-        MirSummary {
-            arg_count: mir.arg_decls.len(),
-            var_count: mir.var_decls.len(),
-            temp_count: mir.temp_decls.len(),
-        }
-    }
-
-    pub fn local_index<'tcx>(&self, lvalue: &Lvalue<'tcx>) -> Option<Local> {
-        match *lvalue {
-            Lvalue::Arg(arg) => Some(Local::new(arg.index())),
-            Lvalue::Var(var) => Some(Local::new(var.index() + self.arg_count)),
-            Lvalue::Temp(temp) => {
-                Some(Local::new(temp.index() + self.arg_count + self.var_count))
-            }
-            Lvalue::ReturnPointer => {
-                Some(Local::new(self.arg_count + self.var_count + self.temp_count))
-            }
-            _ => None,
-        }
-    }
-}
-

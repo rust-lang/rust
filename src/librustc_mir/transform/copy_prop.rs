@@ -29,12 +29,11 @@
 //! (non-mutating) use of `SRC`. These restrictions are conservative and may be relaxed in the
 //! future.
 
-use def_use::{DefUseAnalysis, MirSummary};
+use def_use::DefUseAnalysis;
 use rustc::mir::repr::{Constant, Local, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::indexed_vec::Idx;
 use transform::qualify_consts;
 
 pub struct CopyPropagation;
@@ -78,9 +77,8 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
             def_use_analysis.analyze(mir);
 
             let mut changed = false;
-            for dest_local_index in 0..mir.count_locals() {
-                let dest_local = Local::new(dest_local_index);
-                debug!("Considering destination local: {}", mir.format_local(dest_local));
+            for dest_local in mir.local_decls.indices() {
+                debug!("Considering destination local: {:?}", dest_local);
 
                 let action;
                 let location;
@@ -89,19 +87,19 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     let dest_use_info = def_use_analysis.local_info(dest_local);
                     let dest_def_count = dest_use_info.def_count_not_including_drop();
                     if dest_def_count == 0 {
-                        debug!("  Can't copy-propagate local: dest {} undefined",
-                               mir.format_local(dest_local));
+                        debug!("  Can't copy-propagate local: dest {:?} undefined",
+                               dest_local);
                         continue
                     }
                     if dest_def_count > 1 {
-                        debug!("  Can't copy-propagate local: dest {} defined {} times",
-                               mir.format_local(dest_local),
+                        debug!("  Can't copy-propagate local: dest {:?} defined {} times",
+                               dest_local,
                                dest_use_info.def_count());
                         continue
                     }
                     if dest_use_info.use_count() == 0 {
-                        debug!("  Can't copy-propagate local: dest {} unused",
-                               mir.format_local(dest_local));
+                        debug!("  Can't copy-propagate local: dest {:?} unused",
+                               dest_local);
                         continue
                     }
                     let dest_lvalue_def = dest_use_info.defs_and_uses.iter().filter(|lvalue_def| {
@@ -121,11 +119,11 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
 
                     // That use of the source must be an assignment.
                     match statement.kind {
-                        StatementKind::Assign(ref dest_lvalue, Rvalue::Use(ref operand)) if
-                                Some(dest_local) == mir.local_index(dest_lvalue) => {
+                        StatementKind::Assign(Lvalue::Local(local), Rvalue::Use(ref operand)) if
+                                local == dest_local => {
                             let maybe_action = match *operand {
                                 Operand::Consume(ref src_lvalue) => {
-                                    Action::local_copy(mir, &def_use_analysis, src_lvalue)
+                                    Action::local_copy(&def_use_analysis, src_lvalue)
                                 }
                                 Operand::Constant(ref src_constant) => {
                                     Action::constant(src_constant)
@@ -162,15 +160,14 @@ enum Action<'tcx> {
 }
 
 impl<'tcx> Action<'tcx> {
-    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_lvalue: &Lvalue<'tcx>)
+    fn local_copy(def_use_analysis: &DefUseAnalysis, src_lvalue: &Lvalue<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
-        let src_local = match mir.local_index(src_lvalue) {
-            Some(src_local) => src_local,
-            None => {
-                debug!("  Can't copy-propagate local: source is not a local");
-                return None
-            }
+        let src_local = if let Lvalue::Local(local) = *src_lvalue {
+            local
+        } else {
+            debug!("  Can't copy-propagate local: source is not a local");
+            return None;
         };
 
         // We're trying to copy propagate a local.
@@ -225,9 +222,9 @@ impl<'tcx> Action<'tcx> {
                 // First, remove all markers.
                 //
                 // FIXME(pcwalton): Don't do this. Merge live ranges instead.
-                debug!("  Replacing all uses of {} with {} (local)",
-                       mir.format_local(dest_local),
-                       mir.format_local(src_local));
+                debug!("  Replacing all uses of {:?} with {:?} (local)",
+                       dest_local,
+                       src_local);
                 for lvalue_use in &def_use_analysis.local_info(dest_local).defs_and_uses {
                     if lvalue_use.context.is_storage_marker() {
                         mir.make_statement_nop(lvalue_use.location)
@@ -240,7 +237,7 @@ impl<'tcx> Action<'tcx> {
                 }
 
                 // Replace all uses of the destination local with the source local.
-                let src_lvalue = Lvalue::from_local(mir, src_local);
+                let src_lvalue = Lvalue::Local(src_local);
                 def_use_analysis.replace_all_defs_and_uses_with(dest_local, mir, src_lvalue);
 
                 // Finally, zap the now-useless assignment instruction.
@@ -253,8 +250,8 @@ impl<'tcx> Action<'tcx> {
                 // First, remove all markers.
                 //
                 // FIXME(pcwalton): Don't do this. Merge live ranges instead.
-                debug!("  Replacing all uses of {} with {:?} (constant)",
-                       mir.format_local(dest_local),
+                debug!("  Replacing all uses of {:?} with {:?} (constant)",
+                       dest_local,
                        src_constant);
                 let dest_local_info = def_use_analysis.local_info(dest_local);
                 for lvalue_use in &dest_local_info.defs_and_uses {
@@ -264,8 +261,7 @@ impl<'tcx> Action<'tcx> {
                 }
 
                 // Replace all uses of the destination local with the constant.
-                let mut visitor = ConstantPropagationVisitor::new(MirSummary::new(mir),
-                                                                  dest_local,
+                let mut visitor = ConstantPropagationVisitor::new(dest_local,
                                                                   src_constant);
                 for dest_lvalue_use in &dest_local_info.defs_and_uses {
                     visitor.visit_location(mir, dest_lvalue_use.location)
@@ -298,17 +294,15 @@ impl<'tcx> Action<'tcx> {
 struct ConstantPropagationVisitor<'tcx> {
     dest_local: Local,
     constant: Constant<'tcx>,
-    mir_summary: MirSummary,
     uses_replaced: usize,
 }
 
 impl<'tcx> ConstantPropagationVisitor<'tcx> {
-    fn new(mir_summary: MirSummary, dest_local: Local, constant: Constant<'tcx>)
+    fn new(dest_local: Local, constant: Constant<'tcx>)
            -> ConstantPropagationVisitor<'tcx> {
         ConstantPropagationVisitor {
             dest_local: dest_local,
             constant: constant,
-            mir_summary: mir_summary,
             uses_replaced: 0,
         }
     }
@@ -319,16 +313,11 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
         self.super_operand(operand, location);
 
         match *operand {
-            Operand::Consume(ref lvalue) => {
-                if self.mir_summary.local_index(lvalue) != Some(self.dest_local) {
-                    return
-                }
-            }
-            Operand::Constant(_) => return,
+            Operand::Consume(Lvalue::Local(local)) if local == self.dest_local => {}
+            _ => return,
         }
 
         *operand = Operand::Constant(self.constant.clone());
         self.uses_replaced += 1
     }
 }
-

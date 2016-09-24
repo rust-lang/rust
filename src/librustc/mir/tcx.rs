@@ -49,12 +49,17 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                          -> LvalueTy<'tcx>
     {
         match *elem {
-            ProjectionElem::Deref =>
+            ProjectionElem::Deref => {
+                let ty = self.to_ty(tcx)
+                             .builtin_deref(true, ty::LvaluePreference::NoPreference)
+                             .unwrap_or_else(|| {
+                                 bug!("deref projection of non-dereferencable ty {:?}", self)
+                             })
+                             .ty;
                 LvalueTy::Ty {
-                    ty: self.to_ty(tcx).builtin_deref(true, ty::LvaluePreference::NoPreference)
-                                          .unwrap()
-                                          .ty
-                },
+                    ty: ty,
+                }
+            }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } =>
                 LvalueTy::Ty {
                     ty: self.to_ty(tcx).builtin_index().unwrap()
@@ -116,18 +121,12 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
 
 impl<'tcx> Lvalue<'tcx> {
     pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx> {
-        match self {
-            &Lvalue::Var(index) =>
-                LvalueTy::Ty { ty: mir.var_decls[index].ty },
-            &Lvalue::Temp(index) =>
-                LvalueTy::Ty { ty: mir.temp_decls[index].ty },
-            &Lvalue::Arg(index) =>
-                LvalueTy::Ty { ty: mir.arg_decls[index].ty },
-            &Lvalue::Static(def_id) =>
+        match *self {
+            Lvalue::Local(index) =>
+                LvalueTy::Ty { ty: mir.local_decls[index].ty },
+            Lvalue::Static(def_id) =>
                 LvalueTy::Ty { ty: tcx.lookup_item_type(def_id).ty },
-            &Lvalue::ReturnPointer =>
-                LvalueTy::Ty { ty: mir.return_ty },
-            &Lvalue::Projection(ref proj) =>
+            Lvalue::Projection(ref proj) =>
                 proj.base.ty(mir, tcx).projection_ty(tcx, &proj.elem),
         }
     }

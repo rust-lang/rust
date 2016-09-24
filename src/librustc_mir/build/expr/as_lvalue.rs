@@ -77,11 +77,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
-                block.and(Lvalue::Arg(Arg::new(0)))
+                block.and(Lvalue::Local(Local::new(1)))
             }
             ExprKind::VarRef { id } => {
                 let index = this.var_indices[&id];
-                block.and(Lvalue::Var(index))
+                block.and(Lvalue::Local(index))
             }
             ExprKind::StaticRef { id } => {
                 block.and(Lvalue::Static(id))
