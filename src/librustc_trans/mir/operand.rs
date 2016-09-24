@@ -175,7 +175,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         // watch out for locals that do not have an
         // alloca; they are handled somewhat differently
-        if let Some(index) = self.mir.local_index(lvalue) {
+        if let mir::Lvalue::Local(index) = *lvalue {
             match self.locals[index] {
                 LocalRef::Operand(Some(o)) => {
                     return o;
@@ -191,7 +191,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         // Moves out of pair fields are trivial.
         if let &mir::Lvalue::Projection(ref proj) = lvalue {
-            if let Some(index) = self.mir.local_index(&proj.base) {
+            if let mir::Lvalue::Local(index) = proj.base {
                 if let LocalRef::Operand(Some(o)) = self.locals[index] {
                     match (o.val, &proj.elem) {
                         (OperandValue::Pair(a, b),

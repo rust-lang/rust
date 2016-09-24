@@ -30,7 +30,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         debug_loc.apply(bcx.fcx());
         match statement.kind {
             mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                if let Some(index) = self.mir.local_index(lvalue) {
+                if let mir::Lvalue::Local(index) = *lvalue {
                     match self.locals[index] {
                         LocalRef::Lvalue(tr_dest) => {
                             self.trans_rvalue(bcx, tr_dest, rvalue, debug_loc)
@@ -86,7 +86,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                               lvalue: &mir::Lvalue<'tcx>,
                               intrinsic: base::Lifetime)
                               -> BlockAndBuilder<'bcx, 'tcx> {
-        if let Some(index) = self.mir.local_index(lvalue) {
+        if let mir::Lvalue::Local(index) = *lvalue {
             if let LocalRef::Lvalue(tr_lval) = self.locals[index] {
                 intrinsic.call(&bcx, tr_lval.llval);
             }
