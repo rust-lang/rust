@@ -171,7 +171,7 @@ impl Constructor {
 #[derive(Clone, PartialEq)]
 pub enum Usefulness {
     Useful,
-    UsefulWithWitness(Vec<P<Pat>>),
+    UsefulWithWitness(Vec<Witness>),
     NotUseful
 }
 
@@ -180,6 +180,13 @@ pub enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness
 }
+
+#[derive(Copy, Clone, Debug)]
+struct PatternContext<'tcx> {
+    ty: Ty<'tcx>,
+    max_slice_length: usize,
+}
+
 
 fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
     let node = match value {
@@ -194,93 +201,126 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
     })
 }
 
-/// Constructs a partial witness for a pattern given a list of
-/// patterns expanded by the specialization step.
-///
-/// When a pattern P is discovered to be useful, this function is used bottom-up
-/// to reconstruct a complete witness, e.g. a pattern P' that covers a subset
-/// of values, V, where each value in that set is not covered by any previously
-/// used patterns and is covered by the pattern P'. Examples:
-///
-/// left_ty: tuple of 3 elements
-/// pats: [10, 20, _]           => (10, 20, _)
-///
-/// left_ty: struct X { a: (bool, &'static str), b: usize}
-/// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
-                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> P<Pat> {
-    let pats_len = pats.len();
-    let mut pats = pats.into_iter().map(|p| P((*p).clone()));
-    let pat = match left_ty.sty {
-        ty::TyTuple(..) => PatKind::Tuple(pats.collect(), None),
+/// A stack of patterns in reverse order of construction
+#[derive(Clone, PartialEq, Eq)]
+pub struct Witness(Vec<P<Pat>>);
 
-        ty::TyAdt(adt, _) => {
-            let v = ctor.variant_for_adt(adt);
-            match v.ctor_kind {
-                CtorKind::Fictive => {
-                    let field_pats: hir::HirVec<_> = v.fields.iter()
-                        .zip(pats)
-                        .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
-                        .map(|(field, pat)| Spanned {
-                            span: DUMMY_SP,
-                            node: hir::FieldPat {
-                                name: field.name,
-                                pat: pat,
-                                is_shorthand: false,
-                            }
-                        }).collect();
-                    let has_more_fields = field_pats.len() < pats_len;
-                    PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
+impl Witness {
+    pub fn single_pattern(&self) -> &Pat {
+        assert_eq!(self.0.len(), 1);
+        &self.0[0]
+    }
+
+    fn push_wild_constructor<'a, 'tcx>(
+        mut self,
+        cx: &MatchCheckCtxt<'a, 'tcx>,
+        ctor: &Constructor,
+        ty: Ty<'tcx>)
+        -> Self
+    {
+        let arity = constructor_arity(cx, ctor, ty);
+        self.0.extend(repeat(DUMMY_WILD_PAT).take(arity).map(|p| P(p.clone())));
+        self.apply_constructor(cx, ctor, ty)
+    }
+
+
+    /// Constructs a partial witness for a pattern given a list of
+    /// patterns expanded by the specialization step.
+    ///
+    /// When a pattern P is discovered to be useful, this function is used bottom-up
+    /// to reconstruct a complete witness, e.g. a pattern P' that covers a subset
+    /// of values, V, where each value in that set is not covered by any previously
+    /// used patterns and is covered by the pattern P'. Examples:
+    ///
+    /// left_ty: tuple of 3 elements
+    /// pats: [10, 20, _]           => (10, 20, _)
+    ///
+    /// left_ty: struct X { a: (bool, &'static str), b: usize}
+    /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
+    fn apply_constructor<'a, 'tcx>(
+        mut self,
+        cx: &MatchCheckCtxt<'a,'tcx>,
+        ctor: &Constructor,
+        ty: Ty<'tcx>)
+        -> Self
+    {
+        let arity = constructor_arity(cx, ctor, ty);
+        let pat = {
+            let len = self.0.len();
+            let mut pats = self.0.drain(len-arity..).rev();
+
+            match ty.sty {
+                ty::TyTuple(..) => PatKind::Tuple(pats.collect(), None),
+
+                ty::TyAdt(adt, _) => {
+                    let v = ctor.variant_for_adt(adt);
+                    match v.ctor_kind {
+                        CtorKind::Fictive => {
+                            let field_pats: hir::HirVec<_> = v.fields.iter()
+                                .zip(pats)
+                                .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
+                                .map(|(field, pat)| Spanned {
+                                    span: DUMMY_SP,
+                                    node: hir::FieldPat {
+                                        name: field.name,
+                                        pat: pat,
+                                        is_shorthand: false,
+                                    }
+                                }).collect();
+                            let has_more_fields = field_pats.len() < arity;
+                            PatKind::Struct(
+                                def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
+                        }
+                        CtorKind::Fn => {
+                            PatKind::TupleStruct(
+                                def_to_path(cx.tcx, v.did), pats.collect(), None)
+                        }
+                        CtorKind::Const => {
+                            PatKind::Path(None, def_to_path(cx.tcx, v.did))
+                        }
+                    }
                 }
-                CtorKind::Fn => {
-                    PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
+
+                ty::TyRef(_, ty::TypeAndMut { mutbl, .. }) => {
+                    PatKind::Ref(pats.nth(0).unwrap(), mutbl)
                 }
-                CtorKind::Const => {
-                    PatKind::Path(None, def_to_path(cx.tcx, v.did))
+
+                ty::TySlice(_) | ty::TyArray(..) => {
+                    PatKind::Slice(pats.collect(), None, hir::HirVec::new())
+                }
+
+                _ => {
+                    match *ctor {
+                        ConstantValue(ref v) => PatKind::Lit(const_val_to_expr(v)),
+                        _ => PatKind::Wild,
+                    }
                 }
             }
-        }
+        };
 
-        ty::TyRef(_, ty::TypeAndMut { mutbl, .. }) => {
-            assert_eq!(pats_len, 1);
-            PatKind::Ref(pats.nth(0).unwrap(), mutbl)
-        }
+        self.0.push(P(hir::Pat {
+            id: DUMMY_NODE_ID,
+            node: pat,
+            span: DUMMY_SP
+        }));
 
-        ty::TySlice(_) => match ctor {
-            &Slice(n) => {
-                assert_eq!(pats_len, n);
-                PatKind::Slice(pats.collect(), None, hir::HirVec::new())
-            },
-            _ => unreachable!()
-        },
-
-        ty::TyArray(_, len) => {
-            assert_eq!(pats_len, len);
-            PatKind::Slice(pats.collect(), None, hir::HirVec::new())
-        }
-
-        _ => {
-            match *ctor {
-                ConstantValue(ref v) => PatKind::Lit(const_val_to_expr(v)),
-                _ => PatKind::Wild,
-            }
-        }
-    };
-
-    P(hir::Pat {
-        id: DUMMY_NODE_ID,
-        node: pat,
-        span: DUMMY_SP
-    })
+        self
+    }
 }
 
-fn missing_constructors(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
-                       left_ty: Ty, max_slice_length: usize) -> Vec<Constructor> {
-    let used_constructors: Vec<Constructor> = rows.iter()
-        .flat_map(|row| pat_constructors(cx, row[0], left_ty, max_slice_length))
+/// Return the set of constructors from the same type as the first column of `matrix`,
+/// that are matched only by wildcard patterns from that first column.
+///
+/// Therefore, if there is some pattern that is unmatched by `matrix`, it will
+/// still be unmatched if the first constructor is replaced by any of the constructors
+/// in the return value.
+fn missing_constructors(cx: &MatchCheckCtxt, matrix: &Matrix,
+                        pcx: PatternContext) -> Vec<Constructor> {
+    let used_constructors: Vec<Constructor> =
+        matrix.0.iter()
+        .flat_map(|row| pat_constructors(cx, row[0], pcx).unwrap_or(vec![]))
         .collect();
-    all_constructors(cx, left_ty, max_slice_length)
-        .into_iter()
+    all_constructors(cx, pcx).into_iter()
         .filter(|c| !used_constructors.contains(c))
         .collect()
 }
@@ -289,13 +329,12 @@ fn missing_constructors(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
 /// values of type `left_ty`. For vectors, this would normally be an infinite set
 /// but is instead bounded by the maximum fixed length of slice patterns in
 /// the column of patterns being analyzed.
-fn all_constructors(_cx: &MatchCheckCtxt, left_ty: Ty,
-                    max_slice_length: usize) -> Vec<Constructor> {
-    match left_ty.sty {
+fn all_constructors(_cx: &MatchCheckCtxt, pcx: PatternContext) -> Vec<Constructor> {
+    match pcx.ty.sty {
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
         ty::TySlice(_) =>
-            (0..max_slice_length+1).map(|length| Slice(length)).collect(),
+            (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect(),
         ty::TyAdt(def, _) if def.is_enum() =>
             def.variants.iter().map(|v| Variant(v.did)).collect(),
         _ => vec![Single]
@@ -324,7 +363,9 @@ pub fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
     debug!("is_useful({:?}, {:?})", matrix, v);
     if rows.is_empty() {
         return match witness {
-            ConstructWitness => UsefulWithWitness(vec!()),
+            ConstructWitness => UsefulWithWitness(vec![Witness(
+                repeat(DUMMY_WILD_PAT).take(v.len()).map(|p| P(p.clone())).collect()
+            )]),
             LeaveOutWitness => Useful
         };
     }
@@ -332,44 +373,37 @@ pub fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
         return NotUseful;
     }
     assert!(rows.iter().all(|r| r.len() == v.len()));
-    let left_ty = match rows.iter().filter_map(|r| r[0].pattern_ty).next()
-        .or_else(|| v[0].pattern_ty)
-    {
-        Some(ty) => ty,
-        None => {
-            // all patterns are wildcards - we can pick any type we want
-            cx.tcx.types.bool
-        }
+
+    let pcx = PatternContext {
+        ty: match rows.iter().filter_map(|r| r[0].pattern_ty).next()
+            .or_else(|| v[0].pattern_ty)
+        {
+            Some(ty) => ty,
+            None => {
+                // all patterns are wildcards - we can pick any type we want
+                cx.tcx.types.bool
+            }
+        },
+        max_slice_length: rows.iter().filter_map(|row| match row[0].pat.node {
+            PatKind::Slice(ref before, _, ref after) => Some(before.len() + after.len()),
+            _ => None
+        }).max().map_or(0, |v| v + 1)
     };
 
-    let max_slice_length = rows.iter().filter_map(|row| match row[0].pat.node {
-        PatKind::Slice(ref before, _, ref after) => Some(before.len() + after.len()),
-        _ => None
-    }).max().map_or(0, |v| v + 1);
+    debug!("is_useful: pcx={:?}, expanding {:?}", pcx, v[0]);
 
-    let constructors = pat_constructors(cx, v[0], left_ty, max_slice_length);
-    debug!("is_useful - pat_constructors = {:?} left_ty = {:?}", constructors,
-           left_ty);
-    if constructors.is_empty() {
-        let constructors = missing_constructors(cx, matrix, left_ty, max_slice_length);
+    if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
+        debug!("is_useful - expanding constructors: {:?}", constructors);
+        constructors.into_iter().map(|c|
+            is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
+        ).find(|result| result != &NotUseful).unwrap_or(NotUseful)
+    } else {
+        debug!("is_useful - expanding wildcard");
+        let constructors = missing_constructors(cx, matrix, pcx);
         debug!("is_useful - missing_constructors = {:?}", constructors);
         if constructors.is_empty() {
-            all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
-                match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
-                    UsefulWithWitness(pats) => UsefulWithWitness({
-                        let arity = constructor_arity(cx, &c, left_ty);
-                        let mut result = {
-                            let pat_slice = &pats[..];
-                            let subpats: Vec<_> = (0..arity).map(|i| {
-                                pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
-                            }).collect();
-                            vec![construct_witness(cx, &c, subpats, left_ty)]
-                        };
-                        result.extend(pats.into_iter().skip(arity));
-                        result
-                    }),
-                    result => result
-                }
+            all_constructors(cx, pcx).into_iter().map(|c| {
+                is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
             }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
         } else {
             let matrix = rows.iter().filter_map(|r| {
@@ -380,21 +414,15 @@ pub fn is_useful<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
             }).collect();
             match is_useful(cx, &matrix, &v[1..], witness) {
                 UsefulWithWitness(pats) => {
-                    let mut new_pats: Vec<_> = constructors.into_iter().map(|constructor| {
-                        let arity = constructor_arity(cx, &constructor, left_ty);
-                        let wild_pats = vec![DUMMY_WILD_PAT; arity];
-                        construct_witness(cx, &constructor, wild_pats, left_ty)
-                    }).collect();
-                    new_pats.extend(pats);
-                    UsefulWithWitness(new_pats)
-                },
+                    UsefulWithWitness(pats.into_iter().flat_map(|witness| {
+                        constructors.iter().map(move |ctor| {
+                            witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
+                        })
+                    }).collect())
+                }
                 result => result
             }
         }
-    } else {
-        constructors.into_iter().map(|c|
-            is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness)
-        ).find(|result| result != &NotUseful).unwrap_or(NotUseful)
     }
 }
 
@@ -411,7 +439,14 @@ fn is_useful_specialized<'a, 'tcx>(
         specialize(cx, &r[..], &ctor, 0, arity)
     }).collect());
     match specialize(cx, v, &ctor, 0, arity) {
-        Some(v) => is_useful(cx, &matrix, &v[..], witness),
+        Some(v) => match is_useful(cx, &matrix, &v[..], witness) {
+            UsefulWithWitness(witnesses) => UsefulWithWitness(
+                witnesses.into_iter()
+                    .map(|witness| witness.apply_constructor(cx, &ctor, lty))
+                    .collect()
+            ),
+            result => result
+        },
         None => NotUseful
     }
 }
@@ -423,41 +458,43 @@ fn is_useful_specialized<'a, 'tcx>(
 /// Slice patterns, however, can match slices of different lengths. For instance,
 /// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
 ///
-/// On the other hand, a wild pattern and an identifier pattern cannot be
-/// specialized in any way.
-fn pat_constructors(cx: &MatchCheckCtxt, p: Pattern,
-                    left_ty: Ty, max_slice_length: usize) -> Vec<Constructor> {
+/// Returns None in case of a catch-all, which can't be specialized.
+fn pat_constructors(cx: &MatchCheckCtxt,
+                    p: Pattern,
+                    pcx: PatternContext)
+                    -> Option<Vec<Constructor>>
+{
     let pat = p.as_raw();
     match pat.node {
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) =>
             match cx.tcx.expect_def(pat.id) {
-                Def::Variant(id) | Def::VariantCtor(id, _) => vec![Variant(id)],
+                Def::Variant(id) | Def::VariantCtor(id, _) => Some(vec![Variant(id)]),
                 Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
-                Def::TyAlias(..) | Def::AssociatedTy(..) => vec![Single],
+                Def::TyAlias(..) | Def::AssociatedTy(..) => Some(vec![Single]),
                 Def::Const(..) | Def::AssociatedConst(..) =>
                     span_bug!(p.span(), "const pattern should've been rewritten"),
                 def => span_bug!(p.span(), "pat_constructors: unexpected definition {:?}", def),
             },
         PatKind::Lit(ref expr) =>
-            vec![ConstantValue(eval_const_expr(cx.tcx, &expr))],
+            Some(vec![ConstantValue(eval_const_expr(cx.tcx, &expr))]),
         PatKind::Range(ref lo, ref hi) =>
-            vec![ConstantRange(eval_const_expr(cx.tcx, &lo), eval_const_expr(cx.tcx, &hi))],
+            Some(vec![ConstantRange(eval_const_expr(cx.tcx, &lo), eval_const_expr(cx.tcx, &hi))]),
         PatKind::Slice(ref before, ref slice, ref after) =>
-            match left_ty.sty {
-                ty::TyArray(..) => vec![Single],
+            match pcx.ty.sty {
+                ty::TyArray(..) => Some(vec![Single]),
                 ty::TySlice(_) if slice.is_some() => {
-                    (before.len() + after.len()..max_slice_length+1)
-                        .map(|length| Slice(length))
-                        .collect()
+                    Some((before.len() + after.len()..pcx.max_slice_length+1)
+                         .map(|length| Slice(length))
+                         .collect())
                 }
-                ty::TySlice(_) => vec!(Slice(before.len() + after.len())),
+                ty::TySlice(_) => Some(vec!(Slice(before.len() + after.len()))),
                 _ => span_bug!(pat.span, "pat_constructors: unexpected \
-                                          slice pattern type {:?}", left_ty)
+                                          slice pattern type {:?}", pcx.ty)
             },
         PatKind::Box(..) | PatKind::Tuple(..) | PatKind::Ref(..) =>
-            vec![Single],
+            Some(vec![Single]),
         PatKind::Binding(..) | PatKind::Wild =>
-            vec![],
+            None,
     }
 }
 
@@ -466,7 +503,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: Pattern,
 ///
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
+fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
     debug!("constructor_arity({:?}, {:?})", ctor, ty);
     match ty.sty {
         ty::TyTuple(ref fs) => fs.len(),
@@ -685,7 +722,7 @@ fn specialize<'a, 'b, 'tcx>(
 
 pub fn is_refutable<A, F>(cx: &MatchCheckCtxt, pat: &Pat, refutable: F)
                           -> Option<A> where
-    F: FnOnce(&Pat) -> A,
+    F: FnOnce(&Witness) -> A,
 {
     let pats = Matrix(vec!(vec!(wrap_pat(cx, pat))));
     match is_useful(cx, &pats, &[DUMMY_WILD_PATTERN], ConstructWitness) {
