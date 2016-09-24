@@ -1583,10 +1583,7 @@ pub mod nightly_options {
     }
 
     pub fn is_nightly_build() -> bool {
-        match get_unstable_features_setting() {
-            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            _ => false,
-        }
+        UnstableFeatures::from_environment().is_nightly_build()
     }
 
     pub fn check_nightly_options(matches: &getopts::Matches, flags: &[RustcOptGroup]) {

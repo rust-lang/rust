@@ -1312,6 +1312,13 @@ impl UnstableFeatures {
             (false, _, _) => UnstableFeatures::Allow
         }
     }
+
+    pub fn is_nightly_build(&self) -> bool {
+        match *self {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
+            _ => false,
+        }
+    }
 }
 
 fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate,
