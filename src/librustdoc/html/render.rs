@@ -58,7 +58,6 @@ use syntax::feature_gate::UnstableFeatures;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
-use rustc::session::config::get_unstable_features_setting;
 use rustc::hir;
 use rustc::util::nodemap::{FnvHashMap, FnvHashSet};
 use rustc_data_structures::flock;
@@ -1971,7 +1970,7 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
     // FIXME(#24111): remove when `const_fn` is stabilized
-    let vis_constness = match get_unstable_features_setting() {
+    let vis_constness = match UnstableFeatures::from_environment() {
         UnstableFeatures::Allow => f.constness,
         _ => hir::Constness::NotConst
     };
@@ -2250,7 +2249,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
             }
         };
         // FIXME(#24111): remove when `const_fn` is stabilized
-        let vis_constness = match get_unstable_features_setting() {
+        let vis_constness = match UnstableFeatures::from_environment() {
             UnstableFeatures::Allow => constness,
             _ => hir::Constness::NotConst
         };
