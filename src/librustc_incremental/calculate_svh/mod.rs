@@ -28,6 +28,7 @@
 //! at the beginning.
 
 use syntax::ast;
+use std::cell::RefCell;
 use std::hash::{Hash, SipHasher, Hasher};
 use rustc::dep_graph::DepNode;
 use rustc::hir;
@@ -46,7 +47,42 @@ mod def_path_hash;
 mod svh_visitor;
 mod caching_codemap_view;
 
-pub type IncrementalHashesMap = FnvHashMap<DepNode<DefId>, u64>;
+pub struct IncrementalHashesMap {
+    hashes: FnvHashMap<DepNode<DefId>, u64>,
+
+    // These are the metadata hashes for the current crate as they were stored
+    // during the last compilation session. They are only loaded if
+    // -Z query-dep-graph was specified and are needed for auto-tests using
+    // the #[rustc_metadata_dirty] and #[rustc_metadata_clean] attributes to
+    // check whether some metadata hash has changed in between two revisions.
+    pub prev_metadata_hashes: RefCell<FnvHashMap<DefId, u64>>,
+}
+
+impl IncrementalHashesMap {
+    pub fn new() -> IncrementalHashesMap {
+        IncrementalHashesMap {
+            hashes: FnvHashMap(),
+            prev_metadata_hashes: RefCell::new(FnvHashMap()),
+        }
+    }
+
+    pub fn insert(&mut self, k: DepNode<DefId>, v: u64) -> Option<u64> {
+        self.hashes.insert(k, v)
+    }
+
+    pub fn iter<'a>(&'a self) -> ::std::collections::hash_map::Iter<'a, DepNode<DefId>, u64> {
+        self.hashes.iter()
+    }
+}
+
+impl<'a> ::std::ops::Index<&'a DepNode<DefId>> for IncrementalHashesMap {
+    type Output = u64;
+
+    fn index(&self, index: &'a DepNode<DefId>) -> &u64 {
+        &self.hashes[index]
+    }
+}
+
 
 pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                                     -> IncrementalHashesMap {
@@ -55,7 +91,7 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     let hash_spans = tcx.sess.opts.debuginfo != NoDebugInfo;
     let mut visitor = HashItemsVisitor {
         tcx: tcx,
-        hashes: FnvHashMap(),
+        hashes: IncrementalHashesMap::new(),
         def_path_hashes: DefPathHashes::new(tcx),
         codemap: CachingCodemapView::new(tcx),
         hash_spans: hash_spans,
