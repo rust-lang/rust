@@ -1026,6 +1026,9 @@ then
         (3.[7-9]*)
             msg "found ok version of LLVM: $LLVM_VERSION"
             ;;
+        (4.[0]*)
+            msg "found ok version of LLVM: $LLVM_VERSION"
+            ;;
         (*)
             err "bad LLVM version: $LLVM_VERSION, need >=3.7"
             ;;
