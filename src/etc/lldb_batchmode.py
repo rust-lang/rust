@@ -37,14 +37,14 @@ DEBUG_OUTPUT = False
 
 
 def print_debug(s):
-    "Print something if DEBUG_OUTPUT is True"
+    """Print something if DEBUG_OUTPUT is True"""
     global DEBUG_OUTPUT
     if DEBUG_OUTPUT:
         print("DEBUG: " + str(s))
 
 
 def normalize_whitespace(s):
-    "Replace newlines, tabs, multiple spaces, etc with exactly one space"
+    """Replace newlines, tabs, multiple spaces, etc with exactly one space"""
     return re.sub("\s+", " ", s)
 
 
@@ -71,7 +71,7 @@ registered_breakpoints = set()
 
 
 def execute_command(command_interpreter, command):
-    "Executes a single CLI command"
+    """Executes a single CLI command"""
     global new_breakpoints
     global registered_breakpoints
 

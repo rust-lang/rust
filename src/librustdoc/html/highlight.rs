@@ -17,7 +17,7 @@
 //! the `render_inner_with_highlighting` or `render_with_highlighting`
 //! functions. For more advanced use cases (if you want to supply your own css
 //! classes or control how the HTML is generated, or even generate something
-//! other then HTML), then you should implement the the `Writer` trait and use a
+//! other then HTML), then you should implement the `Writer` trait and use a
 //! `Classifier`.
 
 use html::escape::Escape;
