@@ -804,13 +804,12 @@ pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: Gate
     };
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() {
-        err.emit();
-        return;
+    if sess.unstable_features.is_nightly_build() {
+        err.help(&format!("add #![feature({})] to the \
+                           crate attributes to enable",
+                          feature));
     }
-    err.help(&format!("add #![feature({})] to the \
-                       crate attributes to enable",
-                      feature));
+
     err.emit();
 }
 
