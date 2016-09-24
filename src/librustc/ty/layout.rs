@@ -339,6 +339,16 @@ impl Integer {
         }
     }
 
+    pub fn align(&self, dl: &TargetDataLayout)-> Align {
+        match *self {
+            I1 => dl.i1_align,
+            I8 => dl.i8_align,
+            I16 => dl.i16_align,
+            I32 => dl.i32_align,
+            I64 => dl.i64_align,
+        }
+    }
+
     pub fn to_ty<'a, 'tcx>(&self, tcx: &ty::TyCtxt<'a, 'tcx, 'tcx>,
                        signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
@@ -375,6 +385,18 @@ impl Integer {
             0...0xffff_ffff => I32,
             _ => I64
         }
+    }
+
+    //Find the smallest integer with the given alignment.
+    pub fn for_abi_align(dl: &TargetDataLayout, align: Align) -> Option<Integer> {
+        let wanted = align.abi();
+        for &candidate in &[I8, I16, I32, I64] {
+            let ty = Int(candidate);
+            if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
+                return Some(candidate);
+            }
+        }
+        None
     }
 
     /// Get the Integer type from an attr::IntType.
@@ -1149,20 +1171,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // won't be so conservative.
 
                 // Use the initial field alignment
-                let wanted = start_align.abi();
-                let mut ity = min_ity;
-                for &candidate in &[I16, I32, I64] {
-                    let ty = Int(candidate);
-                    if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
-                        ity = candidate;
-                        break;
-                    }
-                }
-
-                // FIXME(eddyb) conservative only to avoid diverging from trans::adt.
-                if align.abi() != start_align.abi() {
-                    ity = min_ity;
-                }
+                let mut ity = Integer::for_abi_align(dl, start_align).unwrap_or(min_ity);
 
                 // If the alignment is not larger than the chosen discriminant size,
                 // don't use the alignment as the final size.
