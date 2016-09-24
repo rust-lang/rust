@@ -40,7 +40,7 @@ Ensure the ordering of the match arm is correct and remove any superfluous
 arms.
 "##,
 
-E0002: r##"
+/*E0002: r##"
 This error indicates that an empty match expression is invalid because the type
 it is matching on is non-empty (there exist values of this type). In safe code
 it is impossible to create an instance of an empty type, so empty match
@@ -68,7 +68,7 @@ fn foo(x: Option<String>) {
     }
 }
 ```
-"##,
+"##,*/
 
 
 E0003: r##"
