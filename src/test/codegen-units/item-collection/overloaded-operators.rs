@@ -45,8 +45,8 @@ impl IndexMut<usize> for Indexable {
 }
 
 
-//~ TRANS_ITEM fn overloaded_operators::{{impl}}[2]::eq[0]
-//~ TRANS_ITEM fn overloaded_operators::{{impl}}[2]::ne[0]
+//~ TRANS_ITEM fn overloaded_operators::{{impl}}[4]::eq[0]
+//~ TRANS_ITEM fn overloaded_operators::{{impl}}[4]::ne[0]
 #[derive(PartialEq)]
 pub struct Equatable(u32);
 
@@ -54,7 +54,7 @@ pub struct Equatable(u32);
 impl Add<u32> for Equatable {
     type Output = u32;
 
-    //~ TRANS_ITEM fn overloaded_operators::{{impl}}[3]::add[0]
+    //~ TRANS_ITEM fn overloaded_operators::{{impl}}[2]::add[0]
     fn add(self, rhs: u32) -> u32 {
         self.0 + rhs
     }
@@ -63,7 +63,7 @@ impl Add<u32> for Equatable {
 impl Deref for Equatable {
     type Target = u32;
 
-    //~ TRANS_ITEM fn overloaded_operators::{{impl}}[4]::deref[0]
+    //~ TRANS_ITEM fn overloaded_operators::{{impl}}[3]::deref[0]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
