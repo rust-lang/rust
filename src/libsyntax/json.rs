@@ -283,13 +283,14 @@ impl DiagnosticSpanLine {
     fn line_from_filemap(fm: &syntax_pos::FileMap,
                          index: usize,
                          h_start: usize,
-                         h_end: usize)
-                         -> DiagnosticSpanLine {
-        DiagnosticSpanLine {
-            text: fm.get_line(index).unwrap().to_owned(),
-            highlight_start: h_start,
-            highlight_end: h_end,
-        }
+                         h_end: usize) -> Option<DiagnosticSpanLine> {
+        fm.get_line(index).map(|text| {
+            DiagnosticSpanLine {
+                text: text.to_owned(),
+                highlight_start: h_start,
+                highlight_end: h_end,
+            }
+        })
     }
 
     /// Create a list of DiagnosticSpanLines from span - each line with any part
@@ -301,7 +302,7 @@ impl DiagnosticSpanLine {
                  let fm = &*lines.file;
                  lines.lines
                       .iter()
-                      .map(|line| {
+                      .filter_map(|line| {
                           DiagnosticSpanLine::line_from_filemap(fm,
                                                                 line.line_index,
                                                                 line.start_col.0 + 1,
@@ -343,4 +344,3 @@ impl JsonEmitter {
         }
     }
 }
-
