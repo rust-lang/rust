@@ -286,16 +286,15 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 fn union_fill(cx: &CrateContext, size: u64, align: u64) -> Type {
     assert_eq!(size%align, 0);
+    assert_eq!(align.count_ones(), 1, "Alignment must be a power fof 2. Got {}", align);
     let align_units = size/align;
-    match align {
-        1 => Type::array(&Type::i8(cx), align_units),
-        2 => Type::array(&Type::i16(cx), align_units),
-        4 => Type::array(&Type::i32(cx), align_units),
-        8 if machine::llalign_of_min(cx, Type::i64(cx)) == 8 =>
-                         Type::array(&Type::i64(cx), align_units),
-        a if a.count_ones() == 1 => Type::array(&Type::vector(&Type::i32(cx), a / 4),
-                                                      align_units),
-        _ => bug!("unsupported union alignment: {}", align)
+    let dl = &cx.tcx().data_layout;
+    let layout_align = layout::Align::from_bytes(align, align).unwrap();
+    if let Some(ity) = layout::Integer::for_abi_align(dl, layout_align) {
+        Type::array(&Type::from_integer(cx, ity), align_units)
+    } else {
+        Type::array(&Type::vector(&Type::i32(cx), align/4),
+                    align_units)
     }
 }
 
