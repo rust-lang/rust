@@ -670,6 +670,12 @@ impl CodeMap {
         }
     }
 
+    // Returns whether or not we have the source a for the given span
+    pub fn have_source_for_span(&self, span: Span) -> bool {
+        let local_begin = self.lookup_byte_offset(span.lo);
+        local_begin.fm.src.is_some()
+    }
+
     pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
         for fm in self.files.borrow().iter() {
             if filename == fm.name {
