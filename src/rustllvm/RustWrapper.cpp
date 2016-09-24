@@ -411,11 +411,16 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateFunction(
     bool isLocalToUnit,
     bool isDefinition,
     unsigned ScopeLine,
-    unsigned Flags,
     bool isOptimized,
     LLVMValueRef Fn,
     LLVMRustMetadataRef TParam,
     LLVMRustMetadataRef Decl) {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagPrototyped;
+#else
+  unsigned Flags = 0;
+#endif
+
 #if LLVM_VERSION_GT_OR_EQ(3, 8)
     DITemplateParameterArray TParams =
         DITemplateParameterArray(unwrap<MDTuple>(TParam));
@@ -469,12 +474,17 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStructType(
     unsigned LineNumber,
     uint64_t SizeInBits,
     uint64_t AlignInBits,
-    unsigned Flags,
     LLVMRustMetadataRef DerivedFrom,
     LLVMRustMetadataRef Elements,
     unsigned RunTimeLang,
     LLVMRustMetadataRef VTableHolder,
     const char *UniqueId) {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagZero;
+#else
+  unsigned Flags = 0;
+#endif
+
     return wrap(Builder->createStructType(
         unwrapDI<DIDescriptor>(Scope),
         Name,
@@ -500,8 +510,13 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateMemberType(
     uint64_t SizeInBits,
     uint64_t AlignInBits,
     uint64_t OffsetInBits,
-    unsigned Flags,
     LLVMRustMetadataRef Ty) {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagZero;
+#else
+  unsigned Flags = 0;
+#endif
+
     return wrap(Builder->createMemberType(
         unwrapDI<DIDescriptor>(Scope), Name,
         unwrapDI<DIFile>(File), LineNo,
@@ -548,7 +563,11 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
         LineNo,
         unwrapDI<DIType>(Ty),
         isLocalToUnit,
+#if LLVM_VERSION_GT_OR_EQ(4,0)
+        unwrapDI<DIExpression>(Val),
+#else
         cast<Constant>(unwrap(Val)),
+#endif
         unwrapDIptr<MDNode>(Decl)));
 }
 
@@ -561,10 +580,15 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
     unsigned LineNo,
     LLVMRustMetadataRef Ty,
     bool AlwaysPreserve,
-    unsigned Flags,
     int64_t* AddrOps,
     unsigned AddrOpsCount,
     unsigned ArgNo) {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagZero;
+#else
+  unsigned Flags = 0;
+#endif
+
 #if LLVM_VERSION_GT_OR_EQ(3, 8)
     if (Tag == 0x100) { // DW_TAG_auto_variable
         return wrap(Builder->createAutoVariable(
@@ -700,11 +724,16 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateUnionType(
     unsigned LineNumber,
     uint64_t SizeInBits,
     uint64_t AlignInBits,
-    unsigned Flags,
     LLVMRustMetadataRef Elements,
     unsigned RunTimeLang,
     const char* UniqueId)
 {
+#if LLVM_VERSION_GT_OR_EQ(4, 0)
+  auto Flags = DINode::FlagZero;
+#else
+  unsigned Flags = 0;
+#endif
+
     return wrap(Builder->createUnionType(
         unwrapDI<DIDescriptor>(Scope),
         Name,

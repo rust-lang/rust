@@ -66,8 +66,6 @@ pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 // ptr::null() doesn't work :(
 pub const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
 
-const FLAGS_NONE: c_uint = 0;
-
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
 pub struct UniqueTypeId(ast::Name);
 
@@ -533,14 +531,12 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             llvm_type: member_llvm_types[0],
             type_metadata: element_type_metadata,
             offset: ComputedMemberOffset,
-            flags: FLAGS_NONE
         },
         MemberDescription {
             name: "length".to_string(),
             llvm_type: member_llvm_types[1],
             type_metadata: type_metadata(cx, cx.tcx().types.usize, span),
             offset: ComputedMemberOffset,
-            flags: FLAGS_NONE
         },
     ];
 
@@ -1024,7 +1020,6 @@ struct MemberDescription {
     llvm_type: Type,
     type_metadata: DIType,
     offset: MemberOffset,
-    flags: c_uint
 }
 
 // A factory for MemberDescriptions. It produces a list of member descriptions
@@ -1112,7 +1107,6 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 llvm_type: type_of::type_of(cx, fty),
                 type_metadata: type_metadata(cx, fty, self.span),
                 offset: offset,
-                flags: FLAGS_NONE,
             }
         }).collect()
     }
@@ -1177,7 +1171,6 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
-                flags: FLAGS_NONE,
             }
         }).collect()
     }
@@ -1229,7 +1222,6 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                 llvm_type: type_of::type_of(cx, fty),
                 type_metadata: type_metadata(cx, fty, self.span),
                 offset: FixedMemberOffset { bytes: 0 },
-                flags: FLAGS_NONE,
             }
         }).collect()
     }
@@ -1323,7 +1315,6 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             llvm_type: variant_llvm_type,
                             type_metadata: variant_type_metadata,
                             offset: FixedMemberOffset { bytes: 0 },
-                            flags: FLAGS_NONE
                         }
                     }).collect()
             },
@@ -1357,7 +1348,6 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             llvm_type: variant_llvm_type,
                             type_metadata: variant_type_metadata,
                             offset: FixedMemberOffset { bytes: 0 },
-                            flags: FLAGS_NONE
                         }
                     ]
                 }
@@ -1393,7 +1383,6 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     llvm_type: non_null_llvm_type,
                     type_metadata: non_null_type_metadata,
                     offset: FixedMemberOffset { bytes: 0 },
-                    flags: FLAGS_NONE
                 };
 
                 let unique_type_id = debug_context(cx).type_map
@@ -1430,7 +1419,6 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         llvm_type: artificial_struct_llvm_type,
                         type_metadata: artificial_struct_metadata,
                         offset: FixedMemberOffset { bytes: 0 },
-                        flags: FLAGS_NONE
                     }
                 ]
             },
@@ -1474,7 +1462,6 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         llvm_type: variant_llvm_type,
                         type_metadata: variant_type_metadata,
                         offset: FixedMemberOffset { bytes: 0 },
-                        flags: FLAGS_NONE
                     }
                 ]
             },
@@ -1504,7 +1491,6 @@ impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
                     _ => type_metadata(cx, ty, self.span)
                 },
                 offset: ComputedMemberOffset,
-                flags: FLAGS_NONE
             }
         }).collect()
     }
@@ -1701,7 +1687,6 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         UNKNOWN_LINE_NUMBER,
         bytes_to_bits(enum_type_size),
         bytes_to_bits(enum_type_align),
-        0, // Flags
         ptr::null_mut(),
         0, // RuntimeLang
         unique_type_id_str.as_ptr())
@@ -1804,7 +1789,6 @@ fn set_members_of_composite_type(cx: &CrateContext,
                     bytes_to_bits(member_size),
                     bytes_to_bits(member_align),
                     bytes_to_bits(member_offset),
-                    member_description.flags,
                     member_description.type_metadata)
             }
         })
@@ -1885,7 +1869,6 @@ fn create_union_stub(cx: &CrateContext,
             UNKNOWN_LINE_NUMBER,
             bytes_to_bits(union_size),
             bytes_to_bits(union_align),
-            0, // Flags
             empty_array,
             0, // RuntimeLang
             unique_type_id.as_ptr())

@@ -430,7 +430,6 @@ pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
 
 pub mod debuginfo {
-    pub use self::DIDescriptorFlags::*;
     use super::{MetadataRef};
 
     #[allow(missing_copy_implementations)]
@@ -454,26 +453,6 @@ pub mod debuginfo {
     pub type DISubrange = DIDescriptor;
     pub type DIEnumerator = DIDescriptor;
     pub type DITemplateTypeParameter = DIDescriptor;
-
-    #[derive(Copy, Clone)]
-    pub enum DIDescriptorFlags {
-      FlagPrivate            = 1 << 0,
-      FlagProtected          = 1 << 1,
-      FlagFwdDecl            = 1 << 2,
-      FlagAppleBlock         = 1 << 3,
-      FlagBlockByrefStruct   = 1 << 4,
-      FlagVirtual            = 1 << 5,
-      FlagArtificial         = 1 << 6,
-      FlagExplicit           = 1 << 7,
-      FlagPrototyped         = 1 << 8,
-      FlagObjcClassComplete  = 1 << 9,
-      FlagObjectPointer      = 1 << 10,
-      FlagVector             = 1 << 11,
-      FlagStaticMember       = 1 << 12,
-      FlagIndirectVariable   = 1 << 13,
-      FlagLValueReference    = 1 << 14,
-      FlagRValueReference    = 1 << 15
-    }
 }
 
 
@@ -1738,7 +1717,6 @@ extern {
                                            isLocalToUnit: bool,
                                            isDefinition: bool,
                                            ScopeLine: c_uint,
-                                           Flags: c_uint,
                                            isOptimized: bool,
                                            Fn: ValueRef,
                                            TParam: DIArray,
@@ -1766,7 +1744,6 @@ extern {
                                              LineNumber: c_uint,
                                              SizeInBits: u64,
                                              AlignInBits: u64,
-                                             Flags: c_uint,
                                              DerivedFrom: DIType,
                                              Elements: DIArray,
                                              RunTimeLang: c_uint,
@@ -1782,7 +1759,6 @@ extern {
                                              SizeInBits: u64,
                                              AlignInBits: u64,
                                              OffsetInBits: u64,
-                                             Flags: c_uint,
                                              Ty: DIType)
                                              -> DIDerivedType;
 
@@ -1818,7 +1794,6 @@ extern {
                                            LineNo: c_uint,
                                            Ty: DIType,
                                            AlwaysPreserve: bool,
-                                           Flags: c_uint,
                                            AddrOps: *const i64,
                                            AddrOpsCount: c_uint,
                                            ArgNo: c_uint)
@@ -1889,7 +1864,6 @@ extern {
                                             LineNumber: c_uint,
                                             SizeInBits: u64,
                                             AlignInBits: u64,
-                                            Flags: c_uint,
                                             Elements: DIArray,
                                             RunTimeLang: c_uint,
                                             UniqueId: *const c_char)
