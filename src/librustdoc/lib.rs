@@ -91,31 +91,6 @@ pub mod test;
 
 use clean::Attributes;
 
-type Pass = (&'static str,                                      // name
-             fn(clean::Crate) -> plugins::PluginResult,         // fn
-             &'static str);                                     // description
-
-const PASSES: &'static [Pass] = &[
-    ("strip-hidden", passes::strip_hidden,
-     "strips all doc(hidden) items from the output"),
-    ("unindent-comments", passes::unindent_comments,
-     "removes excess indentation on comments in order for markdown to like it"),
-    ("collapse-docs", passes::collapse_docs,
-     "concatenates all document attributes into one document attribute"),
-    ("strip-private", passes::strip_private,
-     "strips all private items from a crate which cannot be seen externally, \
-      implies strip-priv-imports"),
-    ("strip-priv-imports", passes::strip_priv_imports,
-     "strips all private import statements (`use`, `extern crate`) from a crate"),
-];
-
-const DEFAULT_PASSES: &'static [&'static str] = &[
-    "strip-hidden",
-    "strip-private",
-    "collapse-docs",
-    "unindent-comments",
-];
-
 struct Output {
     krate: clean::Crate,
     renderinfo: html::render::RenderInfo,
@@ -222,11 +197,11 @@ pub fn main_args(args: &[String]) -> isize {
 
     if matches.opt_strs("passes") == ["list"] {
         println!("Available passes for running rustdoc:");
-        for &(name, _, description) in PASSES {
+        for &(name, _, description) in passes::PASSES {
             println!("{:>20} - {}", name, description);
         }
         println!("\nDefault passes for rustdoc:");
-        for &name in DEFAULT_PASSES {
+        for &name in passes::DEFAULT_PASSES {
             println!("{:>20}", name);
         }
         return 0;
@@ -411,7 +386,7 @@ fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> 
     }
 
     if default_passes {
-        for name in DEFAULT_PASSES.iter().rev() {
+        for name in passes::DEFAULT_PASSES.iter().rev() {
             passes.insert(0, name.to_string());
         }
     }
@@ -421,11 +396,11 @@ fn rust_input(cratefile: &str, externs: Externs, matches: &getopts::Matches) -> 
                       .unwrap_or("/tmp/rustdoc/plugins".to_string());
     let mut pm = plugins::PluginManager::new(PathBuf::from(path));
     for pass in &passes {
-        let plugin = match PASSES.iter()
-                                 .position(|&(p, ..)| {
-                                     p == *pass
-                                 }) {
-            Some(i) => PASSES[i].1,
+        let plugin = match passes::PASSES.iter()
+                                         .position(|&(p, ..)| {
+                                             p == *pass
+                                         }) {
+            Some(i) => passes::PASSES[i].1,
             None => {
                 error!("unknown pass {}, skipping", *pass);
                 continue
