@@ -676,6 +676,33 @@ impl CodeMap {
         local_begin.fm.src.is_some()
     }
 
+    // Returns whether or not the given span is valid.
+    // This allows for graceful fallback when spans end up invalid
+    pub fn is_valid_span(&self, span: Span) -> bool {
+        self.is_valid_bytepos(span.lo) && self.is_valid_bytepos(span.hi)
+    }
+
+    pub fn is_valid_bytepos(&self, bpos: BytePos) -> bool {
+        let idx = self.lookup_filemap_idx(bpos);
+        let files = self.files.borrow();
+        let map = &(*files)[idx];
+
+        let mut total_extra_bytes = 0;
+
+        for mbc in map.multibyte_chars.borrow().iter() {
+            if mbc.pos < bpos {
+                total_extra_bytes += mbc.bytes - 1;
+                if bpos.to_usize() < mbc.pos.to_usize() + mbc.bytes {
+                    return false;
+                }
+            } else {
+                break;
+            }
+        }
+
+        map.start_pos.to_usize() + total_extra_bytes <= bpos.to_usize()
+    }
+
     pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
         for fm in self.files.borrow().iter() {
             if filename == fm.name {

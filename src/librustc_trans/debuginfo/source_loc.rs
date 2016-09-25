@@ -54,10 +54,17 @@ pub fn set_source_location(fcx: &FunctionContext,
             }
         };
 
-        debug!("set_source_location: {}",
-               fcx.ccx.sess().codemap().span_to_string(span));
-        let loc = span_start(fcx.ccx, span);
-        InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
+        let cm = fcx.ccx.sess().codemap();
+        if cm.is_valid_span(span) {
+            debug!("set_source_location: {}",
+                   fcx.ccx.sess().codemap().span_to_string(span));
+            let loc = span_start(fcx.ccx, span);
+            InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
+        } else {
+            // Span isn't invalid, just ignore the attempt to set a new debug
+            // location
+            return;
+        }
     } else {
         UnknownLocation
     };

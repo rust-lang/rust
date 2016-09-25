@@ -12,13 +12,14 @@
 
 use rustc::hir::def_id::DefId;
 
+use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::graph;
 
 use rustc::dep_graph::DepNode;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr::*;
-use rustc::mir::transform::{MirMapPass, MirPassHook, MirSource, Pass};
+use rustc::mir::transform::{MirMapPass, MirPass, MirPassHook, MirSource, Pass};
 use rustc::mir::visit::*;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -30,6 +31,7 @@ use super::copy_prop::CopyPropagation;
 
 use syntax::attr;
 use syntax::abi::Abi;
+use syntax_pos::Span;
 
 use callgraph;
 
@@ -347,7 +349,14 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         let mut first_block = true;
         let mut cost = 0;
 
-        for blk in callee_mir.basic_blocks() {
+        // Traverse the MIR manually so we can account for the effects of
+        // inlining on the CFG.
+        let mut work_list = vec![START_BLOCK];
+        let mut visited = BitVector::new(callee_mir.basic_blocks.len());
+        while let Some(bb) = work_list.pop() {
+            if !visited.insert(bb.index()) { continue; }
+            let blk = &callee_mir.basic_blocks[bb];
+
             for stmt in &blk.statements {
                 // Don't count StorageLive/StorageDead in the inlining cost.
                 match stmt.kind {
@@ -357,15 +366,22 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     _ => cost += INSTR_COST
                 }
             }
-            match blk.terminator().kind {
-                TerminatorKind::Drop { ref location, .. } |
-                TerminatorKind::DropAndReplace { ref location, .. } => {
+            let term = blk.terminator();
+            let mut is_drop = false;
+            match term.kind {
+                TerminatorKind::Drop { ref location, target, unwind } |
+                TerminatorKind::DropAndReplace { ref location, target, unwind, .. } => {
+                    is_drop = true;
+                    work_list.push(target);
                     // If the location doesn't actually need dropping, treat it like
                     // a regular goto.
                     let ty = location.ty(&callee_mir, tcx).subst(tcx, callsite.substs);
                     let ty = ty.to_ty(tcx);
                     if tcx.type_needs_drop_given_env(ty, &param_env) {
                         cost += CALL_PENALTY;
+                        if let Some(unwind) = unwind {
+                            work_list.push(unwind);
+                        }
                     } else {
                         cost += INSTR_COST;
                     }
@@ -391,6 +407,13 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 TerminatorKind::Assert { .. } => cost += CALL_PENALTY,
                 _ => cost += INSTR_COST
             }
+
+            if !is_drop {
+                for &succ in &term.successors()[..] {
+                    work_list.push(succ);
+                }
+            }
+
             first_block = false;
         }
 
@@ -440,6 +463,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
 
         let terminator = caller_mir[callsite.bb].terminator.take().unwrap();
+        let cm = self.tcx.sess.codemap();
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
@@ -456,9 +480,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 for mut scope in callee_mir.visibility_scopes {
                     if scope.parent_scope.is_none() {
                         scope.parent_scope = Some(callsite.location.scope);
+                        scope.span = callee_mir.span;
                     }
 
-                    scope.span = callsite.location.span;
+                    if !cm.is_valid_span(scope.span) {
+                        scope.span = callsite.location.span;
+                    }
 
                     let idx = caller_mir.visibility_scopes.push(scope);
                     scope_map.push(idx);
@@ -466,6 +493,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 for mut var in callee_mir.var_decls {
                     var.source_info.scope = scope_map[var.source_info.scope];
+
+                    if !cm.is_valid_span(var.source_info.span) {
+                        var.source_info.span = callsite.location.span;
+                    }
                     let idx = caller_mir.var_decls.push(var);
                     var_map.push(idx);
                 }
@@ -548,12 +579,14 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 let bb_len = caller_mir.basic_blocks.len();
                 let mut integrator = Integrator {
+                    tcx: self.tcx,
                     block_idx: bb_len,
                     args: &args,
                     var_map: var_map,
                     tmp_map: temp_map,
                     scope_map: scope_map,
                     promoted_map: promoted_map,
+                    callsite: callsite,
                     destination: dest,
                     return_block: return_block,
                     cleanup_block: cleanup,
@@ -579,7 +612,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     // this function will be inlined as well
                     debug!("Running copy propagation");
                     let src = MirSource::from_node(self.tcx, id);
-                    CopyPropagation.run_pass(self.tcx, src, caller_mir);
+                    MirPass::run_pass(&mut CopyPropagation, self.tcx, src, caller_mir);
                 };
 
                 true
@@ -686,12 +719,14 @@ fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParameterE
  * stuff.
  */
 struct Integrator<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     block_idx: usize,
     args: &'a [Operand<'tcx>],
     var_map: IndexVec<Var, Var>,
     tmp_map: IndexVec<Temp, Temp>,
     scope_map: IndexVec<VisibilityScope, VisibilityScope>,
     promoted_map: IndexVec<Promoted, Promoted>,
+    callsite: CallSite<'tcx>,
     destination: Lvalue<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
@@ -703,6 +738,15 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
         let new = BasicBlock::new(tgt.index() + self.block_idx);
         debug!("Updating target `{:?}`, new: `{:?}`", tgt, new);
         new
+    }
+
+    fn update_span(&self, span: Span) -> Span {
+        let cm = self.tcx.sess.codemap();
+        if cm.is_valid_span(span) {
+            span
+        } else {
+            self.callsite.location.span
+        }
     }
 }
 
@@ -815,8 +859,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             TerminatorKind::Unreachable => { }
         }
     }
+
     fn visit_visibility_scope(&mut self, scope: &mut VisibilityScope) {
         *scope = self.scope_map[*scope];
+    }
+
+    fn visit_span(&mut self, span: &mut Span) {
+        *span = self.update_span(*span);
     }
 
     fn visit_literal(&mut self, literal: &mut Literal<'tcx>, loc: Location) {
