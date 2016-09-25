@@ -1,3 +1,5 @@
+## Variance of type and lifetime parameters
+
 This file infers the variance of type and lifetime parameters. The
 algorithm is taken from Section 4 of the paper "Taming the Wildcards:
 Combining Definition- and Use-Site Variance" published in PLDI'11 and
@@ -52,11 +54,11 @@ These indicate that (1) the variance of A must be at most covariant;
 variance of C must be at most covariant *and* contravariant. All of these
 results are based on a variance lattice defined as follows:
 
-      *      Top (bivariant)
-   -     +
-      o      Bottom (invariant)
+       *      Top (bivariant)
+    -     +
+       o      Bottom (invariant)
 
-Based on this lattice, the solution V(A)=+, V(B)=-, V(C)=o is the
+Based on this lattice, the solution `V(A)=+`, `V(B)=-`, `V(C)=o` is the
 optimal solution. Note that there is always a naive solution which
 just declares all variables to be invariant.
 
@@ -68,11 +70,11 @@ take the form:
     V(X) <= Term
     Term := + | - | * | o | V(X) | Term x Term
 
-Here the notation V(X) indicates the variance of a type/region
+Here the notation `V(X)` indicates the variance of a type/region
 parameter `X` with respect to its defining class. `Term x Term`
 represents the "variance transform" as defined in the paper:
 
-  If the variance of a type variable `X` in type expression `E` is `V2`
+>  If the variance of a type variable `X` in type expression `E` is `V2`
   and the definition-site variance of the [corresponding] type parameter
   of a class `C` is `V1`, then the variance of `X` in the type expression
   `C<E>` is `V3 = V1.xform(V2)`.
@@ -267,7 +269,7 @@ expressions -- must be invariant with respect to all of their
 inputs. To see why this makes sense, consider what subtyping for a
 trait reference means:
 
-   <T as Trait> <: <U as Trait>
+    <T as Trait> <: <U as Trait>
 
 means that if I know that `T as Trait`, I also know that `U as
 Trait`. Moreover, if you think of it as dictionary passing style,
@@ -291,9 +293,9 @@ impl<T> Identity for T { type Out = T; ... }
 Now if I have `<&'static () as Identity>::Out`, this can be
 validly derived as `&'a ()` for any `'a`:
 
-   <&'a () as Identity> <: <&'static () as Identity>
-   if &'static () < : &'a ()   -- Identity is contravariant in Self
-   if 'static : 'a             -- Subtyping rules for relations
+    <&'a () as Identity> <: <&'static () as Identity>
+    if &'static () < : &'a ()   -- Identity is contravariant in Self
+    if 'static : 'a             -- Subtyping rules for relations
 
 This change otoh means that `<'static () as Identity>::Out` is
 always `&'static ()` (which might then be upcast to `'a ()`,
