@@ -199,11 +199,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             },
             _ => unreachable!(),
         };
-        krate.exported_macros = mem::replace(&mut self.cx.exported_macros, Vec::new());
-
-        for def in &mut krate.exported_macros {
-            def.id = self.cx.resolver.next_node_id()
-        }
 
         if self.cx.parse_sess.span_diagnostic.err_count() > err_count {
             self.cx.parse_sess.span_diagnostic.abort_if_errors();
@@ -672,20 +667,6 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 self.cx.current_expansion.module = orig_module;
                 return result;
             }
-            ast::ItemKind::ExternCrate(..) => {
-                // We need to error on `#[macro_use] extern crate` when it isn't at the
-                // crate root, because `$crate` won't work properly.
-                let is_crate_root = self.cx.current_expansion.module.mod_path.len() == 1;
-                for def in self.cx.resolver.load_crate(&*item, is_crate_root) {
-                    match def {
-                        LoadedMacro::Def(def) => self.cx.insert_macro(def),
-                        LoadedMacro::CustomDerive(name, ext) => {
-                            self.cx.insert_custom_derive(&name, ext, item.span);
-                        }
-                    }
-                }
-                noop_fold_item(item, self)
-            },
             _ => noop_fold_item(item, self),
         }
     }

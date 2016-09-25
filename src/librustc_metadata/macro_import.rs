@@ -11,12 +11,14 @@
 //! Used by `rustc` when loading a crate with exported macros.
 
 use std::collections::HashSet;
+use std::rc::Rc;
 use std::env;
 use std::mem;
 
 use creader::{CrateLoader, Macros};
 
 use rustc::hir::def_id::DefIndex;
+use rustc::middle::cstore::LoadedMacro;
 use rustc::session::Session;
 use rustc::util::nodemap::FnvHashMap;
 use rustc_back::dynamic_lib::DynamicLibrary;
@@ -24,7 +26,6 @@ use rustc_macro::TokenStream;
 use rustc_macro::__internal::Registry;
 use syntax::ast;
 use syntax::attr;
-use syntax::ext::base::LoadedMacro;
 use syntax::parse::token;
 use syntax_ext::deriving::custom::CustomDerive;
 use syntax_pos::Span;
@@ -204,9 +205,8 @@ impl<'a> CrateLoader<'a> {
             fn register_custom_derive(&mut self,
                                       trait_name: &str,
                                       expand: fn(TokenStream) -> TokenStream) {
-                let derive = Box::new(CustomDerive::new(expand));
-                self.0.push(LoadedMacro::CustomDerive(trait_name.to_string(),
-                                                      derive));
+                let derive = Rc::new(CustomDerive::new(expand));
+                self.0.push(LoadedMacro::CustomDerive(trait_name.to_string(), derive));
             }
         }
 

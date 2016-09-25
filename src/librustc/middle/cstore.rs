@@ -36,9 +36,10 @@ use session::config::PanicStrategy;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 use std::path::PathBuf;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::attr;
-use syntax::ext::base::LoadedMacro;
+use syntax::ext::base::MultiItemModifier;
 use syntax::ptr::P;
 use syntax::parse::token::InternedString;
 use syntax_pos::Span;
@@ -420,6 +421,11 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                            reachable: &NodeSet,
                            mir_map: &MirMap<'tcx>) -> Vec<u8> { vec![] }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
+}
+
+pub enum LoadedMacro {
+    Def(ast::MacroDef),
+    CustomDerive(String, Rc<MultiItemModifier>),
 }
 
 pub trait CrateLoader {
