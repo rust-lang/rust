@@ -1083,7 +1083,7 @@ fn get_concurrency() -> usize {
 
     #[cfg(target_os = "haiku")]
     fn num_cpus() -> usize {
-        // TODO: implement
+        // FIXME: implement
         1
     }
 }

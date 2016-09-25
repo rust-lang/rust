@@ -328,13 +328,15 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
     unsafe {
         extern {
-            fn _get_next_image_info(team_id: i32, cookie: *mut i32, info: *mut image_info, size: i32) -> i32;
+            fn _get_next_image_info(team_id: i32,
+                cookie: *mut i32, info: *mut image_info, size: i32) -> i32;
         }
 
         let mut info: image_info = mem::zeroed();
         let mut cookie: i32 = 0;
         // the executable can be found at team id 0
-        let result = _get_next_image_info(0, &mut cookie, &mut info, mem::size_of::<image_info>() as i32);
+        let result = _get_next_image_info(0, &mut cookie,
+            &mut info, mem::size_of::<image_info>() as i32);
         if result != 0 {
             use io::ErrorKind;
     		Err(io::Error::new(ErrorKind::Other, "Error getting executable path"))
