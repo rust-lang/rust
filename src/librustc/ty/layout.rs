@@ -328,7 +328,6 @@ pub enum Integer {
 }
 
 impl Integer {
-
     pub fn size(&self) -> Size {
         match *self {
             I1 => Size::from_bits(1),
@@ -350,7 +349,7 @@ impl Integer {
     }
 
     pub fn to_ty<'a, 'tcx>(&self, tcx: &ty::TyCtxt<'a, 'tcx, 'tcx>,
-                       signed: bool) -> Ty<'tcx> {
+                           signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
             (I1, false) => tcx.types.u8,
             (I8, false) => tcx.types.u8,
@@ -387,7 +386,7 @@ impl Integer {
         }
     }
 
-    //Find the smallest integer with the given alignment.
+    /// Find the smallest integer with the given alignment.
     pub fn for_abi_align(dl: &TargetDataLayout, align: Align) -> Option<Integer> {
         let wanted = align.abi();
         for &candidate in &[I8, I16, I32, I64] {
@@ -1030,7 +1029,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
-                if def.variants.len() == 1 {
+                if !def.is_enum() || def.variants.len() == 1 && hint == attr::ReprAny {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
 
@@ -1059,16 +1058,6 @@ impl<'a, 'gcx, 'tcx> Layout {
                         bug!("non-C-like enum {} with specified discriminants",
                             tcx.item_path_str(def.did));
                     }
-                }
-
-                if def.variants.len() == 1 && hint == attr::ReprAny{
-                    // Equivalent to a struct/tuple/newtype.
-                    let fields = def.variants[0].fields.iter().map(|field| {
-                        field.ty(tcx, substs).layout(infcx)
-                    });
-                    let mut st = Struct::new(dl, false);
-                    st.extend(dl, fields, ty)?;
-                    return success(Univariant { variant: st, non_zero: false });
                 }
 
                 // Cache the substituted and normalized variant field types.

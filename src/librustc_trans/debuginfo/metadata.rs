@@ -1293,7 +1293,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
         let substs = match self.enum_type.sty {
             ty::TyAdt(def, ref s) if def.adt_kind() == AdtKind::Enum => s,
-            ref t @ _ => bug!("{} is not an enum", t)
+            _ => bug!("{} is not an enum", self.enum_type)
         };
         match *self.type_rep {
             layout::General { ref variants, .. } => {

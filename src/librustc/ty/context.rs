@@ -489,7 +489,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Cache for layouts computed from types.
     pub layout_cache: RefCell<FnvHashMap<Ty<'tcx>, &'tcx Layout>>,
 
-    //Used to prevent layout from recursing too deeply.
+    /// Used to prevent layout from recursing too deeply.
     pub layout_depth: Cell<usize>,
 
     /// Map from function to the `#[derive]` mode that it's defining. Only used

@@ -94,10 +94,10 @@ impl MaybeSizedValue {
     }
 }
 
-//Given an enum, struct, closure, or tuple, extracts fields.
-//treats closures as a struct with one variant.
-//`empty_if_no_variants` is a switch to deal with empty enums.
-//if true, `variant_index` is disregarded and an empty Vec returned in this case.
+/// Given an enum, struct, closure, or tuple, extracts fields.
+/// Treats closures as a struct with one variant.
+/// `empty_if_no_variants` is a switch to deal with empty enums.
+/// If true, `variant_index` is disregarded and an empty Vec returned in this case.
 fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
                             variant_index: usize,
                             empty_if_no_variants: bool) -> Vec<Ty<'tcx>> {
@@ -156,11 +156,9 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         layout::CEnum { .. } | layout::General { .. }
         | layout::UntaggedUnion { .. } | layout::RawNullablePointer { .. } => { }
         layout::Univariant { ..}
-        | layout::StructWrappedNullablePointer { .. }
-        | layout::Vector { .. } => {
+        | layout::StructWrappedNullablePointer { .. } => {
             let (nonnull_variant, packed) = match *l {
                 layout::Univariant { ref variant, .. } => (0, variant.packed),
-                layout::Vector { .. } => (0, true),
                 layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } =>
                     (nndiscr, nonnull.packed),
                 _ => unreachable!()
@@ -206,8 +204,8 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         }
         layout::Univariant { ref variant, .. } => {
-            //note that this case also handles empty enums.
-            //Thus the true as the final parameter here.
+            // Note that this case also handles empty enums.
+            // Thus the true as the final parameter here.
             let fields = compute_fields(cx, t, 0, true);
             match name {
                 None => {
@@ -425,7 +423,7 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, value: Disr)
             C_integral(Type::from_integer(bcx.ccx(), discr), value.0, true)
         }
         layout::RawNullablePointer { .. } |
-layout::StructWrappedNullablePointer { .. } => {
+        layout::StructWrappedNullablePointer { .. } => {
             assert!(value == Disr(0) || value == Disr(1));
             C_bool(bcx.ccx(), value != Disr(0))
         }
@@ -774,10 +772,8 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // offset of current value
     let mut offset = 0;
     let mut cfields = Vec::new();
-    for (&val, target_offset) in
-        vals.iter().zip(
-        offset_after_field.iter().map(|i| i.bytes())
-    ) {
+    let target_offsets = offset_after_field.iter().map(|i| i.bytes());
+    for (&val, target_offset) in vals.iter().zip(target_offsets) {
         assert!(!is_undef(val));
         cfields.push(val);
         offset += machine::llsize_of_alloc(ccx, val_ty(val));

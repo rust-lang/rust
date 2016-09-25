@@ -301,7 +301,7 @@ impl Type {
         }
     }
 
-    pub fn from_integer(cx: &CrateContext, i: layout::Integer)->Type {
+    pub fn from_integer(cx: &CrateContext, i: layout::Integer) -> Type {
         use rustc::ty::layout::Integer::*;
         match i {
             I1 => Type::i1(cx),
@@ -312,7 +312,7 @@ impl Type {
         }
     }
 
-    pub fn from_primitive(ccx: &CrateContext, p: layout::Primitive)->Type {
+    pub fn from_primitive(ccx: &CrateContext, p: layout::Primitive) -> Type {
         match p {
             layout::Int(i) => Type::from_integer(ccx, i),
             layout::F32 => Type::f32(ccx),
