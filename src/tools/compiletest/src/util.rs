@@ -17,6 +17,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[("android", "android
                                                             ("darwin", "macos"),
                                                             ("dragonfly", "dragonfly"),
                                                             ("freebsd", "freebsd"),
+                                                            ("haiku", "haiku"),
                                                             ("ios", "ios"),
                                                             ("linux", "linux"),
                                                             ("mingw32", "windows"),
