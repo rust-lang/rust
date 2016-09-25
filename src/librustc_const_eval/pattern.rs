@@ -11,7 +11,7 @@
 use eval;
 
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::repr::{Field, Literal, BorrowKind, Mutability};
+use rustc::mir::repr::{Field, BorrowKind, Mutability};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::Def;
@@ -78,8 +78,8 @@ pub enum PatternKind<'tcx> {
     },
 
     Range {
-        lo: Literal<'tcx>,
-        hi: Literal<'tcx>,
+        lo: ConstVal,
+        hi: ConstVal,
     },
 
     /// matches against a slice, checking the length and extracting elements
@@ -111,9 +111,7 @@ impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
 
             PatKind::Range(ref lo, ref hi) => {
                 let lo = eval::eval_const_expr(tcx.global_tcx(), lo);
-                let lo = Literal::Value { value: lo };
                 let hi = eval::eval_const_expr(tcx.global_tcx(), hi);
-                let hi = Literal::Value { value: hi };
                 PatternKind::Range { lo: lo, hi: hi }
             },
 
@@ -372,6 +370,170 @@ impl<'a, 'gcx, 'tcx> PatternKind<'tcx> {
             def => {
                 span_bug!(pat.span, "inappropriate def for pattern: {:?}", def);
             }
+        }
+    }
+}
+
+pub trait PatternFoldable<'tcx> : Sized {
+    fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        self.super_fold_with(folder)
+    }
+
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self;
+}
+
+pub trait PatternFolder<'tcx> : Sized {
+    fn fold_pattern(&mut self, pattern: &Pattern<'tcx>) -> Pattern<'tcx> {
+        pattern.super_fold_with(self)
+    }
+
+    fn fold_pattern_kind(&mut self, kind: &PatternKind<'tcx>) -> PatternKind<'tcx> {
+        kind.super_fold_with(self)
+    }
+}
+
+
+impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Box<T> {
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        let content: T = (**self).fold_with(folder);
+        box content
+    }
+}
+
+impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Vec<T> {
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        self.iter().map(|t| t.fold_with(folder)).collect()
+    }
+}
+
+impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Option<T> {
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self{
+        self.as_ref().map(|t| t.fold_with(folder))
+    }
+}
+
+macro_rules! CopyImpls {
+    ($($ty:ty),+) => {
+        $(
+            impl<'tcx> PatternFoldable<'tcx> for $ty {
+                fn super_fold_with<F: PatternFolder<'tcx>>(&self, _: &mut F) -> Self {
+                    self.clone()
+                }
+            }
+            )+
+    }
+}
+
+macro_rules! TcxCopyImpls {
+    ($($ty:ident),+) => {
+        $(
+            impl<'tcx> PatternFoldable<'tcx> for $ty<'tcx> {
+                fn super_fold_with<F: PatternFolder<'tcx>>(&self, _: &mut F) -> Self {
+                    *self
+                }
+            }
+        )+
+    }
+}
+
+CopyImpls!{ Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal }
+TcxCopyImpls!{ Ty, BindingMode, AdtDef }
+
+impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        FieldPattern {
+            field: self.field.fold_with(folder),
+            pattern: self.pattern.fold_with(folder)
+        }
+    }
+}
+
+impl<'tcx> PatternFoldable<'tcx> for Pattern<'tcx> {
+    fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        folder.fold_pattern(self)
+    }
+
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        Pattern {
+            ty: self.ty.fold_with(folder),
+            span: self.span.fold_with(folder),
+            kind: self.kind.fold_with(folder)
+        }
+    }
+}
+
+impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
+    fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        folder.fold_pattern_kind(self)
+    }
+
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            PatternKind::Wild => PatternKind::Wild,
+            PatternKind::Binding {
+                mutability,
+                name,
+                mode,
+                var,
+                ty,
+                ref subpattern,
+            } => PatternKind::Binding {
+                mutability: mutability.fold_with(folder),
+                name: name.fold_with(folder),
+                mode: mode.fold_with(folder),
+                var: var.fold_with(folder),
+                ty: ty.fold_with(folder),
+                subpattern: subpattern.fold_with(folder),
+            },
+            PatternKind::Variant {
+                adt_def,
+                variant_index,
+                ref subpatterns,
+            } => PatternKind::Variant {
+                adt_def: adt_def.fold_with(folder),
+                variant_index: variant_index.fold_with(folder),
+                subpatterns: subpatterns.fold_with(folder)
+            },
+            PatternKind::Leaf {
+                ref subpatterns,
+            } => PatternKind::Leaf {
+                subpatterns: subpatterns.fold_with(folder),
+            },
+            PatternKind::Deref {
+                ref subpattern,
+            } => PatternKind::Deref {
+                subpattern: subpattern.fold_with(folder),
+            },
+            PatternKind::Constant {
+                ref value
+            } => PatternKind::Constant {
+                value: value.fold_with(folder)
+            },
+            PatternKind::Range {
+                ref lo,
+                ref hi
+            } => PatternKind::Range {
+                lo: lo.fold_with(folder),
+                hi: hi.fold_with(folder)
+            },
+            PatternKind::Slice {
+                ref prefix,
+                ref slice,
+                ref suffix,
+            } => PatternKind::Slice {
+                prefix: prefix.fold_with(folder),
+                slice: slice.fold_with(folder),
+                suffix: suffix.fold_with(folder)
+            },
+            PatternKind::Array {
+                ref prefix,
+                ref slice,
+                ref suffix
+            } => PatternKind::Array {
+                prefix: prefix.fold_with(folder),
+                slice: slice.fold_with(folder),
+                suffix: suffix.fold_with(folder)
+            },
         }
     }
 }

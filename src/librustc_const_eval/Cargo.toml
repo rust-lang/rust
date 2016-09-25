@@ -9,6 +9,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
+arena = { path = "../libarena" }
 log = { path = "../liblog" }
 serialize = { path = "../libserialize" }
 rustc = { path = "../librustc" }

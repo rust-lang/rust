@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use _match::{MatchCheckCtxt, Matrix, wrap_pat, is_refutable, is_useful};
-use _match::{DUMMY_WILD_PATTERN, DUMMY_WILD_PAT};
+use _match::{MatchCheckCtxt, Matrix, lower_pat, is_refutable, is_useful};
+use _match::{DUMMY_WILD_PAT};
 use _match::Usefulness::*;
 use _match::WitnessPreference::*;
 
@@ -58,9 +58,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut MatchCheckCtxt {
-        tcx: tcx,
-        param_env: tcx.empty_parameter_environment(),
+    MatchCheckCtxt::create_and_enter(tcx, tcx.empty_parameter_environment(), |mut cx| {
+        tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut cx);
     });
     tcx.sess.abort_if_errors();
 }
@@ -138,7 +137,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
                 .flat_map(|arm| &arm.0)
-                .map(|pat| vec![wrap_pat(cx, &pat)])
+                .map(|pat| vec![lower_pat(cx, &pat)])
                 .collect();
             check_exhaustive(cx, scrut.span, &matrix, source);
         },
@@ -218,7 +217,7 @@ fn check_arms(cx: &MatchCheckCtxt,
     let mut printed_if_let_err = false;
     for &(ref pats, guard) in arms {
         for pat in pats {
-            let v = vec![wrap_pat(cx, &pat)];
+            let v = vec![lower_pat(cx, &pat)];
 
             match is_useful(cx, &seen, &v[..], LeaveOutWitness) {
                 NotUseful => {
@@ -292,7 +291,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
                               sp: Span,
                               matrix: &Matrix<'a, 'tcx>,
                               source: hir::MatchSource) {
-    match is_useful(cx, matrix, &[DUMMY_WILD_PATTERN], ConstructWitness) {
+    match is_useful(cx, matrix, &[cx.wild_pattern], ConstructWitness) {
         UsefulWithWitness(pats) => {
             let witnesses = if pats.is_empty() {
                 vec![DUMMY_WILD_PAT]
@@ -483,7 +482,7 @@ fn check_irrefutable(cx: &MatchCheckCtxt, pat: &Pat, is_fn_arg: bool) {
         "local binding"
     };
 
-    is_refutable(cx, pat, |uncovered_pat| {
+    is_refutable(cx, &lower_pat(cx, pat), |uncovered_pat| {
         let pattern_string = pat_to_string(uncovered_pat.single_pattern());
         struct_span_err!(cx.tcx.sess, pat.span, E0005,
             "refutable pattern in {}: `{}` not covered",
