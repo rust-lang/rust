@@ -235,7 +235,8 @@ pub fn main_args(args: &[String]) -> isize {
     if matches.free.is_empty() {
         println!("expected an input file to act on");
         return 1;
-    } if matches.free.len() > 1 {
+    }
+    if matches.free.len() > 1 {
         println!("only one input file may be specified");
         return 1;
     }
