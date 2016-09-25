@@ -18,7 +18,7 @@ use os::raw::{c_long};
 use os::unix::raw::{uid_t, gid_t};
 
 // Use the direct definition of usize, instead of uintptr_t like in libc
-#[unstable(feature = "pthread_t", issue = "29791")] pub type pthread_t = usize;
+#[stable(feature = "pthread_t", since = "1.8.0")] pub type pthread_t = usize;
 
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = i32;
