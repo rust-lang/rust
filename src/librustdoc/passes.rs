@@ -290,7 +290,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
     krate
 }
 
-pub fn unindent(s: &str) -> String {
+fn unindent(s: &str) -> String {
     let lines = s.lines().collect::<Vec<&str> >();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
