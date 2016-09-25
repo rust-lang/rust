@@ -57,7 +57,7 @@ use syntax::parse::token::intern;
 
 pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver, enable_quotes: bool) {
     let mut register = |name, ext| {
-        resolver.add_macro(Mark::root(), ast::Ident::with_empty_ctxt(intern(name)), Rc::new(ext));
+        resolver.add_ext(Mark::root(), ast::Ident::with_empty_ctxt(intern(name)), Rc::new(ext));
     };
 
     register("macro_rules", IdentTT(Box::new(MacroRulesExpander), None, false));
