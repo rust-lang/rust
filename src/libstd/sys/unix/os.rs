@@ -454,7 +454,7 @@ pub fn args() -> Args {
           target_os = "openbsd",
           target_os = "solaris",
           target_os = "nacl",
-          target_os = "emscripten"
+          target_os = "emscripten",
           target_os = "haiku"))]
 pub fn args() -> Args {
     use sys_common;
