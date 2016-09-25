@@ -339,7 +339,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             &mut info, mem::size_of::<image_info>() as i32);
         if result != 0 {
             use io::ErrorKind;
-    		Err(io::Error::new(ErrorKind::Other, "Error getting executable path"))
+            Err(io::Error::new(ErrorKind::Other, "Error getting executable path"))
         } else {
             let name = CStr::from_ptr(info.name.as_ptr()).to_bytes();
             Ok(PathBuf::from(OsStr::from_bytes(name)))
