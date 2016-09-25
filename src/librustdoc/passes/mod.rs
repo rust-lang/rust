@@ -16,6 +16,7 @@ use std::mem;
 use clean::{self, GetDefId, Item};
 use fold;
 use fold::FoldItem::Strip;
+use plugins;
 
 mod collapse_docs;
 pub use self::collapse_docs::collapse_docs;
@@ -31,6 +32,32 @@ pub use self::strip_priv_imports::strip_priv_imports;
 
 mod unindent_comments;
 pub use self::unindent_comments::unindent_comments;
+
+type Pass = (&'static str,                                      // name
+             fn(clean::Crate) -> plugins::PluginResult,         // fn
+             &'static str);                                     // description
+
+pub const PASSES: &'static [Pass] = &[
+    ("strip-hidden", strip_hidden,
+     "strips all doc(hidden) items from the output"),
+    ("unindent-comments", unindent_comments,
+     "removes excess indentation on comments in order for markdown to like it"),
+    ("collapse-docs", collapse_docs,
+     "concatenates all document attributes into one document attribute"),
+    ("strip-private", strip_private,
+     "strips all private items from a crate which cannot be seen externally, \
+      implies strip-priv-imports"),
+    ("strip-priv-imports", strip_priv_imports,
+     "strips all private import statements (`use`, `extern crate`) from a crate"),
+];
+
+pub const DEFAULT_PASSES: &'static [&'static str] = &[
+    "strip-hidden",
+    "strip-private",
+    "collapse-docs",
+    "unindent-comments",
+];
+
 
 struct Stripper<'a> {
     retained: &'a mut DefIdSet,
