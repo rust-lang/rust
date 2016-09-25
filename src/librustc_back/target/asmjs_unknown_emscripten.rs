@@ -22,6 +22,7 @@ pub fn target() -> Result<Target, String> {
         allow_asm: false,
         obj_is_bitcode: true,
         max_atomic_width: 32,
+        post_link_args: vec!["-s".to_string(), "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()],
         .. Default::default()
     };
     Ok(Target {

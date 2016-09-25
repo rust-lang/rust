@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten missing rust_begin_unwind
+
 #![feature(lang_items, start, collections)]
 #![no_std]
 
