@@ -16,11 +16,9 @@ use self::RegClass::*;
 
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Attribute, Vector};
-use abi::{ArgType, FnType};
+use abi::{self, ArgType, FnType};
 use context::CrateContext;
 use type_::Type;
-
-use std::cmp;
 
 #[derive(Clone, Copy, PartialEq)]
 enum RegClass {
@@ -90,62 +88,11 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     }
 
     fn ty_align(ty: Type) -> usize {
-        match ty.kind() {
-            Integer => ((ty.int_width() as usize) + 7) / 8,
-            Pointer => 8,
-            Float => 4,
-            Double => 8,
-            Struct => {
-              if ty.is_packed() {
-                1
-              } else {
-                let str_tys = ty.field_types();
-                str_tys.iter().fold(1, |a, t| cmp::max(a, ty_align(*t)))
-              }
-            }
-            Array => {
-                let elt = ty.element_type();
-                ty_align(elt)
-            }
-            Vector => {
-                let len = ty.vector_length();
-                let elt = ty.element_type();
-                ty_align(elt) * len
-            }
-            _ => bug!("ty_align: unhandled type")
-        }
+        abi::ty_align(ty, 8)
     }
 
     fn ty_size(ty: Type) -> usize {
-        match ty.kind() {
-            Integer => (ty.int_width() as usize + 7) / 8,
-            Pointer => 8,
-            Float => 4,
-            Double => 8,
-            Struct => {
-                let str_tys = ty.field_types();
-                if ty.is_packed() {
-                    str_tys.iter().fold(0, |s, t| s + ty_size(*t))
-                } else {
-                    let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
-                    align(size, ty)
-                }
-            }
-            Array => {
-                let len = ty.array_length();
-                let elt = ty.element_type();
-                let eltsz = ty_size(elt);
-                len * eltsz
-            }
-            Vector => {
-                let len = ty.vector_length();
-                let elt = ty.element_type();
-                let eltsz = ty_size(elt);
-                len * eltsz
-            }
-
-            _ => bug!("ty_size: unhandled type")
-        }
+        abi::ty_size(ty, 8)
     }
 
     fn all_mem(cls: &mut [RegClass]) {
