@@ -53,6 +53,9 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn add_macro(&mut self, scope: Mark, mut def: ast::MacroDef) {
+        if &def.ident.name.as_str() == "macro_rules" {
+            self.session.span_err(def.span, "user-defined macros may not be named `macro_rules`");
+        }
         if def.use_locally {
             let ext = macro_rules::compile(&self.session.parse_sess, &def);
             self.add_ext(scope, def.ident, Rc::new(ext));
