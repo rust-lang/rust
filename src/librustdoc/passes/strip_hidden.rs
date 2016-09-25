@@ -25,35 +25,6 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
 
     // strip all #[doc(hidden)] items
     let krate = {
-        struct Stripper<'a> {
-            retained: &'a mut DefIdSet,
-            update_retained: bool,
-        }
-        impl<'a> fold::DocFolder for Stripper<'a> {
-            fn fold_item(&mut self, i: Item) -> Option<Item> {
-                if i.attrs.list("doc").has_word("hidden") {
-                    debug!("found one in strip_hidden; removing");
-                    // use a dedicated hidden item for given item type if any
-                    match i.inner {
-                        clean::StructFieldItem(..) | clean::ModuleItem(..) => {
-                            // We need to recurse into stripped modules to
-                            // strip things like impl methods but when doing so
-                            // we must not add any items to the `retained` set.
-                            let old = mem::replace(&mut self.update_retained, false);
-                            let ret = Strip(self.fold_item_recur(i).unwrap()).fold();
-                            self.update_retained = old;
-                            return ret;
-                        }
-                        _ => return None,
-                    }
-                } else {
-                    if self.update_retained {
-                        self.retained.insert(i.def_id);
-                    }
-                }
-                self.fold_item_recur(i)
-            }
-        }
         let mut stripper = Stripper{ retained: &mut retained, update_retained: true };
         stripper.fold_crate(krate)
     };
@@ -61,4 +32,35 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
     // strip all impls referencing stripped items
     let mut stripper = ImplStripper { retained: &retained };
     stripper.fold_crate(krate)
+}
+
+struct Stripper<'a> {
+    retained: &'a mut DefIdSet,
+    update_retained: bool,
+}
+
+impl<'a> fold::DocFolder for Stripper<'a> {
+    fn fold_item(&mut self, i: Item) -> Option<Item> {
+        if i.attrs.list("doc").has_word("hidden") {
+            debug!("found one in strip_hidden; removing");
+            // use a dedicated hidden item for given item type if any
+            match i.inner {
+                clean::StructFieldItem(..) | clean::ModuleItem(..) => {
+                    // We need to recurse into stripped modules to
+                    // strip things like impl methods but when doing so
+                    // we must not add any items to the `retained` set.
+                    let old = mem::replace(&mut self.update_retained, false);
+                    let ret = Strip(self.fold_item_recur(i).unwrap()).fold();
+                    self.update_retained = old;
+                    return ret;
+                }
+                _ => return None,
+            }
+        } else {
+            if self.update_retained {
+                self.retained.insert(i.def_id);
+            }
+        }
+        self.fold_item_recur(i)
+    }
 }
