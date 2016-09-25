@@ -20,7 +20,7 @@ use build_helper::output;
 fn main() {
     println!("cargo:rustc-cfg=cargobuild");
 
-    let target = env::var("TARGET").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config = env::var_os("LLVM_CONFIG")
                           .map(PathBuf::from)
                           .unwrap_or_else(|| {
@@ -62,8 +62,8 @@ fn main() {
     // can't trust all the output of llvm-config becaues it might be targeted
     // for the host rather than the target. As a result a bunch of blocks below
     // are gated on `if !is_crossed`
-    let target = env::var("TARGET").unwrap();
-    let host = env::var("HOST").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
+    let host = env::var("HOST").expect("HOST was not set");
     let is_crossed = target != host;
 
     let optional_components = ["x86", "arm", "aarch64", "mips", "powerpc", "pnacl", "systemz"];
