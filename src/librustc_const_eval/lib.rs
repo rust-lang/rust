@@ -31,6 +31,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
+extern crate arena;
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate log;
 #[macro_use] extern crate rustc;
