@@ -950,7 +950,11 @@ impl Build {
     /// Returns the path to the C++ compiler for the target specified, may panic
     /// if no C++ compiler was configured for the target.
     fn cxx(&self, target: &str) -> &Path {
-        self.cxx[target].path()
+        match self.cxx.get(target) {
+            Some(p) => p.path(),
+            None => panic!("\n\ntarget `{}` is not configured as a host,
+                            only as a target\n\n", target),
+        }
     }
 
     /// Returns flags to pass to the compiler to generate code for `target`.
