@@ -59,14 +59,20 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten")))]
+    #[cfg(not(any(target_env = "newlib",
+                  target_os = "solaris",
+                  target_os = "emscripten",
+                  target_os = "haiku")))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             cvt(libc::ioctl(self.fd, libc::FIOCLEX))?;
             Ok(())
         }
     }
-    #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
+    #[cfg(any(target_env = "newlib",
+              target_os = "solaris",
+              target_os = "emscripten",
+              target_os = "haiku"))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;
