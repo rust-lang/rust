@@ -110,30 +110,40 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             _ => bug!("{:?} is not a method", impl_m)
         };
 
-        struct_span_err!(tcx.sess, span, E0049,
+        let mut err = struct_span_err!(tcx.sess, span, E0049,
             "method `{}` has {} type parameter{} \
              but its trait declaration has {} type parameter{}",
             trait_m.name,
             num_impl_m_type_params,
             if num_impl_m_type_params == 1 {""} else {"s"},
             num_trait_m_type_params,
-            if num_trait_m_type_params == 1 {""} else {"s"})
-            .span_label(trait_item_span.unwrap(),
-                        &format!("expected {}",
-                                 &if num_trait_m_type_params != 1 {
-                                     format!("{} type parameters",
-                                             num_trait_m_type_params)
-                                 } else {
-                                     format!("{} type parameter",
-                                             num_trait_m_type_params)
-                                 }))
-            .span_label(span, &format!("found {}",
-                                       &if num_impl_m_type_params != 1 {
-                                           format!("{} type parameters", num_impl_m_type_params)
-                                       } else {
-                                           format!("1 type parameter")
-                                       }))
-            .emit();
+            if num_trait_m_type_params == 1 {""} else {"s"});
+
+        let mut suffix = None;
+
+        if let Some(span) = trait_item_span {
+            err.span_label(span,
+                           &format!("expected {}",
+                                    &if num_trait_m_type_params != 1 {
+                                        format!("{} type parameters", num_trait_m_type_params)
+                                    } else {
+                                        format!("{} type parameter", num_trait_m_type_params)
+                                    }));
+        } else {
+            suffix = Some(format!(", expected {}", num_trait_m_type_params));
+        }
+
+        err.span_label(span,
+                       &format!("found {}{}",
+                                &if num_impl_m_type_params != 1 {
+                                    format!("{} type parameters", num_impl_m_type_params)
+                                } else {
+                                    format!("1 type parameter")
+                                },
+                                suffix.as_ref().map(|s| &s[..]).unwrap_or("")));
+
+        err.emit();
+
         return;
     }
 
