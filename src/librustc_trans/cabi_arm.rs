@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
-use abi::{FnType, ArgType};
+use abi::{self, align_up_to, FnType, ArgType};
 use context::CrateContext;
 use type_::Type;
 
@@ -24,40 +24,13 @@ pub enum Flavor {
 
 type TyAlignFn = fn(ty: Type) -> usize;
 
-fn align_up_to(off: usize, a: usize) -> usize {
-    return (off + a - 1) / a * a;
-}
-
 fn align(off: usize, ty: Type, align_fn: TyAlignFn) -> usize {
     let a = align_fn(ty);
     return align_up_to(off, a);
 }
 
 fn general_ty_align(ty: Type) -> usize {
-    match ty.kind() {
-        Integer => ((ty.int_width() as usize) + 7) / 8,
-        Pointer => 4,
-        Float => 4,
-        Double => 8,
-        Struct => {
-            if ty.is_packed() {
-                1
-            } else {
-                let str_tys = ty.field_types();
-                str_tys.iter().fold(1, |a, t| cmp::max(a, general_ty_align(*t)))
-            }
-        }
-        Array => {
-            let elt = ty.element_type();
-            general_ty_align(elt)
-        }
-        Vector => {
-            let len = ty.vector_length();
-            let elt = ty.element_type();
-            general_ty_align(elt) * len
-        }
-        _ => bug!("ty_align: unhandled type")
-    }
+    abi::ty_align(ty, 4)
 }
 
 // For more information see:
