@@ -733,7 +733,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                 let base = match tr_lvalue.base {
                     Base::Value(llval) => {
-                        //Fixme: may be wrong for &*(&simd_vec as &fmt::Debug)
+                        // FIXME: may be wrong for &*(&simd_vec as &fmt::Debug)
                         let align = if type_is_sized(self.ccx.tcx(), ty) {
                             type_of::align_of(self.ccx, ty)
                         } else {
