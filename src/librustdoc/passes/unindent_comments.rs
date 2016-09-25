@@ -17,27 +17,29 @@ use plugins;
 use fold::{self, DocFolder};
 
 pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
-    struct CommentCleaner;
-    impl fold::DocFolder for CommentCleaner {
-        fn fold_item(&mut self, mut i: Item) -> Option<Item> {
-            let mut avec: Vec<clean::Attribute> = Vec::new();
-            for attr in &i.attrs {
-                match attr {
-                    &clean::NameValue(ref x, ref s)
-                            if "doc" == *x => {
-                        avec.push(clean::NameValue("doc".to_string(),
-                                                   unindent(s)))
-                    }
-                    x => avec.push(x.clone())
-                }
-            }
-            i.attrs = avec;
-            self.fold_item_recur(i)
-        }
-    }
     let mut cleaner = CommentCleaner;
     let krate = cleaner.fold_crate(krate);
     krate
+}
+
+struct CommentCleaner;
+
+impl fold::DocFolder for CommentCleaner {
+    fn fold_item(&mut self, mut i: Item) -> Option<Item> {
+        let mut avec: Vec<clean::Attribute> = Vec::new();
+        for attr in &i.attrs {
+            match attr {
+                &clean::NameValue(ref x, ref s)
+                        if "doc" == *x => {
+                    avec.push(clean::NameValue("doc".to_string(),
+                                               unindent(s)))
+                }
+                x => avec.push(x.clone())
+            }
+        }
+        i.attrs = avec;
+        self.fold_item_recur(i)
+    }
 }
 
 fn unindent(s: &str) -> String {
