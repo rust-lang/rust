@@ -22,8 +22,8 @@ fn main() {
     println!("cargo:rustc-cfg=cargobuild");
     println!("cargo:rerun-if-changed=build.rs");
 
-    let target = env::var("TARGET").unwrap();
-    let host = env::var("HOST").unwrap();
+    let target = env::var("TARGET").expect("TARGET was not set");
+    let host = env::var("HOST").expect("HOST was not set");
     let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let src_dir = env::current_dir().unwrap();
 
@@ -140,7 +140,7 @@ fn main() {
             .current_dir(&build_dir)
             .arg("build_lib_static")
             .arg("-j")
-            .arg(env::var("NUM_JOBS").unwrap()));
+            .arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
 
     if target.contains("windows") {
         println!("cargo:rustc-link-lib=static=jemalloc");
