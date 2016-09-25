@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
-use target::TargetOptions;
-use std::default::Default;
+use target::{Target, TargetResult};
 
-pub fn target() -> Target {
-    Target {
+pub fn target() -> TargetResult {
+    let mut base = super::haiku_base::opts();
+    base.cpu = "x86-64".to_string();
+    base.max_atomic_width = 64;
+    base.pre_link_args.push("-m64".to_string());
+
+    Ok(Target {
         llvm_target: "x86_64-unknown-haiku".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
@@ -22,12 +25,6 @@ pub fn target() -> Target {
         target_os: "haiku".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
-        options: TargetOptions {
-            linker: "cc".to_string(),
-            dynamic_linking: true,
-            executables: true,
-            has_rpath: true,
-            .. Default::default()
-        },
-    }
+        options: base,
+    })
 }

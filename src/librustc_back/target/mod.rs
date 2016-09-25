@@ -56,6 +56,7 @@ mod apple_ios_base;
 mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
+mod haiku_base;
 mod linux_base;
 mod linux_musl_base;
 mod openbsd_base;
