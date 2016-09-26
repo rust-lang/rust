@@ -100,6 +100,20 @@ const INITIAL_CAPACITY: usize = 32;
 ///     println!("{:?}", x);
 /// }
 /// ```
+/// HashSet with fixed list of elements can be initialized from vector:
+/// ```
+/// use std::collections::HashSet;
+///
+/// fn main() {
+///     let viking_names: HashSet<&str> =
+///         [ "Einar", "Olaf", "Harald" ].iter().map(|&x| x).collect();
+///     // use the values store in the set
+/// }
+/// ```
+/// This works for Copy types, if you want to cover non-copy types then you need to replace 
+/// the map(|&x| x) with map(|x| x.clone())
+
+
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<T, S = RandomState> {
