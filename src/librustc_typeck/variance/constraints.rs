@@ -37,7 +37,7 @@ pub struct ConstraintContext<'a, 'tcx: 'a> {
     invariant: VarianceTermPtr<'a>,
     bivariant: VarianceTermPtr<'a>,
 
-    pub constraints: Vec<Constraint<'a>> ,
+    pub constraints: Vec<Constraint<'a>>,
 }
 
 /// Declares that the variable `decl_id` appears in a location with
@@ -49,8 +49,7 @@ pub struct Constraint<'a> {
 }
 
 pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
-                                            -> ConstraintContext<'a, 'tcx>
-{
+                                            -> ConstraintContext<'a, 'tcx> {
     let tcx = terms_cx.tcx;
     let covariant = terms_cx.arena.alloc(ConstantTerm(ty::Covariant));
     let contravariant = terms_cx.arena.alloc(ConstantTerm(ty::Contravariant));
@@ -80,7 +79,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
         debug!("visit_item item={}", tcx.map.node_to_string(item.id));
 
         match item.node {
-            hir::ItemEnum(..) | hir::ItemStruct(..) | hir::ItemUnion(..) => {
+            hir::ItemEnum(..) |
+            hir::ItemStruct(..) |
+            hir::ItemUnion(..) => {
                 let scheme = tcx.lookup_item_type(did);
 
                 // Not entirely obvious: constraints on structs/enums do not
@@ -111,8 +112,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
             hir::ItemForeignMod(..) |
             hir::ItemTy(..) |
             hir::ItemImpl(..) |
-            hir::ItemDefaultImpl(..) => {
-            }
+            hir::ItemDefaultImpl(..) => {}
         }
     }
 }
@@ -120,7 +120,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
 /// Is `param_id` a lifetime according to `map`?
 fn is_lifetime(map: &hir_map::Map, param_id: ast::NodeId) -> bool {
     match map.find(param_id) {
-        Some(hir_map::NodeLifetime(..)) => true, _ => false
+        Some(hir_map::NodeLifetime(..)) => true,
+        _ => false,
     }
 }
 
@@ -143,13 +144,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let tcx = self.terms_cx.tcx;
         assert!(is_lifetime(&tcx.map, param_id));
         match tcx.named_region_map.defs.get(&param_id) {
-            Some(&rl::DefEarlyBoundRegion(_, lifetime_decl_id))
-                => lifetime_decl_id,
+            Some(&rl::DefEarlyBoundRegion(_, lifetime_decl_id)) => lifetime_decl_id,
             Some(_) => bug!("should not encounter non early-bound cases"),
 
             // The lookup should only fail when `param_id` is
             // itself a lifetime binding: use it as the decl_id.
-            None    => param_id,
+            None => param_id,
         }
 
     }
@@ -163,14 +163,15 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         // parameter (by inspecting parent of its binding declaration
         // to see if it is introduced by a type or by a fn/impl).
 
-        let check_result = |this:&ConstraintContext| -> bool {
+        let check_result = |this: &ConstraintContext| -> bool {
             let tcx = this.terms_cx.tcx;
             let decl_id = this.find_binding_for_lifetime(param_id);
             // Currently only called on lifetimes; double-checking that.
             assert!(is_lifetime(&tcx.map, param_id));
             let parent_id = tcx.map.get_parent(decl_id);
-            let parent = tcx.map.find(parent_id).unwrap_or_else(
-                || bug!("tcx.map missing entry for id: {}", parent_id));
+            let parent = tcx.map
+                .find(parent_id)
+                .unwrap_or_else(|| bug!("tcx.map missing entry for id: {}", parent_id));
 
             let is_inferred;
             macro_rules! cannot_happen { () => { {
@@ -186,14 +187,14 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                         hir::ItemEnum(..) |
                         hir::ItemStruct(..) |
                         hir::ItemUnion(..) |
-                        hir::ItemTrait(..)   => is_inferred = true,
-                        hir::ItemFn(..)      => is_inferred = false,
-                        _                    => cannot_happen!(),
+                        hir::ItemTrait(..) => is_inferred = true,
+                        hir::ItemFn(..) => is_inferred = false,
+                        _ => cannot_happen!(),
                     }
                 }
-                hir_map::NodeTraitItem(..)   => is_inferred = false,
-                hir_map::NodeImplItem(..)    => is_inferred = false,
-                _                            => cannot_happen!(),
+                hir_map::NodeTraitItem(..) => is_inferred = false,
+                hir_map::NodeImplItem(..) => is_inferred = false,
+                _ => cannot_happen!(),
             }
 
             return is_inferred;
@@ -230,21 +231,18 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn add_constraint(&mut self,
                       InferredIndex(index): InferredIndex,
                       variance: VarianceTermPtr<'a>) {
-        debug!("add_constraint(index={}, variance={:?})",
-                index, variance);
-        self.constraints.push(Constraint { inferred: InferredIndex(index),
-                                           variance: variance });
+        debug!("add_constraint(index={}, variance={:?})", index, variance);
+        self.constraints.push(Constraint {
+            inferred: InferredIndex(index),
+            variance: variance,
+        });
     }
 
-    fn contravariant(&mut self,
-                     variance: VarianceTermPtr<'a>)
-                     -> VarianceTermPtr<'a> {
+    fn contravariant(&mut self, variance: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
         self.xform(variance, self.contravariant)
     }
 
-    fn invariant(&mut self,
-                 variance: VarianceTermPtr<'a>)
-                 -> VarianceTermPtr<'a> {
+    fn invariant(&mut self, variance: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
         self.xform(variance, self.invariant)
     }
 
@@ -257,23 +255,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         }
     }
 
-    fn xform(&mut self,
-             v1: VarianceTermPtr<'a>,
-             v2: VarianceTermPtr<'a>)
-             -> VarianceTermPtr<'a> {
+    fn xform(&mut self, v1: VarianceTermPtr<'a>, v2: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
         match (*v1, *v2) {
             (_, ConstantTerm(ty::Covariant)) => {
                 // Applying a "covariant" transform is always a no-op
                 v1
             }
 
-            (ConstantTerm(c1), ConstantTerm(c2)) => {
-                self.constant_term(c1.xform(c2))
-            }
+            (ConstantTerm(c1), ConstantTerm(c2)) => self.constant_term(c1.xform(c2)),
 
-            _ => {
-                &*self.terms_cx.arena.alloc(TransformTerm(v1, v2))
-            }
+            _ => &*self.terms_cx.arena.alloc(TransformTerm(v1, v2)),
         }
     }
 
@@ -292,13 +283,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         // README.md for a discussion on dep-graph management.
         self.tcx().dep_graph.read(ItemVariances::to_dep_node(&trait_ref.def_id));
 
-        self.add_constraints_from_substs(
-            generics,
-            trait_ref.def_id,
-            &trait_def.generics.types,
-            &trait_def.generics.regions,
-            trait_ref.substs,
-            variance);
+        self.add_constraints_from_substs(generics,
+                                         trait_ref.def_id,
+                                         &trait_def.generics.types,
+                                         &trait_def.generics.regions,
+                                         trait_ref.substs,
+                                         variance);
     }
 
     /// Adds constraints appropriate for an instance of `ty` appearing
@@ -313,13 +303,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                variance);
 
         match ty.sty {
-            ty::TyBool |
-            ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
-            ty::TyFloat(_) | ty::TyStr | ty::TyNever => {
-                /* leaf type -- noop */
+            ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
+            ty::TyStr | ty::TyNever => {
+                // leaf type -- noop
             }
 
-            ty::TyClosure(..) | ty::TyAnon(..) => {
+            ty::TyClosure(..) |
+            ty::TyAnon(..) => {
                 bug!("Unexpected closure type in variance computation");
             }
 
@@ -329,10 +319,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(generics, mt, variance);
             }
 
-            ty::TyBox(typ) | ty::TyArray(typ, _) | ty::TySlice(typ) => {
+            ty::TyBox(typ) |
+            ty::TyArray(typ, _) |
+            ty::TySlice(typ) => {
                 self.add_constraints_from_ty(generics, typ, variance);
             }
-
 
             ty::TyRawPtr(ref mt) => {
                 self.add_constraints_from_mt(generics, mt, variance);
@@ -352,13 +343,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // README.md for a discussion on dep-graph management.
                 self.tcx().dep_graph.read(ItemVariances::to_dep_node(&def.did));
 
-                self.add_constraints_from_substs(
-                    generics,
-                    def.did,
-                    &item_type.generics.types,
-                    &item_type.generics.regions,
-                    substs,
-                    variance);
+                self.add_constraints_from_substs(generics,
+                                                 def.did,
+                                                 &item_type.generics.types,
+                                                 &item_type.generics.regions,
+                                                 substs,
+                                                 variance);
             }
 
             ty::TyProjection(ref data) => {
@@ -370,13 +360,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // README.md for a discussion on dep-graph management.
                 self.tcx().dep_graph.read(ItemVariances::to_dep_node(&trait_ref.def_id));
 
-                self.add_constraints_from_substs(
-                    generics,
-                    trait_ref.def_id,
-                    &trait_def.generics.types,
-                    &trait_def.generics.regions,
-                    trait_ref.substs,
-                    variance);
+                self.add_constraints_from_substs(generics,
+                                                 trait_ref.def_id,
+                                                 &trait_def.generics.types,
+                                                 &trait_def.generics.regions,
+                                                 trait_ref.substs,
+                                                 variance);
             }
 
             ty::TyTrait(ref data) => {
@@ -384,8 +373,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(generics, data.region_bound, contra);
 
-                let poly_trait_ref =
-                    data.principal.with_self_ty(self.tcx(), self.tcx().types.err);
+                let poly_trait_ref = data.principal.with_self_ty(self.tcx(), self.tcx().types.err);
                 self.add_constraints_from_trait_ref(generics, poly_trait_ref.0, variance);
 
                 for projection in &data.projection_bounds {
@@ -425,7 +413,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyInfer(..) => {
                 bug!("unexpected type encountered in \
-                      variance inference: {}", ty);
+                      variance inference: {}",
+                     ty);
             }
         }
     }
@@ -445,18 +434,17 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                variance);
 
         for p in type_param_defs {
-            let variance_decl =
-                self.declared_variance(p.def_id, def_id, p.index as usize);
+            let variance_decl = self.declared_variance(p.def_id, def_id, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
             let substs_ty = substs.type_for_def(p);
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
-                   variance_decl, variance_i);
+                   variance_decl,
+                   variance_i);
             self.add_constraints_from_ty(generics, substs_ty, variance_i);
         }
 
         for p in region_param_defs {
-            let variance_decl =
-                self.declared_variance(p.def_id, def_id, p.index as usize);
+            let variance_decl = self.declared_variance(p.def_id, def_id, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
             let substs_r = substs.region_for_def(p);
             self.add_constraints_from_region(generics, substs_r, variance_i);
@@ -494,15 +482,19 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ReStatic => { }
+            ty::ReStatic => {}
 
             ty::ReLateBound(..) => {
                 // We do not infer variance for region parameters on
                 // methods or in fn types.
             }
 
-            ty::ReFree(..) | ty::ReScope(..) | ty::ReVar(..) |
-            ty::ReSkolemized(..) | ty::ReEmpty | ty::ReErased => {
+            ty::ReFree(..) |
+            ty::ReScope(..) |
+            ty::ReVar(..) |
+            ty::ReSkolemized(..) |
+            ty::ReEmpty |
+            ty::ReErased => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
                 bug!("unexpected region encountered in variance \
