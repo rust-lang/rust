@@ -14,19 +14,28 @@ struct Foo {
 
 fn main() {
     let Foo {
-        a: _, //~ NOTE field `a` previously bound here
-        a: _ //~ ERROR field `a` bound multiple times in the pattern
+        a: _, //~ NOTE first use of `a`
+        a: _
+        //~^ ERROR field `a` bound multiple times in the pattern
+        //~| NOTE multiple uses of `a` in pattern
     } = Foo { a: 29 };
 
     let Foo {
-        a, //~ NOTE field `a` previously bound here
-        a: _ //~ ERROR field `a` bound multiple times in the pattern
+        a, //~ NOTE first use of `a`
+        a: _
+        //~^ ERROR field `a` bound multiple times in the pattern
+        //~| NOTE multiple uses of `a` in pattern
     } = Foo { a: 29 };
 
     let Foo {
-        a, //~ NOTE field `a` previously bound here
-        //~^ NOTE field `a` previously bound here
-        a: _, //~ ERROR field `a` bound multiple times in the pattern
-        a: x //~ ERROR field `a` bound multiple times in the pattern
+        a,
+        //~^ NOTE first use of `a`
+        //~| NOTE first use of `a`
+        a: _,
+        //~^ ERROR field `a` bound multiple times in the pattern
+        //~| NOTE multiple uses of `a` in pattern
+        a: x
+        //~^ ERROR field `a` bound multiple times in the pattern
+        //~| NOTE multiple uses of `a` in pattern
     } = Foo { a: 29 };
 }

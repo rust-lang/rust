@@ -675,14 +675,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for &Spanned { node: ref field, span } in fields {
             let field_ty = match used_fields.entry(field.name) {
                 Occupied(occupied) => {
-                    let mut err = struct_span_err!(tcx.sess, span, E0025,
-                                                   "field `{}` bound multiple times \
-                                                    in the pattern",
-                                                   field.name);
-                    span_note!(&mut err, *occupied.get(),
-                               "field `{}` previously bound here",
-                               field.name);
-                    err.emit();
+                    struct_span_err!(tcx.sess, span, E0025,
+                                     "field `{}` bound multiple times \
+                                      in the pattern",
+                                     field.name)
+                        .span_label(span,
+                                    &format!("multiple uses of `{}` in pattern", field.name))
+                        .span_label(*occupied.get(), &format!("first use of `{}`", field.name))
+                        .emit();
                     tcx.types.err
                 }
                 Vacant(vacant) => {
