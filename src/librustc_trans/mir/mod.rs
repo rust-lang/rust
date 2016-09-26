@@ -290,7 +290,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         let retptr = allocate_local(mir::RETURN_POINTER);
         iter::once(retptr)
             .chain(args.into_iter())
-            .chain(mir.vars_and_temps_iter().map(&mut allocate_local))
+            .chain(mir.vars_and_temps_iter().map(allocate_local))
             .collect()
     };
 
