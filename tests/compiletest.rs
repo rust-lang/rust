@@ -105,6 +105,7 @@ fn compile_test() {
                         writeln!(stderr.lock(), "FAILED with exit code {:?}", output.status.code()).unwrap();
                         writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
                         writeln!(stderr.lock(), "stderr: \n {}", output_err).unwrap();
+                        panic!("failed to run test");
                     }
                 }
                 Err(e) => {
