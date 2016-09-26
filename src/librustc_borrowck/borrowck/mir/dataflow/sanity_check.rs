@@ -13,7 +13,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::repr::{self, Mir, LocalKind};
+use rustc::mir::repr::{self, Mir};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::super::gather_moves::{MovePathIndex, LookupResult};
@@ -73,15 +73,8 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     assert!(args.len() == 1);
     let peek_arg_lval = match args[0] {
-        repr::Operand::Consume(ref lval) => match *lval {
-             repr::Lvalue::Local(local) if mir.local_kind(local) == LocalKind::Temp => {
-                 Some(lval)
-             }
-             _ => None
-        },
-        repr::Operand::Constant(_) => {
-            None
-        }
+        repr::Operand::Consume(ref lval @ repr::Lvalue::Local(_)) => Some(lval),
+        _ => None,
     };
 
     let peek_arg_lval = match peek_arg_lval {
