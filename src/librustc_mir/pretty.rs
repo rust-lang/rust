@@ -355,5 +355,3 @@ fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
 
     Ok(())
 }
-
-// TODO manually test

@@ -173,5 +173,3 @@ fn node(block: BasicBlock) -> String {
 fn escape<T: Debug>(t: &T) -> String {
     dot::escape_html(&format!("{:?}", t))
 }
-
-// TODO manually test
